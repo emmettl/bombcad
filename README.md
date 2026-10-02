@@ -72,10 +72,11 @@ Two comparisons with the outside world, both in the [validation notes](docs/vali
   the Kingery–Bulmash reference at the three stand-offs checked. Peak pressures are
   under-resolved, more so close to the charge.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 96, 102 and 110 mm with 4, 8 and 16 elements through the
-  thickness, where 108 mm was measured, with no material constant fitted to the test. The
-  peak still rises slowly with refinement, the rebound after it is twice the measured one, and
-  the result is sensitive to the load and to how the supports are modelled.
+  model predicts peak deflections of 96 and 102 mm with 4 and 8 elements through the
+  thickness, where 108 mm was measured, with no material constant fitted to the test. With 16
+  elements the outcome sits on a knife edge: a 0.1% change in the load decides between about
+  110 mm and collapse. The rebound after the peak is twice the measured one, and the result is
+  sensitive to the load and to how the supports are modelled.
 
 Collapse and debris have not been compared with anything.
 

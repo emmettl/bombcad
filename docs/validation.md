@@ -26,7 +26,7 @@ swift run -c release blastbench validate
 | Blast loads          | Kingery–Bulmash at three ranges: impulse on a wall within 5–10% | Moderate to good for impulse on walls; peaks under-resolved |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: peak within 11% on three meshes, rising with refinement | Low to moderate: one test, sensitive to supports |
+| Structural response  | One slab test: peak within 11% on two meshes; a finer one is on a knife edge | Low: one test, sensitive to supports, not shown to converge |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -79,7 +79,7 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Case                             | Peak deflection | At    | At 70 ms | Elements failed |
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
-| Model, 16 elements through       | 110 mm (102%)   | 27 ms | 87 mm    | 0 of 552,960    |
+| Model, 16 elements through       | 110 mm (102%) or collapse, see below | 27 ms | 87 mm | 0 of 552,960 |
 | Model, 8 elements through        | 102 mm (94%)    | 26 ms | 68 mm    | 0 of 68,608     |
 | Model, 4 elements through        | 96 mm (89%)     | 25 ms | 78 mm    | 0 of 8,704      |
 
@@ -103,9 +103,18 @@ Mid-span deflection through the record, in millimetres:
 | 70 ms | 90       | 87         | 68        | 78        |
 
 The root-mean-square difference over the record is 8.8 mm for 16 elements through the
-thickness and 13.9 mm for 8 or 4. The peak rises with refinement, from 96 mm to 102 mm to
-110 mm, so the model is close to converged but not there; the measured 108 mm lies between the
-two finer meshes. The rise to the peak is reproduced within a few millimetres on every mesh.
+thickness and 13.9 mm for 8 or 4. The 16-layer figures are one of two outcomes: **that mesh is
+on a knife edge.** Scaling the load by 0.999 or 1.001, or changing nothing but the order in
+which the GPU does its arithmetic (which a change elsewhere in the code can do), decides
+between the history above and a collapse that is already visible at 10 ms (41 mm against
+37 mm). The collapse starts when the top layer of the compression zone, 6 mm thick, passes its
+peak strength while strain rates are still high, at 6 to 8 ms, and crushes to 1–2% at
+scattered points along the span. Three changes were tried and did not remove the knife edge:
+capping the hourglass forces of uncracked concrete at its full strength, adding the shear
+stress to the cap, and freezing the compressive rate factor once an element first crushes.
+The 4- and 8-layer results do not have this sensitivity (every variation in the table below
+survives). So the slab result is not shown to be mesh-converged: two meshes agree to within
+6%, and the next refinement is unstable. The rise to the peak is reproduced within a few millimetres on every mesh.
 After the peak every mesh rebounds further than the specimen did (about 30 mm against 13 mm)
 before settling. The rebound is set by a hinge at mid-span: once its crushed compression zone
 unloads, the section cracks through its depth and the two halves swing back about the bars. The
@@ -145,7 +154,7 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 | Crushing spread over at least 50 mm          | 102 mm (94%)    | 0               |
 | Supports as 1 in bearings, held down         | 84 mm (78%)     | 402             |
 | Supports as 1 in bearings, free to lift      | 88 mm (81%)     | 0               |
-| 16 elements through the thickness            | 110 mm (102%)   | 0               |
+| 16 elements through the thickness            | 110 mm (102%) or collapse | 0 or thousands |
 | Fixed UFC 3-340-02 factors, no rate laws     | 673 mm, failing | 854             |
 | Static strengths                             | 415 mm, failing | 12,220          |
 
@@ -172,8 +181,9 @@ Reading this table:
 
 It shows that the model reproduces the flexural response of a lightly reinforced one-way slab
 under a uniform dynamic load, including the influence of strain rate, to within about 10% at
-the peak on meshes of 4 to 16 elements through the thickness, with the peak still rising
-slowly as the mesh is refined. The rebound after the peak is too large on every mesh.
+the peak on meshes of 4 and 8 elements through the thickness. A 16-layer mesh is unstable in
+the way described above, so convergence is not shown. The rebound after the peak is too large
+on every mesh.
 
 It does not show that the model predicts shear failure, breach, spalling, fragmentation or
 collapse correctly; that walls loaded by the air solver respond correctly (the air solver's

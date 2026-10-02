@@ -268,9 +268,16 @@ matter.
    steel and little tension, had almost no protection; on the fine mesh it folded, and the
    folding was what had looked like crushing. With compression counted in the cap, and the
    nonlocal crushing of step 11 (which then stopped late failures at the supports), the slab
-   peaks at 96, 102 and 110 mm on 4, 8 and 16 elements through the thickness, with nothing
+   peaked at 96, 102 and 110 mm on 4, 8 and 16 elements through the thickness, with nothing
    failing on any of them. Every variation in the sensitivity study now survives except
    held-down bearings.
+13. **The 16-layer result turned out to be a knife edge.** After an unrelated change that only
+   altered round-off, the 16-layer slab collapsed again; scaling the load by 0.999 or 1.001
+   flips it either way. The collapse starts when the 6 mm top layer passes peak strength at
+   6–8 ms and crushes to 1–2% at scattered points along the span. Capping the hourglass
+   forces of uncracked concrete at full strength, adding shear stress to the cap, and freezing
+   the compressive rate factor at first crushing were each tried and did not remove it. The
+   4- and 8-layer results are not sensitive in this way.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. Step 5's 108 mm on 8 elements also owed something to the zigzag
@@ -278,10 +285,12 @@ fixed in step 12: the same mesh now gives 102 mm.
 
 ## Limitations
 
-1. **Validated against one test**, a one-way slab in bending under a uniform load, and **only
-   nearly converged** on it: the peak rises from 96 mm to 102 mm to 110 mm as the elements
-   through the thickness go from 4 to 8 to 16. Results for members in bending should be
-   checked at more than one mesh.
+1. **Validated against one test**, a one-way slab in bending under a uniform load, and **not
+   shown to converge** on it: 4 and 8 elements through the thickness give 96 and 102 mm, but
+   16 elements sit on a knife edge between about 110 mm and collapse (step 13). The post-peak
+   behaviour of a compression zone only a few millimetres deep per element is the weak point.
+   Results for members in bending should be checked at more than one mesh, and treated with
+   suspicion when the outermost layer crushes far past its strength early in the event.
 2. **Cracks form only on lattice planes.** A diagonal crack is represented by damage shared
    between two planes, not as an inclined plane with its own opening and sliding. Shear
    failures are the least trustworthy predictions the model makes.
@@ -322,8 +331,9 @@ fixed in step 12: the same mesh now gives 102 mm.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
-- **Convergence**: the peak still rises by about 7% with each halving of the elements; a
-  32-layer run (4.4 million elements) would show whether it levels off.
+- **Convergence**: find what makes the 16-layer compression zone unstable when its top layer
+  passes peak early, and fix it. A 32-layer run (4.4 million elements, 186,000 steps) was
+  tried and did not finish within two hours.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
 - **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.
