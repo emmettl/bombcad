@@ -130,7 +130,17 @@ public final class StructureSolver {
             }
             return try device.makeComputePipelineState(function: function)
         }
-        elementPipeline = try pipeline("structureElements")
+        // The element kernel is specialised for structures of a single material.
+        let constants = MTLFunctionConstantValues()
+        var single = model.materials.count == 1
+        constants.setConstantValue(&single, type: .bool, index: 0)
+        guard
+            let elementFunction = try? library.makeFunction(
+                name: "structureElements", constantValues: constants)
+        else {
+            throw BlastError.missingFunction("structureElements")
+        }
+        elementPipeline = try device.makeComputePipelineState(function: elementFunction)
         nodePipeline = try pipeline("structureNodes")
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")

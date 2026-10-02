@@ -95,6 +95,10 @@ struct MaterialParameters {
 
 constant uint maxMaterials = 8;
 
+// Set when the pipeline is built: true for a structure of one material, which lets the compiler
+// fold the per-element lookup away.
+constant bool singleMaterial [[function_constant(0)]];
+
 // Each cell of the contact grid holds up to this many nodes.
 constant uint contactSlots = 4;
 constant uint emptySlot = 0xFFFFFFFFu;
@@ -472,8 +476,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         return;
     }
     uint3 tid = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
-    uchar own = materialIndex[element];
-    constant MaterialParameters &m = materials[min(uint(own), maxMaterials - 1)];
+    uchar own = singleMaterial ? 0 : materialIndex[element];
+    constant MaterialParameters &m = materials[singleMaterial ? 0u : min(uint(own), maxMaterials - 1)];
 
     uint nodesX = u.ex + 1;
     uint nodesY = u.ey + 1;
@@ -685,7 +689,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                             int other = x + dims.x * (y + dims.y * z);
                             uchar flag = flags[other];
                             // Crushing is averaged within one material only.
-                            if ((flag == elementActive || flag == elementFailing) && materialIndex[other] == own) {
+                            if ((flag == elementActive || flag == elementFailing)
+                                && (singleMaterial || materialIndex[other] == own)) {
                                 sum += crushBefore[other].xyz;
                                 count += 1.0f;
                             }

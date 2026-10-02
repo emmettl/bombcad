@@ -11,8 +11,8 @@ simulated on a current Mac? All figures here were measured on an Apple M4 Max (3
 | Air blast, 1 million cells (0.5 m in a street scene) | 2×                    |
 | Air blast, 8.4 million cells (0.25 m)               | 27×                   |
 | Air blast, 67 million cells (0.125 m)               | about 430×            |
-| A 225,000-element concrete building, alone          | 52×                   |
-| The same, once pieces are colliding                 | 85×                   |
+| A 225,000-element concrete building, alone          | 58×                   |
+| The same, once pieces are colliding                 | 90×                   |
 | That building coupled to 1 million air cells        | 75×                   |
 | A 23,000-element frame collapsing                   | 7×                    |
 
@@ -58,8 +58,8 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 
 | Mode                          | Steps/s | Element-updates/s | Slower than real time |
 |-------------------------------|---------|-------------------|-----------------------|
-| Before anything has failed    | 2,116   | 476 million       | 52×                   |
-| With contact running          | 1,302   | 293 million       | 85×                   |
+| Before anything has failed    | 1,915   | 431 million       | 58×                   |
+| With contact running          | 1,226   | 276 million       | 90×                   |
 
 - The explicit time step is set by the element size and the speed of sound in concrete, and it
   is what makes structures expensive: 110,000 steps per simulated second at this resolution.
@@ -73,6 +73,8 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   limited by memory bandwidth, is indifferent to its group size.
 - Skipping the eigenvalue problem that finds diagonal cracks, for elements strained below
   cracking, was tried and made no measurable difference.
+- Reading each element's material from a table (for structures of several materials) cost
+  12%; compiling a specialised kernel for structures of one material recovers about half.
 - The residual crack opening and the cyclic steel law cost about 8%. The cyclic law's history
   is read only for bars that have yielded; reading it for every bar cost twice as much.
 - Memory is about 240 bytes per lattice cell, whether or not it holds an element, plus 96 with
