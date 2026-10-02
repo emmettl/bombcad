@@ -75,8 +75,8 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   cracking, was tried and made no measurable difference.
 - The residual crack opening and the cyclic steel law cost about 8%. The cyclic law's history
   is read only for bars that have yielded; reading it for every bar cost twice as much.
-- Memory is about 240 bytes per lattice cell, whether or not it holds an element (340 with
-  reinforcement, for the bars' cyclic history), plus the
+- Memory is about 240 bytes per lattice cell, whether or not it holds an element, plus 96 with
+  reinforcement (the bars' cyclic history) and 32 with nonlocal crushing, plus the
   contact grid at 20 bytes per cell of the surrounding space.
 
 ## Coupled runs

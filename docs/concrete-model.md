@@ -201,6 +201,7 @@ compressive strength f_c (in MPa):
 | Tensile strength   | 0.3 f_c^(2/3) MPa          | Eurocode 2 (mean)     |
 | Fracture energy    | 73 f_c^0.18 N/m            | fib Model Code 2010   |
 | Crushing energy    | 250 × fracture energy      | Common practice       |
+| Crushing length    | 3 × aggregate size (48 mm) | Bažant and Pijaudier-Cabot (about 2.7) |
 | Poisson's ratio    | 0.2                        |                       |
 | Density            | 2400 kg/m³                 |                       |
 
