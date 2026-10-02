@@ -457,7 +457,10 @@ public final class StructureSolver {
     public func encodeSubsteps(_ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?) {
         var uniforms = makeUniforms(fluid: fluid)
         guard elementCount > 0 else { return }
-        let group = MTLSize(width: elementPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
+        // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
+        // the largest allowed size (1,024 threads) let too few run at once on each GPU core: they
+        // are a third slower than groups of 32 to 512, of which 32 is the fastest.
+        let group = MTLSize(width: elementPipeline.threadExecutionWidth, height: 1, depth: 1)
 
         // Until something has failed there is nothing to collide, so the contact kernels are
         // left out; they join in from the first batch encoded after a failure.

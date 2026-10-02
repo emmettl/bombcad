@@ -63,8 +63,8 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Case                                                        | Speed                        |
 |-------------------------------------------------------------|------------------------------|
 | Air blast, street scene, 8.4 million cells of 0.25 m        | 27× slower than real time    |
-| Concrete building, 225,000 elements, coupled to the air     | about 100× slower            |
-| Two-storey frame collapsing over 3 s                        | 10× slower                   |
+| Concrete building, 225,000 elements, coupled to the air     | 75× slower                   |
+| Two-storey frame collapsing over 3 s                        | 7× slower                    |
 
 Two comparisons with the outside world, both in the [validation notes](docs/validation.md):
 
