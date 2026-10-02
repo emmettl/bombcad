@@ -34,8 +34,21 @@ keep full single-precision resolution however far the structure is from the orig
 modes, so a stabilising force is added for each. Here its stiffness is E h / 48 per unit modal
 amplitude, the value at which a cube resists pure bending exactly as the continuum would. With
 that choice a wall n elements thick has the correct bending stiffness for any n, instead of
-needing many layers. The hourglass forces are capped at the element's bending capacity (its
-remaining tensile strength times h² / 8), so they yield along with the material.
+needing many layers. The hourglass forces are capped at the element's bending capacity times
+h² / 8, so they yield along with the material. For concrete that capacity is the larger of
+its tensile part (the concrete's remaining tensile strength, plus the steel) and its largest
+compressive stress. Until the compressive part was added, an element in the compression zone
+of a slab, with no steel and little tension, had almost no resistance to these modes. On a fine
+mesh, where the whole compression zone is such elements, they deformed freely in a zigzag that
+looked like crushing, and the validation slab collapsed with 16 elements through its
+thickness.
+
+The compressive part slightly overstates bending strength when a compression zone is thinner
+than an element: a reinforced beam six elements deep carries 13% more than section analysis
+gives, and 10% more at twelve elements deep. A cap of s (1 − s / f), which is how far a block
+at mean stress s and strength f can shift its force towards one face, is closer to the theory
+but leaves a compression zone at full strength unprotected, and the 16-layer slab collapsed
+with it. The plain compressive stress was kept.
 
 ## Time stepping
 
@@ -133,16 +146,22 @@ shock.
    cell's velocity is the mean of its elements, so a spinning fragment smaller than a cell looks
    to the air like one moving in a straight line.
 3. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
-   overlap by up to an element, a crowded grid cell silently drops nodes beyond four, and
+   overlap by up to an element, a crowded grid cell drops nodes beyond its four lowest-numbered, and
    debris more than a few metres from the structure leaves the contact grid and the air's mask.
 4. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
-   the same machine; but a collapse amplifies small differences, so a slightly different input
-   (a charge a centimetre away, a different batching of steps) gives a different pattern of
-   debris. Two runs used to differ even with identical input, because an element failing in a
-   pass was seen by some of its neighbours in that pass and not others, depending on thread
-   timing; a failing element is now marked first and committed in the node pass that follows.
-   Contact grid cells are also visited in node order. A cell holding more than four nodes
-   still drops whichever arrive last, which can make crowded debris piles differ between runs.
+   the same machine, but a collapse amplifies small differences, so a slightly different input
+   (a charge a centimetre away, a different batching of steps, a change to the model) gives a
+   different pattern of debris. The two-storey frame shows it: with the hourglass fix
+   described above, which barely changes its first second, both its floors now fall by 3 s
+   where before the upper one stayed up. Neither outcome has been compared with anything.
+
+   Repeatability took three fixes for races between GPU threads. An element failing in a pass
+   was seen by some of its neighbours in that pass and not others; a failing element is now
+   marked first and committed in the node pass that follows. The nodes in a contact grid cell
+   were stored, and their forces summed, in the order threads arrived; each cell is now
+   emptied in one pass and filled in the next with an atomic-minimum chain that keeps its four
+   lowest-numbered nodes in ascending order, whatever the timing. That also decides which
+   nodes a crowded cell drops.
 5. **Uniform element size.** A large building at fine resolution needs many elements, and the
    time step is set by the smallest (here, every) element.
 6. **Lattice-aligned geometry only.** No inclined walls, curved shells or circular columns.

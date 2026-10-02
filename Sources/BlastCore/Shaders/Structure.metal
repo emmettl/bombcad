@@ -81,6 +81,7 @@ struct StructureUniforms {
     float interlockWidthScale;  // its decay with crack width, per metre
     float shearRetention;       // fraction of the shear stiffness a cracked plane keeps
     float crackResidual;        // fraction of a crack's opening left when its stress is released
+    uint crushRadius;           // elements either side over which crushing is averaged; 0 = local
     float steelHardeningRatio;  // slope of the reinforcement's yield asymptotes over its modulus
     float loadTime;
     uint loadCount;  // entries in the applied-pressure table; 0 = none
@@ -89,6 +90,7 @@ struct StructureUniforms {
 
 // Each cell of the contact grid holds up to this many nodes.
 constant uint contactSlots = 4;
+constant uint emptySlot = 0xFFFFFFFFu;
 
 struct ElementState {
     float stress[6];      // Cauchy stress: xx, yy, zz, xy, yz, zx
@@ -259,8 +261,10 @@ static inline float2 crushStrains(float increase, float confinement, constant St
 // concrete carries nothing: crushed concrete has lost its tensile strength. (Measuring tension
 // from the permanent strain instead was tried, and made slabs near their limit far more
 // fragile, because concrete that sprang back then counted as cracked.)
-// Compressive stress magnitude on the envelope at the largest compressive strain reached.
-static inline float compressionEnvelope(float history, float increase, float confinement,
+// Compressive stress magnitude on the envelope at the largest compressive strain reached,
+// `history`. Past the peak, the softening follows `softening`: the element's own history, or
+// the average over its neighbourhood when crushing is nonlocal.
+static inline float compressionEnvelope(float history, float softening, float increase, float confinement,
                                         constant StructureUniforms &u) {
     float strength = u.compressiveStrength * increase * confinement;
     float2 limits = crushStrains(increase, confinement, u);
@@ -270,27 +274,27 @@ static inline float compressionEnvelope(float history, float increase, float con
         // number is NaN.
         return strength * (1.0f - pow(max(1.0f - history / limits.x, 0.0f), exponent));
     }
-    float fraction = clamp((history - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
+    float fraction = clamp((softening - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
     return mix(strength, 0.2f * strength, fraction);
 }
 
 // Permanent compressive strain left by unloading from `history` (Karsan and Jirsa).
-static inline float crushResidual(float history, float increase, float confinement,
+static inline float crushResidual(float history, float softening, float increase, float confinement,
                                   constant StructureUniforms &u) {
     float peak = crushStrains(increase, confinement, u).x;
     float ratio = history / peak;
     float plastic = peak * (0.145f * ratio * ratio + 0.13f * ratio);
-    float envelope = compressionEnvelope(history, increase, confinement, u);
+    float envelope = compressionEnvelope(history, softening, increase, confinement, u);
     return clamp(plastic, 0.0f, max(history - envelope / u.youngsModulus, 0.0f));
 }
 
-static inline float concreteCompression(float strain, float history, float increase, float confinement,
-                                        constant StructureUniforms &u) {
-    float envelope = compressionEnvelope(history, increase, confinement, u);
+static inline float concreteCompression(float strain, float history, float softening, float increase,
+                                        float confinement, constant StructureUniforms &u) {
+    float envelope = compressionEnvelope(history, softening, increase, confinement, u);
     if (strain >= history) {
         return -envelope;
     }
-    float plastic = crushResidual(history, increase, confinement, u);
+    float plastic = crushResidual(history, softening, increase, confinement, u);
     return strain <= plastic ? 0.0f : -envelope * (strain - plastic) / (history - plastic);
 }
 
@@ -445,6 +449,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device ElementSteel *steel [[buffer(10)]],
                               const device float2 *loadTable [[buffer(11)]],
                               device BarHistory *bars [[buffer(12)]],
+                              device float4 *crushOut [[buffer(13)]],
+                              const device float4 *crushBefore [[buffer(14)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -635,6 +641,34 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                  crackResidual(history.z, tensionFactor, u));
         float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
         float3 crush = max(float3(state.crushStrain), squeeze);
+        // Softening past the peak follows the crushing averaged over the intact elements within
+        // `crushRadius` (as of the previous substep), so that it cannot collapse into one layer
+        // of elements. Only elements already past the unconfined peak need the average.
+        float3 softening = crush;
+        if (u.crushRadius > 0) {
+            crushOut[element] = float4(crush, 0.0f);
+            if (any(crush > u.crushPeak)) {
+                int r = int(u.crushRadius);
+                int3 dims = int3(u.ex, u.ey, u.ez);
+                int3 low = max(int3(tid) - r, int3(0));
+                int3 high = min(int3(tid) + r, dims - 1);
+                float3 sum = float3(0.0f);
+                float count = 0.0f;
+                for (int z = low.z; z <= high.z; ++z) {
+                    for (int y = low.y; y <= high.y; ++y) {
+                        for (int x = low.x; x <= high.x; ++x) {
+                            int other = x + dims.x * (y + dims.y * z);
+                            uchar flag = flags[other];
+                            if (flag == elementActive || flag == elementFailing) {
+                                sum += crushBefore[other].xyz;
+                                count += 1.0f;
+                            }
+                        }
+                    }
+                }
+                softening = count > 0.0f ? sum / count : crush;
+            }
+        }
         state.crushStrain = crush;
         state.plasticStrain = max(crush.x, max(crush.y, crush.z));
 
@@ -663,10 +697,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
             gain[j] += blend * (u.confinement * support / unconfined - gain[j]);
             confinement[j] = 1.0f + gain[j];
-            normalStress[j] = concreteCompression(squeeze[j], crush[j], compressionFactor, confinement[j], u);
+            normalStress[j] = concreteCompression(squeeze[j], crush[j], softening[j], compressionFactor,
+                                                  confinement[j], u);
             float2 limits = crushStrains(compressionFactor, confinement[j], u);
-            crushed = max(crushed, clamp((squeeze[j] - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
-            pulverised = pulverised || squeeze[j] >= limits.y + u.crushErosion * (limits.y - limits.x);
+            float driving = u.crushRadius > 0 ? min(squeeze[j], softening[j]) : squeeze[j];
+            crushed = max(crushed, clamp((driving - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
+            pulverised = pulverised || driving >= limits.y + u.crushErosion * (limits.y - limits.x);
         }
         state.confinementGain = gain;
 
@@ -759,7 +795,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         szx = cauchy[0][2];
 
         eroded = eroded || torn || pulverised || crack > 1.0f;
-        capacity = max(concreteTension(crack, crack, tensionFactor, u) + steelCapacity, 0.02f * u.tensileStrength);
+        // Bending resistance comes from tension (concrete before it cracks, and steel) and from
+        // compression: an element squeezed along an axis resists the hourglass modes in
+        // proportion, so that a compression zone cannot fold up in a zigzag.
+        float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);
+        capacity = max(max(concreteTension(crack, crack, tensionFactor, u) + steelCapacity, squeezed),
+                       0.02f * u.tensileStrength);
         state.display = max(crack / (anySteel ? u.steelStrain[u.steelPoints - 1] : u.erosionStrain), crushed);
     }
 
@@ -911,13 +952,46 @@ static inline float3 nodePosition(uint index, const device StructureNode *nodes,
 // into a grid of element-sized cells, then each node pushes away from strangers in the 27 cells
 // around it. A cell's header packs the substep's stamp with a count of the slots in use, so
 // stale cells read as empty and the grid never needs clearing.
+// The contact grid is filled in two passes, so that what a cell holds does not depend on the
+// order in which threads arrive. First every node marks its cell as current and empties it...
+kernel void contactClear(const device uint *nodeList [[buffer(0)]],
+                         const device StructureNode *nodes [[buffer(1)]],
+                         device uint *heads [[buffer(2)]],
+                         const device uint *failureGate [[buffer(3)]],
+                         const device StepControl &control [[buffer(4)]],
+                         constant StructureUniforms &u [[buffer(5)]],
+                         device uint *slots [[buffer(6)]],
+                         uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active || !contactEnabled(u, failureGate)) {
+        return;
+    }
+    uint index = nodeList[threadIndex];
+    float3 position = nodePosition(index, nodes, u);
+    int3 cell = int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
+    int3 dims = int3(u.gridNx, u.gridNy, u.gridNz);
+    if (any(cell < 0) || any(cell >= dims)) {
+        return;
+    }
+    // Several nodes may write the same values here; that is harmless.
+    uint target = uint(cell.x + dims.x * (cell.y + dims.y * cell.z));
+    heads[target] = u.stamp;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        slots[target * contactSlots + slot] = emptySlot;
+    }
+}
+
+// ...then every node offers its index to its cell, which keeps the `contactSlots` smallest in
+// ascending order: each slot keeps the smaller of what it holds and what arrives, and passes
+// the larger on to the next. A crowded cell therefore always drops the same nodes.
 kernel void contactHash(const device uint *nodeList [[buffer(0)]],
                         const device StructureNode *nodes [[buffer(1)]],
-                        device atomic_uint *heads [[buffer(2)]],
+                        const device uint *heads [[buffer(2)]],
                         const device uint *failureGate [[buffer(3)]],
                         const device StepControl &control [[buffer(4)]],
                         constant StructureUniforms &u [[buffer(5)]],
-                        device uint *slots [[buffer(6)]],
+                        device atomic_uint *slots [[buffer(6)]],
                         uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     structureStep(u, control, active);
@@ -932,17 +1006,10 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
         return;
     }
     uint target = uint(cell.x + dims.x * (cell.y + dims.y * cell.z));
-    uint observed = atomic_load_explicit(&heads[target], memory_order_relaxed);
-    while (true) {
-        uint count = (observed >> 3) == u.stamp ? (observed & 7u) : 0u;
-        if (count >= contactSlots) {
-            return;  // crowded cell: this node goes unseen for one substep
-        }
-        if (atomic_compare_exchange_weak_explicit(&heads[target], &observed, (u.stamp << 3) | (count + 1),
-                                                  memory_order_relaxed, memory_order_relaxed)) {
-            slots[target * contactSlots + count] = index;
-            return;
-        }
+    uint carried = index;
+    for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
+        uint held = atomic_fetch_min_explicit(&slots[target * contactSlots + slot], carried, memory_order_relaxed);
+        carried = max(held, carried);
     }
 }
 
@@ -978,25 +1045,16 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     continue;
                 }
                 uint target = uint(c.x + dims.x * (c.y + dims.y * c.z));
-                uint head = heads[target];
-                if ((head >> 3) != u.stamp) {
-                    continue;
+                if (heads[target] != u.stamp) {
+                    continue;  // not touched this substep: whatever it holds is stale
                 }
-                // Threads fill a cell's slots in whatever order they arrive. Visiting them in
-                // node order makes the sum of forces, and so the whole run, repeatable.
-                uint count = min(head & 7u, contactSlots);
-                uint members[contactSlots];
-                for (uint slot = 0; slot < count; ++slot) {
-                    uint value = slots[target * contactSlots + slot];
-                    uint place = slot;
-                    while (place > 0 && members[place - 1] > value) {
-                        members[place] = members[place - 1];
-                        --place;
+                // The slots hold the cell's nodes in ascending order, so the forces are summed in
+                // the same order whatever the timing of the threads that filled them.
+                for (uint slot = 0; slot < contactSlots; ++slot) {
+                    uint otherIndex = slots[target * contactSlots + slot];
+                    if (otherIndex == emptySlot) {
+                        break;
                     }
-                    members[place] = value;
-                }
-                for (uint slot = 0; slot < count; ++slot) {
-                    uint otherIndex = members[slot];
                     if (otherIndex == index) {
                         continue;
                     }

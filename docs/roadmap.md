@@ -14,7 +14,7 @@ and nothing in it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with one test, and that result is not mesh-converged | Unknown accuracy; a finer mesh of the same slab collapses | [Validation](validation.md#sensitivity) |
+| 1 | The structural model has been compared with one test, and is only nearly mesh-converged on it | Unknown accuracy elsewhere; peaks within about 10% | [Validation](validation.md#results) |
 | 2 | Shear failure is the least reliable prediction                          | Breach, punching and direct-shear results are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
@@ -51,11 +51,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    of state.
 5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
-6. **The compression zone in bending, and compaction** under very high pressure. Tracing the
-   slab showed that its excess rebound comes from a hinge whose compression zone is one
-   crushed element deep, and that the fine mesh's good peak depends on that element crushing
-   far past its strength: spreading crushing over a wider band makes it collapse. This points
-   to elements that bend (item 8) rather than to another material change.
+6. **The rebound, and compaction** under very high pressure. The slab's mid-span hinge springs
+   back twice as far as the specimen did; elements that bend (item 8) are the likeliest fix.
 7. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.

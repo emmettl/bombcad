@@ -132,7 +132,7 @@ struct ScenarioTests {
         var structure = try #require(json["structure"] as? [String: Any])
         var material = try #require(structure["material"] as? [String: Any])
         // Settings added to the material and the structure after the first saved layouts.
-        for key in ["crackResidual", "crushBand"] {
+        for key in ["crackResidual", "crushBand", "crushLength"] {
             #expect(material.removeValue(forKey: key) != nil, "\(key) should be saved")
         }
         #expect(structure.removeValue(forKey: "solidReinforcement") != nil)
@@ -146,6 +146,7 @@ struct ScenarioTests {
         #expect(opened == expected)
         #expect(opened.structure?.material.crackResidual == 0.1)
         #expect(opened.structure?.material.crushBand == 0)
+        #expect(opened.structure?.material.crushLength == 0.048)
         // The saved bars are kept as they were; the setting reads as automatic.
         #expect(opened.structure?.reinforcement == scenario.structure?.reinforcement)
         #expect(opened.structure?.reinforcement(of: 0) == .automatic)

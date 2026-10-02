@@ -93,6 +93,10 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Shortest length, in metres, over which crushing is taken to spread. Zero spreads it over
     /// one element.
     public var crushBand: Float = 0
+    /// Radius, in metres, over which crushing is averaged before it softens the concrete
+    /// (nonlocal crushing). Zero, or less than half an element, keeps it local. `concrete(...)`
+    /// sets it to three aggregate sizes.
+    public var crushLength: Float = 0
     /// Gain in compressive strength per unit of lateral confining stress (Richart's 4.1).
     public var confinementCoefficient: Float = 4.1
     /// Largest aggregate size in metres, which governs how well a crack still carries shear.
@@ -145,6 +149,7 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         material.tensileStrength = 0.3e6 * pow(megapascals, 2.0 / 3.0)
         material.fractureEnergy = 73 * pow(megapascals, 0.18)
         material.crushingEnergy = 250 * material.fractureEnergy
+        material.crushLength = 3 * material.aggregateSize
         material.steel = steel
         return material
     }
@@ -518,6 +523,7 @@ struct StructureUniforms {
     var interlockWidthScale: Float = 0
     var shearRetention: Float = 0.25
     var crackResidual: Float = 0
+    var crushRadius: UInt32 = 0
     var steelHardeningRatio: Float = 0.01
     var loadTime: Float = 0
     var loadCount: UInt32 = 0
@@ -599,8 +605,9 @@ extension StructureMaterial {
         steel = try container.decodeIfPresent(SteelProperties.self, forKey: .steel)
         crackSpacing = try value(.crackSpacing, crackSpacing)
         crushBand = try value(.crushBand, crushBand)
-        confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         aggregateSize = try value(.aggregateSize, aggregateSize)
+        crushLength = try value(.crushLength, model == .concrete ? 3 * aggregateSize : crushLength)
+        confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)

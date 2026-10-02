@@ -26,7 +26,7 @@ swift run -c release blastbench validate
 | Blast loads          | Kingery–Bulmash at three ranges: impulse on a wall within 5–10% | Moderate to good for impulse on walls; peaks under-resolved |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: peak within 5% on two meshes; a finer mesh collapses | Low: one test, sensitive, not mesh-converged |
+| Structural response  | One slab test: peak within 11% on three meshes, rising with refinement | Low to moderate: one test, sensitive to supports |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -79,36 +79,44 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Case                             | Peak deflection | At    | At 70 ms | Elements failed |
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
-| Model, 8 elements through        | 108 mm (100%)   | 27 ms | 78 mm    | 0 of 68,608     |
-| Model, 4 elements through        | 113 mm (105%)   | 28 ms | 88 mm    | 0 of 8,704      |
+| Model, 16 elements through       | 110 mm (102%)   | 27 ms | 87 mm    | 0 of 552,960    |
+| Model, 8 elements through        | 102 mm (94%)    | 26 ms | 68 mm    | 0 of 68,608     |
+| Model, 4 elements through        | 96 mm (89%)     | 25 ms | 78 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
 
-| Time  | Measured | 8 through | 4 through |
-|-------|----------|-----------|-----------|
-| 5 ms  | 9        | 10        | 9         |
-| 10 ms | 35       | 37        | 36        |
-| 15 ms | 66       | 69        | 69        |
-| 20 ms | 88       | 95        | 96        |
-| 25 ms | 103      | 107       | 111       |
-| 30 ms | 108      | 105       | 112       |
-| 35 ms | 107      | 93        | 102       |
-| 40 ms | 98       | 83        | 94        |
-| 45 ms | 95       | 80        | 94        |
-| 50 ms | 98       | 84        | 100       |
-| 55 ms | 98       | 91        | 102       |
-| 60 ms | 96       | 93        | 95        |
-| 65 ms | 92       | 87        | 88        |
-| 70 ms | 90       | 78        | 88        |
+| Time  | Measured | 16 through | 8 through | 4 through |
+|-------|----------|------------|-----------|-----------|
+| 5 ms  | 9        | 9          | 9         | 9         |
+| 10 ms | 35       | 37         | 36        | 35        |
+| 15 ms | 66       | 69         | 68        | 65        |
+| 20 ms | 88       | 95         | 92        | 88        |
+| 25 ms | 103      | 109        | 101       | 96        |
+| 30 ms | 108      | 108        | 96        | 91        |
+| 35 ms | 107      | 96         | 84        | 81        |
+| 40 ms | 98       | 84         | 76        | 78        |
+| 45 ms | 95       | 79         | 75        | 83        |
+| 50 ms | 98       | 80         | 81        | 87        |
+| 55 ms | 98       | 86         | 87        | 82        |
+| 60 ms | 96       | 93         | 86        | 75        |
+| 65 ms | 92       | 94         | 77        | 73        |
+| 70 ms | 90       | 87         | 68        | 78        |
 
-The root-mean-square difference over the record is 8.7 mm for the fine mesh and 3.9 mm for the
-coarse one. The rise to the peak is reproduced within a few millimetres. After the peak the fine
-mesh rebounds about 28 mm, where the specimen rebounded about 13 mm and settled; the coarse mesh
-rebounds about 19 mm. The rebound is set by a hinge that forms at mid-span once its crushed
-compression zone, one element deep on the fine mesh, unloads: the section then cracks through
-its depth and the two halves swing back about the bars. That depends on the mesh, and it is
-not a matter of damping. The [concrete model](concrete-model.md#how-the-model-got-here) gives
-the evidence.
+The root-mean-square difference over the record is 8.8 mm for 16 elements through the
+thickness and 13.9 mm for 8 or 4. The peak rises with refinement, from 96 mm to 102 mm to
+110 mm, so the model is close to converged but not there; the measured 108 mm lies between the
+two finer meshes. The rise to the peak is reproduced within a few millimetres on every mesh.
+After the peak every mesh rebounds further than the specimen did (about 30 mm against 13 mm)
+before settling. The rebound is set by a hinge at mid-span: once its crushed compression zone
+unloads, the section cracks through its depth and the two halves swing back about the bars. The
+[concrete model](concrete-model.md#how-the-model-got-here) gives the evidence.
+
+Until the hourglass control and nonlocal crushing described in the
+[structural](structural-model.md#elements) and [concrete](concrete-model.md#compression-and-confinement)
+notes were added, the model gave 108 mm on 8 elements and 113 mm on 4, matching the test
+closely, but collapsed on 16. That agreement came partly from compression zones folding in a
+zigzag the element could not feel; the present figures are less flattering and more
+trustworthy.
 
 For comparison, the source reports these peaks from other tools on the same slab and load:
 
@@ -120,72 +128,52 @@ For comparison, the source reports these peaks from other tools on the same slab
 
 ### Sensitivity
 
-Fine mesh, strain-rate laws, one thing changed at a time:
+Eight elements through the thickness, strain-rate laws, one thing changed at a time:
 
 | Change                                       | Peak            | Elements failed |
 |----------------------------------------------|-----------------|-----------------|
-| None                                         | 108 mm (100%)   | 0               |
-| Load 5% lower                                | 94 mm (87%)     | 0               |
-| Load 5% higher                               | 123 mm (114%)   | 171             |
-| Aggregate 10 mm instead of 16 mm             | 108 mm (100%)   | 0               |
-| Crack spacing 50 mm instead of 100 mm        | 104 mm (96%)    | 0               |
-| Crack spacing 200 mm                         | 109 mm (101%)   | 0               |
-| Fracture energy halved                       | 109 mm (101%)   | 0               |
-| Tensile strength 20% lower                   | 109 mm (101%)   | 0               |
-| Cracks close fully (no residual opening)     | 108 mm (100%)   | 0               |
-| Residual crack opening 30% instead of 10%    | 108 mm (100%)   | 0               |
-| Crushing spread over at least 50 mm          | collapse        | 3,860           |
-| Supports as 1 in bearings, held down         | 97 mm (90%)     | 407             |
-| Supports as 1 in bearings, free to lift      | 93 mm (86%)     | 0               |
-| **16 elements through the thickness**        | **collapse**    | **37,157**      |
-| Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 12,214          |
-| Static strengths                             | collapse        | 14,604          |
+| None                                         | 102 mm (94%)    | 0               |
+| Load 5% lower                                | 89 mm (82%)     | 0               |
+| Load 5% higher                               | 116 mm (107%)   | 0               |
+| Aggregate 10 mm instead of 16 mm             | 102 mm (94%)    | 0               |
+| Crack spacing 50 mm instead of 100 mm        | 98 mm (90%)     | 0               |
+| Crack spacing 200 mm                         | 103 mm (95%)    | 0               |
+| Fracture energy halved                       | 102 mm (95%)    | 0               |
+| Tensile strength 20% lower                   | 103 mm (95%)    | 0               |
+| Cracks close fully (no residual opening)     | 101 mm (94%)    | 0               |
+| Residual crack opening 30% instead of 10%    | 101 mm (94%)    | 0               |
+| Crushing spread over at least 50 mm          | 102 mm (94%)    | 0               |
+| Supports as 1 in bearings, held down         | 84 mm (78%)     | 402             |
+| Supports as 1 in bearings, free to lift      | 88 mm (81%)     | 0               |
+| 16 elements through the thickness            | 110 mm (102%)   | 0               |
+| Fixed UFC 3-340-02 factors, no rate laws     | 673 mm, failing | 854             |
+| Static strengths                             | 415 mm, failing | 12,220          |
 
 Reading this table:
 
 - **The rate laws decide the outcome.** The load is far above the slab's static capacity, so it
   survives only because steel and concrete are stronger when loaded quickly. With the fixed
-  design factors (which are deliberately conservative) or none, the model predicts collapse.
+  design factors (which are deliberately conservative) or none, the model predicts failure.
   The test is therefore a sharp check on the rate treatment, and a poor check on anything else.
-- **A 5% change in load moves the peak by about 14%.** The hand-read pressure record could
+- **A 5% change in load moves the peak by about 13%.** The hand-read pressure record could
   easily be 5% out in its shape, though its impulse is pinned.
-- **The model sits near a shear failure.** With 5% more load a hundred or so elements fail in
-  shear. In earlier versions of the model the same local failures were triggered instead by
-  smaller aggregate, a lower load or a wider crack spacing. Which change trips them is not
-  stable from one version of the model to the next, which says the margin is thin. Near the
-  margin the outcome is chaotic: with the cyclic steel law but no residual crack opening, the
-  5% case reached 146 mm with 824 elements failed. Shear is the weakest part of the model.
+- **No material assumption tips the slab into failure any more.** Earlier versions sat near a
+  shear failure, which one assumption or another (a lower load, smaller aggregate, a wider
+  crack spacing, 5% more load) would trigger, never the same one twice. Those failures went
+  when the hourglass control was fixed, which suggests they were the zigzag modes, not shear.
 - **The concrete's tensile properties barely matter** here, as expected for a slab whose
   resistance comes from its bars.
-- **The fine mesh survives on a very ductile compression zone.** Its compression zone at
-  mid-span is one 12.7 mm element, which crushes to about 15‰ and keeps carrying load because
-  the crushing energy is spread over that one element. Spreading it over at least 50 mm, which
-  is closer to how far crushing extends in a real member, makes the fine mesh collapse. The
-  coarse mesh is unaffected at any band width up to 200 mm: its compression zone is 25 mm deep
-  and never passes peak strength. The two meshes agree on the peak for different reasons.
-- **The result is not mesh-converged.** With 16 elements through the thickness (553,000
-  elements, four minutes) the slab collapses. It is already softer than the 8-layer mesh at
-  10 ms, before anything has failed: its compression zone has crushed to 4–8% strain at
-  several points along the span while its bars have barely yielded (0.1% plastic strain,
-  against 2% on the 8-layer mesh). Compressive softening collapses into the outermost layer
-  of elements, whatever its thickness, so a finer mesh peels the compression zone away layer
-  by layer. The crushing law has a length scale along the direction of loading (the element
-  size, or `crushBand`) but none through the depth. Fixing this needs a nonlocal or gradient
-  treatment of crushing, or elements that resolve the strain gradient through a thin
-  compression zone.
-- **The supports matter by 10–15%.** The default is a pin and a roller on single lines of
-  nodes. On a fine mesh the reaction concentrated on one line tears the elements beside it,
-  which is what first fails on the 16-layer mesh. Bearings one inch wide avoid that, and
-  reduce the 8-layer peak to 93–97 mm depending on whether they hold the slab down. The
-  source does not describe the rig.
+- **The supports matter by 15–20%.** The default is a pin and a roller on single lines of
+  nodes. Bearings one inch wide lower the peak to 84–88 mm, and when they hold the slab down
+  as well as up, elements at their inner edges fail as the slab rotates. The source does not
+  describe the rig; [Data wanted](data-wanted.md) lists it.
 
 ### What this does and does not show
 
-It shows that, on meshes of four and eight elements through the thickness, the model
-reproduces the flexural response of a lightly reinforced one-way slab under a uniform dynamic
-load, including the influence of strain rate, with the accuracy of established tools. It does
-not show that the answer survives mesh refinement: it does not, because crushing localises in
-the outermost layer of elements.
+It shows that the model reproduces the flexural response of a lightly reinforced one-way slab
+under a uniform dynamic load, including the influence of strain rate, to within about 10% at
+the peak on meshes of 4 to 16 elements through the thickness, with the peak still rising
+slowly as the mesh is refined. The rebound after the peak is too large on every mesh.
 
 It does not show that the model predicts shear failure, breach, spalling, fragmentation or
 collapse correctly; that walls loaded by the air solver respond correctly (the air solver's
@@ -343,7 +331,7 @@ The test suite has 67 tests. The physical checks are:
 | Reinforced element in tension                   | Yield, hardening and rupture within 3%         |
 | Shear across an open crack, two widths          | Interlock law within 5%                        |
 | Tension at 0.1 per second                       | Rate law within 6%                             |
-| Reinforced beam in three-point bending          | Moment capacity within 10% of section analysis |
+| Reinforced beam in three-point bending          | Capacity within 15% (6 elements deep) and 10% (12 deep) of section analysis, closer on the finer mesh |
 
 **Coupling**
 

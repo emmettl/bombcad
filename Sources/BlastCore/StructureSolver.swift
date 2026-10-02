@@ -72,6 +72,12 @@ public final class StructureSolver {
     private let steelBuffer: MTLBuffer
     /// Cyclic history of the reinforcement, 96 bytes per element (a placeholder without steel).
     private let barHistoryBuffer: MTLBuffer
+    /// Nonlocal crushing: each element's crushing history, written in alternate substeps to one
+    /// buffer while the other, from the substep before, is read. 16 bytes per lattice cell each
+    /// (placeholders when crushing is local).
+    private let crushBuffers: [MTLBuffer]
+    /// Elements either side over which crushing is averaged; zero when it is local.
+    let crushRadius: Int
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
     /// Indices of the nodes that belong to at least one element.
@@ -80,6 +86,7 @@ public final class StructureSolver {
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
+    private let contactClearPipeline: MTLComputePipelineState
     private let contactHashPipeline: MTLComputePipelineState
     private let contactForcePipeline: MTLComputePipelineState
     /// Contact grid over the space around the structure: a header per element-sized cell, and
@@ -123,6 +130,7 @@ public final class StructureSolver {
         }
         elementPipeline = try pipeline("structureElements")
         nodePipeline = try pipeline("structureNodes")
+        contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")
         contactForcePipeline = try pipeline("contactForces")
 
@@ -142,6 +150,10 @@ public final class StructureSolver {
         steelBuffer = try buffer(cells * 16, "structure reinforcement")
         barHistoryBuffer = try buffer(
             model.material.steel == nil ? 96 : cells * 96, "structure reinforcement history")
+        crushRadius =
+            model.material.model == .concrete ? Int((model.material.crushLength / h).rounded()) : 0
+        let crushLength = crushRadius > 0 ? cells * 16 : 16
+        crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         placeholderBuffer = try buffer(64, "structure placeholder")
 
@@ -251,6 +263,9 @@ public final class StructureSolver {
         memset(stateBuffer.contents(), 0, stateBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
+        for crushBuffer in crushBuffers {
+            memset(crushBuffer.contents(), 0, crushBuffer.length)
+        }
 
         let cornerMass = model.material.density * h * h * h / 8
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -483,6 +498,8 @@ public final class StructureSolver {
             encoder.setBuffer(steelBuffer, offset: 0, index: 10)
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 11)
             encoder.setBuffer(barHistoryBuffer, offset: 0, index: 12)
+            encoder.setBuffer(crushBuffers[substep % 2], offset: 0, index: 13)
+            encoder.setBuffer(crushBuffers[1 - substep % 2], offset: 0, index: 14)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -491,7 +508,7 @@ public final class StructureSolver {
                 stamp = stamp % 0x1FFF_FFF0 + 1
                 uniforms.stamp = stamp
                 let nodes = MTLSize(width: nodeCount, height: 1, depth: 1)
-                for (n, pipeline) in [contactHashPipeline, contactForcePipeline].enumerated() {
+                for pipeline in [contactClearPipeline, contactHashPipeline, contactForcePipeline] {
                     encoder.setComputePipelineState(pipeline)
                     encoder.setBuffer(nodeListBuffer, offset: 0, index: 0)
                     encoder.setBuffer(nodeBuffer, offset: 0, index: 1)
@@ -499,11 +516,11 @@ public final class StructureSolver {
                     encoder.setBuffer(failureGateBuffer, offset: 0, index: 3)
                     encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
                     encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
-                    if n == 0 {
-                        encoder.setBuffer(contactSlotBuffer, offset: 0, index: 6)
-                    } else {
+                    if pipeline === contactForcePipeline {
                         encoder.setBuffer(contactForceBuffer, offset: 0, index: 7)
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 8)
+                    } else {
+                        encoder.setBuffer(contactSlotBuffer, offset: 0, index: 6)
                     }
                     encoder.dispatchThreads(nodes, threadsPerThreadgroup: group)
                 }
@@ -590,6 +607,7 @@ public final class StructureSolver {
             uniforms.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()
             uniforms.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
             uniforms.crackResidual = material.crackResidual
+            uniforms.crushRadius = UInt32(crushRadius)
             uniforms.crushPeak = peak
             uniforms.crushEnd = end
             uniforms.erosionStrain = min(material.erosionOpening / h, 0.5)

@@ -83,6 +83,15 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
   never more steeply than elastic unloading. Below ε_p the concrete carries nothing, and
   reloading retraces the line. Each lattice axis keeps its own compressive history.
 
+  Past the peak, the softening is **nonlocal**: it follows the crushing averaged over the
+  intact elements within a radius of three aggregate sizes (48 mm by default, `crushLength`),
+  as in the nonlocal damage models of Pijaudier-Cabot and Bažant. Without it, compressive
+  softening concentrates in the outermost layer of elements, whatever their thickness, and a
+  fine mesh peels a compression zone away layer by layer. Only elements already past the
+  unconfined peak strain gather the average, from the previous substep's values, so the cost
+  is negligible until something crushes. Where the radius is less than half an element, as
+  in the 125 mm elements of the frame, crushing stays local.
+
   Between ε_p and zero strain, crushed concrete carries no tension either: it has lost its
   tensile strength. Measuring tension from ε_p instead was tried. It made slabs near their
   limit far more fragile, because concrete that sprang back then counted as cracked open by
@@ -242,55 +251,62 @@ matter.
    are right on their own terms: elastic unloading of a yielded bar to −380 MPa is not what
    steel does.
 9. **Crushing spread over a band wider than an element** (`crushBand`), tried as the fix for
-   that hinge. It made things worse: the fine mesh collapses with any band from 50 mm to
-   200 mm, and the coarse mesh does not change at all, because its thicker compression zone
-   never passes peak strength. The fine mesh's peak of 108 mm therefore depends on a
-   compression zone one element deep that can crush to 15‰ while still carrying load. The
-   option is kept, at zero (one element), for the sensitivity study.
+   that hinge. It made things worse: the fine mesh collapsed with any band from 50 mm to
+   200 mm, and the coarse mesh did not change at all. (After step 12 a 50 mm band makes no
+   difference.) The option is kept, at zero (one element), for the sensitivity study.
 10. **A mesh-convergence check**, with 16 elements through the thickness. The slab collapses.
    Before anything fails it is already softer than the 8-layer mesh, because its compression
    zone crushes to several per cent while its bars barely yield: compressive softening
    collapses into the outermost layer of elements, whatever their size. The 4- and 8-layer
    meshes agree on the peak; the model is not converged.
+11. **Nonlocal crushing**, averaged over three aggregate sizes. On its own it made no
+   difference: the 16-layer slab still collapsed, and was still soft at 10 ms. That pointed
+   away from crushing.
+12. **The hourglass cap fixed.** The forces that stop one-point elements folding in a zigzag
+   were capped at the element's tensile capacity alone, so the compression zone, with no
+   steel and little tension, had almost no protection; on the fine mesh it folded, and the
+   folding was what had looked like crushing. With compression counted in the cap, and the
+   nonlocal crushing of step 11 (which then stopped late failures at the supports), the slab
+   peaks at 96, 102 and 110 mm on 4, 8 and 16 elements through the thickness, with nothing
+   failing on any of them. Every variation in the sensitivity study now survives except
+   held-down bearings.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
-step 4 showed to be missing.
+step 4 showed to be missing. Step 5's 108 mm on 8 elements also owed something to the zigzag
+fixed in step 12: the same mesh now gives 102 mm.
 
 ## Limitations
 
-1. **Validated against one test**, a one-way slab in bending under a uniform load, and **not
-   mesh-converged** on it: with 16 elements through the thickness the slab collapses (see
-   step 10 above). Crushing has no length scale through the depth of a member, so
-   compressive softening localises in the outermost layer of elements. Results for members in
-   bending should be checked at more than one mesh, and a run that crushes its outer layer
-   far past its strength is suspect.
+1. **Validated against one test**, a one-way slab in bending under a uniform load, and **only
+   nearly converged** on it: the peak rises from 96 mm to 102 mm to 110 mm as the elements
+   through the thickness go from 4 to 8 to 16. Results for members in bending should be
+   checked at more than one mesh.
 2. **Cracks form only on lattice planes.** A diagonal crack is represented by damage shared
    between two planes, not as an inclined plane with its own opening and sliding. Shear
    failures are the least trustworthy predictions the model makes.
-3. **Members with no steel through their thickness** rely on interlock alone for shear. The
-   slab benchmark is close enough to a shear failure that its result is sensitive to the
-   assumed crack spacing.
-4. **The rebound after the peak is wrong, and mesh-dependent.** On the fine mesh the slab
-   recovers about 28 mm after its peak, where the specimen recovered about 13 mm and settled;
-   on the coarse mesh it recovers about 19 mm. The cause is the hinge that forms at mid-span
-   once its crushed compression zone unloads (see step 8 above), not a lack of damping.
-   Cracked concrete still unloads and reloads along one line, so small cycles dissipate
-   nothing in the concrete; only the bars have hysteresis. Spreading crushing over a wider
-   band does not help (step 9). What would is resolving the strain gradient through the
-   compression zone, which needs elements that bend: shells, or solid elements with more
-   than one integration point.
-5. **Confinement is capped** at about five times the unconfined strength, and there is no
+3. **Members with no steel through their thickness** rely on interlock alone for shear. Earlier
+   versions of the slab sat near a shear failure; since the hourglass fix it does not, but
+   shear has not been tested on a member that failed in shear.
+4. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm
+   after its peak, where the specimen recovered about 13 mm and settled. The cause is the
+   hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
+   not a lack of damping. Cracked concrete still unloads and reloads along one line, so small
+   cycles dissipate nothing in the concrete; only the bars have hysteresis.
+5. **The hourglass cap overstates bending strength slightly** where a compression zone is
+   thinner than an element: a reinforced beam six elements deep carries 13% more than
+   section analysis, twelve deep 10% more (see the structural model).
+6. **Confinement is capped** at about five times the unconfined strength, and there is no
    compaction of the pores. Concrete under the very high pressures close to a charge is beyond
    the model's range.
-6. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, dowel action, bar
+7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, dowel action, bar
    buckling or lap failure, and bars are placed by the element, not individually. Under cyclic
    loading a bar returning past its earlier extreme follows the yield asymptote, not the
    measured monotonic curve, which can understate its stress by up to about 10% there; and
    the cyclic law ignores strain rate except in the yield stress used to place each branch.
-7. **No spalling model as such.** Tensile failure under a reflected stress wave is captured
+8. **No spalling model as such.** Tensile failure under a reflected stress wave is captured
    only as far as the tension law and removal rule happen to capture it.
-8. **Crack spacing and aggregate size are inputs**, not predictions.
-9. **Masonry is treated as weak concrete**, with no joints, bond pattern or units.
+9. **Crack spacing and aggregate size are inputs**, not predictions; so is the crushing length.
+10. **Masonry is treated as weak concrete**, with no joints, bond pattern or units.
 
 ## Future work
 
@@ -301,13 +317,12 @@ step 4 showed to be missing.
   times and so need care.
 - **Inclined cracks**: a fixed-crack formulation that stores crack orientation, with interlock
   and dilatancy on the actual crack plane.
-- **The compression zone in bending**: a nonlocal or gradient treatment of crushing, which
-  averages the crushing strain over a material length in every direction, or elements that
-  represent a strain gradient through their depth (shells, or fully integrated solids), so
-  that a thin compression zone is not a single element crushed far beyond its strength. This
-  is the first thing to fix: without it the slab result is not mesh-converged. Widening the crushing band was tried and
-  made the fine mesh collapse. Friction on closing cracks and bond slip would add damping,
-  but the slab shows they are not the first-order problem.
+- **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
+  Elements that represent a strain gradient through their depth (shells, or fully integrated
+  solids) would resolve its thin compression zone; friction on closing cracks and bond slip
+  would add damping, though the slab suggests they are not the first-order problem.
+- **Convergence**: the peak still rises by about 7% with each halving of the elements; a
+  32-layer run (4.4 million elements) would show whether it levels off.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
 - **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.
@@ -348,6 +363,11 @@ step 4 showed to be missing.
   V. V. Bertero, *Effects of Bond Deterioration on Hysteretic Behavior of Reinforced Concrete
   Joints*, Report UCB/EERC-83/19, University of California, Berkeley, 1983. The cyclic steel
   law and its constants R0 = 20, a1 = 18.5, a2 = 0.15, as also used by OpenSees's Steel02.
+- G. Pijaudier-Cabot and Z. P. Bažant, "Nonlocal damage theory", *Journal of Engineering
+  Mechanics* 113(10), 1987; and Z. P. Bažant and G. Pijaudier-Cabot, "Measurement of
+  characteristic length of nonlocal continuum", *Journal of Engineering Mechanics* 115(4),
+  1989, which puts the characteristic length near 2.7 aggregate sizes. Nonlocal crushing.
+  The 2.7 was recalled from memory; three aggregate sizes are used.
 - J. Lee and G. L. Fenves, "Plastic-damage model for cyclic loading of concrete structures",
   *Journal of Engineering Mechanics* 124(8), 1998. The concrete damaged plasticity model, whose
   usual ratio of plastic to cracking strain in tension, about 0.1, is used for the residual

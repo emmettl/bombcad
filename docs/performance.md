@@ -101,15 +101,18 @@ swift run -c release blastbench snapshot --preset frame --time 3 --no-wave --out
 ```
 
 The two-storey frame (23,004 elements of 125 mm, 1.3 million air cells of 0.25 m, 250 kg):
-3 s simulated in 22 s. The air was frozen after 0.79 s, when five acoustic crossing times had
+3 s simulated in 24 s. The air was frozen after 0.79 s, when five acoustic crossing times had
 passed; from then on only the structure is advanced. Larger elements help twice over: fewer of
 them, and a time step twice as long.
 
 ## The slab benchmark
 
-`blastbench slab` runs 80 ms of the validation slab in 7 s with eight elements through the
+`blastbench slab` runs 80 ms of the validation slab in 10 s with eight elements through the
 thickness (68,608 elements of 12.7 mm, time step 1.7 µs) and in under a second with four. With
-sixteen (553,000 elements) it takes about four minutes.
+sixteen (553,000 elements) it takes about three minutes. Nonlocal crushing adds about 3 s of
+the eight-layer time: each element past its peak strain averages a neighbourhood nine
+elements across. Elements that have not crushed skip it, so it costs nothing in the building
+benchmark.
 
 ## Display
 
