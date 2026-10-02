@@ -39,6 +39,11 @@ struct EditorView: View {
                         isSelected: model.selection == .solid(index),
                         select: { toggle(.solid(index)) }, remove: { model.removeSolid(at: index) })
                     if model.selection == .solid(index) {
+                        Picker("Material", selection: materialBinding(index)) {
+                            ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
+                        }
+                        .font(.callout)
+                        .padding(.leading, 18)
                         ReinforcementEditor(spec: reinforcementBinding(index))
                     }
                 }
@@ -51,7 +56,7 @@ struct EditorView: View {
                             select: { toggle(.opening(index)) }, remove: { model.removeOpening(at: index) })
                     }
                     Button("Add Opening", systemImage: "plus") { model.addOpening() }
-                    Picker("Material", selection: $model.settings.material) {
+                    Picker("Main material", selection: $model.settings.material) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                     }
                 }
@@ -59,8 +64,9 @@ struct EditorView: View {
                 Text("Deformable structure")
             } footer: {
                 Text(
-                    "Walls and slabs deform and break. Thin pieces are reinforced with a mat of bars in "
-                        + "each face, stocky ones as columns; openings are cut out of them.")
+                    "Walls and slabs deform and break. Each piece can have its own material; thin pieces "
+                        + "are reinforced with a mat of bars in each face and stocky ones as columns unless "
+                        + "set otherwise. Openings are cut out of them.")
             }
 
             Section {
@@ -135,6 +141,12 @@ struct EditorView: View {
         Binding(
             get: { openings[index] },
             set: { box in model.editStructure { $0.openings[index] = box } })
+    }
+
+    private func materialBinding(_ index: Int) -> Binding<StructureMaterial> {
+        Binding(
+            get: { model.settings.scenario.structure?.material(of: index) ?? .reinforcedConcrete },
+            set: { model.setMaterial($0, ofSolid: index) })
     }
 
     private func reinforcementBinding(_ index: Int) -> Binding<Reinforcement> {

@@ -367,6 +367,11 @@ final class SimulationModel {
         selection = nil
     }
 
+    /// Sets the material of one piece of the structure; nil returns it to the structure's own.
+    func setMaterial(_ material: StructureMaterial?, ofSolid index: Int) {
+        editStructure { $0.setMaterial(material, of: index) }
+    }
+
     /// Sets how one piece of the structure is reinforced.
     func setReinforcement(_ spec: Reinforcement, ofSolid index: Int) {
         editStructure { $0.setReinforcement(spec, of: index) }

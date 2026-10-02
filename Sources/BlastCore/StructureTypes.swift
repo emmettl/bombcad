@@ -254,6 +254,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// How each solid is reinforced, by index into `solids`; solids beyond the end of this list
     /// are reinforced automatically. Applied by `autoReinforce()`.
     public var solidReinforcement: [Reinforcement] = []
+    /// The material of each solid, by index into `solids`, where it is not `material`. Where
+    /// solids overlap, the later one's material wins.
+    public var solidMaterial: [StructureMaterial?] = []
+
+    /// Most materials one structure can hold.
+    public static let maxMaterials = 8
 
     public init(
         solids: [Box], openings: [Box] = [], material: StructureMaterial = .reinforcedConcrete,
@@ -323,11 +329,39 @@ public struct StructureModel: Sendable, Hashable, Codable {
         solidReinforcement[index] = spec
     }
 
-    /// Removes solid `index` together with its reinforcement setting.
+    /// Removes solid `index` together with its reinforcement and material settings.
     public mutating func removeSolid(at index: Int) {
         guard solids.indices.contains(index) else { return }
         solids.remove(at: index)
         if solidReinforcement.indices.contains(index) { solidReinforcement.remove(at: index) }
+        if solidMaterial.indices.contains(index) { solidMaterial.remove(at: index) }
+    }
+
+    /// The material of solid `index`.
+    public func material(of index: Int) -> StructureMaterial {
+        (solidMaterial.indices.contains(index) ? solidMaterial[index] : nil) ?? material
+    }
+
+    /// Sets the material of solid `index`; nil returns it to the structure's own material.
+    public mutating func setMaterial(_ newMaterial: StructureMaterial?, of index: Int) {
+        guard solids.indices.contains(index) else { return }
+        while solidMaterial.count <= index { solidMaterial.append(nil) }
+        solidMaterial[index] = newMaterial == material ? nil : newMaterial
+    }
+
+    /// The distinct materials in the structure, `material` first.
+    public var materials: [StructureMaterial] {
+        var list = [material]
+        for case let other? in solidMaterial where !list.contains(other) {
+            list.append(other)
+        }
+        return list
+    }
+
+    /// Index into `materials` of the material at `point`: that of the last solid containing it.
+    public func materialIndex(at point: SIMD3<Float>) -> Int {
+        guard let index = solids.lastIndex(where: { $0.contains(point) }) else { return 0 }
+        return materials.firstIndex(of: material(of: index)) ?? 0
     }
 
     /// Replaces the reinforcement with the arrangement each solid asks for. Solids left as
@@ -464,16 +498,8 @@ struct StructureUniforms {
     var originX: Float
     var originY: Float
     var originZ: Float
-    var density: Float
-    var lambda: Float
-    var mu: Float
-    var yieldStress: Float
-    var hardening: Float
-    var failureStrain: Float
-    var hourglassStiffness: Float
     var bulkLinear: Float
     var bulkQuadratic: Float
-    var soundSpeed: Float
     var criticalStep: Float
     var fixedStep: Float = 0
     var gravity: Float
@@ -498,6 +524,23 @@ struct StructureUniforms {
     var contactStiffness: Float = 0
     var contactDamping: Float = 0
     var contactFriction: Float = 0
+    var rateFilter: Float = 0
+    var loadTime: Float = 0
+    var loadCount: UInt32 = 0
+    var loadFace: UInt32 = 0
+}
+
+/// One material as the element kernel sees it. Layout matches `MaterialParameters` in
+/// `Structure.metal`.
+struct MaterialParameters {
+    var density: Float = 0
+    var lambda: Float = 0
+    var mu: Float = 0
+    var yieldStress: Float = 1e30
+    var hardening: Float = 0
+    var failureStrain: Float = 1e30
+    var hourglassStiffness: Float = 0
+    var soundSpeed: Float = 0
     var materialModel: UInt32 = 0
     var youngsModulus: Float = 0
     var compressiveStrength: Float = 0
@@ -513,7 +556,6 @@ struct StructureUniforms {
     var steelPoints: UInt32 = 1
     var steelStrain: (Float, Float, Float, Float, Float, Float, Float, Float) = (0, 0, 0, 0, 0, 0, 0, 0)
     var steelStress: (Float, Float, Float, Float, Float, Float, Float, Float) = (0, 0, 0, 0, 0, 0, 0, 0)
-    var rateFilter: Float = 0
     var concreteRateCompression: Float = 0
     var concreteRateTension: Float = 0
     var steelRateYield: Float = 0
@@ -525,9 +567,6 @@ struct StructureUniforms {
     var crackResidual: Float = 0
     var crushRadius: UInt32 = 0
     var steelHardeningRatio: Float = 0.01
-    var loadTime: Float = 0
-    var loadCount: UInt32 = 0
-    var loadFace: UInt32 = 0
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -628,5 +667,6 @@ extension StructureModel {
         reinforcement = try container.decodeIfPresent([ReinforcementLayer].self, forKey: .reinforcement) ?? []
         solidReinforcement =
             try container.decodeIfPresent([Reinforcement].self, forKey: .solidReinforcement) ?? []
+        solidMaterial = try container.decodeIfPresent([StructureMaterial?].self, forKey: .solidMaterial) ?? []
     }
 }

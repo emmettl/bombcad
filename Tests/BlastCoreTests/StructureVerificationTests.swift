@@ -276,6 +276,88 @@ struct StructureVerificationTests {
 
     // MARK: Contact
 
+    @Test("Each part of a structure takes its own material's density, stiffness and time step")
+    func severalMaterials() throws {
+        let soft = StructureMaterial.elastic(density: 1000, youngsModulus: 2e9, poissonRatio: 0)
+        let stiff = StructureMaterial.elastic(density: 8000, youngsModulus: 200e9, poissonRatio: 0)
+        var model = StructureModel(
+            solids: [
+                Box(min: SIMD3(0, 0, 1), max: SIMD3(1, 0.25, 1.25)),
+                Box(min: SIMD3(1, 0, 1), max: SIMD3(2, 0.25, 1.25)),
+            ], material: soft, elementSize: 0.125, fixedBase: false)
+        model.setMaterial(stiff, of: 1)
+        #expect(model.materials == [soft, stiff])
+        #expect(model.materialIndex(at: SIMD3(1.5, 0.1, 1.1)) == 1)
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+
+        // Mass: each half its own density.
+        var mass: Float = 0
+        solver.mutateNodes { nodes in mass = nodes.reduce(0) { $0 + $1.mass } }
+        let volume: Float = 1 * 0.25 * 0.25
+        #expect(abs(mass - (1000 + 8000) * volume) / mass < 1e-5)
+        // The time step is set by the stiffer material's wave speed.
+        #expect(
+            abs(solver.criticalTimeStep - solver.timeStepSafety * 0.125 / stiff.dilatationalWaveSpeed) < 1e-9)
+
+        // Pulled slowly from the free end, the two halves stretch in inverse proportion to their
+        // stiffness, like springs in series.
+        let rate: Float = 0.004
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    nodes[solver.nodeIndex(0, j, k)].isFixed = true
+                    nodes[solver.nodeIndex(solver.ex, j, k)].isPrescribed = true
+                    nodes[solver.nodeIndex(solver.ex, j, k)].velocity = SIMD3(rate, 0, 0)
+                }
+            }
+        }
+        solver.damping = 500
+        solver.advance(steps: Int(0.25 / solver.criticalTimeStep))
+        let joint = solver.displacement(8, 1, 1).x
+        let end = solver.displacement(16, 1, 1).x
+        let ratio = joint / (end - joint)
+        #expect(abs(ratio - 100) / 100 < 0.05, "soft half stretched \(ratio) times as much as the stiff one")
+        // The same stress runs through both, and the soft half's follows its own modulus.
+        let softStress = solver.stress(3, 0, 0)[0]
+        let stiffStress = solver.stress(12, 0, 0)[0]
+        #expect(abs(softStress - stiffStress) / softStress < 0.03, "\(softStress) and \(stiffStress) Pa")
+        let softStrain = (solver.displacement(4, 1, 1).x - solver.displacement(3, 1, 1).x) / 0.125
+        #expect(abs(softStress - soft.youngsModulus * softStrain) / softStress < 0.03)
+    }
+
+    @Test("Where solids overlap the later one's material wins, and plain materials ignore bars")
+    func materialAssignment() throws {
+        let concrete = StructureMaterial.reinforcedConcrete
+        let masonry = StructureMaterial.masonry
+        let wall = Box(x: 0...0.25, y: 0...2, height: 2)
+        let panel = Box(min: SIMD3(0, 0.5, 0.5), max: SIMD3(0.25, 1.5, 1.5))
+        var model = StructureModel(solids: [wall, panel], material: concrete, elementSize: 0.0625)
+        model.setMaterial(masonry, of: 1)
+        model.autoReinforce()
+        let solver = try StructureSolver(device: device, model: model)
+        #expect(solver.materials == [concrete, masonry])
+        // Inside the panel: masonry, so no steel even though the wall's mats run through it.
+        let inside = solver.elementIndex(1, 16, 16)
+        let outside = solver.elementIndex(1, 4, 4)
+        #expect(solver.steelRatio(1, 16, 16) == .zero)
+        #expect(solver.steelRatio(1, 4, 4) != .zero || solver.steelRatio(0, 4, 4) != .zero)
+        _ = (inside, outside)
+        // Removing the panel takes its material setting with it.
+        model.removeSolid(at: 1)
+        #expect(model.materials == [concrete])
+        // At most eight materials.
+        var crowded = StructureModel(
+            solids: (0..<9).map { Box(x: Float($0)...Float($0) + 0.5, y: 0...0.5, height: 0.5) },
+            elementSize: 0.125)
+        for index in 1..<9 {
+            crowded.setMaterial(
+                .elastic(density: 2000 + Float(index), youngsModulus: 1e9, poissonRatio: 0.2), of: index)
+        }
+        #expect(throws: BlastError.self) { try StructureSolver(device: device, model: crowded) }
+    }
+
     @Test("Two blocks that collide head-on bounce apart without overlapping")
     func collision() throws {
         let material = StructureMaterial.elastic(density: 2400, youngsModulus: 20e9, poissonRatio: 0.2)

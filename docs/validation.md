@@ -292,7 +292,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 67 tests. The physical checks are:
+The test suite has 69 tests. The physical checks are:
 
 **Air solver**
 
@@ -316,6 +316,9 @@ The test suite has 67 tests. The physical checks are:
 | Spinning body                                   | Energy within 1%, angular momentum within 0.5% |
 | Two blocks colliding                            | No overlap; momentum conserved to 1%           |
 | Block dropped onto another                      | Comes to rest on it                            |
+| Bar of two materials pulled from one end        | Each half stretches by its own modulus, within 5%; mass and time step per material |
+| Masonry panel set into a reinforced wall        | Panel gets no steel; the later piece's material wins |
+| Node resting on a support                       | Held up, not held down; lifts off in free flight |
 | Two-storey frame under gravity                  | Stands; bridges a removed column               |
 
 **Concrete and reinforcement**

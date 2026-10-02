@@ -76,8 +76,10 @@ public final class StructureSolver {
     /// buffer while the other, from the substep before, is read. 16 bytes per lattice cell each
     /// (placeholders when crushing is local).
     private let crushBuffers: [MTLBuffer]
-    /// Elements either side over which crushing is averaged; zero when it is local.
-    let crushRadius: Int
+    /// The structure's materials, `model.material` first; each element names one.
+    public let materials: [StructureMaterial]
+    /// Index into `materials` of every lattice cell's material, one byte each.
+    private let materialIndexBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
     /// Indices of the nodes that belong to at least one element.
@@ -148,18 +150,24 @@ public final class StructureSolver {
         stateBuffer = try buffer(cells * Self.stateStride, "structure element state")
         forceBuffer = try buffer(cells * Self.forceStride, "structure element forces")
         steelBuffer = try buffer(cells * 16, "structure reinforcement")
-        barHistoryBuffer = try buffer(
-            model.material.steel == nil ? 96 : cells * 96, "structure reinforcement history")
-        crushRadius =
-            model.material.model == .concrete ? Int((model.material.crushLength / h).rounded()) : 0
-        let crushLength = crushRadius > 0 ? cells * 16 : 16
+        materials = model.materials
+        guard materials.count <= StructureModel.maxMaterials else {
+            throw BlastError.tooManyMaterials(materials.count)
+        }
+        let hasSteel = materials.contains { $0.steel != nil }
+        barHistoryBuffer = try buffer(hasSteel ? cells * 96 : 96, "structure reinforcement history")
+        let averagesCrushing = materials.contains { Self.crushRadius(of: $0, elementSize: h) > 0 }
+        let crushLength = averagesCrushing ? cells * 16 : 16
+        materialIndexBuffer = try buffer(cells, "structure material indices")
         crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         placeholderBuffer = try buffer(64, "structure placeholder")
 
-        // Mark the lattice cells whose centre lies inside the body.
+        // Mark the lattice cells whose centre lies inside the body, and their materials.
         var active: [UInt32] = []
         let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: cells)
+        let materialIndices = materialIndexBuffer.contents().bindMemory(to: UInt8.self, capacity: cells)
+        memset(materialIndexBuffer.contents(), 0, materialIndexBuffer.length)
         for k in 0..<ez {
             for j in 0..<ey {
                 for i in 0..<ex {
@@ -168,6 +176,9 @@ public final class StructureSolver {
                     if model.occupies(centre) {
                         flags[index] = ElementFlag.active.rawValue
                         active.append(UInt32(index))
+                        if materials.count > 1 {
+                            materialIndices[index] = UInt8(model.materialIndex(at: centre))
+                        }
                     } else {
                         flags[index] = ElementFlag.empty.rawValue
                     }
@@ -179,9 +190,10 @@ public final class StructureSolver {
         // Smear each reinforcement layer into the elements it overlaps, in proportion to the
         // share of the element's volume inside the layer.
         memset(steelBuffer.contents(), 0, steelBuffer.length)
-        if model.material.steel != nil {
+        if hasSteel {
             let ratios = steelBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: cells)
-            for index in active {
+            // Bars are ignored in elements whose material has no steel.
+            for index in active where materials[Int(materialIndices[Int(index)])].steel != nil {
                 let (i, j, k) = (Int(index) % ex, (Int(index) / ex) % ey, Int(index) / (ex * ey))
                 let low = origin + SIMD3(Float(i), Float(j), Float(k)) * h
                 var ratio = SIMD3<Float>.zero
@@ -267,12 +279,14 @@ public final class StructureSolver {
             memset(crushBuffer.contents(), 0, crushBuffer.length)
         }
 
-        let cornerMass = model.material.density * h * h * h / 8
+        let materialIndices = materialIndexBuffer.contents().bindMemory(to: UInt8.self, capacity: cells)
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
             for n in 0..<elementCount {
-                let (i, j, k) = elementCoordinates(Int(instances[n]))
+                let element = Int(instances[n])
+                let (i, j, k) = elementCoordinates(element)
+                let cornerMass = materials[Int(materialIndices[element])].density * h * h * h / 8
                 for corner in 0..<8 {
                     let index = nodeIndex(i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
                     nodes[index].mass += cornerMass
@@ -458,7 +472,7 @@ public final class StructureSolver {
 
     /// Largest stable time step in seconds.
     public var criticalTimeStep: Float {
-        timeStepSafety * model.elementSize / model.material.dilatationalWaveSpeed
+        timeStepSafety * model.elementSize / (materials.map(\.dilatationalWaveSpeed).max() ?? 1)
     }
 
     /// Substeps to encode per fluid step so that a fluid step of `fluidStepBound` seconds can be
@@ -471,6 +485,7 @@ public final class StructureSolver {
     /// time step and apply blast loads; without one, each advances by `criticalTimeStep`.
     public func encodeSubsteps(_ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?) {
         var uniforms = makeUniforms(fluid: fluid)
+        var parameters = materials.map(makeParameters)
         guard elementCount > 0 else { return }
         // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
         // the largest allowed size (1,024 threads) let too few run at once on each GPU core: they
@@ -498,6 +513,9 @@ public final class StructureSolver {
             encoder.setBuffer(steelBuffer, offset: 0, index: 10)
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 11)
             encoder.setBuffer(barHistoryBuffer, offset: 0, index: 12)
+            encoder.setBytes(
+                &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 15)
+            encoder.setBuffer(materialIndexBuffer, offset: 0, index: 16)
             encoder.setBuffer(crushBuffers[substep % 2], offset: 0, index: 13)
             encoder.setBuffer(crushBuffers[1 - substep % 2], offset: 0, index: 14)
             encoder.dispatchThreads(
@@ -558,22 +576,12 @@ public final class StructureSolver {
     }
 
     private func makeUniforms(fluid: FluidBinding?) -> StructureUniforms {
-        let material = model.material
         let h = model.elementSize
         var uniforms = StructureUniforms(
             ex: UInt32(ex), ey: UInt32(ey), ez: UInt32(ez),
             h: h, originX: origin.x, originY: origin.y, originZ: origin.z,
-            density: material.density,
-            lambda: material.lameLambda,
-            mu: material.shearModulus,
-            yieldStress: material.yieldStress,
-            hardening: material.hardeningModulus,
-            failureStrain: material.failureStrain,
-            // Bending stiffness of a cube in an hourglass mode: E h / 48 per unit modal amplitude.
-            hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
             bulkLinear: 0.06,
             bulkQuadratic: 1.5,
-            soundSpeed: material.dilatationalWaveSpeed,
             criticalStep: criticalTimeStep,
             gravity: gravity,
             damping: damping,
@@ -587,68 +595,8 @@ public final class StructureSolver {
             contactStiffness: contactStiffness / (criticalTimeStep * criticalTimeStep),
             contactDamping: contactDamping,
             contactFriction: contactFriction)
-        uniforms.youngsModulus = material.youngsModulus
-        if material.model == .concrete {
-            // Strengths at blast strain rates; softening scaled to the element so that the energy
-            // per unit area of crack or crush band is the material's, whatever the mesh.
-            let fc = material.compressiveStrength * material.concreteRateFactor
-            let ft = material.tensileStrength * material.concreteRateFactor
-            let onset = ft / material.youngsModulus
-            let peak = 2 * fc / material.youngsModulus
-            let end = peak + 2 * material.crushingEnergy / (max(h, material.crushBand) * 0.8 * fc)
-            uniforms.materialModel = MaterialModel.concrete.rawValue
-            uniforms.compressiveStrength = fc
-            uniforms.tensileStrength = ft
-            uniforms.crackOnset = onset
-            let band = material.steel == nil ? h : max(h, material.crackSpacing)
-            uniforms.crackSoftening = max(material.fractureEnergy / (band * ft) - onset / 2, onset / 2)
-            // Aggregate interlock: v = 0.18 sqrt(fc) / (0.31 + 24 w / (a + 16)), in MPa and mm.
-            uniforms.crackBand = band
-            uniforms.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()
-            uniforms.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
-            uniforms.crackResidual = material.crackResidual
-            uniforms.crushRadius = UInt32(crushRadius)
-            uniforms.crushPeak = peak
-            uniforms.crushEnd = end
-            uniforms.erosionStrain = min(material.erosionOpening / h, 0.5)
-            // Removed once crushed to twice the strain at which softening ends.
-            uniforms.crushErosion = 1
-            uniforms.confinement = material.confinementCoefficient
-            if let steel = material.steel {
-                // The fixed rate factor is applied at yield and fades out towards ultimate
-                // strength, which is barely rate-sensitive.
-                let curve = steel.curve
-                let first = curve[0].y
-                let top = curve.map(\.y).max() ?? first
-                uniforms.steelModulus = steel.youngsModulus
-                // Yield asymptotes for cyclic loading: the secant from yield to ultimate strength.
-                if let peak = curve.max(by: { $0.y < $1.y }), peak.x > 0, peak.y > first {
-                    uniforms.steelHardeningRatio = (peak.y - first) / (peak.x * steel.youngsModulus)
-                }
-                uniforms.steelPoints = UInt32(curve.count)
-                withUnsafeMutableBytes(of: &uniforms.steelStrain) { strains in
-                    withUnsafeMutableBytes(of: &uniforms.steelStress) { stresses in
-                        for (n, point) in curve.enumerated() {
-                            let along = top > first ? (point.y - first) / (top - first) : 0
-                            let factor = max(1 + (material.steelRateFactor - 1) * (1 - along), 1)
-                            strains.storeBytes(of: point.x, toByteOffset: n * 4, as: Float.self)
-                            stresses.storeBytes(of: point.y * factor, toByteOffset: n * 4, as: Float.self)
-                        }
-                    }
-                }
-            }
-            // Time constant of the running averages of strain rate and confinement: 50 steps.
-            uniforms.rateFilter = 1 / (50 * criticalTimeStep)
-            if material.rateDependent {
-                let megapascals = material.compressiveStrength / 1e6
-                uniforms.concreteRateCompression = 1 / (5 + 9 * megapascals / 10)
-                uniforms.concreteRateTension = 1 / (1 + 8 * megapascals / 10)
-                if let steel = material.steel {
-                    uniforms.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
-                    uniforms.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
-                }
-            }
-        }
+        // Time constant of the running averages of strain rate and confinement: 50 steps.
+        uniforms.rateFilter = 1 / (50 * criticalTimeStep)
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))
@@ -665,5 +613,85 @@ public final class StructureSolver {
             uniforms.fixedStep = criticalTimeStep
         }
         return uniforms
+    }
+
+    /// Elements either side over which a material's crushing is averaged; zero when it is local.
+    static func crushRadius(of material: StructureMaterial, elementSize h: Float) -> Int {
+        material.model == .concrete ? Int((material.crushLength / h).rounded()) : 0
+    }
+
+    /// A material's properties as the element kernel needs them, for this mesh.
+    private func makeParameters(for material: StructureMaterial) -> MaterialParameters {
+        let h = model.elementSize
+        var parameters = MaterialParameters(
+            density: material.density,
+            lambda: material.lameLambda,
+            mu: material.shearModulus,
+            yieldStress: material.yieldStress,
+            hardening: material.hardeningModulus,
+            failureStrain: material.failureStrain,
+            // Bending stiffness of a cube in an hourglass mode: E h / 48 per unit modal amplitude.
+            hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
+            soundSpeed: material.dilatationalWaveSpeed)
+        parameters.youngsModulus = material.youngsModulus
+        guard material.model == .concrete else { return parameters }
+        // Strengths at blast strain rates; softening scaled to the element so that the energy
+        // per unit area of crack or crush band is the material's, whatever the mesh.
+        let fc = material.compressiveStrength * material.concreteRateFactor
+        let ft = material.tensileStrength * material.concreteRateFactor
+        let onset = ft / material.youngsModulus
+        let peak = 2 * fc / material.youngsModulus
+        let end = peak + 2 * material.crushingEnergy / (max(h, material.crushBand) * 0.8 * fc)
+        parameters.materialModel = MaterialModel.concrete.rawValue
+        parameters.compressiveStrength = fc
+        parameters.tensileStrength = ft
+        parameters.crackOnset = onset
+        let band = material.steel == nil ? h : max(h, material.crackSpacing)
+        parameters.crackSoftening = max(material.fractureEnergy / (band * ft) - onset / 2, onset / 2)
+        // Aggregate interlock: v = 0.18 sqrt(fc) / (0.31 + 24 w / (a + 16)), in MPa and mm.
+        parameters.crackBand = band
+        parameters.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()
+        parameters.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
+        parameters.crackResidual = material.crackResidual
+        parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
+        parameters.crushPeak = peak
+        parameters.crushEnd = end
+        parameters.erosionStrain = min(material.erosionOpening / h, 0.5)
+        // Removed once crushed to twice the strain at which softening ends.
+        parameters.crushErosion = 1
+        parameters.confinement = material.confinementCoefficient
+        if let steel = material.steel {
+            // The fixed rate factor is applied at yield and fades out towards ultimate
+            // strength, which is barely rate-sensitive.
+            let curve = steel.curve
+            let first = curve[0].y
+            let top = curve.map(\.y).max() ?? first
+            parameters.steelModulus = steel.youngsModulus
+            // Yield asymptotes for cyclic loading: the secant from yield to ultimate strength.
+            if let peak = curve.max(by: { $0.y < $1.y }), peak.x > 0, peak.y > first {
+                parameters.steelHardeningRatio = (peak.y - first) / (peak.x * steel.youngsModulus)
+            }
+            parameters.steelPoints = UInt32(curve.count)
+            withUnsafeMutableBytes(of: &parameters.steelStrain) { strains in
+                withUnsafeMutableBytes(of: &parameters.steelStress) { stresses in
+                    for (n, point) in curve.enumerated() {
+                        let along = top > first ? (point.y - first) / (top - first) : 0
+                        let factor = max(1 + (material.steelRateFactor - 1) * (1 - along), 1)
+                        strains.storeBytes(of: point.x, toByteOffset: n * 4, as: Float.self)
+                        stresses.storeBytes(of: point.y * factor, toByteOffset: n * 4, as: Float.self)
+                    }
+                }
+            }
+        }
+        if material.rateDependent {
+            let megapascals = material.compressiveStrength / 1e6
+            parameters.concreteRateCompression = 1 / (5 + 9 * megapascals / 10)
+            parameters.concreteRateTension = 1 / (1 + 8 * megapascals / 10)
+            if let steel = material.steel {
+                parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
+                parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
+            }
+        }
+        return parameters
     }
 }

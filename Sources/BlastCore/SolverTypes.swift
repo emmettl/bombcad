@@ -199,12 +199,15 @@ public enum BlastError: Error, CustomStringConvertible {
     case missingShader(String)
     case missingFunction(String)
     case allocationFailed(String)
+    case tooManyMaterials(Int)
 
     public var description: String {
         switch self {
         case .missingShader(let name): "Shader source \(name) is missing from the bundle"
         case .missingFunction(let name): "Shader function \(name) not found"
         case .allocationFailed(let what): "Could not allocate \(what)"
+        case .tooManyMaterials(let count):
+            "The structure has \(count) materials; at most \(StructureModel.maxMaterials) are supported"
         }
     }
 }

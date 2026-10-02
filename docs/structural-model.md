@@ -16,6 +16,16 @@ Because the mesh is a lattice, there is no connectivity table: an element finds 
 from its lattice position. Nodes on the ground plane are clamped when the structure has a fixed
 base.
 
+**Materials.** Each box can have its own material, up to eight in one structure; where boxes
+overlap, the later one's wins. Pieces that touch share nodes, so they are bonded: masonry
+infill is built into its concrete frame. The materials' properties sit in a small table in the
+GPU's constant memory, and each element carries a one-byte index into it. Node masses come from
+each element's own density, and the time step from the stiffest material. Reinforcement is
+ignored in elements whose material has no steel, so a wall's mats do not run on through a
+masonry panel that overlaps it, and crushing is averaged only over elements of the same
+material. The "Frame with masonry infill" layout uses this: 250 mm brick panels in the front
+of a concrete frame.
+
 ## Elements
 
 | Aspect            | Choice                                                                        |
@@ -133,9 +143,16 @@ shock.
 
 ## Limitations
 
-1. **One structure, one material.** A layout has a single deformable body made of one material.
-   Rigid blocks never respond.
-2. **Walls are a staircase of whole cells.** A wall's surface in the air is placed to the
+1. **One structure, bonded throughout.** A layout has a single deformable body, of up to eight
+   materials, and pieces that touch are fully bonded. There are no interfaces: no mortar
+   joints, no sliding of infill against its frame, no bearings that can separate. Rigid
+   blocks never respond.
+2. **Debris is not pushed by the air.** The air loads the faces of intact elements only. Once
+   an element fails, its nodes carry on with the velocity they had, under gravity and
+   contact, so a wall that shatters early (masonry close to a charge) hangs in place as a
+   curtain of debris instead of being thrown. Loading free nodes by the local pressure
+   gradient and drag would fix it.
+3. **Walls are a staircase of whole cells.** A wall's surface in the air is placed to the
    nearest cell, and its thickness there can flicker by a cell as it moves (a 0.5 m wall on
    0.25 m cells covers two cells or three). The gas itself is conserved: the face flux of a
    moving wall adds the gas that its not-yet-covered cell would have squeezed out, and that gas
@@ -145,10 +162,10 @@ shock.
    work the wall does on the air are computed separately and do not exactly balance. A solid
    cell's velocity is the mean of its elements, so a spinning fragment smaller than a cell looks
    to the air like one moving in a straight line.
-3. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
+4. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
    overlap by up to an element, a crowded grid cell drops nodes beyond its four lowest-numbered, and
    debris more than a few metres from the structure leaves the contact grid and the air's mask.
-4. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
+5. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
    the same machine, but a collapse amplifies small differences, so a slightly different input
    (a charge a centimetre away, a different batching of steps, a change to the model) gives a
    different pattern of debris. The two-storey frame shows it: with the hourglass fix
@@ -162,10 +179,10 @@ shock.
    emptied in one pass and filled in the next with an atomic-minimum chain that keeps its four
    lowest-numbered nodes in ascending order, whatever the timing. That also decides which
    nodes a crowded cell drops.
-5. **Uniform element size.** A large building at fine resolution needs many elements, and the
+6. **Uniform element size.** A large building at fine resolution needs many elements, and the
    time step is set by the smallest (here, every) element.
-6. **Lattice-aligned geometry only.** No inclined walls, curved shells or circular columns.
-7. **No structural damping** beyond the material's own dissipation, so elastic ringing persists
+7. **Lattice-aligned geometry only.** No inclined walls, curved shells or circular columns.
+8. **No structural damping** beyond the material's own dissipation, so elastic ringing persists
    longer than in a real structure.
 
 ## Future work
@@ -173,7 +190,7 @@ shock.
 - **Cut cells**, in which the solid's surface cuts through air cells, so that walls are placed
   more precisely than a cell and their thickness does not flicker. This was planned as a
   conservation fix, but measurement showed the gas is already conserved within 0.3% (see
-  limitation 2), so it is now a matter of geometric accuracy, and a large change to the air
+  limitation 3), so it is now a matter of geometric accuracy, and a large change to the air
   solver for it.
 - **Several bodies and materials** in one layout, including steel sections and glazing.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the

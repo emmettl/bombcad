@@ -20,7 +20,7 @@ and nothing in it should be used to judge the safety of a real structure.
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
-| 7 | One deformable body, one material, lattice-aligned geometry             | Real buildings cannot be represented                          | [Structural model](structural-model.md#limitations) |
+| 7 | One bonded body of up to eight materials, lattice-aligned geometry, debris not pushed by the air | Real buildings only roughly; thrown debris is missing | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak depends on the mesh, and there is no compaction | Rebound is too large on fine meshes; close-in crushing is wrong | [Concrete model](concrete-model.md#limitations) |
 | 9 | The app's interface has not been reviewed by eye                        | Layout or interaction problems may exist                      | Below |
 
@@ -61,8 +61,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 8. **Shell and beam elements**, or coarser solid elements away from damage, so that a whole
    building is affordable.
-9. **Several bodies and materials**: steel frames, glazing, masonry with joints.
-10. **Adaptive resolution in the air.**
+9. **Several bodies and interfaces**: pieces that can separate or slide (infill against its
+   frame, masonry joints), steel sections, glazing. Several materials in one body are done.
+10. **Debris loaded by the air**, so that a shattered wall is thrown rather than left hanging.
+11. **Adaptive resolution in the air.**
 
 ### Usability, in parallel
 

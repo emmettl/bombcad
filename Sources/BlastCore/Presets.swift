@@ -8,6 +8,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case blastWall
     case concreteBox
     case frame
+    case infilledFrame
 
     public var id: String { rawValue }
 
@@ -20,6 +21,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .blastWall: "Deformable wall"
         case .concreteBox: "Deformable building"
         case .frame: "Two-storey frame"
+        case .infilledFrame: "Frame with masonry infill"
         }
     }
 
@@ -138,7 +140,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                 ],
                 structure: structure)
 
-        case .frame:
+        case .frame, .infilledFrame:
             // A two-storey, two-bay concrete frame: 375 mm square columns on a 6 m grid carrying
             // 250 mm flat slabs, with the charge beside the middle front column.
             let columnSize: Float = 0.375
@@ -164,9 +166,20 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                 // 12 mm bars at 150 mm centres, both ways, top and bottom.
                 structure.addMat(to: slab, thicknessAxis: 2, areaPerMetre: 754e-6, depth: Self.barDepth)
             }
+            if self == .infilledFrame {
+                // Unreinforced masonry panels, 250 mm thick, filling both storeys of the front
+                // face between the columns and the slabs, bonded to them.
+                for (x0, x1) in [(14.375, 20), (20.375, 26)] as [(Float, Float)] {
+                    for (z0, z1) in [(0, 3.25), (3.5, 6.75)] as [(Float, Float)] {
+                        structure.solids.append(Box(min: SIMD3(x0, 13, z0), max: SIMD3(x1, 13.25, z1)))
+                        structure.setMaterial(.masonry, of: structure.solids.count - 1)
+                    }
+                }
+            }
             return Scenario(
                 name: title, domainSize: SIMD3(40, 32, 16), boxes: [],
-                charge: Charge(mass: 250, position: SIMD3(18, 10, 1)),
+                // Masonry needs far less: 50 kg breaches one panel and cracks the rest.
+                charge: Charge(mass: self == .infilledFrame ? 50 : 250, position: SIMD3(18, 10, 1)),
                 gauges: [
                     Gauge("Front column", at: SIMD3(20.2, 12.9, 1.5)),
                     Gauge("Under first slab", at: SIMD3(20, 16, 3)),

@@ -9,10 +9,10 @@ import simd
 // Command-line companion to the app: measures solver throughput, compares a surface burst
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
-//   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame] [--full]
+//   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill] [--full]
 //   blastbench structure [--preset wall|box] [--contact]
 //   blastbench validate [--dx 0.25]
-//   blastbench slab [--history] [--sensitivity [--convergence]]
+//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -34,6 +34,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "wall": .blastWall
     case "box": .concreteBox
     case "frame": .frame
+    case "infill": .infilledFrame
     default: .streetCanyon
     }
 }
@@ -363,11 +364,17 @@ func runSlab() throws {
     print(
         pad("layers", 8) + pad("elements", 10) + pad("strength", 14) + pad("peak", 10) + pad("vs test", 9)
             + pad("at", 8) + pad("residual", 10) + pad("vs test", 9) + pad("failed", 8) + pad("run time", 10))
-    let cases: [(Int, SlabBenchmark.RateTreatment)] = [
+    var cases: [(Int, SlabBenchmark.RateTreatment)] = [
         (8, .strainRate), (4, .strainRate), (8, .designFactors), (8, .none),
     ]
+    // `--layers 16,32` runs just those meshes, with the strain-rate laws.
+    if let layers = option("layers") {
+        cases = layers.split(separator: ",").compactMap { Int($0) }.map { ($0, .strainRate) }
+    }
+    var meshes: [(layers: Int, result: SlabBenchmark.Result)] = []
     for (layers, rate) in cases {
         let result = try SlabBenchmark.run(device: device, elementsThroughThickness: layers, rate: rate)
+        if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
         print(
@@ -389,20 +396,18 @@ func runSlab() throws {
     }
 
     // The whole history, not just its peak, against the measured record.
-    let fine = try SlabBenchmark.run(device: device, elementsThroughThickness: 8)
-    let coarse = try SlabBenchmark.run(device: device, elementsThroughThickness: 4)
     print("\nMid-span displacement history (mm):")
-    print(pad("time", 8) + pad("measured", 10) + pad("8 layers", 10) + pad("4 layers", 10))
+    print(pad("time", 8) + pad("measured", 10) + meshes.map { pad("\($0.layers) layers", 11) }.joined())
     for time in stride(from: Float(0.005), through: 0.0701, by: 0.005) {
         print(
             pad("\(format(Double(time) * 1000, 0)) ms", 8)
                 + pad(format(Double(SlabBenchmark.measuredDisplacement(at: time)) * 1000, 0), 10)
-                + pad(format(Double(fine.displacement(at: time)) * 1000, 0), 10)
-                + pad(format(Double(coarse.displacement(at: time)) * 1000, 0), 10))
+                + meshes.map { pad(format(Double($0.result.displacement(at: time)) * 1000, 0), 11) }.joined())
     }
     print(
-        "Root-mean-square difference over the record: \(format(Double(fine.historyError) * 1000, 1)) mm "
-            + "(8 layers), \(format(Double(coarse.historyError) * 1000, 1)) mm (4 layers)")
+        "Root-mean-square difference over the record: "
+            + meshes.map { "\(format(Double($0.result.historyError) * 1000, 1)) mm (\($0.layers) layers)" }
+            .joined(separator: ", "))
     print("\nPeaks the source reports for other tools on the same slab and load:")
     for other in SlabBenchmark.otherPredictions {
         print(

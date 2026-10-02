@@ -163,6 +163,15 @@ struct SimulationModelTests {
         model.setReinforcement(.none, ofSolid: 0)
         #expect(model.settings.scenario.structure?.reinforcement.isEmpty == true)
 
+        // A second wall in masonry makes a structure of two materials, which rebuilds.
+        model.addWall()
+        model.setMaterial(.masonry, ofSolid: 1)
+        #expect(
+            model.settings.scenario.structure?.materials.map(\.name) == ["Reinforced concrete", "Masonry"])
+        model.settingsChanged()
+        try await waitUntil { model.structureSummary != nil && model.errorMessage == nil && model.time == 0 }
+        model.removeSolid(at: 1)
+
         // Removing the wall removes the structure; removing the block empties the layout.
         model.removeSolid(at: 0)
         model.removeBlock(at: 0)
