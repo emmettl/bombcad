@@ -295,7 +295,7 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
         int3 point = cell + offset;
         MeshNode node = nodes[point.x + nodesX * (point.y + nodesY * point.z)];
         world = u.lattice.xyz + float3(point) * u.lattice.w + float3(node.displacement);
-        out.damage = states[element * 31 + 7];
+        out.damage = states[element * 34 + 7];
     } else if (flag == 2) {
         // Failed element: a small lump of rubble at the middle of its (now free) nodes.
         float3 centre = float3(0.0f);

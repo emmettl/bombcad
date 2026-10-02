@@ -13,14 +13,13 @@ verification problems with exact answers. It is not described here.
 The model works on **total strain**: at each step it takes the element's Green–Lagrange strain,
 computed from nodal displacements, and returns a stress. The only memory is a handful of history
 values per element. There is no incremental plasticity for the concrete, which makes the model
-robust and exactly reversible in the elastic range, at the cost of not representing permanent
-compressive strain.
+robust and exactly reversible in the elastic range.
 
 | Ingredient                  | Treatment                                                                 |
 |-----------------------------|---------------------------------------------------------------------------|
 | Cracking                    | Smeared over the three lattice planes, each with its own history          |
 | Tension after cracking      | Exponential softening, scaled by fracture energy                          |
-| Compression                 | Parabola to peak, linear softening to a 20% residual                      |
+| Compression                 | Parabola to peak, linear softening to a 20% residual; permanent strain on unloading |
 | Confinement                 | Strength and ductility rise with lateral compression                      |
 | Shear across cracks         | Aggregate interlock, weakening with crack width                           |
 | Reinforcement               | Smeared bars along the lattice axes, multi-linear hardening, rupture      |
@@ -75,7 +74,10 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
   E_c. Unconfined, ε_c = 2 f_c / E_c and n = 2, which is the familiar parabola;
 - linear softening from f_c to 0.2 f_c over a strain range set by a crushing energy G_c
   (250 G_f by default) in the same mesh-independent way as tension;
-- secant unloading.
+- on unloading from a strain ε_un, the stress falls in a straight line to zero at a permanent
+  strain ε_p given by Karsan and Jirsa's rule, ε_p / ε_c = 0.145 (ε_un / ε_c)² + 0.13 (ε_un / ε_c),
+  never more steeply than elastic unloading. Below ε_p the concrete carries nothing, and
+  reloading retraces the line. Each lattice axis keeps its own compressive history.
 
 **Confinement.** Concrete squeezed from the sides is stronger. Each axis's strength is
 multiplied by K = 1 + 4.1 σ_lat / f_c, where σ_lat is the smaller of the compressive stresses
@@ -196,6 +198,9 @@ matter.
 5. **Cracks fixed to lattice planes, with aggregate-interlock shear.** Predicted 108 mm on a
    fine mesh and 113 mm on a coarse one, with no element failures.
 6. **Confinement added.** No change to the slab result, as expected for a member in bending.
+7. **Permanent compressive strain added.** The peak is unchanged. The rebound after it improved
+   slightly (root-mean-square difference from the measured history down from 7.9 mm to 6.8 mm
+   on the fine mesh), but the model still rings more than the specimen did.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing.
@@ -209,9 +214,11 @@ step 4 showed to be missing.
 3. **Members with no steel through their thickness** rely on interlock alone for shear. The
    slab benchmark is close enough to a shear failure that its result is sensitive to the
    assumed crack spacing.
-4. **No permanent compressive strain.** Compression unloads to the origin, so energy dissipated
-   by crushing is under-estimated in cyclic loading and rebound is too springy. The slab test
-   shows this: the model rebounds more than the specimen did.
+4. **Too little damping after the peak.** Cracks close exactly at zero strain and bars unload
+   elastically, so small cycles of unloading and reloading dissipate nothing. The slab test
+   shows this: the model recovers about 20 mm after its peak and rings by 8 mm either way,
+   where the specimen recovered about 13 mm and settled. Friction on crack faces and bond slip,
+   which damp a real member, are not modelled.
 5. **Confinement is capped** at about five times the unconfined strength, and there is no
    compaction of the pores. Concrete under the very high pressures close to a charge is beyond
    the model's range.
@@ -231,8 +238,9 @@ step 4 showed to be missing.
   times and so need care.
 - **Inclined cracks**: a fixed-crack formulation that stores crack orientation, with interlock
   and dilatancy on the actual crack plane.
-- **Plastic compression**: a plasticity-based compression law (as in the concrete damaged
-  plasticity or Karagozian & Case models) with permanent strain and compaction.
+- **Hysteresis in cracked concrete**: friction on closing cracks and bond slip, to damp the
+  rebound.
+- **Compaction** of the pores under very high pressure, for concrete close to a charge.
 - **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.
 - **Masonry with joints.**
@@ -248,6 +256,9 @@ step 4 showed to be missing.
 - F. E. Richart, A. Brandtzaeg and R. L. Brown, *A Study of the Failure of Concrete under
   Combined Compressive Stresses*, University of Illinois Engineering Experiment Station
   Bulletin 185, 1928. The confinement coefficient 4.1.
+- I. D. Karsan and J. O. Jirsa, "Behavior of concrete under compressive loadings", *Journal of
+  the Structural Division, ASCE* 95(ST12), 1969. Permanent strain on unloading. The formula was
+  written from memory and has not been checked against a copy.
 - J. B. Mander, M. J. N. Priestley and R. Park, "Theoretical stress-strain model for confined
   concrete", *Journal of Structural Engineering* 114(8), 1988. Strain at peak under confinement.
 - L. J. Malvar and C. A. Ross, "Review of strain rate effects for concrete in tension",

@@ -90,7 +90,7 @@ constant uint contactSlots = 4;
 
 struct ElementState {
     float stress[6];      // Cauchy stress: xx, yy, zz, xy, yz, zx
-    float plasticStrain;  // von Mises: equivalent plastic strain; concrete: largest compressive strain
+    float plasticStrain;  // von Mises: equivalent plastic strain; concrete: largest of `crushStrain`
     float display;        // 0 (sound) to 1 (failing), for rendering
     packed_float3 hourglass[4];
     packed_float3 crackStrain;   // concrete: largest tensile strain so far across x, y, z planes
@@ -98,6 +98,7 @@ struct ElementState {
     float strainRate;            // running average of the effective strain rate
     float crackingFactor;        // tensile rate factor frozen when the element first cracked
     packed_float3 confinementGain;  // running average of each axis's confinement factor, less one
+    packed_float3 crushStrain;      // concrete: largest compressive strain so far along x, y, z
 };
 
 // Reinforcement area per unit area of concrete, along each lattice axis.
@@ -209,9 +210,14 @@ static inline float2 crushStrains(float increase, float confinement, constant St
     return float2(peak, peak + (u.crushEnd - u.crushPeak) * ductility);
 }
 
-// Uniaxial compressive stress (negative) at compressive strain magnitude `strain`. The rising
-// branch keeps the elastic stiffness at the origin whatever the confinement; unconfined, it is
-// the usual parabola.
+// Uniaxial compressive stress (negative) at compressive strain magnitude `strain`, having
+// previously reached `history`. The rising branch of the envelope keeps the elastic stiffness
+// at the origin whatever the confinement; unconfined, it is the usual parabola.
+//
+// Unloading leaves a permanent strain, so crushed concrete does not spring back to where it
+// started: the stress falls linearly to zero at the plastic strain of Karsan and Jirsa (1969),
+// eps_p / eps_c = 0.145 (eps_un / eps_c)^2 + 0.13 (eps_un / eps_c), never more steeply than
+// elastic unloading, and reloading retraces the same line.
 static inline float concreteCompression(float strain, float history, float increase, float confinement,
                                         constant StructureUniforms &u) {
     float strength = u.compressiveStrength * increase * confinement;
@@ -224,7 +230,13 @@ static inline float concreteCompression(float strain, float history, float incre
         float fraction = clamp((history - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
         envelope = mix(strength, 0.2f * strength, fraction);
     }
-    return history > 0.0f ? -envelope * strain / history : 0.0f;
+    if (strain >= history) {
+        return -envelope;
+    }
+    float ratio = history / limits.x;
+    float plastic = limits.x * (0.145f * ratio * ratio + 0.13f * ratio);
+    plastic = clamp(plastic, 0.0f, history - envelope / u.youngsModulus);
+    return strain <= plastic ? 0.0f : -envelope * (strain - plastic) / (history - plastic);
 }
 
 // Static yield stress of the reinforcement at accumulated plastic strain `plastic`, and the
@@ -475,8 +487,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         history = max(history, uniaxial);
         state.crackStrain = history;
         float crack = max(history.x, max(history.y, history.z));
-        float crush = max(state.plasticStrain, -min(uniaxial.x, min(uniaxial.y, uniaxial.z)));
-        state.plasticStrain = crush;
+        float3 crush = max(float3(state.crushStrain), -uniaxial);
+        state.crushStrain = crush;
+        state.plasticStrain = max(crush.x, max(crush.y, crush.z));
 
         // Normal stresses follow the uniaxial curves, unloading along the secant so that a
         // crack closes at zero strain and compression is recovered.
@@ -503,7 +516,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
             gain[j] += blend * (u.confinement * support / unconfined - gain[j]);
             confinement[j] = 1.0f + gain[j];
-            normalStress[j] = concreteCompression(-uniaxial[j], crush, compressionFactor, confinement[j], u);
+            normalStress[j] = concreteCompression(-uniaxial[j], crush[j], compressionFactor, confinement[j], u);
             float2 limits = crushStrains(compressionFactor, confinement[j], u);
             crushed = max(crushed, clamp((-uniaxial[j] - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
             pulverised = pulverised || -uniaxial[j] >= limits.y + u.crushErosion * (limits.y - limits.x);

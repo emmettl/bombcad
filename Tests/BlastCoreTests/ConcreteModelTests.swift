@@ -135,6 +135,34 @@ struct ConcreteModelTests {
         #expect(abs(early.stress / early.strain - constrained) / constrained < 0.08)
     }
 
+    @Test("Crushed concrete keeps a permanent strain when the load comes off")
+    func compressionUnloading() throws {
+        let material = Self.concrete()
+        let peakStrain = 2 * material.compressiveStrength / material.youngsModulus
+        // Squeeze to twice the strain at peak strength, release fully, then squeeze again.
+        let (curve, _) = try strainCube(
+            size: 0.05, material: material, to: [-2 * peakStrain, 0, -2 * peakStrain], samplesPerLeg: 200)
+        let loading = curve[..<200]
+        let unloading = curve[200..<400]
+        let reloading = curve[400...]
+
+        // Karsan and Jirsa: the plastic strain is 0.145 x^2 + 0.13 x peak strains, x = 2 here.
+        let expected = peakStrain * (0.145 * 4 + 0.13 * 2)
+        let released = try #require(unloading.first { $0.stress > -1 })
+        #expect(abs(-released.strain - expected) / expected < 0.03, "plastic strain \(-released.strain)")
+        // Below that strain the concrete carries nothing; it does not pull.
+        #expect(unloading.allSatisfy { $0.stress < 1 })
+        #expect(abs(unloading.last?.stress ?? 1) < 1)
+        // Halfway down the unloading line the stress is half what it was at the turn.
+        let turn = try #require(loading.last)
+        let halfway = (-turn.strain + expected) / 2
+        let middle = try #require(unloading.min { abs(-$0.strain - halfway) < abs(-$1.strain - halfway) })
+        #expect(abs(middle.stress / turn.stress - 0.5) < 0.03)
+        // Squeezed again, it comes back to where it left the envelope.
+        let back = try #require(reloading.last)
+        #expect(abs(back.stress - turn.stress) / abs(turn.stress) < 0.01)
+    }
+
     @Test("A cracked element recovers its compressive stiffness when the crack closes")
     func crackClosure() throws {
         let material = Self.concrete()

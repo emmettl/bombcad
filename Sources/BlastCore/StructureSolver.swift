@@ -19,7 +19,7 @@ public final class StructureSolver {
         public var ambientPressure: Float
     }
 
-    static let stateStride = 124
+    static let stateStride = 136
     static let forceStride = 96
 
     public let device: MTLDevice

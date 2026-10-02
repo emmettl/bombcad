@@ -79,7 +79,7 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Case                             | Peak deflection | At    | At 70 ms | Elements failed |
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
-| Model, 8 elements through        | 108 mm (100%)   | 27 ms | 84 mm    | 0 of 68,608     |
+| Model, 8 elements through        | 108 mm (100%)   | 27 ms | 82 mm    | 0 of 68,608     |
 | Model, 4 elements through        | 113 mm (105%)   | 28 ms | 90 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
@@ -93,18 +93,18 @@ Mid-span deflection through the record, in millimetres:
 | 25 ms | 103      | 107       | 111       |
 | 30 ms | 108      | 105       | 112       |
 | 35 ms | 107      | 93        | 103       |
-| 40 ms | 98       | 83        | 96        |
-| 45 ms | 95       | 80        | 99        |
-| 50 ms | 98       | 85        | 107       |
-| 55 ms | 98       | 93        | 108       |
+| 40 ms | 98       | 85        | 96        |
+| 45 ms | 95       | 84        | 99        |
+| 50 ms | 98       | 89        | 107       |
+| 55 ms | 98       | 98        | 108       |
 | 60 ms | 96       | 99        | 99        |
-| 65 ms | 92       | 94        | 91        |
-| 70 ms | 90       | 84        | 90        |
+| 65 ms | 92       | 91        | 91        |
+| 70 ms | 90       | 82        | 90        |
 
-The root-mean-square difference over the record is 7.9 mm for the fine mesh and 5.2 mm for the
+The root-mean-square difference over the record is 6.8 mm for the fine mesh and 5.1 mm for the
 coarse one. The rise to the peak is reproduced within a few millimetres. After the peak the
-model rebounds and rings by about 10 mm either way, where the specimen settled; the model has no
-permanent compressive strain in the concrete, so it gives back too much energy.
+model rebounds further and rings by about 8 mm either way, where the specimen settled: cracked
+concrete in the model dissipates nothing in small cycles of unloading and reloading.
 
 For comparison, the source reports these peaks from other tools on the same slab and load:
 
@@ -121,15 +121,15 @@ Fine mesh, strain-rate laws, one thing changed at a time:
 | Change                                       | Peak            | Elements failed |
 |----------------------------------------------|-----------------|-----------------|
 | None                                         | 108 mm (100%)   | 0               |
-| Load 5% lower                                | 101 mm (93%)    | 435             |
+| Load 5% lower                                | 94 mm (87%)     | 0               |
 | Load 5% higher                               | 123 mm (114%)   | 0               |
-| Aggregate 10 mm instead of 16 mm             | 108 mm (100%)   | 0               |
-| Crack spacing 50 mm instead of 100 mm        | 103 mm (96%)    | 0               |
-| Crack spacing 200 mm                         | 114 mm (105%)   | 558             |
+| Aggregate 10 mm instead of 16 mm             | 120 mm (111%)   | 375             |
+| Crack spacing 50 mm instead of 100 mm        | 104 mm (96%)    | 0               |
+| Crack spacing 200 mm                         | 109 mm (101%)   | 0               |
 | Fracture energy halved                       | 109 mm (101%)   | 0               |
 | Tensile strength 20% lower                   | 109 mm (101%)   | 0               |
-| Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 16,200          |
-| Static strengths                             | collapse        | 19,405          |
+| Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 14,768          |
+| Static strengths                             | collapse        | 18,216          |
 
 Reading this table:
 
@@ -137,12 +137,13 @@ Reading this table:
   survives only because steel and concrete are stronger when loaded quickly. With the fixed
   design factors (which are deliberately conservative) or none, the model predicts collapse.
   The test is therefore a sharp check on the rate treatment, and a poor check on anything else.
-- **A 5% change in load moves the peak by 7% to 14%.** The hand-read pressure record could
+- **A 5% change in load moves the peak by about 14%.** The hand-read pressure record could
   easily be 5% out in its shape, though its impulse is pinned.
-- **The model sits near a shear failure.** With a lower load or a wider crack spacing, a few
-  hundred elements fail in shear. A lower load producing more damage is not physical; it comes
-  from lower strain rates giving less strengthening while the element-removal rule is close to
-  its threshold. Shear is the weakest part of the model.
+- **The model sits near a shear failure.** With smaller aggregate, which weakens interlock, a
+  few hundred elements fail in shear and the deflection rises by 11%. In earlier versions of
+  the model the same local failures were triggered instead by a lower load or a wider crack
+  spacing. Which change trips them is not stable from one version of the model to the next,
+  which says the margin is thin. Shear is the weakest part of the model.
 - **The concrete's tensile properties barely matter** here, as expected for a slab whose
   resistance comes from its bars.
 
@@ -269,7 +270,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 54 tests. The physical checks are:
+The test suite has 55 tests. The physical checks are:
 
 **Air solver**
 
@@ -301,6 +302,7 @@ The test suite has 54 tests. The physical checks are:
 |-------------------------------------------------|------------------------------------------------|
 | Tension on two mesh sizes                       | Peak at f_t within 3%; fracture energy within 5% |
 | Compression                                     | Peak at f_c within 2%; parabola; 20% residual  |
+| Compression released and reapplied              | Permanent strain within 3% of Karsan–Jirsa     |
 | Fully restrained compression                    | Peak at 5.1 f_c within 3% (confinement)        |
 | Crack opened then closed                        | Compressive stiffness fully recovered          |
 | Reinforced element in tension                   | Yield, hardening and rupture within 3%         |

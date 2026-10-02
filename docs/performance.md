@@ -64,8 +64,9 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 - The explicit time step is set by the element size and the speed of sound in concrete, and it
   is what makes structures expensive: 110,000 steps per simulated second at this resolution.
 - The concrete model takes about 60% longer per element than the simple von Mises material it
-  replaced (which ran at 543 million element-updates per second). The eigenvalue problem that
-  finds diagonal cracks is the likeliest cause, though that has not been profiled.
+  replaced (which ran at 543 million element-updates per second). The cause has not been
+  profiled. Skipping the eigenvalue problem that finds diagonal cracks, for elements strained
+  below cracking, was tried and made no measurable difference.
 - Memory is about 240 bytes per lattice cell, whether or not it holds an element, plus the
   contact grid at 20 bytes per cell of the surrounding space.
 
@@ -116,7 +117,7 @@ batch of steps to keep the view fluid.
 | Air solved everywhere at one resolution           | Adaptive refinement; a moving window that follows the shock |
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
 | Idle substep dispatches in coupled runs           | Decide the substep count on the GPU with indirect dispatch |
-| Eigenvalue solve in every concrete element        | Skip it while strains are far below cracking            |
+| Concrete law costlier than expected               | Profile it; the power functions in the rate and compression laws are the next suspects |
 | Dense storage of a sparse structural lattice      | Compact storage indexed by element list                 |
 
 None of these has been done. The first two are the ones that would change what is feasible.
