@@ -32,6 +32,10 @@ public final class BlastSolver {
     /// Cells of the air grid, around the structure, whose solid flag follows the structure.
     private var couplingRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
     private var occupancyBuffer: MTLBuffer?
+    /// Velocity of the solid in each cell of the coupling region, three floats per cell. A
+    /// single zero cell stands in when there is no structure.
+    private var wallVelocityBuffer: MTLBuffer
+    private let stillWallBuffer: MTLBuffer
 
     let library: MTLLibrary
     private let sweepPipeline: MTLComputePipelineState
@@ -100,6 +104,9 @@ public final class BlastSolver {
         stateBuffers = [try buffer(stateLength, "state A"), try buffer(stateLength, "state B")]
         maskBuffer = try buffer(cells, "solid mask")
         rigidMaskBuffer = try buffer(cells, "rigid mask")
+        stillWallBuffer = try buffer(3 * MemoryLayout<Float>.stride, "still wall")
+        memset(stillWallBuffer.contents(), 0, stillWallBuffer.length)
+        wallVelocityBuffer = stillWallBuffer
         peakBuffer = try buffer(cells * MemoryLayout<Float>.stride, "peak overpressure")
         impulseBuffer = try buffer(cells * MemoryLayout<Float>.stride, "impulse")
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
@@ -188,6 +195,7 @@ public final class BlastSolver {
         structure = nil
         couplingRegion = nil
         occupancyBuffer = nil
+        wallVelocityBuffer = stillWallBuffer
         memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
         guard let model else { return }
         structure = try StructureSolver(
@@ -200,15 +208,21 @@ public final class BlastSolver {
         let high = grid.cell(containing: bounds.max + margin)
         let origin = SIMD3(low.i, low.j, low.k)
         let dims = SIMD3(high.i - low.i + 1, high.j - low.j + 1, high.k - low.k + 1)
+        // Four counters per cell: the number of elements in it and the sum of their velocities.
+        let regionCells = dims.x * dims.y * dims.z
         guard
             let occupancy = device.makeBuffer(
-                length: dims.x * dims.y * dims.z * MemoryLayout<UInt32>.stride, options: .storageModeShared)
+                length: 4 * regionCells * MemoryLayout<UInt32>.stride, options: .storageModeShared),
+            let wallVelocity = device.makeBuffer(
+                length: 3 * regionCells * MemoryLayout<Float>.stride, options: .storageModeShared)
         else {
             throw BlastError.allocationFailed("coupling occupancy")
         }
         memset(occupancy.contents(), 0, occupancy.length)
+        memset(wallVelocity.contents(), 0, wallVelocity.length)
         couplingRegion = (origin, dims)
         occupancyBuffer = occupancy
+        wallVelocityBuffer = wallVelocity
     }
 
     /// Encodes one update of the solid mask from the structure's current shape.
@@ -252,6 +266,7 @@ public final class BlastSolver {
         encoder.setBuffer(occupancyBuffer, offset: 0, index: 2)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 3)
         encoder.setBytes(&uniforms, length: length, index: 4)
+        encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 5)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
         encoder.setComputePipelineState(remaskApplyPipeline)
@@ -355,6 +370,7 @@ public final class BlastSolver {
             encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
             encoder.setBuffer(controlBuffer, offset: 0, index: 5)
             encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
+            encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
             for (n, axis) in axes.enumerated() where !asleep {
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
@@ -542,7 +558,7 @@ public final class BlastSolver {
     // MARK: - Encoding helpers
 
     private func makeUniforms(cfl: Float? = nil) -> SolverUniforms {
-        SolverUniforms(
+        var uniforms = SolverUniforms(
             nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
             dx: grid.cellSize,
             gamma: configuration.gamma,
@@ -554,6 +570,15 @@ public final class BlastSolver {
             riemannSolver: configuration.riemannSolver.rawValue,
             boundaryFlags: configuration.reflectiveFaces.rawValue,
             gaugeCount: UInt32(gaugeCount))
+        if let region = couplingRegion, configuration.movingWalls {
+            uniforms.regionX = UInt32(region.origin.x)
+            uniforms.regionY = UInt32(region.origin.y)
+            uniforms.regionZ = UInt32(region.origin.z)
+            uniforms.regionNx = UInt32(region.dims.x)
+            uniforms.regionNy = UInt32(region.dims.y)
+            uniforms.regionNz = UInt32(region.dims.z)
+        }
+        return uniforms
     }
 
     private func dispatchGrid(_ encoder: MTLComputeCommandEncoder, pipeline: MTLComputePipelineState) {

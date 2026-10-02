@@ -92,6 +92,19 @@ scenery or at least a third full of elements. The solid mask therefore travels w
 is pushed along, and opens where a wall breaks, letting the blast through. A cell that opens is
 filled with the average of its fluid neighbours.
 
+**Moving walls.** The same pass sums the velocities of the elements in each solid cell (as
+fixed-point integers, so that the GPU's atomic additions are exact and order-independent). The
+air's sweep then mirrors the gas about the wall's velocity rather than about zero: the ghost
+state behind a face moving at *w* along the sweep has velocity 2*w* − *u*. A wall advancing into
+still air therefore drives the correct piston shock ahead of it and a rarefaction behind, and a
+flexing wall radiates sound to the far side. Rigid scenery always has zero velocity. The option
+`SolverConfiguration.movingWalls` switches this off, which restores the earlier behaviour of a
+surface that is stationary wherever it currently is.
+
+For the deformable-wall preset the difference is small: with 50, 200 and 500 kg charges the
+peak deflection is 1% to 3% lower with moving walls, because the air ahead of the wall now
+resists its motion. Air throughput is unchanged.
+
 **Substep bookkeeping.** The air's time step is decided on the GPU, so the CPU cannot know how
 many substeps each air step will need. It encodes the largest number that could be needed
 (bounded by the time step of still air), and surplus substeps return immediately.
@@ -100,16 +113,20 @@ many substeps each air step will need. It encodes the largest number that could 
 
 See [Validation](validation.md). In brief: stress-wave speed, cantilever deflection and natural
 period, rigid rotation, collisions and stacking are all checked against theory, and the coupling
-is checked for impulse transfer, hydrostatic equilibrium, venting and a moving mask.
+is checked for impulse transfer, hydrostatic equilibrium, venting, a moving mask and a piston
+shock.
 
 ## Limitations
 
 1. **One structure, one material.** A layout has a single deformable body made of one material.
    Rigid blocks never respond.
-2. **Coupling moves the mask but not the air.** A moving wall imparts no velocity to the gas,
-   and gas in a cell that becomes solid is removed. Once the structure moves, the air's mass and
-   energy are no longer exactly conserved. The effect is small while walls move slowly compared
-   with the blast, and wrong in principle for fast debris.
+2. **Coupling is not conservative.** A moving wall now pushes the gas, but the wall is a
+   staircase of whole cells and moves by jumps of a cell. Gas in a cell that becomes solid is
+   removed, and a cell that opens is filled from its neighbours, so once the structure moves the
+   air's mass and energy are only approximately conserved. The work the air does on the wall and
+   the work the wall does on the air are computed separately and do not exactly balance. A solid
+   cell's velocity is the mean of its elements, so a spinning fragment smaller than a cell looks
+   to the air like one moving in a straight line.
 3. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
    overlap by up to an element, a crowded grid cell silently drops nodes beyond four, and
    debris more than a few metres from the structure leaves the contact grid and the air's mask.
@@ -124,8 +141,9 @@ is checked for impulse transfer, hydrostatic equilibrium, venting and a moving m
 
 ## Future work
 
-- **Momentum-conserving coupling**: a cut-cell or immersed-boundary treatment in which moving
-  solid faces do work on the gas.
+- **Conservative coupling**: a cut-cell treatment in which the solid's surface cuts through
+  air cells, so that the gas is neither removed nor created as walls move and the work done
+  across the surface balances exactly.
 - **Several bodies and materials** in one layout, including steel sections and glazing.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the
   one-element overlap and the bumpiness.

@@ -157,14 +157,26 @@ struct StructureCouplingTests {
         return (solver, structure, ambient)
     }
 
-    @Test("An intact wall keeps the air behind it undisturbed")
+    @Test("An intact wall lets through only the sound it makes by flexing")
     func intactWallSeals() throws {
         let (solver, structure, ambient) = try makeSealedTube()
         solver.advance(until: 0.03)
         let downstream = try #require(solver.gaugeHistories.first)
-        #expect(downstream.allSatisfy { abs($0.pressure - ambient.pressure) < 1 })
+        let loudest = downstream.map { abs($0.pressure - ambient.pressure) }.max() ?? 0
+        // The wall's top swings a few metres per second, which radiates a few hundred pascals;
+        // a breach lets through more than ten kilopascals.
+        #expect(loudest > 50 && loudest < 2000, "downstream overpressure \(loudest) Pa")
         #expect(solver.isSolid(32, 8, 8) && solver.isSolid(33, 8, 8))
         #expect(!structure.hasFailed)
+    }
+
+    @Test("A wall treated as stationary keeps the air behind it undisturbed")
+    func stationaryWallSeals() throws {
+        let (solver, _, ambient) = try makeSealedTube()
+        solver.configuration.movingWalls = false
+        solver.advance(until: 0.03)
+        let downstream = try #require(solver.gaugeHistories.first)
+        #expect(downstream.allSatisfy { abs($0.pressure - ambient.pressure) < 1 })
     }
 
     @Test("A hole in the wall opens the air's mask and lets the blast through")
@@ -214,8 +226,87 @@ struct StructureCouplingTests {
         #expect(solver.isSolid(centre.i, centre.j, centre.k))
         #expect(!solver.isSolid(centre.i - 2, centre.j, centre.k), "the cells the wall left should be air")
         #expect(!solver.isSolid(centre.i + 2, centre.j, centre.k))
-        // Still airtight: nothing has reached the far end.
-        #expect(abs(solver.primitive(62, 8, 8).pressure - ambient.pressure) < 0.05 * ambient.pressure)
+        // Still airtight: the air beyond the wall has only been squeezed by the wall's advance.
+        let squeezed = ambient.pressure * pow(7.5 / (7.5 - travel), 1.4)
+        let far = solver.primitive(62, 8, 8).pressure
+        #expect(
+            abs(far - squeezed) < 0.05 * squeezed, "far end at \(far) Pa, adiabatic estimate \(squeezed) Pa")
+    }
+
+    @Test("A wall driven into still air raises the piston shock ahead and the rarefaction behind")
+    func pistonShock() throws {
+        var scenario = Scenario(
+            name: "Piston", domainSize: SIMD3(16, 1, 1), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 0.5, 0.5)),
+            structure: StructureModel(
+                solids: [Box(x: 6...6.5, y: 0...1, height: 1)], material: Self.elastic, elementSize: 0.125,
+                fixedBase: false))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        let speed: Float = 100
+        structure.mutateNodes { nodes in
+            for index in nodes.indices {
+                nodes[index].velocity = SIMD3(speed, 0, 0)
+                nodes[index].isPrescribed = true
+            }
+        }
+        let result = solver.advance(until: 0.01)
+        #expect(result.isStable)
+
+        // Exact solutions for a piston started impulsively in a perfect gas.
+        let ambient = scenario.atmosphere
+        let gamma: Float = 1.4
+        let mach = speed / (gamma * ambient.pressure / ambient.density).squareRoot()
+        let quarter = (gamma + 1) / 4
+        let ahead =
+            1 + gamma * quarter * mach * mach + gamma * mach
+            * (1 + quarter * quarter * mach * mach).squareRoot()
+        let behind = pow(1 - (gamma - 1) / 2 * mach, 2 * gamma / (gamma - 1))
+
+        let face = structure.position(0, 4, 4).x
+        #expect(abs(face - 7) < 0.01, "the wall should have travelled 1 m, its rear face is at \(face)")
+        let front = solver.grid.cell(containing: SIMD3(face + 0.5 + 0.375, 0.5, 0.5))
+        let rear = solver.grid.cell(containing: SIMD3(face - 0.375, 0.5, 0.5))
+        for offset in 0..<6 {
+            let pressure = solver.primitive(front.i + offset, 2, 2).pressure / ambient.pressure
+            #expect(abs(pressure - ahead) < 0.02 * ahead, "ahead of the wall \(pressure), expected \(ahead)")
+            let wind = solver.primitive(front.i + offset, 2, 2).velocity.x
+            #expect(abs(wind - speed) < 0.02 * speed, "the air ahead moves at \(wind) m/s")
+        }
+        for offset in 0..<6 {
+            let pressure = solver.primitive(rear.i - offset, 2, 2).pressure / ambient.pressure
+            #expect(abs(pressure - behind) < 0.02 * behind, "behind the wall \(pressure), expected \(behind)")
+        }
+    }
+
+    @Test("With moving walls switched off, a driven wall leaves the air undisturbed until it is covered")
+    func stationaryWallOption() throws {
+        var scenario = Scenario(
+            name: "Piston", domainSize: SIMD3(16, 1, 1), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 0.5, 0.5)),
+            structure: StructureModel(
+                solids: [Box(x: 6...6.5, y: 0...1, height: 1)], material: Self.elastic, elementSize: 0.125,
+                fixedBase: false))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        solver.configuration.movingWalls = false
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        structure.mutateNodes { nodes in
+            for index in nodes.indices {
+                nodes[index].velocity = SIMD3(100, 0, 0)
+                nodes[index].isPrescribed = true
+            }
+        }
+        solver.advance(until: 0.01)
+        let ambient = scenario.atmosphere.pressure
+        for i in 34..<44 where !solver.isSolid(i, 2, 2) {
+            #expect(abs(solver.primitive(i, 2, 2).pressure - ambient) < 0.01 * ambient)
+        }
     }
 
     // MARK: Long runs

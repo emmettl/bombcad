@@ -14,6 +14,7 @@ import simd
 //   blastbench validate [--dx 0.25]
 //   blastbench slab [--history] [--sensitivity]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
+//                       [--stationary-walls]
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -266,6 +267,7 @@ func runSnapshot() throws {
     let height = option("height").flatMap { Int($0) } ?? 1000
 
     let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    solver.configuration.movingWalls = !flag("stationary-walls")
     let started = ContinuousClock.now
     var sleptAt: Double?
     while solver.time < time - 1e-9 {

@@ -963,6 +963,10 @@ struct CouplingUniforms {
     float ambientPressure;
 };
 
+// Velocities handed to the air are limited to this (m/s) and summed in steps of 1/1024 m/s.
+constant float wallSpeedLimit = 1000.0f;
+constant float wallSpeedScale = 1024.0f;
+
 kernel void splatStructure(const device uint *elementList [[buffer(0)]],
                            const device uchar *flags [[buffer(1)]],
                            const device StructureNode *nodes [[buffer(2)]],
@@ -985,8 +989,16 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     if (any(target < 0) || any(target >= dims)) {
         return;
     }
-    atomic_fetch_add_explicit(&occupancy[target.x + dims.x * (target.y + dims.y * target.z)], 1u,
-                              memory_order_relaxed);
+    // Each cell has four counters: the number of elements, then the sum of their velocities
+    // in fixed point (two's-complement addition makes the unsigned counters signed sums).
+    uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+    float3 velocity = 0.5f * (float3(nodes[low].velocity) + float3(nodes[high].velocity));
+    velocity = select(clamp(velocity, -wallSpeedLimit, wallSpeedLimit), float3(0.0f), isnan(velocity));
+    int3 fixed = int3(round(velocity * wallSpeedScale));
+    atomic_fetch_add_explicit(&occupancy[slot], 1u, memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x), memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y), memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z), memory_order_relaxed);
 }
 
 // Writes the new solid flag into bit 1 of the mask, leaving the old flag in bit 0 so that
@@ -996,6 +1008,7 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                           const device uint *occupancy [[buffer(2)]],
                           device Cell *state [[buffer(3)]],
                           constant CouplingUniforms &u [[buffer(4)]],
+                          device float *wallVelocity [[buffer(5)]],
                           uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
         return;
@@ -1003,9 +1016,21 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
     int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
     int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
     int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-    uint count = occupancy[tid.x + u.regionNx * (tid.y + u.regionNy * tid.z)];
+    uint local = tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
+    uint count = occupancy[4 * local];
     bool wasSolid = (mask[index] & 1) != 0;
     bool solid = rigid[index] != 0 || count >= u.threshold;
+
+    // The air sees a solid cell moving at the mean velocity of the elements in it.
+    float3 velocity = float3(0.0f);
+    if (rigid[index] == 0 && count >= u.threshold) {
+        int3 sum = int3(int(occupancy[4 * local + 1]), int(occupancy[4 * local + 2]),
+                        int(occupancy[4 * local + 3]));
+        velocity = float3(sum) / (wallSpeedScale * float(count));
+    }
+    wallVelocity[3 * local] = velocity.x;
+    wallVelocity[3 * local + 1] = velocity.y;
+    wallVelocity[3 * local + 2] = velocity.z;
 
     if (wasSolid && !solid) {
         const int3 offsets[6] = {
@@ -1054,5 +1079,8 @@ kernel void remaskApply(device uchar *mask [[buffer(0)]],
     int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
     int index = cell.x + int(u.fluidNx) * (cell.y + int(u.fluidNy) * cell.z);
     mask[index] = mask[index] >> 1;
-    occupancy[tid.x + u.regionNx * (tid.y + u.regionNy * tid.z)] = 0;
+    uint slot = 4 * (tid.x + u.regionNx * (tid.y + u.regionNy * tid.z));
+    for (uint n = 0; n < 4; ++n) {
+        occupancy[slot + n] = 0;
+    }
 }

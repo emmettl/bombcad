@@ -95,7 +95,9 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
    non-reflecting condition for subsonic outflow.
 4. **One gas.** Hot products and air share one γ, so the fireball's temperature and its late
    pressure history are not realistic.
-5. **A moving structure does not push the air.** See the structural model's coupling notes.
+5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
+   ghost states, but its surface jumps a cell at a time and gas is removed or created as it
+   does. See the structural model's coupling notes.
 6. **Single precision.** Pressure differences well below a pascal are lost in rounding against
    ambient pressure, which is harmless for blast but rules out acoustics.
 
@@ -111,8 +113,8 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
 - **Non-reflecting open boundaries** based on characteristic variables.
 - **Adaptive resolution** near the charge and the shock, the standard answer to the
   thin-shock problem, at a large cost in complexity on the GPU.
-- **Momentum exchange with moving solids**, so that a wall thrown by the blast drives a wave of
-  its own.
+- **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
+  model's future work).
 
 ## Sources
 

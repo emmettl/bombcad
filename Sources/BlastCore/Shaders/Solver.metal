@@ -2,8 +2,9 @@
 //
 // Scheme: dimensionally split MUSCL-Hancock (second order in smooth regions) with a
 // minmod-family limiter and an HLLC (or HLL) approximate Riemann solver. Solid cells
-// and reflective domain faces are handled with mirrored ghost states, so obstacles
-// are exactly conservative. Layouts here must match `SolverTypes.swift`.
+// and reflective domain faces are handled with mirrored ghost states, so stationary
+// obstacles are exactly conservative. A moving solid mirrors the gas about its own
+// velocity, which makes it act as a piston. Layouts here must match `SolverTypes.swift`.
 
 #include <metal_stdlib>
 using namespace metal;
@@ -33,6 +34,13 @@ struct SolverUniforms {
     uint finalSweep;
     uint gaugeCount;
     float forcedStep;  // > 0: use this time step instead of the CFL limit (the air is asleep)
+    // Block of cells in which solids may move; `wallVelocity` holds their velocity there.
+    uint regionX;
+    uint regionY;
+    uint regionZ;
+    uint regionNx;
+    uint regionNy;
+    uint regionNz;
 };
 
 struct StepControl {
@@ -82,9 +90,23 @@ static inline Prim loadPrim(const device Cell *state, int index, constant Solver
     return w;
 }
 
-static inline Prim mirrored(Prim w) {
-    w.v.x = -w.v.x;
+// Reflection in a wall moving at `wallSpeed` along the sweep axis.
+static inline Prim mirrored(Prim w, float wallSpeed) {
+    w.v.x = 2.0f * wallSpeed - w.v.x;
     return w;
+}
+
+// Speed along the sweep axis of the solid `offset` cells from `cell`; zero outside the region
+// where solids move.
+static inline float wallSpeed(const device float *wallVelocity, int3 cell, int offset,
+                              constant SolverUniforms &u) {
+    cell[u.axis] += offset;
+    int3 local = cell - int3(u.regionX, u.regionY, u.regionZ);
+    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
+    if (any(local < 0) || any(local >= dims)) {
+        return 0.0f;
+    }
+    return wallVelocity[3 * (local.x + dims.x * (local.y + dims.y * local.z)) + int(u.axis)];
 }
 
 static inline int classify(const device uchar *mask, int index, int offset, int stride, int i, int n,
@@ -231,6 +253,7 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
                   const device StepControl &control [[buffer(5)]],
                   device atomic_uint *maxSpeed [[buffer(6)]],
                   constant SolverUniforms &u [[buffer(7)]],
+                  const device float *wallVelocity [[buffer(8)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
@@ -239,6 +262,7 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
     if (mask[index] != 0) {
         return;
     }
+    int3 cell = int3(tid);
 
     uint axis = u.axis;
     int n = axis == 0 ? int(u.nx) : (axis == 1 ? int(u.ny) : int(u.nz));
@@ -252,39 +276,42 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
     int kindP1 = classify(mask, index, 1, stride, i, n, lowWall, highWall);
     int kindM1 = classify(mask, index, -1, stride, i, n, lowWall, highWall);
 
+    float speedP1 = kindP1 == kindWall ? wallSpeed(wallVelocity, cell, 1, u) : 0.0f;
+    float speedM1 = kindM1 == kindWall ? wallSpeed(wallVelocity, cell, -1, u) : 0.0f;
+
     Prim wP1 = w0;
     if (kindP1 == kindFluid) {
         wP1 = loadPrim(src, index + stride, u);
     } else if (kindP1 == kindWall) {
-        wP1 = mirrored(w0);
+        wP1 = mirrored(w0, speedP1);
     }
     Prim wM1 = w0;
     if (kindM1 == kindFluid) {
         wM1 = loadPrim(src, index - stride, u);
     } else if (kindM1 == kindWall) {
-        wM1 = mirrored(w0);
+        wM1 = mirrored(w0, speedM1);
     }
 
     Prim wP2 = wP1;
     if (kindP1 == kindWall) {
-        wP2 = mirrored(wM1);
+        wP2 = mirrored(wM1, speedP1);
     } else if (kindP1 == kindFluid) {
         int kind = classify(mask, index, 2, stride, i, n, lowWall, highWall);
         if (kind == kindFluid) {
             wP2 = loadPrim(src, index + 2 * stride, u);
         } else if (kind == kindWall) {
-            wP2 = mirrored(wP1);
+            wP2 = mirrored(wP1, wallSpeed(wallVelocity, cell, 2, u));
         }
     }
     Prim wM2 = wM1;
     if (kindM1 == kindWall) {
-        wM2 = mirrored(wP1);
+        wM2 = mirrored(wP1, speedM1);
     } else if (kindM1 == kindFluid) {
         int kind = classify(mask, index, -2, stride, i, n, lowWall, highWall);
         if (kind == kindFluid) {
             wM2 = loadPrim(src, index - 2 * stride, u);
         } else if (kind == kindWall) {
-            wM2 = mirrored(wM1);
+            wM2 = mirrored(wM1, wallSpeed(wallVelocity, cell, -2, u));
         }
     }
 

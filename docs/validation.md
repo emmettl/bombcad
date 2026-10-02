@@ -270,7 +270,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 55 tests. The physical checks are:
+The test suite has 58 tests. The physical checks are:
 
 **Air solver**
 
@@ -316,9 +316,11 @@ The test suite has 55 tests. The physical checks are:
 |-------------------------------------------------|------------------------------------------------|
 | Block immersed in pressurised air               | Hydrostatic stress within 3%; no net force     |
 | Free wall closing a shock tube                  | Gains the air's impulse within 1%              |
-| Intact wall across a shock tube                 | Far side stays at ambient pressure             |
+| Intact wall across a shock tube                 | Far side hears only the flexing wall (50–2000 Pa) |
+| The same wall with moving walls switched off    | Far side stays at ambient pressure             |
 | Hole knocked in that wall                       | Mask opens; blast passes through               |
-| Wall pushed along the tube                      | Mask travels with it; still airtight           |
+| Wall pushed along the tube                      | Mask travels with it; air beyond compressed adiabatically within 5% |
+| Wall driven at 100 m/s into still air           | Piston shock and rarefaction within 2% of theory |
 | After the blast has gone                        | Air freezes; structure carries on              |
 
 These establish that the equations are solved as intended. They say nothing about whether the

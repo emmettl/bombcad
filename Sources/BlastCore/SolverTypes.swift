@@ -82,6 +82,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Let the air's solid cells follow the structure as it moves and breaks, so that breaches
     /// vent. When false the air sees the structure as it was at the start.
     public var twoWayCoupling = true
+    /// Let a moving part of the structure push and pull the air like a piston. When false the
+    /// air treats the structure's surface as stationary wherever it currently is.
+    public var movingWalls = true
     /// Once no air cell is further than this fraction of ambient pressure from ambient, and
     /// there is a structure to keep following, the air is frozen and only the structure is
     /// advanced. Zero disables this. The default, 2 kPa at sea level, is small beside the
@@ -153,6 +156,12 @@ struct SolverUniforms {
     var finalSweep: UInt32 = 0
     var gaugeCount: UInt32 = 0
     var forcedStep: Float = 0
+    var regionX: UInt32 = 0
+    var regionY: UInt32 = 0
+    var regionZ: UInt32 = 0
+    var regionNx: UInt32 = 0
+    var regionNy: UInt32 = 0
+    var regionNz: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

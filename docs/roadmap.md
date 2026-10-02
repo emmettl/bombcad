@@ -19,7 +19,7 @@ and nothing in it should be used to judge the safety of a real structure.
 | 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
-| 6 | A moving structure does not push the air                                | Secondary pressure waves from thrown walls are missing        | [Structural model](structural-model.md#coupling-to-the-air) |
+| 6 | Moving solids are a staircase of cells, and coupling is not conservative | Mass and energy drift once walls move; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One deformable body, one material, lattice-aligned geometry             | Real buildings cannot be represented                          | [Structural model](structural-model.md#limitations) |
 | 8 | Cracked concrete has no hysteresis, and there is no compaction          | Rebound rings too much; close-in crushing is wrong            | [Concrete model](concrete-model.md#limitations) |
 | 9 | The app's interface has not been reviewed by eye                        | Layout or interaction problems may exist                      | Below |
@@ -51,7 +51,8 @@ More evidence is worth more than more features.
 5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
 6. **Hysteresis in cracked concrete, and compaction** under very high pressure.
-7. **Momentum-conserving coupling** between moving solids and the air.
+7. **Conservative coupling** between moving solids and the air, by cut cells. Moving walls
+   already push the air (a piston test matches theory within 2%), but only cell by cell.
 
 ### Then scale and scope
 
