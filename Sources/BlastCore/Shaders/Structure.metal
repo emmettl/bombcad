@@ -1,0 +1,1045 @@
+// Explicit finite-element solver for deformable structures, appended to Solver.metal
+// at compile time (it reuses `Cell` and `StepControl`).
+//
+// Elements are eight-node hexahedra on a regular lattice with one-point quadrature and
+// Flanagan-Belytschko hourglass control scaled to the physical bending stiffness of the element.
+// Nodes are integrated with central differences. Two material models are available:
+//   0: von Mises plasticity with linear hardening (Jaumann stress rate), eroding at a
+//      plastic-strain limit;
+//   1: concrete as a total-strain model with cracks smeared over the lattice planes
+//      (exponential tension softening and a parabolic compression curve, both regularised by
+//      fracture energy, and aggregate-interlock shear across cracks), strain-rate strengthening,
+//      and smeared elastic-plastic reinforcement along the lattice axes.
+// Layouts here must match `StructureTypes.swift`.
+
+struct StructureUniforms {
+    uint ex;
+    uint ey;
+    uint ez;
+    uint substep;
+    float h;
+    float originX;
+    float originY;
+    float originZ;
+    float density;
+    float lambda;
+    float mu;
+    float yieldStress;
+    float hardening;
+    float failureStrain;
+    float hourglassStiffness;
+    float bulkLinear;
+    float bulkQuadratic;
+    float soundSpeed;
+    float criticalStep;
+    float fixedStep;  // > 0: use this step; 0: subdivide the fluid step in `StepControl`
+    float gravity;
+    float damping;
+    float ambientPressure;
+    float fluidGamma;
+    float fluidCell;
+    uint fluidNx;
+    uint fluidNy;
+    uint fluidNz;
+    uint coupled;
+    float minVolumeRatio;
+    float groundFriction;
+    uint contactMode;  // 0 = off, 1 = once something has failed, 2 = always
+    uint stamp;        // unique per substep; marks fresh entries in the contact grid
+    uint gridNx;
+    uint gridNy;
+    uint gridNz;
+    float gridOriginX;
+    float gridOriginY;
+    float gridOriginZ;
+    float contactStiffness;  // per unit of nodal mass
+    float contactDamping;    // fraction of critical
+    float contactFriction;
+    uint materialModel;
+    float youngsModulus;
+    float compressiveStrength;
+    float tensileStrength;
+    float crackOnset;      // strain at peak tensile stress
+    float crackSoftening;  // decay strain of the tension-softening exponential
+    float crushPeak;       // strain at peak compressive stress
+    float crushEnd;        // strain at which compression has softened to its residual
+    float erosionStrain;
+    float crushErosion;  // strain beyond the end of softening, as a multiple of the softening range
+    float confinement;   // gain in strength per unit of lateral stress
+    float steelModulus;
+    uint steelPoints;       // entries in the reinforcement's hardening curve
+    float steelStrain[8];   // plastic strain ...
+    float steelStress[8];   // ... against stress
+    // Strain-rate strengthening; all exponents are zero when it is switched off.
+    float rateFilter;       // 1 / time constant of the strain-rate average
+    float concreteRateCompression;
+    float concreteRateTension;
+    float steelRateYield;
+    float steelRateUltimate;
+    float crackBand;            // length a crack's opening is smeared over
+    float interlockStrength;    // aggregate-interlock shear capacity of a closed crack
+    float interlockWidthScale;  // its decay with crack width, per metre
+    float shearRetention;       // fraction of the shear stiffness a cracked plane keeps
+    float loadTime;
+    uint loadCount;  // entries in the applied-pressure table; 0 = none
+    uint loadFace;   // 2 * axis + side of the element faces the pressure acts on
+};
+
+// Each cell of the contact grid holds up to this many nodes.
+constant uint contactSlots = 4;
+
+struct ElementState {
+    float stress[6];      // Cauchy stress: xx, yy, zz, xy, yz, zx
+    float plasticStrain;  // von Mises: equivalent plastic strain; concrete: largest compressive strain
+    float display;        // 0 (sound) to 1 (failing), for rendering
+    packed_float3 hourglass[4];
+    packed_float3 crackStrain;   // concrete: largest tensile strain so far across x, y, z planes
+    packed_float3 steelPlastic;  // plastic strain of the reinforcement along x, y, z
+    float strainRate;            // running average of the effective strain rate
+    float crackingFactor;        // tensile rate factor frozen when the element first cracked
+    packed_float3 confinementGain;  // running average of each axis's confinement factor, less one
+};
+
+// Reinforcement area per unit area of concrete, along each lattice axis.
+struct ElementSteel {
+    packed_float3 ratio;
+    float padding;
+};
+
+struct ElementForces {
+    packed_float3 force[8];
+};
+
+// Nodes store displacement from their lattice position rather than absolute position, so
+// that small deflections keep full single-precision resolution.
+struct StructureNode {
+    packed_float3 displacement;
+    float mass;
+    packed_float3 velocity;
+    uint flags;  // bits 0-2: x, y, z held still; bit 3: velocity prescribed (never updated)
+};
+
+enum ElementFlag { elementEmpty = 0, elementActive = 1, elementEroded = 2 };
+
+// Time step of the current substep. When coupled, each fluid step is split into the fewest
+// equal substeps that respect the structural stability limit; surplus dispatches do nothing.
+static inline float structureStep(constant StructureUniforms &u, const device StepControl &control,
+                                  thread bool &active) {
+    if (u.fixedStep > 0.0f) {
+        active = true;
+        return u.fixedStep;
+    }
+    float fluidStep = control.dt;
+    uint needed = max(1u, uint(ceil(fluidStep / u.criticalStep)));
+    active = fluidStep > 0.0f && u.substep < needed;
+    return fluidStep / float(needed);
+}
+
+static inline float3 cornerSign(uint a) {
+    return float3(float(a & 1u), float((a >> 1) & 1u), float((a >> 2) & 1u)) * 2.0f - 1.0f;
+}
+
+// Overpressure of the air just outside an element face, looked up in the fluid grid.
+static inline float faceOverpressure(float3 point, float3 normal, const device Cell *fluid,
+                                     const device uchar *fluidMask, constant StructureUniforms &u) {
+    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+    float3 sample = point + normal * (0.5f * u.fluidCell);
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        int3 cell = int3(floor(sample / u.fluidCell));
+        if (any(cell < 0) || any(cell >= dims)) {
+            return 0.0f;
+        }
+        int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
+        if (fluidMask[index] == 0) {
+            Cell c = fluid[index];
+            float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
+            return (u.fluidGamma - 1.0f) * (c.energy - kinetic) - u.ambientPressure;
+        }
+        sample += normal * u.fluidCell;
+    }
+    return 0.0f;
+}
+
+// Eigenvalues and eigenvectors (columns) of a symmetric matrix by cyclic Jacobi rotations.
+static inline void symmetricEigen(float3x3 a, thread float3 &values, thread float3x3 &vectors) {
+    float3x3 v = float3x3(1.0f);
+    for (int sweep = 0; sweep < 5; ++sweep) {
+        for (int pair = 0; pair < 3; ++pair) {
+            int p = pair == 2 ? 1 : 0;
+            int q = pair == 0 ? 1 : 2;
+            float apq = a[q][p];
+            if (fabs(apq) <= 1e-9f * (fabs(a[p][p]) + fabs(a[q][q])) + 1e-30f) {
+                continue;
+            }
+            float theta = (a[q][q] - a[p][p]) / (2.0f * apq);
+            float t = (theta >= 0.0f ? 1.0f : -1.0f) / (fabs(theta) + sqrt(theta * theta + 1.0f));
+            float c = 1.0f / sqrt(t * t + 1.0f);
+            float sn = t * c;
+            float3x3 rotation = float3x3(1.0f);
+            rotation[p][p] = c;
+            rotation[q][q] = c;
+            rotation[q][p] = sn;
+            rotation[p][q] = -sn;
+            a = transpose(rotation) * a * rotation;
+            v = v * rotation;
+        }
+    }
+    values = float3(a[0][0], a[1][1], a[2][2]);
+    vectors = v;
+}
+
+// Uniaxial tensile stress of concrete at strain `strain`, having previously reached `history`.
+// `increase` is the dynamic increase factor: it raises the strength without changing the stiffness.
+static inline float concreteTension(float strain, float history, float increase,
+                                    constant StructureUniforms &u) {
+    float onset = u.crackOnset * increase;
+    float peak = history <= onset
+        ? u.youngsModulus * history
+        : u.tensileStrength * increase * exp(-(history - onset) / u.crackSoftening);
+    return history > 0.0f ? peak * strain / history : 0.0f;
+}
+
+// Strains at which concrete in compression reaches its peak and its residual, for strength
+// factor `increase` (strain rate) and confinement factor `confinement` (1 when unconfined).
+// Confined concrete is stronger and far more ductile: the strain at peak grows five times as
+// fast as the strength (Mander, Priestley and Park, 1988).
+static inline float2 crushStrains(float increase, float confinement, constant StructureUniforms &u) {
+    float ductility = 1.0f + 5.0f * (confinement - 1.0f);
+    float peak = u.crushPeak * increase * ductility;
+    return float2(peak, peak + (u.crushEnd - u.crushPeak) * ductility);
+}
+
+// Uniaxial compressive stress (negative) at compressive strain magnitude `strain`. The rising
+// branch keeps the elastic stiffness at the origin whatever the confinement; unconfined, it is
+// the usual parabola.
+static inline float concreteCompression(float strain, float history, float increase, float confinement,
+                                        constant StructureUniforms &u) {
+    float strength = u.compressiveStrength * increase * confinement;
+    float2 limits = crushStrains(increase, confinement, u);
+    float envelope;
+    if (history <= limits.x) {
+        float exponent = u.youngsModulus * limits.x / strength;
+        envelope = strength * (1.0f - pow(1.0f - history / limits.x, exponent));
+    } else {
+        float fraction = clamp((history - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
+        envelope = mix(strength, 0.2f * strength, fraction);
+    }
+    return history > 0.0f ? -envelope * strain / history : 0.0f;
+}
+
+// Static yield stress of the reinforcement at accumulated plastic strain `plastic`, and the
+// slope of its hardening curve there.
+static inline float steelYield(float plastic, constant StructureUniforms &u, thread float &slope) {
+    for (uint n = 1; n < u.steelPoints; ++n) {
+        if (plastic <= u.steelStrain[n]) {
+            slope = (u.steelStress[n] - u.steelStress[n - 1]) / max(u.steelStrain[n] - u.steelStrain[n - 1], 1e-9f);
+            return u.steelStress[n - 1] + slope * (plastic - u.steelStrain[n - 1]);
+        }
+    }
+    slope = 0.0f;
+    return u.steelStress[u.steelPoints - 1];
+}
+
+// Dynamic increase factors at effective strain rate `rate` (1/s).
+// Concrete in compression: CEB-FIP Model Code 1990. In tension: Malvar and Ross (1998).
+// Reinforcement: Malvar and Crawford (1998).
+static inline float compressionIncrease(float rate, constant StructureUniforms &u) {
+    if (u.concreteRateCompression <= 0.0f) {
+        return 1.0f;
+    }
+    float exponent = 1.026f * u.concreteRateCompression;
+    if (rate <= 30.0f) {
+        return pow(max(rate, 30e-6f) / 30e-6f, exponent);
+    }
+    return pow(10.0f, 6.156f * u.concreteRateCompression - 2.0f) * pow(rate, 1.0f / 3.0f);
+}
+
+static inline float tensionIncrease(float rate, constant StructureUniforms &u) {
+    if (u.concreteRateTension <= 0.0f) {
+        return 1.0f;
+    }
+    if (rate <= 1.0f) {
+        return pow(max(rate, 1e-6f) / 1e-6f, u.concreteRateTension);
+    }
+    return pow(10.0f, 6.0f * u.concreteRateTension - 2.0f) * pow(rate / 1e-6f, 1.0f / 3.0f);
+}
+
+// Pressure of the applied-load table at time `time`, interpolated linearly.
+static inline float tablePressure(const device float2 *table, uint count, float time) {
+    if (count == 0 || time <= table[0].x) {
+        return count == 0 ? 0.0f : table[0].y;
+    }
+    for (uint n = 1; n < count; ++n) {
+        if (time <= table[n].x) {
+            float span = max(table[n].x - table[n - 1].x, 1e-12f);
+            return mix(table[n - 1].y, table[n].y, (time - table[n - 1].x) / span);
+        }
+    }
+    return table[count - 1].y;
+}
+
+// Updates the stress of every active element and stores the forces it exerts on its nodes.
+kernel void structureElements(device ElementState *states [[buffer(0)]],
+                              device ElementForces *forces [[buffer(1)]],
+                              device uchar *flags [[buffer(2)]],
+                              const device StructureNode *nodes [[buffer(3)]],
+                              const device Cell *fluid [[buffer(4)]],
+                              const device uchar *fluidMask [[buffer(5)]],
+                              const device StepControl &control [[buffer(6)]],
+                              constant StructureUniforms &u [[buffer(7)]],
+                              const device uint *elementList [[buffer(8)]],
+                              device uint *failureGate [[buffer(9)]],
+                              const device ElementSteel *steel [[buffer(10)]],
+                              const device float2 *loadTable [[buffer(11)]],
+                              uint threadIndex [[thread_position_in_grid]]) {
+    // Threads run over the list of elements the body started with, not the whole lattice.
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    uint element = elementList[threadIndex];
+    if (flags[element] != elementActive) {
+        return;
+    }
+    uint3 tid = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
+
+    uint nodesX = u.ex + 1;
+    uint nodesY = u.ey + 1;
+    float3 origin = float3(u.originX, u.originY, u.originZ);
+    float3 x[8];
+    float3 v[8];
+    // Displacement gradient at the centre, built from displacements alone so that small strains
+    // are not lost in the rounding of absolute positions.
+    float3 g0 = float3(0.0f);
+    float3 g1 = float3(0.0f);
+    float3 g2 = float3(0.0f);
+    for (uint a = 0; a < 8; ++a) {
+        uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
+        StructureNode node = nodes[corner.x + nodesX * (corner.y + nodesY * corner.z)];
+        float3 displacement = float3(node.displacement);
+        x[a] = origin + float3(corner) * u.h + displacement;
+        v[a] = node.velocity;
+        float3 s = cornerSign(a);
+        g0 += displacement * s.x;
+        g1 += displacement * s.y;
+        g2 += displacement * s.z;
+    }
+
+    // Jacobian of the isoparametric map at the element centre; its columns are dx/dxi_j.
+    float3 c0 = float3(0.0f);
+    float3 c1 = float3(0.0f);
+    float3 c2 = float3(0.0f);
+    for (uint a = 0; a < 8; ++a) {
+        float3 s = cornerSign(a);
+        c0 += x[a] * s.x;
+        c1 += x[a] * s.y;
+        c2 += x[a] * s.z;
+    }
+    c0 *= 0.125f;
+    c1 *= 0.125f;
+    c2 *= 0.125f;
+    float detJ = dot(c0, cross(c1, c2));
+    float volume = 8.0f * detJ;
+    float referenceVolume = u.h * u.h * u.h;
+
+    ElementState state = states[element];
+    bool eroded = volume < u.minVolumeRatio * referenceVolume;
+
+    // Shape-function gradients b_a = J^-T xi_a / 8.
+    float3 r0 = cross(c1, c2) / detJ;
+    float3 r1 = cross(c2, c0) / detJ;
+    float3 r2 = cross(c0, c1) / detJ;
+    float3 b[8];
+    float3 lx = float3(0.0f);
+    float3 ly = float3(0.0f);
+    float3 lz = float3(0.0f);
+    for (uint a = 0; a < 8; ++a) {
+        float3 s = cornerSign(a);
+        b[a] = (r0 * s.x + r1 * s.y + r2 * s.z) * 0.125f;
+        lx += v[a].x * b[a];
+        ly += v[a].y * b[a];
+        lz += v[a].z * b[a];
+    }
+
+    // Rate of deformation and spin.
+    float dxx = lx.x;
+    float dyy = ly.y;
+    float dzz = lz.z;
+    float dxy = 0.5f * (lx.y + ly.x);
+    float dyz = 0.5f * (ly.z + lz.y);
+    float dzx = 0.5f * (lz.x + lx.z);
+    float wxy = 0.5f * (lx.y - ly.x);
+    float wyz = 0.5f * (ly.z - lz.y);
+    float wxz = 0.5f * (lx.z - lz.x);
+    float3x3 spin = float3x3(float3(0.0f, -wxy, -wxz), float3(wxy, 0.0f, -wyz), float3(wxz, wyz, 0.0f));
+
+    float trace = dxx + dyy + dzz;
+    float sxx;
+    float syy;
+    float szz;
+    float sxy;
+    float syz;
+    float szx;
+    // Tensile stress the element can still carry, which caps its hourglass (bending) forces.
+    float capacity;
+
+    if (u.materialModel == 0) {
+        // Jaumann rotation of the old stress, then the elastic trial increment.
+        float3x3 sigma = float3x3(float3(state.stress[0], state.stress[3], state.stress[5]),
+                                  float3(state.stress[3], state.stress[1], state.stress[4]),
+                                  float3(state.stress[5], state.stress[4], state.stress[2]));
+        float3x3 rotation = spin * sigma - sigma * spin;
+        sxx = sigma[0][0] + dt * (rotation[0][0] + u.lambda * trace + 2.0f * u.mu * dxx);
+        syy = sigma[1][1] + dt * (rotation[1][1] + u.lambda * trace + 2.0f * u.mu * dyy);
+        szz = sigma[2][2] + dt * (rotation[2][2] + u.lambda * trace + 2.0f * u.mu * dzz);
+        sxy = sigma[1][0] + dt * (rotation[1][0] + 2.0f * u.mu * dxy);
+        syz = sigma[2][1] + dt * (rotation[2][1] + 2.0f * u.mu * dyz);
+        szx = sigma[0][2] + dt * (rotation[0][2] + 2.0f * u.mu * dzx);
+
+        // J2 plasticity: radial return onto the yield surface.
+        float mean = (sxx + syy + szz) / 3.0f;
+        float devX = sxx - mean;
+        float devY = syy - mean;
+        float devZ = szz - mean;
+        float j2 = 0.5f * (devX * devX + devY * devY + devZ * devZ) + sxy * sxy + syz * syz + szx * szx;
+        float equivalent = sqrt(3.0f * j2);
+        float yield = u.yieldStress + u.hardening * state.plasticStrain;
+        if (equivalent > yield) {
+            float increment = (equivalent - yield) / (3.0f * u.mu + u.hardening);
+            float scale = (yield + u.hardening * increment) / equivalent;
+            devX *= scale;
+            devY *= scale;
+            devZ *= scale;
+            sxy *= scale;
+            syz *= scale;
+            szx *= scale;
+            state.plasticStrain += increment;
+        }
+        sxx = devX + mean;
+        syy = devY + mean;
+        szz = devZ + mean;
+        eroded = eroded || state.plasticStrain >= u.failureStrain;
+        capacity = u.yieldStress + u.hardening * state.plasticStrain;
+        state.display = state.plasticStrain / u.failureStrain;
+    } else {
+        // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
+        float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
+        float3x3 strain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
+        float3 normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
+
+        // Strength rises with strain rate; a running average keeps element-scale noise out.
+        float instantaneous = sqrt((2.0f / 3.0f) * (dxx * dxx + dyy * dyy + dzz * dzz
+                                                     + 2.0f * (dxy * dxy + dyz * dyz + dzx * dzx)));
+        state.strainRate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.strainRate);
+        float3 history = float3(state.crackStrain);
+        float worst = max(history.x, max(history.y, history.z));
+        // Once a crack has formed, strain gathers in it at a rate that depends on the element
+        // size and says nothing about the material, so the tensile factor is frozen at the value
+        // it had when the element first cracked.
+        float tensionFactor = state.crackingFactor;
+        if (tensionFactor <= 0.0f) {
+            tensionFactor = tensionIncrease(state.strainRate, u);
+            if (worst > u.crackOnset * tensionFactor) {
+                state.crackingFactor = tensionFactor;
+            }
+        }
+        float compressionFactor = compressionIncrease(state.strainRate, u);
+        float onset = u.crackOnset * tensionFactor;
+
+        // Cracks are smeared over the three lattice planes, each with its own history, so that
+        // cracking across one direction leaves the others intact. A diagonal crack (from shear)
+        // is found from the principal strains and shared between the planes it cuts across, in
+        // proportion to the squared direction cosines.
+        float3 principal;
+        float3x3 axes;
+        symmetricEigen(strain, principal, axes);
+        for (int i = 0; i < 3; ++i) {
+            float3 weight = axes[i] * axes[i];
+            float seen = dot(weight, history);
+            if (principal[i] > seen && principal[i] > onset) {
+                history += (principal[i] - seen) * weight / dot(weight, weight);
+            }
+        }
+
+        // Equivalent uniaxial strains along the axes: in the linear range these reproduce
+        // isotropic elasticity. The Poisson coupling fades as the concrete cracks, since an open
+        // crack's strain is not elastic strain and must not stretch the directions alongside it.
+        float poisson = 0.5f * u.lambda / (u.lambda + u.mu);
+        if (worst > onset) {
+            poisson *= concreteTension(worst, worst, tensionFactor, u) / (u.youngsModulus * worst);
+        }
+        float volumetric = normalStrain.x + normalStrain.y + normalStrain.z;
+        float3 uniaxial = ((1.0f - 2.0f * poisson) * normalStrain + poisson * volumetric)
+            / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
+        history = max(history, uniaxial);
+        state.crackStrain = history;
+        float crack = max(history.x, max(history.y, history.z));
+        float crush = max(state.plasticStrain, -min(uniaxial.x, min(uniaxial.y, uniaxial.z)));
+        state.plasticStrain = crush;
+
+        // Normal stresses follow the uniaxial curves, unloading along the secant so that a
+        // crack closes at zero strain and compression is recovered.
+        //
+        // Concrete squeezed from the sides is stronger: each axis gains 4.1 times the smaller of
+        // the compressive stresses the other two axes can supply (Richart, Brandtzaeg and Brown,
+        // 1928). The lateral stress is estimated as elastic, capped at the unconfined strength.
+        float unconfined = u.compressiveStrength * compressionFactor;
+        // The factor follows its target through the same running average as the strain rate:
+        // applied instantly, the coupling between axes would be several times stiffer than the
+        // elastic solid and would outrun the explicit time step.
+        float3 lateral = clamp(-uniaxial * u.youngsModulus, 0.0f, unconfined);
+        float3 gain = float3(state.confinementGain);
+        float blend = clamp(dt * u.rateFilter, 0.0f, 1.0f);
+        float3 confinement = float3(1.0f);
+        float3 normalStress;
+        float crushed = 0.0f;
+        bool pulverised = false;
+        for (int j = 0; j < 3; ++j) {
+            if (uniaxial[j] >= 0.0f) {
+                normalStress[j] = concreteTension(uniaxial[j], history[j], tensionFactor, u);
+                continue;
+            }
+            float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
+            gain[j] += blend * (u.confinement * support / unconfined - gain[j]);
+            confinement[j] = 1.0f + gain[j];
+            normalStress[j] = concreteCompression(-uniaxial[j], crush, compressionFactor, confinement[j], u);
+            float2 limits = crushStrains(compressionFactor, confinement[j], u);
+            crushed = max(crushed, clamp((-uniaxial[j] - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
+            pulverised = pulverised || -uniaxial[j] >= limits.y + u.crushErosion * (limits.y - limits.x);
+        }
+        state.confinementGain = gain;
+
+        // Shear across cracked planes is carried by aggregate interlock, which weakens as the
+        // crack widens (Vecchio and Collins, modified compression field theory).
+        float3 shearStress;  // xy, yz, zx
+        for (int pair = 0; pair < 3; ++pair) {
+            int a = pair;
+            int b = (pair + 1) % 3;
+            float engineering = 2.0f * strain[b][a];
+            float stress = u.mu * engineering;
+            float opened = max(history[a], history[b]) - onset;
+            if (opened > 0.0f) {
+                float width = opened * u.crackBand;
+                float interlock = u.interlockStrength * tensionFactor / (0.31f + u.interlockWidthScale * width);
+                stress = clamp(u.shearRetention * stress, -interlock, interlock);
+            }
+            shearStress[pair] = stress;
+        }
+        float3x3 material = float3x3(float3(normalStress.x, shearStress.x, shearStress.z),
+                                     float3(shearStress.x, normalStress.y, shearStress.y),
+                                     float3(shearStress.z, shearStress.y, normalStress.z));
+
+        // Smeared reinforcement: elastic-plastic bars along the lattice axes, strained with the
+        // element.
+        float3 ratio = float3(steel[element].ratio);
+        float3 plastic = float3(state.steelPlastic);
+        float3 intact = float3(0.0f);
+        float steelCapacity = 0.0f;
+        for (int j = 0; j < 3; ++j) {
+            if (ratio[j] <= 0.0f || fabs(plastic[j]) > 1e8f) {
+                continue;
+            }
+            // Stretch of the fibre from its Green-Lagrange strain, without cancellation.
+            float green = normalStrain[j];
+            float root = sqrt(max(1.0f + 2.0f * green, 1e-6f));
+            float fibre = 2.0f * green / (1.0f + root);
+            float stress = u.steelModulus * (fibre - plastic[j]);
+            // The rate factor falls from its value at yield to its (smaller) value at ultimate.
+            float accumulated = fabs(plastic[j]);
+            float slope;
+            float yield = steelYield(accumulated, u, slope);
+            float first = u.steelStress[0];
+            float top = u.steelStress[u.steelPoints - 1];
+            float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
+            float rate = max(state.strainRate, 1e-4f) / 1e-4f;
+            float factor = mix(pow(rate, u.steelRateYield), pow(rate, u.steelRateUltimate), along);
+            yield *= factor;
+            if (fabs(stress) > yield) {
+                float increment = (fabs(stress) - yield) / max(u.steelModulus + slope * factor, 0.1f * u.steelModulus);
+                plastic[j] += stress > 0.0f ? increment : -increment;
+                stress = u.steelModulus * (fibre - plastic[j]);
+            }
+            if (fabs(plastic[j]) > u.steelStrain[u.steelPoints - 1]) {
+                plastic[j] = 1e9f;  // ruptured for good
+                continue;
+            }
+            intact[j] = 1.0f;
+            steelCapacity += ratio[j] * yield;
+            // Bar force per unit reference area, as a second Piola-Kirchhoff stress.
+            material[j][j] += ratio[j] * stress / root;
+        }
+        state.steelPlastic = plastic;
+        bool anySteel = intact.x + intact.y + intact.z > 0.0f;
+
+        // A crack wide enough to count as a gap removes the element, unless intact bars cross it.
+        bool torn = false;
+        for (int j = 0; j < 3; ++j) {
+            if (history[j] >= u.erosionStrain && intact[j] == 0.0f) {
+                torn = true;
+            }
+        }
+
+        // Push forward to the Cauchy stress: sigma = F S F^T / J.
+        float3x3 deformation = float3x3(1.0f) + gradient;
+        float3x3 cauchy = deformation * material * transpose(deformation) * (referenceVolume / volume);
+        sxx = cauchy[0][0];
+        syy = cauchy[1][1];
+        szz = cauchy[2][2];
+        sxy = cauchy[1][0];
+        syz = cauchy[2][1];
+        szx = cauchy[0][2];
+
+        eroded = eroded || torn || pulverised || crack > 1.0f;
+        capacity = max(concreteTension(crack, crack, tensionFactor, u) + steelCapacity, 0.02f * u.tensileStrength);
+        state.display = max(crack / (anySteel ? u.steelStrain[u.steelPoints - 1] : u.erosionStrain), crushed);
+    }
+
+    ElementForces out;
+    if (eroded) {
+        flags[element] = elementEroded;
+        failureGate[0] = 1;
+        for (uint a = 0; a < 8; ++a) {
+            out.force[a] = float3(0.0f);
+        }
+        for (uint m = 0; m < 4; ++m) {
+            state.hourglass[m] = float3(0.0f);
+        }
+        states[element] = state;
+        forces[element] = out;
+        return;
+    }
+    state.stress[0] = sxx;
+    state.stress[1] = syy;
+    state.stress[2] = szz;
+    state.stress[3] = sxy;
+    state.stress[4] = syz;
+    state.stress[5] = szx;
+
+    // Bulk viscosity damps the ringing behind stress waves; it acts in compression only.
+    float viscous = 0.0f;
+    if (trace < 0.0f) {
+        viscous = u.density * u.h * (u.bulkQuadratic * u.h * trace * trace - u.bulkLinear * u.soundSpeed * trace);
+    }
+    float3x3 forceStress = float3x3(float3(sxx - viscous, sxy, szx), float3(sxy, syy - viscous, syz),
+                                    float3(szx, syz, szz - viscous));
+
+    // Hourglass control: resist the four non-constant-strain modes of the element.
+    float3 modeShape[4];
+    for (uint m = 0; m < 4; ++m) {
+        modeShape[m] = float3(0.0f);
+    }
+    float gamma[4][8];
+    for (uint a = 0; a < 8; ++a) {
+        float3 s = cornerSign(a);
+        gamma[0][a] = s.y * s.z;
+        gamma[1][a] = s.x * s.z;
+        gamma[2][a] = s.x * s.y;
+        gamma[3][a] = s.x * s.y * s.z;
+        for (uint m = 0; m < 4; ++m) {
+            modeShape[m] += x[a] * gamma[m][a];
+        }
+    }
+    float3 rate[4];
+    for (uint m = 0; m < 4; ++m) {
+        rate[m] = float3(0.0f);
+    }
+    for (uint a = 0; a < 8; ++a) {
+        for (uint m = 0; m < 4; ++m) {
+            gamma[m][a] -= dot(b[a], modeShape[m]);
+            rate[m] += v[a] * gamma[m][a];
+        }
+    }
+    // The hourglass forces act as the element's bending moments, so they are capped at its
+    // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
+    float limit = 0.125f * capacity * u.h * u.h;
+    for (uint m = 0; m < 4; ++m) {
+        float3 q = state.hourglass[m];
+        q += dt * (u.hourglassStiffness * rate[m] + spin * q);
+        float magnitude = length(q);
+        if (magnitude > limit) {
+            q *= limit / magnitude;
+        }
+        state.hourglass[m] = q;
+    }
+
+    for (uint a = 0; a < 8; ++a) {
+        float3 f = -volume * (forceStress * b[a]);
+        for (uint m = 0; m < 4; ++m) {
+            f -= float3(state.hourglass[m]) * gamma[m][a];
+        }
+        out.force[a] = f;
+    }
+
+    // Pressure on faces that border the air or a failed element, on the deformed geometry: the
+    // blast from the air solver, and any prescribed pressure history.
+    if (u.coupled != 0 || u.loadCount != 0) {
+        float applied = tablePressure(loadTable, u.loadCount, u.loadTime);
+        float3 centre = float3(0.0f);
+        for (uint a = 0; a < 8; ++a) {
+            centre += 0.125f * x[a];
+        }
+        int3 dims = int3(u.ex, u.ey, u.ez);
+        for (uint face = 0; face < 6; ++face) {
+            uint axis = face >> 1;
+            uint side = face & 1u;
+            int3 neighbour = int3(tid);
+            neighbour[axis] += side == 0 ? -1 : 1;
+            bool inside = all(neighbour >= 0) && all(neighbour < dims);
+            uint neighbourFlag =
+                inside ? uint(flags[neighbour.x + dims.x * (neighbour.y + dims.y * neighbour.z)]) : 0u;
+            if (neighbourFlag == elementActive) {
+                continue;
+            }
+            // The face's four corners, in order around its perimeter.
+            uint first = (axis + 1) % 3;
+            uint second = (axis + 2) % 3;
+            uint base = side << axis;
+            float3 p00 = x[base];
+            float3 p10 = x[base | (1u << first)];
+            float3 p11 = x[base | (1u << first) | (1u << second)];
+            float3 p01 = x[base | (1u << second)];
+            float3 faceCentre = 0.25f * (p00 + p10 + p11 + p01);
+            float3 areaVector = 0.5f * cross(p11 - p00, p01 - p10);
+            float area = length(areaVector);
+            if (area < 1e-12f) {
+                continue;
+            }
+            float3 normal = areaVector / area;
+            if (dot(normal, faceCentre - centre) < 0.0f) {
+                normal = -normal;
+            }
+            float overpressure = u.coupled != 0 ? faceOverpressure(faceCentre, normal, fluid, fluidMask, u) : 0.0f;
+            // The prescribed pressure acts only on the original outer surface it was given for.
+            if (face == u.loadFace && neighbourFlag == elementEmpty) {
+                overpressure += applied;
+            }
+            float3 load = -overpressure * normal * (0.25f * area);
+            for (uint a = 0; a < 8; ++a) {
+                if (((a >> axis) & 1u) == side) {
+                    out.force[a] = float3(out.force[a]) + load;
+                }
+            }
+        }
+    }
+
+    states[element] = state;
+    forces[element] = out;
+}
+
+static inline bool contactEnabled(constant StructureUniforms &u, const device uint *failureGate) {
+    return u.contactMode == 2 || (u.contactMode == 1 && failureGate[0] != 0);
+}
+
+static inline float3 nodePosition(uint index, const device StructureNode *nodes,
+                                  constant StructureUniforms &u) {
+    uint nodesX = u.ex + 1;
+    uint nodesY = u.ey + 1;
+    float3 lattice = float3(index % nodesX, (index / nodesX) % nodesY, index / (nodesX * nodesY));
+    return float3(u.originX, u.originY, u.originZ) + lattice * u.h + float3(nodes[index].displacement);
+}
+
+// Contact treats every node as a sphere one element across. Each substep the nodes are dropped
+// into a grid of element-sized cells, then each node pushes away from strangers in the 27 cells
+// around it. A cell's header packs the substep's stamp with a count of the slots in use, so
+// stale cells read as empty and the grid never needs clearing.
+kernel void contactHash(const device uint *nodeList [[buffer(0)]],
+                        const device StructureNode *nodes [[buffer(1)]],
+                        device atomic_uint *heads [[buffer(2)]],
+                        const device uint *failureGate [[buffer(3)]],
+                        const device StepControl &control [[buffer(4)]],
+                        constant StructureUniforms &u [[buffer(5)]],
+                        device uint *slots [[buffer(6)]],
+                        uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active || !contactEnabled(u, failureGate)) {
+        return;
+    }
+    uint index = nodeList[threadIndex];
+    float3 position = nodePosition(index, nodes, u);
+    int3 cell = int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
+    int3 dims = int3(u.gridNx, u.gridNy, u.gridNz);
+    if (any(cell < 0) || any(cell >= dims)) {
+        return;
+    }
+    uint target = uint(cell.x + dims.x * (cell.y + dims.y * cell.z));
+    uint observed = atomic_load_explicit(&heads[target], memory_order_relaxed);
+    while (true) {
+        uint count = (observed >> 3) == u.stamp ? (observed & 7u) : 0u;
+        if (count >= contactSlots) {
+            return;  // crowded cell: this node goes unseen for one substep
+        }
+        if (atomic_compare_exchange_weak_explicit(&heads[target], &observed, (u.stamp << 3) | (count + 1),
+                                                  memory_order_relaxed, memory_order_relaxed)) {
+            slots[target * contactSlots + count] = index;
+            return;
+        }
+    }
+}
+
+kernel void contactForces(const device uint *nodeList [[buffer(0)]],
+                          const device StructureNode *nodes [[buffer(1)]],
+                          const device uint *heads [[buffer(2)]],
+                          const device uint *failureGate [[buffer(3)]],
+                          const device StepControl &control [[buffer(4)]],
+                          constant StructureUniforms &u [[buffer(5)]],
+                          device packed_float3 *contact [[buffer(7)]],
+                          const device uint *slots [[buffer(8)]],
+                          uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active || !contactEnabled(u, failureGate)) {
+        return;
+    }
+    uint index = nodeList[threadIndex];
+    StructureNode node = nodes[index];
+    float3 position = nodePosition(index, nodes, u);
+    int nodesX = int(u.ex) + 1;
+    int nodesY = int(u.ey) + 1;
+    int3 lattice = int3(int(index) % nodesX, (int(index) / nodesX) % nodesY, int(index) / (nodesX * nodesY));
+
+    int3 dims = int3(u.gridNx, u.gridNy, u.gridNz);
+    int3 cell = int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
+    float3 force = float3(0.0f);
+    for (int dz = -1; dz <= 1; ++dz) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                int3 c = cell + int3(dx, dy, dz);
+                if (any(c < 0) || any(c >= dims)) {
+                    continue;
+                }
+                uint target = uint(c.x + dims.x * (c.y + dims.y * c.z));
+                uint head = heads[target];
+                if ((head >> 3) != u.stamp) {
+                    continue;
+                }
+                uint count = min(head & 7u, contactSlots);
+                for (uint slot = 0; slot < count; ++slot) {
+                    uint otherIndex = slots[target * contactSlots + slot];
+                    if (otherIndex == index) {
+                        continue;
+                    }
+                    float3 offset = position - nodePosition(otherIndex, nodes, u);
+                    float distance = length(offset);
+                    if (distance >= u.h || distance < 1e-9f) {
+                        continue;
+                    }
+                    int other = int(otherIndex);
+                    int3 difference =
+                        int3(other % nodesX, (other / nodesX) % nodesY, other / (nodesX * nodesY)) - lattice;
+                    // Nodes that began as neighbours never repel each other. While joined they are
+                    // held apart by their element; once it has failed they may already be closer
+                    // than a sphere's width, and a spring switched on there would create energy.
+                    // Separated pieces therefore overlap by up to one element before they touch.
+                    if (all(abs(difference) <= 1)) {
+                        continue;
+                    }
+
+                    StructureNode partner = nodes[otherIndex];
+                    float3 normal = offset / distance;
+                    float mass = min(node.mass, partner.mass);
+                    float stiffness = u.contactStiffness * mass;
+                    float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
+                    float3 relative = float3(node.velocity) - float3(partner.velocity);
+                    float approach = dot(relative, normal);
+                    float push = max(stiffness * (u.h - distance) - damping * approach, 0.0f);
+                    force += push * normal;
+
+                    // Coulomb friction, regularised as a damper at low sliding speed.
+                    float3 sliding = relative - approach * normal;
+                    float speed = length(sliding);
+                    if (speed > 1e-6f) {
+                        force -= min(u.contactFriction * push, damping * speed) * (sliding / speed);
+                    }
+                }
+            }
+        }
+    }
+    contact[threadIndex] = force;
+}
+
+// Gathers element forces at every node and advances velocity and position.
+kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
+                           const device ElementForces *forces [[buffer(1)]],
+                           const device uchar *flags [[buffer(2)]],
+                           const device StepControl &control [[buffer(3)]],
+                           constant StructureUniforms &u [[buffer(4)]],
+                           const device uint *nodeList [[buffer(5)]],
+                           const device packed_float3 *contact [[buffer(6)]],
+                           const device uint *failureGate [[buffer(7)]],
+                           uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    uint index = nodeList[threadIndex];
+    uint3 tid = uint3(index % (u.ex + 1), (index / (u.ex + 1)) % (u.ey + 1), index / ((u.ex + 1) * (u.ey + 1)));
+    StructureNode node = nodes[index];
+
+    int3 dims = int3(u.ex, u.ey, u.ez);
+    float3 force = float3(0.0f);
+    for (uint a = 0; a < 8; ++a) {
+        // This node is corner `a` of the element offset by -a.
+        int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
+        if (any(cell < 0) || any(cell >= dims)) {
+            continue;
+        }
+        int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
+        if (flags[element] == elementActive) {
+            force += float3(forces[element].force[a]);
+        }
+    }
+
+    if (contactEnabled(u, failureGate)) {
+        force += float3(contact[threadIndex]);
+    }
+
+    float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
+    velocity *= max(0.0f, 1.0f - u.damping * dt);
+    if ((node.flags & 8u) != 0) {
+        velocity = float3(node.velocity);  // prescribed motion
+    }
+    if ((node.flags & 1u) != 0) {
+        velocity.x = 0.0f;
+    }
+    if ((node.flags & 2u) != 0) {
+        velocity.y = 0.0f;
+    }
+    if ((node.flags & 4u) != 0) {
+        velocity.z = 0.0f;
+    }
+    float3 displacement = float3(node.displacement) + dt * velocity;
+    float referenceHeight = u.originZ + float(tid.z) * u.h;
+    if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f) {
+        // Debris landing on the ground: stop the fall and shed horizontal speed.
+        displacement.z = -referenceHeight;
+        velocity.z = max(velocity.z, 0.0f);
+        velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+    }
+    node.displacement = displacement;
+    node.velocity = velocity;
+    nodes[index] = node;
+}
+
+// Two-way coupling: the air's solid mask follows the structure. Each air step, intact elements
+// are counted into the air cells they currently sit in; a cell is solid when it is rigid or at
+// least a third full. Cells that open are refilled from their fluid neighbours.
+
+struct CouplingUniforms {
+    uint regionX;
+    uint regionY;
+    uint regionZ;
+    uint regionNx;
+    uint regionNy;
+    uint regionNz;
+    uint fluidNx;
+    uint fluidNy;
+    uint fluidNz;
+    uint threshold;
+    uint ex;
+    uint ey;
+    float fluidCell;
+    float h;
+    float originX;
+    float originY;
+    float originZ;
+    float gamma;
+    float ambientDensity;
+    float ambientPressure;
+};
+
+kernel void splatStructure(const device uint *elementList [[buffer(0)]],
+                           const device uchar *flags [[buffer(1)]],
+                           const device StructureNode *nodes [[buffer(2)]],
+                           device atomic_uint *occupancy [[buffer(3)]],
+                           constant CouplingUniforms &u [[buffer(4)]],
+                           uint threadIndex [[thread_position_in_grid]]) {
+    uint element = elementList[threadIndex];
+    if (flags[element] != elementActive) {
+        return;
+    }
+    uint3 cell = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
+    uint nodesX = u.ex + 1;
+    uint nodesY = u.ey + 1;
+    uint low = cell.x + nodesX * (cell.y + nodesY * cell.z);
+    uint high = low + 1 + nodesX + nodesX * nodesY;
+    float3 centre = float3(u.originX, u.originY, u.originZ) + (float3(cell) + 0.5f) * u.h
+        + 0.5f * (float3(nodes[low].displacement) + float3(nodes[high].displacement));
+    int3 target = int3(floor(centre / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
+    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
+    if (any(target < 0) || any(target >= dims)) {
+        return;
+    }
+    atomic_fetch_add_explicit(&occupancy[target.x + dims.x * (target.y + dims.y * target.z)], 1u,
+                              memory_order_relaxed);
+}
+
+// Writes the new solid flag into bit 1 of the mask, leaving the old flag in bit 0 so that
+// neighbours read a consistent picture while cells that open are being refilled.
+kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
+                          const device uchar *rigid [[buffer(1)]],
+                          const device uint *occupancy [[buffer(2)]],
+                          device Cell *state [[buffer(3)]],
+                          constant CouplingUniforms &u [[buffer(4)]],
+                          uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
+        return;
+    }
+    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+    int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
+    int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
+    uint count = occupancy[tid.x + u.regionNx * (tid.y + u.regionNy * tid.z)];
+    bool wasSolid = (mask[index] & 1) != 0;
+    bool solid = rigid[index] != 0 || count >= u.threshold;
+
+    if (wasSolid && !solid) {
+        const int3 offsets[6] = {
+            int3(-1, 0, 0), int3(1, 0, 0), int3(0, -1, 0), int3(0, 1, 0), int3(0, 0, -1), int3(0, 0, 1),
+        };
+        Cell sum = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+        float neighbours = 0.0f;
+        for (int n = 0; n < 6; ++n) {
+            int3 q = cell + offsets[n];
+            if (any(q < 0) || any(q >= dims)) {
+                continue;
+            }
+            int neighbour = q.x + dims.x * (q.y + dims.y * q.z);
+            if ((mask[neighbour] & 1) != 0) {
+                continue;
+            }
+            Cell c = state[neighbour];
+            sum.rho += c.rho;
+            sum.mx += c.mx;
+            sum.my += c.my;
+            sum.mz += c.mz;
+            sum.energy += c.energy;
+            neighbours += 1.0f;
+        }
+        Cell fill = {u.ambientDensity, 0.0f, 0.0f, 0.0f, u.ambientPressure / (u.gamma - 1.0f)};
+        if (neighbours > 0.0f) {
+            float scale = 1.0f / neighbours;
+            fill.rho = sum.rho * scale;
+            fill.mx = sum.mx * scale;
+            fill.my = sum.my * scale;
+            fill.mz = sum.mz * scale;
+            fill.energy = sum.energy * scale;
+        }
+        state[index] = fill;
+    }
+    mask[index] = (wasSolid ? 1 : 0) | (solid ? 2 : 0);
+}
+
+kernel void remaskApply(device uchar *mask [[buffer(0)]],
+                        device uint *occupancy [[buffer(1)]],
+                        constant CouplingUniforms &u [[buffer(2)]],
+                        uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
+        return;
+    }
+    int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
+    int index = cell.x + int(u.fluidNx) * (cell.y + int(u.fluidNy) * cell.z);
+    mask[index] = mask[index] >> 1;
+    occupancy[tid.x + u.regionNx * (tid.y + u.regionNy * tid.z)] = 0;
+}

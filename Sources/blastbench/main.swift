@@ -1,0 +1,322 @@
+import BlastCore
+import BlastRender
+import Foundation
+import ImageIO
+import Metal
+import UniformTypeIdentifiers
+import simd
+
+// Command-line companion to the app: measures solver throughput, compares a surface burst
+// against the Kinney-Graham curve and renders offscreen snapshots.
+//
+//   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame] [--full]
+//   blastbench structure [--preset wall|box] [--contact]
+//   blastbench validate [--dx 0.25]
+//   blastbench slab [--history] [--sensitivity]
+//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
+
+let arguments = Array(CommandLine.arguments.dropFirst())
+let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
+
+func option(_ name: String) -> String? {
+    guard let index = arguments.firstIndex(of: "--\(name)"), index + 1 < arguments.count else { return nil }
+    return arguments[index + 1]
+}
+
+func flag(_ name: String) -> Bool { arguments.contains("--\(name)") }
+
+func preset(named name: String?) -> ScenarioPreset {
+    switch name {
+    case "open": .openGround
+    case "single": .singleBuilding
+    case "courtyard": .courtyard
+    case "wall": .blastWall
+    case "box": .concreteBox
+    case "frame": .frame
+    default: .streetCanyon
+    }
+}
+
+func pad(_ text: String, _ width: Int) -> String {
+    text.count >= width ? text : String(repeating: " ", count: width - text.count) + text
+}
+
+func format(_ value: Double, _ digits: Int = 1) -> String { String(format: "%.\(digits)f", value) }
+
+guard let device = MTLCreateSystemDefaultDevice() else {
+    print("No Metal device available")
+    exit(1)
+}
+
+func runThroughput() throws {
+    let scenario = preset(named: option("preset")).scenario
+    let event = scenario.acousticCrossingTime
+    print("Device: \(device.name)")
+    print(
+        "Scenario: \(scenario.name), \(Int(scenario.charge.mass)) kg TNT equivalent, "
+            + "\(format(event * 1000, 0)) ms event (charge to farthest corner at ambient sound speed)")
+    print("")
+    print(
+        pad("cell", 8) + pad("cells", 12) + pad("memory", 10) + pad("steps/s", 10) + pad("Mcell/s", 10)
+            + pad("slow-mo", 10) + pad("steps", 8) + pad("event wall time", 20))
+
+    var stepsPerMetre = 0.0
+    for cellSize in [Float(0.5), 0.25, 0.125] {
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        let cells = solver.grid.cellCount
+        // Run the whole event unless it would take minutes; then time a sample and extrapolate
+        // the step count from the previous, coarser run.
+        let runWholeEvent = cells < 20_000_000 || flag("full")
+        let start = ContinuousClock.now
+        var steps = 0
+        if runWholeEvent {
+            steps = solver.advance(until: event).steps
+        } else {
+            steps = solver.advance(steps: 192).steps
+        }
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+        let stepRate = Double(steps) / seconds
+
+        var totalSteps = Double(steps)
+        var wallTime = seconds
+        if runWholeEvent {
+            stepsPerMetre = Double(steps) * Double(cellSize)
+        } else {
+            // The step count scales inversely with cell size.
+            totalSteps = stepsPerMetre / Double(cellSize)
+            wallTime = totalSteps / stepRate
+        }
+        let slowMotion = wallTime / event
+        print(
+            pad("\(format(Double(cellSize), 3)) m", 8)
+                + pad("\(format(Double(cells) / 1e6, 1)) M", 12)
+                + pad("\(format(Double(solver.memoryFootprint) / 1e9, 2)) GB", 10)
+                + pad(format(stepRate, 0), 10)
+                + pad(format(stepRate * Double(cells) / 1e6, 0), 10)
+                + pad("\(format(slowMotion, 0))x", 10)
+                + pad(format(totalSteps, 0), 8)
+                + pad("\(format(wallTime, 1)) s" + (runWholeEvent ? "" : " (est.)"), 20))
+    }
+}
+
+func runValidation() throws {
+    let scenario = ScenarioPreset.openGround.scenario
+    var cellSizes: [Float] = [0.5, 0.25, 0.125]
+    if let text = option("dx"), let value = Float(text) {
+        cellSizes = [value]
+    }
+    let equivalentMass = Double(2 * scenario.charge.mass)
+    print("Surface burst of \(Int(scenario.charge.mass)) kg on rigid ground versus Kinney-Graham free air")
+    print("for \(Int(equivalentMass)) kg (the ground acts as a mirror).")
+
+    var peaks: [[Double]] = []
+    var impulses: [[Double]] = []
+    for cellSize in cellSizes {
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        if let theta = option("theta").flatMap({ Float($0) }) { solver.configuration.limiterTheta = theta }
+        if let cfl = option("cfl").flatMap({ Float($0) }) { solver.configuration.cfl = cfl }
+        if let cells = option("balloon").flatMap({ Float($0) }) {
+            solver.configuration.minimumBalloonCells = cells
+        }
+        if flag("hll") { solver.configuration.riemannSolver = .hll }
+        try solver.load(scenario)
+        solver.advance(until: 0.1)
+        peaks.append(
+            solver.gaugeHistories.map { history in
+                Double((history.map(\.pressure).max() ?? 0) - scenario.atmosphere.pressure) / 1000
+            })
+        impulses.append(
+            scenario.gauges.map { gauge in
+                let cell = solver.nearestFluidCell(to: gauge.position)
+                return Double(solver.impulse(cell.i, cell.j, cell.k))
+            })
+    }
+
+    func table(_ title: String, _ columns: [[Double]], reference: (Double) -> Double) {
+        print("\n\(title)")
+        print(
+            pad("range", 8) + pad("reference", 12)
+                + cellSizes.map { pad("dx \(format(Double($0), 3))", 16) }.joined())
+        for (row, gauge) in scenario.gauges.enumerated() {
+            let range = Double(simd_distance(gauge.position, scenario.charge.position))
+            let expected = reference(range)
+            let cellsText = columns.map { column in
+                pad("\(format(column[row])) (\(format(100 * column[row] / expected, 0))%)", 16)
+            }.joined()
+            print(pad("\(format(range, 0)) m", 8) + pad(format(expected), 12) + cellsText)
+        }
+    }
+    table("Peak overpressure (kPa)", peaks) {
+        KinneyGraham.peakOverpressure(mass: equivalentMass, range: $0) / 1000
+    }
+    table("Positive impulse (Pa s)", impulses) {
+        KinneyGraham.positiveImpulse(mass: equivalentMass, range: $0)
+    }
+}
+
+func runSnapshot() throws {
+    var scenario = preset(named: option("preset")).scenario
+    if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
+    let time = option("time").flatMap { Double($0) } ?? 0.03
+    let output = option("out") ?? "snapshot.png"
+    let width = option("width").flatMap { Int($0) } ?? 1600
+    let height = option("height").flatMap { Int($0) } ?? 1000
+
+    let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    let started = ContinuousClock.now
+    var sleptAt: Double?
+    while solver.time < time - 1e-9 {
+        let result = solver.advance(steps: 64, timeLimit: time)
+        if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
+        if result.steps == 0 || !result.isStable { break }
+    }
+    let wall = ContinuousClock.now - started
+    solver.refreshVisualization()
+
+    let renderer = try SceneRenderer(device: device)
+    renderer.setScene(scenario, solver: solver)
+    switch option("mode") {
+    case "now": renderer.settings.mode = .overpressure
+    case "impulse": renderer.settings.mode = .impulse
+    default: renderer.settings.mode = .peakOverpressure
+    }
+    renderer.settings.showWave = !flag("no-wave")
+    if flag("highlight") {
+        renderer.settings.highlight = scenario.structure?.solids.first ?? scenario.boxes.first
+    }
+    if let opacity = option("opacity").flatMap({ Float($0) }) { renderer.settings.waveOpacity = opacity }
+    if let scale = option("scale").flatMap({ Float($0) }) { renderer.settings.pressureScale = scale }
+    renderer.settings.showCharge = time == 0
+    var camera = OrbitCamera.framing(scenario)
+    if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
+    if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
+    if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+
+    guard
+        let frame = renderer.snapshot(
+            commandQueue: solver.commandQueue, width: width, height: height, camera: camera),
+        let destination = CGImageDestinationCreateWithURL(
+            URL(fileURLWithPath: output) as CFURL, UTType.png.identifier as CFString, 1, nil)
+    else {
+        print("Could not render the snapshot")
+        exit(1)
+    }
+    CGImageDestinationAddImage(destination, frame.image, nil)
+    CGImageDestinationFinalize(destination)
+    print(
+        "Wrote \(output): t = \(format(solver.time * 1000)) ms after \(solver.stepCount) steps, "
+            + "frame rendered in \(format(frame.gpuSeconds * 1000, 2)) ms")
+    print(
+        "Simulated in \(format(Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18, 1)) s"
+            + (sleptAt.map { "; the air went quiet and was frozen at \(format($0 * 1000, 0)) ms" } ?? ""))
+    if let summary = solver.structure?.summary() {
+        print(
+            "Structure: \(summary.activeElements) elements intact, \(summary.erodedElements) failed, "
+                + "peak deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm, "
+                + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%")
+    }
+}
+
+/// Times the structural solver on its own, without the air.
+func runStructure() throws {
+    guard let model = preset(named: option("preset") ?? "box").scenario.structure else {
+        print("That preset has no deformable structure; try --preset wall or --preset box.")
+        return
+    }
+    let solver = try StructureSolver(device: device, model: model)
+    if flag("contact") { solver.contactMode = .always }
+    solver.advance(steps: 200)
+    let steps = 4000
+    let start = ContinuousClock.now
+    solver.advance(steps: steps)
+    let elapsed = ContinuousClock.now - start
+    let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+    let stepSeconds = Double(solver.criticalTimeStep)
+    print("Device: \(device.name)")
+    print(
+        "Structure: \(solver.elementCount) hexahedral elements of \(format(Double(model.elementSize) * 1000, 1)) mm, "
+            + "\(model.material.name.lowercased()), time step \(format(stepSeconds * 1e6, 1)) µs, "
+            + "contact \(solver.contactMode == .always ? "on" : "off until something fails")")
+    print(
+        "\(format(Double(steps) / seconds, 0)) steps/s, "
+            + "\(format(Double(steps) * Double(solver.elementCount) / seconds / 1e6, 0)) M element-updates/s, "
+            + "\(format(seconds / (Double(steps) * stepSeconds), 0))x slower than real time")
+}
+
+/// Compares the structural model with the measured response of the Blast Blind Simulation
+/// Contest's normal-strength slab.
+func runSlab() throws {
+    let load = SlabBenchmark.load
+    print("Blast Blind Simulation Contest slab (normal-strength concrete, Grade 60 bars)")
+    print(
+        "Load: peak \(format(Double((load.history.map(\.y).max() ?? 0) / 6894.76))) psi after scaling the "
+            + "hand-read record to the stated \(format(Double(load.impulse / 6.89476), 0)) psi ms")
+    print(
+        "Measured: peak \(format(Double(SlabBenchmark.measuredPeak) * 1000, 0)) mm at about "
+            + "\(format(Double(SlabBenchmark.measuredPeakTime) * 1000, 0)) ms, "
+            + "\(format(Double(SlabBenchmark.measuredResidual) * 1000, 0)) mm at the end of the record\n")
+    print(
+        pad("layers", 8) + pad("elements", 10) + pad("strength", 14) + pad("peak", 10) + pad("vs test", 9)
+            + pad("at", 8) + pad("residual", 10) + pad("vs test", 9) + pad("failed", 8) + pad("run time", 10))
+    let cases: [(Int, SlabBenchmark.RateTreatment)] = [
+        (8, .strainRate), (4, .strainRate), (8, .designFactors), (8, .none),
+    ]
+    for (layers, rate) in cases {
+        let result = try SlabBenchmark.run(device: device, elementsThroughThickness: layers, rate: rate)
+        let label =
+            ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
+        print(
+            pad("\(layers)", 8) + pad("\(result.elementCount)", 10) + pad(label, 14)
+                + pad("\(format(Double(result.peak) * 1000, 0)) mm", 10)
+                + pad("\(format(Double(result.peak / SlabBenchmark.measuredPeak) * 100, 0))%", 9)
+                + pad("\(format(Double(result.peakTime) * 1000, 0)) ms", 8)
+                + pad("\(format(Double(result.residual) * 1000, 0)) mm", 10)
+                + pad("\(format(Double(result.residual / SlabBenchmark.measuredResidual) * 100, 0))%", 9)
+                + pad("\(result.summary.erodedElements)", 8)
+                + pad("\(format(result.wallSeconds, 1)) s", 10))
+        if flag("history") {
+            for sample in result.history where Int((sample.x * 1000).rounded()) % 5 == 0 {
+                print(
+                    "    t = \(format(Double(sample.x) * 1000, 2)) ms   \(format(Double(sample.y) * 1000, 1)) mm"
+                )
+            }
+        }
+    }
+
+    guard flag("sensitivity") else { return }
+    print("\nSensitivity of the eight-layer, rate-law result to things the source does not pin down:")
+    let variants: [(String, Float, (inout StructureMaterial) -> Void)] = [
+        ("load 5% lower", 0.95, { _ in }),
+        ("load 5% higher", 1.05, { _ in }),
+        ("aggregate 10 mm instead of 16 mm", 1, { $0.aggregateSize = 0.010 }),
+        ("crack spacing 50 mm instead of 100 mm", 1, { $0.crackSpacing = 0.05 }),
+        ("crack spacing 200 mm", 1, { $0.crackSpacing = 0.2 }),
+        ("fracture energy halved", 1, { $0.fractureEnergy *= 0.5 }),
+        ("tensile strength 20% lower", 1, { $0.tensileStrength *= 0.8 }),
+    ]
+    for (label, scale, adjust) in variants {
+        let result = try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust)
+        print(
+            pad(label, 40) + pad("\(format(Double(result.peak) * 1000, 0)) mm", 10)
+                + pad("\(format(Double(result.peak / SlabBenchmark.measuredPeak) * 100, 0))%", 8)
+                + pad("failed \(result.summary.erodedElements)", 14))
+    }
+}
+
+do {
+    switch command {
+    case "slab": try runSlab()
+    case "throughput": try runThroughput()
+    case "structure": try runStructure()
+    case "validate": try runValidation()
+    case "snapshot": try runSnapshot()
+    default:
+        print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
+        exit(2)
+    }
+} catch {
+    print("Error: \(error)")
+    exit(1)
+}
