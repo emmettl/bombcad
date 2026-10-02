@@ -93,6 +93,15 @@ struct GaugeTrace: Identifiable {
     var peak: Double = 0
 }
 
+/// The structure's response at one moment of the run.
+struct StructureSample: Identifiable {
+    let id: Int
+    /// Milliseconds since detonation.
+    var time: Double
+    /// Largest deflection of the intact structure, in millimetres.
+    var deflection: Double
+}
+
 struct SimulationStats {
     /// Cells advanced by one time step per second of GPU time.
     var cellUpdatesPerSecond: Double = 0
@@ -130,6 +139,10 @@ final class SimulationModel {
     /// Damage and deflection of the deformable structure, if the scenario has one.
     private(set) var structureSummary: StructureSummary?
     private(set) var structureSubsteps = 0
+    /// Deflection of the structure through the run, sampled about ten times a second.
+    private(set) var structureHistory: [StructureSample] = []
+    /// Largest deflection recorded so far, in millimetres.
+    var peakDeflection: Double { structureHistory.map(\.deflection).max() ?? 0 }
     private(set) var memoryFootprint = 0
     private(set) var chargeIsBlocked = false
     private(set) var errorMessage: String?
@@ -371,6 +384,7 @@ final class SimulationModel {
         memoryFootprint = solver?.memoryFootprint ?? 0
         structureSummary = solver?.structure?.summary()
         structureSubsteps = solver?.structureSubsteps ?? 0
+        structureHistory = []
         chargeIsBlocked = scenario.chargeIsBlocked
         time = 0
         stepCount = 0
@@ -488,6 +502,14 @@ final class SimulationModel {
         guard let solver else { return }
         lastTracePublication = .now
         structureSummary = solver.structure?.summary()
+        if let summary = structureSummary, !summary.hasBlownUp,
+            structureHistory.last?.time != solver.time * 1000
+        {
+            structureHistory.append(
+                StructureSample(
+                    id: structureHistory.count, time: solver.time * 1000,
+                    deflection: Double(summary.maxDisplacement) * 1000))
+        }
         if structureSummary?.hasBlownUp == true {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."
             isRunning = false

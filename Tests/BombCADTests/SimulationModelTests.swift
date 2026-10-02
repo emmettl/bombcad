@@ -108,12 +108,20 @@ struct SimulationModelTests {
         #expect(model.errorMessage == nil)
         #expect(!summary.hasBlownUp)
         #expect(summary.erodedElements > 0, "500 kg at 6 m should shear the wall off its base")
+        // The deflection history runs to the end of the run and agrees with the summary.
+        let last = try #require(model.structureHistory.last)
+        #expect(abs(last.time - model.time * 1000) < 1e-6)
+        #expect(abs(last.deflection - Double(summary.maxDisplacement) * 1000) < 1e-6)
+        #expect(model.peakDeflection >= last.deflection)
+        #expect(
+            zip(model.structureHistory, model.structureHistory.dropFirst()).allSatisfy { $0.time < $1.time })
         #expect(summary.maxDisplacement > 0.1)
 
         // Changing the material rebuilds an undamaged structure.
         model.settings.material = .masonry
         model.settingsChanged()
         try await waitUntil { model.time == 0 && model.structureSummary?.erodedElements == 0 }
+        #expect(model.structureHistory.isEmpty)
         // Scenarios without a structure report none.
         model.select(.openGround)
         model.settingsChanged()
