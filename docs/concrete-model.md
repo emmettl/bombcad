@@ -206,7 +206,9 @@ Built-in materials:
 In the built-in layouts, walls and slabs have 12 mm bars at 200 mm centres both ways in each
 face (565 mm²/m, centred 40 mm below the surface); the frame's slabs have 754 mm²/m and its
 columns 2% longitudinal steel with 0.4% ties. In the editor, reinforcement is assigned
-automatically from each piece's proportions.
+automatically from each piece's proportions unless set by hand for that piece: none, a mat of
+given bar area and depth in one or both faces, or a column's longitudinal and tie ratios
+(`Reinforcement` in `StructureTypes.swift`).
 
 ## How the model got here
 

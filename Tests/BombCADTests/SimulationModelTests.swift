@@ -153,6 +153,16 @@ struct SimulationModelTests {
         // 4 m by 3 m by 250 mm less a 1 m cube's worth of wall, in 62.5 mm elements.
         #expect(elements == (64 * 48 - 16 * 16) * 4)
 
+        // The wall's reinforcement can be set by hand, and survives saving and opening.
+        model.setReinforcement(.mats(areaPerMetre: 1000e-6, depth: 0.05, bothFaces: false), ofSolid: 0)
+        let custom = try #require(model.settings.scenario.structure)
+        #expect(custom.reinforcement.count == 1)
+        let reopened = try JSONDecoder().decode(
+            Scenario.self, from: ScenarioDocument.encode(model.settings.scenario))
+        #expect(reopened.structure?.reinforcement(of: 0) == custom.reinforcement(of: 0))
+        model.setReinforcement(.none, ofSolid: 0)
+        #expect(model.settings.scenario.structure?.reinforcement.isEmpty == true)
+
         // Removing the wall removes the structure; removing the block empties the layout.
         model.removeSolid(at: 0)
         model.removeBlock(at: 0)

@@ -37,7 +37,7 @@ wheel to zoom. Space runs and pauses, ⌘R resets.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
-pressure gauges, with undo (⌘Z). The toolbar opens and saves layouts as JSON and lets you move
+pressure gauges, sets each wall's reinforcement, and has undo (⌘Z). The toolbar opens and saves layouts as JSON and lets you move
 the charge, or the selected gauge, by clicking the ground. Gauge and deflection histories export
 as CSV from beside the chart.
 

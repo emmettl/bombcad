@@ -191,6 +191,20 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
 
 /// Reinforcement smeared uniformly through a region. `ratio` is steel area per unit area of
 /// concrete for bars running along x, y and z.
+/// How one solid of a structure is reinforced.
+public enum Reinforcement: Sendable, Hashable, Codable {
+    /// Worked out from the solid's shape: a mat of bars in each face of a wall or slab (565 mm²
+    /// per metre each way, centred 40 mm in), or 2% steel along a column with 0.4% ties.
+    case automatic
+    /// Plain concrete.
+    case none
+    /// A mat of bars, the same each way, centred `depth` in from one or both faces of a wall or
+    /// slab. With one face, it is the face on the low side of the thin axis.
+    case mats(areaPerMetre: Float, depth: Float, bothFaces: Bool)
+    /// Steel along the solid's longest dimension and ties across it, as fractions of the area.
+    case column(longitudinal: Float, ties: Float)
+}
+
 public struct ReinforcementLayer: Sendable, Hashable, Codable {
     public var region: Box
     public var ratio: SIMD3<Float>
@@ -232,6 +246,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Clamp the nodes that sit on the ground plane.
     public var fixedBase: Bool
     public var reinforcement: [ReinforcementLayer] = []
+    /// How each solid is reinforced, by index into `solids`; solids beyond the end of this list
+    /// are reinforced automatically. Applied by `autoReinforce()`.
+    public var solidReinforcement: [Reinforcement] = []
 
     public init(
         solids: [Box], openings: [Box] = [], material: StructureMaterial = .reinforcedConcrete,
@@ -289,30 +306,63 @@ public struct StructureModel: Sendable, Hashable, Codable {
         if faces.high { reinforcement.append(band(centre: slab.max[thicknessAxis] - depth)) }
     }
 
-    /// Replaces the reinforcement with a standard arrangement worked out from the shape of each
-    /// solid: a slab or wall (one dimension much smaller than the others) gets a mat of bars in
-    /// both faces; anything stockier is treated as a column, with 2% steel along its length and
-    /// ties across it.
+    /// How solid `index` is reinforced.
+    public func reinforcement(of index: Int) -> Reinforcement {
+        solidReinforcement.indices.contains(index) ? solidReinforcement[index] : .automatic
+    }
+
+    /// Sets how solid `index` is reinforced. Call `autoReinforce()` afterwards to apply it.
+    public mutating func setReinforcement(_ spec: Reinforcement, of index: Int) {
+        guard solids.indices.contains(index) else { return }
+        while solidReinforcement.count <= index { solidReinforcement.append(.automatic) }
+        solidReinforcement[index] = spec
+    }
+
+    /// Removes solid `index` together with its reinforcement setting.
+    public mutating func removeSolid(at index: Int) {
+        guard solids.indices.contains(index) else { return }
+        solids.remove(at: index)
+        if solidReinforcement.indices.contains(index) { solidReinforcement.remove(at: index) }
+    }
+
+    /// Replaces the reinforcement with the arrangement each solid asks for. Solids left as
+    /// `.automatic` get a standard arrangement worked out from their shape: a slab or wall (one
+    /// dimension much smaller than the others) gets a mat of bars in both faces; anything
+    /// stockier is treated as a column, with 2% steel along its length and ties across it.
     ///
     /// - Parameters:
-    ///   - areaPerMetre: Bar area per metre width of each mat, each way, in m²/m.
-    ///   - depth: Distance from a face to the centre of its mat.
+    ///   - areaPerMetre: Bar area per metre width of each automatic mat, each way, in m²/m.
+    ///   - depth: Distance from a face to the centre of its automatic mat.
     public mutating func autoReinforce(areaPerMetre: Float = 565e-6, depth: Float = 0.04) {
         reinforcement = []
-        for solid in solids {
+        for (index, solid) in solids.enumerated() {
             let size = solid.size
             let thin = (0..<3).min { size[$0] < size[$1] } ?? 0
+            let long = (0..<3).max { size[$0] < size[$1] } ?? 2
             let others = (0..<3).filter { $0 != thin }
             let isSlab = size[thin] <= 0.6 && others.allSatisfy { size[$0] >= 3 * size[thin] }
-            if isSlab {
-                addMat(
-                    to: solid, thicknessAxis: thin, areaPerMetre: areaPerMetre,
-                    depth: Swift.min(depth, size[thin] / 2))
-            } else {
-                let long = (0..<3).max { size[$0] < size[$1] } ?? 2
-                var ratio = SIMD3<Float>(repeating: 0.004)
-                ratio[long] = 0.02
+            func column(_ longitudinal: Float, _ ties: Float) {
+                var ratio = SIMD3<Float>(repeating: ties)
+                ratio[long] = longitudinal
                 reinforcement.append(ReinforcementLayer(region: solid, ratio: ratio))
+            }
+            switch reinforcement(of: index) {
+            case .automatic:
+                if isSlab {
+                    addMat(
+                        to: solid, thicknessAxis: thin, areaPerMetre: areaPerMetre,
+                        depth: Swift.min(depth, size[thin] / 2))
+                } else {
+                    column(0.02, 0.004)
+                }
+            case .none:
+                break
+            case .mats(let area, let matDepth, let bothFaces):
+                addMat(
+                    to: solid, thicknessAxis: thin, areaPerMetre: area,
+                    depth: Swift.min(matDepth, size[thin] / 2), faces: (true, bothFaces))
+            case .column(let longitudinal, let ties):
+                column(longitudinal, ties)
             }
         }
     }
@@ -520,5 +570,56 @@ enum ShaderLibrary {
             return try String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
         return try device.makeLibrary(source: source, options: nil)
+    }
+}
+
+// MARK: - Decoding layouts saved by earlier versions
+
+extension StructureMaterial {
+    /// Decodes a material saved by any version: properties added since it was saved take
+    /// their standard values.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        model = try container.decode(MaterialModel.self, forKey: .model)
+        density = try container.decode(Float.self, forKey: .density)
+        youngsModulus = try container.decode(Float.self, forKey: .youngsModulus)
+        poissonRatio = try container.decode(Float.self, forKey: .poissonRatio)
+        func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) throws -> T {
+            try container.decodeIfPresent(T.self, forKey: key) ?? fallback
+        }
+        yieldStress = try value(.yieldStress, yieldStress)
+        hardeningModulus = try value(.hardeningModulus, hardeningModulus)
+        failureStrain = try value(.failureStrain, failureStrain)
+        compressiveStrength = try value(.compressiveStrength, compressiveStrength)
+        tensileStrength = try value(.tensileStrength, tensileStrength)
+        fractureEnergy = try value(.fractureEnergy, fractureEnergy)
+        crushingEnergy = try value(.crushingEnergy, crushingEnergy)
+        erosionOpening = try value(.erosionOpening, erosionOpening)
+        steel = try container.decodeIfPresent(SteelProperties.self, forKey: .steel)
+        crackSpacing = try value(.crackSpacing, crackSpacing)
+        crushBand = try value(.crushBand, crushBand)
+        confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
+        aggregateSize = try value(.aggregateSize, aggregateSize)
+        crackResidual = try value(.crackResidual, crackResidual)
+        concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
+        steelRateFactor = try value(.steelRateFactor, steelRateFactor)
+        rateDependent = try value(.rateDependent, rateDependent)
+    }
+}
+
+extension StructureModel {
+    /// Decodes a structure saved by any version: properties added since it was saved take
+    /// their standard values.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        solids = try container.decode([Box].self, forKey: .solids)
+        openings = try container.decode([Box].self, forKey: .openings)
+        material = try container.decode(StructureMaterial.self, forKey: .material)
+        elementSize = try container.decode(Float.self, forKey: .elementSize)
+        fixedBase = try container.decode(Bool.self, forKey: .fixedBase)
+        reinforcement = try container.decodeIfPresent([ReinforcementLayer].self, forKey: .reinforcement) ?? []
+        solidReinforcement =
+            try container.decodeIfPresent([Reinforcement].self, forKey: .solidReinforcement) ?? []
     }
 }

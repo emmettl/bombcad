@@ -38,6 +38,9 @@ struct EditorView: View {
                         title: name(of: solids[index], index: index), box: solidBinding(index), step: 0.125,
                         isSelected: model.selection == .solid(index),
                         select: { toggle(.solid(index)) }, remove: { model.removeSolid(at: index) })
+                    if model.selection == .solid(index) {
+                        ReinforcementEditor(spec: reinforcementBinding(index))
+                    }
                 }
                 Button("Add Wall", systemImage: "plus") { model.addWall() }
                 if !solids.isEmpty {
@@ -134,10 +137,99 @@ struct EditorView: View {
             set: { box in model.editStructure { $0.openings[index] = box } })
     }
 
+    private func reinforcementBinding(_ index: Int) -> Binding<Reinforcement> {
+        Binding(
+            get: { model.settings.scenario.structure?.reinforcement(of: index) ?? .automatic },
+            set: { model.setReinforcement($0, ofSolid: index) })
+    }
+
     private func gaugeBinding(_ index: Int) -> Binding<BlastCore.Gauge> {
         Binding(
             get: { model.settings.scenario.gauges[index] },
             set: { model.settings.scenario.gauges[index] = $0 })
+    }
+}
+
+/// How the selected piece of the structure is reinforced, with the quantities for a custom
+/// arrangement in the units engineers use.
+private struct ReinforcementEditor: View {
+    @Binding var spec: Reinforcement
+
+    private enum Kind: String, CaseIterable {
+        case automatic = "Automatic"
+        case none = "None"
+        case mats = "Mats"
+        case column = "Column"
+    }
+
+    private var kind: Binding<Kind> {
+        Binding(
+            get: {
+                switch spec {
+                case .automatic: .automatic
+                case .none: .none
+                case .mats: .mats
+                case .column: .column
+                }
+            },
+            set: { kind in
+                switch kind {
+                case .automatic: spec = .automatic
+                case .none: spec = .none
+                case .mats: spec = .mats(areaPerMetre: 565e-6, depth: 0.04, bothFaces: true)
+                case .column: spec = .column(longitudinal: 0.02, ties: 0.004)
+                }
+            })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Picker("Reinforcement", selection: kind) {
+                ForEach(Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            switch spec {
+            case .mats(let area, let depth, let bothFaces):
+                number("Bar area each way", "mm²/m", Double(area * 1e6)) {
+                    spec = .mats(areaPerMetre: Float(max($0, 0)) * 1e-6, depth: depth, bothFaces: bothFaces)
+                }
+                number("Depth to bars", "mm", Double(depth * 1000)) {
+                    spec = .mats(areaPerMetre: area, depth: Float(max($0, 1)) / 1000, bothFaces: bothFaces)
+                }
+                Toggle(
+                    "Both faces",
+                    isOn: Binding(
+                        get: { bothFaces },
+                        set: { spec = .mats(areaPerMetre: area, depth: depth, bothFaces: $0) }))
+            case .column(let longitudinal, let ties):
+                number("Along its length", "%", Double(longitudinal * 100)) {
+                    spec = .column(longitudinal: Float(max($0, 0)) / 100, ties: ties)
+                }
+                number("Ties", "%", Double(ties * 100)) {
+                    spec = .column(longitudinal: longitudinal, ties: Float(max($0, 0)) / 100)
+                }
+            case .automatic, .none:
+                EmptyView()
+            }
+        }
+        .font(.callout)
+        .padding(.leading, 18)
+    }
+
+    private func number(_ title: String, _ unit: String, _ value: Double, set: @escaping (Double) -> Void)
+        -> some View
+    {
+        LabeledContent(title) {
+            HStack(spacing: 4) {
+                TextField(
+                    "", value: Binding(get: { value }, set: set),
+                    format: .number.precision(.fractionLength(0...2))
+                )
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 70)
+                Text(unit).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

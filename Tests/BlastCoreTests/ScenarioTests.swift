@@ -89,6 +89,68 @@ struct ScenarioTests {
         }
     }
 
+    @Test("Each piece of a structure is reinforced as it asks")
+    func reinforcementSettings() {
+        let wall = Box(x: 0...0.25, y: 0...4, height: 3)
+        let column = Box(x: 2...2.5, y: 0...0.5, height: 3)
+        var model = StructureModel(solids: [wall, column], elementSize: 0.0625)
+        model.autoReinforce()
+        // Automatic: a mat in each face of the wall, and the column as a column.
+        #expect(model.reinforcement.count == 3)
+        let automatic = model.reinforcement
+
+        model.setReinforcement(.none, of: 0)
+        model.setReinforcement(.column(longitudinal: 0.03, ties: 0.01), of: 1)
+        model.autoReinforce()
+        #expect(model.reinforcement == [ReinforcementLayer(region: column, ratio: SIMD3(0.01, 0.01, 0.03))])
+
+        model.setReinforcement(.mats(areaPerMetre: 1000e-6, depth: 0.05, bothFaces: false), of: 0)
+        model.autoReinforce()
+        let mat = model.reinforcement[0]
+        // One mat, 50 mm in from the low face across the wall's thickness, smeared over one
+        // element: 1000 mm²/m in a 62.5 mm band is a ratio of 1.6% each way along the wall.
+        #expect(model.reinforcement.count == 2)
+        #expect(abs((mat.region.min.x + mat.region.max.x) / 2 - 0.05) < 1e-6)
+        #expect(abs(mat.ratio.y - 0.016) < 1e-6 && abs(mat.ratio.z - 0.016) < 1e-6 && mat.ratio.x == 0)
+
+        // Removing a piece removes its setting with it, so the rest keep theirs.
+        model.removeSolid(at: 0)
+        #expect(model.solids == [column])
+        #expect(model.reinforcement(of: 0) == .column(longitudinal: 0.03, ties: 0.01))
+        model.setReinforcement(.automatic, of: 0)
+        model.autoReinforce()
+        #expect(model.reinforcement == [automatic[2]])
+    }
+
+    @Test("A layout saved before newer settings existed still opens, with their defaults")
+    func olderLayouts() throws {
+        var scenario = ScenarioPreset.blastWall.scenario
+        scenario.structure?.setReinforcement(.none, of: 0)
+        scenario.structure?.autoReinforce()
+        let data = try JSONEncoder().encode(scenario)
+        var json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var structure = try #require(json["structure"] as? [String: Any])
+        var material = try #require(structure["material"] as? [String: Any])
+        // Settings added to the material and the structure after the first saved layouts.
+        for key in ["crackResidual", "crushBand"] {
+            #expect(material.removeValue(forKey: key) != nil, "\(key) should be saved")
+        }
+        #expect(structure.removeValue(forKey: "solidReinforcement") != nil)
+        structure["material"] = material
+        json["structure"] = structure
+        let old = try JSONSerialization.data(withJSONObject: json)
+
+        let opened = try JSONDecoder().decode(Scenario.self, from: old)
+        var expected = scenario
+        expected.structure?.solidReinforcement = []
+        #expect(opened == expected)
+        #expect(opened.structure?.material.crackResidual == 0.1)
+        #expect(opened.structure?.material.crushBand == 0)
+        // The saved bars are kept as they were; the setting reads as automatic.
+        #expect(opened.structure?.reinforcement == scenario.structure?.reinforcement)
+        #expect(opened.structure?.reinforcement(of: 0) == .automatic)
+    }
+
     @Test("The Kinney-Graham reference curve has the expected shape")
     func kinneyGraham() {
         // Roughly 10 atmospheres at a scaled distance of 1 m/kg^(1/3), falling monotonically.

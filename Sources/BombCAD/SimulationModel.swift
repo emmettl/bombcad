@@ -363,11 +363,13 @@ final class SimulationModel {
     }
 
     func removeSolid(at index: Int) {
-        editStructure { structure in
-            guard structure.solids.indices.contains(index) else { return }
-            structure.solids.remove(at: index)
-        }
+        editStructure { $0.removeSolid(at: index) }
         selection = nil
+    }
+
+    /// Sets how one piece of the structure is reinforced.
+    func setReinforcement(_ spec: Reinforcement, ofSolid index: Int) {
+        editStructure { $0.setReinforcement(spec, of: index) }
     }
 
     /// Adds an opening (a window or door) to cut out of the structure.

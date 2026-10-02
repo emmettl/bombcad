@@ -70,7 +70,6 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 ### Usability, in parallel
 
 - Review the app on screen and fix what is found.
-- Individually specified reinforcement in the editor, in place of the automatic rule.
 
 ## Things tried and set aside
 
