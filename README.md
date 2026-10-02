@@ -85,6 +85,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
+| [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 
 Each model document lists its sources, its limitations and the work that would address them.
 

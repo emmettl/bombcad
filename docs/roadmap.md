@@ -32,7 +32,8 @@ dialogs were written without being seen on screen.
 
 ### Validation first
 
-More evidence is worth more than more features.
+More evidence is worth more than more features. The sources each step needs, and what is
+needed from them, are listed in [Data wanted](data-wanted.md).
 
 1. **A second and third structural test**, chosen to differ from the first: a slab with steel in
    both faces, a member that failed in shear, and a wall under a real charge. The high-strength
