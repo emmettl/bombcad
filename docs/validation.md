@@ -277,7 +277,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 60 tests. The physical checks are:
+The test suite has 61 tests. The physical checks are:
 
 **Air solver**
 
@@ -331,6 +331,7 @@ The test suite has 60 tests. The physical checks are:
 | Wall driven at 100 m/s into still air           | Piston shock and rarefaction within 2% of theory |
 | Wall driven 1.1 m at 10, 50 and 150 m/s         | Gas mass conserved within 0.5% of the true volume |
 | After the blast has gone                        | Air freezes; structure carries on              |
+| A wall broken by a 500 kg charge, run twice     | Identical to the last bit                      |
 
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.

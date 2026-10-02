@@ -133,9 +133,14 @@ shock.
 3. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
    overlap by up to an element, a crowded grid cell silently drops nodes beyond four, and
    debris more than a few metres from the structure leaves the contact grid and the air's mask.
-4. **Collapse is chaotic.** Two runs of the same collapse differ in detail, because of harmless
-   races between GPU threads (in filling the contact grid, for example) that a collapse then
-   amplifies.
+4. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
+   the same machine; but a collapse amplifies small differences, so a slightly different input
+   (a charge a centimetre away, a different batching of steps) gives a different pattern of
+   debris. Two runs used to differ even with identical input, because an element failing in a
+   pass was seen by some of its neighbours in that pass and not others, depending on thread
+   timing; a failing element is now marked first and committed in the node pass that follows.
+   Contact grid cells are also visited in node order. A cell holding more than four nodes
+   still drops whichever arrive last, which can make crowded debris piles differ between runs.
 5. **Uniform element size.** A large building at fine resolution needs many elements, and the
    time step is set by the smallest (here, every) element.
 6. **Lattice-aligned geometry only.** No inclined walls, curved shells or circular columns.
@@ -154,7 +159,6 @@ shock.
   one-element overlap and the bumpiness.
 - **Coarser elements away from the damage**, or shell and beam elements for thin members, to
   make whole buildings affordable.
-- **Reproducible collapse**, by making the contact grid's fill order deterministic.
 
 ## Sources
 

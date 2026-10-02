@@ -135,7 +135,11 @@ struct StructureNode {
     uint flags;  // bits 0-2: x, y, z held still; bit 3: velocity prescribed (never updated)
 };
 
-enum ElementFlag { elementEmpty = 0, elementActive = 1, elementEroded = 2 };
+// An element that fails is first marked as failing, which the other elements still treat as
+// intact for the rest of that pass, and becomes eroded in the node pass that follows. Without
+// the intermediate mark, whether a neighbour saw the failure in the same pass would depend on
+// thread timing, and two runs of a collapse would differ.
+enum ElementFlag { elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3 };
 
 // Time step of the current substep. When coupled, each fluid step is split into the fewest
 // equal substeps that respect the structural stability limit; surplus dispatches do nothing.
@@ -760,7 +764,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
     ElementForces out;
     if (eroded) {
-        flags[element] = elementEroded;
+        flags[element] = elementFailing;
         failureGate[0] = 1;
         for (uint a = 0; a < 8; ++a) {
             out.force[a] = float3(0.0f);
@@ -851,7 +855,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             bool inside = all(neighbour >= 0) && all(neighbour < dims);
             uint neighbourFlag =
                 inside ? uint(flags[neighbour.x + dims.x * (neighbour.y + dims.y * neighbour.z)]) : 0u;
-            if (neighbourFlag == elementActive) {
+            if (neighbourFlag == elementActive || neighbourFlag == elementFailing) {
                 continue;
             }
             // The face's four corners, in order around its perimeter.
@@ -977,9 +981,21 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                 if ((head >> 3) != u.stamp) {
                     continue;
                 }
+                // Threads fill a cell's slots in whatever order they arrive. Visiting them in
+                // node order makes the sum of forces, and so the whole run, repeatable.
                 uint count = min(head & 7u, contactSlots);
+                uint members[contactSlots];
                 for (uint slot = 0; slot < count; ++slot) {
-                    uint otherIndex = slots[target * contactSlots + slot];
+                    uint value = slots[target * contactSlots + slot];
+                    uint place = slot;
+                    while (place > 0 && members[place - 1] > value) {
+                        members[place] = members[place - 1];
+                        --place;
+                    }
+                    members[place] = value;
+                }
+                for (uint slot = 0; slot < count; ++slot) {
+                    uint otherIndex = members[slot];
                     if (otherIndex == index) {
                         continue;
                     }
@@ -1025,7 +1041,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
 // Gathers element forces at every node and advances velocity and position.
 kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device ElementForces *forces [[buffer(1)]],
-                           const device uchar *flags [[buffer(2)]],
+                           device uchar *flags [[buffer(2)]],
                            const device StepControl &control [[buffer(3)]],
                            constant StructureUniforms &u [[buffer(4)]],
                            const device uint *nodeList [[buffer(5)]],
@@ -1042,6 +1058,14 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     StructureNode node = nodes[index];
 
     int3 dims = int3(u.ex, u.ey, u.ez);
+    // Each element's failure is committed by its lowest corner. The gather below only asks
+    // whether an element is active, which failing and eroded elements are not.
+    if (all(int3(tid) < dims)) {
+        int own = int(tid.x) + dims.x * (int(tid.y) + dims.y * int(tid.z));
+        if (flags[own] == elementFailing) {
+            flags[own] = elementEroded;
+        }
+    }
     float3 force = float3(0.0f);
     for (uint a = 0; a < 8; ++a) {
         // This node is corner `a` of the element offset by -a.

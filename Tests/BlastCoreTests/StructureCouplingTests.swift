@@ -353,6 +353,33 @@ struct StructureCouplingTests {
         }
     }
 
+    @Test("A wall broken by the blast, run twice, gives the same answer to the last bit")
+    func repeatableBreach() throws {
+        // Elements failing beside faces the air is loading, and debris colliding, are where
+        // thread timing could leak in.
+        func run() throws -> (nodes: [StructureNode], failed: Int) {
+            var scenario = ScenarioPreset.blastWall.scenario
+            scenario.charge.mass = 500
+            let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+            let structure = try #require(solver.structure)
+            // Uneven batches, as the app runs them.
+            for steps in [7, 64, 3, 128, 1, 256, 256, 256] {
+                solver.advance(steps: steps)
+            }
+            var copy: [StructureNode] = []
+            structure.mutateNodes { copy = Array($0) }
+            return (copy, structure.summary().erodedElements)
+        }
+        let first = try run()
+        let second = try run()
+        #expect(first.failed > 100, "only \(first.failed) elements failed")
+        #expect(first.failed == second.failed)
+        let differing = zip(first.nodes, second.nodes).filter {
+            $0.0.displacement != $0.1.displacement || $0.0.velocity != $0.1.velocity
+        }.count
+        #expect(differing == 0, "\(differing) of \(first.nodes.count) nodes differ")
+    }
+
     // MARK: Long runs
 
     @Test("Once the blast has passed, the air is frozen and the structure carries on alone")
