@@ -220,7 +220,7 @@ Reading these:
 - **Incident impulse is 13% to 23% low on every grid**, so this shortfall is in the source
   model, not the resolution. It matters for objects the wave passes over, less for surfaces it
   strikes.
-- **Arrival times are within 2% to 8%**, slightly early.
+- **Arrival times are within 8%**, slightly early.
 
 Only three points of the reference are available, at scaled distances of 1.1, 2.3 and
 5 m/kg^(1/3). Nothing is known about agreement closer in or farther out.
@@ -247,7 +247,8 @@ rigid ground is equivalent to one of twice the mass in free air):
 
 This comparison is harsher than the first, and less fair. Real ground is not perfectly rigid:
 test data for surface bursts, which Kingery–Bulmash fits, correspond to about 1.8 times the mass
-in free air rather than 2. At 10 m the two references differ by about 30% in peak pressure.
+in free air rather than 2. At 10 m the Kinney–Graham peak is about a quarter higher than the
+Kingery–Bulmash one.
 The overpressure formula was confirmed against a published copy; the impulse formula was written
 from memory and could not be.
 

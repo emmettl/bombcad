@@ -66,9 +66,9 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 
 Two comparisons with the outside world, both in the [validation notes](docs/validation.md):
 
-- **Blast loads.** The impulse on a rigid wall is within 5% to 10% of the Kingery–Bulmash
-  reference at the three stand-offs checked. Peak pressures are under-resolved, more so close
-  to the charge.
+- **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 10% of
+  the Kingery–Bulmash reference at the three stand-offs checked. Peak pressures are
+  under-resolved, more so close to the charge.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
   model predicts a peak deflection of 108 mm where 108 mm was measured, with no material
   constant fitted to the test. That agreement is partly luck and the result is sensitive.
