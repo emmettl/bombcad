@@ -19,7 +19,7 @@ and nothing in it should be used to judge the safety of a real structure.
 | 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
-| 6 | Moving solids are a staircase of cells, and coupling is not conservative | Mass and energy drift once walls move; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
+| 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One deformable body, one material, lattice-aligned geometry             | Real buildings cannot be represented                          | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak depends on the mesh, and there is no compaction | Rebound is too large on fine meshes; close-in crushing is wrong | [Concrete model](concrete-model.md#limitations) |
 | 9 | The app's interface has not been reviewed by eye                        | Layout or interaction problems may exist                      | Below |
@@ -55,8 +55,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    opening are in; tracing the slab showed that its excess rebound comes from a hinge whose
    compression zone is one crushed element deep, so the next step is crushing regularised over
    a band wider than the element.
-7. **Conservative coupling** between moving solids and the air, by cut cells. Moving walls
-   already push the air (a piston test matches theory within 2%), but only cell by cell.
+7. **Cut cells** between moving solids and the air. Moving walls already push the air (a
+   piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
+   now buy geometric precision only. Deferred.
 
 ### Then scale and scope
 

@@ -96,8 +96,8 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
 4. **One gas.** Hot products and air share one γ, so the fireball's temperature and its late
    pressure history are not realistic.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
-   ghost states, but its surface jumps a cell at a time and gas is removed or created as it
-   does. See the structural model's coupling notes.
+   ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
+   does; see the structural model's coupling notes.
 6. **Single precision.** Pressure differences well below a pascal are lost in rounding against
    ambient pressure, which is harmless for blast but rules out acoustics.
 

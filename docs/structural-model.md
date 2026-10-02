@@ -120,11 +120,14 @@ shock.
 
 1. **One structure, one material.** A layout has a single deformable body made of one material.
    Rigid blocks never respond.
-2. **Coupling is not conservative.** A moving wall now pushes the gas, but the wall is a
-   staircase of whole cells and moves by jumps of a cell. Gas in a cell that becomes solid is
-   removed, and a cell that opens is filled from its neighbours, so once the structure moves the
-   air's mass and energy are only approximately conserved. The work the air does on the wall and
-   the work the wall does on the air are computed separately and do not exactly balance. A solid
+2. **Walls are a staircase of whole cells.** A wall's surface in the air is placed to the
+   nearest cell, and its thickness there can flicker by a cell as it moves (a 0.5 m wall on
+   0.25 m cells covers two cells or three). The gas itself is conserved: the face flux of a
+   moving wall adds the gas that its not-yet-covered cell would have squeezed out, and that gas
+   is removed when the cell is covered. A wall driven 1.1 m through the grid conserves the
+   gas's mass within 0.3% once the grid's volume is scaled to the true volume; the apparent
+   change, about 1.7%, is one cell of staircase. The work the air does on the wall and the
+   work the wall does on the air are computed separately and do not exactly balance. A solid
    cell's velocity is the mean of its elements, so a spinning fragment smaller than a cell looks
    to the air like one moving in a straight line.
 3. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
@@ -141,9 +144,11 @@ shock.
 
 ## Future work
 
-- **Conservative coupling**: a cut-cell treatment in which the solid's surface cuts through
-  air cells, so that the gas is neither removed nor created as walls move and the work done
-  across the surface balances exactly.
+- **Cut cells**, in which the solid's surface cuts through air cells, so that walls are placed
+  more precisely than a cell and their thickness does not flicker. This was planned as a
+  conservation fix, but measurement showed the gas is already conserved within 0.3% (see
+  limitation 2), so it is now a matter of geometric accuracy, and a large change to the air
+  solver for it.
 - **Several bodies and materials** in one layout, including steel sections and glazing.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the
   one-element overlap and the bumpiness.

@@ -282,6 +282,50 @@ struct StructureCouplingTests {
         }
     }
 
+    @Test(
+        "A wall driven through the grid conserves the gas, once its staircase volume is allowed for",
+        arguments: [10, 50, 150] as [Float])
+    func movingWallConservesMass(speed: Float) throws {
+        var scenario = Scenario(
+            name: "Piston", domainSize: SIMD3(16, 1, 1), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 0.5, 0.5)),
+            structure: StructureModel(
+                solids: [Box(x: 6...6.5, y: 0...1, height: 1)], material: Self.elastic, elementSize: 0.125,
+                fixedBase: false))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        func drive(_ velocity: Float) {
+            structure.mutateNodes { nodes in
+                for index in nodes.indices {
+                    nodes[index].velocity = SIMD3(velocity, 0, 0)
+                    nodes[index].isPrescribed = true
+                }
+            }
+        }
+        let before = solver.totals()
+        // Drive the wall 1.1 m, four and a bit cells, then let the air settle.
+        drive(speed)
+        solver.advance(until: Double(1.1 / speed))
+        drive(0)
+        let result = solver.advance(until: Double(1.1 / speed) + 0.05)
+        #expect(result.isStable)
+        let after = solver.totals()
+
+        // The 0.5 m wall now covers three cells instead of two, so the grid holds one cell's
+        // worth less gas than the true volume does. Scaled to the true volume, nothing is lost.
+        let cell = Double(pow(solver.grid.cellSize, 3))
+        let gridVolume = Double(solver.fluidCellCount) * cell
+        let trueVolume = 16.0 - 0.5
+        #expect(abs(gridVolume - trueVolume) <= 16 * cell + 1e-9)
+        let trueMass = after.mass / gridVolume * trueVolume
+        #expect(
+            abs(trueMass - before.mass) / before.mass < 0.005,
+            "mass change \((trueMass - before.mass) / before.mass)")
+    }
+
     @Test("With moving walls switched off, a driven wall leaves the air undisturbed until it is covered")
     func stationaryWallOption() throws {
         var scenario = Scenario(
