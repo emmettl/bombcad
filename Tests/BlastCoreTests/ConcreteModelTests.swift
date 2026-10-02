@@ -150,7 +150,7 @@ struct ConcreteModelTests {
         let expected = peakStrain * (0.145 * 4 + 0.13 * 2)
         let released = try #require(unloading.first { $0.stress > -1 })
         #expect(abs(-released.strain - expected) / expected < 0.03, "plastic strain \(-released.strain)")
-        // Below that strain the concrete carries nothing; it does not pull.
+        // Below that strain crushed concrete carries nothing; it does not pull.
         #expect(unloading.allSatisfy { $0.stress < 1 })
         #expect(abs(unloading.last?.stress ?? 1) < 1)
         // Halfway down the unloading line the stress is half what it was at the turn.
@@ -163,22 +163,27 @@ struct ConcreteModelTests {
         #expect(abs(back.stress - turn.stress) / abs(turn.stress) < 0.01)
     }
 
-    @Test("A cracked element recovers its compressive stiffness when the crack closes")
+    @Test("A cracked element recovers its compressive stiffness once the crack closes")
     func crackClosure() throws {
         let material = Self.concrete()
         let onset = material.tensileStrength / material.youngsModulus
         let (curve, _) = try strainCube(size: 0.05, material: material, to: [6 * onset, -2 * onset])
 
-        // Unloading follows the secant: at half the opening, half the stress the crack was
-        // carrying when it stopped opening.
+        // Unloading follows a straight line to the crack's residual opening, a tenth of its
+        // inelastic opening when it stopped opening.
         let softening = material.fractureEnergy / (0.05 * material.tensileStrength) - onset / 2
         let atTurn = material.tensileStrength * exp(-5 * onset / softening)
+        let residual = material.crackResidual * (6 * onset - atTurn / material.youngsModulus)
         let halfway = try #require(curve[150...].first { $0.strain < 3 * onset })
-        #expect(abs(halfway.stress - atTurn * halfway.strain / (6 * onset)) / atTurn < 0.03)
+        let line = atTurn * (halfway.strain - residual) / (6 * onset - residual)
+        #expect(abs(halfway.stress - line) / atTurn < 0.03)
         #expect(atTurn < 0.6 * material.tensileStrength)
-        // ...but in compression the element behaves as if it had never cracked.
+        let closed = try #require(curve[150...].first { $0.stress <= 0 })
+        #expect(
+            abs(closed.strain - residual) < 0.1 * onset, "closed at \(closed.strain), expected \(residual)")
+        // ...after which the element behaves in compression as if it had never cracked.
         let final = try #require(curve.last)
-        let ratio = 2 * onset / (2 * material.compressiveStrength / material.youngsModulus)
+        let ratio = (2 * onset + residual) / (2 * material.compressiveStrength / material.youngsModulus)
         let expected = -material.compressiveStrength * (2 * ratio - ratio * ratio)
         #expect(
             abs(final.stress - expected) / abs(expected) < 0.03, "stress \(final.stress) vs \(expected) Pa")
@@ -210,6 +215,50 @@ struct ConcreteModelTests {
         // The peak load reached the steel's ultimate strength.
         let peak = broken.map(\.stress).max() ?? 0
         #expect(abs(peak - ratio * steel.ultimateStress) / (ratio * steel.ultimateStress) < 0.03)
+    }
+
+    @Test("Reinforcement loaded back after yielding softens early, by the Menegotto-Pinto law")
+    func bauschinger() throws {
+        let steel = SteelProperties.grade500
+        let material = Self.concrete(steel: steel)
+        let ratio: Float = 0.01
+        // Stretch well past yield, then shorten by 8 mm/m. The crack stays open throughout, so
+        // the bars carry the load alone.
+        let (curve, _) = try strainCube(
+            size: 0.05, material: material, steelRatio: ratio, to: [0.02, 0.012], samplesPerLeg: 200)
+        let reversal = try #require(curve[199...].first)
+
+        // The same law evaluated here: the elastic line from the reversal point meets the
+        // compressive yield asymptote at the target, and the curve bends towards it with a
+        // sharpness that falls with the size of the earlier plastic excursion.
+        let modulus = steel.youngsModulus
+        let b = (steel.ultimateStress - steel.yieldStress) / (steel.ultimateStrain * modulus)
+        let reversalStress = reversal.stress / ratio
+        let span =
+            (-steel.yieldStress * (1 - b) - (reversalStress - b * modulus * reversal.strain))
+            / (modulus * (1 - b))
+        let target = (strain: reversal.strain + span, stress: reversalStress + modulus * span)
+        let excursion = abs(target.strain) / (steel.yieldStress / modulus)
+        let r = 20 - 18.5 * excursion / (0.15 + excursion)
+        func expected(_ strain: Float) -> Float {
+            let x = (strain - reversal.strain) / span
+            let y = b * x + (1 - b) * x / pow(1 + pow(abs(x), r), 1 / r)
+            return reversalStress + y * (target.stress - reversalStress)
+        }
+        for sample in curve[220...].enumerated().filter({ $0.offset.isMultiple(of: 30) }).map(\.element) {
+            let stress = sample.stress / ratio
+            #expect(
+                abs(stress - expected(sample.strain)) < 0.03 * steel.yieldStress,
+                "at \(sample.strain): \(stress / 1e6) MPa, expected \(expected(sample.strain) / 1e6) MPa")
+        }
+        // Halfway to the target the bar is already well below the elastic line...
+        let middle = try #require(curve[200...].first { $0.strain < reversal.strain + span / 2 })
+        let elastic = reversalStress + modulus * (middle.strain - reversal.strain)
+        #expect(middle.stress / ratio > elastic + 0.05 * steel.yieldStress)
+        // ...and at the end it is in compression but well short of its yield stress, where a
+        // bar that unloaded elastically would have yielded.
+        let end = try #require(curve.last).stress / ratio
+        #expect(end < -0.4 * steel.yieldStress && end > -0.8 * steel.yieldStress, "end \(end / 1e6) MPa")
     }
 
     @Test("An unreinforced element is removed once its crack is fully open")

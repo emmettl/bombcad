@@ -79,8 +79,8 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Case                             | Peak deflection | At    | At 70 ms | Elements failed |
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
-| Model, 8 elements through        | 108 mm (100%)   | 27 ms | 82 mm    | 0 of 68,608     |
-| Model, 4 elements through        | 113 mm (105%)   | 28 ms | 90 mm    | 0 of 8,704      |
+| Model, 8 elements through        | 108 mm (100%)   | 27 ms | 78 mm    | 0 of 68,608     |
+| Model, 4 elements through        | 113 mm (105%)   | 28 ms | 88 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
 
@@ -92,19 +92,23 @@ Mid-span deflection through the record, in millimetres:
 | 20 ms | 88       | 95        | 96        |
 | 25 ms | 103      | 107       | 111       |
 | 30 ms | 108      | 105       | 112       |
-| 35 ms | 107      | 93        | 103       |
-| 40 ms | 98       | 85        | 96        |
-| 45 ms | 95       | 84        | 99        |
-| 50 ms | 98       | 89        | 107       |
-| 55 ms | 98       | 98        | 108       |
-| 60 ms | 96       | 99        | 99        |
-| 65 ms | 92       | 91        | 91        |
-| 70 ms | 90       | 82        | 90        |
+| 35 ms | 107      | 93        | 102       |
+| 40 ms | 98       | 83        | 94        |
+| 45 ms | 95       | 80        | 94        |
+| 50 ms | 98       | 84        | 100       |
+| 55 ms | 98       | 91        | 102       |
+| 60 ms | 96       | 93        | 95        |
+| 65 ms | 92       | 87        | 88        |
+| 70 ms | 90       | 78        | 88        |
 
-The root-mean-square difference over the record is 6.8 mm for the fine mesh and 5.1 mm for the
-coarse one. The rise to the peak is reproduced within a few millimetres. After the peak the
-model rebounds further and rings by about 8 mm either way, where the specimen settled: cracked
-concrete in the model dissipates nothing in small cycles of unloading and reloading.
+The root-mean-square difference over the record is 8.7 mm for the fine mesh and 3.9 mm for the
+coarse one. The rise to the peak is reproduced within a few millimetres. After the peak the fine
+mesh rebounds about 28 mm, where the specimen rebounded about 13 mm and settled; the coarse mesh
+rebounds about 19 mm. The rebound is set by a hinge that forms at mid-span once its crushed
+compression zone, one element deep on the fine mesh, unloads: the section then cracks through
+its depth and the two halves swing back about the bars. That depends on the mesh, and it is
+not a matter of damping. The [concrete model](concrete-model.md#how-the-model-got-here) gives
+the evidence.
 
 For comparison, the source reports these peaks from other tools on the same slab and load:
 
@@ -122,14 +126,16 @@ Fine mesh, strain-rate laws, one thing changed at a time:
 |----------------------------------------------|-----------------|-----------------|
 | None                                         | 108 mm (100%)   | 0               |
 | Load 5% lower                                | 94 mm (87%)     | 0               |
-| Load 5% higher                               | 123 mm (114%)   | 0               |
-| Aggregate 10 mm instead of 16 mm             | 120 mm (111%)   | 375             |
+| Load 5% higher                               | 123 mm (114%)   | 171             |
+| Aggregate 10 mm instead of 16 mm             | 108 mm (100%)   | 0               |
 | Crack spacing 50 mm instead of 100 mm        | 104 mm (96%)    | 0               |
 | Crack spacing 200 mm                         | 109 mm (101%)   | 0               |
 | Fracture energy halved                       | 109 mm (101%)   | 0               |
 | Tensile strength 20% lower                   | 109 mm (101%)   | 0               |
-| Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 14,768          |
-| Static strengths                             | collapse        | 18,216          |
+| Cracks close fully (no residual opening)     | 108 mm (100%)   | 0               |
+| Residual crack opening 30% instead of 10%    | 108 mm (100%)   | 0               |
+| Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 12,214          |
+| Static strengths                             | collapse        | 14,604          |
 
 Reading this table:
 
@@ -139,11 +145,12 @@ Reading this table:
   The test is therefore a sharp check on the rate treatment, and a poor check on anything else.
 - **A 5% change in load moves the peak by about 14%.** The hand-read pressure record could
   easily be 5% out in its shape, though its impulse is pinned.
-- **The model sits near a shear failure.** With smaller aggregate, which weakens interlock, a
-  few hundred elements fail in shear and the deflection rises by 11%. In earlier versions of
-  the model the same local failures were triggered instead by a lower load or a wider crack
-  spacing. Which change trips them is not stable from one version of the model to the next,
-  which says the margin is thin. Shear is the weakest part of the model.
+- **The model sits near a shear failure.** With 5% more load a hundred or so elements fail in
+  shear. In earlier versions of the model the same local failures were triggered instead by
+  smaller aggregate, a lower load or a wider crack spacing. Which change trips them is not
+  stable from one version of the model to the next, which says the margin is thin. Near the
+  margin the outcome is chaotic: with the cyclic steel law but no residual crack opening, the
+  5% case reached 146 mm with 824 elements failed. Shear is the weakest part of the model.
 - **The concrete's tensile properties barely matter** here, as expected for a slab whose
   resistance comes from its bars.
 
@@ -270,7 +277,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 58 tests. The physical checks are:
+The test suite has 59 tests. The physical checks are:
 
 **Air solver**
 
@@ -303,8 +310,9 @@ The test suite has 58 tests. The physical checks are:
 | Tension on two mesh sizes                       | Peak at f_t within 3%; fracture energy within 5% |
 | Compression                                     | Peak at f_c within 2%; parabola; 20% residual  |
 | Compression released and reapplied              | Permanent strain within 3% of Karsan–Jirsa     |
+| Reinforcement stretched, then shortened         | Follows the Menegotto–Pinto curve within 3% of yield |
 | Fully restrained compression                    | Peak at 5.1 f_c within 3% (confinement)        |
-| Crack opened then closed                        | Compressive stiffness fully recovered          |
+| Crack opened then closed                        | Closes at its residual opening; then full compressive stiffness |
 | Reinforced element in tension                   | Yield, hardening and rupture within 3%         |
 | Shear across an open crack, two widths          | Interlock law within 5%                        |
 | Tension at 0.1 per second                       | Rate law within 6%                             |

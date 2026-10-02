@@ -80,6 +80,8 @@ struct StructureUniforms {
     float interlockStrength;    // aggregate-interlock shear capacity of a closed crack
     float interlockWidthScale;  // its decay with crack width, per metre
     float shearRetention;       // fraction of the shear stiffness a cracked plane keeps
+    float crackResidual;        // fraction of a crack's opening left when its stress is released
+    float steelHardeningRatio;  // slope of the reinforcement's yield asymptotes over its modulus
     float loadTime;
     uint loadCount;  // entries in the applied-pressure table; 0 = none
     uint loadFace;   // 2 * axis + side of the element faces the pressure acts on
@@ -105,6 +107,19 @@ struct ElementState {
 struct ElementSteel {
     packed_float3 ratio;
     float padding;
+};
+
+// Cyclic history of the bars along one axis of an element. Until the bars first reverse after
+// yielding, they follow the measured monotonic curve and only the extreme point is tracked.
+struct BarHistory {
+    float reversalStrain;  // where the current branch began
+    float reversalStress;
+    float targetStrain;    // where its initial tangent meets the yield asymptote; equal to
+    float targetStress;    // `reversalStrain` while the bars are still on the monotonic curve
+    float extremeStrain;   // farthest point reached along the current branch
+    float extremeStress;
+    float maxStrain;  // largest and smallest strains at earlier reversals
+    float minStrain;
 };
 
 struct ElementForces {
@@ -189,15 +204,33 @@ static inline void symmetricEigen(float3x3 a, thread float3 &values, thread floa
     vectors = v;
 }
 
+// Tensile stress of concrete on its envelope, at the largest strain it has reached. `increase`
+// is the dynamic increase factor: it raises the strength without changing the stiffness.
+static inline float tensionEnvelope(float history, float increase, constant StructureUniforms &u) {
+    float onset = u.crackOnset * increase;
+    return history <= onset ? u.youngsModulus * history
+                            : u.tensileStrength * increase * exp(-(history - onset) / u.crackSoftening);
+}
+
+// Strain at which a crack that has opened to `history` carries no stress. Fragments and
+// misfit between the faces stop a crack closing completely: a fixed fraction of the crack's
+// inelastic opening is left behind, as in the concrete damaged plasticity model.
+static inline float crackResidual(float history, float increase, constant StructureUniforms &u) {
+    if (history <= u.crackOnset * increase) {
+        return 0.0f;
+    }
+    return u.crackResidual * (history - tensionEnvelope(history, increase, u) / u.youngsModulus);
+}
+
 // Uniaxial tensile stress of concrete at strain `strain`, having previously reached `history`.
-// `increase` is the dynamic increase factor: it raises the strength without changing the stiffness.
+// Unloading and reloading follow the straight line between the envelope and the residual strain.
 static inline float concreteTension(float strain, float history, float increase,
                                     constant StructureUniforms &u) {
-    float onset = u.crackOnset * increase;
-    float peak = history <= onset
-        ? u.youngsModulus * history
-        : u.tensileStrength * increase * exp(-(history - onset) / u.crackSoftening);
-    return history > 0.0f ? peak * strain / history : 0.0f;
+    if (history <= 0.0f) {
+        return 0.0f;
+    }
+    float residual = crackResidual(history, increase, u);
+    return tensionEnvelope(history, increase, u) * max(strain - residual, 0.0f) / (history - residual);
 }
 
 // Strains at which concrete in compression reaches its peak and its residual, for strength
@@ -217,25 +250,42 @@ static inline float2 crushStrains(float increase, float confinement, constant St
 // Unloading leaves a permanent strain, so crushed concrete does not spring back to where it
 // started: the stress falls linearly to zero at the plastic strain of Karsan and Jirsa (1969),
 // eps_p / eps_c = 0.145 (eps_un / eps_c)^2 + 0.13 (eps_un / eps_c), never more steeply than
-// elastic unloading, and reloading retraces the same line.
-static inline float concreteCompression(float strain, float history, float increase, float confinement,
+// elastic unloading, and reloading retraces the same line. Between that strain and zero the
+// concrete carries nothing: crushed concrete has lost its tensile strength. (Measuring tension
+// from the permanent strain instead was tried, and made slabs near their limit far more
+// fragile, because concrete that sprang back then counted as cracked.)
+// Compressive stress magnitude on the envelope at the largest compressive strain reached.
+static inline float compressionEnvelope(float history, float increase, float confinement,
                                         constant StructureUniforms &u) {
     float strength = u.compressiveStrength * increase * confinement;
     float2 limits = crushStrains(increase, confinement, u);
-    float envelope;
     if (history <= limits.x) {
         float exponent = u.youngsModulus * limits.x / strength;
-        envelope = strength * (1.0f - pow(1.0f - history / limits.x, exponent));
-    } else {
-        float fraction = clamp((history - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
-        envelope = mix(strength, 0.2f * strength, fraction);
+        // Rounding can put the ratio a hair above 1, and a fractional power of a negative
+        // number is NaN.
+        return strength * (1.0f - pow(max(1.0f - history / limits.x, 0.0f), exponent));
     }
+    float fraction = clamp((history - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
+    return mix(strength, 0.2f * strength, fraction);
+}
+
+// Permanent compressive strain left by unloading from `history` (Karsan and Jirsa).
+static inline float crushResidual(float history, float increase, float confinement,
+                                  constant StructureUniforms &u) {
+    float peak = crushStrains(increase, confinement, u).x;
+    float ratio = history / peak;
+    float plastic = peak * (0.145f * ratio * ratio + 0.13f * ratio);
+    float envelope = compressionEnvelope(history, increase, confinement, u);
+    return clamp(plastic, 0.0f, max(history - envelope / u.youngsModulus, 0.0f));
+}
+
+static inline float concreteCompression(float strain, float history, float increase, float confinement,
+                                        constant StructureUniforms &u) {
+    float envelope = compressionEnvelope(history, increase, confinement, u);
     if (strain >= history) {
         return -envelope;
     }
-    float ratio = history / limits.x;
-    float plastic = limits.x * (0.145f * ratio * ratio + 0.13f * ratio);
-    plastic = clamp(plastic, 0.0f, history - envelope / u.youngsModulus);
+    float plastic = crushResidual(history, increase, confinement, u);
     return strain <= plastic ? 0.0f : -envelope * (strain - plastic) / (history - plastic);
 }
 
@@ -250,6 +300,92 @@ static inline float steelYield(float plastic, constant StructureUniforms &u, thr
     }
     slope = 0.0f;
     return u.steelStress[u.steelPoints - 1];
+}
+
+// Cyclic reinforcement: the Menegotto-Pinto curve with the constants of Filippou, Popov and
+// Bertero (1983), R0 = 20, a1 = 18.5, a2 = 0.15, and kinematic yield asymptotes. After yielding
+// one way, a bar loaded the other way softens long before it reaches its yield stress there
+// (the Bauschinger effect), the more so the larger its earlier plastic excursion.
+constant float barCurvature = 20.0f;
+constant float barCurvatureLoss = 18.5f;
+constant float barCurvatureScale = 0.15f;
+
+// Starts a new branch heading in direction `direction` (+1 tension, -1 compression) from the
+// extreme point of the last one.
+static inline void reverseBar(device BarHistory &bar, float direction, float yield,
+                              constant StructureUniforms &u) {
+    float modulus = u.steelModulus;
+    float b = u.steelHardeningRatio;
+    bar.reversalStrain = bar.extremeStrain;
+    bar.reversalStress = bar.extremeStress;
+    bar.maxStrain = max(bar.maxStrain, bar.reversalStrain);
+    bar.minStrain = min(bar.minStrain, bar.reversalStrain);
+    // Intersection of the elastic line from the reversal point with the asymptote
+    // stress = direction * yield + b * modulus * (strain - direction * yield / modulus).
+    float span = (direction * yield * (1.0f - b) - (bar.reversalStress - b * modulus * bar.reversalStrain))
+        / (modulus * (1.0f - b));
+    if (span * direction < 0.1f * yield / modulus) {
+        span = direction * 0.1f * yield / modulus;
+    }
+    bar.targetStrain = bar.reversalStrain + span;
+    bar.targetStress = bar.reversalStress + modulus * span;
+}
+
+static inline float barStress(device const BarHistory &bar, float strain, constant StructureUniforms &u) {
+    float span = bar.targetStrain - bar.reversalStrain;
+    float x = (strain - bar.reversalStrain) / span;
+    float earlier = span > 0.0f ? bar.maxStrain : bar.minStrain;
+    float yieldStrain = u.steelStress[0] / u.steelModulus;
+    float excursion = fabs(earlier - bar.targetStrain) / yieldStrain;
+    float r = barCurvature - barCurvatureLoss * excursion / (barCurvatureScale + excursion);
+    float b = u.steelHardeningRatio;
+    float y = b * x + (1.0f - b) * x / pow(1.0f + pow(fabs(x), r), 1.0f / r);
+    return bar.reversalStress + y * (bar.targetStress - bar.reversalStress);
+}
+
+// Stress in bars that have yielded at least once, at fibre strain `strain`. `plastic` is the
+// plastic strain on the monotonic curve until the first reversal, and the inelastic strain on
+// the cyclic branches after it; it is never left at exactly zero.
+static inline float cycleBar(device BarHistory &bar, float strain, thread float &plastic, float yield,
+                             float hardening, float initialYield, constant StructureUniforms &u) {
+    float modulus = u.steelModulus;
+    // Reversals smaller than a tenth of the yield strain are elastic wobbles, not cycles.
+    float tolerance = 0.1f * u.steelStress[0] / modulus;
+    float stress;
+    if (bar.targetStrain == bar.reversalStrain) {
+        // Still on the measured monotonic curve.
+        stress = modulus * (strain - plastic);
+        if (fabs(stress) > yield) {
+            float increment = (fabs(stress) - yield) / max(modulus + hardening, 0.1f * modulus);
+            plastic += stress > 0.0f ? increment : -increment;
+            stress = modulus * (strain - plastic);
+        }
+        float direction = sign(plastic);
+        if ((strain - bar.extremeStrain) * direction >= 0.0f) {
+            bar.extremeStrain = strain;
+            bar.extremeStress = stress;
+            return stress;
+        }
+        if ((bar.extremeStrain - strain) * direction <= tolerance) {
+            return stress;
+        }
+        reverseBar(bar, -direction, initialYield, u);
+    }
+    float direction = sign(bar.targetStrain - bar.reversalStrain);
+    if ((bar.extremeStrain - strain) * direction > tolerance) {
+        reverseBar(bar, -direction, initialYield, u);
+        direction = -direction;
+    }
+    stress = barStress(bar, strain, u);
+    if ((strain - bar.extremeStrain) * direction >= 0.0f) {
+        bar.extremeStrain = strain;
+        bar.extremeStress = stress;
+    }
+    plastic = strain - stress / modulus;
+    if (plastic == 0.0f) {
+        plastic = 1e-12f;
+    }
+    return stress;
 }
 
 // Dynamic increase factors at effective strain rate `rate` (1/s).
@@ -303,6 +439,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               device uint *failureGate [[buffer(9)]],
                               const device ElementSteel *steel [[buffer(10)]],
                               const device float2 *loadTable [[buffer(11)]],
+                              device BarHistory *bars [[buffer(12)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -487,12 +624,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         history = max(history, uniaxial);
         state.crackStrain = history;
         float crack = max(history.x, max(history.y, history.z));
-        float3 crush = max(float3(state.crushStrain), -uniaxial);
+        // A crack keeps a residual opening, and compression develops only once that has closed.
+        float3 residual = float3(crackResidual(history.x, tensionFactor, u),
+                                 crackResidual(history.y, tensionFactor, u),
+                                 crackResidual(history.z, tensionFactor, u));
+        float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
+        float3 crush = max(float3(state.crushStrain), squeeze);
         state.crushStrain = crush;
         state.plasticStrain = max(crush.x, max(crush.y, crush.z));
 
-        // Normal stresses follow the uniaxial curves, unloading along the secant so that a
-        // crack closes at zero strain and compression is recovered.
+        // Normal stresses follow the uniaxial curves. An open crack unloads to its residual
+        // strain, after which its faces bear on each other and compression is recovered.
         //
         // Concrete squeezed from the sides is stronger: each axis gains 4.1 times the smaller of
         // the compressive stresses the other two axes can supply (Richart, Brandtzaeg and Brown,
@@ -501,7 +643,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // The factor follows its target through the same running average as the strain rate:
         // applied instantly, the coupling between axes would be several times stiffer than the
         // elastic solid and would outrun the explicit time step.
-        float3 lateral = clamp(-uniaxial * u.youngsModulus, 0.0f, unconfined);
+        float3 lateral = clamp(squeeze * u.youngsModulus, 0.0f, unconfined);
         float3 gain = float3(state.confinementGain);
         float blend = clamp(dt * u.rateFilter, 0.0f, 1.0f);
         float3 confinement = float3(1.0f);
@@ -509,17 +651,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float crushed = 0.0f;
         bool pulverised = false;
         for (int j = 0; j < 3; ++j) {
-            if (uniaxial[j] >= 0.0f) {
+            if (squeeze[j] <= 0.0f) {
                 normalStress[j] = concreteTension(uniaxial[j], history[j], tensionFactor, u);
                 continue;
             }
             float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
             gain[j] += blend * (u.confinement * support / unconfined - gain[j]);
             confinement[j] = 1.0f + gain[j];
-            normalStress[j] = concreteCompression(-uniaxial[j], crush[j], compressionFactor, confinement[j], u);
+            normalStress[j] = concreteCompression(squeeze[j], crush[j], compressionFactor, confinement[j], u);
             float2 limits = crushStrains(compressionFactor, confinement[j], u);
-            crushed = max(crushed, clamp((-uniaxial[j] - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
-            pulverised = pulverised || -uniaxial[j] >= limits.y + u.crushErosion * (limits.y - limits.x);
+            crushed = max(crushed, clamp((squeeze[j] - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
+            pulverised = pulverised || squeeze[j] >= limits.y + u.crushErosion * (limits.y - limits.x);
         }
         state.confinementGain = gain;
 
@@ -543,8 +685,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                      float3(shearStress.x, normalStress.y, shearStress.y),
                                      float3(shearStress.z, shearStress.y, normalStress.z));
 
-        // Smeared reinforcement: elastic-plastic bars along the lattice axes, strained with the
-        // element.
+        // Smeared reinforcement: bars along the lattice axes, strained with the element. They
+        // follow the measured curve while loaded one way, and the cyclic law once reversed.
         float3 ratio = float3(steel[element].ratio);
         float3 plastic = float3(state.steelPlastic);
         float3 intact = float3(0.0f);
@@ -568,10 +710,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float rate = max(state.strainRate, 1e-4f) / 1e-4f;
             float factor = mix(pow(rate, u.steelRateYield), pow(rate, u.steelRateUltimate), along);
             yield *= factor;
-            if (fabs(stress) > yield) {
-                float increment = (fabs(stress) - yield) / max(u.steelModulus + slope * factor, 0.1f * u.steelModulus);
-                plastic[j] += stress > 0.0f ? increment : -increment;
-                stress = u.steelModulus * (fibre - plastic[j]);
+            if (plastic[j] == 0.0f) {
+                // Not yet yielded: elastic, and no history to keep.
+                if (fabs(stress) > yield) {
+                    float increment = (fabs(stress) - yield) / max(u.steelModulus + slope * factor, 0.1f * u.steelModulus);
+                    plastic[j] = stress > 0.0f ? increment : -increment;
+                    stress = u.steelModulus * (fibre - plastic[j]);
+                }
+            } else {
+                float inelastic = plastic[j];
+                stress = cycleBar(bars[3 * element + uint(j)], fibre, inelastic, yield, slope * factor,
+                                  first * pow(rate, u.steelRateYield), u);
+                plastic[j] = inelastic;
             }
             if (fabs(plastic[j]) > u.steelStrain[u.steelPoints - 1]) {
                 plastic[j] = 1e9f;  // ruptured for good

@@ -420,12 +420,17 @@ func runSlab() throws {
         ("crack spacing 200 mm", 1, { $0.crackSpacing = 0.2 }),
         ("fracture energy halved", 1, { $0.fractureEnergy *= 0.5 }),
         ("tensile strength 20% lower", 1, { $0.tensileStrength *= 0.8 }),
+        ("cracks close fully (no residual opening)", 1, { $0.crackResidual = 0 }),
+        ("residual crack opening 20%", 1, { $0.crackResidual = 0.2 }),
+        ("residual crack opening 30%", 1, { $0.crackResidual = 0.3 }),
     ]
     for (label, scale, adjust) in variants {
         let result = try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust)
         print(
             pad(label, 40) + pad("\(format(Double(result.peak) * 1000, 0)) mm", 10)
                 + pad("\(format(Double(result.peak / SlabBenchmark.measuredPeak) * 100, 0))%", 8)
+                + pad("residual \(format(Double(result.residual) * 1000, 0)) mm", 16)
+                + pad("history RMS \(format(Double(result.historyError) * 1000, 1)) mm", 20)
                 + pad("failed \(result.summary.erodedElements)", 14))
     }
 }

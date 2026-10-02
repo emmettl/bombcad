@@ -11,7 +11,7 @@ simulated on a current Mac? All figures here were measured on an Apple M4 Max (3
 | Air blast, 1 million cells (0.5 m in a street scene) | 2×                    |
 | Air blast, 8.4 million cells (0.25 m)               | 27×                   |
 | Air blast, 67 million cells (0.125 m)               | about 430×            |
-| A 225,000-element concrete building, alone          | 72×                   |
+| A 225,000-element concrete building, alone          | 81×                   |
 | The same, once pieces are colliding                 | 100×                  |
 | That building coupled to 1 million air cells        | 101×                  |
 | A 23,000-element frame collapsing                   | 10×                   |
@@ -58,8 +58,8 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 
 | Mode                          | Steps/s | Element-updates/s | Slower than real time |
 |-------------------------------|---------|-------------------|-----------------------|
-| Before anything has failed    | 1,535   | 345 million       | 72×                   |
-| With contact running          | 1,104   | 248 million       | 100×                  |
+| Before anything has failed    | 1,365   | 307 million       | 81×                   |
+| With contact running          | 1,013   | 228 million       | 109×                  |
 
 - The explicit time step is set by the element size and the speed of sound in concrete, and it
   is what makes structures expensive: 110,000 steps per simulated second at this resolution.
@@ -67,7 +67,11 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   replaced (which ran at 543 million element-updates per second). The cause has not been
   profiled. Skipping the eigenvalue problem that finds diagonal cracks, for elements strained
   below cracking, was tried and made no measurable difference.
-- Memory is about 240 bytes per lattice cell, whether or not it holds an element, plus the
+- The residual crack opening and the cyclic steel law cost about 8% (from 334 to 307 million
+  element-updates per second). The cyclic law's history is read only for bars that have
+  yielded; reading it for every bar cost twice as much.
+- Memory is about 240 bytes per lattice cell, whether or not it holds an element (340 with
+  reinforcement, for the bars' cyclic history), plus the
   contact grid at 20 bytes per cell of the surrounding space.
 
 ## Coupled runs

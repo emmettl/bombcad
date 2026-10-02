@@ -94,6 +94,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     public var confinementCoefficient: Float = 4.1
     /// Largest aggregate size in metres, which governs how well a crack still carries shear.
     public var aggregateSize: Float = 0.016
+    /// Fraction of a crack's inelastic opening that remains when the tension across it is
+    /// released, because fragments and misfit stop the faces closing completely.
+    public var crackResidual: Float = 0.1
     /// Fixed multipliers on strength, such as the design dynamic increase factors of
     /// UFC 3-340-02. They apply on top of `rateDependent`, so normally use one or the other.
     public var concreteRateFactor: Float = 1
@@ -453,6 +456,8 @@ struct StructureUniforms {
     var interlockStrength: Float = 0
     var interlockWidthScale: Float = 0
     var shearRetention: Float = 0.25
+    var crackResidual: Float = 0
+    var steelHardeningRatio: Float = 0.01
     var loadTime: Float = 0
     var loadCount: UInt32 = 0
     var loadFace: UInt32 = 0

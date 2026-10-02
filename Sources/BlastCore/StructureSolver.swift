@@ -70,6 +70,8 @@ public final class StructureSolver {
     private let forceBuffer: MTLBuffer
     /// Reinforcement ratios of every lattice cell.
     private let steelBuffer: MTLBuffer
+    /// Cyclic history of the reinforcement, 96 bytes per element (a placeholder without steel).
+    private let barHistoryBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
     /// Indices of the nodes that belong to at least one element.
@@ -138,6 +140,8 @@ public final class StructureSolver {
         stateBuffer = try buffer(cells * Self.stateStride, "structure element state")
         forceBuffer = try buffer(cells * Self.forceStride, "structure element forces")
         steelBuffer = try buffer(cells * 16, "structure reinforcement")
+        barHistoryBuffer = try buffer(
+            model.material.steel == nil ? 96 : cells * 96, "structure reinforcement history")
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         placeholderBuffer = try buffer(64, "structure placeholder")
 
@@ -246,6 +250,7 @@ public final class StructureSolver {
         }
         memset(stateBuffer.contents(), 0, stateBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
+        memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
 
         let cornerMass = model.material.density * h * h * h / 8
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -400,7 +405,8 @@ public final class StructureSolver {
 
     public var memoryFootprint: Int {
         [
-            nodeBuffer, flagBuffer, stateBuffer, forceBuffer, instanceBuffer, nodeListBuffer,
+            nodeBuffer, flagBuffer, stateBuffer, forceBuffer, steelBuffer, barHistoryBuffer, instanceBuffer,
+            nodeListBuffer,
             contactHeadBuffer, contactSlotBuffer, contactForceBuffer,
         ].reduce(0) { $0 + $1.length }
     }
@@ -473,6 +479,7 @@ public final class StructureSolver {
             encoder.setBuffer(failureGateBuffer, offset: 0, index: 9)
             encoder.setBuffer(steelBuffer, offset: 0, index: 10)
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 11)
+            encoder.setBuffer(barHistoryBuffer, offset: 0, index: 12)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -579,6 +586,7 @@ public final class StructureSolver {
             uniforms.crackBand = band
             uniforms.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()
             uniforms.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
+            uniforms.crackResidual = material.crackResidual
             uniforms.crushPeak = peak
             uniforms.crushEnd = end
             uniforms.erosionStrain = min(material.erosionOpening / h, 0.5)
@@ -592,6 +600,10 @@ public final class StructureSolver {
                 let first = curve[0].y
                 let top = curve.map(\.y).max() ?? first
                 uniforms.steelModulus = steel.youngsModulus
+                // Yield asymptotes for cyclic loading: the secant from yield to ultimate strength.
+                if let peak = curve.max(by: { $0.y < $1.y }), peak.x > 0, peak.y > first {
+                    uniforms.steelHardeningRatio = (peak.y - first) / (peak.x * steel.youngsModulus)
+                }
                 uniforms.steelPoints = UInt32(curve.count)
                 withUnsafeMutableBytes(of: &uniforms.steelStrain) { strains in
                     withUnsafeMutableBytes(of: &uniforms.steelStress) { stresses in

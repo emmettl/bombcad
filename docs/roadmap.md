@@ -21,7 +21,7 @@ and nothing in it should be used to judge the safety of a real structure.
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of cells, and coupling is not conservative | Mass and energy drift once walls move; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One deformable body, one material, lattice-aligned geometry             | Real buildings cannot be represented                          | [Structural model](structural-model.md#limitations) |
-| 8 | Cracked concrete has no hysteresis, and there is no compaction          | Rebound rings too much; close-in crushing is wrong            | [Concrete model](concrete-model.md#limitations) |
+| 8 | The rebound after a slab's peak depends on the mesh, and there is no compaction | Rebound is too large on fine meshes; close-in crushing is wrong | [Concrete model](concrete-model.md#limitations) |
 | 9 | The app's interface has not been reviewed by eye                        | Layout or interaction problems may exist                      | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -51,7 +51,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    of state.
 5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
-6. **Hysteresis in cracked concrete, and compaction** under very high pressure.
+6. **The rebound, and compaction** under very high pressure. Cyclic steel and a residual crack
+   opening are in; tracing the slab showed that its excess rebound comes from a hinge whose
+   compression zone is one crushed element deep, so the next step is crushing regularised over
+   a band wider than the element.
 7. **Conservative coupling** between moving solids and the air, by cut cells. Moving walls
    already push the air (a piston test matches theory within 2%), but only cell by cell.
 
