@@ -69,9 +69,6 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 ### Usability, in parallel
 
 - Review the app on screen and fix what is found.
-- Gauges that can be placed and moved in the editor.
-- Undo in the editor.
-- Export of gauge and deflection histories.
 - Individually specified reinforcement in the editor, in place of the automatic rule.
 
 ## Things tried and set aside

@@ -182,6 +182,136 @@ struct SimulationModelTests {
         #expect(model.settings.chargePosition == after)
     }
 
+    @Test("Undo and redo step through settled layout edits")
+    func undoRedo() async throws {
+        let model = try await makeModel()
+        let original = model.settings.scenario
+        #expect(!model.canUndo && !model.canRedo)
+
+        // Several changes in quick succession settle into one edit.
+        model.settings.chargeMass = 10
+        model.settings.chargeMass = 20
+        model.settings.chargeMass = 30
+        model.settingsChanged()
+        try await waitUntil { model.undoStack.count == 1 }
+        model.addBlock()
+        model.settingsChanged()
+        try await waitUntil { model.undoStack.count == 2 }
+        let withBlock = model.settings.scenario
+
+        model.undo()
+        #expect(model.settings.scenario.boxes.count == original.boxes.count)
+        #expect(model.settings.chargeMass == 30)
+        #expect(model.selection == nil, "the selected block no longer exists")
+        model.undo()
+        #expect(model.settings.scenario == original)
+        #expect(!model.canUndo && model.canRedo)
+        model.redo()
+        model.redo()
+        #expect(model.settings.scenario == withBlock)
+        #expect(!model.canRedo)
+
+        // An edit that has not yet settled is undone too, and a new edit clears the redo list.
+        model.undo()
+        model.settings.chargeMass = 99
+        model.undo()
+        #expect(model.settings.chargeMass == 30)
+        #expect(model.canRedo)
+        model.settings.chargeMass = 5
+        model.settingsChanged()
+        try await waitUntil { !model.canRedo }
+        // The undone layouts were rebuilt, not just shown.
+        try await waitUntil { model.time == 0 && model.grid != nil }
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test("Gauges can be added, moved by clicking, renamed and removed")
+    func editingGauges() async throws {
+        let model = try await makeModel()
+        model.select(.openGround)
+        let count = model.settings.scenario.gauges.count
+        model.addGauge()
+        #expect(model.settings.scenario.gauges.count == count + 1)
+        #expect(model.selection == .gauge(count))
+        let gauge = model.settings.scenario.gauges[count]
+        #expect(model.highlightedBox?.size == SIMD3(repeating: 0.5))
+        #expect(model.highlightedBox.map { ($0.min + $0.max) / 2 } == gauge.position)
+
+        // With the gauge selected, placing mode moves the gauge and leaves the charge alone.
+        let charge = model.settings.chargePosition
+        model.isPlacingCharge = true
+        model.click(ndc: SIMD2(0.3, -0.2), aspectRatio: 1.5)
+        let moved = model.settings.scenario.gauges[count].position
+        #expect(model.settings.chargePosition == charge)
+        #expect(moved.x != gauge.position.x || moved.y != gauge.position.y)
+        #expect(moved.z == gauge.position.z, "height is kept")
+
+        model.settings.scenario.gauges[count].name = "Doorway"
+        model.settingsChanged()
+        try await waitUntil { model.traces.last?.name == "Doorway" && model.traces.count == count + 1 }
+
+        model.removeGauge(at: count)
+        #expect(model.settings.scenario.gauges.count == count && model.selection == nil)
+        // The solver records at most sixteen.
+        for _ in 0..<20 { model.addGauge() }
+        #expect(model.settings.scenario.gauges.count == 16 && !model.canAddGauge)
+    }
+
+    @Test("Results export as one row per gauge sample and deflection sample")
+    func exportCSV() async throws {
+        let model = try await makeModel()
+        model.select(.blastWall)
+        model.settingsChanged()
+        try await waitUntil { model.structureSummary != nil && model.time == 0 && model.traces.count == 3 }
+        model.speed = .unlimited
+        model.duration = 0.02
+        model.run()
+        try await waitUntil { !model.isRunning && model.time > 0.019 }
+
+        let lines = model.resultsCSV().split(separator: "\n").map(String.init)
+        #expect(lines.first == "series,time (ms),value,unit")
+        let rows = lines.dropFirst().map(Self.fields)
+        #expect(rows.allSatisfy { $0.count == 4 })
+        let names = model.settings.scenario.gauges.map(\.name)
+        for name in names {
+            let samples = rows.filter { $0[0] == name }
+            // Every step is recorded (with the moment of detonation), not just the points the
+            // chart shows, and in order.
+            #expect(abs(samples.count - model.stepCount) <= 1, "\(name): \(samples.count) rows")
+            let times = samples.compactMap { Double($0[1]) }
+            #expect(zip(times, times.dropFirst()).allSatisfy { $0 < $1 })
+            #expect(samples.allSatisfy { $0[3] == "kPa" })
+            let peak = samples.compactMap { Double($0[2]) }.max() ?? 0
+            let trace = try #require(model.traces.first { $0.name == name })
+            #expect(abs(peak - trace.peak) < 0.01, "\(name): \(peak) vs \(trace.peak) kPa")
+        }
+        let deflection = rows.filter { $0[0] == "Peak deflection" }
+        #expect(deflection.count == model.structureHistory.count && !deflection.isEmpty)
+        #expect(deflection.allSatisfy { $0[3] == "mm" })
+    }
+
+    /// Splits one CSV row into fields, honouring double-quoted fields.
+    private static func fields(_ line: String) -> [String] {
+        var fields: [String] = []
+        var current = ""
+        var quoted = false
+        var previous: Character?
+        for character in line {
+            if character == "\"" {
+                if quoted, previous == "\"" { current.append("\"") }
+                quoted.toggle()
+            } else if character == ",", !quoted {
+                fields.append(current)
+                current = ""
+            } else {
+                current.append(character)
+            }
+            previous = character
+        }
+        fields.append(current)
+        return fields
+    }
+
     @Test("A layout survives being saved and opened again")
     func saveAndOpen() async throws {
         let model = try await makeModel()

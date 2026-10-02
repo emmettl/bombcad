@@ -13,6 +13,15 @@ struct BombCADApp: App {
         }
         .defaultSize(width: 1440, height: 920)
         .commands {
+            // Undo works on whole layout edits rather than on keystrokes in a field.
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo Edit") { model.undo() }
+                    .keyboardShortcut("z")
+                    .disabled(!model.canUndo)
+                Button("Redo Edit") { model.redo() }
+                    .keyboardShortcut("z", modifiers: [.command, .shift])
+                    .disabled(!model.canRedo)
+            }
             CommandMenu("Simulation") {
                 Button(model.isRunning ? "Pause" : "Run") { model.toggleRun() }
                     .keyboardShortcut(.space, modifiers: [])

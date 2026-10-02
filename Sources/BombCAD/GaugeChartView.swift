@@ -6,6 +6,8 @@ import SwiftUI
 struct GaugeChartView: View {
     let model: SimulationModel
     @State private var showsStructure = false
+    @State private var export: ResultsDocument?
+    @State private var exportError: String?
 
     private var hasStructure: Bool { model.structureSummary != nil }
     private var plotsStructure: Bool { showsStructure && hasStructure }
@@ -32,10 +34,32 @@ struct GaugeChartView: View {
                 } else {
                     pressureReadout
                 }
+                Button("Export CSV…", systemImage: "square.and.arrow.up") {
+                    export = ResultsDocument(text: model.resultsCSV())
+                }
+                .controlSize(.small)
+                .disabled(model.stepCount == 0)
+                .help("Save every gauge sample and the deflection history as a spreadsheet")
             }
             .frame(width: 230)
         }
         .padding(12)
+        .fileExporter(
+            isPresented: Binding(get: { export != nil }, set: { if !$0 { export = nil } }), document: export,
+            contentType: .commaSeparatedText, defaultFilename: "BombCAD results"
+        ) { result in
+            if case .failure(let error) = result {
+                exportError = "Could not save the results: \(error.localizedDescription)"
+            }
+        }
+        .alert(
+            "Export failed",
+            isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
+        ) {
+            Button("OK") { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
+        }
     }
 
     // MARK: Air

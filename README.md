@@ -36,8 +36,10 @@ In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan
 wheel to zoom. Space runs and pauses, ⌘R resets.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
-**Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls and openings.
-The toolbar opens and saves layouts as JSON and lets you move the charge by clicking the ground.
+**Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
+pressure gauges, with undo (⌘Z). The toolbar opens and saves layouts as JSON and lets you move
+the charge, or the selected gauge, by clicking the ground. Gauge and deflection histories export
+as CSV from beside the chart.
 
 ```bash
 swift test

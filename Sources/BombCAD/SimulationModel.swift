@@ -75,6 +75,7 @@ enum EditSelection: Hashable {
     case block(Int)
     case solid(Int)
     case opening(Int)
+    case gauge(Int)
 }
 
 struct GaugePoint: Identifiable {
@@ -146,6 +147,11 @@ final class SimulationModel {
     private(set) var memoryFootprint = 0
     private(set) var chargeIsBlocked = false
     private(set) var errorMessage: String?
+    /// Layouts before the most recent edits, newest last, and those undone since.
+    private(set) var undoStack: [Scenario] = []
+    private(set) var redoStack: [Scenario] = []
+    var canUndo: Bool { !undoStack.isEmpty || settings.scenario != settledScenario }
+    var canRedo: Bool { !redoStack.isEmpty }
 
     @ObservationIgnored let device: MTLDevice?
     @ObservationIgnored let commandQueue: MTLCommandQueue?
@@ -161,10 +167,15 @@ final class SimulationModel {
     @ObservationIgnored private var paceOriginTime: Double = 0
     @ObservationIgnored private var lastBatchCompletion = ContinuousClock.now
     @ObservationIgnored private var lastTracePublication = ContinuousClock.now
+    /// The layout as of the last recorded edit. Edits are recorded once they settle, so that
+    /// typing a number or dragging a slider is one step to undo, not dozens.
+    @ObservationIgnored private var settledScenario: Scenario
+    private static let undoLimit = 100
 
     init() {
         let scenario = SimulationSettings().scenario
         self.scenario = scenario
+        settledScenario = scenario
         camera = .framing(scenario)
         duration = Self.defaultDuration(for: scenario)
         device = MTLCreateSystemDefaultDevice()
@@ -239,14 +250,50 @@ final class SimulationModel {
         renderSettings.pressureScale = closeUp ? 1000 : RenderSettings().pressureScale
     }
 
-    /// Call when `settings` changes; rebuilds once the edits settle.
+    /// Call when `settings` changes; records the edit and rebuilds once the edits settle.
     func settingsChanged() {
         rebuildTask?.cancel()
         rebuildTask = Task {
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
+            recordEdit()
             requestRebuild()
         }
+    }
+
+    // MARK: - Undo
+
+    /// Makes the current layout a step that can be undone back to, if it has changed.
+    func recordEdit() {
+        guard settings.scenario != settledScenario else { return }
+        undoStack.append(settledScenario)
+        if undoStack.count > Self.undoLimit {
+            undoStack.removeFirst(undoStack.count - Self.undoLimit)
+        }
+        redoStack.removeAll()
+        settledScenario = settings.scenario
+    }
+
+    /// Returns the layout to how it was before the last edit.
+    func undo() {
+        // An edit still settling counts as the last edit.
+        recordEdit()
+        guard let previous = undoStack.popLast() else { return }
+        redoStack.append(settings.scenario)
+        restore(previous)
+    }
+
+    func redo() {
+        guard let next = redoStack.popLast() else { return }
+        undoStack.append(settings.scenario)
+        restore(next)
+    }
+
+    private func restore(_ scenario: Scenario) {
+        settledScenario = scenario
+        settings.scenario = scenario
+        if highlightedBox == nil { selection = nil }
+        settingsChanged()
     }
 
     var domainSize: SIMD3<Float> { settings.scenario.domainSize }
@@ -266,8 +313,30 @@ final class SimulationModel {
                 return nil
             }
             return openings[index]
+        case .gauge(let index):
+            guard scenario.gauges.indices.contains(index) else { return nil }
+            let position = scenario.gauges[index].position
+            return Box(min: position - 0.25, max: position + 0.25)
         case nil: return nil
         }
+    }
+
+    /// Whether another gauge can be added; the solver records at most `BlastSolver.maxGauges`.
+    var canAddGauge: Bool { settings.scenario.gauges.count < BlastSolver.maxGauges }
+
+    /// Adds a gauge 1.5 m above the middle of the ground.
+    func addGauge() {
+        guard canAddGauge else { return }
+        let centre = settings.scenario.domainSize / 2
+        let name = "Gauge \(settings.scenario.gauges.count + 1)"
+        settings.scenario.gauges.append(Gauge(name, at: SIMD3(centre.x, centre.y, 1.5)))
+        selection = .gauge(settings.scenario.gauges.count - 1)
+    }
+
+    func removeGauge(at index: Int) {
+        guard settings.scenario.gauges.indices.contains(index) else { return }
+        settings.scenario.gauges.remove(at: index)
+        selection = nil
     }
 
     /// Adds a rigid block in the middle of the domain.
@@ -327,7 +396,8 @@ final class SimulationModel {
         settings.scenario.structure = structure.solids.isEmpty ? nil : structure
     }
 
-    /// Handles a click in the view, at a point in normalised device coordinates.
+    /// Handles a click in the view, at a point in normalised device coordinates. In placing
+    /// mode it moves the selected gauge there, or the charge if no gauge is selected.
     func click(ndc: SIMD2<Float>, aspectRatio: Float) {
         guard isPlacingCharge, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else {
             return
@@ -335,8 +405,44 @@ final class SimulationModel {
         let size = settings.scenario.domainSize
         // Snap to 0.25 m so the charge stays aligned with every grid resolution.
         let snapped = (point * Float(4)).rounded(.toNearestOrEven) / Float(4)
-        settings.chargePosition.x = min(max(snapped.x, 1), size.x - 1)
-        settings.chargePosition.y = min(max(snapped.y, 1), size.y - 1)
+        let x = min(max(snapped.x, 1), size.x - 1)
+        let y = min(max(snapped.y, 1), size.y - 1)
+        if case .gauge(let index) = selection, settings.scenario.gauges.indices.contains(index) {
+            settings.scenario.gauges[index].position.x = x
+            settings.scenario.gauges[index].position.y = y
+        } else {
+            settings.chargePosition.x = x
+            settings.chargePosition.y = y
+        }
+    }
+
+    // MARK: - Export
+
+    /// The run's histories as comma-separated values: every recorded sample of every gauge,
+    /// then the structure's peak deflection, one row per sample.
+    func resultsCSV() -> String {
+        var lines = ["series,time (ms),value,unit"]
+        func field(_ text: String) -> String {
+            text.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" })
+                ? "\"" + text.replacingOccurrences(of: "\"", with: "\"\"") + "\"" : text
+        }
+        if let solver {
+            let ambient = Double(scenario.atmosphere.pressure)
+            for (index, history) in solver.gaugeHistories.enumerated() where index < scenario.gauges.count {
+                let name = field(scenario.gauges[index].name)
+                for sample in history {
+                    lines.append(
+                        "\(name),\(String(format: "%.4f", sample.time * 1000)),"
+                            + "\(String(format: "%.4f", (Double(sample.pressure) - ambient) / 1000)),kPa")
+                }
+            }
+        }
+        for sample in structureHistory {
+            lines.append(
+                "Peak deflection,\(String(format: "%.4f", sample.time)),\(String(format: "%.3f", sample.deflection)),mm"
+            )
+        }
+        return lines.joined(separator: "\n") + "\n"
     }
 
     // MARK: - Building

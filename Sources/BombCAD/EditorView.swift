@@ -10,6 +10,15 @@ struct EditorView: View {
     var body: some View {
         Form {
             Section {
+                HStack {
+                    Button("Undo", systemImage: "arrow.uturn.backward") { model.undo() }
+                        .disabled(!model.canUndo)
+                    Button("Redo", systemImage: "arrow.uturn.forward") { model.redo() }
+                        .disabled(!model.canRedo)
+                }
+            }
+
+            Section {
                 ForEach(model.settings.scenario.boxes.indices, id: \.self) { index in
                     BoxRow(
                         title: "Block \(index + 1)", box: blockBinding(index), step: 0.25,
@@ -49,6 +58,22 @@ struct EditorView: View {
                 Text(
                     "Walls and slabs deform and break. Thin pieces are reinforced with a mat of bars in "
                         + "each face, stocky ones as columns; openings are cut out of them.")
+            }
+
+            Section {
+                ForEach(model.settings.scenario.gauges.indices, id: \.self) { index in
+                    GaugeRow(
+                        gauge: gaugeBinding(index), isSelected: model.selection == .gauge(index),
+                        select: { toggle(.gauge(index)) }, remove: { model.removeGauge(at: index) })
+                }
+                Button("Add Gauge", systemImage: "plus") { model.addGauge() }
+                    .disabled(!model.canAddGauge)
+            } header: {
+                Text("Gauges")
+            } footer: {
+                Text(
+                    "Gauges record the air pressure where they stand. With one selected, clicking the "
+                        + "ground in placing mode moves it instead of the charge.")
             }
 
             Section("Charge") {
@@ -107,6 +132,80 @@ struct EditorView: View {
         Binding(
             get: { openings[index] },
             set: { box in model.editStructure { $0.openings[index] = box } })
+    }
+
+    private func gaugeBinding(_ index: Int) -> Binding<BlastCore.Gauge> {
+        Binding(
+            get: { model.settings.scenario.gauges[index] },
+            set: { model.settings.scenario.gauges[index] = $0 })
+    }
+}
+
+/// One gauge in the editor: a title row that selects it, and its name and position when selected.
+private struct GaugeRow: View {
+    @Binding var gauge: BlastCore.Gauge
+    let isSelected: Bool
+    let select: () -> Void
+    let remove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Button(action: select) {
+                    HStack {
+                        Image(systemName: isSelected ? "chevron.down" : "chevron.right")
+                            .frame(width: 12)
+                        Text(gauge.name)
+                        Spacer()
+                        Text(
+                            String(
+                                format: "%.2f, %.2f, %.2f m", gauge.position.x, gauge.position.y,
+                                gauge.position.z)
+                        )
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                Button("Remove", systemImage: "trash", role: .destructive, action: remove)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+            }
+            if isSelected {
+                TextField("Name", text: $gauge.name)
+                    .textFieldStyle(.roundedBorder)
+                Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 4) {
+                    GridRow {
+                        Text("")
+                        Text("X").foregroundStyle(.secondary)
+                        Text("Y").foregroundStyle(.secondary)
+                        Text("Z").foregroundStyle(.secondary)
+                    }
+                    GridRow {
+                        Text("Position")
+                        field(axis: 0)
+                        field(axis: 1)
+                        field(axis: 2)
+                    }
+                }
+                .font(.callout)
+            }
+        }
+    }
+
+    private func field(axis: Int) -> some View {
+        TextField(
+            "",
+            value: Binding(
+                get: { Double(gauge.position[axis]) },
+                set: { gauge.position[axis] = max((Float($0) / 0.05).rounded() * 0.05, 0) }),
+            format: .number.precision(.fractionLength(0...2))
+        )
+        .textFieldStyle(.roundedBorder)
+        .multilineTextAlignment(.trailing)
+        .frame(width: 62)
+        .labelsHidden()
     }
 }
 
@@ -196,6 +295,28 @@ private struct BoxRow: View {
         Binding(
             get: { Double(box.size[axis]) },
             set: { box.max[axis] = box.min[axis] + max(snap($0), step) })
+    }
+}
+
+/// A run's histories saved as comma-separated values.
+struct ResultsDocument: FileDocument {
+    static let readableContentTypes = [UTType.commaSeparatedText]
+
+    var text: String
+
+    init(text: String) {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        text = String(decoding: data, as: UTF8.self)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
 
