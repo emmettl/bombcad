@@ -31,7 +31,10 @@ titles; the authors, journals and years should be enough to find each one.
 - **Use:** a second case in `SlabBenchmark.swift`, with steel in both faces and a different
   concrete, run unchanged against the model.
 - **Also needed for the existing slab:** how it was supported in the test rig: the width and
-  material of the bearings, and whether the slab was held down against rebound. Modelling
+  material of the bearings, and whether the slab was held down against rebound. The model
+  springs back after its peak about twice as far as the specimen did, and a rig that
+  restrained the rebound would explain part of that; so would photographs or a description
+  of the crushing at the top of the mid-span hinge. Modelling
   choices for the supports change the predicted peak by 15–20%.
 - **Also useful:** the Blast Blind Simulation Contest data package itself (organised through
   ACI Committee 447 and the University of Missouri–Kansas City), if the digital pressure and

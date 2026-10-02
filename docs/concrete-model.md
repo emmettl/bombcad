@@ -297,6 +297,17 @@ matter.
    any sensitivity case, and the 16-layer mesh gives 109, 112 and 115 mm at 0.99, 1.00 and
    1.01 times the load.
 
+16. **The rebound, again.** A cracked-section estimate puts the slab's elastic springback as its
+   load falls away at about 15 mm, close to the 13 mm measured; the model springs back 22 to
+   26 mm. Two causes were ruled out. Tension stiffening in the elements carrying bars (the
+   modified compression field theory's f_t / (1 + √(500 ε))) stiffened the slab so much that
+   the peak fell to 91 and 75 mm on 8 and 4 elements, and it still sprang back about 25 mm.
+   Elastic-plastic bars in place of the cyclic law cut the springback only from 26 to 22 mm.
+   What remains is the hinge: crushed concrete at its top carries nothing while it recovers
+   its permanent shortening, so the hinge can turn back with little to resist it. Whether the
+   specimen's hinge behaved differently, or the rig restrained its rebound, cannot be told
+   from the published record.
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
