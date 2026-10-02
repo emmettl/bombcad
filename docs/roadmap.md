@@ -51,10 +51,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    of state.
 5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
-6. **The rebound, and compaction** under very high pressure. Cyclic steel and a residual crack
-   opening are in; tracing the slab showed that its excess rebound comes from a hinge whose
-   compression zone is one crushed element deep, so the next step is crushing regularised over
-   a band wider than the element.
+6. **The compression zone in bending, and compaction** under very high pressure. Tracing the
+   slab showed that its excess rebound comes from a hinge whose compression zone is one
+   crushed element deep, and that the fine mesh's good peak depends on that element crushing
+   far past its strength: spreading crushing over a wider band makes it collapse. This points
+   to elements that bend (item 8) rather than to another material change.
 7. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.

@@ -134,6 +134,7 @@ Fine mesh, strain-rate laws, one thing changed at a time:
 | Tensile strength 20% lower                   | 109 mm (101%)   | 0               |
 | Cracks close fully (no residual opening)     | 108 mm (100%)   | 0               |
 | Residual crack opening 30% instead of 10%    | 108 mm (100%)   | 0               |
+| Crushing spread over at least 50 mm          | collapse        | 3,894           |
 | Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 12,214          |
 | Static strengths                             | collapse        | 14,604          |
 
@@ -153,6 +154,12 @@ Reading this table:
   5% case reached 146 mm with 824 elements failed. Shear is the weakest part of the model.
 - **The concrete's tensile properties barely matter** here, as expected for a slab whose
   resistance comes from its bars.
+- **The fine mesh survives on a very ductile compression zone.** Its compression zone at
+  mid-span is one 12.7 mm element, which crushes to about 15‰ and keeps carrying load because
+  the crushing energy is spread over that one element. Spreading it over at least 50 mm, which
+  is closer to how far crushing extends in a real member, makes the fine mesh collapse. The
+  coarse mesh is unaffected at any band width up to 200 mm: its compression zone is 25 mm deep
+  and never passes peak strength. The two meshes agree on the peak for different reasons.
 
 ### What this does and does not show
 

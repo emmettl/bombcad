@@ -423,6 +423,7 @@ func runSlab() throws {
         ("cracks close fully (no residual opening)", 1, { $0.crackResidual = 0 }),
         ("residual crack opening 20%", 1, { $0.crackResidual = 0.2 }),
         ("residual crack opening 30%", 1, { $0.crackResidual = 0.3 }),
+        ("crushing spread over at least 50 mm", 1, { $0.crushBand = 0.05 }),
     ]
     for (label, scale, adjust) in variants {
         let result = try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust)

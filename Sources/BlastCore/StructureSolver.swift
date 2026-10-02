@@ -575,7 +575,7 @@ public final class StructureSolver {
             let ft = material.tensileStrength * material.concreteRateFactor
             let onset = ft / material.youngsModulus
             let peak = 2 * fc / material.youngsModulus
-            let end = peak + 2 * material.crushingEnergy / (h * 0.8 * fc)
+            let end = peak + 2 * material.crushingEnergy / (max(h, material.crushBand) * 0.8 * fc)
             uniforms.materialModel = MaterialModel.concrete.rawValue
             uniforms.compressiveStrength = fc
             uniforms.tensileStrength = ft

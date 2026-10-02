@@ -239,6 +239,12 @@ matter.
    compression zone crushes, which depends on the mesh. The cyclic laws were kept because they
    are right on their own terms: elastic unloading of a yielded bar to −380 MPa is not what
    steel does.
+9. **Crushing spread over a band wider than an element** (`crushBand`), tried as the fix for
+   that hinge. It made things worse: the fine mesh collapses with any band from 50 mm to
+   200 mm, and the coarse mesh does not change at all, because its thicker compression zone
+   never passes peak strength. The fine mesh's peak of 108 mm therefore depends on a
+   compression zone one element deep that can crush to 15‰ while still carrying load. The
+   option is kept, at zero (one element), for the sensitivity study.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing.
@@ -257,7 +263,10 @@ step 4 showed to be missing.
    on the coarse mesh it recovers about 19 mm. The cause is the hinge that forms at mid-span
    once its crushed compression zone unloads (see step 8 above), not a lack of damping.
    Cracked concrete still unloads and reloads along one line, so small cycles dissipate
-   nothing in the concrete; only the bars have hysteresis.
+   nothing in the concrete; only the bars have hysteresis. Spreading crushing over a wider
+   band does not help (step 9). What would is resolving the strain gradient through the
+   compression zone, which needs elements that bend: shells, or solid elements with more
+   than one integration point.
 5. **Confinement is capped** at about five times the unconfined strength, and there is no
    compaction of the pores. Concrete under the very high pressures close to a charge is beyond
    the model's range.
@@ -280,11 +289,11 @@ step 4 showed to be missing.
   times and so need care.
 - **Inclined cracks**: a fixed-crack formulation that stores crack orientation, with interlock
   and dilatancy on the actual crack plane.
-- **The rebound**: a compression zone that is not a single crushed element, either by
-  regularising crushing over a band wider than the element (as tension is regularised by crack
-  spacing) or by finer elements through the depth, and then a check on whether the rebound
-  agrees with the test. Friction on closing cracks and bond slip would add damping, but the
-  slab shows they are not the first-order problem.
+- **The compression zone in bending**: elements that represent a strain gradient through
+  their depth (shells, or fully integrated solids), so that a thin compression zone is not a
+  single element crushed far beyond its strength. Widening the crushing band was tried and
+  made the fine mesh collapse. Friction on closing cracks and bond slip would add damping,
+  but the slab shows they are not the first-order problem.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
 - **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.

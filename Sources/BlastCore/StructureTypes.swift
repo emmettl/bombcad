@@ -90,6 +90,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// so in reinforced concrete the energy is spread over this distance instead (when it is
     /// larger than an element), which keeps the response independent of the mesh.
     public var crackSpacing: Float = 0.1
+    /// Shortest length, in metres, over which crushing is taken to spread. Zero spreads it over
+    /// one element.
+    public var crushBand: Float = 0
     /// Gain in compressive strength per unit of lateral confining stress (Richart's 4.1).
     public var confinementCoefficient: Float = 4.1
     /// Largest aggregate size in metres, which governs how well a crack still carries shear.
