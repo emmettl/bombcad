@@ -166,15 +166,15 @@ private struct DamageLegendView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Structure: plastic strain")
+            Text("Structure: damage")
                 .font(.caption.weight(.semibold))
             LinearGradient(colors: Self.stops, startPoint: .leading, endPoint: .trailing)
                 .frame(width: 220, height: 10)
                 .clipShape(.rect(cornerRadius: 3))
             HStack {
-                Text("Elastic")
+                Text("Sound")
                 Spacer()
-                Text("Failure")
+                Text("Failing")
             }
             .font(.caption2)
             .frame(width: 220)
