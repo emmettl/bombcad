@@ -47,6 +47,8 @@ displacement). Both run over lists of the elements and nodes that exist, not the
 Supports and loading:
 
 - a node can be held still along any of x, y, z, or given a prescribed velocity;
+- a node can rest on a support that pushes it up but does not hold it down, so a member can
+  rotate onto the edge of a bearing and lift off it;
 - gravity acts on every node;
 - nodes cannot pass below the ground plane, and lose horizontal speed while on it;
 - for running without the air, a pressure history can be applied to one outer face.

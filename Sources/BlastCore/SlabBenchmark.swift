@@ -163,10 +163,22 @@ public enum SlabBenchmark {
         }
     }
 
+    /// How the supports are modelled.
+    public enum Supports: Sendable {
+        /// A pin and a roller, each a single line of nodes held against moving up or down.
+        /// The reaction concentrates on that line, which on fine meshes tears the elements
+        /// beside it.
+        case lines
+        /// Bearings of the given width, either holding the slab down as well as up or letting
+        /// it lift off, in which case it rotates onto their inner edges.
+        case bearings(width: Float, holdDown: Bool)
+    }
+
     /// Runs the slab under the recorded pressure for 80 ms.
     public static func run(
         device: MTLDevice, elementsThroughThickness: Int = 8, rate: RateTreatment = .strainRate,
-        loadScale: Float = 1, adjust: (inout StructureMaterial) -> Void = { _ in }
+        loadScale: Float = 1, supports: Supports = .lines,
+        adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughThickness: elementsThroughThickness, rate: rate)
         adjust(&model.material)
@@ -177,14 +189,30 @@ public enum SlabBenchmark {
         load.history = load.history.map { SIMD2($0.x, $0.y * loadScale) }
         solver.appliedLoad = load
 
-        // Simple supports 52 in apart on the unloaded face: a pin and a roller.
+        // Simple supports 52 in apart on the unloaded face. The source does not describe the rig,
+        // so how they are modelled is an assumption; see `Supports`.
         let h = model.elementSize
         let first = Int((6 * inch / h).rounded())
         let second = Int((58 * inch / h).rounded())
         solver.mutateNodes { nodes in
             for j in 0...solver.ey {
-                nodes[solver.nodeIndex(first, j, 0)].restrain(x: true, z: true)
-                nodes[solver.nodeIndex(second, j, 0)].restrain(z: true)
+                switch supports {
+                case .lines:
+                    nodes[solver.nodeIndex(first, j, 0)].restrain(x: true, z: true)
+                    nodes[solver.nodeIndex(second, j, 0)].restrain(z: true)
+                case .bearings(let width, let holdDown):
+                    let reach = Int((width / 2 / h + 1e-3).rounded(.down))
+                    for offset in -reach...reach {
+                        for i in [first + offset, second + offset] {
+                            if holdDown {
+                                nodes[solver.nodeIndex(i, j, 0)].restrain(z: true)
+                            } else {
+                                nodes[solver.nodeIndex(i, j, 0)].restsOnSupport = true
+                            }
+                        }
+                    }
+                    nodes[solver.nodeIndex(first, j, 0)].restrain(x: true)
+                }
             }
         }
 

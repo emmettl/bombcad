@@ -132,7 +132,8 @@ struct StructureNode {
     packed_float3 displacement;
     float mass;
     packed_float3 velocity;
-    uint flags;  // bits 0-2: x, y, z held still; bit 3: velocity prescribed (never updated)
+    uint flags;  // bits 0-2: x, y, z held still; bit 3: velocity prescribed (never updated);
+                 // bit 4: rests on a support, cannot fall below its starting height
 };
 
 // An element that fails is first marked as failing, which the other elements still treat as
@@ -1098,6 +1099,10 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         velocity.z = 0.0f;
     }
     float3 displacement = float3(node.displacement) + dt * velocity;
+    if ((node.flags & 16u) != 0 && displacement.z < 0.0f) {
+        displacement.z = 0.0f;
+        velocity.z = max(velocity.z, 0.0f);
+    }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
     if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f) {
         // Debris landing on the ground: stop the fall and shed horizontal speed.

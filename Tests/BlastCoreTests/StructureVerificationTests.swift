@@ -331,6 +331,37 @@ struct StructureVerificationTests {
         #expect(abs(momentum) < 0.01 * Double(material.density * 0.125 * speed), "momentum \(momentum)")
     }
 
+    @Test("A node resting on a support is held up but not held down")
+    func oneSidedSupport() throws {
+        let material = StructureMaterial.elastic(density: 2400, youngsModulus: 20e9, poissonRatio: 0.2)
+        let model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(0.5, 0.5, 1.5))], material: material,
+            elementSize: 0.125, fixedBase: false)
+        let solver = try StructureSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.damping = 20
+        solver.mutateNodes { nodes in
+            for j in 0...solver.ey {
+                for i in 0...solver.ex { nodes[solver.nodeIndex(i, j, 0)].restsOnSupport = true }
+            }
+        }
+        // Under its own weight it sits on the support...
+        solver.advance(steps: Int(0.3 / solver.criticalTimeStep))
+        for (i, j) in [(0, 0), (2, 2), (4, 4)] {
+            #expect(solver.node(i, j, 0).uz >= 0 && solver.node(i, j, 0).uz < 1e-6)
+        }
+        #expect(abs(solver.node(2, 2, 4).vz) < 0.01)
+        // ...and thrown upwards it leaves it, in free flight.
+        solver.damping = 0
+        solver.mutateNodes { nodes in
+            for index in nodes.indices where nodes[index].mass > 0 { nodes[index].velocity = SIMD3(0, 0, 2) }
+        }
+        let flight = 0.1
+        solver.advance(steps: Int(flight / Double(solver.criticalTimeStep)))
+        let expected = Float(2 * flight - 0.5 * 9.81 * flight * flight)
+        #expect(abs(solver.node(2, 2, 0).uz - expected) < 0.01, "rose \(solver.node(2, 2, 0).uz) m")
+    }
+
     @Test("A block dropped onto another comes to rest on it")
     func stacking() throws {
         let material = StructureMaterial.elastic(density: 2400, youngsModulus: 20e9, poissonRatio: 0.2)

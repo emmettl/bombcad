@@ -26,7 +26,7 @@ swift run -c release blastbench validate
 | Blast loads          | Kingery–Bulmash at three ranges: impulse on a wall within 5–10% | Moderate to good for impulse on walls; peaks under-resolved |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: peak within 5%                        | Low to moderate: one test, sensitive |
+| Structural response  | One slab test: peak within 5% on two meshes; a finer mesh collapses | Low: one test, sensitive, not mesh-converged |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -134,7 +134,10 @@ Fine mesh, strain-rate laws, one thing changed at a time:
 | Tensile strength 20% lower                   | 109 mm (101%)   | 0               |
 | Cracks close fully (no residual opening)     | 108 mm (100%)   | 0               |
 | Residual crack opening 30% instead of 10%    | 108 mm (100%)   | 0               |
-| Crushing spread over at least 50 mm          | collapse        | 3,894           |
+| Crushing spread over at least 50 mm          | collapse        | 3,860           |
+| Supports as 1 in bearings, held down         | 97 mm (90%)     | 407             |
+| Supports as 1 in bearings, free to lift      | 93 mm (86%)     | 0               |
+| **16 elements through the thickness**        | **collapse**    | **37,157**      |
 | Fixed UFC 3-340-02 factors, no rate laws     | collapse        | 12,214          |
 | Static strengths                             | collapse        | 14,604          |
 
@@ -160,12 +163,29 @@ Reading this table:
   is closer to how far crushing extends in a real member, makes the fine mesh collapse. The
   coarse mesh is unaffected at any band width up to 200 mm: its compression zone is 25 mm deep
   and never passes peak strength. The two meshes agree on the peak for different reasons.
+- **The result is not mesh-converged.** With 16 elements through the thickness (553,000
+  elements, four minutes) the slab collapses. It is already softer than the 8-layer mesh at
+  10 ms, before anything has failed: its compression zone has crushed to 4–8% strain at
+  several points along the span while its bars have barely yielded (0.1% plastic strain,
+  against 2% on the 8-layer mesh). Compressive softening collapses into the outermost layer
+  of elements, whatever its thickness, so a finer mesh peels the compression zone away layer
+  by layer. The crushing law has a length scale along the direction of loading (the element
+  size, or `crushBand`) but none through the depth. Fixing this needs a nonlocal or gradient
+  treatment of crushing, or elements that resolve the strain gradient through a thin
+  compression zone.
+- **The supports matter by 10–15%.** The default is a pin and a roller on single lines of
+  nodes. On a fine mesh the reaction concentrated on one line tears the elements beside it,
+  which is what first fails on the 16-layer mesh. Bearings one inch wide avoid that, and
+  reduce the 8-layer peak to 93–97 mm depending on whether they hold the slab down. The
+  source does not describe the rig.
 
 ### What this does and does not show
 
-It shows that the model reproduces the flexural response of a lightly reinforced one-way slab
-under a uniform dynamic load, including the influence of strain rate, with the accuracy of
-established tools.
+It shows that, on meshes of four and eight elements through the thickness, the model
+reproduces the flexural response of a lightly reinforced one-way slab under a uniform dynamic
+load, including the influence of strain rate, with the accuracy of established tools. It does
+not show that the answer survives mesh refinement: it does not, because crushing localises in
+the outermost layer of elements.
 
 It does not show that the model predicts shear failure, breach, spalling, fragmentation or
 collapse correctly; that walls loaded by the air solver respond correctly (the air solver's
@@ -284,7 +304,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 64 tests. The physical checks are:
+The test suite has 65 tests. The physical checks are:
 
 **Air solver**
 

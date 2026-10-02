@@ -329,7 +329,8 @@ public struct StructureNode: Sendable {
     public var vx: Float = 0
     public var vy: Float = 0
     public var vz: Float = 0
-    /// Bits 0-2 hold the node still along x, y, z; bit 3 keeps its velocity as set.
+    /// Bits 0-2 hold the node still along x, y, z; bit 3 keeps its velocity as set; bit 4
+    /// lets it rise but not fall below where it started.
     public var flags: UInt32 = 0
 
     public init() {}
@@ -353,6 +354,13 @@ public struct StructureNode: Sendable {
     /// Holds the node still along the chosen axes only.
     public mutating func restrain(x: Bool = false, y: Bool = false, z: Bool = false) {
         flags |= (x ? 1 : 0) | (y ? 2 : 0) | (z ? 4 : 0)
+    }
+
+    /// Rests on a support that pushes up but does not hold down: the node cannot move below
+    /// its starting height, and lifts off freely.
+    public var restsOnSupport: Bool {
+        get { flags & 16 != 0 }
+        set { flags = newValue ? flags | 16 : flags & ~16 }
     }
 
     /// Moves at its current velocity regardless of the forces on it.

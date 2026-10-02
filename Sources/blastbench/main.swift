@@ -12,7 +12,7 @@ import simd
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame] [--full]
 //   blastbench structure [--preset wall|box] [--contact]
 //   blastbench validate [--dx 0.25]
-//   blastbench slab [--history] [--sensitivity]
+//   blastbench slab [--history] [--sensitivity [--convergence]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -425,8 +425,29 @@ func runSlab() throws {
         ("residual crack opening 30%", 1, { $0.crackResidual = 0.3 }),
         ("crushing spread over at least 50 mm", 1, { $0.crushBand = 0.05 }),
     ]
-    for (label, scale, adjust) in variants {
-        let result = try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust)
+    var runs: [(String, () throws -> SlabBenchmark.Result)] = variants.map { label, scale, adjust in
+        (label, { try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust) })
+    }
+    let inch: Float = 0.0254
+    runs.append(
+        (
+            "1 in bearings, held down",
+            { try SlabBenchmark.run(device: device, supports: .bearings(width: inch, holdDown: true)) }
+        ))
+    runs.append(
+        (
+            "1 in bearings, free to lift",
+            { try SlabBenchmark.run(device: device, supports: .bearings(width: inch, holdDown: false)) }
+        ))
+    if flag("convergence") {
+        runs.append(
+            (
+                "16 elements through the thickness",
+                { try SlabBenchmark.run(device: device, elementsThroughThickness: 16) }
+            ))
+    }
+    for (label, run) in runs {
+        let result = try run()
         print(
             pad(label, 40) + pad("\(format(Double(result.peak) * 1000, 0)) mm", 10)
                 + pad("\(format(Double(result.peak / SlabBenchmark.measuredPeak) * 100, 0))%", 8)

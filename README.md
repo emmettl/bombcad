@@ -73,7 +73,9 @@ Two comparisons with the outside world, both in the [validation notes](docs/vali
   under-resolved, more so close to the charge.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
   model predicts a peak deflection of 108 mm where 108 mm was measured, with no material
-  constant fitted to the test. That agreement is partly luck and the result is sensitive.
+  constant fitted to the test. That agreement is partly luck: the result is sensitive to the
+  load and the supports, and it is not mesh-converged. With twice as many elements through
+  the thickness the slab collapses, because crushing concentrates in the outermost layer.
 
 Collapse and debris have not been compared with anything.
 

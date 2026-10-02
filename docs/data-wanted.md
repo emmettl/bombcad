@@ -30,6 +30,9 @@ titles; the authors, journals and years should be enough to find each one.
   impulse histories, and the measured mid-span displacement history.
 - **Use:** a second case in `SlabBenchmark.swift`, with steel in both faces and a different
   concrete, run unchanged against the model.
+- **Also needed for the existing slab:** how it was supported in the test rig: the width and
+  material of the bearings, and whether the slab was held down against rebound. Modelling
+  choices for the supports change the predicted peak by 10–15%.
 - **Also useful:** the Blast Blind Simulation Contest data package itself (organised through
   ACI Committee 447 and the University of Missouri–Kansas City), if the digital pressure and
   displacement records are available. They would replace the curves currently digitised from

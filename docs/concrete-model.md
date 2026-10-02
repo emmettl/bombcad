@@ -245,13 +245,23 @@ matter.
    never passes peak strength. The fine mesh's peak of 108 mm therefore depends on a
    compression zone one element deep that can crush to 15‰ while still carrying load. The
    option is kept, at zero (one element), for the sensitivity study.
+10. **A mesh-convergence check**, with 16 elements through the thickness. The slab collapses.
+   Before anything fails it is already softer than the 8-layer mesh, because its compression
+   zone crushes to several per cent while its bars barely yield: compressive softening
+   collapses into the outermost layer of elements, whatever their size. The 4- and 8-layer
+   meshes agree on the peak; the model is not converged.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing.
 
 ## Limitations
 
-1. **Validated against one test**, a one-way slab in bending under a uniform load.
+1. **Validated against one test**, a one-way slab in bending under a uniform load, and **not
+   mesh-converged** on it: with 16 elements through the thickness the slab collapses (see
+   step 10 above). Crushing has no length scale through the depth of a member, so
+   compressive softening localises in the outermost layer of elements. Results for members in
+   bending should be checked at more than one mesh, and a run that crushes its outer layer
+   far past its strength is suspect.
 2. **Cracks form only on lattice planes.** A diagonal crack is represented by damage shared
    between two planes, not as an inclined plane with its own opening and sliding. Shear
    failures are the least trustworthy predictions the model makes.
@@ -289,9 +299,11 @@ step 4 showed to be missing.
   times and so need care.
 - **Inclined cracks**: a fixed-crack formulation that stores crack orientation, with interlock
   and dilatancy on the actual crack plane.
-- **The compression zone in bending**: elements that represent a strain gradient through
-  their depth (shells, or fully integrated solids), so that a thin compression zone is not a
-  single element crushed far beyond its strength. Widening the crushing band was tried and
+- **The compression zone in bending**: a nonlocal or gradient treatment of crushing, which
+  averages the crushing strain over a material length in every direction, or elements that
+  represent a strain gradient through their depth (shells, or fully integrated solids), so
+  that a thin compression zone is not a single element crushed far beyond its strength. This
+  is the first thing to fix: without it the slab result is not mesh-converged. Widening the crushing band was tried and
   made the fine mesh collapse. Friction on closing cracks and bond slip would add damping,
   but the slab shows they are not the first-order problem.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.

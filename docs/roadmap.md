@@ -14,7 +14,7 @@ and nothing in it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with one test                    | Unknown accuracy outside flexure of a lightly reinforced slab | [Validation](validation.md) |
+| 1 | The structural model has been compared with one test, and that result is not mesh-converged | Unknown accuracy; a finer mesh of the same slab collapses | [Validation](validation.md#sensitivity) |
 | 2 | Shear failure is the least reliable prediction                          | Breach, punching and direct-shear results are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
