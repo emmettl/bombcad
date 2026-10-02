@@ -45,9 +45,15 @@ crack is not elastic strain and must not put the directions alongside it into te
 
 Each lattice plane keeps the largest tensile equivalent strain it has seen, κ. Cracks that are
 not aligned with the lattice (diagonal cracks from shear) are detected from the principal
-strains: when a principal strain exceeds the cracking strain, it is added to the histories of
-the planes it cuts, in proportion to the squared direction cosines. Cracking across one
+values of the strain with the Poisson effect taken out, which is the elastic stress divided by
+E_c (a Rankine criterion): when one exceeds the cracking strain, it is added to the histories
+of the planes it cuts, in proportion to the squared direction cosines. Cracking across one
 direction therefore leaves the tensile strength of the others intact.
+
+The principal values of the strain itself were used at first. They count the sideways swelling
+of squeezed concrete as cracking: under uniaxial compression at two-thirds of its strength the
+lateral strain already reaches the cracking strain. Compression zones then cracked parallel to
+the surface, which cut the shear that ties them to the concrete beneath.
 
 Tension follows
 
@@ -83,14 +89,14 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
   never more steeply than elastic unloading. Below ε_p the concrete carries nothing, and
   reloading retraces the line. Each lattice axis keeps its own compressive history.
 
-  Past the peak, the softening is **nonlocal**: it follows the crushing averaged over the
-  intact elements within a radius of three aggregate sizes (48 mm by default, `crushLength`),
-  as in the nonlocal damage models of Pijaudier-Cabot and Bažant. Without it, compressive
-  softening concentrates in the outermost layer of elements, whatever their thickness, and a
-  fine mesh peels a compression zone away layer by layer. Only elements already past the
-  unconfined peak strain gather the average, from the previous substep's values, so the cost
-  is negligible until something crushes. Where the radius is less than half an element, as
-  in the 125 mm elements of the frame, crushing stays local.
+  Past the peak, the softening can optionally be made **nonlocal** (`crushLength`, off by
+  default): it then follows the crushing averaged over the intact elements of the same
+  material within that radius, as in the nonlocal damage models of Pijaudier-Cabot and Bažant;
+  three aggregate sizes, 48 mm, is the usual radius. Only elements already past the unconfined
+  peak strain gather the average, from the previous substep's values, sampling at most nine
+  points along each axis. It was added to stop a fine mesh of the validation slab peeling its
+  compression zone away layer by layer, but that turned out to be caused by two errors fixed
+  since (step 14 below); with them fixed it changes the slab's result by less than 1%.
 
   Between ε_p and zero strain, crushed concrete carries no tension either: it has lost its
   tensile strength. Measuring tension from ε_p instead was tried. It made slabs near their
@@ -172,6 +178,13 @@ The factor raises strength without changing stiffness. Two details matter:
 
 - The **tensile factor is frozen when an element first cracks**. Once a crack forms, strain
   gathers in it at a rate that depends on the element size and says nothing about the material.
+- The rate is the equivalent (von Mises) strain rate, √(2/3 ε̇:ε̇).
+
+Until the fix described in step 14 below, the compressive law above 30 per second omitted the
+normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
+passed 30 per second: concrete compressed that fast kept 3% of its strength. Rates above 30 per
+second occur in the compression zone of the validation slab on fine meshes and in walls near
+a charge, so every result before the fix that involved fast crushing was affected.
 - The **steel factor moves from its yield value to its ultimate value** as the bar hardens.
 
 Alternatively, fixed factors can be set (`concreteRateFactor`, `steelRateFactor`), such as the
@@ -201,7 +214,7 @@ compressive strength f_c (in MPa):
 | Tensile strength   | 0.3 f_c^(2/3) MPa          | Eurocode 2 (mean)     |
 | Fracture energy    | 73 f_c^0.18 N/m            | fib Model Code 2010   |
 | Crushing energy    | 250 × fracture energy      | Common practice       |
-| Crushing length    | 3 × aggregate size (48 mm) | Bažant and Pijaudier-Cabot (about 2.7) |
+| Crushing length    | 0 (local); 48 mm when nonlocal crushing is wanted | Bažant and Pijaudier-Cabot (about 2.7 aggregate sizes) |
 | Poisson's ratio    | 0.2                        |                       |
 | Density            | 2400 kg/m³                 |                       |
 
@@ -260,51 +273,56 @@ matter.
    zone crushes to several per cent while its bars barely yield: compressive softening
    collapses into the outermost layer of elements, whatever their size. The 4- and 8-layer
    meshes agree on the peak; the model is not converged.
-11. **Nonlocal crushing**, averaged over three aggregate sizes. On its own it made no
-   difference: the 16-layer slab still collapsed, and was still soft at 10 ms. That pointed
-   away from crushing.
-12. **The hourglass cap fixed.** The forces that stop one-point elements folding in a zigzag
-   were capped at the element's tensile capacity alone, so the compression zone, with no
-   steel and little tension, had almost no protection; on the fine mesh it folded, and the
-   folding was what had looked like crushing. With compression counted in the cap, and the
-   nonlocal crushing of step 11 (which then stopped late failures at the supports), the slab
-   peaked at 96, 102 and 110 mm on 4, 8 and 16 elements through the thickness, with nothing
-   failing on any of them. Every variation in the sensitivity study now survives except
-   held-down bearings.
-13. **The 16-layer result turned out to be a knife edge.** After an unrelated change that only
-   altered round-off, the 16-layer slab collapsed again; scaling the load by 0.999 or 1.001
-   flips it either way. The collapse starts when the 6 mm top layer passes peak strength at
-   6–8 ms and crushes to 1–2% at scattered points along the span. Capping the hourglass
-   forces of uncracked concrete at full strength, adding shear stress to the cap, and freezing
-   the compressive rate factor at first crushing were each tried and did not remove it. The
-   4- and 8-layer results are not sensitive in this way.
+11. **Nonlocal crushing**, averaged over three aggregate sizes, to stop that. On its own it
+   made no difference.
+12. **A compressive term in the hourglass cap**, on the theory that the compression zone was
+   folding in a zigzag its one-point elements could not feel. With step 11 it gave 96, 102 and
+   110 mm on 4, 8 and 16 elements; but the 16-layer result then proved to be a knife edge,
+   flipped between 110 mm and collapse by a 0.1% change in the load or by round-off.
+13. **Three further fixes tried** (a stronger cap for uncracked concrete, shear stress in the
+   cap, freezing the compressive rate factor at first crushing): none removed the knife edge.
+14. **Two errors found and fixed** by tracing the top element of the 16-layer slab through the
+   collapse. First, the crack check used the principal values of the total strain, so the
+   compression zone's sideways swelling counted as cracking (see Cracking); checking the
+   stress-like strain instead removed the early collapse. Second, at 21 ms the top element's
+   strain rate rose past 30 per second and its stress fell from 50 MPa to nearly nothing: the
+   compressive rate law above 30 per second was missing its normalisation (see Strain-rate
+   effects). A test now crushes a 1 mm cube at 100 per second and checks the strength.
+15. **Steps 11 and 12 revisited.** With the errors fixed, nonlocal crushing changes the slab's
+   peak by less than 1%, so it is now off by default. Removing the compressive hourglass term
+   altogether gave 114, 108 and 116 mm, but two sensitivity cases then collapsed through
+   cracked elements near the top surface distorting freely; a term of s (1 − s / f) instead of
+   s keeps them standing at less cost in bending strength. With it the slab peaks at 101, 105
+   and 112 mm on 4, 8 and 16 elements through the thickness, nothing fails on any mesh or in
+   any sensitivity case, and the 16-layer mesh gives 109, 112 and 115 mm at 0.99, 1.00 and
+   1.01 times the load.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
-step 4 showed to be missing. Step 5's 108 mm on 8 elements also owed something to the zigzag
-fixed in step 12: the same mesh now gives 102 mm.
+step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
+every result before step 14 that involved concrete crushed faster than 30 per second, in the
+slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Limitations
 
-1. **Validated against one test**, a one-way slab in bending under a uniform load, and **not
-   shown to converge** on it: 4 and 8 elements through the thickness give 96 and 102 mm, but
-   16 elements sit on a knife edge between about 110 mm and collapse (step 13). The post-peak
-   behaviour of a compression zone only a few millimetres deep per element is the weak point.
-   Results for members in bending should be checked at more than one mesh, and treated with
-   suspicion when the outermost layer crushes far past its strength early in the event.
-2. **Cracks form only on lattice planes.** A diagonal crack is represented by damage shared
+1. **Validated against one test**, a one-way slab in bending under a uniform load. On it the
+   peak is 101, 105 and 112 mm as the elements through the thickness go from 4 to 8 to 16,
+   without failures: close to converged, but still rising by about 5% per refinement. Results
+   for members in bending should be checked at more than one mesh.
+2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
+   because the hourglass forces of squeezed elements add to the section's moment (see the
+   structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
+   section analysis.
+3. **Cracks form only on lattice planes.** A diagonal crack is represented by damage shared
    between two planes, not as an inclined plane with its own opening and sliding. Shear
    failures are the least trustworthy predictions the model makes.
-3. **Members with no steel through their thickness** rely on interlock alone for shear. Earlier
-   versions of the slab sat near a shear failure; since the hourglass fix it does not, but
-   shear has not been tested on a member that failed in shear.
-4. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm
+4. **Members with no steel through their thickness** rely on interlock alone for shear. Earlier
+   versions of the slab sat near a shear failure; since the errors of step 14 were fixed it
+   does not, but shear has not been tested on a member that failed in shear.
+5. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm
    after its peak, where the specimen recovered about 13 mm and settled. The cause is the
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
    not a lack of damping. Cracked concrete still unloads and reloads along one line, so small
    cycles dissipate nothing in the concrete; only the bars have hysteresis.
-5. **The hourglass cap overstates bending strength slightly** where a compression zone is
-   thinner than an element: a reinforced beam six elements deep carries 13% more than
-   section analysis, twelve deep 10% more (see the structural model).
 6. **Confinement is capped** at about five times the unconfined strength, and there is no
    compaction of the pores. Concrete under the very high pressures close to a charge is beyond
    the model's range.
@@ -331,9 +349,8 @@ fixed in step 12: the same mesh now gives 102 mm.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
-- **Convergence**: find what makes the 16-layer compression zone unstable when its top layer
-  passes peak early, and fix it. A 32-layer run (4.4 million elements, 186,000 steps) was
-  tried and did not finish within two hours.
+- **Convergence**: a 32-layer run (4.4 million elements, 186,000 steps) would show whether the
+  peak levels off; one attempt, before the fixes of step 14, did not finish within two hours.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
 - **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.

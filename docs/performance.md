@@ -2,7 +2,9 @@
 
 The question the project set out to answer: how close to real time can blast on structures be
 simulated on a current Mac? All figures here were measured on an Apple M4 Max (32-core GPU,
-36 GB) with `blastbench`, in release builds.
+36 GB) with `blastbench`, in release builds. The same build has been measured up to 10% slower
+in some sessions than in others, with nothing else running, presumably from the machine's
+power or thermal state; figures here are from cool runs.
 
 ## Short answer
 
@@ -11,9 +13,9 @@ simulated on a current Mac? All figures here were measured on an Apple M4 Max (3
 | Air blast, 1 million cells (0.5 m in a street scene) | 2×                    |
 | Air blast, 8.4 million cells (0.25 m)               | 27×                   |
 | Air blast, 67 million cells (0.125 m)               | about 430×            |
-| A 225,000-element concrete building, alone          | 58×                   |
-| The same, once pieces are colliding                 | 90×                   |
-| That building coupled to 1 million air cells        | 75×                   |
+| A 225,000-element concrete building, alone          | 54×                   |
+| The same, once pieces are colliding                 | 87×                   |
+| That building coupled to 1 million air cells        | 74×                   |
 | A 23,000-element frame collapsing                   | 7×                    |
 
 "Real time" for a blast is not a useful target in itself: the event lasts a fraction of a
@@ -58,8 +60,8 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 
 | Mode                          | Steps/s | Element-updates/s | Slower than real time |
 |-------------------------------|---------|-------------------|-----------------------|
-| Before anything has failed    | 1,915   | 431 million       | 58×                   |
-| With contact running          | 1,226   | 276 million       | 90×                   |
+| Before anything has failed    | 2,061   | 463 million       | 54×                   |
+| With contact running          | 1,270   | 285 million       | 87×                   |
 
 - The explicit time step is set by the element size and the speed of sound in concrete, and it
   is what makes structures expensive: 110,000 steps per simulated second at this resolution.
@@ -111,12 +113,11 @@ them, and a time step twice as long.
 
 ## The slab benchmark
 
-`blastbench slab` runs 80 ms of the validation slab in 10 s with eight elements through the
+`blastbench slab` runs 80 ms of the validation slab in 7 s with eight elements through the
 thickness (68,608 elements of 12.7 mm, time step 1.7 µs) and in under a second with four. With
-sixteen (553,000 elements) it takes about three minutes. Nonlocal crushing adds about 3 s of
-the eight-layer time: each element past its peak strain averages a neighbourhood nine
-elements across. Elements that have not crushed skip it, so it costs nothing in the building
-benchmark.
+sixteen (553,000 elements) it takes under two minutes. Nonlocal crushing, when switched on,
+adds about 3 s to the eight-layer time: each element past its peak strain averages a
+neighbourhood of up to nine points along each axis.
 
 ## Display
 

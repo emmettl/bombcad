@@ -429,6 +429,7 @@ func runSlab() throws {
         ("residual crack opening 20%", 1, { $0.crackResidual = 0.2 }),
         ("residual crack opening 30%", 1, { $0.crackResidual = 0.3 }),
         ("crushing spread over at least 50 mm", 1, { $0.crushBand = 0.05 }),
+        ("crushing averaged over 48 mm (nonlocal)", 1, { $0.crushLength = 0.048 }),
     ]
     var runs: [(String, () throws -> SlabBenchmark.Result)] = variants.map { label, scale, adjust in
         (label, { try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust) })

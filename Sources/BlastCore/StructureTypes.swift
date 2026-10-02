@@ -94,8 +94,8 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// one element.
     public var crushBand: Float = 0
     /// Radius, in metres, over which crushing is averaged before it softens the concrete
-    /// (nonlocal crushing). Zero, or less than half an element, keeps it local. `concrete(...)`
-    /// sets it to three aggregate sizes.
+    /// (nonlocal crushing). Zero, the default, or less than half an element keeps it local;
+    /// three aggregate sizes (48 mm) is the usual choice when it is wanted.
     public var crushLength: Float = 0
     /// Gain in compressive strength per unit of lateral confining stress (Richart's 4.1).
     public var confinementCoefficient: Float = 4.1
@@ -149,7 +149,6 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         material.tensileStrength = 0.3e6 * pow(megapascals, 2.0 / 3.0)
         material.fractureEnergy = 73 * pow(megapascals, 0.18)
         material.crushingEnergy = 250 * material.fractureEnergy
-        material.crushLength = 3 * material.aggregateSize
         material.steel = steel
         return material
     }
@@ -645,7 +644,7 @@ extension StructureMaterial {
         crackSpacing = try value(.crackSpacing, crackSpacing)
         crushBand = try value(.crushBand, crushBand)
         aggregateSize = try value(.aggregateSize, aggregateSize)
-        crushLength = try value(.crushLength, model == .concrete ? 3 * aggregateSize : crushLength)
+        crushLength = try value(.crushLength, crushLength)
         confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)

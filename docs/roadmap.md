@@ -14,7 +14,7 @@ and nothing in it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with one test, and is not shown to converge on it | Unknown accuracy elsewhere; a finer mesh of the test is on a knife edge | [Validation](validation.md#results) |
+| 1 | The structural model has been compared with one test, and is close to but not fully converged on it | Unknown accuracy elsewhere; peaks within about 10% | [Validation](validation.md#results) |
 | 2 | Shear failure is the least reliable prediction                          | Breach, punching and direct-shear results are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
@@ -51,10 +51,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    of state.
 5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
-6. **The compression zone in bending, and compaction** under very high pressure. On a fine
-   mesh the slab's compression zone is unstable when its top layer passes peak strength early
-   in the event, so the slab result is not shown to converge; and its mid-span hinge springs
-   back twice as far as the specimen did. This is the first structural problem to fix.
+6. **The rebound, and compaction** under very high pressure. The slab's mid-span hinge springs
+   back twice as far as the specimen did on every mesh.
 7. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.
@@ -73,6 +71,14 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 - Review the app on screen and fix what is found.
 
 ## Things tried and set aside
+
+- **Fixes for the wrong cause.** A fine mesh of the validation slab collapsed, and nonlocal
+  crushing, a stronger hourglass cap, a frozen compressive rate factor and wider crushing
+  bands were each tried before tracing one element through the collapse found the two real
+  errors (Poisson swelling counted as cracking; a missing normalisation in the compressive
+  rate law). Nonlocal crushing and a reduced form of the hourglass cap were kept, the first
+  switched off by default; the rest were removed. The lesson: trace a failing element before
+  changing the model.
 
 - **Fixed design factors for strain rate** (UFC 3-340-02): too conservative to reproduce the
   slab test, which they predict collapses. They remain available as an option.

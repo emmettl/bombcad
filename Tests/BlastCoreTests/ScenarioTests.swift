@@ -146,7 +146,7 @@ struct ScenarioTests {
         #expect(opened == expected)
         #expect(opened.structure?.material.crackResidual == 0.1)
         #expect(opened.structure?.material.crushBand == 0)
-        #expect(opened.structure?.material.crushLength == 0.048)
+        #expect(opened.structure?.material.crushLength == 0)
         // The saved bars are kept as they were; the setting reads as automatic.
         #expect(opened.structure?.reinforcement == scenario.structure?.reinforcement)
         #expect(opened.structure?.reinforcement(of: 0) == .automatic)

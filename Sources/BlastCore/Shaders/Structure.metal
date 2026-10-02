@@ -419,7 +419,7 @@ static inline float compressionIncrease(float rate, constant MaterialParameters 
     if (rate <= 30.0f) {
         return pow(max(rate, 30e-6f) / 30e-6f, exponent);
     }
-    return pow(10.0f, 6.156f * m.concreteRateCompression - 2.0f) * pow(rate, 1.0f / 3.0f);
+    return pow(10.0f, 6.156f * m.concreteRateCompression - 2.0f) * pow(rate / 30e-6f, 1.0f / 3.0f);
 }
 
 static inline float tensionIncrease(float rate, constant MaterialParameters &m) {
@@ -622,13 +622,30 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float compressionFactor = compressionIncrease(state.strainRate, m);
         float onset = m.crackOnset * tensionFactor;
 
+        // Equivalent uniaxial strains along the axes: in the linear range these reproduce
+        // isotropic elasticity. The Poisson coupling fades as the concrete cracks, since an open
+        // crack's strain is not elastic strain and must not stretch the directions alongside it.
+        float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
+        if (worst > onset) {
+            poisson *= concreteTension(worst, worst, tensionFactor, m) / (m.youngsModulus * worst);
+        }
+
         // Cracks are smeared over the three lattice planes, each with its own history, so that
         // cracking across one direction leaves the others intact. A diagonal crack (from shear)
-        // is found from the principal strains and shared between the planes it cuts across, in
-        // proportion to the squared direction cosines.
+        // is found from the principal values of the strain with the Poisson effect taken out,
+        // which is the elastic stress over E: a Rankine criterion. (Principal values of the
+        // strain itself would count the sideways swelling of squeezed concrete as cracking.)
+        // It is shared between the planes it cuts across, in proportion to the squared direction
+        // cosines.
+        float3x3 effective = strain * (1.0f / (1.0f + poisson));
+        float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2])
+            / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
+        effective[0][0] += dilation;
+        effective[1][1] += dilation;
+        effective[2][2] += dilation;
         float3 principal;
         float3x3 axes;
-        symmetricEigen(strain, principal, axes);
+        symmetricEigen(effective, principal, axes);
         for (int i = 0; i < 3; ++i) {
             float3 weight = axes[i] * axes[i];
             float seen = dot(weight, history);
@@ -637,13 +654,6 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
         }
 
-        // Equivalent uniaxial strains along the axes: in the linear range these reproduce
-        // isotropic elasticity. The Poisson coupling fades as the concrete cracks, since an open
-        // crack's strain is not elastic strain and must not stretch the directions alongside it.
-        float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
-        if (worst > onset) {
-            poisson *= concreteTension(worst, worst, tensionFactor, m) / (m.youngsModulus * worst);
-        }
         float volumetric = normalStrain.x + normalStrain.y + normalStrain.z;
         float3 uniaxial = ((1.0f - 2.0f * poisson) * normalStrain + poisson * volumetric)
             / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
@@ -826,11 +836,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         szx = cauchy[0][2];
 
         eroded = eroded || torn || pulverised || crack > 1.0f;
-        // Bending resistance comes from tension (concrete before it cracks, and steel) and from
-        // compression: an element squeezed along an axis resists the hourglass modes in
-        // proportion, so that a compression zone cannot fold up in a zigzag.
+        // Squeezed concrete also resists the hourglass modes: a block at mean compressive stress s
+        // and strength f can carry a bending moment in proportion to s (1 - s / f).
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);
-        capacity = max(max(concreteTension(crack, crack, tensionFactor, m) + steelCapacity, squeezed),
+        float strength = m.compressiveStrength * compressionFactor * max(confinement.x, max(confinement.y, confinement.z));
+        float bending = squeezed * max(1.0f - squeezed / strength, 0.0f);
+        capacity = max(max(concreteTension(crack, crack, tensionFactor, m) + steelCapacity, bending),
                        0.02f * m.tensileStrength);
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
     }
