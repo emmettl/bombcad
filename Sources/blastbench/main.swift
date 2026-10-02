@@ -285,6 +285,28 @@ func runSlab() throws {
         }
     }
 
+    // The whole history, not just its peak, against the measured record.
+    let fine = try SlabBenchmark.run(device: device, elementsThroughThickness: 8)
+    let coarse = try SlabBenchmark.run(device: device, elementsThroughThickness: 4)
+    print("\nMid-span displacement history (mm):")
+    print(pad("time", 8) + pad("measured", 10) + pad("8 layers", 10) + pad("4 layers", 10))
+    for time in stride(from: Float(0.005), through: 0.0701, by: 0.005) {
+        print(
+            pad("\(format(Double(time) * 1000, 0)) ms", 8)
+                + pad(format(Double(SlabBenchmark.measuredDisplacement(at: time)) * 1000, 0), 10)
+                + pad(format(Double(fine.displacement(at: time)) * 1000, 0), 10)
+                + pad(format(Double(coarse.displacement(at: time)) * 1000, 0), 10))
+    }
+    print(
+        "Root-mean-square difference over the record: \(format(Double(fine.historyError) * 1000, 1)) mm "
+            + "(8 layers), \(format(Double(coarse.historyError) * 1000, 1)) mm (4 layers)")
+    print("\nPeaks the source reports for other tools on the same slab and load:")
+    for other in SlabBenchmark.otherPredictions {
+        print(
+            "  \(format(Double(other.peak) * 1000, 0)) mm "
+                + "(\(format(Double(other.peak / SlabBenchmark.measuredPeak) * 100, 0))%)  \(other.tool)")
+    }
+
     guard flag("sensitivity") else { return }
     print("\nSensitivity of the eight-layer, rate-law result to things the source does not pin down:")
     let variants: [(String, Float, (inout StructureMaterial) -> Void)] = [

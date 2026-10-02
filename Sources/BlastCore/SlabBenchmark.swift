@@ -20,6 +20,40 @@ public enum SlabBenchmark {
     /// Displacement at the end of the record, in metres (about 3.6 in at 70 ms).
     public static let measuredResidual: Float = 3.6 * inch
 
+    /// The measured mid-span displacement history, read off the published plot: time in seconds
+    /// against displacement in metres. The record ends at about 72 ms.
+    public static let measuredHistory: [SIMD2<Float>] = {
+        let points: [(Float, Float)] = [
+            (0, 0), (2, 0.02), (5, 0.35), (7.5, 0.8), (10, 1.38), (12.5, 2.0), (15, 2.6), (17.5, 3.15),
+            (20, 3.48), (22.5, 3.85), (25, 4.05), (27.5, 4.2), (30, 4.25), (32.5, 4.22), (35, 4.22),
+            (37.5, 4.0), (40, 3.85), (43, 3.65), (45, 3.75), (50, 3.85), (55, 3.86), (60, 3.78),
+            (62, 3.7), (65, 3.63), (70, 3.56), (72, 3.55),
+        ]
+        return points.map { SIMD2($0.0 * 1e-3, $0.1 * inch) }
+    }()
+
+    /// Measured displacement at `time`, interpolated from `measuredHistory`.
+    public static func measuredDisplacement(at time: Float) -> Float {
+        interpolate(measuredHistory, at: time)
+    }
+
+    /// Peak displacements that the source reports for other tools given the same slab and load,
+    /// read off its comparison plot, in metres.
+    public static let otherPredictions: [(tool: String, peak: Float)] = [
+        ("Extreme Loading for Structures (applied element method)", 4.2 * inch),
+        ("RCBlast (single degree of freedom)", 4.6 * inch),
+        ("SBEDS (single degree of freedom, flexure)", 9.4 * inch),
+    ]
+
+    static func interpolate(_ curve: [SIMD2<Float>], at time: Float) -> Float {
+        guard let first = curve.first, let last = curve.last else { return 0 }
+        if time <= first.x { return first.y }
+        for (a, b) in zip(curve, curve.dropFirst()) where time <= b.x {
+            return a.y + (b.y - a.y) * (time - a.x) / max(b.x - a.x, 1e-9)
+        }
+        return last.y
+    }
+
     public static let statedPeakPressure: Float = 50 * psi
     public static let statedImpulse: Float = 1020 * psi * 1e-3
 
@@ -111,6 +145,22 @@ public enum SlabBenchmark {
         public var summary: StructureSummary
         public var elementCount: Int
         public var wallSeconds: Double
+
+        /// Predicted displacement at `time`, interpolated from `history`.
+        public func displacement(at time: Float) -> Float {
+            SlabBenchmark.interpolate(history, at: time)
+        }
+
+        /// Root-mean-square difference from the measured history over the measured record,
+        /// sampled every millisecond, in metres.
+        public var historyError: Float {
+            let end = SlabBenchmark.measuredHistory.last?.x ?? 0
+            let times = stride(from: Float(0.001), through: end, by: 0.001)
+            let squares = times.map {
+                pow(displacement(at: $0) - SlabBenchmark.measuredDisplacement(at: $0), 2)
+            }
+            return (squares.reduce(0, +) / Float(max(squares.count, 1))).squareRoot()
+        }
     }
 
     /// Runs the slab under the recorded pressure for 80 ms.

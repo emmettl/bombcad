@@ -355,5 +355,7 @@ struct SlabBenchmarkTests {
         #expect(result.summary.erodedElements == 0)
         // The slab is left with most of that deflection, as in the test.
         #expect(result.residual > 0.6 * result.peak)
+        // The whole history stays close to the measured one, not just its peak.
+        #expect(result.historyError < 0.012, "history differs by \(result.historyError) m")
     }
 }
