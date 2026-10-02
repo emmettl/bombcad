@@ -122,4 +122,44 @@ struct BlastValidationTests {
                 peak / reference > 0.55 && peak / reference < 1.35, "\(gauge.name): \(peak) vs \(reference)")
         }
     }
+
+    @Test("The impulse on a rigid wall matches Kingery-Bulmash within 10%", arguments: [1, 2])
+    func reflectedImpulseAgainstKingeryBulmash(index: Int) throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let point = KingeryBulmash.hemisphericalSurfaceBurst[index]
+        // The far x face of the domain is the wall; the charge sits on the ground in front of it.
+        var scenario = ScenarioPreset.openGround.scenario
+        let mass = Double(scenario.charge.mass)
+        scenario.reflectiveFaces = [.zMin, .xMax]
+        scenario.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
+        scenario.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+        solver.advance(until: 0.1)
+
+        let cell = solver.nearestFluidCell(to: scenario.gauges[0].position)
+        let impulse = Double(solver.impulse(cell.i, cell.j, cell.k))
+        let reference = point.reflectedImpulse(mass: mass)
+        #expect(
+            abs(impulse - reference) / reference < 0.1, "impulse \(impulse) Pa s against \(reference) Pa s")
+        // The shock arrives when it should.
+        let history = try #require(solver.gaugeHistories.first)
+        let peak = (history.map(\.pressure).max() ?? 0) - scenario.atmosphere.pressure
+        let arrival = history.first { $0.pressure - scenario.atmosphere.pressure >= 0.5 * peak }?.time ?? 0
+        #expect(
+            abs(arrival - point.arrival(mass: mass)) / point.arrival(mass: mass) < 0.1, "arrival \(arrival) s"
+        )
+    }
+
+    @Test("The Kingery-Bulmash reference points scale as tabulated")
+    func kingeryBulmashPoints() {
+        let points = KingeryBulmash.hemisphericalSurfaceBurst
+        #expect(points.count == 3)
+        // The middle row of the source table: 10,000 kg at 50 m.
+        let middle = points[1]
+        #expect(abs(middle.range(mass: 10_000) - 50) < 1e-9)
+        #expect(abs(middle.incidentPressure - 202_000) < 1)
+        #expect(abs(middle.reflectedImpulse(mass: 10_000) - 6550) < 1e-6)
+        #expect(abs(middle.arrival(mass: 10_000) - 0.0481) < 1e-9)
+        #expect(zip(points, points.dropFirst()).allSatisfy { $0.scaledDistance < $1.scaledDistance })
+    }
 }

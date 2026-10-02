@@ -100,58 +100,159 @@ func runThroughput() throws {
     }
 }
 
+/// Time at which a gauge's overpressure first reaches half of its peak, in seconds.
+func arrivalTime(_ history: [GaugeSample], ambient: Float) -> Double {
+    let peak = (history.map(\.pressure).max() ?? ambient) - ambient
+    return history.first { $0.pressure - ambient >= 0.5 * peak }?.time ?? 0
+}
+
 func runValidation() throws {
-    let scenario = ScenarioPreset.openGround.scenario
     var cellSizes: [Float] = [0.5, 0.25, 0.125]
     if let text = option("dx"), let value = Float(text) {
         cellSizes = [value]
     }
-    let equivalentMass = Double(2 * scenario.charge.mass)
-    print("Surface burst of \(Int(scenario.charge.mass)) kg on rigid ground versus Kinney-Graham free air")
-    print("for \(Int(equivalentMass)) kg (the ground acts as a mirror).")
-
-    var peaks: [[Double]] = []
-    var impulses: [[Double]] = []
-    for cellSize in cellSizes {
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    func configure(_ solver: BlastSolver) {
         if let theta = option("theta").flatMap({ Float($0) }) { solver.configuration.limiterTheta = theta }
         if let cfl = option("cfl").flatMap({ Float($0) }) { solver.configuration.cfl = cfl }
         if let cells = option("balloon").flatMap({ Float($0) }) {
             solver.configuration.minimumBalloonCells = cells
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
+    }
+    func header(_ first: String) -> String {
+        pad(first, 10) + pad("reference", 12)
+            + cellSizes.map { pad("dx \(format(Double($0), 3))", 16) }.joined()
+    }
+    func row(_ label: String, _ reference: Double, _ values: [Double], digits: Int = 1) -> String {
+        pad(label, 10) + pad(format(reference, digits), 12)
+            + values.map { pad("\(format($0, digits)) (\(format(100 * $0 / reference, 0))%)", 16) }.joined()
+    }
+
+    // 1. Kingery-Bulmash: the design-practice standard for a surface burst.
+    var scenario = ScenarioPreset.openGround.scenario
+    let mass = Double(scenario.charge.mass)
+    let points = KingeryBulmash.hemisphericalSurfaceBurst
+    scenario.gauges = points.map { point in
+        Gauge(
+            "Z = \(format(point.scaledDistance, 2))", at: SIMD3(32 + Float(point.range(mass: mass)), 32, 0.05)
+        )
+    }
+    print("Surface burst of \(Int(mass)) kg on rigid ground against Kingery-Bulmash (hemispherical surface")
+    print("burst), at the three scaled distances tabulated in IATG 01.80.")
+
+    var incident: [[(peak: Double, impulse: Double, arrival: Double)]] = []
+    for cellSize in cellSizes {
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        configure(solver)
         try solver.load(scenario)
+        solver.advance(until: 0.1)
+        incident.append(
+            zip(scenario.gauges, solver.gaugeHistories).map { gauge, history in
+                let cell = solver.nearestFluidCell(to: gauge.position)
+                return (
+                    Double((history.map(\.pressure).max() ?? 0) - scenario.atmosphere.pressure) / 1000,
+                    Double(solver.impulse(cell.i, cell.j, cell.k)),
+                    arrivalTime(history, ambient: scenario.atmosphere.pressure) * 1000
+                )
+            })
+    }
+    print("\nIncident peak overpressure (kPa)\n" + header("range"))
+    for (n, point) in points.enumerated() {
+        print(
+            row(
+                "\(format(point.range(mass: mass))) m", point.incidentPressure / 1000,
+                incident.map { $0[n].peak }))
+    }
+    print("\nIncident positive impulse (Pa s)\n" + header("range"))
+    for (n, point) in points.enumerated() {
+        print(
+            row(
+                "\(format(point.range(mass: mass))) m", point.incidentImpulse(mass: mass),
+                incident.map { $0[n].impulse }, digits: 0))
+    }
+    print("\nArrival time (ms)\n" + header("range"))
+    for (n, point) in points.enumerated() {
+        print(
+            row(
+                "\(format(point.range(mass: mass))) m", point.arrival(mass: mass) * 1000,
+                incident.map { $0[n].arrival }))
+    }
+
+    // 2. Reflected: the far x face of the domain becomes a rigid wall at each stand-off.
+    var reflected: [[(peak: Double, impulse: Double)]] = []
+    for cellSize in cellSizes {
+        var column: [(peak: Double, impulse: Double)] = []
+        for point in points {
+            var wall = ScenarioPreset.openGround.scenario
+            wall.reflectiveFaces = [.zMin, .xMax]
+            wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
+            wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
+            let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
+            configure(solver)
+            try solver.load(wall)
+            solver.advance(until: 0.1)
+            let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
+            column.append(
+                (
+                    Double((solver.gaugeHistories[0].map(\.pressure).max() ?? 0) - wall.atmosphere.pressure)
+                        / 1000,
+                    Double(solver.impulse(cell.i, cell.j, cell.k))
+                ))
+        }
+        reflected.append(column)
+    }
+    print("\nReflected peak overpressure on a rigid wall (kPa)\n" + header("stand-off"))
+    for (n, point) in points.enumerated() {
+        print(
+            row(
+                "\(format(point.range(mass: mass))) m", point.reflectedPressure / 1000,
+                reflected.map { $0[n].peak }))
+    }
+    print("\nReflected positive impulse on a rigid wall (Pa s)\n" + header("stand-off"))
+    for (n, point) in points.enumerated() {
+        print(
+            row(
+                "\(format(point.range(mass: mass))) m", point.reflectedImpulse(mass: mass),
+                reflected.map { $0[n].impulse }, digits: 0))
+    }
+
+    // 3. Kinney-Graham free air, for twice the mass (perfectly rigid ground acts as a mirror).
+    let open = ScenarioPreset.openGround.scenario
+    let equivalentMass = 2 * mass
+    print("\nThe same burst against Kinney-Graham free air for \(Int(equivalentMass)) kg.")
+    var peaks: [[Double]] = []
+    var impulses: [[Double]] = []
+    for cellSize in cellSizes {
+        let solver = try BlastSolver(device: device, scenario: open, cellSize: cellSize)
+        configure(solver)
+        try solver.load(open)
         solver.advance(until: 0.1)
         peaks.append(
             solver.gaugeHistories.map { history in
-                Double((history.map(\.pressure).max() ?? 0) - scenario.atmosphere.pressure) / 1000
+                Double((history.map(\.pressure).max() ?? 0) - open.atmosphere.pressure) / 1000
             })
         impulses.append(
-            scenario.gauges.map { gauge in
+            open.gauges.map { gauge in
                 let cell = solver.nearestFluidCell(to: gauge.position)
                 return Double(solver.impulse(cell.i, cell.j, cell.k))
             })
     }
-
-    func table(_ title: String, _ columns: [[Double]], reference: (Double) -> Double) {
-        print("\n\(title)")
+    print("\nPeak overpressure (kPa)\n" + header("range"))
+    for (n, gauge) in open.gauges.enumerated() {
+        let range = Double(simd_distance(gauge.position, open.charge.position))
         print(
-            pad("range", 8) + pad("reference", 12)
-                + cellSizes.map { pad("dx \(format(Double($0), 3))", 16) }.joined())
-        for (row, gauge) in scenario.gauges.enumerated() {
-            let range = Double(simd_distance(gauge.position, scenario.charge.position))
-            let expected = reference(range)
-            let cellsText = columns.map { column in
-                pad("\(format(column[row])) (\(format(100 * column[row] / expected, 0))%)", 16)
-            }.joined()
-            print(pad("\(format(range, 0)) m", 8) + pad(format(expected), 12) + cellsText)
-        }
+            row(
+                "\(format(range, 0)) m",
+                KinneyGraham.peakOverpressure(mass: equivalentMass, range: range) / 1000, peaks.map { $0[n] })
+        )
     }
-    table("Peak overpressure (kPa)", peaks) {
-        KinneyGraham.peakOverpressure(mass: equivalentMass, range: $0) / 1000
-    }
-    table("Positive impulse (Pa s)", impulses) {
-        KinneyGraham.positiveImpulse(mass: equivalentMass, range: $0)
+    print("\nPositive impulse (Pa s)\n" + header("range"))
+    for (n, gauge) in open.gauges.enumerated() {
+        let range = Double(simd_distance(gauge.position, open.charge.position))
+        print(
+            row(
+                "\(format(range, 0)) m", KinneyGraham.positiveImpulse(mass: equivalentMass, range: range),
+                impulses.map { $0[n] }, digits: 0))
     }
 }
 

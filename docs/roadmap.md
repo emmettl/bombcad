@@ -16,8 +16,8 @@ and nothing in it should be used to judge the safety of a real structure.
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
 | 1 | The structural model has been compared with one test                    | Unknown accuracy outside flexure of a lightly reinforced slab | [Validation](validation.md) |
 | 2 | Shear failure is the least reliable prediction                          | Breach, punching and direct-shear results are indicative only | [Concrete model](concrete-model.md#limitations) |
-| 3 | Blast impulse is about 16% low against the reference                    | Structural response driven by the air solver is under-predicted | [Air-blast model](air-blast-model.md#limitations) |
-| 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
+| 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
+| 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | A moving structure does not push the air                                | Secondary pressure waves from thrown walls are missing        | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One deformable body, one material, lattice-aligned geometry             | Real buildings cannot be represented                          | [Structural model](structural-model.md#limitations) |
@@ -38,15 +38,16 @@ More evidence is worth more than more features.
    both faces, a member that failed in shear, and a wall under a real charge. The high-strength
    slabs of the same contest are the obvious next case, since the geometry and loading are
    already set up; their data would have to come from Thiagarajan et al. (2015).
-2. **Blast loads against Kingery–Bulmash**, including reflected pressure and impulse on a rigid
-   wall, which is what the structure actually feels.
+2. **Blast loads against the full Kingery–Bulmash curves.** Three tabulated points are used
+   now, and the impulse on a wall agrees within 5% to 10% at them; the polynomials would extend
+   the check closer in and farther out.
 3. **A coupled case**: charge, stand-off, wall and measured deflection in one test.
 
 ### Then the physics the evidence points to
 
-4. **Charge model.** If the impulse shortfall survives the comparison in item 2, replace the
-   balloon with a mapped one-dimensional solution or a products gas with its own equation of
-   state.
+4. **Charge model.** The incident impulse is low and close-in peaks are under-resolved. Replace
+   the balloon with a mapped one-dimensional solution or a products gas with its own equation
+   of state.
 5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
 6. **Permanent compressive strain and compaction** in concrete.
@@ -77,6 +78,7 @@ More evidence is worth more than more features.
   energy in every row of elements and makes the answer depend on the mesh.
 - **Contact between nodes that were once neighbours**: creates energy when the element between
   them fails in compression, and blew a wall apart.
-- **Retrieving the Kingery–Bulmash coefficients and a second open data set** during
-  development: the sources found either refused automated access or re-used each specimen for
-  several shots.
+- **Retrieving the Kingery–Bulmash polynomial coefficients and a second open structural data
+  set** during development: the sources found either refused automated access or re-used each
+  specimen for several shots. Tabulated Kingery–Bulmash values at three scaled distances were
+  found in a United Nations guideline and are used instead.

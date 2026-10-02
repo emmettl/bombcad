@@ -64,10 +64,16 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Concrete building, 225,000 elements, coupled to the air     | about 100× slower            |
 | Two-storey frame collapsing over 3 s                        | 10× slower                   |
 
-Against a published blast test of a reinforced-concrete slab, the structural model predicts a
-peak deflection of 108 mm where 108 mm was measured, with no material constant fitted to the
-test. That agreement is partly luck and the result is sensitive; the
-[validation notes](docs/validation.md) say how sensitive, and what has not been checked.
+Two comparisons with the outside world, both in the [validation notes](docs/validation.md):
+
+- **Blast loads.** The impulse on a rigid wall is within 5% to 10% of the Kingery–Bulmash
+  reference at the three stand-offs checked. Peak pressures are under-resolved, more so close
+  to the charge.
+- **Structural response.** Against a published blast test of a reinforced-concrete slab, the
+  model predicts a peak deflection of 108 mm where 108 mm was measured, with no material
+  constant fitted to the test. That agreement is partly luck and the result is sensitive.
+
+Collapse and debris have not been compared with anything.
 
 ## Documentation
 

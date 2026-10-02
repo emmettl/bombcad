@@ -78,15 +78,17 @@ still 0.8 kPa from ambient.
 
 See [Validation](validation.md). In brief: the scheme reproduces Sod's shock tube, a reflected
 normal shock and the Sedov–Taylor blast, and conserves mass and energy exactly in a closed box.
-Against the Kinney–Graham empirical curves it gives 60–85% of the peak overpressure
-(improving with resolution) and a grid-independent 84% of the impulse.
+Against the Kingery–Bulmash reference for a surface burst, the impulse on a rigid wall is within
+5% to 10%, the incident impulse is 13% to 23% low on every grid, and peak pressures are
+under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with resolution).
 
 ## Limitations
 
 1. **The source model is crude.** An ideal-gas balloon with γ = 1.4 ignores the detonation
    wave, the real equation of state of the detonation products, and afterburning. It is poor
-   within a few charge diameters, or a few cells, of the charge, and it under-predicts impulse
-   by about 16% against the reference curve at all ranges tested.
+   within a few charge diameters, or a few cells, of the charge, and it under-predicts incident
+   impulse by 13% to 23% at all ranges tested. Impulse on a wall facing the charge is much
+   better, within 5% to 10%.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
 3. **Open boundaries reflect a little.** Zero-gradient extrapolation is not a true
@@ -99,10 +101,9 @@ Against the Kinney–Graham empirical curves it gives 60–85% of the peak overp
 
 ## Future work
 
-- **Compare with Kingery–Bulmash** (as simplified by Swisdak), the reference used in design
-  practice, for incident and reflected pressure and impulse from a hemispherical surface burst.
-  The coefficients could not be retrieved from an accessible source during development, so the
-  comparison so far uses Kinney–Graham.
+- **Compare with the full Kingery–Bulmash curves** (as simplified by Swisdak). The comparison so
+  far uses three tabulated points, at scaled distances of 1.1, 2.3 and 5 m/kg^(1/3); the
+  polynomial coefficients could not be retrieved from an accessible source during development.
 - **Better source.** Two options, in order of effort: start from a one-dimensional, finely
   resolved spherical solution and map it onto the grid once the shock has grown to several
   cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of
@@ -132,4 +133,8 @@ Against the Kinney–Graham empirical curves it gives 60–85% of the peak overp
 - C. N. Kingery and G. Bulmash, *Airblast Parameters from TNT Spherical Air Burst and
   Hemispherical Surface Burst*, ARBRL-TR-02555, US Army Ballistic Research Laboratory, 1984;
   and M. M. Swisdak, "Simplified Kingery Airblast Calculations", 26th DoD Explosives Safety
-  Seminar, 1994. Not yet used; see Future work.
+  Seminar, 1994. The reference for design practice; used here through the worked examples in
+  the next entry.
+- United Nations Office for Disarmament Affairs, *International Ammunition Technical
+  Guidelines*, IATG 01.80, "Formulae for ammunition management", 3rd ed., 2021, Table 5.
+  Kingery–Bulmash values for a hemispherical surface burst at three scaled distances.

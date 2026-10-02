@@ -23,7 +23,7 @@ swift run -c release blastbench validate
 | Area                 | Evidence                                             | Confidence                         |
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
-| Blast loads          | One empirical curve: 60–85% of peak, 84% of impulse  | Moderate; the shortfall is known   |
+| Blast loads          | Kingery–Bulmash at three ranges: impulse on a wall within 5–10% | Moderate to good for impulse on walls; peaks under-resolved |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: peak within 5%                        | Low to moderate: one test, sensitive |
@@ -157,11 +157,78 @@ collapse correctly; that walls loaded by the air solver respond correctly (the a
 loads have their own error, below); or that a second slab would agree as well. Agreement within
 a few per cent on one test with this much sensitivity is partly luck.
 
-## Blast loads against an empirical curve
+The air solver's loads on a wall are close to the reference (next section), so a wall loaded by
+the air solver starts from about the right impulse. The combination has still not been compared
+with a test.
 
-`blastbench validate` compares a 100 kg charge on rigid ground with the Kinney–Graham free-air
-curves for 200 kg. A charge on perfectly rigid ground is equivalent to one of twice the mass in
-free air.
+## Blast loads against empirical references
+
+`blastbench validate` puts a 100 kg charge on rigid ground and compares the air solver with two
+references.
+
+### Kingery–Bulmash, the design-practice standard
+
+Kingery and Bulmash fitted polynomials to a large body of test data for a hemispherical surface
+burst of TNT; they underlie ConWep and UFC 3-340-02. The polynomials are not reproduced here.
+The comparison uses the three worked examples tabulated in the United Nations' *International
+Ammunition Technical Guidelines*, IATG 01.80 (3rd ed., 2021), Table 5, reduced to scaled form.
+For 100 kg they fall at 5.0 m, 10.8 m and 23.2 m.
+
+Incident (side-on) wave over open ground:
+
+| Range  | Reference peak | 0.5 m cells | 0.25 m cells | 0.125 m cells |
+|--------|----------------|-------------|--------------|---------------|
+| 5.0 m  | 1,150 kPa      | 55%         | 74%          | 93%           |
+| 10.8 m | 202 kPa        | 63%         | 77%          | 86%           |
+| 23.2 m | 43 kPa         | 68%         | 81%          | 90%           |
+
+| Range  | Reference impulse | 0.5 m cells | 0.25 m cells | 0.125 m cells |
+|--------|-------------------|-------------|--------------|---------------|
+| 5.0 m  | 1,060 Pa·s        | 78%         | 77%          | 82%           |
+| 10.8 m | 543 Pa·s          | 83%         | 82%          | 82%           |
+| 23.2 m | 274 Pa·s          | 85%         | 87%          | 87%           |
+
+| Range  | Reference arrival | 0.5 m cells | 0.25 m cells | 0.125 m cells |
+|--------|-------------------|-------------|--------------|---------------|
+| 5.0 m  | 2.5 ms            | 100%        | 97%          | 94%           |
+| 10.8 m | 10.4 ms           | 92%         | 95%          | 94%           |
+| 23.2 m | 38.2 ms           | 97%         | 97%          | 98%           |
+
+On a rigid wall facing the charge (the far face of the domain is made reflecting, with the
+charge at each stand-off in turn):
+
+| Stand-off | Reference peak | 0.5 m cells | 0.25 m cells | 0.125 m cells |
+|-----------|----------------|-------------|--------------|---------------|
+| 5.0 m     | 6,650 kPa      | 27%         | 45%          | 70%           |
+| 10.8 m    | 680 kPa        | 50%         | 69%          | 84%           |
+| 23.2 m    | 101 kPa        | 68%         | 80%          | 92%           |
+
+| Stand-off | Reference impulse | 0.5 m cells | 0.25 m cells | 0.125 m cells |
+|-----------|-------------------|-------------|--------------|---------------|
+| 5.0 m     | 3,720 Pa·s        | 77%         | 91%          | 102%          |
+| 10.8 m    | 1,411 Pa·s        | 98%         | 102%         | 104%          |
+| 23.2 m    | 585 Pa·s          | 94%         | 94%          | 95%           |
+
+Reading these:
+
+- **Reflected impulse, the load a wall actually feels, is within about 5%** at the two farther
+  stand-offs on every grid, and within 10% at 5 m on cells of 0.25 m or finer. This is the
+  quantity that governs the response of most structures.
+- **Peak pressures read low** because a captured shock is smeared over two or three cells. They
+  improve steadily with resolution and are worst close in: at 5 m the reflected peak is still
+  30% low on the finest grid.
+- **Incident impulse is 13% to 23% low on every grid**, so this shortfall is in the source
+  model, not the resolution. It matters for objects the wave passes over, less for surfaces it
+  strikes.
+- **Arrival times are within 2% to 8%**, slightly early.
+
+Only three points of the reference are available, at scaled distances of 1.1, 2.3 and
+5 m/kg^(1/3). Nothing is known about agreement closer in or farther out.
+
+### Kinney–Graham
+
+The same burst against the Kinney–Graham free-air formulae for 200 kg (a charge on perfectly
+rigid ground is equivalent to one of twice the mass in free air):
 
 | Range | Reference peak | 0.5 m cells | 0.25 m cells | 0.125 m cells |
 |-------|----------------|-------------|--------------|---------------|
@@ -178,18 +245,11 @@ free air.
 | 20 m  | 326 Pa·s          | 81%         | 83%          | 83%           |
 | 25 m  | 264 Pa·s          | 82%         | 83%          | 84%           |
 
-- **Peak overpressure** reads low because a captured shock is smeared over two or three cells,
-  and improves steadily with resolution.
-- **Impulse** is the same on every grid, at about 84% of the reference. The shortfall is
-  therefore in the source model, not the resolution. Impulse governs the response of most
-  structures, so structural response driven by the air solver is likely to be under-predicted
-  by a similar margin.
-- The 5 m gauge lies inside the fireball, where the comparison of impulse is not meaningful.
-
-Caveats on the reference itself: published empirical curves differ from one another by around
-30% in this range; real ground is not perfectly rigid (design practice takes a surface burst as
-1.8 times the mass, not 2); and both Kinney–Graham formulas were written from memory of the
-source and not checked against a copy.
+This comparison is harsher than the first, and less fair. Real ground is not perfectly rigid:
+test data for surface bursts, which Kingery–Bulmash fits, correspond to about 1.8 times the mass
+in free air rather than 2. At 10 m the two references differ by about 30% in peak pressure.
+The overpressure formula was confirmed against a published copy; the impulse formula was written
+from memory and could not be.
 
 ## Consistency across air grids
 
@@ -203,11 +263,12 @@ The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solv
 ![The wall toppling after 200 kg sheared it off at its base](wall-toppling.png)
 
 The qualitative outcome is the same on every grid. The deflection at 50 kg has not converged:
-it grows with resolution as the peak pressure does. There is no test to compare these with.
+it grows with resolution as the peak pressure does, although the impulse on the wall changes
+little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 52 tests. The physical checks are:
+The test suite has 54 tests. The physical checks are:
 
 **Air solver**
 
@@ -266,6 +327,7 @@ In rough order of value:
 
 1. A second and third structural test, of different kinds (see the
    [concrete model's future work](concrete-model.md#future-work)).
-2. Blast loads against Kingery–Bulmash, including reflected pressure and impulse on a wall.
+2. Blast loads against the full Kingery–Bulmash curves, closer in and farther out than the
+   three points available so far.
 3. A coupled test: a wall or slab loaded by a real charge at a known stand-off.
 4. Any test of failure: shear, breach or collapse.
