@@ -91,8 +91,17 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
    better, within 5% to 10%.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
-3. **Open boundaries reflect a little.** Zero-gradient extrapolation is not a true
-   non-reflecting condition for subsonic outflow.
+3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
+   or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
+   a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
+   domain by at most 1.2 kPa against a 61.5 kPa peak (2%), all of it in the negative phase,
+   and its positive impulse by 1.3%. Keep gauges and structures a few metres inside open faces.
+
+   A characteristic far-field condition (the incoming Riemann invariant taken from still air)
+   was tried and was much worse: in a split scheme it treats each face as if waves met it head
+   on, and a blast running along a side or top boundary, with full overpressure and almost no
+   flow through it, was turned into a strong spurious outflow that doubled the impulse at the
+   gauge.
 4. **One gas.** Hot products and air share one γ, so the fireball's temperature and its late
    pressure history are not realistic.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
@@ -110,7 +119,8 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
   resolved spherical solution and map it onto the grid once the shock has grown to several
   cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of
   state and optional afterburn energy.
-- **Non-reflecting open boundaries** based on characteristic variables.
+- **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
+  works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **Adaptive resolution** near the charge and the shock, the standard answer to the
   thin-shock problem, at a large cost in complexity on the GPU.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
