@@ -1,39 +1,53 @@
-# Shell model
+# Shell and beam model
 
-Walls and slabs can be meshed with shell elements instead of solid ones. A wall 250 mm thick
-needs four solid elements of 62.5 mm through its thickness and sixteen per metre each way; as
-shells it needs sixteen elements of 250 mm per square metre, about 64 times fewer, and a time step
-about four times longer. Coupled to the air on cells of 0.25 or 0.5 m, the concrete building runs
-8 to 16 times faster; on finer cells the air takes most of the time (see
-[Performance](performance.md)).
+Walls and slabs can be meshed with shell elements, and columns with beam elements, instead of
+solid ones. A wall 250 mm thick needs four solid elements of 62.5 mm through its thickness and
+sixteen per metre each way; as shells it needs sixteen elements of 250 mm per square metre, about
+64 times fewer, with a time step about four times longer. Coupled to the air on cells of 0.25 or
+0.5 m, the concrete building runs 10 to 35 times faster and the three-storey building about twice
+as fast; on finer cells the air takes most of the time (see [Performance](performance.md)).
 
 The code is `Sources/BlastCore/ShellMesh.swift`, `ShellSolver.swift` and
-`Shaders/Shell.metal`. Choose shells with `StructureModel.elementKind = .shell`; `elementSize` is
-then the shells' size in the plane, and `shellLayers` (8 by default) the number of layers
-through the thickness. In the app, the structure section has an **Elements** picker.
+`Shaders/Shell.metal`. Choose them with `StructureModel.elementKind = .shell`; `elementSize` is
+then the elements' size along the members, and `shellLayers` (8 by default) the number of layers
+through a shell's thickness. In the app, the structure section has an **Elements** picker.
 
 ## Mesh
 
-Every solid must be plate-like: its thinnest side no more than half of each of the others.
-A column is not, and a layout with one cannot be meshed with shells (there are no beam
-elements yet).
+Every solid must be a wall or slab (its thinnest side no more than half of each of the others),
+which becomes shells, or a column (at least twice as long as it is wide), which becomes beams.
+Anything else, a block as long as it is wide, cannot be meshed this way.
 
-1. Each solid becomes a plate on its midsurface, of the solid's thickness and material.
-2. An edge of a plate that lies inside, or on the face of, another plate it touches is moved to
-   end on that plate's midsurface: a wall standing under a slab ends at the slab's midsurface,
-   and two walls meeting at a corner end on each other's.
-3. All plates share one grid. Along each axis its lines are the plates' midsurfaces, then their
-   edges, then the edges of openings; a line closer than half an element to one already kept is
-   dropped, so no element is much smaller than the rest. The gaps between lines are then split
-   evenly into elements no larger than `elementSize`.
-4. Plates that meet therefore share the nodes along the line where they meet, so the joint is
-   rigid, as monolithic concrete is.
-5. An element whose centre lies in an opening is left out. Where two plates in the same plane
+1. Each wall or slab becomes a plate on its midsurface, and each column a line on its
+   centreline, of the solid's thickness or section and material.
+2. A member that ends inside, or against, another moves its end onto the other's midsurface or
+   centreline: a wall standing under a slab ends at the slab's midsurface, two walls at a corner
+   end on each other's, a column ends at the midsurface of the slab it carries, and a panel
+   between columns ends on their centrelines.
+3. All members share one grid. Along each axis its lines are the plates' midsurfaces, then the
+   columns' centrelines (a centreline within half an element of a midsurface moves onto it, so
+   that cladding flush with a column is joined to it), then the columns' faces and ends, the
+   plates' edges and the edges of openings. A line closer than half an element to one already
+   kept is dropped, so no element is much smaller than the rest. The gaps between lines are then
+   split evenly into elements no larger than `elementSize`.
+4. Members that meet therefore share the nodes where they meet, so the joint is rigid, as
+   monolithic concrete is.
+5. **Column heads.** Where a column meets a slab, the slab's nodes within the column's footprint
+   are tied rigidly to the column's node: they move with it, and it takes their forces (with the
+   moments of those forces about it) and their mass. The column then bears on the slab over its
+   whole section. Through a single node, the slabs of the two-storey frame were torn off every
+   column by the blast.
+6. A shell whose centre lies in an opening is left out. Where two plates in the same plane
    overlap, the later one's element wins.
-6. Each reinforcement region that crosses a plate becomes a layer of bars at its own depth, with
-   bar area per unit width along each of the plate's axes; up to four layers per element.
+7. Each reinforcement region that crosses a plate becomes a layer of bars at its own depth, with
+   bar area per unit width along each of the plate's axes, up to four layers per element. In a
+   column, a region filling the section (a column's smeared steel) becomes four corner bars at
+   40 mm cover, and one filling part of it (a mat near one face) a bar group at its middle, up to
+   eight groups; the ratios across the column count as ties.
 
-## Element
+## Elements
+
+**Shells.**
 
 | Aspect | Choice |
 |---|---|
@@ -43,9 +57,6 @@ elements yet).
 | Membrane and bending | 2 × 2 points in the plane, each with Gauss-Legendre layers through the thickness, in plane stress |
 | Transverse shear | Assumed strains of MITC4, tied at the middles of the edges, shear factor 5/6 |
 | Hourglass control | None needed |
-| Mass | Lumped, a quarter of each element's mass at each node |
-| Rotational inertia | Scaled up to (t² + A) / 12 per unit mass, A the element's area, so that rotation never limits the time step |
-| Time step | Half the time a compression wave in the plane takes to cross the element's shorter side |
 
 A point at height ζ (from -1 to 1) through the thickness t lies at
 x = Σ N<sub>a</sub> (x<sub>a</sub> + ζ t/2 d<sub>a</sub>), where d<sub>a</sub> is the director
@@ -59,12 +70,26 @@ The layers are at Gauss-Legendre points, which integrate elastic bending exactly
 with a point at each centre, tried first, made every plate 1/n² too flexible (6% with four
 layers).
 
+**Beams** are the line counterpart: a degenerated solid whose section is carried by two
+directors at each node (the rotated reference axes of the section), with one point along the
+beam, which neither locks in shear nor has spurious modes, and 4 × 4 Gauss fibres across the
+section, each with the uniaxial law along the beam and shear across it.
+
+**Both.** Masses are lumped. Rotational inertia is scaled up to (t² + A) / 12 per unit mass for
+a shell of area A, and (L² + w² + d²) / 12 for a beam, so that rotation never limits the time
+step, which is half the time a compression wave takes to cross the shortest element side or beam.
+On the GPU a shell's four in-plane points run in four adjacent threads, whose forces are summed
+across the quad, and each layer's state is 20 bytes. Together with less work in the material
+laws, that took the three-storey building's structure, run on its own, from 9.6 to 6.6 times
+slower than real time, and the single-storey building's from 2.5 to 1.2 times.
+
 ## Materials
 
-The materials are those of the solid elements, in plane stress.
+The materials are those of the solid elements, in plane stress (shells) or along the beam
+(beams).
 
-**Concrete.** Each layer at each point follows the [concrete model](concrete-model.md) with the
-stress through the thickness zero:
+**Concrete.** Each shell layer at each point follows the [concrete model](concrete-model.md)
+with the stress through the thickness zero:
 
 - the in-plane strains give equivalent uniaxial strains along the element's two axes, and
   cracks are smeared over the two planes normal to them, each with its own history;
@@ -75,53 +100,78 @@ stress through the thickness zero:
   interlock;
 - there is no confinement, since a plate in plane stress is free through its thickness.
 
-**Bars** are layers of their own, at their depth, along both axes, with the cyclic steel law
-and strain-rate factors of the solid elements. They rupture when their plastic strain,
-averaged along the bars over the debonded length (from the elements beside them in the
-previous step), passes the rupture strain. Judged at a single element, the bars of the
-validation slab ruptured early, as they once did in the solid elements.
+A beam's fibres crack across the beam, from their axial strain or the principal tension of axial
+stress with shear, and are confined by the column's ties: half the tie ratio times the bars'
+yield stress, as lateral pressure.
+
+**Bars** follow the cyclic steel law and strain-rate factors of the solid elements. In shells
+they rupture when their plastic strain, averaged along the bars over the debonded length (from
+the elements beside them in the previous step), passes the rupture strain; judged at a single
+element, the bars of the validation slab ruptured early, as they once did in the solid elements.
 
 **Von Mises** (steel and the elastic material) uses the plane-stress return of Simo and Taylor
-on the Green-Lagrange strain, with elastic transverse shear.
+in shells and uniaxial plasticity in beams, on the Green-Lagrange strain, with elastic shear.
 
 **Removal.** A shell is removed when, at any of its four points,
 
 - every layer is cracked past the removal width across one axis and no intact bars cross that
   way;
-- every layer is cracked across one axis and the element has slipped through its thickness by
-  the removal width (direct shear); bars do not prevent this, since in-plane bars give a shell
-  no dowel action;
+- every layer is cracked across one axis and the element has slipped through its thickness, over
+  its own length, by the slip limit (direct shear). The slip limit is the removal width where no
+  intact bars cross the crack; where they do, it is the slip at which the bars, kinking across it
+  over their debonded length (the crack spacing), reach their rupture strain:
+  √(2 ε<sub>rupture</sub>) times the debonded length, about 50 mm for the presets' slabs;
 - every layer is crushed or cracked past removal and no bars are left intact;
-- every layer is cracked past the hard limit of the solid elements; or
+- every layer is cracked past the hard limit of the solid elements;
+- its midsurface is crushed to a quarter of its area or turned inside out (it would otherwise
+  outrun the time step); or
 - for von Mises, any layer passes its failure strain.
+
+A beam is removed by the same rules over all its fibres, or when shortened to half its length.
 
 ## Coupling to the air
 
 **Loads.** At each of its four points, a shell is loaded by the difference between the air's
 overpressure on its two sides, sampled half its thickness and half an air cell out from its
-midsurface (or the next cell out if that one is solid), along its current normal.
+midsurface (or further out if that cell is solid), along its current normal. A beam is loaded
+the same way on its four sides.
 
-**Mask.** Each intact shell marks the air cells that its thickness occupies, at points no more
-than half a cell apart over its midsurface and through its thickness. Any point makes its cell
-solid, and the cell moves with the mean velocity of the points in it, so a wall pushed along
-drives the air ahead of it as solid walls do. A shell thinner than an air cell is one cell
-thick to the air.
+**Mask.** Each intact shell and beam marks the air cells its volume occupies, at points no more
+than half a cell apart. Any point makes its cell solid, and the cell moves with the mean
+velocity of the points in it, so a wall pushed along drives the air ahead of it as solid walls
+do. A member thinner than an air cell is one cell thick to the air.
 
-**Contact.** As for the solid elements: once anything has failed, every node is a sphere one
-element across, found through the same kind of periodic table, and nodes that began within 1.5
-elements of each other never repel.
+**Contact.** As for the solid elements, once anything has failed every node is a sphere one
+element across, found through a periodic table, and nodes that began within 1.5 elements of each
+other never repel. Three safeguards were needed that the solid elements have not:
+
+- an entry of the table holds eight nodes, and a node its entry has dropped takes no part that
+  step, so that two nodes either see each other or neither does and their forces are equal and
+  opposite;
+- once two nodes are separating faster than 1 m/s the spring between them pushes no further;
+- contact changes a node's velocity by at most 2 m/s in one step.
+
+Without them the two-storey frame's debris, piled on the ground, met already deeply overlapped
+(hidden from each other in crowded entries) and the penalty springs released tens of
+megajoules, throwing it at up to 1,000 m/s. With them, contact still stops pieces meeting at tens
+of metres a second within a few steps, but never throws them.
 
 ## Verification
 
 | Check | Result |
 |---|---|
 | Building preset meshed | Walls and roof share nodes where they meet; windows left out; two bar layers per element |
+| Frames meshed | Twelve columns of the three-storey building, sharing nodes with every slab they meet |
 | Cantilever strip sagging under its own weight | Within 2% of beam theory |
 | Its natural period | Within 3% of beam theory |
 | Plate hanging from its top edge | Stretch within 2% of ρgL²/2E |
 | Simply supported square plate under pressure | Within 3% of Navier's solution |
 | Free plate spun through 90° | Length unchanged, kinetic energy within 0.1%: no spurious strain |
-| Reinforced strip in three-point bending | 6–7% above section analysis on 50 and 25 mm elements, which agree within 0.6% (solid elements: 11–14%) |
+| Cantilever beam sagging under its own weight | Within 2% of beam theory with shear |
+| Free beam spun through 90° about two axes (bending and twist) | Length unchanged, kinetic energy within 0.1% |
+| Reinforced strip (shells) in three-point bending | 6–7% above section analysis on 50 and 25 mm elements, which agree within 0.6% (solid elements: 11–14%) |
+| The same beam meshed with beams | 1–2% above section analysis on 50 and 25 mm elements |
+| Two-storey frame under its own weight | Stands, sagging a few millimetres, nothing removed |
 | Two plates thrown together | Turn back at one element apart; momentum conserved |
 | Free shell wall closing a shock tube | Gains the air's impulse within 2% |
 | Intact shell wall across the tube | Far side hears only the flexing wall |
@@ -134,9 +184,9 @@ The contest slab of the [validation notes](validation.md) with shells, through
 
 | Shell size | Peak | At | End of record | RMS difference | Run time |
 |---|---|---|---|---|---|
-| 2 in (51 mm) | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.2 mm | 0.8 s |
-| 1 in (25 mm) | 124 mm (115%) | 29 ms | 97 mm (106%) | 10.2 mm | 1.7 s |
-| 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (102%) | 9.6 mm | 5.5 s |
+| 2 in (51 mm) | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.2 mm | 0.4 s |
+| 1 in (25 mm) | 124 mm (115%) | 29 ms | 97 mm (106%) | 10.2 mm | 0.9 s |
+| 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (102%) | 9.6 mm | |
 | Measured | 108 mm | 30 ms | 91 mm | | |
 | Solid elements, 16 through | 112 mm (104%) | 27 ms | 90 mm (99%) | | minutes |
 
@@ -147,36 +197,45 @@ hourglass forces of squeezed elements. With the fixed design factors of UFC 3-34
 peak at 154 mm (solids 130 mm); with static strengths both fail. The shells rebound about as
 little as the specimen did, where the solid elements rebound twice as far.
 
-At the concrete building preset with 100 kg the shells and solids deflect by 7–9 mm. With 500 kg
-both fail: the solid front wall tears along its base and is pushed in 675 mm by 100 ms, the shell
-wall shears off around its edges and is pushed in 906 mm.
+**The presets, against the solid elements.**
+
+| Case | Shells and beams | Solid elements |
+|---|---|---|
+| Concrete building, 100 kg, at 100 ms | 7 mm, nothing removed | 8 mm at 50 ms, nothing removed |
+| Concrete building, 500 kg, at 100 ms | Front wall shears through (54 elements) and is pushed in 663 mm | Front wall tears along its base and is pushed in 675 mm |
+| Three-storey building, 100 kg, at 150 ms | Ground-floor panels near the charge broken through, 1,264 elements removed | 1,493 removed |
+| Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Part of the first floor falls; the upper floor stays up |
+
+None of these has been compared with a test. The frame shows how far apart two reasonable models
+of a collapse can end up.
 
 ## Limitations
 
-1. **Walls and slabs only.** There are no beam elements, so frames, columns and the three-storey
-   building cannot be meshed with shells.
-2. **Midsurface geometry.** Members end on each other's midsurfaces, so where they meet the
-   overlap is counted in both (a little extra mass) and the drawing shows small steps.
-3. **Thin walls are at least one air cell thick.** A 150 mm wall on 250 mm cells blocks 250 mm
+1. **Midsurface geometry.** Members end on each other's midsurfaces and centrelines, so where
+   they meet the overlap is counted in both (a little extra mass), a column can move by up to
+   half an element onto cladding flush with it, and the drawing shows small steps.
+2. **Thin walls are at least one air cell thick.** A 150 mm wall on 250 mm cells blocks 250 mm
    of air, as the solid elements' mask does.
-4. **Plane stress.** There is no stress through the thickness: no confinement, no spall or
+3. **Plane stress.** There is no stress through a shell's thickness: no confinement, no spall or
    scabbing, no punching through the thickness. Close to a charge, where those matter, the
    solid elements are the better model.
-5. **Direct shear is a simple rule.** Sliding by the removal width removes an element; the
-   bars' dowel action is ignored, and the rule has not been compared with a test.
-6. **More flexible than measured** on the one test: 15% over the measured peak, against 4% for
+4. **Direct shear and punching are a simple slip rule**, with a bar-kinking limit that has not
+   been compared with a test. The column heads are rigid patches the size of the column.
+5. **More flexible than measured** on the one test: 15% over the measured peak, against 4% for
    the solid elements.
-7. **Debris is crude.** Contact spheres are as large as the elements, 250 mm by default, and
-   loose shell nodes are not pushed by the air (intact flying panels are).
-8. **Rotational inertia is scaled up**, which slightly slows rotation of short members.
+6. **Debris is crude.** Contact spheres are as large as the elements, 250 mm by default, and the
+   contact safeguards above are numerical, not physical. Loose shell nodes are not pushed by the
+   air (intact flying panels are).
+7. **Rotational inertia is scaled up**, which slightly slows rotation of short members.
+8. **Damage reads higher on larger elements** for the same crack, since the removal strain is
+   the removal width over the element size.
 
 ## Future work
 
-- **Beam elements** for columns and beams, sharing the shells' nodes, so that whole frames can
-  be meshed without solids.
 - **Shells and solids together**: solid elements near the charge, where the stress through the
   thickness matters, and shells elsewhere.
 - **Debris loading** for loose shell nodes, and contact that knows the shells' thickness.
+- **A punching model** for slab–column joints in place of the slip rule.
 
 ## Sources
 
@@ -194,4 +253,4 @@ wall shears off around its edges and is pushed in 906 mm.
 - S. Timoshenko and S. Woinowsky-Krieger, *Theory of Plates and Shells*, 2nd ed., McGraw-Hill,
   1959. Navier's solution for the simply supported plate.
 - T. Belytschko, W. K. Liu, B. Moran and K. Elkhodary, *Nonlinear Finite Elements for Continua
-  and Structures*, 2nd ed., Wiley, 2014. Explicit shells, rotational inertia scaling.
+  and Structures*, 2nd ed., Wiley, 2014. Explicit shells and beams, rotational inertia scaling.

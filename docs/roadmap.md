@@ -59,14 +59,14 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 ### Then scale and scope
 
-8. **Beam elements** for columns and beams, sharing the shells' nodes, so that framed buildings
-   can be meshed without solids. Shells for walls and slabs are done.
+8. **Shells and solids together**: solid elements near a charge, where the stress through a
+   wall's thickness matters, and shells and beams elsewhere.
 9. **Several bodies and interfaces**: pieces that can separate or slide (infill against its
    frame, masonry joints), steel sections, glazing. Several materials in one body are done.
 10. **Adaptive resolution in the air.**
 
-Done from this list: shell elements for walls and slabs (8–16 times faster coupled, see the
-[shell model](shell-model.md)); debris loaded by the air (pressure gradient and drag on loose nodes, with
+Done from this list: shell elements for walls and slabs and beam elements for columns (2 to 35
+times faster coupled, see the [shell model](shell-model.md)); debris loaded by the air (pressure gradient and drag on loose nodes, with
 the reaction given back to the air).
 
 ### Usability, in parallel

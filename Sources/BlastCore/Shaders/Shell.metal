@@ -59,7 +59,10 @@ struct ShellUniforms {
 // bars, kinking across the crack over their debonded length, reach their rupture strain.
 static inline float slipLimit(bool bars, constant MaterialParameters &m, constant ShellUniforms &u) {
     if (bars && m.steelPoints > 0) {
-        return sqrt(2.0f * m.steelStrain[m.steelPoints - 1]) * m.crackBand;
+        // The debonded length is the crack spacing (twice `barReach` elements), or the crack
+        // band where rupture is judged locally.
+        float debonded = m.barReach > 0.0f ? 2.0f * m.barReach * u.elementSize : m.crackBand;
+        return sqrt(2.0f * m.steelStrain[m.steelPoints - 1]) * debonded;
     }
     return m.erosionStrain * u.elementSize;
 }

@@ -4,8 +4,8 @@ The structural solver deforms and breaks one body, the "structure", under the pr
 air solver or under a prescribed pressure history. It lives in
 `Sources/BlastCore/StructureSolver.swift` and `Sources/BlastCore/Shaders/Structure.metal`.
 The material laws have their own document: [Concrete model](concrete-model.md). Walls and slabs
-can instead be meshed with shell elements, many times faster: see [Shell model](shell-model.md).
-This document describes the solid elements.
+can instead be meshed with shell elements and columns with beams, many times faster: see
+[Shell and beam model](shell-model.md). This document describes the solid elements.
 
 ## Mesh
 
@@ -224,8 +224,8 @@ shock, and the drag and pressure-gradient push on loose debris.
    lowest-numbered nodes in ascending order, whatever the timing. That also decides which
    nodes a crowded cell drops.
 6. **Uniform element size.** A large building at fine resolution needs many elements, and the
-   time step is set by the smallest (here, every) element. Walls and slabs can be meshed with
-   [shells](shell-model.md) instead; columns cannot yet.
+   time step is set by the smallest (here, every) element. Walls, slabs and columns can be
+   meshed with [shells and beams](shell-model.md) instead.
 7. **Lattice-aligned geometry only.** No inclined walls, curved shells or circular columns.
 8. **No structural damping** beyond the material's own dissipation, so elastic ringing persists
    longer than in a real structure.
@@ -240,8 +240,8 @@ shock, and the drag and pressure-gradient push on loose debris.
 - **Several bodies and materials** in one layout, including steel sections and glazing.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the
   one-element overlap and the bumpiness.
-- **Beam elements** for columns, to go with the [shells](shell-model.md), or coarser solid
-  elements away from the damage, to make whole framed buildings affordable.
+- **Coarser solid elements away from the damage**, or solids near a charge with
+  [shells and beams](shell-model.md) elsewhere.
 
 ## Sources
 
