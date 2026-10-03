@@ -74,6 +74,11 @@ struct EditorView: View {
                         Text("Shell").tag(ElementKind.shell)
                     }
                     .pickerStyle(.segmented)
+                    Toggle("Joints between materials can open", isOn: bondBinding)
+                        .help(
+                            "Where two materials meet, as masonry against its concrete frame, hold them "
+                                + "together only by the bond of mortar to concrete (0.2 MPa), so infill can come away."
+                        )
                 }
             } header: {
                 Text("Deformable structure")
@@ -158,6 +163,12 @@ struct EditorView: View {
         Binding(
             get: { openings[index] },
             set: { box in model.editStructure { $0.openings[index] = box } })
+    }
+
+    private var bondBinding: Binding<Bool> {
+        Binding(
+            get: { model.settings.scenario.structure?.interfaceBond != nil },
+            set: { on in model.editStructure { $0.interfaceBond = on ? StructureModel.masonryBond : nil } })
     }
 
     private func elementKindBinding(_ index: Int) -> Binding<ElementKind> {

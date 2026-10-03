@@ -52,6 +52,11 @@ func chosenScenario() -> Scenario {
         if let layers = option("shell-layers").flatMap({ Int($0) }) { structure.shellLayers = layers }
         scenario.structure = structure
     }
+    // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
+    if flag("bond"), var structure = scenario.structure {
+        structure.interfaceBond = StructureModel.masonryBond
+        scenario.structure = structure
+    }
     // `--solid-near 4` meshes the pieces within 4 m of the charge with solid elements and the
     // rest with shells.
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {

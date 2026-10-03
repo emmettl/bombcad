@@ -28,7 +28,7 @@ struct MeshUniforms {
     float4 forward;
     float4 projection;  // x, y = focal scales, z = near, w = far
     float4 lattice;     // xyz = origin, w = element size
-    float4 dims;        // xyz = lattice cells
+    float4 dims;        // xyz = lattice cells, w = floats of state per element
     float4 sun;
 };
 
@@ -296,7 +296,7 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
         int3 point = cell + offset;
         MeshNode node = nodes[nodeMap[point.x + nodesX * (point.y + nodesY * point.z)]];
         world = u.lattice.xyz + float3(point) * u.lattice.w + float3(node.displacement);
-        out.damage = states[instanceID * 34 + 7];
+        out.damage = states[instanceID * uint(u.dims.w) + 7];
     } else if (flag == 2) {
         // Failed element: a small lump of rubble at the middle of its (now free) nodes.
         float3 centre = float3(0.0f);

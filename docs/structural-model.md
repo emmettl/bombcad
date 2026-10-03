@@ -28,6 +28,24 @@ masonry panel that overlaps it, and crushing is averaged only over elements of t
 material. The "Frame with masonry infill" layout uses this: 250 mm brick panels in the front
 of a concrete frame.
 
+**Joints between materials.** With `StructureModel.interfaceBond` set (in the editor, "Joints
+between materials can open"), the elements along a boundary between two materials, on the
+weaker one's side, carry across it only the bond: by default 0.2 MPa in tension and 10 J/m² of
+fracture energy, as of mortar on concrete. They are given a material of their own, a copy of
+theirs with that strength and energy, so the crack-band scaling keeps the joint's energy right
+whatever the element size, and shear across it is the concrete model's interlock. Infill then
+comes away from its frame at the bond; pulled apart, a concrete element and a masonry one
+separate at 0.2 MPa instead of masonry's 0.3. The presets keep their pieces bonded; on the
+infilled frame and the three-storey building the bond changes little, since their panels near
+the charge break through anyway (1,969 against 1,936 elements removed; 350 against 387 mm).
+
+**Steel and glass.** Besides reinforced concrete, plain concrete and masonry, the presets
+include structural steel (S355: von Mises, 355 MPa, failing at 20% strain) and annealed glass
+(brittle: cracking at 45 MPa, with the fracture energy, 8 J/m², of its toughness, and gone
+after half a millimetre), meant for panes meshed as shells, alone or in a
+[mixed body](shell-model.md#shells-and-solids-together). A 1 m square pane of 6 mm glass held
+at its edges breaks under 1 kg at 3 m and survives 0.5 g.
+
 ## Elements
 
 | Aspect            | Choice                                                                        |
@@ -206,10 +224,11 @@ shock, and the drag and pressure-gradient push on loose debris.
 
 ## Limitations
 
-1. **One structure, bonded throughout.** A layout has a single deformable body, of up to eight
-   materials, and pieces that touch are fully bonded. There are no interfaces: no mortar
-   joints, no sliding of infill against its frame, no bearings that can separate. Rigid
-   blocks never respond.
+1. **One structure, bonded throughout unless joints are asked for.** A layout has a single
+   deformable body, of up to eight materials (joints between them take some of those). Joints
+   between materials are an element thick and open at the bond's strength, but there are no
+   mortar joints within masonry, no bearings that can separate, and no joints between pieces
+   of the same material. Rigid blocks never respond.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
    fixed coefficient, as cubes of their share of the elements around them. The air feels
    the reaction, so packed rubble slows the gas through it, but only through drag spread over
@@ -262,7 +281,10 @@ shock, and the drag and pressure-gradient push on loose debris.
   conservation fix, but measurement showed the gas is already conserved within 0.3% (see
   limitation 3), so it is now a matter of geometric accuracy, and a large change to the air
   solver for it.
-- **Several bodies and materials** in one layout, including steel sections and glazing.
+- **Joints within a material**: masonry as units and mortar joints, bearings that separate, and
+  pieces of the same material that are not bonded.
+- **Glass that fragments realistically**: its strength depends on the duration of the load and
+  on surface flaws, and its pieces are sharp and small.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the
   one-element overlap and the bumpiness.
 - **Coarser solid elements away from the damage**, or solids near a charge with

@@ -565,7 +565,7 @@ compare these with.
 
 ## Verification against theory
 
-The test suite has 110 tests. The physical checks are:
+The test suite has 112 tests. The physical checks are:
 
 **Air solver**
 
@@ -586,6 +586,8 @@ The test suite has 110 tests. The physical checks are:
 | Closed room, afterburning and hot air           | Within 15% of UFC 3-340-02 at 0.25 and 1 kg/m³   |
 | Cantilever strip, first quarter solid elements, rest shells | Sags within 3% of beam theory (1.3%)     |
 | Wall in a blast, solid base, shell top          | Bends between the all-solid and all-shell walls  |
+| Concrete and masonry elements pulled apart, joint bonded | Separate at the bond, 0.2 MPa, within 5%   |
+| Glass pane, 1 kg at 3 m and 0.5 g at 3 m        | Breaks, and survives                             |
 
 **Structural solver**
 

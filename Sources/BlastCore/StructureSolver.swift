@@ -28,7 +28,8 @@ public final class StructureSolver {
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
     }
 
-    static let stateStride = 148
+    /// Bytes of state per element (`ElementState` in Structure.metal).
+    public static let stateStride = 148
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -182,10 +183,7 @@ public final class StructureSolver {
         let cells = ex * ey * ez
         let nodes = (ex + 1) * (ey + 1) * (ez + 1)
         flagBuffer = try buffer(cells, "structure flags")
-        materials = model.materials
-        guard materials.count <= StructureModel.maxMaterials else {
-            throw BlastError.tooManyMaterials(materials.count)
-        }
+        var materialList = model.materials
         cellElementBuffer = try buffer(cells * 4, "structure cell to element")
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         placeholderBuffer = try buffer(64, "structure placeholder")
@@ -205,7 +203,7 @@ public final class StructureSolver {
                         cellElements[index] = UInt32(active.count)
                         active.append(UInt32(index))
                         elementMaterials.append(
-                            materials.count > 1 ? UInt8(model.materialIndex(at: centre)) : 0)
+                            materialList.count > 1 ? UInt8(model.materialIndex(at: centre)) : 0)
                     } else {
                         flags[index] = ElementFlag.empty.rawValue
                         cellElements[index] = .max
@@ -215,6 +213,50 @@ public final class StructureSolver {
         }
         elementCount = active.count
         let elements = max(elementCount, 1)
+
+        // Where two materials meet, the elements on the weaker one's side carry only the bond
+        // across the boundary (a material of their own, with the bond's strength and energy).
+        if let bond = model.interfaceBond, materialList.count > 1 {
+            let base = elementMaterials
+            let (ex, ey, ez) = (self.ex, self.ey, self.ez)
+            var bonded: [Int: Int] = [:]
+            for (n, index) in active.enumerated() {
+                let own = Int(base[n])
+                guard materialList[own].model == .concrete else { continue }
+                let cell = (Int(index) % ex, (Int(index) / ex) % ey, Int(index) / (ex * ey))
+                let weaker = [(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1)].contains {
+                    let (i, j, k) = (cell.0 + $0.0, cell.1 + $0.1, cell.2 + $0.2)
+                    guard i >= 0, j >= 0, k >= 0, i < ex, j < ey, k < ez else { return false }
+                    let neighbour = cellElements[i + ex * (j + ey * k)]
+                    guard neighbour != .max else { return false }
+                    let other = Int(base[Int(neighbour)])
+                    guard other != own else { return false }
+                    let mine = materialList[own].tensileStrength
+                    let theirs =
+                        materialList[other].model == .concrete
+                        ? materialList[other].tensileStrength : .infinity
+                    return mine < theirs || (mine == theirs && own > other)
+                }
+                guard weaker else { continue }
+                let joint: Int
+                if let known = bonded[own] {
+                    joint = known
+                } else {
+                    var material = materialList[own]
+                    material.name += " at a joint"
+                    material.tensileStrength = min(material.tensileStrength, bond.x)
+                    material.fractureEnergy = min(material.fractureEnergy, bond.y)
+                    materialList.append(material)
+                    joint = materialList.count - 1
+                    bonded[own] = joint
+                }
+                elementMaterials[n] = UInt8(joint)
+            }
+        }
+        materials = materialList
+        guard materials.count <= StructureModel.maxMaterials else {
+            throw BlastError.tooManyMaterials(materials.count)
+        }
 
         stateBuffer = try buffer(elements * Self.stateStride, "structure element state")
         forceBuffer = try buffer(elements * Self.forceStride, "structure element forces")

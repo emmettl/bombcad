@@ -70,8 +70,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 7. **Contact between the parts of a mixed body.** (Done: shells and solids together, tied
    through the thickness, three times faster than all solid elements on the single-storey
    building with only its front wall solid; see the [shell model](shell-model.md#shells-and-solids-together).)
-8. **Several bodies and interfaces**: pieces that can separate or slide (infill against its
-   frame, masonry joints), steel sections, glazing. Several materials in one body are done.
+8. **Joints within materials**: masonry as units and mortar, bearings that separate. (Done:
+   several materials in one body; joints between materials that open at the bond of mortar to
+   concrete; structural steel and annealed glass, the glass as shells in panes.)
 9. **Adaptive resolution in the air.**
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test

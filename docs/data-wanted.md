@@ -50,12 +50,16 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Five values in the code were written from memory and should be checked against the original.
+Seven values in the code were written from memory and should be checked against the original.
 
 - **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
   Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
   15 MJ/kg) and its heat of detonation (about 4.6 to 5 MJ/kg), whose difference, 10 MJ/kg, is
   the afterburn energy.
+- **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
+  study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
+  **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2); ASTM E1300 or a
+  glass handbook).
 - **The Holmquist–Johnson–Cook compaction curve.** T. J. Holmquist, G. R. Johnson and
   W. H. Cook, 14th International Symposium on Ballistics, 1993. Needed: the locking pressure
   and strain and the constants K₁, K₂, K₃ (taken as 0.8 GPa, 0.1, and 85, −171, 208 GPa), used

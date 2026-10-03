@@ -182,7 +182,29 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         return material
     }()
 
-    public static let presets: [Self] = [.reinforcedConcrete, .plainConcrete, .masonry]
+    /// Structural steel, S355: yields at 355 MPa and hardens slowly, failing at 20% strain.
+    public static let structuralSteel = Self(
+        name: "Structural steel", density: 7850, youngsModulus: 210e9, poissonRatio: 0.3, yieldStress: 355e6,
+        hardeningModulus: 1e9, failureStrain: 0.2)
+
+    /// Annealed float glass, as a brittle material: elastic until it cracks at 45 MPa, then
+    /// gone after a fraction of a millimetre (its fracture energy, about 8 J/m², is that of
+    /// toughness 0.75 MPa m^(1/2)). Meant for panes meshed as shells.
+    public static let annealedGlass: Self = {
+        var material = concrete(name: "Annealed glass", compressiveStrength: 1000e6, density: 2500)
+        material.youngsModulus = 70e9
+        material.poissonRatio = 0.22
+        material.tensileStrength = 45e6
+        material.fractureEnergy = 8
+        material.crushingEnergy = 2000
+        material.erosionOpening = 0.0005
+        material.aggregateSize = 0
+        return material
+    }()
+
+    public static let presets: [Self] = [
+        .reinforcedConcrete, .plainConcrete, .masonry, .structuralSteel, .annealedGlass,
+    ]
 
     public var shearModulus: Float { youngsModulus / (2 * (1 + poissonRatio)) }
 
@@ -287,6 +309,13 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Regions in which the structure is held still: nodes inside any of them do not move
     /// (beyond the ground plane, which `fixedBase` holds). For walls built into rigid scenery.
     public var supports: [Box] = []
+    /// Where two materials meet, the elements on the weaker one's side carry only this bond
+    /// across the boundary: tensile strength (Pa) and fracture energy (J/m²), as of mortar on
+    /// concrete, so that infill can come away from its frame. Nil bonds them as one body.
+    public var interfaceBond: SIMD2<Float>?
+    /// A typical bond of masonry to concrete: 0.2 MPa and 10 J/m².
+    public static let masonryBond = SIMD2<Float>(0.2e6, 10)
+
     /// Let concrete crack along the principal axes of its strain when it first cracks, and keep
     /// those axes, so that inclined (shear) cracks open and slide as single planes. By default
     /// cracks lie across the lattice planes, and an inclined crack is shared between them. See
@@ -792,5 +821,6 @@ extension StructureModel {
         orientedCracks = try container.decodeIfPresent(Bool.self, forKey: .orientedCracks) ?? false
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
+        interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
     }
 }

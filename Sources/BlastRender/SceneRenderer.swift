@@ -320,7 +320,7 @@ public final class SceneRenderer {
                 lattice: SIMD4(structure.origin, structure.model.elementSize),
                 dims: SIMD4(
                     Float(structure.ex), Float(structure.ey), Float(structure.ez),
-                    0),
+                    Float(StructureSolver.stateStride / 4)),
                 sun: sun)
             sceneEncoder.setRenderPipelineState(meshPipeline)
             sceneEncoder.setDepthStencilState(meshDepthState)
