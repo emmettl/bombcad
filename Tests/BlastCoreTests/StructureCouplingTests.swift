@@ -353,6 +353,100 @@ struct StructureCouplingTests {
         }
     }
 
+    @Test("Loose debris in a steady wind gains the momentum drag theory predicts", arguments: [true, false])
+    func debrisDrag(enabled: Bool) throws {
+        var scenario = Scenario(
+            name: "Wind", domainSize: SIMD3(4, 4, 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)),
+            structure: StructureModel(
+                solids: [Box(min: SIMD3(1.5, 1.5, 1.5), max: SIMD3(2, 2, 2))], material: Self.elastic,
+                elementSize: 0.125, fixedBase: false))
+        scenario.reflectiveFaces = []
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        structure.debrisDrag = enabled
+        let ambient = scenario.atmosphere
+        let wind: Float = 100
+        solver.fill(
+            uniform: Primitive(
+                density: ambient.density, velocity: SIMD3(wind, 0, 0), pressure: ambient.pressure))
+        // Break the block into loose nodes and open the air's mask where it stood, so that the
+        // wind blows through it undisturbed.
+        structure.erode { _, _, _ in true }
+        solver.mutateMask { mask in
+            for index in mask.indices { mask[index] = 0 }
+        }
+        solver.advance(until: 0.01)
+        let elapsed = solver.time
+
+        // Each node stands for a cube of the block's solid of its own mass, with a drag
+        // coefficient of one; the air is uniform, so there is no pressure gradient.
+        var expected = 0.0
+        structure.mutateNodes { nodes in
+            for node in nodes where node.mass > 0 {
+                let area = pow(Double(node.mass) / 2400, 2.0 / 3.0)
+                expected += 0.5 * Double(ambient.density) * area * Double(wind * wind) * elapsed
+            }
+        }
+        let momentum = structure.momentum()
+        if enabled {
+            #expect(abs(momentum.x - expected) / expected < 0.02, "momentum \(momentum.x) vs \(expected) N s")
+            #expect(abs(momentum.y) + abs(momentum.z) < 0.01 * expected)
+        } else {
+            #expect(simd_length(momentum) < 1e-6 * expected)
+        }
+    }
+
+    @Test("Loose debris in a pressure gradient is pushed down it, as the solid it stands for")
+    func debrisPressureGradient() throws {
+        var scenario = Scenario(
+            name: "Gradient", domainSize: SIMD3(4, 4, 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)),
+            structure: StructureModel(
+                solids: [Box(min: SIMD3(1.75, 1.75, 1.75), max: SIMD3(2.25, 2.25, 2.25))],
+                material: Self.elastic,
+                elementSize: 0.125, fixedBase: false))
+        scenario.reflectiveFaces = []
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        let ambient = scenario.atmosphere
+        // Pressure falling by 10 kPa per metre along x. Until waves from the boundaries arrive,
+        // the air accelerates uniformly and the gradient stays the same.
+        let gradient: Float = 10_000
+        solver.fill { i, _, _ in
+            Primitive(
+                density: ambient.density,
+                pressure: ambient.pressure + gradient * (2 - (Float(i) + 0.5) * 0.25))
+        }
+        structure.erode { _, _, _ in true }
+        solver.mutateMask { mask in
+            for index in mask.indices { mask[index] = 0 }
+        }
+        solver.advance(until: 0.001)
+        let elapsed = solver.time
+
+        // The gradient's push, G V t per node with V its mass over the solid's density, plus the
+        // drag of the air that the same gradient accelerates past it, at G t / rho relative speed.
+        let rho = Double(ambient.density)
+        let g = Double(gradient)
+        var expected = 0.0
+        structure.mutateNodes { nodes in
+            for node in nodes where node.mass > 0 {
+                let volume = Double(node.mass) / 2400
+                let area = pow(volume, 2.0 / 3.0)
+                expected +=
+                    g * volume * elapsed + 0.5 * rho * area * g * g / (rho * rho) * pow(elapsed, 3) / 3
+            }
+        }
+        let momentum = structure.momentum()
+        #expect(abs(momentum.x - expected) / expected < 0.02, "momentum \(momentum.x) vs \(expected) N s")
+        #expect(abs(momentum.y) + abs(momentum.z) < 0.01 * expected)
+    }
+
     @Test("A wall broken by the blast, run twice, gives the same answer to the last bit")
     func repeatableBreach() throws {
         // Elements failing beside faces the air is loading, and debris colliding, are where

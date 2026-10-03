@@ -52,6 +52,10 @@ public final class StructureSolver {
     public var contactDamping: Float = 0.3
     public var contactFriction: Float = 0.5
 
+    /// Let the air push loose debris (nodes no longer attached to any intact element) by its
+    /// pressure gradient and drag, when coupled to the air.
+    public var debrisDrag = true
+
     /// A pressure history applied to one face, for running the structure without the air.
     public var appliedLoad: PressureLoad? {
         didSet { writeLoadTable() }
@@ -601,6 +605,8 @@ public final class StructureSolver {
             encoder.setBuffer(contactForceBuffer, offset: 0, index: 6)
             encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
             encoder.setBuffer(cellElementBuffer, offset: 0, index: 8)
+            encoder.setBuffer(fluid?.state ?? placeholderBuffer, offset: 0, index: 9)
+            encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 10)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
@@ -651,6 +657,8 @@ public final class StructureSolver {
         }
         if let fluid {
             uniforms.coupled = 1
+            // Debris stands for solid of the structure's main material.
+            uniforms.debrisDensity = debrisDrag ? model.material.density : 0
             uniforms.ambientPressure = fluid.ambientPressure
             uniforms.fluidGamma = fluid.gamma
             uniforms.fluidCell = fluid.grid.cellSize

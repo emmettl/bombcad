@@ -51,6 +51,7 @@ struct StructureUniforms {
     float loadTime;
     uint loadCount;  // entries in the applied-pressure table; 0 = none
     uint loadFace;   // 2 * axis + side of the element faces the pressure acts on
+    float debrisDensity;  // > 0: loose debris is pushed by the air, as solid of this density
 };
 
 // Properties of one material, as the element kernel needs them. A structure can have up to
@@ -1035,6 +1036,57 @@ static inline float3 nodePosition(uint index, const device StructureNode *nodes,
     return float3(u.originX, u.originY, u.originZ) + lattice * u.h + float3(nodes[index].displacement);
 }
 
+// Force of the air on a loose node of debris: the pressure gradient across the solid it stands
+// for (its mass over the solid's density), plus drag on it as a cube in the relative wind with a
+// drag coefficient of one. The air does not feel the reaction.
+static inline float3 debrisAirForce(float3 position, float3 velocity, float mass, const device Cell *fluid,
+                                    const device uchar *fluidMask, constant StructureUniforms &u) {
+    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+    int3 cell = int3(floor(position / u.fluidCell));
+    if (any(cell < 0) || any(cell >= dims)) {
+        return float3(0.0f);
+    }
+    int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
+    if (fluidMask[index] != 0) {
+        return float3(0.0f);
+    }
+    // Pressure of a fluid cell, or -1 where there is none.
+    auto pressureAt = [&](int3 c) -> float {
+        if (any(c < 0) || any(c >= dims)) {
+            return -1.0f;
+        }
+        int i = c.x + dims.x * (c.y + dims.y * c.z);
+        if (fluidMask[i] != 0) {
+            return -1.0f;
+        }
+        Cell s = fluid[i];
+        float rho = max(s.rho, 1e-6f);
+        float kinetic = 0.5f * (s.mx * s.mx + s.my * s.my + s.mz * s.mz) / rho;
+        return (u.fluidGamma - 1.0f) * (s.energy - kinetic);
+    };
+    float here = pressureAt(cell);
+    float3 gradient = float3(0.0f);
+    for (int axis = 0; axis < 3; ++axis) {
+        int3 step = int3(0);
+        step[axis] = 1;
+        float high = pressureAt(cell + step);
+        float low = pressureAt(cell - step);
+        if (high >= 0.0f && low >= 0.0f) {
+            gradient[axis] = (high - low) / (2.0f * u.fluidCell);
+        } else if (high >= 0.0f) {
+            gradient[axis] = (high - here) / u.fluidCell;
+        } else if (low >= 0.0f) {
+            gradient[axis] = (here - low) / u.fluidCell;
+        }
+    }
+    Cell s = fluid[index];
+    float rho = max(s.rho, 1e-6f);
+    float3 wind = float3(s.mx, s.my, s.mz) / rho - velocity;
+    float volume = mass / u.debrisDensity;
+    float area = pow(volume, 2.0f / 3.0f);
+    return -gradient * volume + 0.5f * rho * area * length(wind) * wind;
+}
+
 // Contact treats every node as a sphere one element across. Each substep the nodes are dropped
 // into a grid of element-sized cells, then each node pushes away from strangers in the 27 cells
 // around it. A cell's header packs the substep's stamp with a count of the slots in use, so
@@ -1202,6 +1254,8 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device packed_float3 *contact [[buffer(6)]],
                            const device uint *failureGate [[buffer(7)]],
                            const device uint *cellElement [[buffer(8)]],
+                           const device Cell *fluid [[buffer(9)]],
+                           const device uchar *fluidMask [[buffer(10)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -1222,6 +1276,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         }
     }
     float3 force = float3(0.0f);
+    bool attached = false;
     for (uint a = 0; a < 8; ++a) {
         // This node is corner `a` of the element offset by -a.
         int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
@@ -1231,7 +1286,12 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
         if (flags[element] == elementActive) {
             force += float3(forces[cellElement[element]].force[a]);
+            attached = true;
         }
+    }
+    // Loose debris is not part of any element face the air loads, so the air pushes it directly.
+    if (!attached && u.coupled != 0 && u.debrisDensity > 0.0f) {
+        force += debrisAirForce(nodePosition(index, nodes, u), float3(node.velocity), node.mass, fluid, fluidMask, u);
     }
 
     if (contactEnabled(u, failureGate)) {

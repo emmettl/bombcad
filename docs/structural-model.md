@@ -78,7 +78,7 @@ Supports and loading:
 
 An element stops carrying stress and is removed ("eroded") when its material says it has
 failed, or when it is crushed to a quarter of its volume. Its mass stays with its nodes, which
-carry on as loose debris. The app draws removed elements as small dark lumps at the middle of
+carry on as loose debris, pushed by the air (below). The app draws removed elements as small dark lumps at the middle of
 their nodes. Removal matters for two things only: letting pieces separate, and opening the air's
 solid mask. It is deliberately late (see the concrete model), because a cracked element still
 resists compression and removing it too early destroys load paths.
@@ -118,6 +118,21 @@ scenery or at least a third full of elements. The solid mask therefore travels w
 is pushed along, and opens where a wall breaks, letting the blast through. A cell that opens is
 filled with the average of its fluid neighbours.
 
+**Debris.** A node with no intact element left around it is loose debris, and the air loads it
+directly, since it no longer belongs to any face. It stands for a lump of the structure's main
+material of its own mass, so of volume *V* = mass / density, and feels
+
+- the air's pressure gradient across that volume, −∇*p* *V*, from central differences of the
+  air cells around it (one-sided beside a solid cell), and
+- drag on a cube of the same volume in the wind relative to it, ½ ρ *C*<sub>d</sub> *V*<sup>2/3</sup>
+  |*u* − *v*| (*u* − *v*), with *C*<sub>d</sub> = 1.
+
+The first throws debris along with the blast front; the second carries it in the flow that
+follows. The air does not feel the reaction, so it loses no momentum to the debris it pushes;
+with debris of a few tonnes against the much larger mass of air a blast sets moving, this is a
+small error. `StructureSolver.debrisDrag` switches the loading off. A masonry panel shattered
+by a charge is now thrown into the building rather than left hanging in place.
+
 **Moving walls.** The same pass sums the velocities of the elements in each solid cell (as
 fixed-point integers, so that the GPU's atomic additions are exact and order-independent). The
 air's sweep then mirrors the gas about the wall's velocity rather than about zero: the ghost
@@ -139,8 +154,8 @@ many substeps each air step will need. It encodes the largest number that could 
 
 See [Validation](validation.md). In brief: stress-wave speed, cantilever deflection and natural
 period, rigid rotation, collisions and stacking are all checked against theory, and the coupling
-is checked for impulse transfer, hydrostatic equilibrium, venting, a moving mask and a piston
-shock.
+is checked for impulse transfer, hydrostatic equilibrium, venting, a moving mask, a piston
+shock, and the drag and pressure-gradient push on loose debris.
 
 ## Limitations
 
@@ -148,11 +163,11 @@ shock.
    materials, and pieces that touch are fully bonded. There are no interfaces: no mortar
    joints, no sliding of infill against its frame, no bearings that can separate. Rigid
    blocks never respond.
-2. **Debris is not pushed by the air.** The air loads the faces of intact elements only. Once
-   an element fails, its nodes carry on with the velocity they had, under gravity and
-   contact, so a wall that shatters early (masonry close to a charge) hangs in place as a
-   curtain of debris instead of being thrown. Loading free nodes by the local pressure
-   gradient and drag would fix it.
+2. **Debris is pushed crudely, and does not push back.** Loose nodes feel the air's pressure
+   gradient and a drag with a fixed coefficient, as cubes of the main material whatever they
+   are made of, and the air feels no reaction. A node still attached to one intact element
+   is not loose and is loaded only through that element's faces. Debris is never a solid
+   to the air: gas passes through rubble as if it were not there.
 3. **Walls are a staircase of whole cells.** A wall's surface in the air is placed to the
    nearest cell, and its thickness there can flicker by a cell as it moves (a 0.5 m wall on
    0.25 m cells covers two cells or three). The gas itself is conserved: the face flux of a

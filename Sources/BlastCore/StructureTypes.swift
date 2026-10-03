@@ -530,6 +530,7 @@ struct StructureUniforms {
     var loadTime: Float = 0
     var loadCount: UInt32 = 0
     var loadFace: UInt32 = 0
+    var debrisDensity: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

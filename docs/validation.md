@@ -368,6 +368,8 @@ The test suite has 71 tests. The physical checks are:
 | Wall pushed along the tube                      | Mask travels with it; air beyond compressed adiabatically within 5% |
 | Wall driven at 100 m/s into still air           | Piston shock and rarefaction within 2% of theory |
 | Wall driven 1.1 m at 10, 50 and 150 m/s         | Gas mass conserved within 0.5% of the true volume |
+| Loose debris in a steady 100 m/s wind           | Gains the momentum of its drag within 2%; none with the option off |
+| Loose debris in a 10 kPa/m pressure gradient    | Gains the gradient's push, plus drag, within 2% |
 | After the blast has gone                        | Air freezes; structure carries on              |
 | A wall broken by a 500 kg charge, run twice     | Identical to the last bit                      |
 
