@@ -137,6 +137,23 @@ air step suggests are encoded (a quarter more, plus one), and the air step is ca
 GPU to what they cover; encoding enough for still air, as before, left about two-thirds of them
 idle while the hot gas kept the air's step short, and cost 10%.
 
+**With shells.** The same building meshed with [shell elements](shell-model.md) of 250 mm
+(3,724 elements; `--shells 0.25`) or 500 mm (`--shells 0.5`), measured in one session in which
+the solid elements reran at 66×, 72× and 145×:
+
+| Air cell size | Shells, 0.25 m | Shells, 0.5 m | Solid elements, 62.5 mm |
+|---------------|----------------|---------------|-------------------------|
+| 0.5 m         | 4×             | 2×            | 66×                     |
+| 0.25 m        | 9×             | 7×            | 72×                     |
+| 0.125 m       | 79×            | 77×           | 145×                    |
+
+With shells the air sets the pace instead: on 0.5 m cells the building runs at a few times
+slower than real time, and on 0.125 m cells the air alone takes most of the 77×. The shells'
+time step (37 µs for 250 mm concrete elements, against 9 µs) means a few substeps per air step
+instead of 5 to 15, and there are 60 times fewer elements. GPU memory falls from 0.21 to 0.07 GB
+on 0.25 m cells. The free-standing wall preset runs at 3× and 7× on 0.5 m and 0.25 m cells,
+against 13× and 18×.
+
 ## A three-storey building
 
 ```bash
@@ -169,6 +186,9 @@ them, and a time step twice as long.
 
 ## The slab benchmark
 
+With shells (`blastbench slab --shells 2,1,0.5`), 80 ms of the validation slab takes 0.8 s,
+1.7 s and 5.5 s on 2, 1 and 0.5 in elements, all with the converged answer.
+
 `blastbench slab` runs 80 ms of the validation slab in 7 s with eight elements through the
 thickness (68,608 elements of 12.7 mm, time step 1.7 µs) and in under a second with four. With
 sixteen (553,000 elements) it takes under two minutes. Nonlocal crushing, when switched on,
@@ -194,7 +214,7 @@ and a kernel to write the dispatch sizes, for at most those 3%; it has not been 
 
 | Cost                                              | Possible remedy                                        |
 |---------------------------------------------------|--------------------------------------------------------|
-| Structural time step tied to the smallest element | Shell or beam elements for thin members; mass scaling; coarser elements away from damage |
+| Structural time step tied to the smallest element | Shell elements for walls and slabs (done: 8–16× faster coupled); beam elements for columns; mass scaling |
 | Air solved everywhere at one resolution           | Adaptive refinement; a moving window that follows the shock |
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
 | Idle substep dispatches in coupled runs           | Now sized from the last batch; worth about 3%, too little for indirect dispatch (below) |

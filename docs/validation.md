@@ -26,7 +26,7 @@ swift run -c release blastbench validate
 | Blast loads          | Kingery–Bulmash at three ranges: impulse on a wall within 5–10% | Moderate to good for impulse on walls; peaks under-resolved |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: peak within 7% on three meshes, rising slowly with refinement | Low to moderate: one test, sensitive to supports |
+| Structural response  | One slab test: solid elements converge to 112 mm (104%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -132,6 +132,13 @@ strength above 30 per second. Before they were fixed the 16-layer slab sat on a 
 between 110 mm and collapse, decided by a 0.1% change in the load or by round-off. Earlier
 figures reported here (108 mm on 8 elements, then 102 mm) came from versions with one or
 both errors.
+
+**With shells.** The same slab meshed with [shell elements](shell-model.md) peaks at 124 mm
+(115%) on 2, 1 and 0.5 in elements and with 8 to 32 layers through the thickness, so the shells
+have converged too, 11% above the solid elements. They rebound about as little as the specimen
+did: 94–97 mm at the end of the record against 91 mm measured, with a root-mean-square
+difference over the record of 10 mm. A run takes a second or two. The
+[shell model](shell-model.md#validation) has the details.
 
 For comparison, the source reports these peaks from other tools on the same slab and load:
 
@@ -373,6 +380,9 @@ The test suite has 71 tests. The physical checks are:
 | Debris packed into an air cell in a 300 m/s wind | Air and debris momentum conserved within 1%; the air slowed but never reversed |
 | After the blast has gone                        | Air freezes; structure carries on              |
 | A wall broken by a 500 kg charge, run twice     | Identical to the last bit                      |
+
+The shell elements have their own checks against plate and beam theory and the same coupling
+checks; see the [shell model](shell-model.md#verification).
 
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.
