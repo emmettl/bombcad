@@ -128,6 +128,37 @@ struct SimulationModelTests {
         try await waitUntil { model.structureSummary == nil }
     }
 
+    @Test("A structure can be meshed with shells and back")
+    func shellStructure() async throws {
+        let model = try await makeModel()
+        model.select(.concreteBox)
+        model.settings.elementKind = .shell
+        model.settingsChanged()
+        try await waitUntil { model.structureSummary != nil && model.time == 0 }
+        #expect(model.errorMessage == nil)
+        #expect(model.settings.scenario.structure?.elementSize == 0.25)
+        let shells = try #require(model.structureSummary)
+        #expect(shells.activeElements > 1000 && shells.activeElements < 10_000)
+
+        model.speed = .unlimited
+        model.duration = 0.02
+        model.run()
+        try await waitUntil { !model.isRunning && model.time > 0.015 }
+        #expect(model.errorMessage == nil)
+        #expect((model.structureSummary?.maxDisplacement ?? 0) > 0)
+
+        model.settings.elementKind = .solid
+        model.settingsChanged()
+        try await waitUntil { model.time == 0 && (model.structureSummary?.activeElements ?? 0) > 100_000 }
+        #expect(model.settings.scenario.structure?.elementSize == 0.0625)
+        // A frame has columns, which shells cannot mesh: the editor reports why.
+        model.select(.frame)
+        model.settings.elementKind = .shell
+        model.settingsChanged()
+        try await waitUntil { model.errorMessage != nil }
+        #expect(model.errorMessage?.contains("column") == true)
+    }
+
     // MARK: Editing
 
     @Test("Editing the layout rebuilds the simulation with the new geometry")

@@ -68,6 +68,28 @@ struct SimulationSettings: Equatable {
         get { scenario.structure?.material ?? .reinforcedConcrete }
         set { scenario.structure?.material = newValue }
     }
+
+    /// Solid size to return to when a structure meshed with shells goes back to solids.
+    var solidElementSize: Float = 0.0625
+
+    /// How the deformable structure is meshed. Shells are 250 mm across; going back to solids
+    /// restores the size the structure had before.
+    var elementKind: ElementKind {
+        get { scenario.structure?.elementKind ?? .solid }
+        set {
+            guard var structure = scenario.structure, structure.elementKind != newValue else { return }
+            if newValue == .shell {
+                solidElementSize = structure.elementSize
+                structure.elementSize = Self.shellSize
+            } else {
+                structure.elementSize = solidElementSize
+            }
+            structure.elementKind = newValue
+            scenario.structure = structure
+        }
+    }
+
+    static let shellSize: Float = 0.25
 }
 
 /// The part of the layout picked out for editing.
@@ -495,7 +517,7 @@ final class SimulationModel {
         self.scenario = scenario
         self.grid = solver?.grid
         memoryFootprint = solver?.memoryFootprint ?? 0
-        structureSummary = solver?.structure?.summary()
+        structureSummary = solver?.structure?.summary() ?? solver?.shells?.summary()
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
         chargeIsBlocked = scenario.chargeIsBlocked
@@ -614,7 +636,7 @@ final class SimulationModel {
     private func publishTraces() {
         guard let solver else { return }
         lastTracePublication = .now
-        structureSummary = solver.structure?.summary()
+        structureSummary = solver.structure?.summary() ?? solver.shells?.summary()
         if let summary = structureSummary, !summary.hasBlownUp,
             structureHistory.last?.time != solver.time * 1000
         {

@@ -59,6 +59,11 @@ struct EditorView: View {
                     Picker("Main material", selection: $model.settings.material) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                     }
+                    Picker("Elements", selection: $model.settings.elementKind) {
+                        Text("Solid").tag(ElementKind.solid)
+                        Text("Shell").tag(ElementKind.shell)
+                    }
+                    .pickerStyle(.segmented)
                 }
             } header: {
                 Text("Deformable structure")
@@ -66,7 +71,8 @@ struct EditorView: View {
                 Text(
                     "Walls and slabs deform and break. Each piece can have its own material; thin pieces "
                         + "are reinforced with a mat of bars in each face and stocky ones as columns unless "
-                        + "set otherwise. Openings are cut out of them.")
+                        + "set otherwise. Openings are cut out of them. Shell elements run many times "
+                        + "faster but need every piece to be a wall or slab, not a column.")
             }
 
             Section {
