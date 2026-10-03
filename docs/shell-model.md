@@ -157,6 +157,44 @@ Without them the two-storey frame's debris, piled on the ground, met already dee
 megajoules, throwing it at up to 1,000 m/s. With them, contact still stops pieces meeting at tens
 of metres a second within a few steps, but never throws them.
 
+## Shells and solids together
+
+One body can mix the two: solid elements where the stress through a wall's thickness matters,
+near a charge, and shells and beams elsewhere (`StructureModel.setElementKind(_:of:)`, or
+`solidNear(_:within:shellSize:)` for the pieces within some distance of a point; in the app,
+the Solid/Shell switch on each piece). `elementSize` is then the solid elements' size and
+`shellElementSize` the shells'. The body is meshed as two (`MixedStructure`) and tied:
+
+- **Where.** A shell node that lies in a solid element, where a shell's midsurface runs into a
+  solid piece, is tied to the line of the solid's nodes that spans the shell's thickness there,
+  along its normal.
+- **How.** A rigid link: the shell node moves with the line's mean displacement and its
+  rotation about the line's middle, and hands its force to the line in equal shares and its
+  moment as forces across it (M × r / Σ|r|²), the duals of those, so the tie does no work. The
+  twist about the shell's normal, which shells do not carry, drops out. The node's mass moves
+  onto the line.
+- **When.** Both parts take the shorter of their two time steps. Each substep runs the solid
+  elements, then a whole shell substep in which the tied nodes report their loads instead of
+  moving, then the solid nodes, which take them, and last the tied shell nodes, which follow.
+- **The air.** Both parts are loaded by the air and both mark its mask; a shell's point counts
+  as a whole cell's worth of solid elements, so the mask follows each part by its own rule.
+
+A first tie, to the eight corners of the one solid element the shell node lies in, let the
+moment in over a single element's height and was 10% soft; tied across the thickness, a
+cantilever strip whose first quarter is solid elements and the rest shells sags within 1.3% of
+beam theory, as the all-shell and all-solid strips do. There is no contact between the two
+parts, so debris of one passes through the other.
+
+| Single-storey building, 100 kg (`blastbench throughput --preset box --full`) | 0.25 m air cells |
+|---|---|
+| All solid elements of 62.5 mm | 79× slower than real time |
+| Front wall solid elements, the rest shells of 250 mm (`--solid-near 8.2`) | 24× |
+| All shells of 250 mm | 7× |
+
+At 500 kg the building with only its front wall solid deflects 280 mm at 100 ms, against
+217 mm all solid and 664 mm all shells: the front wall breaks as the all-solid one does
+(481 elements removed against 463), and the shell side walls and roof bend more.
+
 ## Verification
 
 | Check | Result |
@@ -240,8 +278,8 @@ models of a collapse can end up.
 
 ## Future work
 
-- **Shells and solids together**: solid elements near the charge, where the stress through the
-  thickness matters, and shells elsewhere.
+- **Contact between the parts of a mixed body**, so that debris of solid elements meets shells.
+
 - **Contact that knows the shells' thickness.**
 - **A punching model** for slab–column joints in place of the slip rule.
 

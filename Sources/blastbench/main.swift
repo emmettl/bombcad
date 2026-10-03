@@ -52,6 +52,11 @@ func chosenScenario() -> Scenario {
         if let layers = option("shell-layers").flatMap({ Int($0) }) { structure.shellLayers = layers }
         scenario.structure = structure
     }
+    // `--solid-near 4` meshes the pieces within 4 m of the charge with solid elements and the
+    // rest with shells.
+    if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
+        scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
+    }
     return scenario
 }
 
@@ -497,7 +502,7 @@ func runSnapshot() throws {
     print(
         "Simulated in \(format(Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18, 1)) s"
             + (sleptAt.map { "; the air went quiet and was frozen at \(format($0 * 1000, 0)) ms" } ?? ""))
-    if let summary = solver.structure?.summary() ?? solver.shells?.summary() {
+    if let summary = solver.bodySummary() {
         print(
             "Structure: \(summary.activeElements) elements intact, \(summary.erodedElements) failed, "
                 + "peak deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm, "

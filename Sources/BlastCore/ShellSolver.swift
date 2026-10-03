@@ -190,7 +190,7 @@ public final class ShellSolver {
         didSet { writeLoadTable() }
     }
     /// Simulated time accumulated by `advance(steps:)`.
-    public private(set) var time: Double = 0
+    public internal(set) var time: Double = 0
 
     public let nodeBuffer: MTLBuffer
     /// Reference position of every node, as four floats.
@@ -672,7 +672,14 @@ public final class ShellSolver {
 
     /// Largest stable time step in seconds: the time a compression wave in the plane takes to
     /// cross the smallest element, times `timeStepSafety`.
-    public var criticalTimeStep: Float {
+    /// The time step every substep takes: the stable one, unless another body sharing the
+    /// substeps needs a shorter one.
+    public var criticalTimeStep: Float { stepOverride ?? stableTimeStep }
+    /// Set by a body this one is tied to, so both take the same steps.
+    public var stepOverride: Float?
+
+    /// Largest stable time step of this body alone, in seconds.
+    public var stableTimeStep: Float {
         var step = Float.infinity
         for element in mesh.elements {
             let speed = materials[element.material].plateWaveSpeed
@@ -690,6 +697,16 @@ public final class ShellSolver {
     public func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?
     ) {
+        encodeSubsteps(encoder, substeps: 0..<count, fluid: fluid, prelude: true, interface: nil)
+    }
+
+    /// Encodes the substeps in `substeps`, with the once-per-batch work first if `prelude`. With
+    /// an interface, nodes tied into a solid body write their force and moment to `loads`, at
+    /// the link index in `link`, instead of moving.
+    func encodeSubsteps(
+        _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, fluid: StructureSolver.FluidBinding?,
+        prelude: Bool, interface: (link: MTLBuffer, loads: MTLBuffer)?
+    ) {
         guard elementCount + beamCount > 0 else { return }
         var uniforms = makeUniforms(fluid: fluid)
         var parameters = materials.map {
@@ -700,7 +717,7 @@ public final class ShellSolver {
         let encodeContact = contactMode == .always || (contactMode == .afterFailure && hasFailed)
 
         // Loose debris adds up its frontal area in each air cell before the substeps.
-        if uniforms.debrisLoading != 0, hasFailed, let fluid, let area = fluid.debrisArea {
+        if prelude, uniforms.debrisLoading != 0, hasFailed, let fluid, let area = fluid.debrisArea {
             encoder.setComputePipelineState(debrisAreaPipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
@@ -716,7 +733,7 @@ public final class ShellSolver {
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
-        for substep in 0..<count {
+        for substep in substeps {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
             encoder.setComputePipelineState(elementPipeline)
@@ -806,6 +823,8 @@ public final class ShellSolver {
             encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 15)
             encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 16)
             encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 17)
+            encoder.setBuffer(interface?.link ?? placeholderBuffer, offset: 0, index: 18)
+            encoder.setBuffer(interface?.loads ?? placeholderBuffer, offset: 0, index: 19)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if !mesh.ties.isEmpty {

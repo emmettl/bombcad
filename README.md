@@ -11,7 +11,8 @@ It has two solvers, both on the GPU:
 - a **structural solver** for reinforced concrete and masonry that cracks, crushes, yields its
   reinforcement and breaks under those pressures. Broken pieces collide, fall and come to rest,
   and the air flows through the gaps they leave. Structures are meshed with solid elements, or
-  with much faster shell elements for walls and slabs and beam elements for columns.
+  with much faster shell elements for walls and slabs and beam elements for columns, or with
+  both in one body, tied where they meet.
 
 It is a study of the numerics and the performance, not a design tool.
 
@@ -68,6 +69,7 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Concrete building, 225,000 elements, coupled to the air     | 70× slower                   |
 | The same building as 3,700 shell elements                   | 7× slower (2× on 0.5 m air)  |
 | Three-storey building as shells and beams                   | 31× slower (17× on 0.5 m air) |
+| The building with its front wall solid, the rest shells     | 24× slower                   |
 | Three-storey frame with masonry cladding, 160,000 elements  | 60× slower                   |
 | Two-storey frame collapsing over 3 s                        | 9× slower                    |
 

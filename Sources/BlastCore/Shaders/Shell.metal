@@ -127,6 +127,8 @@ constant uint shellRotationHeld = 64u;
 // A node tied rigidly to another (a slab node within a column's footprint): it is moved with
 // the other, which takes its forces.
 constant uint shellTied = 128u;
+// Tied into a solid element of another body, which moves it (see `InterfaceLink`).
+constant uint shellOnSolid = 256u;
 
 // State of one layer at one of the four in-plane points (or one fibre of a beam), as stored:
 // 20 bytes. The strain-rate average and the frozen tensile factor need only half precision.
@@ -1301,6 +1303,8 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device uchar *fluidMask [[buffer(15)]],
                        device atomic_uint *exchange [[buffer(16)]],
                        const device int *debrisArea [[buffer(17)]],
+                       const device uint *interfaceLink [[buffer(18)]],
+                       device float4 *interfaceLoads [[buffer(19)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1329,6 +1333,13 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         float3 arm = reference[other].xyz + float3(nodes[other].displacement) - position;
         force += tiedForce;
         moment += tiedMoment + cross(arm, tiedForce);
+    }
+    // A node tied into a solid hands its force and moment to that body, which moves it.
+    if ((node.flags & shellOnSolid) != 0) {
+        uint link = interfaceLink[n];
+        interfaceLoads[2 * link] = float4(force, 0.0f);
+        interfaceLoads[2 * link + 1] = float4(moment, 0.0f);
+        return;
     }
     // Loose debris is part of no element the air loads, so the air pushes it directly, as solid
     // debris is; its volume is its share of the elements it belonged to.
@@ -1436,10 +1447,10 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
                     continue;
                 }
                 uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
-                atomic_fetch_add_explicit(&occupancy[slot], 1u, memory_order_relaxed);
-                atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x), memory_order_relaxed);
-                atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y), memory_order_relaxed);
-                atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z), memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * u.splatWeight, memory_order_relaxed);
             }
         }
     }
@@ -1496,10 +1507,10 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
                     continue;
                 }
                 uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
-                atomic_fetch_add_explicit(&occupancy[slot], 1u, memory_order_relaxed);
-                atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x), memory_order_relaxed);
-                atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y), memory_order_relaxed);
-                atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z), memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * u.splatWeight, memory_order_relaxed);
             }
         }
     }
@@ -1568,4 +1579,39 @@ kernel void shellDebrisAreas(const device ShellNode *nodes [[buffer(0)]],
     float frontal = pow(reference[n].w, 2.0f / 3.0f) / (u.fluidCell * u.fluidCell * u.fluidCell);
     atomic_fetch_add_explicit(&area[exchangeCell], int(round(min(frontal * exchangeAreaScale, 1.0e9f))),
                               memory_order_relaxed);
+}
+
+// After the solid body's node pass: each shell node tied to the solid takes the motion of its
+// line of solid nodes: their mean displacement and velocity, and their rotation about the
+// line's middle, the duals of the way its force and moment are handed to them.
+kernel void shellFollowSolid(device ShellNode *nodes [[buffer(0)]],
+                             const device StructureNode *solidNodes [[buffer(1)]],
+                             const device InterfaceLink *links [[buffer(2)]],
+                             constant uint &linkCount [[buffer(3)]],
+                             uint n [[thread_position_in_grid]]) {
+    if (n >= linkCount) {
+        return;
+    }
+    InterfaceLink link = links[n];
+    float3 displacement = float3(0.0f);
+    float3 velocity = float3(0.0f);
+    float3 turn = float3(0.0f);
+    float3 spin = float3(0.0f);
+    for (uint a = 0; a < link.count; ++a) {
+        StructureNode line = solidNodes[link.nodes[a]];
+        float3 arm = float3(link.arms[a]);
+        displacement += float3(line.displacement);
+        velocity += float3(line.velocity);
+        turn += cross(arm, float3(line.displacement));
+        spin += cross(arm, float3(line.velocity));
+    }
+    ShellNode node = nodes[link.shellNode];
+    node.displacement = displacement / float(link.count);
+    node.velocity = velocity / float(link.count);
+    turn *= link.inverseSecondMoment;
+    node.spin = spin * link.inverseSecondMoment;
+    float angle = length(turn);
+    float3 axis = angle > 1e-9f ? turn / angle : float3(0.0f, 0.0f, 1.0f);
+    node.rotation = float4(axis * sin(0.5f * angle), cos(0.5f * angle));
+    nodes[link.shellNode] = node;
 }

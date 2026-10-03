@@ -160,6 +160,10 @@ using the GPU, so all the figures in this table are a little high:
 | 0.25 m        | 7×             | 81×                     |
 | 0.125 m       | 83×            | 157×                    |
 
+**Mixed** (`--solid-near 8.2`): the front wall, facing the charge, as solid elements and the rest
+as shells, tied together (see the [shell model](shell-model.md#shells-and-solids-together)):
+24× slower than real time on 0.25 m cells, against 79× all solid, and 92× on 0.125 m cells.
+
 Skipping still air helps the shell building little: its 32 m domain is mostly within a few
 metres of the structure, where the air is always swept, and the charge stands close to it. On
 0.125 m cells, 76% of the air is swept over the event and the run is 11% faster (70× slower

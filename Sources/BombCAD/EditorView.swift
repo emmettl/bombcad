@@ -44,6 +44,16 @@ struct EditorView: View {
                         }
                         .font(.callout)
                         .padding(.leading, 18)
+                        Picker("Elements", selection: elementKindBinding(index)) {
+                            Text("Solid").tag(ElementKind.solid)
+                            Text("Shell").tag(ElementKind.shell)
+                        }
+                        .pickerStyle(.segmented)
+                        .font(.callout)
+                        .padding(.leading, 18)
+                        .help(
+                            "Mesh this piece with solid elements (where stress through the thickness matters, "
+                                + "near a charge) or shells; the two kinds are tied where they meet.")
                         ReinforcementEditor(spec: reinforcementBinding(index))
                     }
                 }
@@ -148,6 +158,12 @@ struct EditorView: View {
         Binding(
             get: { openings[index] },
             set: { box in model.editStructure { $0.openings[index] = box } })
+    }
+
+    private func elementKindBinding(_ index: Int) -> Binding<ElementKind> {
+        Binding(
+            get: { model.settings.scenario.structure?.elementKind(of: index) ?? .solid },
+            set: { model.setElementKind($0, ofSolid: index) })
     }
 
     private func materialBinding(_ index: Int) -> Binding<StructureMaterial> {

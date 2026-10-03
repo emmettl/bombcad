@@ -397,6 +397,37 @@ final class SimulationModel {
         editStructure { $0.setMaterial(material, of: index) }
     }
 
+    /// Meshes one piece of the structure with solid elements or shells. A structure of both
+    /// kinds keeps solid elements at their own size and shells at theirs.
+    func setElementKind(_ kind: ElementKind, ofSolid index: Int) {
+        let solidSize = settings.solidElementSize
+        editStructure { structure in
+            structure.setElementKind(kind, of: index)
+            if structure.isMixed {
+                structure.elementSize = structure.elementKind == .solid ? structure.elementSize : solidSize
+                structure.shellElementSize = SimulationSettings.shellSize
+                // The size is that of the solid elements, whichever kind the rest of the body is.
+                if structure.elementKind == .shell {
+                    let kinds = structure.solids.indices.map { structure.elementKind(of: $0) }
+                    structure.elementKind = .solid
+                    structure.solidElementKind = []
+                    for (n, own) in kinds.enumerated() { structure.setElementKind(own, of: n) }
+                }
+            } else {
+                // All one kind again: that is the body's kind, at its own size.
+                let kind =
+                    structure.solids.indices.first.map { structure.elementKind(of: $0) }
+                    ?? structure.elementKind
+                structure.solidElementKind = []
+                structure.shellElementSize = nil
+                if kind != structure.elementKind {
+                    structure.elementKind = kind
+                    structure.elementSize = kind == .shell ? SimulationSettings.shellSize : solidSize
+                }
+            }
+        }
+    }
+
     /// Sets how one piece of the structure is reinforced.
     func setReinforcement(_ spec: Reinforcement, ofSolid index: Int) {
         editStructure { $0.setReinforcement(spec, of: index) }
@@ -533,7 +564,7 @@ final class SimulationModel {
         self.scenario = scenario
         self.grid = solver?.grid
         memoryFootprint = solver?.memoryFootprint ?? 0
-        structureSummary = solver?.structure?.summary() ?? solver?.shells?.summary()
+        structureSummary = solver?.bodySummary()
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
         chargeIsBlocked = scenario.chargeIsBlocked
@@ -652,7 +683,7 @@ final class SimulationModel {
     private func publishTraces() {
         guard let solver else { return }
         lastTracePublication = .now
-        structureSummary = solver.structure?.summary() ?? solver.shells?.summary()
+        structureSummary = solver.bodySummary()
         if let summary = structureSummary, !summary.hasBlownUp,
             structureHistory.last?.time != solver.time * 1000
         {

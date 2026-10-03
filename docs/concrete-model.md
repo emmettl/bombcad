@@ -142,10 +142,11 @@ solid and breaks the explicit time-step limit.
 
 Concrete is about a tenth pores. Squeezed hard from all sides, as by the shock close to a
 charge, the pores collapse and the pressure keeps rising, where the strength laws above would
-level off at about five times f_c. So where an element is confined (every axis in compression,
-the least by at least a fifth of the most, as in the uniaxial strain of a shock), its mean
-stress is never less compressive than the pressure of the Holmquist–Johnson–Cook curve for its
-volumetric compression μ = V₀/V − 1:
+level off at about five times f_c. So while an element is confined (every axis in compression,
+the least by at least a fifth of the most, as in the uniaxial strain of a shock) and has been
+squeezed past the point where the curve's pressure reaches f_c, its mean stress is never less
+compressive than the pressure of the Holmquist–Johnson–Cook curve for its volumetric
+compression μ = V₀/V − 1:
 
 - elastic, p = K μ, up to the crushing pressure f_c / 3;
 - then the pores collapse, and p rises linearly to 0.8 GPa at μ = 0.1, keeping the largest
@@ -155,11 +156,16 @@ volumetric compression μ = V₀/V − 1:
   K₁ = 85, K₂ = −171 and K₃ = 208 GPa.
 
 The pressure is added as a shift of the three normal stresses, so the shear strength still
-comes from the laws above. An element follows the curve from the moment its confined pressure
-first passes the crushing pressure. Under uniaxial strain to 12% a cube now carries 3 GPa,
-where before it levelled off at 150 MPa and was then removed as crushed; the slab test and a
-500 kg charge at 6 m are unchanged. No test with a charge close enough for it to matter has
-been run.
+comes from the laws above. Under uniaxial strain to 12% a cube now carries 3 GPa, where
+before it levelled off at 150 MPa and was then removed as crushed; the slab test, a 500 kg
+charge 6 m from a wall and 8 m from a building are unchanged. No test with a charge close
+enough for it to matter has been run.
+
+Two looser rules were tried and dropped. Starting at the curve's own crushing pressure,
+f_c / 3, rather than f_c, let the shock of 500 kg at 8 m start compaction in the building's
+front wall, and the wall's deflection more than doubled; and letting an element follow the
+curve after it was no longer confined pressed its later bending cracks shut. Below f_c the
+strength laws above already describe concrete squeezed by an ordinary blast.
 
 Confinement is judged by stress, not strain: concrete squeezed from one side dilates as it
 crushes, which this model does not represent, so its volume change says nothing about its pores

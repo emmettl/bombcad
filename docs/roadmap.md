@@ -67,8 +67,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 ### Then scale and scope
 
-7. **Shells and solids together**: solid elements near a charge, where the stress through a
-   wall's thickness matters, and shells and beams elsewhere.
+7. **Contact between the parts of a mixed body.** (Done: shells and solids together, tied
+   through the thickness, three times faster than all solid elements on the single-storey
+   building with only its front wall solid; see the [shell model](shell-model.md#shells-and-solids-together).)
 8. **Several bodies and interfaces**: pieces that can separate or slide (infill against its
    frame, masonry joints), steel sections, glazing. Several materials in one body are done.
 9. **Adaptive resolution in the air.**

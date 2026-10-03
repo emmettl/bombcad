@@ -61,6 +61,19 @@ struct StructureUniforms {
     int exchangeNz;
     uint fluidAirModel;  // the air's equation of state (`AirModel`)
     uint orientedCracks;  // non-zero: concrete cracks along the principal axes it first cracked on
+    uint interfaceLinks;  // shell nodes tied into this body's elements (see `InterfaceLink`)
+};
+
+// A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
+// the shell's thickness where its midsurface meets the solid. The node moves as the line does
+// (their mean displacement, and their rotation about the line's middle) and hands its force to
+// them in equal shares and its moment as forces across the line, the duals of those.
+struct InterfaceLink {
+    uint shellNode;
+    uint count;
+    uint nodes[8];            // compact indices of the solid's nodes on the line
+    packed_float3 arms[8];    // their offsets from the line's middle
+    float inverseSecondMoment;  // 1 / sum |arm|^2
 };
 
 // Rotation matrix (columns: the rotated axes) of a unit quaternion (x, y, z, w), and back.
@@ -956,13 +969,22 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float mu = referenceVolume / volume - 1.0f;
         bool confined = max(normalStress.x, max(normalStress.y, normalStress.z))
             < 0.2f * min(normalStress.x, min(normalStress.y, normalStress.z));
+        // It takes over only where the confined pressure passes the unconfined strength, beyond
+        // which the strength laws above are not meant to go; below that they already describe
+        // concrete squeezed by an ordinary blast (starting at the curve's own crushing
+        // pressure, fc / 3, doubled the deflection of a wall 8 m from 500 kg).
         float bulk = m.lambda + 2.0f * m.mu / 3.0f;
-        float crushVolume = m.compressiveStrength / (3.0f * bulk);
+        float crushPressure = m.compressiveStrength / 3.0f;
+        float crushStrain = crushPressure / bulk;
+        float crushVolume = crushStrain
+            + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain) / (0.8e9f - crushPressure);
         if (confined && mu > crushVolume) {
             state.compaction = max(state.compaction, mu);
         }
-        // Once its pores have begun to collapse, an element follows the curve, confined or not.
-        if (mu > 0.0f && state.compaction > crushVolume) {
+        // While confined, once it has passed that, an element follows the curve.
+        // (Following it afterwards too, once the element was cracking and bending, pressed open
+        // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
+        if (confined && mu > 0.0f && state.compaction > crushVolume) {
             float compacted = compactionPressure(mu, state.compaction, bulk, m.compressiveStrength);
             float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
             if (compacted > pressure) {
@@ -1620,6 +1642,10 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device uchar *fluidMask [[buffer(10)]],
                            device atomic_uint *exchange [[buffer(11)]],
                            const device int *debrisArea [[buffer(12)]],
+                           const device uint *interfaceStart [[buffer(13)]],
+                           const device uint2 *interfaceEntries [[buffer(14)]],
+                           const device InterfaceLink *links [[buffer(15)]],
+                           const device float4 *interfaceLoads [[buffer(16)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -1654,6 +1680,21 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
             intact += 1;
         }
         share += flag != elementEmpty ? 1u : 0u;
+    }
+    // Shell nodes tied into the elements around this node hand over their share: the force at
+    // the trilinear weight, and the moment as forces across the element's corners, which turn it
+    // as the shell node's rotation (energy-consistent with the way the shell node follows).
+    if (u.interfaceLinks != 0) {
+        for (uint e = interfaceStart[threadIndex]; e < interfaceStart[threadIndex + 1]; ++e) {
+            uint2 entry = interfaceEntries[e];
+            float3 linkForce = interfaceLoads[2 * entry.x].xyz;
+            float3 linkMoment = interfaceLoads[2 * entry.x + 1].xyz;
+            InterfaceLink link = links[entry.x];
+            // The line's second moment, sum |r|^2 I - r r^T, is sum |r|^2 across the line (its
+            // twist about itself, which a shell does not carry, is left out).
+            force += linkForce / float(link.count)
+                + cross(linkMoment, float3(link.arms[entry.y])) * link.inverseSecondMoment;
+        }
     }
     bool attached = intact > 0;
     // A node inside intact solid cannot meet a node of another piece without one of the
@@ -1734,6 +1775,7 @@ struct CouplingUniforms {
     float ambientDensity;
     float ambientPressure;
     uint airModel;
+    uint splatWeight;  // what each point counts for in a cell's occupancy, against `threshold`
 };
 
 // Velocities handed to the air are limited to this (m/s) and summed in steps of 1/1024 m/s.
@@ -1770,10 +1812,10 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     float3 velocity = 0.5f * (float3(nodes[low].velocity) + float3(nodes[high].velocity));
     velocity = select(clamp(velocity, -wallSpeedLimit, wallSpeedLimit), float3(0.0f), isnan(velocity));
     int3 fixed = int3(round(velocity * wallSpeedScale));
-    atomic_fetch_add_explicit(&occupancy[slot], 1u, memory_order_relaxed);
-    atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x), memory_order_relaxed);
-    atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y), memory_order_relaxed);
-    atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z), memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
+    atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * u.splatWeight, memory_order_relaxed);
 }
 
 // Writes the new solid flag into bit 1 of the mask, leaving the old flag in bit 0 so that

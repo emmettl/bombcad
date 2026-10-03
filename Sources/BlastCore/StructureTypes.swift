@@ -276,6 +276,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Solid elements on a lattice, or shells on the midsurfaces of walls and slabs. With
     /// shells, `elementSize` is their size in the plane of the wall or slab.
     public var elementKind: ElementKind = .solid
+    /// How each solid is meshed, by index into `solids`, where it differs from `elementKind`.
+    /// A body with both kinds is meshed as two, tied together where shells meet solid elements;
+    /// `elementSize` is then the solid elements' size and `shellElementSize` the shells'.
+    public var solidElementKind: [ElementKind?] = []
+    /// In a body of both kinds, the shells' size; `elementSize` if nil.
+    public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
     public var shellLayers: Int = 8
     /// Regions in which the structure is held still: nodes inside any of them do not move
@@ -364,6 +370,61 @@ public struct StructureModel: Sendable, Hashable, Codable {
         solids.remove(at: index)
         if solidReinforcement.indices.contains(index) { solidReinforcement.remove(at: index) }
         if solidMaterial.indices.contains(index) { solidMaterial.remove(at: index) }
+        if solidElementKind.indices.contains(index) { solidElementKind.remove(at: index) }
+    }
+
+    /// How solid `index` is meshed.
+    public func elementKind(of index: Int) -> ElementKind {
+        (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
+    }
+
+    /// Meshes solid `index` with `kind`.
+    public mutating func setElementKind(_ kind: ElementKind, of index: Int) {
+        guard solids.indices.contains(index) else { return }
+        while solidElementKind.count <= index { solidElementKind.append(nil) }
+        solidElementKind[index] = kind == elementKind ? nil : kind
+    }
+
+    /// The same body with the pieces that come within `distance` of `point` meshed as solid
+    /// elements of `elementSize` and the rest as shells of `shellSize`: solid elements where the
+    /// stress through a wall's thickness matters, near a charge.
+    public func solidNear(_ point: SIMD3<Float>, within distance: Float, shellSize: Float) -> StructureModel {
+        var model = self
+        model.elementKind = .solid
+        model.solidElementKind = []
+        for (index, box) in solids.enumerated() {
+            let nearest = simd_clamp(point, box.min, box.max)
+            model.setElementKind(simd_distance(nearest, point) <= distance ? .solid : .shell, of: index)
+        }
+        if model.isMixed {
+            model.shellElementSize = shellSize
+        } else if let kind = solids.indices.first.map({ model.elementKind(of: $0) }), kind == .shell {
+            // Nothing is near: all shells.
+            model.elementKind = .shell
+            model.solidElementKind = []
+            model.elementSize = shellSize
+        }
+        return model
+    }
+
+    /// Whether some solids are meshed with solid elements and others with shells.
+    public var isMixed: Bool {
+        Set(solids.indices.map { elementKind(of: $0) }).count > 1
+    }
+
+    /// The part of the body meshed with `kind`: its solids, with their materials and
+    /// reinforcement, and everything else; nil if there are none.
+    public func part(_ kind: ElementKind) -> StructureModel? {
+        let chosen = solids.indices.filter { elementKind(of: $0) == kind }
+        guard !chosen.isEmpty else { return nil }
+        var part = self
+        part.elementKind = kind
+        part.solids = chosen.map { solids[$0] }
+        part.solidMaterial = chosen.map { solidMaterial.indices.contains($0) ? solidMaterial[$0] : nil }
+        part.solidReinforcement = chosen.map { reinforcement(of: $0) }
+        part.solidElementKind = []
+        if kind == .shell, let shellElementSize { part.elementSize = shellElementSize }
+        return part
     }
 
     /// The material of solid `index`.
@@ -516,6 +577,18 @@ public struct StructureSummary: Sendable, Hashable {
         let total = activeElements + erodedElements
         return total == 0 ? 0 : Double(erodedElements) / Double(total)
     }
+
+    /// The summary of two parts of one body together.
+    public func combined(with other: StructureSummary) -> StructureSummary {
+        var both = self
+        both.activeElements += other.activeElements
+        both.erodedElements += other.erodedElements
+        both.maxDisplacement = max(maxDisplacement, other.maxDisplacement)
+        both.maxPlasticStrain = max(maxPlasticStrain, other.maxPlasticStrain)
+        both.maxDamage = max(maxDamage, other.maxDamage)
+        both.hasBlownUp = hasBlownUp || other.hasBlownUp
+        return both
+    }
 }
 
 /// Layout matches `StructureUniforms` in `Structure.metal`.
@@ -567,6 +640,7 @@ struct StructureUniforms {
     var exchangeNz: Int32 = 0
     var fluidAirModel: UInt32 = 0
     var orientedCracks: UInt32 = 0
+    var interfaceLinks: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -632,6 +706,8 @@ struct CouplingUniforms {
     var ambientDensity: Float
     var ambientPressure: Float
     var airModel: UInt32 = 0
+    /// What each splatted point counts for in a cell's occupancy (see `threshold`).
+    var splatWeight: UInt32 = 1
 }
 
 /// When nodes of the structure repel each other.
@@ -714,5 +790,7 @@ extension StructureModel {
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
         orientedCracks = try container.decodeIfPresent(Bool.self, forKey: .orientedCracks) ?? false
+        solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
+        shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
     }
 }

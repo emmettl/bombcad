@@ -71,7 +71,7 @@ public final class StructureSolver {
     }
 
     /// Simulated time accumulated by `advance(steps:)`.
-    public private(set) var time: Double = 0
+    public internal(set) var time: Double = 0
 
     // Exposed for rendering. Element data (state, forces, reinforcement and their histories) is
     // stored compactly, one entry per element the body started with, in the order of
@@ -584,7 +584,14 @@ public final class StructureSolver {
     // MARK: - Stepping
 
     /// Largest stable time step in seconds.
-    public var criticalTimeStep: Float {
+    /// The time step every substep takes: the stable one, unless another body sharing the
+    /// substeps needs a shorter one.
+    public var criticalTimeStep: Float { stepOverride ?? stableTimeStep }
+    /// Set by a body this one is tied to, so both take the same steps.
+    public var stepOverride: Float?
+
+    /// Largest stable time step of this body alone, in seconds.
+    public var stableTimeStep: Float {
         timeStepSafety * model.elementSize / (materials.map(\.dilatationalWaveSpeed).max() ?? 1)
     }
 
@@ -597,7 +604,28 @@ public final class StructureSolver {
     /// Encodes `count` substeps. With a fluid binding, the substeps share out the fluid's current
     /// time step and apply blast loads; without one, each advances by `criticalTimeStep`.
     public func encodeSubsteps(_ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?) {
+        encodeSubsteps(encoder, count: count, fluid: fluid, interface: nil, beforeNodes: nil, afterNodes: nil)
+    }
+
+    /// Shell nodes tied into this body's elements: the links, how many, each lattice node's
+    /// entries among them (start per compact node, then (link, corner) pairs), and the force and
+    /// moment each tied node hands over.
+    struct InterfaceBuffers {
+        var links: MTLBuffer
+        var count: Int
+        var start: MTLBuffer
+        var entries: MTLBuffer
+        var loads: MTLBuffer
+    }
+
+    /// Encodes `count` substeps, running `beforeNodes` after each substep's element and contact
+    /// passes and `afterNodes` after its node pass, for a body tied to this one.
+    func encodeSubsteps(
+        _ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?, interface: InterfaceBuffers?,
+        beforeNodes: ((Int) -> Void)?, afterNodes: ((Int) -> Void)?
+    ) {
         var uniforms = makeUniforms(fluid: fluid)
+        uniforms.interfaceLinks = UInt32(interface?.count ?? 0)
         var parameters = materials.map(makeParameters)
         guard elementCount > 0 else { return }
         // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
@@ -677,6 +705,7 @@ public final class StructureSolver {
                 }
             }
 
+            beforeNodes?(substep)
             encoder.setComputePipelineState(nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
@@ -691,8 +720,13 @@ public final class StructureSolver {
             encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 10)
             encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 11)
             encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 12)
+            encoder.setBuffer(interface?.start ?? placeholderBuffer, offset: 0, index: 13)
+            encoder.setBuffer(interface?.entries ?? placeholderBuffer, offset: 0, index: 14)
+            encoder.setBuffer(interface?.links ?? placeholderBuffer, offset: 0, index: 15)
+            encoder.setBuffer(interface?.loads ?? placeholderBuffer, offset: 0, index: 16)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            afterNodes?(substep)
         }
     }
 

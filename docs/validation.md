@@ -565,7 +565,7 @@ compare these with.
 
 ## Verification against theory
 
-The test suite has 108 tests. The physical checks are:
+The test suite has 110 tests. The physical checks are:
 
 **Air solver**
 
@@ -584,6 +584,8 @@ The test suite has 108 tests. The physical checks are:
 | Hot air: energy and pressure both ways          | Within 0.01% from 250 K to 6000 K; γ = 1.4 cold   |
 | Shock tube in cold units, hot air               | Same densities as the ideal gas within 10⁻⁴      |
 | Closed room, afterburning and hot air           | Within 15% of UFC 3-340-02 at 0.25 and 1 kg/m³   |
+| Cantilever strip, first quarter solid elements, rest shells | Sags within 3% of beam theory (1.3%)     |
+| Wall in a blast, solid base, shell top          | Bends between the all-solid and all-shell walls  |
 
 **Structural solver**
 

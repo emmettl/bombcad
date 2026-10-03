@@ -26,8 +26,12 @@ public final class BlastSolver {
     public let visualizationTexture: MTLTexture
     /// The deformable body advanced alongside the air, if the scenario has one.
     public private(set) var structure: StructureSolver?
-    /// The deformable body when it is meshed with shells; `structure` is then nil.
+    /// The deformable body when it is meshed with shells; `structure` is then nil, unless the
+    /// body is mixed.
     public private(set) var shells: ShellSolver?
+    /// A body meshed partly with solid elements and partly with shells; its parts are
+    /// `structure` and `shells`.
+    public private(set) var mixed: MixedStructure?
     /// Whether there is a deformable body of either kind.
     public var hasBody: Bool { structure != nil || shells != nil }
     /// The deformable body's stable time step.
@@ -314,6 +318,7 @@ public final class BlastSolver {
         precondition(!batchInFlight, "Cannot change the structure while a batch is in flight")
         structure = nil
         shells = nil
+        mixed = nil
         couplingRegion = nil
         occupancyBuffer = nil
         debrisExchangeBuffer = nil
@@ -321,7 +326,13 @@ public final class BlastSolver {
         wallVelocityBuffer = stillWallBuffer
         memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
         guard let model else { return }
-        if model.elementKind == .shell {
+        if model.isMixed {
+            let body = try MixedStructure(
+                device: device, commandQueue: commandQueue, library: library, model: model)
+            mixed = body
+            structure = body.solids
+            shells = body.shells
+        } else if model.elementKind == .shell {
             shells = try ShellSolver(
                 device: device, commandQueue: commandQueue, library: library, model: model)
         } else {
@@ -430,7 +441,10 @@ public final class BlastSolver {
                 MTLSize(width: structure.elementCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(
                     width: splatPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1))
-        } else if let shells {
+        }
+        if let shells {
+            // In a mixed body, one shell point fills a cell, as a third of it in solid elements does.
+            uniforms.splatWeight = structure != nil ? uniforms.threshold : 1
             if shells.beamCount > 0 {
                 var beams = UInt32(shells.beamCount)
                 encoder.setComputePipelineState(beamSplatPipeline)
@@ -491,8 +505,12 @@ public final class BlastSolver {
         time = 0
         stepCount = 0
         lastFluidStep = 0
-        structure?.reset()
-        shells?.reset()
+        if let mixed {
+            mixed.reset()
+        } else {
+            structure?.reset()
+            shells?.reset()
+        }
         if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
@@ -666,7 +684,21 @@ public final class BlastSolver {
                 current = 1 - current
             }
 
-            if let structure {
+            if let mixed {
+                let binding = StructureSolver.FluidBinding(
+                    state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
+                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
+                    airModel: configuration.airModel,
+                    exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
+                    exchangeRegion: couplingRegion)
+                mixed.encodeSubsteps(encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
+                if !asleep {
+                    encodeDebrisExchange(encoder)
+                }
+                if configuration.twoWayCoupling && !asleep {
+                    encodeRemask(encoder)
+                }
+            } else if let structure {
                 // The structure covers the same interval in several smaller steps, loaded by
                 // the pressure the air has just reached.
                 // While the air is frozen it cannot take back what debris would take from it, so
@@ -880,6 +912,16 @@ public final class BlastSolver {
         var count = 0
         for index in 0..<grid.cellCount where mask[index] == 0 { count += 1 }
         return count
+    }
+
+    /// Damage and deflection of the deformable body, both parts of it if mixed.
+    public func bodySummary() -> StructureSummary? {
+        switch (structure?.summary(), shells?.summary()) {
+        case (let solid?, let shell?): solid.combined(with: shell)
+        case (let solid?, nil): solid
+        case (nil, let shell?): shell
+        default: nil
+        }
     }
 
     /// Bytes of GPU memory held by the solver's fields.
