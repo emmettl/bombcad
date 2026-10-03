@@ -17,6 +17,7 @@ power or thermal state; figures here are from cool runs.
 | The same, once pieces are colliding                 | 98×                   |
 | That building coupled to 1 million air cells        | 70×                   |
 | A 23,000-element frame collapsing                   | 9×                    |
+| A 160,000-element three-storey building, coupled    | 60×                   |
 
 "Real time" for a blast is not a useful target in itself: the event lasts a fraction of a
 second, and the app plays it back at 100× slow motion by default. The practical meaning of these
@@ -111,6 +112,25 @@ Each air step is followed by 5 to 15 structural substeps. Only the substeps the 
 air step suggests are encoded (a quarter more, plus one), and the air step is capped on the
 GPU to what they cover; encoding enough for still air, as before, left about two-thirds of them
 idle while the hot gas kept the air's step short, and cost 10%.
+
+## A three-storey building
+
+```bash
+swift run -c release blastbench throughput --preset storeys --full
+```
+
+A three-storey concrete frame, three bays by two of 6 m, with 250 mm slabs and 375 mm columns,
+clad in 250 mm masonry with a window in every panel of its long faces: 160,182 elements of
+125 mm in two materials, 100 kg at 8 m in front, 155 ms simulated.
+
+| Air cell size | Air cells | GPU memory | Whole event | Slower than real time |
+|---------------|-----------|------------|-------------|-----------------------|
+| 0.5 m         | 0.4 M     | 0.15 GB    | 7.1 s       | 46×                   |
+| 0.25 m        | 3.2 M     | 0.31 GB    | 9.3 s       | 60×                   |
+| 0.125 m       | 25 M      | 1.6 GB     | 38 s        | 246×                  |
+
+With the element data stored per element rather than per lattice cell, a building of this size
+takes a third of a gigabyte; most of the 36 GB is still free.
 
 ## Collapse
 

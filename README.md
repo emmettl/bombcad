@@ -16,7 +16,7 @@ It is a study of the numerics and the performance, not a design tool.
 
 ![Blast wave in a street canyon 45 ms after detonation](docs/street-canyon-45ms.png)
 
-![A two-storey concrete frame three seconds after a large charge beside it](docs/frame-collapse.png)
+![A three-storey concrete frame clad in masonry, 150 ms after a charge in front of it](docs/three-storey.png)
 
 ## Running it
 
@@ -63,7 +63,8 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Case                                                        | Speed                        |
 |-------------------------------------------------------------|------------------------------|
 | Air blast, street scene, 8.4 million cells of 0.25 m        | 27× slower than real time    |
-| Concrete building, 225,000 elements, coupled to the air     | 75× slower                   |
+| Concrete building, 225,000 elements, coupled to the air     | 70× slower                   |
+| Three-storey frame with masonry cladding, 160,000 elements  | 60× slower                   |
 | Two-storey frame collapsing over 3 s                        | 7× slower                    |
 
 Two comparisons with the outside world, both in the [validation notes](docs/validation.md):

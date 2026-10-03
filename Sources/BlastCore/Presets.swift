@@ -9,6 +9,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case concreteBox
     case frame
     case infilledFrame
+    case threeStorey
 
     public var id: String { rawValue }
 
@@ -22,6 +23,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .concreteBox: "Deformable building"
         case .frame: "Two-storey frame"
         case .infilledFrame: "Frame with masonry infill"
+        case .threeStorey: "Three-storey building"
         }
     }
 
@@ -184,6 +186,72 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("Front column", at: SIMD3(20.2, 12.9, 1.5)),
                     Gauge("Under first slab", at: SIMD3(20, 16, 3)),
                     Gauge("Behind", at: SIMD3(20, 22, 1.5)),
+                ],
+                structure: structure)
+
+        case .threeStorey:
+            // A three-storey concrete frame, three bays by two of 6 m, with 250 mm flat slabs and
+            // 375 mm columns, clad on all four faces in 250 mm masonry with a window in every
+            // panel. The charge stands 8 m in front of the middle of the long face.
+            let h: Float = 0.125
+            let column: Float = 0.375
+            let xs: [Float] = [16, 22, 28, 34]
+            let ys: [Float] = [14, 20, 26]
+            let levels: [Float] = [3.25, 6.75, 10.25]
+            let top = levels.last! + 0.25
+            var columns: [Box] = []
+            for x in xs {
+                for y in ys {
+                    columns.append(Box(x: x...(x + column), y: y...(y + column), height: top))
+                }
+            }
+            let slabs = levels.map {
+                Box(
+                    min: SIMD3(xs.first!, ys.first!, $0),
+                    max: SIMD3(xs.last! + column, ys.last! + column, $0 + 0.25))
+            }
+            var structure = StructureModel(solids: columns + slabs, elementSize: h)
+            for box in columns {
+                structure.reinforcement.append(
+                    ReinforcementLayer(region: box, ratio: SIMD3(0.004, 0.004, 0.02)))
+            }
+            for slab in slabs {
+                structure.addMat(to: slab, thicknessAxis: 2, areaPerMetre: 754e-6, depth: Self.barDepth)
+            }
+            // Masonry panels between the columns and from slab to slab, on the outer faces.
+            let floors: [(Float, Float)] = [
+                (0, levels[0]), (levels[0] + 0.25, levels[1]), (levels[1] + 0.25, levels[2]),
+            ]
+            var windows: [Box] = []
+            for (z0, z1) in floors {
+                for (x0, x1) in zip(xs, xs.dropFirst()) {
+                    for y in [ys.first!, ys.last! + column - 0.25] {
+                        structure.solids.append(
+                            Box(min: SIMD3(x0 + column, y, z0), max: SIMD3(x1, y + 0.25, z1)))
+                        structure.setMaterial(.masonry, of: structure.solids.count - 1)
+                        let middle = (x0 + column + x1) / 2
+                        windows.append(
+                            Box(
+                                min: SIMD3(middle - 1, y - 0.1, z0 + 1),
+                                max: SIMD3(middle + 1, y + 0.35, z0 + 2.25)))
+                    }
+                }
+                for (y0, y1) in zip(ys, ys.dropFirst()) {
+                    for x in [xs.first!, xs.last! + column - 0.25] {
+                        structure.solids.append(
+                            Box(min: SIMD3(x, y0 + column, z0), max: SIMD3(x + 0.25, y1, z1)))
+                        structure.setMaterial(.masonry, of: structure.solids.count - 1)
+                    }
+                }
+            }
+            structure.openings = windows
+            return Scenario(
+                name: title, domainSize: SIMD3(56, 44, 20), boxes: [],
+                charge: Charge(mass: 100, position: SIMD3(25, 6, 1)),
+                gauges: [
+                    Gauge("Front face", at: SIMD3(25, 13.9, 1.5)),
+                    Gauge("Inside, ground floor", at: SIMD3(25, 17, 1.5)),
+                    Gauge("Behind", at: SIMD3(25, 30, 1.5)),
                 ],
                 structure: structure)
         }
