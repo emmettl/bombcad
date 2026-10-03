@@ -1,0 +1,199 @@
+import Foundation
+import Metal
+import Testing
+import simd
+
+@testable import BlastCore
+
+/// Checks the shell elements against plate and beam theory.
+@Suite("Shell elements")
+struct ShellTests {
+    let device: MTLDevice
+
+    init() throws {
+        device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+    }
+
+    /// Elastic, without Poisson's ratio, so that a strip bends exactly as a beam.
+    private static let elastic = StructureMaterial.elastic(
+        density: 2400, youngsModulus: 20e9, poissonRatio: 0)
+
+    @Test("Walls and roof share nodes along the lines where they meet, and openings are left out")
+    func buildingMesh() throws {
+        var model = try #require(ScenarioPreset.concreteBox.scenario.structure)
+        model.elementKind = .shell
+        model.elementSize = 0.25
+        let mesh = try ShellMesh(model: model)
+        // The front wall's midsurface is at x = 16.125, the roof's at z = 3.375.
+        let front = mesh.positions.indices.filter { abs(mesh.positions[$0].x - 16.125) < 1e-4 }
+        let roof = Set(mesh.positions.indices.filter { abs(mesh.positions[$0].z - 3.375) < 1e-4 })
+        let shared = front.filter { roof.contains($0) }
+        // Along y from 11.125 to 20.875 on 0.25 m elements (with the window edges as breakpoints).
+        #expect(shared.count >= 40, "\(shared.count) nodes shared by the front wall and the roof")
+        // No element is larger than asked for, nor much smaller.
+        for element in mesh.elements {
+            #expect(element.size.max() <= 0.25 + 1e-4)
+            #expect(element.size.min() >= 0.1)
+        }
+        // A window in the front wall: no element centre inside it.
+        for element in mesh.elements
+        where element.axis == 0 && abs(mesh.positions[Int(element.nodes.x)].x - 16.125) < 1e-4 {
+            let corners = (0..<4).map { mesh.positions[Int(element.nodes[$0])] }
+            let centre = corners.reduce(SIMD3<Float>.zero, +) / 4
+            #expect(!(centre.y > 12.5 && centre.y < 14.5 && centre.z > 1 && centre.z < 2.25))
+        }
+        // Every wall has a mat of bars near each face.
+        for element in mesh.elements {
+            #expect(element.bars.count == 2)
+        }
+        #expect(throws: BlastError.self) {
+            var columns = model
+            columns.solids.append(Box(x: 18...18.4, y: 15...15.4, height: 3.5))
+            _ = try ShellMesh(model: columns)
+        }
+    }
+
+    /// A strip 2 m long, 0.5 m wide and 100 mm thick, clamped at x = 0.
+    private func cantilever(elementSize: Float = 0.125) throws -> ShellSolver {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(2, 0.5, 1.1))], material: Self.elastic,
+            elementSize: elementSize, fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 4
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        let clamped = solver.nodes { $0.x < 1e-4 }
+        solver.mutateNodes { nodes in
+            for n in clamped { nodes[n].isClamped = true }
+        }
+        return solver
+    }
+
+    @Test("A cantilever strip sags under its own weight as beam theory says")
+    func cantileverSag() throws {
+        let solver = try cantilever()
+        solver.damping = 40
+        solver.advance(steps: Int(1.5 / solver.criticalTimeStep))
+        // w = q L^4 / (8 E I) with q = rho g t and I = t^3 / 12 per unit width; shear adds
+        // q L^2 / (2 k G t), under 1%.
+        let bending = 12 * 2400 * 9.81 * pow(2, 4) / (8 * 20e9 * 0.01)
+        let shear = 2400 * 9.81 * 0.1 * 4 / (2 * (5.0 / 6.0) * 10e9 * 0.1)
+        let expected = Float(bending + shear)
+        for y: Float in [0, 0.25, 0.5] {
+            let tip = solver.node(solver.nearestNode(to: SIMD3(2, y, 1.05))).displacement.z
+            #expect(abs(-tip - expected) / expected < 0.02, "tip \(tip) m, expected \(-expected) m")
+        }
+    }
+
+    @Test("Released, it swings at the cantilever's natural period")
+    func cantileverPeriod() throws {
+        let solver = try cantilever()
+        let tip = solver.nearestNode(to: SIMD3(2, 0.25, 1.05))
+        // Gravity applied suddenly: the tip oscillates about its static sag.
+        var samples: [(Double, Float)] = []
+        let step = solver.criticalTimeStep
+        let chunk = max(1, Int(0.002 / step))
+        while solver.time < 0.8 {
+            solver.advance(steps: chunk)
+            samples.append((solver.time, solver.node(tip).displacement.z))
+        }
+        // Times at which the tip passes back up through its mean position.
+        let mean = samples.map(\.1).reduce(0, +) / Float(samples.count)
+        var crossings: [Double] = []
+        for (before, after) in zip(samples, samples.dropFirst()) where before.1 < mean && after.1 >= mean {
+            let fraction = Double((mean - before.1) / (after.1 - before.1))
+            crossings.append(before.0 + fraction * (after.0 - before.0))
+        }
+        let period = try #require(
+            crossings.count >= 2 ? (crossings.last! - crossings.first!) / Double(crossings.count - 1) : nil)
+        // f = (1.875^2 / 2 pi) sqrt(E I / (rho A L^4)).
+        let frequency = 1.875 * 1.875 / (2 * Double.pi) * (20e9 * 0.001 / 12 / (2400 * 0.1 * 16)).squareRoot()
+        #expect(abs(period * frequency - 1) < 0.03, "period \(period) s, expected \(1 / frequency) s")
+    }
+
+    @Test("A plate hanging from its top edge stretches under its own weight")
+    func hangingStretch() throws {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 0), max: SIMD3(1, 0.1, 4))], material: Self.elastic,
+            elementSize: 0.25, fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 2
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.damping = 400
+        let top = solver.nodes { $0.z > 4 - 1e-4 }
+        solver.mutateNodes { nodes in
+            for n in top { nodes[n].isClamped = true }
+        }
+        solver.advance(steps: Int(0.1 / solver.criticalTimeStep))
+        // Elongation of a bar under its own weight: rho g L^2 / (2 E).
+        let expected: Float = 2400 * 9.81 * 16 / (2 * 20e9)
+        let bottom = solver.node(solver.nearestNode(to: SIMD3(0.5, 0.05, 0))).displacement.z
+        #expect(
+            abs(-bottom - expected) / expected < 0.02, "bottom moved \(bottom) m, expected \(-expected) m")
+    }
+
+    @Test("A simply supported square plate under pressure deflects as Navier's solution")
+    func navierPlate() throws {
+        let material = StructureMaterial.elastic(density: 2400, youngsModulus: 20e9, poissonRatio: 0.3)
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(2, 2, 1.04))], material: material,
+            elementSize: 0.125,
+            fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 4
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        solver.damping = 30
+        let pressure: Float = 2000
+        solver.appliedLoad = PressureLoad(
+            axis: 2, positiveSide: true, history: [SIMD2(0, pressure), SIMD2(100, pressure)])
+        let edges = solver.nodes { $0.x < 1e-4 || $0.x > 2 - 1e-4 || $0.y < 1e-4 || $0.y > 2 - 1e-4 }
+        let corner = solver.nearestNode(to: SIMD3(0, 0, 1.02))
+        let side = solver.nearestNode(to: SIMD3(2, 0, 1.02))
+        solver.mutateNodes { nodes in
+            for n in edges { nodes[n].restrain(z: true) }
+            nodes[corner].restrain(x: true, y: true)
+            nodes[side].restrain(y: true)
+        }
+        solver.advance(steps: Int(1.0 / solver.criticalTimeStep))
+        // w = 0.00406 q a^4 / D, D = E t^3 / (12 (1 - nu^2)).
+        let rigidity = 20e9 * pow(0.04, 3) / (12 * (1 - 0.09))
+        let expected = Float(0.00406 * Double(pressure) * 16 / rigidity)
+        let middle = solver.node(solver.nearestNode(to: SIMD3(1, 1, 1.02))).displacement.z
+        #expect(abs(-middle - expected) / expected < 0.03, "middle \(middle) m, expected \(-expected) m")
+    }
+
+    @Test("A free plate spun through a right angle stays unstrained")
+    func rigidRotation() throws {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(-1, -0.5, -0.05), max: SIMD3(1, 0.5, 0.05))], material: Self.elastic,
+            elementSize: 0.25, fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 2
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        // Spinning about the y axis, in the plane of the plate: a rotation that tilts the normals.
+        let rate: Float = 2
+        let positions = solver.referencePositions
+        solver.mutateNodes { nodes in
+            for n in nodes.indices {
+                nodes[n].velocity = cross(SIMD3(0, rate, 0), positions[n])
+                nodes[n].spin = SIMD3(0, rate, 0)
+            }
+        }
+        let energy = solver.kineticEnergy()
+        let quarter = Double.pi / 2 / Double(rate)
+        solver.advance(steps: Int(quarter / Double(solver.criticalTimeStep)))
+        // The ends have swung from x = +-1 to z = -+1, give or take the last part step, and the
+        // plate's length is unchanged.
+        let a = solver.position(solver.nearestNode(to: SIMD3(1, 0, 0)))
+        let b = solver.position(solver.nearestNode(to: SIMD3(-1, 0, 0)))
+        #expect(abs(simd_distance(a, b) - 2) < 1e-3, "length \(simd_distance(a, b)) m")
+        #expect(abs(a.z + 1) < 0.02 && abs(a.x) < 0.02, "end at \(a)")
+        // All the energy is still in the rotation: nothing went into straining the plate.
+        #expect(abs(solver.kineticEnergy() - energy) / energy < 1e-3)
+    }
+}

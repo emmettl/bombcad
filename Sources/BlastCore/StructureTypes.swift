@@ -194,6 +194,20 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     public var dilatationalWaveSpeed: Float {
         ((lameLambda + 2 * shearModulus) / density).squareRoot()
     }
+
+    /// Speed of in-plane compression waves in a thin plate, which is in plane stress.
+    public var plateWaveSpeed: Float {
+        (youngsModulus / (density * (1 - poissonRatio * poissonRatio))).squareRoot()
+    }
+}
+
+/// How a structure is meshed.
+public enum ElementKind: String, Sendable, Hashable, Codable, CaseIterable {
+    /// Cubic solid elements on a lattice, several through the thickness of a wall.
+    case solid
+    /// Four-node shell elements on the midsurfaces of walls and slabs, with layers through the
+    /// thickness. Every solid must then be plate-like.
+    case shell
 }
 
 /// Reinforcement smeared uniformly through a region. `ratio` is steel area per unit area of
@@ -259,6 +273,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// The material of each solid, by index into `solids`, where it is not `material`. Where
     /// solids overlap, the later one's material wins.
     public var solidMaterial: [StructureMaterial?] = []
+    /// Solid elements on a lattice, or shells on the midsurfaces of walls and slabs. With
+    /// shells, `elementSize` is their size in the plane of the wall or slab.
+    public var elementKind: ElementKind = .solid
+    /// Layers of concrete (or other material) through the thickness of each shell.
+    public var shellLayers: Int = 8
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -616,7 +635,7 @@ public enum ContactMode: UInt32, Sendable {
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
-        let source = try ["Solver", "Structure"].map { name in
+        let source = try ["Solver", "Structure", "Shell"].map { name in
             guard
                 let url = Bundle.module.url(
                     forResource: name, withExtension: "metal", subdirectory: "Shaders")
@@ -680,5 +699,7 @@ extension StructureModel {
         solidReinforcement =
             try container.decodeIfPresent([Reinforcement].self, forKey: .solidReinforcement) ?? []
         solidMaterial = try container.decodeIfPresent([StructureMaterial?].self, forKey: .solidMaterial) ?? []
+        elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
+        shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
     }
 }

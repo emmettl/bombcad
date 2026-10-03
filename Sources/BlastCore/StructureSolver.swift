@@ -748,7 +748,14 @@ public final class StructureSolver {
 
     /// A material's properties as the element kernel needs them, for this mesh.
     private func makeParameters(for material: StructureMaterial) -> MaterialParameters {
-        let h = model.elementSize
+        Self.parameters(
+            for: material, elementSize: model.elementSize, hourglassCoefficient: hourglassCoefficient)
+    }
+
+    /// A material's properties as the GPU needs them, for elements of size `h`.
+    static func parameters(
+        for material: StructureMaterial, elementSize h: Float, hourglassCoefficient: Float = 1
+    ) -> MaterialParameters {
         var parameters = MaterialParameters(
             density: material.density,
             lambda: material.lameLambda,

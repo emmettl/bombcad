@@ -201,6 +201,8 @@ public enum BlastError: Error, CustomStringConvertible {
     case missingFunction(String)
     case allocationFailed(String)
     case tooManyMaterials(Int)
+    /// Shells need every solid to be plate-like; this one is not.
+    case notPlateLike(Int)
 
     public var description: String {
         switch self {
@@ -209,6 +211,8 @@ public enum BlastError: Error, CustomStringConvertible {
         case .allocationFailed(let what): "Could not allocate \(what)"
         case .tooManyMaterials(let count):
             "The structure has \(count) materials; at most \(StructureModel.maxMaterials) are supported"
+        case .notPlateLike(let index):
+            "Solid \(index + 1) is not a wall or slab, so it cannot be meshed with shells (beam elements for columns are not available)"
         }
     }
 }
