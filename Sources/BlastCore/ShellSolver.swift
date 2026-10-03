@@ -149,7 +149,7 @@ public final class ShellSolver {
     public let nodeBuffer: MTLBuffer
     /// Reference position of every node, as four floats.
     public let referenceBuffer: MTLBuffer
-    let elementBuffer: MTLBuffer
+    public let elementBuffer: MTLBuffer
     public let flagBuffer: MTLBuffer
     /// Damage of each element, 0 (sound) to 1 (failing), for display.
     public let displayBuffer: MTLBuffer
@@ -358,6 +358,24 @@ public final class ShellSolver {
                 base.load(fromByteOffset: 8, as: Float.self))
         }
         return total
+    }
+
+    /// Reference centre of each element.
+    public func elementCentre(_ element: Int) -> SIMD3<Float> {
+        let corners = mesh.elements[element].nodes
+        return (0..<4).reduce(SIMD3<Float>.zero) { $0 + mesh.positions[Int(corners[$1])] } / 4
+    }
+
+    /// Removes elements by hand, as if they had failed, chosen by their reference centres.
+    public func erode(where shouldErode: (SIMD3<Float>) -> Bool) {
+        let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: max(elementCount, 1))
+        var any = false
+        for e in 0..<elementCount
+        where flags[e] == ElementFlag.active.rawValue && shouldErode(elementCentre(e)) {
+            flags[e] = ElementFlag.eroded.rawValue
+            any = true
+        }
+        if any { failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self) }
     }
 
     public var hasFailed: Bool { failureGateBuffer.contents().load(as: UInt32.self) != 0 }

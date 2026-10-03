@@ -26,6 +26,12 @@ public final class BlastSolver {
     public let visualizationTexture: MTLTexture
     /// The deformable body advanced alongside the air, if the scenario has one.
     public private(set) var structure: StructureSolver?
+    /// The deformable body when it is meshed with shells; `structure` is then nil.
+    public private(set) var shells: ShellSolver?
+    /// Whether there is a deformable body of either kind.
+    public var hasBody: Bool { structure != nil || shells != nil }
+    /// The deformable body's stable time step.
+    private var bodyStep: Float? { structure?.criticalTimeStep ?? shells?.criticalTimeStep }
     /// Sound speed of the undisturbed air, used to bound the fluid time step.
     var ambientSoundSpeed: Float = 340
     var ambientDensity: Float = 1.225
@@ -50,6 +56,7 @@ public final class BlastSolver {
     private let remaskPreparePipeline: MTLComputePipelineState
     private let remaskApplyPipeline: MTLComputePipelineState
     private let debrisExchangePipeline: MTLComputePipelineState
+    private let shellSplatPipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
     private var current = 0
@@ -99,6 +106,7 @@ public final class BlastSolver {
         remaskPreparePipeline = try pipeline("remaskPrepare")
         remaskApplyPipeline = try pipeline("remaskApply")
         debrisExchangePipeline = try pipeline("debrisExchange")
+        shellSplatPipeline = try pipeline("shellSplat")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
@@ -201,6 +209,7 @@ public final class BlastSolver {
     public func setStructure(_ model: StructureModel?) throws {
         precondition(!batchInFlight, "Cannot change the structure while a batch is in flight")
         structure = nil
+        shells = nil
         couplingRegion = nil
         occupancyBuffer = nil
         debrisExchangeBuffer = nil
@@ -208,8 +217,13 @@ public final class BlastSolver {
         wallVelocityBuffer = stillWallBuffer
         memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
         guard let model else { return }
-        structure = try StructureSolver(
-            device: device, commandQueue: commandQueue, library: library, model: model)
+        if model.elementKind == .shell {
+            shells = try ShellSolver(
+                device: device, commandQueue: commandQueue, library: library, model: model)
+        } else {
+            structure = try StructureSolver(
+                device: device, commandQueue: commandQueue, library: library, model: model)
+        }
 
         // Follow the structure within a few metres of where it starts.
         let bounds = model.bounds
@@ -250,23 +264,28 @@ public final class BlastSolver {
         if let debrisAreaBuffer { memset(debrisAreaBuffer.contents(), 0, debrisAreaBuffer.length) }
     }
 
-    private func couplingUniforms(
-        _ structure: StructureSolver, _ region: (origin: SIMD3<Int>, dims: SIMD3<Int>)
-    ) -> CouplingUniforms {
-        let h = structure.model.elementSize
-        let perCell = pow(grid.cellSize / h, 3)
-        return CouplingUniforms(
+    private func couplingUniforms(_ region: (origin: SIMD3<Int>, dims: SIMD3<Int>)) -> CouplingUniforms {
+        var uniforms = CouplingUniforms(
             regionX: UInt32(region.origin.x), regionY: UInt32(region.origin.y),
             regionZ: UInt32(region.origin.z),
             regionNx: UInt32(region.dims.x), regionNy: UInt32(region.dims.y), regionNz: UInt32(region.dims.z),
             fluidNx: UInt32(grid.nx), fluidNy: UInt32(grid.ny), fluidNz: UInt32(grid.nz),
-            // A cell is solid when at least a third of it is filled with intact elements.
-            threshold: UInt32(max(1, (perCell / 3).rounded(.up))),
-            ex: UInt32(structure.ex), ey: UInt32(structure.ey),
-            fluidCell: grid.cellSize, h: h,
-            originX: structure.origin.x, originY: structure.origin.y, originZ: structure.origin.z,
+            // A cell any shell passes through is solid.
+            threshold: 1, ex: 0, ey: 0, fluidCell: grid.cellSize, h: 0, originX: 0, originY: 0, originZ: 0,
             gamma: configuration.gamma, ambientDensity: ambientDensity,
             ambientPressure: configuration.ambientPressure)
+        if let structure {
+            let h = structure.model.elementSize
+            let perCell = pow(grid.cellSize / h, 3)
+            // A cell is solid when at least a third of it is filled with intact elements.
+            uniforms.threshold = UInt32(max(1, (perCell / 3).rounded(.up)))
+            uniforms.ex = UInt32(structure.ex)
+            uniforms.ey = UInt32(structure.ey)
+            uniforms.h = h
+            (uniforms.originX, uniforms.originY, uniforms.originZ) =
+                (structure.origin.x, structure.origin.y, structure.origin.z)
+        }
+        return uniforms
     }
 
     private func regionThreads(_ pipeline: MTLComputePipelineState) -> MTLSize {
@@ -276,8 +295,8 @@ public final class BlastSolver {
 
     /// Encodes the return to the air of what loose debris took from it during the substeps.
     private func encodeDebrisExchange(_ encoder: MTLComputeCommandEncoder) {
-        guard let structure, let region = couplingRegion, let debrisExchangeBuffer else { return }
-        var uniforms = couplingUniforms(structure, region)
+        guard structure != nil, let region = couplingRegion, let debrisExchangeBuffer else { return }
+        var uniforms = couplingUniforms(region)
         encoder.setComputePipelineState(debrisExchangePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(debrisExchangeBuffer, offset: 0, index: 1)
@@ -290,21 +309,37 @@ public final class BlastSolver {
 
     /// Encodes one update of the solid mask from the structure's current shape.
     private func encodeRemask(_ encoder: MTLComputeCommandEncoder) {
-        guard let structure, let region = couplingRegion, let occupancyBuffer else { return }
-        var uniforms = couplingUniforms(structure, region)
+        guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
+        var uniforms = couplingUniforms(region)
         let length = MemoryLayout<CouplingUniforms>.stride
 
-        encoder.setComputePipelineState(splatPipeline)
-        encoder.setBuffer(structure.instanceBuffer, offset: 0, index: 0)
-        encoder.setBuffer(structure.flagBuffer, offset: 0, index: 1)
-        encoder.setBuffer(structure.nodeBuffer, offset: 0, index: 2)
-        encoder.setBuffer(occupancyBuffer, offset: 0, index: 3)
-        encoder.setBytes(&uniforms, length: length, index: 4)
-        encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
-        encoder.dispatchThreads(
-            MTLSize(width: structure.elementCount, height: 1, depth: 1),
-            threadsPerThreadgroup: MTLSize(
-                width: splatPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1))
+        if let structure {
+            encoder.setComputePipelineState(splatPipeline)
+            encoder.setBuffer(structure.instanceBuffer, offset: 0, index: 0)
+            encoder.setBuffer(structure.flagBuffer, offset: 0, index: 1)
+            encoder.setBuffer(structure.nodeBuffer, offset: 0, index: 2)
+            encoder.setBuffer(occupancyBuffer, offset: 0, index: 3)
+            encoder.setBytes(&uniforms, length: length, index: 4)
+            encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
+            encoder.dispatchThreads(
+                MTLSize(width: structure.elementCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: splatPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1))
+        } else if let shells, shells.elementCount > 0 {
+            var count = UInt32(shells.elementCount)
+            encoder.setComputePipelineState(shellSplatPipeline)
+            encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
+            encoder.setBuffer(shells.flagBuffer, offset: 0, index: 1)
+            encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
+            encoder.setBuffer(shells.referenceBuffer, offset: 0, index: 3)
+            encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
+            encoder.setBytes(&uniforms, length: length, index: 5)
+            encoder.setBytes(&count, length: 4, index: 6)
+            encoder.dispatchThreads(
+                MTLSize(width: shells.elementCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+        }
 
         let size = MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z)
         let width = remaskPreparePipeline.threadExecutionWidth
@@ -335,7 +370,8 @@ public final class BlastSolver {
         stepCount = 0
         lastFluidStep = 0
         structure?.reset()
-        if structure != nil, let commandBuffer = commandQueue.makeCommandBuffer(),
+        shells?.reset()
+        if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
             // Mark the undeformed structure in the solid mask.
@@ -390,8 +426,8 @@ public final class BlastSolver {
 
         let extents = [grid.nx, grid.ny, grid.nz]
         var substeps = structureSubsteps
-        if let structure, lastFluidStep > 0 {
-            let likely = Int((1.25 * lastFluidStep / structure.criticalTimeStep).rounded(.up)) + 1
+        if let bodyStep, lastFluidStep > 0 {
+            let likely = Int((1.25 * lastFluidStep / bodyStep).rounded(.up)) + 1
             substeps = min(max(likely, 1), structureSubsteps)
         }
         for step in 0..<steps {
@@ -399,13 +435,13 @@ public final class BlastSolver {
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
             var uniforms = makeUniforms(cfl: configuration.cfl * ramp)
             // With the air asleep, each step is exactly as long as the structure's substeps cover.
-            let asleep = airIsAsleep && structure != nil
-            if asleep, let structure {
-                uniforms.forcedStep = 0.999 * Float(structureSubsteps) * structure.criticalTimeStep
-            } else if let structure {
+            let asleep = airIsAsleep && hasBody
+            if asleep, let bodyStep {
+                uniforms.forcedStep = 0.999 * Float(structureSubsteps) * bodyStep
+            } else if let bodyStep {
                 // Only the substeps this step is likely to need are encoded, a quarter more than
                 // the last batch's step took; the air may step no further than they cover.
-                uniforms.maxStep = 0.999 * Float(substeps) * structure.criticalTimeStep
+                uniforms.maxStep = 0.999 * Float(substeps) * bodyStep
             }
 
             encoder.setComputePipelineState(preparePipeline)
@@ -461,6 +497,14 @@ public final class BlastSolver {
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
                 }
+            } else if let shells {
+                let binding = StructureSolver.FluidBinding(
+                    state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
+                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure)
+                shells.encodeSubsteps(encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
+                if configuration.twoWayCoupling && !asleep {
+                    encodeRemask(encoder)
+                }
             }
         }
         if updateVisualization {
@@ -493,7 +537,7 @@ public final class BlastSolver {
         time += elapsed
         stepCount += Int(control.activeSteps)
         // Once the blast has left and the air is close to ambient everywhere, stop advancing it.
-        if structure != nil, !airIsAsleep, control.activeSteps > 0 {
+        if hasBody, !airIsAsleep, control.activeSteps > 0 {
             let quiet =
                 configuration.airSleepThreshold > 0
                 && control.maxOverpressure < configuration.airSleepThreshold * configuration.ambientPressure
@@ -631,14 +675,15 @@ public final class BlastSolver {
     public var memoryFootprint: Int {
         let buffers = stateBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8 + (structure?.memoryFootprint ?? 0)
+            + (shells?.memoryFootprint ?? 0)
     }
 
     /// Structural substeps encoded per fluid step. The fluid step never exceeds the CFL limit
     /// for (slightly cooled) ambient air, which bounds how many are needed.
     public var structureSubsteps: Int {
-        guard let structure else { return 0 }
+        guard let bodyStep else { return 0 }
         let bound = configuration.cfl * grid.cellSize / (0.8 * ambientSoundSpeed)
-        return structure.substeps(forFluidStepBound: bound)
+        return min(max(Int((bound / bodyStep).rounded(.up)), 1), 96)
     }
 
     // MARK: - Encoding helpers

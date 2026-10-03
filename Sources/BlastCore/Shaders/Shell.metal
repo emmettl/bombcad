@@ -722,3 +722,60 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     node.rotation = rotation;
     nodes[n] = node;
 }
+
+// Two-way coupling: each active shell marks the air cells its thickness occupies, at points no
+// more than half a cell apart over its midsurface and through its thickness. Each point counts
+// once towards its cell (the threshold for shells is one), with its velocity, so a cell any
+// shell passes through is solid and moves with the mean velocity of the points in it.
+kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
+                       const device uchar *flags [[buffer(1)]],
+                       const device ShellNode *nodes [[buffer(2)]],
+                       const device float4 *reference [[buffer(3)]],
+                       device atomic_uint *occupancy [[buffer(4)]],
+                       constant CouplingUniforms &u [[buffer(5)]],
+                       constant uint &elementCount [[buffer(6)]],
+                       uint e [[thread_position_in_grid]]) {
+    if (e >= elementCount || flags[e] != elementActive) {
+        return;
+    }
+    ShellElement el = elements[e];
+    float3 normal = float3(0.0f);
+    normal[el.axis] = 1.0f;
+    float3 x[4];
+    float3 v[4];
+    float3 d[4];
+    for (uint c = 0; c < 4; ++c) {
+        ShellNode node = nodes[el.node[c]];
+        x[c] = reference[el.node[c]].xyz + float3(node.displacement);
+        v[c] = float3(node.velocity);
+        d[c] = normal + rotationOffset(node.rotation, normal);
+    }
+    float spacing = 0.5f * u.fluidCell;
+    uint along = clamp(uint(ceil(max(el.a, el.b) / spacing)) + 1u, 2u, 17u);
+    uint through = clamp(uint(ceil(el.thickness / spacing)), 1u, 8u);
+    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
+    for (uint i = 0; i < along; ++i) {
+        float s = float(i) / float(along - 1);
+        for (uint j = 0; j < along; ++j) {
+            float t = float(j) / float(along - 1);
+            float3 point = mix(mix(x[0], x[1], s), mix(x[3], x[2], s), t);
+            float3 velocity = mix(mix(v[0], v[1], s), mix(v[3], v[2], s), t);
+            float3 director = mix(mix(d[0], d[1], s), mix(d[3], d[2], s), t);
+            velocity = select(clamp(velocity, -wallSpeedLimit, wallSpeedLimit), float3(0.0f), isnan(velocity));
+            int3 fixed = int3(round(velocity * wallSpeedScale));
+            for (uint l = 0; l < through; ++l) {
+                float zeta = -1.0f + (2.0f * float(l) + 1.0f) / float(through);
+                float3 sample = point + 0.5f * zeta * el.thickness * director;
+                int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
+                if (any(target < 0) || any(target >= dims)) {
+                    continue;
+                }
+                uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+                atomic_fetch_add_explicit(&occupancy[slot], 1u, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x), memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y), memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z), memory_order_relaxed);
+            }
+        }
+    }
+}
