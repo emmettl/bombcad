@@ -35,8 +35,19 @@ struct ShellUniforms {
     uint loadCount;  // entries in the applied-pressure table; 0 = none
     uint loadFace;   // 2 * axis + side of the face the applied pressure acts on
     float shearFactor;  // transverse shear correction, 5/6
-    uint padding0;
-    uint padding1;
+    uint contactMode;   // 0 = off, 1 = once something has failed, 2 = always
+    uint stamp;         // unique per substep; marks fresh entries in the contact table
+    uint contactNx;     // the contact table wraps space every contactNx, Ny, Nz cells (powers of two)
+    uint contactNy;
+    uint contactNz;
+    float contactRadius;     // nodes are spheres this far across; also the table's cell size
+    float gridOriginX;
+    float gridOriginY;
+    float gridOriginZ;
+    float contactStiffness;  // per unit of nodal mass
+    float contactDamping;    // fraction of critical
+    float contactFriction;
+    float neighbourDistance;  // nodes that start closer than this never repel
 };
 
 struct ShellElement {
@@ -672,6 +683,134 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
     forces[e] = out;
 }
 
+// Contact, as for the solid elements: once anything has failed, every node is a sphere one
+// element across, found through a table of element-sized cells over all of space that wraps
+// periodically. Each entry keeps the four lowest-numbered nodes that arrive, whatever the
+// thread timing, so runs repeat exactly. Nodes that began close together (within about an
+// element) never repel: while joined their elements hold them apart.
+static inline bool shellContactEnabled(constant ShellUniforms &u, const device uint *failureGate) {
+    return u.contactMode == 2 || (u.contactMode == 1 && failureGate[0] != 0);
+}
+
+static inline int3 shellContactCell(float3 position, constant ShellUniforms &u) {
+    return int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.contactRadius));
+}
+
+static inline uint shellContactBucket(int3 cell, constant ShellUniforms &u) {
+    uint3 wrapped = uint3(cell) & (uint3(u.contactNx, u.contactNy, u.contactNz) - 1u);
+    return wrapped.x + u.contactNx * (wrapped.y + u.contactNy * wrapped.z);
+}
+
+kernel void shellContactClear(const device ShellNode *nodes [[buffer(0)]],
+                              const device float4 *reference [[buffer(1)]],
+                              device uint *heads [[buffer(2)]],
+                              device uint *slots [[buffer(3)]],
+                              constant ShellUniforms &u [[buffer(4)]],
+                              const device StepControl &control [[buffer(5)]],
+                              const device uint *failureGate [[buffer(6)]],
+                              uint n [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || n >= u.nodeCount || !shellContactEnabled(u, failureGate)) {
+        return;
+    }
+    uint target = shellContactBucket(shellContactCell(reference[n].xyz + float3(nodes[n].displacement), u), u);
+    heads[target] = u.stamp;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        slots[target * contactSlots + slot] = emptySlot;
+    }
+}
+
+kernel void shellContactHash(const device ShellNode *nodes [[buffer(0)]],
+                             const device float4 *reference [[buffer(1)]],
+                             device atomic_uint *slots [[buffer(3)]],
+                             constant ShellUniforms &u [[buffer(4)]],
+                             const device StepControl &control [[buffer(5)]],
+                             const device uint *failureGate [[buffer(6)]],
+                             uint n [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || n >= u.nodeCount || !shellContactEnabled(u, failureGate)) {
+        return;
+    }
+    uint target = shellContactBucket(shellContactCell(reference[n].xyz + float3(nodes[n].displacement), u), u);
+    uint carried = n;
+    for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
+        uint held = atomic_fetch_min_explicit(&slots[target * contactSlots + slot], carried, memory_order_relaxed);
+        carried = max(held, carried);
+    }
+}
+
+kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
+                               const device float4 *reference [[buffer(1)]],
+                               const device uint *heads [[buffer(2)]],
+                               const device uint *slots [[buffer(3)]],
+                               constant ShellUniforms &u [[buffer(4)]],
+                               const device StepControl &control [[buffer(5)]],
+                               const device uint *failureGate [[buffer(6)]],
+                               device packed_float3 *contact [[buffer(7)]],
+                               uint n [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || n >= u.nodeCount || !shellContactEnabled(u, failureGate)) {
+        return;
+    }
+    ShellNode node = nodes[n];
+    float3 home = reference[n].xyz;
+    float3 position = home + float3(node.displacement);
+    int3 cell = shellContactCell(position, u);
+    float radius = u.contactRadius;
+    float3 force = float3(0.0f);
+    for (int dz = -1; dz <= 1; ++dz) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                int3 c = cell + int3(dx, dy, dz);
+                uint target = shellContactBucket(c, u);
+                if (heads[target] != u.stamp) {
+                    continue;
+                }
+                for (uint slot = 0; slot < contactSlots; ++slot) {
+                    uint other = slots[target * contactSlots + slot];
+                    if (other == emptySlot) {
+                        break;
+                    }
+                    if (other == n) {
+                        continue;
+                    }
+                    float3 otherHome = reference[other].xyz;
+                    float3 otherPosition = otherHome + float3(nodes[other].displacement);
+                    if (any(shellContactCell(otherPosition, u) != c)) {
+                        continue;
+                    }
+                    if (distance(home, otherHome) < u.neighbourDistance) {
+                        continue;
+                    }
+                    float3 offset = position - otherPosition;
+                    float gap = length(offset);
+                    if (gap >= radius || gap < 1e-9f) {
+                        continue;
+                    }
+                    ShellNode partner = nodes[other];
+                    float3 normal = offset / gap;
+                    float mass = min(node.mass, partner.mass);
+                    float stiffness = u.contactStiffness * mass;
+                    float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
+                    float3 relative = float3(node.velocity) - float3(partner.velocity);
+                    float approach = dot(relative, normal);
+                    float push = max(stiffness * (radius - gap) - damping * approach, 0.0f);
+                    force += push * normal;
+                    float3 sliding = relative - approach * normal;
+                    float speed = length(sliding);
+                    if (speed > 1e-6f) {
+                        force -= min(u.contactFriction * push, damping * speed) * (sliding / speed);
+                    }
+                }
+            }
+        }
+    }
+    contact[n] = force;
+}
+
 static inline float4 quaternionProduct(float4 p, float4 q) {
     return float4(p.w * q.xyz + q.w * p.xyz + cross(p.xyz, q.xyz), p.w * q.w - dot(p.xyz, q.xyz));
 }
@@ -685,6 +824,8 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device float4 *reference [[buffer(5)]],
                        constant ShellUniforms &u [[buffer(6)]],
                        const device StepControl &control [[buffer(7)]],
+                       const device packed_float3 *contact [[buffer(8)]],
+                       const device uint *failureGate [[buffer(9)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -706,6 +847,9 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             force += float3(forces[element].force[corner]);
             moment += float3(forces[element].moment[corner]);
         }
+    }
+    if (shellContactEnabled(u, failureGate)) {
+        force += float3(contact[n]);
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));

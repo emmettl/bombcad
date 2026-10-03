@@ -255,4 +255,41 @@ struct ShellTests {
         #expect(!plateau.isEmpty)
         return plateau.reduce(0, +) / Float(max(plateau.count, 1))
     }
+
+    @Test("Two plates thrown face-on at each other bounce apart instead of passing through")
+    func collision() throws {
+        var model = StructureModel(
+            solids: [
+                Box(min: SIMD3(0, 0, 1), max: SIMD3(0.1, 1, 2)),
+                Box(min: SIMD3(1, 0, 1), max: SIMD3(1.1, 1, 2)),
+            ], material: Self.elastic, elementSize: 0.25, fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 2
+        let solver = try ShellSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.contactMode = .always
+        let speed: Float = 4
+        let positions = solver.referencePositions
+        solver.mutateNodes { nodes in
+            for n in nodes.indices { nodes[n].vx = positions[n].x < 0.5 ? speed : -speed }
+        }
+        func gap() -> Float {
+            let left = solver.nodes { $0.x < 0.5 }.map { solver.position($0).x }.max() ?? 0
+            let right = solver.nodes { $0.x > 0.5 }.map { solver.position($0).x }.min() ?? 0
+            return right - left
+        }
+        var closest = Float.infinity
+        let chunk = max(1, Int(0.002 / solver.criticalTimeStep))
+        while solver.time < 0.25 {
+            solver.advance(steps: chunk)
+            closest = min(closest, gap())
+        }
+        // Nodes are spheres one element (0.25 m) across, so the plates turn back at about that
+        // (sampled every 2 ms, which can miss the closest moment).
+        #expect(closest > 0.15 && closest < 0.27, "closest approach \(closest) m")
+        #expect(gap() > 0.25, "gap at the end \(gap()) m")
+        let momentum = solver.momentum().x
+        #expect(abs(momentum) < 0.01 * 2400 * 0.1 * 1 * Double(speed), "momentum \(momentum)")
+    }
 }

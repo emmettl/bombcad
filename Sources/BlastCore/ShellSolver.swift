@@ -26,8 +26,19 @@ struct ShellUniforms {
     var loadCount: UInt32 = 0
     var loadFace: UInt32 = 0
     var shearFactor: Float = 5.0 / 6.0
-    var padding0: UInt32 = 0
-    var padding1: UInt32 = 0
+    var contactMode: UInt32 = 0
+    var stamp: UInt32 = 0
+    var contactNx: UInt32 = 1
+    var contactNy: UInt32 = 1
+    var contactNz: UInt32 = 1
+    var contactRadius: Float = 1
+    var gridOriginX: Float = 0
+    var gridOriginY: Float = 0
+    var gridOriginZ: Float = 0
+    var contactStiffness: Float = 0
+    var contactDamping: Float = 0
+    var contactFriction: Float = 0
+    var neighbourDistance: Float = 0
 }
 
 /// Layout matches `ShellElement` in `Shell.metal`.
@@ -139,6 +150,12 @@ public final class ShellSolver {
     public var timeStepSafety: Float = 0.5
     /// Let nodes that fall to z = 0 land instead of passing through.
     public var groundContact = true
+    /// Whether separate pieces, and loose debris, collide with each other.
+    public var contactMode = ContactMode.afterFailure
+    /// Contact spring stiffness as a fraction of the stiffest the time step allows.
+    public var contactStiffness: Float = 0.1
+    public var contactDamping: Float = 0.3
+    public var contactFriction: Float = 0.5
     /// A pressure history applied to one face, for running the structure without the air.
     public var appliedLoad: PressureLoad? {
         didSet { writeLoadTable() }
@@ -169,6 +186,13 @@ public final class ShellSolver {
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
+    private let contactPipelines: [MTLComputePipelineState]
+    private let contactHeadBuffer: MTLBuffer
+    private let contactSlotBuffer: MTLBuffer
+    private let contactForceBuffer: MTLBuffer
+    private let contactPeriod: SIMD3<Int>
+    private let contactOrigin: SIMD3<Float>
+    private var stamp: UInt32 = 0
     private static let maxLoadPoints = 256
     /// Gauss-Legendre points and weights through the thickness, from -1 to 1.
     private let thicknessRule: [SIMD2<Float>]
@@ -205,6 +229,7 @@ public final class ShellSolver {
         }
         elementPipeline = try pipeline("shellElements")
         nodePipeline = try pipeline("shellNodes")
+        contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -232,6 +257,31 @@ public final class ShellSolver {
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, even"),
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, odd"),
         ]
+        // The contact table: cells as large as an element over the structure's extent, rounded up
+        // to powers of two and then shrunk to about eight entries per node.
+        let low = mesh.positions.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1) }
+        let high = mesh.positions.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1) }
+        let radius = model.elementSize
+        contactOrigin = nodeCount > 0 ? low - 0.5 * radius : .zero
+        func powerOfTwo(atLeast value: Int) -> Int {
+            var result = 1
+            while result < value { result *= 2 }
+            return result
+        }
+        let span = nodeCount > 0 ? (high - low) / radius : .zero
+        var period = SIMD3(
+            powerOfTwo(atLeast: Int(span.x) + 4), powerOfTwo(atLeast: Int(span.y) + 4),
+            powerOfTwo(atLeast: Int(span.z) + 4))
+        while period.x * period.y * period.z > max(8 * nodeCount, 4096) {
+            let axis = period.x >= period.y && period.x >= period.z ? 0 : (period.y >= period.z ? 1 : 2)
+            period[axis] /= 2
+        }
+        contactPeriod = period
+        let tableEntries = period.x * period.y * period.z
+        contactHeadBuffer = try buffer(tableEntries * 4, "shell contact headers")
+        contactSlotBuffer = try buffer(tableEntries * 16, "shell contact slots")
+        contactForceBuffer = try buffer(nodes * 12, "shell contact forces")
+        memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
@@ -283,7 +333,9 @@ public final class ShellSolver {
         time = 0
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
-        for buffer in [layerBuffer, barBuffer, forceBuffer, displayBuffer] + barPlasticBuffers {
+        for buffer in [layerBuffer, barBuffer, forceBuffer, displayBuffer, contactForceBuffer]
+            + barPlasticBuffers
+        {
             memset(buffer.contents(), 0, buffer.length)
         }
         mutateNodes { nodes in
@@ -430,7 +482,9 @@ public final class ShellSolver {
         [
             nodeBuffer, referenceBuffer, elementBuffer, flagBuffer, displayBuffer, layerBuffer,
             barLayoutBuffer,
-            barBuffer, forceBuffer, incidenceStartBuffer, incidenceBuffer,
+            barBuffer, forceBuffer, incidenceStartBuffer, incidenceBuffer, contactHeadBuffer,
+            contactSlotBuffer,
+            contactForceBuffer,
         ].reduce(0) { $0 + $1.length }
     }
 
@@ -466,6 +520,8 @@ public final class ShellSolver {
             StructureSolver.parameters(for: $0, elementSize: model.elementSize)
         }
         let group = MTLSize(width: elementPipeline.threadExecutionWidth, height: 1, depth: 1)
+        // Until something has failed there is nothing to collide.
+        let encodeContact = contactMode == .always || (contactMode == .afterFailure && hasFailed)
         for substep in 0..<count {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
@@ -495,6 +551,24 @@ public final class ShellSolver {
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
+            if encodeContact {
+                stamp = stamp % 0x1FFF_FFF0 + 1
+                uniforms.stamp = stamp
+                for pipeline in contactPipelines {
+                    encoder.setComputePipelineState(pipeline)
+                    encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                    encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
+                    encoder.setBuffer(contactHeadBuffer, offset: 0, index: 2)
+                    encoder.setBuffer(contactSlotBuffer, offset: 0, index: 3)
+                    encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 4)
+                    encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 5)
+                    encoder.setBuffer(failureGateBuffer, offset: 0, index: 6)
+                    encoder.setBuffer(contactForceBuffer, offset: 0, index: 7)
+                    encoder.dispatchThreads(
+                        MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                }
+            }
+
             encoder.setComputePipelineState(nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
@@ -504,6 +578,8 @@ public final class ShellSolver {
             encoder.setBuffer(referenceBuffer, offset: 0, index: 5)
             encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 6)
             encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 7)
+            encoder.setBuffer(contactForceBuffer, offset: 0, index: 8)
+            encoder.setBuffer(failureGateBuffer, offset: 0, index: 9)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
@@ -566,6 +642,18 @@ public final class ShellSolver {
         uniforms.damping = damping
         uniforms.groundFriction = groundContact ? 8 : -1
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
+        uniforms.contactMode = contactMode.rawValue
+        uniforms.contactNx = UInt32(contactPeriod.x)
+        uniforms.contactNy = UInt32(contactPeriod.y)
+        uniforms.contactNz = UInt32(contactPeriod.z)
+        uniforms.contactRadius = model.elementSize
+        (uniforms.gridOriginX, uniforms.gridOriginY, uniforms.gridOriginZ) =
+            (contactOrigin.x, contactOrigin.y, contactOrigin.z)
+        uniforms.contactStiffness = contactStiffness / (criticalTimeStep * criticalTimeStep)
+        uniforms.contactDamping = contactDamping
+        uniforms.contactFriction = contactFriction
+        // Nodes of one element, or of elements meeting at a corner, never repel.
+        uniforms.neighbourDistance = 1.5 * model.elementSize
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))
