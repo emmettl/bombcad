@@ -213,6 +213,40 @@ struct BlastValidationTests {
         )
     }
 
+    @Test("The Kingery-Bulmash polynomials reproduce Swisdak's tables and the IATG examples")
+    func kingeryBulmashCurves() throws {
+        // Rows of Swisdak's Table 3: Z, arrival (ms), incident and reflected pressure (kPa),
+        // duration (ms), incident and reflected impulse (kPa ms), all per kg^(1/3).
+        let rows: [[Double]] = [
+            [1.0, 0.467, 1354, 8152, 1.720, 236.3, 884.7],
+            [2.0, 1.693, 283.7, 1058, 2.053, 134.6, 363.8],
+            [5.0, 8.242, 43.23, 100.9, 3.793, 59.31, 125.6],
+            [10.0, 21.66, 14.89, 31.54, 4.779, 31.04, 59.33],
+            [20.0, 49.93, 6.102, 12.44, 5.940, 15.89, 28.67],
+        ]
+        for row in rows {
+            let point = try #require(KingeryBulmash.point(at: row[0]))
+            let duration = try #require(KingeryBulmash.scaledDuration(at: row[0]))
+            let pairs = [
+                (point.scaledArrival * 1000, row[1]), (point.incidentPressure / 1000, row[2]),
+                (point.reflectedPressure / 1000, row[3]), (duration * 1000, row[4]),
+                (point.scaledIncidentImpulse, row[5]), (point.scaledReflectedImpulse, row[6]),
+            ]
+            for (value, table) in pairs {
+                #expect(abs(value - table) / table < 0.01, "Z = \(row[0]): \(value) against \(table)")
+            }
+        }
+        #expect(abs((KingeryBulmash.shockVelocity(at: 5) ?? 0) - 398) < 4)
+        // The independent IATG worked examples agree with the curves within a few per cent.
+        for example in KingeryBulmash.hemisphericalSurfaceBurst {
+            let point = try #require(KingeryBulmash.point(at: example.scaledDistance))
+            #expect(abs(point.incidentPressure / example.incidentPressure - 1) < 0.06)
+            #expect(abs(point.scaledReflectedImpulse / example.scaledReflectedImpulse - 1) < 0.06)
+            #expect(abs(point.scaledArrival / example.scaledArrival - 1) < 0.06)
+        }
+        #expect(KingeryBulmash.point(at: 0.1) == nil)
+    }
+
     @Test("The Kingery-Bulmash reference points scale as tabulated")
     func kingeryBulmashPoints() {
         let points = KingeryBulmash.hemisphericalSurfaceBurst

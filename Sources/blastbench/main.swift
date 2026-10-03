@@ -123,6 +123,51 @@ func arrivalTime(_ history: [GaugeSample], ambient: Float) -> Double {
     return history.first { $0.pressure - ambient >= 0.5 * peak }?.time ?? 0
 }
 
+/// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
+func runGasPressure() throws {
+    let side: Float = 6
+    print("Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (80 ms)")
+    print(
+        pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
+            + pad("UFC 2-152", 12)
+            + pad("model/UFC", 11))
+    for chargePerVolume in [0.25, 0.5, 1, 2, 4] as [Float] {
+        var scenario = Scenario(
+            name: "Room", domainSize: SIMD3(repeating: side), boxes: [],
+            charge: Charge(mass: chargePerVolume * side * side * side, position: SIMD3(repeating: side / 2)))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.25)
+        solver.advance(until: 0.08)
+        let volume = Double(side * side * side)
+        let totals = solver.totals()
+        // Mean pressure of the gas: (gamma - 1) times its internal energy per volume, less the
+        // kinetic energy still sloshing about (small by now).
+        var kinetic = 0.0
+        solver.withState { cells in
+            for cell in cells {
+                kinetic +=
+                    0.5
+                    * Double(
+                        cell.momentumX * cell.momentumX + cell.momentumY * cell.momentumY
+                            + cell.momentumZ * cell.momentumZ) / Double(max(cell.density, 1e-6))
+            }
+        }
+        let cellVolume = Double(pow(solver.grid.cellSize, 3))
+        let gamma = Double(solver.configuration.gamma)
+        let mean =
+            (gamma - 1) * (totals.energy - kinetic * cellVolume) / volume
+            - Double(scenario.atmosphere.pressure)
+        let ideal = (gamma - 1) * Double(scenario.charge.energy) / volume
+        let reference = UFC340.peakGasPressure(chargePerVolume: Double(chargePerVolume)) ?? .nan
+        print(
+            pad(format(Double(chargePerVolume), 2), 11) + pad("\(Int(scenario.charge.mass)) kg", 10)
+                + pad("\(format(mean / 1e6, 2)) MPa", 12) + pad("\(format(ideal / 1e6, 2)) MPa", 12)
+                + pad("\(format(reference / 1e6, 2)) MPa", 12)
+                + pad("\(format(100 * mean / reference, 0))%", 11))
+    }
+}
+
 func runValidation() throws {
     var cellSizes: [Float] = [0.5, 0.25, 0.125]
     if let text = option("dx"), let value = Float(text) {
@@ -148,14 +193,20 @@ func runValidation() throws {
     // 1. Kingery-Bulmash: the design-practice standard for a surface burst.
     var scenario = ScenarioPreset.openGround.scenario
     let mass = Double(scenario.charge.mass)
-    let points = KingeryBulmash.hemisphericalSurfaceBurst
+    // Scaled distances from close in to as far as the domain allows (`--z` overrides).
+    let distances =
+        option("z").map { $0.split(separator: ",").compactMap { Double($0) } }
+        ?? [0.75, 1, 1.5, 2, 3, 4, 5, 6]
+    let points = distances.compactMap { KingeryBulmash.point(at: $0) }
     scenario.gauges = points.map { point in
         Gauge(
             "Z = \(format(point.scaledDistance, 2))", at: SIMD3(32 + Float(point.range(mass: mass)), 32, 0.05)
         )
     }
-    print("Surface burst of \(Int(mass)) kg on rigid ground against Kingery-Bulmash (hemispherical surface")
-    print("burst), at the three scaled distances tabulated in IATG 01.80.")
+    print("Surface burst of \(Int(mass)) kg on rigid ground against the Kingery-Bulmash hemispherical")
+    print(
+        "surface-burst curves (Swisdak's polynomials), at scaled distances \(distances.map { format($0, 2) }.joined(separator: ", ")) m/kg^(1/3)."
+    )
 
     var incident: [[(peak: Double, impulse: Double, arrival: Double)]] = []
     for cellSize in cellSizes {
@@ -546,6 +597,7 @@ func runSlab() throws {
 do {
     switch command {
     case "slab": try runSlab()
+    case "gas": try runGasPressure()
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()
