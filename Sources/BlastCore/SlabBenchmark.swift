@@ -202,23 +202,28 @@ public enum SlabBenchmark {
         let first = Int((6 * inch / h).rounded())
         let second = Int((58 * inch / h).rounded())
         solver.mutateNodes { nodes in
+            // The slab's width need not be a whole number of elements, so the lattice's last
+            // row of nodes may be unused; only nodes that exist are held.
+            func node(_ i: Int, _ j: Int, _ body: (inout StructureNode) -> Void) {
+                if let index = solver.storedNode(i, j, 0) { body(&nodes[index]) }
+            }
             for j in 0...solver.ey {
                 switch supports {
                 case .lines:
-                    nodes[solver.nodeIndex(first, j, 0)].restrain(x: true, z: true)
-                    nodes[solver.nodeIndex(second, j, 0)].restrain(z: true)
+                    node(first, j) { $0.restrain(x: true, z: true) }
+                    node(second, j) { $0.restrain(z: true) }
                 case .bearings(let width, let holdDown):
                     let reach = Int((width / 2 / h + 1e-3).rounded(.down))
                     for offset in -reach...reach {
                         for i in [first + offset, second + offset] {
                             if holdDown {
-                                nodes[solver.nodeIndex(i, j, 0)].restrain(z: true)
+                                node(i, j) { $0.restrain(z: true) }
                             } else {
-                                nodes[solver.nodeIndex(i, j, 0)].restsOnSupport = true
+                                node(i, j) { $0.restsOnSupport = true }
                             }
                         }
                     }
-                    nodes[solver.nodeIndex(first, j, 0)].restrain(x: true)
+                    node(first, j) { $0.restrain(x: true) }
                 }
             }
         }

@@ -182,8 +182,10 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             }
             return Scenario(
                 name: title, domainSize: SIMD3(40, 32, 16), boxes: [],
-                // Masonry needs far less: 50 kg breaches one panel and cracks the rest.
-                charge: Charge(mass: self == .infilledFrame ? 50 : 250, position: SIMD3(18, 10, 1)),
+                // 1,000 kg brings down part of the frame: since bars hold cracked sections together
+                // and resist sliding across cracks, 250 kg leaves it standing. Masonry needs far
+                // less: 50 kg breaches one panel and cracks the rest.
+                charge: Charge(mass: self == .infilledFrame ? 50 : 1000, position: SIMD3(18, 10, 1)),
                 gauges: [
                     Gauge("Front column", at: SIMD3(20.2, 12.9, 1.5)),
                     Gauge("Under first slab", at: SIMD3(20, 16, 3)),

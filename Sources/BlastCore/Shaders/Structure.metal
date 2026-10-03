@@ -797,7 +797,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         state.confinementGain = gain;
 
         // Shear across cracked planes is carried by aggregate interlock, which weakens as the
-        // crack widens (Vecchio and Collins, modified compression field theory).
+        // crack widens (Vecchio and Collins, modified compression field theory), and by the
+        // bars that cross the crack.
+        float3 barRatio = float3(steel[compact].ratio);
         float3 shearStress;  // xy, yz, zx
         for (int pair = 0; pair < 3; ++pair) {
             int a = pair;
@@ -808,6 +810,31 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             if (opened > 0.0f) {
                 float width = opened * m.crackBand;
                 float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+                // The wider-open of the two planes is the crack that slides; the bars along its
+                // normal cross it.
+                int across = history[a] >= history[b] ? a : b;
+                float crossing = barRatio[across];
+                if (crossing > 0.0f && fabs(state.steelPlastic[across]) < 1e8f) {
+                    // Dowel action: each bar resists 1.3 d^2 sqrt(fc fy) of sliding (Rasmussen,
+                    // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
+                    float yield = m.steelStress[0];
+                    interlock += 1.65f * crossing * sqrt(m.compressiveStrength * yield);
+                    // Kinking: slid by s, a bar debonded over a length L either side of the crack
+                    // is stretched to sqrt(1 + (s/L)^2) - 1, and its tension leans along the
+                    // slide. Stretched past rupture by it, the bars there have broken.
+                    float slide = fabs(engineering) * u.h / max(m.crackBand, u.h);
+                    float stretch = sqrt(1.0f + slide * slide) - 1.0f;
+                    float elastic = yield / m.steelModulus;
+                    float plasticStretch = stretch - elastic;
+                    if (plasticStretch > m.steelStrain[m.steelPoints - 1]) {
+                        state.steelPlastic[across] = 1e9f;  // ruptured for good
+                    } else {
+                        float slope;
+                        float tension = stretch <= elastic ? m.steelModulus * stretch
+                                                           : steelYield(plasticStretch, m, slope);
+                        interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
+                    }
+                }
                 stress = clamp(m.shearRetention * stress, -interlock, interlock);
             }
             shearStress[pair] = stress;
@@ -902,11 +929,45 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool anySteel = intact.x + intact.y + intact.z > 0.0f;
 
         // A crack wide enough to count as a gap removes the element, unless intact bars cross it.
+        // The crack runs across the member, so bars that cross it elsewhere in the section hold
+        // it closed here too: an element between the mats of a thick wall, or between a mat and
+        // the far face, is bridged by them. The section is searched along the crack's plane,
+        // from the element to the member's surface, for an element with intact bars across it
+        // (as of the previous substep).
         bool torn = false;
-        for (int j = 0; j < 3; ++j) {
-            if (history[j] >= m.erosionStrain && intact[j] == 0.0f) {
-                torn = true;
+        for (int j = 0; j < 3 && !torn; ++j) {
+            if (history[j] < m.erosionStrain || intact[j] != 0.0f) {
+                continue;
             }
+            bool bridged = false;
+            int3 dims = int3(u.ex, u.ey, u.ez);
+            for (int side = 1; side < 3 && !bridged; ++side) {
+                int axis = (j + side) % 3;
+                for (int direction = -1; direction <= 1 && !bridged; direction += 2) {
+                    int3 cell = int3(tid);
+                    for (int step = 0; step < 32; ++step) {
+                        cell[axis] += direction;
+                        if (cell[axis] < 0 || cell[axis] >= dims[axis]) {
+                            break;
+                        }
+                        int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                        uchar flag = flags[other];
+                        if (flag != elementActive && flag != elementFailing) {
+                            break;  // the member's surface
+                        }
+                        uint neighbour = cellElement[other];
+                        if (!singleMaterial && materialIndex[neighbour] != own) {
+                            break;  // another member: masonry is not held by its frame's bars
+                        }
+                        if (float(steel[neighbour].ratio[j]) > 0.0f
+                            && (m.barReach <= 0.0f || fabs(plasticBefore[neighbour][j]) < 1e8f)) {
+                            bridged = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            torn = !bridged;
         }
 
         // Push forward to the Cauchy stress: sigma = F S F^T / J.

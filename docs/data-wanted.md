@@ -50,7 +50,13 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-One formula in the code was written from memory and should be checked against the original.
+Two formulae in the code were written from memory and should be checked against the original.
+
+- **Dowel strength.** B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and
+  dowels embedded in concrete", *Bygningsstatiske Meddelelser* 34 (1963), or fib Model Code
+  2010, section 6.1. Needed: the dowel capacity of a bar crossing a crack, used as
+  1.3 d² √(f_c f_y) in the shear across cracks in `Structure.metal`, and the slip at which it
+  is reached.
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.

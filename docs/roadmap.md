@@ -15,7 +15,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with two tests, and fails one of them | On a slab test the peak converges to 112 mm against 108 measured; in a full-scale internal explosion the roof is thrown where the real one deflected 95 mm (the model is weak by about 1.6 on the charge) | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with two tests | On a slab test the peak converges to 112 mm against 108 measured; in a full-scale internal explosion the roof is left 123 mm deflected against 95 mm, near a cliff | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | No afterburning in the charge model                                     | Incident impulse 13–22% low in the open; gas pressure in a closed room half the design value for light charges | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -36,9 +36,11 @@ dialogs were written without being seen on screen.
 More evidence is worth more than more features. The sources each step needs, and what is
 needed from them, are listed in [Data wanted](data-wanted.md).
 
-1. **Why the chamber's roof is too weak.** Model the diagonal bars across the chamfers and the
-   anchorage of the bars into the end walls, and place each mat at its true depth; then compare
-   the charge at which the roof is thrown with the test and the paper's own model.
+1. **The chamber's joints.** Diagonal bars across the chamfers and stirrups in the down-stand,
+   which the smeared lattice bars can only approximate; then the charge at which the roof is
+   thrown, against the test and the paper's model. (Done so far: bars resisting sliding across
+   cracks, and cracks bridged across a section, which took the roof from thrown to 123 mm
+   against 95 mm measured.)
 2. **A second and third structural test**, chosen to differ from the first two: a slab with
    steel in both faces, a member that failed in shear, and a wall under an open-air charge. The
    high-strength slabs of the same contest are the obvious next case, since the geometry and

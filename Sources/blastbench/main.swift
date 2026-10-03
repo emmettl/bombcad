@@ -144,6 +144,25 @@ func runChamber() throws {
     let duration = option("time").flatMap { Double($0) } ?? 0.3
     let downstand = !flag("no-downstand")
     let chargeScale = option("charge-scale").flatMap { Float($0) } ?? 1
+    if let text = option("pressures") {
+        // The roof's resistance: the vent closed, the chamber filled with air at a steady
+        // overpressure, and the roof edge watched.
+        print(
+            "Chamber of Shang et al. (2026), vent closed, filled with steady overpressure; roof edge at mid-span"
+        )
+        print(pad("kPa", 8) + pad("peak", 10) + pad("end", 10) + "failed")
+        for kilopascals in text.split(separator: ",").compactMap({ Float($0) }) {
+            let result = try ChamberTest.pressureTest(
+                device: device, overpressure: kilopascals * 1000, elementSize: elementSize, duration: duration
+            )
+            print(
+                pad(format(Double(kilopascals), 0), 8)
+                    + pad("\(format(Double(result.peakDeflection) * 1000, 0)) mm", 10)
+                    + pad("\(format(Double(result.edgeHistory.last?.y ?? 0) * 1000, 0)) mm", 10)
+                    + "\(result.summary.erodedElements)")
+        }
+        return
+    }
     print(
         "Internal explosion in a reinforced concrete chamber (Shang et al., 2026): "
             + "4 x \(format(Double(50 * chargeScale), 1)) kg TNT, half-model")
@@ -169,10 +188,15 @@ func runChamber() throws {
     for (part, failed, total) in result.failures {
         print("  \(pad("\(failed)", 6)) of \(pad("\(total)", 6))  \(part)")
     }
+    for probe in result.probes {
+        print("\(probe.name): peak \(format(Double(probe.history.map(\.y).max() ?? 0) * 1000, 0)) mm outward")
+    }
     if flag("history") {
-        for sample in result.edgeHistory where Int((sample.x * 1000).rounded()) % 10 == 0 {
+        print("    time      roof edge" + result.probes.map { pad($0.name, 24) }.joined())
+        for (n, sample) in result.edgeHistory.enumerated() where Int((sample.x * 1000).rounded()) % 5 == 0 {
             print(
-                "    t = \(format(Double(sample.x) * 1000, 1)) ms   \(format(Double(sample.y) * 1000, 1)) mm")
+                "    \(pad(format(Double(sample.x) * 1000, 1), 6)) ms \(pad(format(Double(sample.y) * 1000, 1), 9))"
+                    + result.probes.map { pad(format(Double($0.history[n].y) * 1000, 1), 24) }.joined())
         }
     }
 }

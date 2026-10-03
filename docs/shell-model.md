@@ -202,13 +202,18 @@ little as the specimen did, where the solid elements rebound twice as far.
 
 | Case | Shells and beams | Solid elements |
 |---|---|---|
-| Concrete building, 100 kg, at 100 ms | 7 mm, nothing removed | 8 mm at 50 ms, nothing removed |
-| Concrete building, 500 kg, at 100 ms | Front wall shears through (54 elements) and is pushed in 663 mm | Front wall tears along its base and is pushed in 675 mm |
-| Three-storey building, 100 kg, at 150 ms | Ground-floor panels near the charge broken through, 1,264 elements removed | 1,493 removed |
-| Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Part of the first floor falls; the upper floor stays up |
+| Concrete building, 100 kg, at 100 ms | 7 mm, nothing removed | 12 mm, nothing removed |
+| Concrete building, 500 kg, at 100 ms | Front wall shears through (54 elements) and is pushed in 663 mm | Front wall cracks along its base and is pushed in 225 mm (461 elements) |
+| Three-storey building, 100 kg, at 150 ms | Ground-floor panels near the charge broken through, 1,264 elements removed | 1,505 removed |
+| Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Stands: 9 mm, nothing removed |
 
-None of these has been compared with a test. The frame shows how far apart two reasonable models
-of a collapse can end up.
+None of these has been compared with a test. The solid elements' column was measured after
+their bars were made to resist sliding across cracks and to hold cracked sections together
+(see the [concrete model](concrete-model.md#shear-across-cracks)); before that, the solid
+building's front wall was pushed in 675 mm at 500 kg and part of the frame's first floor fell
+at 250 kg. The shells have no dowel action or kinking yet, so the two models now differ most
+where a section cracks through and slides: the frame shows how far apart two reasonable
+models of a collapse can end up.
 
 ## Limitations
 

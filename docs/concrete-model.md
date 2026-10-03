@@ -21,7 +21,7 @@ robust and exactly reversible in the elastic range.
 | Tension after cracking      | Exponential softening, scaled by fracture energy                          |
 | Compression                 | Parabola to peak, linear softening to a 20% residual; permanent strain on unloading |
 | Confinement                 | Strength and ductility rise with lateral compression                      |
-| Shear across cracks         | Aggregate interlock, weakening with crack width                           |
+| Shear across cracks         | Aggregate interlock, weakening with crack width; dowel action and kinking of the bars crossing |
 | Reinforcement               | Smeared bars along the lattice axes, multi-linear hardening, rupture; Bauschinger softening on reversal |
 | Strain rate                 | Published dynamic increase laws for concrete and steel                    |
 | Removal                     | By crack width, when no intact bar crosses the crack; or by crushing      |
@@ -128,6 +128,25 @@ flexurally cracked slab with no steel through its thickness cannot pass shear be
 tension and compression zones; the zones slide apart and the member splits along its length.
 The validation slab collapsed that way until interlock was included.
 
+**Bars across a sliding crack.** The bars that cross the crack (those along the normal of the
+wider-open of the two planes) add two terms to the cap:
+
+- **Dowel action.** A bar resists sliding across a crack by bending and bearing on the concrete;
+  its strength is 1.3 d² √(f_c f_y) (Rasmussen, 1963), which over the bars crossing a unit area
+  is 1.65 ρ √(f_c f_y). For the 2% of steel in the frame's columns that is about 4 MPa, 0.13 f_c,
+  of the same order as the direct shear capacity UFC 3-340-02 allows a section (0.16 f_c,
+  equation 4-30); a slab's few tenths of a per cent add a fraction of a megapascal.
+- **Kinking.** Slid by s, a bar debonded over a length L (the crack band, 100 mm by default) is
+  stretched by √(1 + (s/L)²) − 1, and the component of its tension along the slide,
+  ρ σ s / √(L² + s²), resists it, with σ from the bar's own curve. When the stretch passes
+  rupture, the bars across that plane break for good.
+
+Without them a section cracked through its depth could pass shear only by interlock, which
+fades as the crack opens, so supports slid apart however much steel crossed them. A full-scale
+internal explosion (see [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber))
+showed it: the walls and roof of a chamber that held in the test slid off their supports in the
+model.
+
 ## Reinforcement
 
 Bars are smeared: each element carries a steel ratio (bar area per unit area of concrete) along
@@ -208,9 +227,9 @@ design values of UFC 3-340-02 (1.19 and 1.17 for bending in the far range).
 An element is removed when
 
 - a crack across one of its planes has opened by 5 mm (3 mm for masonry) and no intact bar
-  crosses that plane; or
-- a crack has opened by twice that, or the element has stretched by 100% if that is more,
-  whatever crosses it; or
+  crosses that plane anywhere in the member's section (below); or
+- a crack has opened by three times that, or the element has stretched by 100% if that is
+  more, whatever crosses it; or
 - a compressive strain passes the end of softening by a further softening range; or
 - its volume has fallen to a quarter.
 
@@ -218,6 +237,16 @@ A crack's opening is its strain times the element size. Tension-softened concret
 tension long before a 5 mm opening. The late removal is deliberate: a cracked element still
 resists compression and interlock shear, and removing it early destroys load paths that exist
 in reality.
+
+**Bridged across the section.** A crack runs across a member, so the bars that cross it in one
+place hold it closed throughout the section: concrete between the two mats of a thick wall,
+or between a mat and the far face, is not a gap however wide its crack, as long as the mats'
+bars are intact. So before an element without bars of its own across a wide crack is
+removed, the section is searched along the crack's plane, from the element to the member's
+surface or to another material, for an element with intact bars across it. This is the
+rule the [shell elements](shell-model.md) already followed, judging a crack over all their
+layers at once. Before it, the core of an 0.8 m wall cracked at a hinge was removed at a 5 mm
+opening, and the hinge fell apart.
 
 The crack strain used to be capped at 0.5, and any element stretched past 100% removed. On
 elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on
@@ -339,6 +368,12 @@ matter.
    design factors in place of the rate laws, the slab no longer collapses either; it reaches
    130 mm.
 
+19. **Bars across sliding cracks, and cracks bridged across the section**, after a full-scale
+   internal explosion threw a chamber's roof that had held in the test (see Shear across
+   cracks and Removal). The slab is unchanged on 8 elements through the thickness (105 mm) and
+   peaks at 102 mm on 4 (101 mm before); with the UFC factors it still reaches 130 mm, now with
+   no elements removed. With static strengths it still fails.
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -357,9 +392,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 3. **Cracks form only on lattice planes.** A diagonal crack is represented by damage shared
    between two planes, not as an inclined plane with its own opening and sliding. Shear
    failures are the least trustworthy predictions the model makes.
-4. **Members with no steel through their thickness** rely on interlock alone for shear. Earlier
-   versions of the slab sat near a shear failure; since the errors of step 14 were fixed it
-   does not, but shear has not been tested on a member that failed in shear.
+4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
+   cross them, each from a published formula, not fitted. Earlier versions of the slab sat
+   near a shear failure; since the errors of step 14 were fixed it does not. The chamber test
+   depends on these terms, but no test of a member that failed in shear has been run.
 5. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm
    after its peak, where the specimen recovered about 13 mm and settled. The cause is the
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
@@ -368,8 +404,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 6. **Confinement is capped** at about five times the unconfined strength, and there is no
    compaction of the pores. Concrete under the very high pressures close to a charge is beyond
    the model's range.
-7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, dowel action, bar
-   buckling or lap failure, and bars are placed by the element, not individually. Rupture is
+7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, bar buckling or
+   lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
+   the shear stress, mobilised as soon as a crack forms rather than over the first millimetre
+   or so of slip, and inclined bars (such as the diagonal bars across a chamfer) can only be
+   represented by their components along the lattice axes. Rupture is
    judged over a debonded length, but a bar's stress still follows the strain of the element
    it sits in, so where a crack gathers into one element the bar there carries its full
    strength while that element stretches. Under cyclic
@@ -397,7 +436,7 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 - **Bond slip**, so that bond governs crack spacing instead of its being assumed, and a bar's
   stress as well as its rupture is spread over its debonded length.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
-- **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.
+- **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
 - **Masonry with joints.**
 
 ## Sources
@@ -426,7 +465,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 - EN 1992-1-1, *Eurocode 2: Design of concrete structures*. Mean tensile strength.
 - ACI Committee 318, *Building Code Requirements for Structural Concrete*. Elastic modulus.
 - US Department of Defense, *Structures to Resist the Effects of Accidental Explosions*,
-  UFC 3-340-02, 2008. Design dynamic increase factors.
+  UFC 3-340-02, 2008. Design dynamic increase factors (Table 4-1) and the direct shear
+  capacity of a section, 0.16 f_c (equation 4-30), used as a check on the dowel term.
+- B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and dowels embedded in
+  concrete", *Bygningsstatiske Meddelelser* 34, 1963. The dowel strength 1.3 d² √(f_c f_y),
+  widely quoted (for example in fib Model Code 2010, section 6.1); the formula and citation
+  were written from memory.
 - J. G. Rots, *Computational Modeling of Concrete Fracture*, PhD thesis, Delft University of
   Technology, 1988. Smeared fixed and rotating crack models, shear retention.
 - M. Menegotto and P. E. Pinto, "Method of analysis for cyclically loaded R.C. plane frames

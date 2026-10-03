@@ -32,7 +32,7 @@ swift run -c release blastbench chamber
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 112 mm (104%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is thrown at the test's charge, which left it 95 mm deflected | Low: the structure is too weak by about 1.6 on the charge |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; roof edge left 123 mm deflected against 95 mm | Low to moderate: one test, near a cliff |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -388,74 +388,85 @@ reference for how the roof responds to the charge: 22, 87 and 251 mm peak for 10
 ### The model
 
 One chamber, with the partition's mid-plane as a mirror, so that each sleeve's charge counts
-as 25 kg on the mirror. Air cells and solid elements are 0.1 m (83,536 elements). The end wall,
-the partition and the foundation are rigid. The chamfers are steps of elements, without their
-diagonal bars. The other assumptions, and the geometry read off the paper's drawings, are
-listed in `ChamberTest.swift`. `blastbench chamber` runs 300 ms in about 15 s;
-`--charge-scale` scales the charges.
+as 25 kg on the mirror. Air cells and solid elements are 0.1 m (116,760 elements). The
+partition and the foundation are rigid; of the 1.8 m end wall, the inner 0.6 m is modelled,
+held at its outer face, so that the bars of the roof and walls run on into it. The chamfers
+are steps of elements, without their diagonal bars. The other assumptions, and the geometry
+read off the paper's drawings, are listed in `ChamberTest.swift`. `blastbench chamber` runs
+300 ms in about 17 s; `--charge-scale` scales the charges, and `--pressures` fills the closed
+chamber with a steady overpressure instead (below).
 
 ### Results
 
-**Pressures.** At gauges placed near the sensors the model gives 4.3 and 6.8 MPa on the side
-walls and 3.0 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positions are
+**Pressures.** At gauges placed near the sensors the model gives 4.2 and 6.8 MPa on the side
+walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positions are
 approximate, and peaks this close to a charge change sharply with position, so this check is
 loose: the model is between 0.9 and 1.6 times the measured range.
 
-**The roof.** At the test's charge the model's roof is torn from its walls and thrown: its
-free edge is still rising at more than 2 m after 300 ms, against a residual of 95 mm. The
-response has a cliff, as the paper's own model does, but the model's cliff comes at a smaller
-charge:
+**The roof.** At the test's charge the roof's free edge rises 255 mm and settles back to
+123 mm, against a residual of 95 mm measured (30% more); the paper's own model gave 87 mm and
+62 mm. Like the paper's model, the response has a cliff, beyond which the roof is torn off and
+thrown; the model reaches it at a somewhat smaller charge:
 
 | Charge, as a fraction of the test's | Model: peak / end of run | Paper's model (Table 7): peak / residual |
 |-------------------------------------|--------------------------|------------------------------------------|
-| 0.5 (100 kg)                        | 15 / 2 mm                | 22 / 17 mm                               |
-| 0.625                               | 66 / 34 mm               |                                          |
-| 0.75                                | 313 / 206 mm             |                                          |
-| 0.875                               | Roof thrown              |                                          |
-| 1 (200 kg)                          | Roof thrown              | 87 / 62 mm; measured residual 95 mm      |
-| 1.5                                 |                          | 251 / 168 mm                             |
-| 2                                   |                          | Roof thrown                              |
+| 0.5 (100 kg)                        | 16 / 2 mm                | 22 / 17 mm                               |
+| 1 (200 kg)                          | 255 / 123 mm             | 87 / 62 mm; measured residual 95 mm      |
+| 1.25                                | Roof thrown              |                                          |
+| 1.5                                 | Roof thrown              | 251 / 168 mm                             |
+| 2                                   | Roof thrown              | Roof thrown                              |
 
-The model behaves like the paper's model with about 1.6 times the charge. Even so, the
-measured structure was close to its own cliff: chamber B nearly lost its roof edge.
+The side walls bow out 11 mm, and nothing fails in the walls, the end wall or the roof slab;
+the down-stand at the roof's free edge and the unreinforced chamfers lose 2,300 elements
+between them. The measured structure was itself close to its cliff: chamber B nearly lost its
+roof edge.
 
-**What throws the roof.** Some variations narrow it down:
+**How the model got here.** The first version threw the roof at 0.875 of the test's charge and
+beyond. What was found on the way:
 
-- **Not the removal of elements.** With removal switched off entirely, the roof edge still
-  rose 293 mm in 60 ms, as fast as with it.
-- **Not a mistake in stiffness.** With elastic concrete the edge swings only ±7 mm.
-- **Not the mesh.** With 50 mm elements (about 670,000) the edge rises
-  118, 374 and 746 mm at 30, 60 and 100 ms, against 127, 423 and 818 mm on 0.1 m elements.
-- **The gas left behind by the shocks.** The roof gauge reads 200 to 500 kPa from 10 ms to
-  past 60 ms while the gas vents through the strip, and a hand estimate of the roof's
-  yield-line resistance is 250 to 350 kPa. Once yielded, the roof is pushed for as long as the
-  gas lasts, and nothing stops it. The model's gas pressure is if anything low (at this
-  room's 0.58 kg/m³, below the design manual's in the previous section), so the load is
-  unlikely to be too high.
+- **The gas is not what throws the roof.** With the vent closed and the chamber filled with a
+  steady overpressure, applied all at once, the roof deflects 8 mm at 600 kPa and is thrown at
+  800 kPa. The gas behind the shocks in the real event, 200 to 500 kPa, is below that. So
+  the shocks of the first few milliseconds were destroying the supports.
+- **Shear across cracked supports was the weakness.** With aggregate interlock five times
+  stronger, the roof peaked at 50 mm and nothing ran away. So the model had too little shear
+  transfer across sections cracked through at their supports: interlock fades as a crack
+  opens, and the bars crossing it added nothing. The paper found the joints' bars "twisted but
+  did not break", holding the shattered concrete in place. The model now has the bars'
+  dowel action and kinking across a sliding crack (see the
+  [concrete model](concrete-model.md#shear-across-cracks)). With them the side walls stopped
+  running away, and the roof stopped at about 1 m.
+- **Removing the cores of cracked hinges** was the rest. An element was removed when its crack
+  passed 5 mm and no bar of its own crossed it, so the core of an 0.8 m section at a hinge,
+  between the mats, went at 5 mm and took the hinge's interlock and compression with it. A
+  crack crossed by intact bars anywhere in the section now counts as bridged (see
+  [Removal](concrete-model.md#removal)), as the shells already judged it. With that the roof
+  edge settles at 123 mm.
+- **Not the end wall's rigidity.** Modelling the inner 0.6 m of the end wall instead of a
+  rigid face changed little; the hinge just beyond it was real.
+- **Not stiffness or mesh.** With elastic concrete the edge swings ±7 mm. In the first version,
+  50 mm elements (about 670,000) gave the same response as 0.1 m elements within 10%.
+- **The chamfers matter.** Without them the first version's cliff came between 0.5 and 0.75
+  of the charge.
 
-The chamfers matter: without them the cliff came between 0.5 and 0.75 of the charge. That
-points to the joints, which the paper also found decisive. Its chamber A's joints were
-shattered but held together by bars that "did not break", and its parametric roof with
-14 mm bars instead of 16 mm deflects 58% more. The likeliest causes of the model's weakness,
-in order:
+What remains, in rough order:
 
-1. **The joints' detailing**: no diagonal bars across the chamfers, and mats smeared over a
-   band one element thick instead of lying 50 mm from the face.
-2. **Rigid end wall, partition and foundation**, held as fixed nodes. Elements beside fixed
-   nodes fail early (failures gather along the line where the side walls meet the partition).
+1. **The joints' detailing**: no diagonal bars across the chamfers, so they crack away; and
+   mats smeared over a band one element thick.
+2. **The down-stand**, which loses about 40% of its elements; its stirrups are not modelled.
 3. **What the model leaves out of the load path**: the steel sleeves, which take some of the
-   charges' energy and were modelled by the paper, and any compressive membrane action that
-   the rigid supports or the walls' flexibility misrepresent.
+   charges' energy and were modelled by the paper, and afterburning, which would raise the
+   gas pressure.
 
 ### What this does and does not show
 
-The model reproduces the kind of failure seen (the roof yielding at the joints under the
-lingering gas pressure, with damage concentrated at the supports) and a response with a
-cliff, but it puts the cliff between 0.75 and 0.875 of the charge, where the test and the
-paper's model put it beyond 1. Against this test the structural model is on the weak side by
-a factor of about 1.6 on the charge, which near a cliff means its deflections can be wrong by
-an order of magnitude. Peak wall pressures are within the loose check that the gauge
-positions allow.
+The model reproduces the kind of damage seen (cracking and crushing concentrated at the
+joints and supports, held together by the bars, and a roof left deflected upwards) and the
+residual deflection to within 30%, with a cliff a little closer than the paper's own model
+puts it. That agreement came after two changes to the concrete model that this test exposed,
+each from published mechanics rather than fitted to it, and with the slab test unchanged; but
+it is one test, near a cliff, where small differences in load or strength move the answer a
+lot. Peak wall pressures are within the loose check that the gauge positions allow.
 
 ## Consistency across air grids
 
@@ -463,18 +474,22 @@ The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solv
 
 | Charge | 0.5 m cells                | 0.25 m cells       | 0.125 m cells      |
 |--------|----------------------------|--------------------|--------------------|
-| 50 kg  | 16 mm deflection at 0.1 s  | 28 mm              | 37 mm              |
-| 200 kg | Sheared off at its base    | Sheared off        | Sheared off        |
+| 50 kg  | 15 mm deflection at 0.1 s  | 25 mm              | 32 mm              |
+| 200 kg | Hinged at its base, top 315 mm over at 0.1 s | 437 mm | 657 mm, 768 elements removed |
 
-![The wall toppling after 200 kg sheared it off at its base](wall-toppling.png)
+![The wall leaning back on a hinge at its base, 1 s after 200 kg](wall-hinged.png)
 
-The qualitative outcome is the same on every grid. The deflection at 50 kg has not converged:
-it grows with resolution as the peak pressure does, although the impulse on the wall changes
-little. There is no test to compare these with.
+The qualitative outcome is the same on every grid. At 200 kg the wall cracks through at its
+base and leans back on its bars (0.87 m at the top after 1 s on 0.25 m cells). Before bars
+resisted sliding across cracks and cracks were bridged across the section (see the
+[concrete model](concrete-model.md#shear-across-cracks)), the wall sheared off at its base on
+every grid and toppled. The deflection at 50 kg has not converged: it grows with resolution as
+the peak pressure does, although the impulse on the wall changes little. There is no test to
+compare these with.
 
 ## Verification against theory
 
-The test suite has 98 tests. The physical checks are:
+The test suite has 99 tests. The physical checks are:
 
 **Air solver**
 
@@ -549,7 +564,7 @@ equations are the right ones.
 
 In rough order of value:
 
-1. Why the chamber's roof is too weak: the joints' detailing first (see
+1. The chamber's joints: diagonal bars across its chamfers, and its down-stand's stirrups (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 2. A second and third structural test, of different kinds (see the
    [concrete model's future work](concrete-model.md#future-work)).

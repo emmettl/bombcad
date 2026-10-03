@@ -205,10 +205,12 @@ structure runs at 6.6 times slower than real time.
 swift run -c release blastbench snapshot --preset frame --time 3 --no-wave --out frame.png
 ```
 
-The two-storey frame (23,004 elements of 125 mm, 1.3 million air cells of 0.25 m, 250 kg):
-3 s simulated in 26 s. The air was frozen after 0.79 s, when five acoustic crossing times had
-passed; from then on only the structure is advanced. Larger elements help twice over: fewer of
-them, and a time step twice as long.
+The two-storey frame (23,004 elements of 125 mm, 1.3 million air cells of 0.25 m, 1,000 kg):
+3 s simulated in 27 s, in which the first floor breaks away from its columns and falls. The
+air was frozen after 0.80 s, when five acoustic crossing times had passed; from then on only
+the structure is advanced. Larger elements help twice over: fewer of them, and a time step
+twice as long. (The preset's charge was 250 kg until bars were made to hold cracked sections
+together; the frame now stands at that.)
 
 ## The slab benchmark
 
