@@ -113,6 +113,17 @@ rebound is set by a hinge at mid-span: once its crushed compression zone unloads
 cracks through its depth and the two halves swing back about the bars. The
 [concrete model](concrete-model.md#how-the-model-got-here) gives the evidence.
 
+**Finer still.** A strip of the slab 25 mm wide bends the same way and costs a thirtieth as
+much, so it can be refined further (`blastbench slab --strip 25 --layers 8,16,32`). It peaks
+at 105, 111 and 112 mm with 8, 16 and 32 elements through the thickness: the peak levels off.
+The full-width slab with 32 elements through the thickness (4.4 million elements, 48 minutes)
+follows the 16-layer history to 30 ms (114 mm) but then collapses, losing 11,755 elements. Its
+mid-span crack gathers into a single column of 3.2 mm elements, and smeared bars take the
+strain of the element they sit in, so a crack opening of 0.5 mm strains them past rupture. A
+real bar spreads a crack's opening over a debonded length several bar diameters long; at
+32 layers the elements are a third of the bar's own 9.5 mm diameter, which is below what
+smeared reinforcement can represent. Elements should not be much smaller than the bars.
+
 Two errors had to be found before the fine mesh behaved: compressed concrete's sideways
 swelling was counted as cracking, and the compressive strain-rate law lost 97% of the
 strength above 30 per second. Before they were fixed the 16-layer slab sat on a knife edge

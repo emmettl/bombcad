@@ -196,12 +196,20 @@ An element is removed when
 
 - a crack across one of its planes has opened by 5 mm (3 mm for masonry) and no intact bar
   crosses that plane; or
+- a crack has opened by twice that, or the element has stretched by 100% if that is more,
+  whatever crosses it; or
 - a compressive strain passes the end of softening by a further softening range; or
 - its volume has fallen to a quarter.
 
-Tension-softened concrete carries no tension long before a 5 mm opening. The late removal is
-deliberate: a cracked element still resists compression and interlock shear, and removing it
-early destroys load paths that exist in reality.
+A crack's opening is its strain times the element size. Tension-softened concrete carries no
+tension long before a 5 mm opening. The late removal is deliberate: a cracked element still
+resists compression and interlock shear, and removing it early destroys load paths that exist
+in reality.
+
+The crack strain used to be capped at 0.5, and any element stretched past 100% removed. On
+elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on
+3 mm elements, which made the finest meshes of the validation slab shed their cover and
+collapse.
 
 ## Default parameters
 

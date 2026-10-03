@@ -12,7 +12,7 @@ import simd
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill] [--full]
 //   blastbench structure [--preset wall|box] [--contact]
 //   blastbench validate [--dx 0.25]
-//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32]
+//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -367,13 +367,16 @@ func runSlab() throws {
     var cases: [(Int, SlabBenchmark.RateTreatment)] = [
         (8, .strainRate), (4, .strainRate), (8, .designFactors), (8, .none),
     ]
-    // `--layers 16,32` runs just those meshes, with the strain-rate laws.
+    // `--layers 16,32` runs just those meshes, with the strain-rate laws; `--strip 25` runs a
+    // strip of the slab that many millimetres wide, which bends the same way, for fine meshes.
     if let layers = option("layers") {
         cases = layers.split(separator: ",").compactMap { Int($0) }.map { ($0, .strainRate) }
     }
+    let width = option("strip").flatMap { Float($0) }.map { $0 / 1000 } ?? SlabBenchmark.fullWidth
     var meshes: [(layers: Int, result: SlabBenchmark.Result)] = []
     for (layers, rate) in cases {
-        let result = try SlabBenchmark.run(device: device, elementsThroughThickness: layers, rate: rate)
+        let result = try SlabBenchmark.run(
+            device: device, elementsThroughThickness: layers, rate: rate, width: width)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""

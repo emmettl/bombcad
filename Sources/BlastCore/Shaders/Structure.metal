@@ -835,7 +835,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         syz = cauchy[2][1];
         szx = cauchy[0][2];
 
-        eroded = eroded || torn || pulverised || crack > 1.0f;
+        // Whatever bridges it, an element stretched to twice the removal width (or by 100%, on
+        // large elements) is gone.
+        eroded = eroded || torn || pulverised || crack > max(1.0f, 2.0f * m.erosionStrain);
         // Squeezed concrete also resists the hourglass modes: a block at mean compressive stress s
         // and strength f can carry a bending moment in proportion to s (1 - s / f).
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);

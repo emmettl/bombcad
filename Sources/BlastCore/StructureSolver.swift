@@ -666,7 +666,9 @@ public final class StructureSolver {
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.crushPeak = peak
         parameters.crushEnd = end
-        parameters.erosionStrain = min(material.erosionOpening / h, 0.5)
+        // The crack strain at which the removal width is reached in one element. (It was once
+        // capped at 0.5, which on elements under 10 mm removed them at narrower cracks.)
+        parameters.erosionStrain = material.erosionOpening / h
         // Removed once crushed to twice the strain at which softening ends.
         parameters.crushErosion = 1
         parameters.confinement = material.confinementCoefficient

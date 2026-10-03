@@ -119,11 +119,18 @@ public enum SlabBenchmark {
 
     /// The slab: 64 in long, 33.75 in wide and 4 in thick, with nine No. 3 bars along its length
     /// one inch from the unloaded face and No. 3 bars at 12 in across them.
-    public static func model(elementsThroughThickness: Int, rate: RateTreatment) -> StructureModel {
+    /// The specimen's width, 33.75 in.
+    public static let fullWidth: Float = 33.75 * 0.0254
+
+    /// `width` is the slab's width; a narrow strip of it, which bends the same way, makes fine
+    /// meshes affordable.
+    public static func model(
+        elementsThroughThickness: Int, rate: RateTreatment, width: Float = fullWidth
+    ) -> StructureModel {
         let h = 4 * inch / Float(elementsThroughThickness)
         // Lifted clear of the ground plane; the test slab stood vertically, so gravity is ignored.
         let base = (1 / h).rounded() * h
-        let slab = Box(min: SIMD3(0, 0, base), max: SIMD3(64 * inch, 33.75 * inch, base + 4 * inch))
+        let slab = Box(min: SIMD3(0, 0, base), max: SIMD3(64 * inch, width, base + 4 * inch))
         var model = StructureModel(
             solids: [slab], material: material(rate: rate), elementSize: h,
             fixedBase: false)
@@ -177,10 +184,10 @@ public enum SlabBenchmark {
     /// Runs the slab under the recorded pressure for 80 ms.
     public static func run(
         device: MTLDevice, elementsThroughThickness: Int = 8, rate: RateTreatment = .strainRate,
-        loadScale: Float = 1, supports: Supports = .lines,
+        loadScale: Float = 1, supports: Supports = .lines, width: Float = fullWidth,
         adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
-        var model = model(elementsThroughThickness: elementsThroughThickness, rate: rate)
+        var model = model(elementsThroughThickness: elementsThroughThickness, rate: rate, width: width)
         adjust(&model.material)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
