@@ -106,9 +106,16 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   Reaching a node through its number costs nothing measurable, and the results are identical
   to the last bit, since the nodes keep their lattice order.
 - The wrapped contact table cost 10% of contact throughput against a dense grid (253 against
-  282 million element-updates per second, before buried nodes were left out), because cells a period apart share entries. A
-  scrambling hash with the same memory cost 38%, because it put neighbouring cells far apart in
-  memory.
+  282 million element-updates per second, before buried nodes were left out), because cells a
+  period apart share entries. A scrambling hash with the same memory cost 38%, because it put
+  neighbouring cells far apart in memory.
+- **Shrinking the contact table does not pay.** It is the largest part of the structure's
+  memory after the elements, 45 MB of the concrete building's 147 MB. Sized to 4, 2 and 1
+  entries per node instead of 8, it takes 126, 116 and 110 MB, but contact throughput falls
+  by 5%, 10% and 16% (286, 271, 257 and 241 million element-updates per second in one
+  session), because more cells share each entry and every extra candidate costs a node read
+  before it is rejected. The results were identical to the last digit at every size, so no
+  entry overflowed. The table stays at about eight entries per node.
 
 ## Coupled runs
 
@@ -174,6 +181,15 @@ One frame takes 1 to 5 ms at 1400 × 875, depending on how much of the view the 
 fills, so the display never limits the simulation. The app aims for about 10 ms of GPU work per
 batch of steps to keep the view fluid.
 
+**Idle substeps.** The structural substeps for each air step are encoded before the GPU has
+chosen the air's time step, so some return without work. In the three-storey building's first
+150 ms, 13,504 substeps were encoded and about 8,900 needed. Inflating the surplus showed each
+idle substep costs about 58 µs, so the idle ones take about 0.27 s of 8.5 s, or 3%. Encoding
+fewer (a 10% or no margin over the last step, instead of 25%) saved 1% to 2%, within the
+noise between runs, and changed the collapse, since the air steps fall differently. Indirect
+dispatch, which would let the GPU skip them, needs bounds checks in every structural kernel
+and a kernel to write the dispatch sizes, for at most those 3%; it has not been done.
+
 ## Where the time goes, and what would help
 
 | Cost                                              | Possible remedy                                        |
@@ -181,7 +197,7 @@ batch of steps to keep the view fluid.
 | Structural time step tied to the smallest element | Shell or beam elements for thin members; mass scaling; coarser elements away from damage |
 | Air solved everywhere at one resolution           | Adaptive refinement; a moving window that follows the shock |
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
-| Idle substep dispatches in coupled runs           | Now sized from the last batch; indirect dispatch would remove the rest |
+| Idle substep dispatches in coupled runs           | Now sized from the last batch; worth about 3%, too little for indirect dispatch (below) |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
 
 None of these has been done. The first two are the ones that would change what is feasible.
