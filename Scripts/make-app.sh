@@ -11,6 +11,8 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin/BombCAD" "$app/Contents/MacOS/BombCAD"
 cp -R "$bin"/BombCAD_*.bundle "$app/Contents/Resources/"
+# The icon is drawn by Scripts/make-icon.swift.
+cp Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -19,6 +21,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <dict>
     <key>CFBundleExecutable</key>
     <string>BombCAD</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>dev.bombcad.BombCAD</string>
     <key>CFBundleName</key>
