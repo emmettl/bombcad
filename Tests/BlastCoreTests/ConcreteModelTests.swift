@@ -113,19 +113,31 @@ struct ConcreteModelTests {
         #expect(solver.flag(0, 0, 0) == .active)
     }
 
-    @Test("Concrete held in from the sides is far stronger, by Richart's rule")
+    @Test("Concrete held in from the sides is far stronger, by Richart's rule, then compacts")
     func confinement() throws {
         // With Poisson's ratio restored, the cube's held faces stop it spreading, so pushing on
         // it loads the sides as well. The sides can supply up to the unconfined strength, and
-        // each unit of that support is worth 4.1 units of axial strength.
+        // each unit of that support is worth 4.1 units of axial strength. Squeezed further, its
+        // pores collapse and the pressure follows the compaction curve, rising without end.
         var material = Self.concrete()
         material.poissonRatio = 0.2
         let (curve, solver) = try strainCube(
             size: 0.05, material: material, to: [-0.0004, -0.12], samplesPerLeg: 200)
 
-        let peak = -(curve.map(\.stress).min() ?? 0)
-        let expected = (1 + 4.1) * material.compressiveStrength
-        #expect(abs(peak - expected) / expected < 0.03, "peak \(peak) Pa against \(expected) Pa")
+        // The confined strength, 5.1 fc, is passed, and the stress never falls.
+        let richart = (1 + 4.1) * material.compressiveStrength
+        #expect(-(curve.map(\.stress).min() ?? 0) > richart)
+        let falls = zip(curve, curve.dropFirst()).contains { $1.stress > $0.stress + 0.01 * abs($0.stress) }
+        #expect(!falls, "the stress should only grow while the cube is squeezed")
+        // At 12% the stress the compaction acts on (the second Piola-Kirchhoff stress, the
+        // nominal stress over the stretch 0.88) is the curve's pressure plus a small deviator.
+        let mu: Float = 1 / (1 - 0.12) - 1
+        let lock: Float = 0.8e9
+        let m = (mu - 0.1) / 1.1
+        let pressure = lock + m * (85e9 + m * (-171e9 + m * 208e9))
+        let final = -(curve.last?.stress ?? 0) / 0.88
+        #expect(final > 0.98 * pressure && final < 1.2 * pressure, "\(final) Pa against \(pressure) Pa")
+        #expect(abs(solver.compaction(0, 0, 0) - mu) < 0.01, "compaction \(solver.compaction(0, 0, 0))")
         #expect(solver.flag(0, 0, 0) == .active, "confined concrete should not be removed as crushed")
 
         // At small strain the response is still elastic, with the stiffness of a laterally

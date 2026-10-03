@@ -22,7 +22,7 @@ it should be used to judge the safety of a real structure.
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
-| 8 | The rebound after a slab's peak depends on the mesh, and there is no compaction | Rebound is too large on fine meshes; close-in crushing is wrong | [Concrete model](concrete-model.md#limitations) |
+| 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | The app's interface has not been reviewed by eye                        | Layout or interaction problems may exist                      | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -58,8 +58,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    principal direction has turned far enough, to sit between the lattice planes' over-softening
    and fixed cracks' stress locking. (Done: oriented cracks, fixed at first cracking, as an
    option; with them the chamber follows the paper's own model, but other cases stiffen.)
-5. **The rebound, and compaction** under very high pressure. The slab's mid-span hinge springs
-   back twice as far as the specimen did on every mesh.
+5. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
+   every mesh. (Done: compaction of the pores under very high confined pressure, after
+   Holmquist, Johnson and Cook; unchecked against a close-in test.)
 6. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.

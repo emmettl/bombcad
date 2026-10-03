@@ -608,7 +608,7 @@ The test suite has 108 tests. The physical checks are:
 | Compression                                     | Peak at f_c within 2%; parabola; 20% residual  |
 | Compression released and reapplied              | Permanent strain within 3% of Karsan–Jirsa     |
 | Reinforcement stretched, then shortened         | Follows the Menegotto–Pinto curve within 3% of yield |
-| Fully restrained compression                    | Peak at 5.1 f_c within 3% (confinement)        |
+| Fully restrained compression                    | Passes 5.1 f_c (confinement), never softens; then follows the compaction curve, 3 GPa at 12% |
 | Crack opened then closed                        | Closes at its residual opening; then full compressive stiffness |
 | Reinforced element in tension                   | Yield, hardening and rupture within 3%         |
 | Reinforced tie with one weak slice, two meshes  | Bars break at the same crack opening (13 and 11 mm) |

@@ -185,7 +185,36 @@ struct ElementState {
     // axes (a unit quaternion; all zero until it first cracks). The three crack, crush and
     // confinement histories above are then along these axes.
     packed_half4 crackFrame;
+    float compaction;  // concrete: largest volumetric compression so far, mu = V0 / V - 1
 };
+
+// Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
+// elastic (bulk modulus K) up to the crushing pressure fc / 3; then the pores collapse, and the
+// pressure rises linearly to 0.8 GPa at mu = 0.1, keeping the compaction reached (unloading
+// with K from the largest, `peak`); beyond that the concrete is fully dense, and
+// p = K1 m + K2 m^2 + K3 m^3 with m = (mu - 0.1) / 1.1 above 0.8 GPa, K1 = 85, K2 = -171 and
+// K3 = 208 GPa.
+static inline float compactionPressure(float mu, float peak, float bulk, float fc) {
+    float crushPressure = fc / 3.0f;
+    float crushStrain = crushPressure / bulk;
+    const float lockPressure = 0.8e9f;
+    const float lockStrain = 0.1f;
+    auto loading = [&](float x) {
+        if (x <= crushStrain) {
+            return bulk * x;
+        }
+        if (x <= lockStrain) {
+            return crushPressure + (lockPressure - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
+        }
+        float m = (x - lockStrain) / (1.0f + lockStrain);
+        return lockPressure + m * (85e9f + m * (-171e9f + m * 208e9f));
+    };
+    if (mu >= peak || peak <= crushStrain) {
+        return loading(mu);
+    }
+    // Unloading from the largest compaction, at the elastic bulk modulus.
+    return max(loading(peak) - bulk * (peak - mu), 0.0f);
+}
 
 // Reinforcement area per unit area of concrete, along each lattice axis.
 struct ElementSteel {
@@ -917,6 +946,31 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                      float3(shearStress.z, shearStress.y, normalStress.z));
         if (framed) {
             material = frame * material * transpose(frame);
+        }
+        // Under very high pressure the pores collapse: the concrete's mean stress is never less
+        // compressive than the compaction curve gives, whatever its strength laws say. Only
+        // where it is confined, squeezed on every axis by at least a fifth of the most (as in
+        // the uniaxial strain of a shock, a quarter): squeezed from one side alone, concrete
+        // dilates as it crushes, which this model does not represent, so its volume change says
+        // nothing about its pores.
+        float mu = referenceVolume / volume - 1.0f;
+        bool confined = max(normalStress.x, max(normalStress.y, normalStress.z))
+            < 0.2f * min(normalStress.x, min(normalStress.y, normalStress.z));
+        float bulk = m.lambda + 2.0f * m.mu / 3.0f;
+        float crushVolume = m.compressiveStrength / (3.0f * bulk);
+        if (confined && mu > crushVolume) {
+            state.compaction = max(state.compaction, mu);
+        }
+        // Once its pores have begun to collapse, an element follows the curve, confined or not.
+        if (mu > 0.0f && state.compaction > crushVolume) {
+            float compacted = compactionPressure(mu, state.compaction, bulk, m.compressiveStrength);
+            float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
+            if (compacted > pressure) {
+                float shift = pressure - compacted;
+                material[0][0] += shift;
+                material[1][1] += shift;
+                material[2][2] += shift;
+            }
         }
 
         // Smeared reinforcement: bars along the lattice axes, strained with the element. They

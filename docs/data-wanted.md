@@ -50,12 +50,17 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Four values in the code were written from memory and should be checked against the original.
+Five values in the code were written from memory and should be checked against the original.
 
 - **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
   Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
   15 MJ/kg) and its heat of detonation (about 4.6 to 5 MJ/kg), whose difference, 10 MJ/kg, is
   the afterburn energy.
+- **The Holmquist–Johnson–Cook compaction curve.** T. J. Holmquist, G. R. Johnson and
+  W. H. Cook, 14th International Symposium on Ballistics, 1993. Needed: the locking pressure
+  and strain and the constants K₁, K₂, K₃ (taken as 0.8 GPa, 0.1, and 85, −171, 208 GPa), used
+  in `compactionPressure` in `Structure.metal`. A close-in or contact-charge test on a concrete
+  slab would then check it.
 - **Vibrational temperatures of N2 and O2** (3390 K and 2270 K), used for hot air in
   `Solver.metal`; any text on statistical thermodynamics, or the NIST-JANAF tables, which
   would also give air's dissociation for a fuller model.

@@ -28,7 +28,7 @@ public final class StructureSolver {
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
     }
 
-    static let stateStride = 144
+    static let stateStride = 148
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -470,6 +470,12 @@ public final class StructureSolver {
     /// Largest tensile strain a concrete element has seen across any of the lattice planes.
     public func crackStrain(_ i: Int, _ j: Int, _ k: Int) -> Float {
         (0..<3).map { stateValue(i, j, k, offset: 80 + $0 * 4) }.max() ?? 0
+    }
+
+    /// The largest volumetric compression, V0 / V - 1, that element (i, j, k)'s pores have been
+    /// crushed to; zero until it passes the crushing pressure while confined.
+    public func compaction(_ i: Int, _ j: Int, _ k: Int) -> Float {
+        stateValue(i, j, k, offset: 144)
     }
 
     /// Net force (N) that the elements around a node exerted on it in the last step. At a

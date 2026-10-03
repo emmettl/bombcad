@@ -21,6 +21,7 @@ robust and exactly reversible in the elastic range.
 | Tension after cracking      | Exponential softening, scaled by fracture energy                          |
 | Compression                 | Parabola to peak, linear softening to a 20% residual; permanent strain on unloading |
 | Confinement                 | Strength and ductility rise with lateral compression                      |
+| Compaction                  | Under high confined pressure the pores collapse; pressure follows the Holmquist–Johnson–Cook curve |
 | Shear across cracks         | Aggregate interlock, weakening with crack width; dowel action and kinking of the bars crossing |
 | Reinforcement               | Smeared bars along the lattice axes, multi-linear hardening, rupture; Bauschinger softening on reversal |
 | Strain rate                 | Published dynamic increase laws for concrete and steel                    |
@@ -136,6 +137,33 @@ the other two axes can supply, estimated elastically and capped at the unconfine
 concrete is far more ductile. K follows its target through a running average over 50 time
 steps: applied instantly, the coupling between axes is several times stiffer than the elastic
 solid and breaks the explicit time-step limit.
+
+## Compaction
+
+Concrete is about a tenth pores. Squeezed hard from all sides, as by the shock close to a
+charge, the pores collapse and the pressure keeps rising, where the strength laws above would
+level off at about five times f_c. So where an element is confined (every axis in compression,
+the least by at least a fifth of the most, as in the uniaxial strain of a shock), its mean
+stress is never less compressive than the pressure of the Holmquist–Johnson–Cook curve for its
+volumetric compression μ = V₀/V − 1:
+
+- elastic, p = K μ, up to the crushing pressure f_c / 3;
+- then the pores collapse, and p rises linearly to 0.8 GPa at μ = 0.1, keeping the largest
+  compaction reached: unloading is at the bulk modulus K from there, so crushed concrete keeps
+  a permanent compaction;
+- beyond μ = 0.1 it is fully dense: p = 0.8 GPa + K₁ m + K₂ m² + K₃ m³, m = (μ − 0.1)/1.1, with
+  K₁ = 85, K₂ = −171 and K₃ = 208 GPa.
+
+The pressure is added as a shift of the three normal stresses, so the shear strength still
+comes from the laws above. An element follows the curve from the moment its confined pressure
+first passes the crushing pressure. Under uniaxial strain to 12% a cube now carries 3 GPa,
+where before it levelled off at 150 MPa and was then removed as crushed; the slab test and a
+500 kg charge at 6 m are unchanged. No test with a charge close enough for it to matter has
+been run.
+
+Confinement is judged by stress, not strain: concrete squeezed from one side dilates as it
+crushes, which this model does not represent, so its volume change says nothing about its pores
+there, and counting it put spurious pressure into the slab's crushed compression zone.
 
 ## Shear across cracks
 
@@ -435,9 +463,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
    not a lack of damping. Cracked concrete still unloads and reloads along one line, so small
    cycles dissipate nothing in the concrete; only the bars have hysteresis.
-6. **Confinement is capped** at about five times the unconfined strength, and there is no
-   compaction of the pores. Concrete under the very high pressures close to a charge is beyond
-   the model's range.
+6. **Confined strength is capped** at about five times the unconfined strength; above it only
+   the compaction curve raises the pressure, so the strength does not grow with pressure as
+   in real concrete under triaxial load. The compaction curve's constants are for a 48 MPa
+   concrete and are used unscaled. Nothing close-in has been checked against a test.
 7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, bar buckling or
    lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
    the shear stress, mobilised as soon as a crack forms rather than over the first millimetre
@@ -470,7 +499,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   would add damping, though the slab suggests they are not the first-order problem.
 - **Bond slip**, so that bond governs crack spacing instead of its being assumed, and a bar's
   stress as well as its rupture is spread over its debonded length.
-- **Compaction** of the pores under very high pressure, for concrete close to a charge.
+- **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
+  Holmquist–Johnson–Cook and Karagozian & Case models) for concrete close to a charge, and a
+  close-in test to check it.
 - **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
 - **Masonry with joints.**
 
@@ -523,3 +554,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   *Journal of Engineering Mechanics* 124(8), 1998. The concrete damaged plasticity model, whose
   usual ratio of plastic to cracking strain in tension, about 0.1, is used for the residual
   crack opening. That value was taken from memory.
+- T. J. Holmquist, G. R. Johnson and W. H. Cook, "A computational constitutive model for
+  concrete subjected to large strains, high strain rates, and high pressures", 14th
+  International Symposium on Ballistics, Quebec, 1993. The compaction curve and its constants
+  (0.8 GPa and 0.1 at locking; K₁ = 85, K₂ = −171, K₃ = 208 GPa), which were written from
+  memory.
