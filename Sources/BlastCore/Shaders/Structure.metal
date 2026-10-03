@@ -38,9 +38,9 @@ struct StructureUniforms {
     float groundFriction;
     uint contactMode;  // 0 = off, 1 = once something has failed, 2 = always
     uint stamp;        // unique per substep; marks fresh entries in the contact grid
-    uint gridNx;
-    uint gridNy;
-    uint gridNz;
+    uint contactNx;  // the contact table wraps space every contactNx, Ny, Nz cells (powers of two)
+    uint contactNy;
+    uint contactNz;
     float gridOriginX;
     float gridOriginY;
     float gridOriginZ;
@@ -467,6 +467,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device uchar *materialIndex [[buffer(16)]],
                               device float4 *plasticOut [[buffer(17)]],
                               const device float4 *plasticBefore [[buffer(18)]],
+                              const device uint *cellElement [[buffer(19)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -474,12 +475,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     if (!active) {
         return;
     }
-    uint element = elementList[threadIndex];
+    // Element data is stored compactly, one entry per element the body started with, in the
+    // order of `elementList`; `element` is the lattice cell, which flags and neighbours use.
+    uint compact = threadIndex;
+    uint element = elementList[compact];
     if (flags[element] != elementActive) {
         return;
     }
     uint3 tid = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
-    uchar own = singleMaterial ? 0 : materialIndex[element];
+    uchar own = singleMaterial ? 0 : materialIndex[compact];
     constant MaterialParameters &m = materials[singleMaterial ? 0u : min(uint(own), maxMaterials - 1)];
 
     uint nodesX = u.ex + 1;
@@ -521,7 +525,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float volume = 8.0f * detJ;
     float referenceVolume = u.h * u.h * u.h;
 
-    ElementState state = states[element];
+    ElementState state = states[compact];
     bool eroded = volume < u.minVolumeRatio * referenceVolume;
 
     // Shape-function gradients b_a = J^-T xi_a / 8.
@@ -674,7 +678,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // of elements. Only elements already past the unconfined peak need the average.
         float3 softening = crush;
         if (m.crushRadius > 0) {
-            crushOut[element] = float4(crush, 0.0f);
+            crushOut[compact] = float4(crush, 0.0f);
             if (any(crush > m.crushPeak)) {
                 // The neighbourhood is sampled at no more than nine points along each axis, so
                 // the cost does not grow with refinement; up to a radius of four elements every
@@ -701,10 +705,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                             }
                             int other = x + dims.x * (y + dims.y * z);
                             uchar flag = flags[other];
+                            uint neighbour = cellElement[other];
                             // Crushing is averaged within one material only.
                             if ((flag == elementActive || flag == elementFailing)
-                                && (singleMaterial || materialIndex[other] == own)) {
-                                sum += crushBefore[other].xyz;
+                                && (singleMaterial || materialIndex[neighbour] == own)) {
+                                sum += crushBefore[neighbour].xyz;
                                 count += 1.0f;
                             }
                         }
@@ -772,7 +777,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
         // Smeared reinforcement: bars along the lattice axes, strained with the element. They
         // follow the measured curve while loaded one way, and the cyclic law once reversed.
-        float3 ratio = float3(steel[element].ratio);
+        float3 ratio = float3(steel[compact].ratio);
         float3 plastic = float3(state.steelPlastic);
         float3 intact = float3(0.0f);
         float steelCapacity = 0.0f;
@@ -804,7 +809,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 }
             } else {
                 float inelastic = plastic[j];
-                stress = cycleBar(bars[3 * element + uint(j)], fibre, inelastic, yield, slope * factor,
+                stress = cycleBar(bars[3 * compact + uint(j)], fibre, inelastic, yield, slope * factor,
                                   first * pow(rate, m.steelRateYield), m);
                 plastic[j] = inelastic;
             }
@@ -828,9 +833,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     }
                     int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
                     uchar flag = flags[other];
-                    float neighbour = plasticBefore[other][j];
+                    uint compactOther = cellElement[other];
+                    float neighbour = (flag == elementActive || flag == elementFailing)
+                        ? plasticBefore[compactOther][j] : 0.0f;
                     float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
-                    if ((flag == elementActive || flag == elementFailing) && steel[other].ratio[j] > 0.0f
+                    if ((flag == elementActive || flag == elementFailing) && steel[compactOther].ratio[j] > 0.0f
                         && fabs(neighbour) < 1e8f) {
                         sum += weight * neighbour;
                         weights += weight;
@@ -849,7 +856,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         state.steelPlastic = plastic;
         if (m.barReach > 0.0f) {
-            plasticOut[element] = float4(plastic, 0.0f);
+            plasticOut[compact] = float4(plastic, 0.0f);
         }
         bool anySteel = intact.x + intact.y + intact.z > 0.0f;
 
@@ -894,8 +901,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         for (uint mode = 0; mode < 4; ++mode) {
             state.hourglass[mode] = float3(0.0f);
         }
-        states[element] = state;
-        forces[element] = out;
+        states[compact] = state;
+        forces[compact] = out;
         return;
     }
     state.stress[0] = sxx;
@@ -1012,8 +1019,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
     }
 
-    states[element] = state;
-    forces[element] = out;
+    states[compact] = state;
+    forces[compact] = out;
 }
 
 static inline bool contactEnabled(constant StructureUniforms &u, const device uint *failureGate) {
@@ -1032,6 +1039,20 @@ static inline float3 nodePosition(uint index, const device StructureNode *nodes,
 // into a grid of element-sized cells, then each node pushes away from strangers in the 27 cells
 // around it. A cell's header packs the substep's stamp with a count of the slots in use, so
 // stale cells read as empty and the grid never needs clearing.
+// Contact cells are element-sized cubes over all of space, offset by half an element so that every
+// undeformed node sits in the middle of its own cell. They map into a table that wraps space
+// periodically, sized to the structure, so memory does not depend on how far debris travels;
+// neighbouring cells stay neighbours in memory, and only cells a whole period apart share an
+// entry and its slots.
+static inline int3 contactCell(float3 position, constant StructureUniforms &u) {
+    return int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
+}
+
+static inline uint contactBucket(int3 cell, constant StructureUniforms &u) {
+    uint3 wrapped = uint3(cell) & (uint3(u.contactNx, u.contactNy, u.contactNz) - 1u);
+    return wrapped.x + u.contactNx * (wrapped.y + u.contactNy * wrapped.z);
+}
+
 // The contact grid is filled in two passes, so that what a cell holds does not depend on the
 // order in which threads arrive. First every node marks its cell as current and empties it...
 kernel void contactClear(const device uint *nodeList [[buffer(0)]],
@@ -1049,13 +1070,9 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     }
     uint index = nodeList[threadIndex];
     float3 position = nodePosition(index, nodes, u);
-    int3 cell = int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
-    int3 dims = int3(u.gridNx, u.gridNy, u.gridNz);
-    if (any(cell < 0) || any(cell >= dims)) {
-        return;
-    }
+    int3 cell = contactCell(position, u);
     // Several nodes may write the same values here; that is harmless.
-    uint target = uint(cell.x + dims.x * (cell.y + dims.y * cell.z));
+    uint target = contactBucket(cell, u);
     heads[target] = u.stamp;
     for (uint slot = 0; slot < contactSlots; ++slot) {
         slots[target * contactSlots + slot] = emptySlot;
@@ -1080,12 +1097,8 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     }
     uint index = nodeList[threadIndex];
     float3 position = nodePosition(index, nodes, u);
-    int3 cell = int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
-    int3 dims = int3(u.gridNx, u.gridNy, u.gridNz);
-    if (any(cell < 0) || any(cell >= dims)) {
-        return;
-    }
-    uint target = uint(cell.x + dims.x * (cell.y + dims.y * cell.z));
+    int3 cell = contactCell(position, u);
+    uint target = contactBucket(cell, u);
     uint carried = index;
     for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
         uint held = atomic_fetch_min_explicit(&slots[target * contactSlots + slot], carried, memory_order_relaxed);
@@ -1114,17 +1127,13 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
     int nodesY = int(u.ey) + 1;
     int3 lattice = int3(int(index) % nodesX, (int(index) / nodesX) % nodesY, int(index) / (nodesX * nodesY));
 
-    int3 dims = int3(u.gridNx, u.gridNy, u.gridNz);
-    int3 cell = int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
+    int3 cell = contactCell(position, u);
     float3 force = float3(0.0f);
     for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
                 int3 c = cell + int3(dx, dy, dz);
-                if (any(c < 0) || any(c >= dims)) {
-                    continue;
-                }
-                uint target = uint(c.x + dims.x * (c.y + dims.y * c.z));
+                uint target = contactBucket(c, u);
                 if (heads[target] != u.stamp) {
                     continue;  // not touched this substep: whatever it holds is stale
                 }
@@ -1138,7 +1147,13 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     if (otherIndex == index) {
                         continue;
                     }
-                    float3 offset = position - nodePosition(otherIndex, nodes, u);
+                    float3 otherPosition = nodePosition(otherIndex, nodes, u);
+                    // An entry can hold nodes of other cells that hash to it; count each node only
+                    // when visiting its own cell.
+                    if (any(contactCell(otherPosition, u) != c)) {
+                        continue;
+                    }
+                    float3 offset = position - otherPosition;
                     float distance = length(offset);
                     if (distance >= u.h || distance < 1e-9f) {
                         continue;
@@ -1186,6 +1201,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device uint *nodeList [[buffer(5)]],
                            const device packed_float3 *contact [[buffer(6)]],
                            const device uint *failureGate [[buffer(7)]],
+                           const device uint *cellElement [[buffer(8)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -1214,7 +1230,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         }
         int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
         if (flags[element] == elementActive) {
-            force += float3(forces[element].force[a]);
+            force += float3(forces[cellElement[element]].force[a]);
         }
     }
 

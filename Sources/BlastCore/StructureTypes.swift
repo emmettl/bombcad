@@ -517,9 +517,9 @@ struct StructureUniforms {
     var groundFriction: Float
     var contactMode: UInt32 = 0
     var stamp: UInt32 = 0
-    var gridNx: UInt32 = 1
-    var gridNy: UInt32 = 1
-    var gridNz: UInt32 = 1
+    var contactNx: UInt32 = 1
+    var contactNy: UInt32 = 1
+    var contactNz: UInt32 = 1
     var gridOriginX: Float = 0
     var gridOriginY: Float = 0
     var gridOriginZ: Float = 0

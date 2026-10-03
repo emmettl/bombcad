@@ -14,9 +14,9 @@ power or thermal state; figures here are from cool runs.
 | Air blast, 8.4 million cells (0.25 m)               | 27×                   |
 | Air blast, 67 million cells (0.125 m)               | about 430×            |
 | A 225,000-element concrete building, alone          | 54×                   |
-| The same, once pieces are colliding                 | 87×                   |
+| The same, once pieces are colliding                 | 98×                   |
 | That building coupled to 1 million air cells        | 70×                   |
-| A 23,000-element frame collapsing                   | 7×                    |
+| A 23,000-element frame collapsing                   | 9×                    |
 
 "Real time" for a blast is not a useful target in itself: the event lasts a fraction of a
 second, and the app plays it back at 100× slow motion by default. The practical meaning of these
@@ -61,7 +61,7 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 | Mode                          | Steps/s | Element-updates/s | Slower than real time |
 |-------------------------------|---------|-------------------|-----------------------|
 | Before anything has failed    | 2,061   | 463 million       | 54×                   |
-| With contact running          | 1,270   | 285 million       | 87×                   |
+| With contact running          | 1,123   | 253 million       | 98×                   |
 
 - The explicit time step is set by the element size and the speed of sound in concrete, and it
   is what makes structures expensive: 110,000 steps per simulated second at this resolution.
@@ -79,9 +79,18 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   12%; compiling a specialised kernel for structures of one material recovers about half.
 - The residual crack opening and the cyclic steel law cost about 8%. The cyclic law's history
   is read only for bars that have yielded; reading it for every bar cost twice as much.
-- Memory is about 240 bytes per lattice cell, whether or not it holds an element, plus 96 with
-  reinforcement (the bars' cyclic history) and 32 with nonlocal crushing, plus the
-  contact grid at 20 bytes per cell of the surrounding space.
+- **Memory goes with the elements, not the lattice.** Element data (state, forces,
+  reinforcement and its histories) is stored once per element, about 380 bytes with
+  reinforcement; the lattice itself costs 5 bytes per cell (a flag and the cell's element
+  number) and 32 per node; and contacts use a table that wraps space periodically, sized to
+  about eight entries per node at 20 bytes each. The concrete building, 225,000 elements in a
+  1.4-million-cell lattice, takes 179 MB, where storing everything per lattice cell and a
+  dense contact grid around the structure took 640 MB. The coupled run's GPU memory falls
+  from 0.70 GB to 0.19 GB.
+- The wrapped contact table costs 10% of contact throughput against a dense grid (253 against
+  282 million element-updates per second), because cells a period apart share entries. A
+  scrambling hash with the same memory cost 38%, because it put neighbouring cells far apart in
+  memory.
 
 ## Coupled runs
 
@@ -110,7 +119,7 @@ swift run -c release blastbench snapshot --preset frame --time 3 --no-wave --out
 ```
 
 The two-storey frame (23,004 elements of 125 mm, 1.3 million air cells of 0.25 m, 250 kg):
-3 s simulated in 24 s. The air was frozen after 0.79 s, when five acoustic crossing times had
+3 s simulated in 26 s. The air was frozen after 0.79 s, when five acoustic crossing times had
 passed; from then on only the structure is advanced. Larger elements help twice over: fewer of
 them, and a time step twice as long.
 
@@ -137,6 +146,6 @@ batch of steps to keep the view fluid.
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
 | Idle substep dispatches in coupled runs           | Now sized from the last batch; indirect dispatch would remove the rest |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
-| Dense storage of a sparse structural lattice      | Compact storage indexed by element list                 |
+| Dense storage of nodes                            | Store nodes compactly too (32 bytes per lattice node now) |
 
 None of these has been done. The first two are the ones that would change what is feasible.

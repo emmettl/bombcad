@@ -89,10 +89,13 @@ resists compression and removing it too early destroys load paths.
 
 Once anything has failed, every node acts as a sphere one element across.
 
-1. Each substep, nodes are binned into a grid of element-sized cells covering the structure
-   and a few metres around it. A cell holds up to four nodes. Cells are tagged with the
-   substep's number, so the grid never needs clearing.
-2. Each node looks in the 27 cells around it and repels any node closer than one element with a
+1. Each substep, nodes are binned into element-sized cells of all space, which map into a
+   table that wraps periodically (its period is the structure's extent rounded up to a power of
+   two, shortened if need be to keep it near eight entries per node). An entry holds up to four
+   nodes, the lowest-numbered that arrive, whatever the thread timing; entries are tagged with
+   the substep's number, and only those touched are cleared.
+2. Each node looks in the 27 cells around it, ignoring nodes from other cells that share an
+   entry, and repels any node closer than one element with a
    penalty spring, a damper (30% of critical) and Coulomb friction (coefficient 0.5).
 3. The spring stiffness is a tenth of the stiffest spring the time step allows, based on the
    lighter of the two nodes, so contact never limits the time step.
@@ -161,8 +164,10 @@ shock.
    cell's velocity is the mean of its elements, so a spinning fragment smaller than a cell looks
    to the air like one moving in a straight line.
 4. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
-   overlap by up to an element, a crowded grid cell drops nodes beyond its four lowest-numbered, and
-   debris more than a few metres from the structure leaves the contact grid and the air's mask.
+   overlap by up to an element, and a crowded entry of the contact table drops nodes beyond its
+   four lowest-numbered. The table wraps space periodically, so debris anywhere still collides,
+   but cells a period apart share an entry and its four slots. Debris more than a few metres
+   from the structure leaves the air's mask.
 5. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
    the same machine, but a collapse amplifies small differences, so a slightly different input
    (a charge a centimetre away, a different batching of steps, a change to the model) gives a
