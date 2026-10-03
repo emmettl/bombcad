@@ -435,4 +435,19 @@ struct ShellTests {
         #expect(!plateau.isEmpty)
         return plateau.reduce(0, +) / Float(max(plateau.count, 1))
     }
+
+    @Test("The frame meshed with shells and beams carries its own weight")
+    func frameStandsUnderGravity() throws {
+        var model = try #require(ScenarioPreset.frame.scenario.structure)
+        model.elementKind = .shell
+        model.elementSize = 0.25
+        let solver = try ShellSolver(device: device, model: model)
+        #expect(solver.tieCount > 0)
+        solver.advance(steps: Int(1.0 / solver.criticalTimeStep))
+        let summary = solver.summary()
+        #expect(summary.erodedElements == 0)
+        #expect(
+            summary.maxDisplacement > 1e-4 && summary.maxDisplacement < 0.02,
+            "sag \(summary.maxDisplacement) m")
+    }
 }

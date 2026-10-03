@@ -49,10 +49,20 @@ struct ShellUniforms {
     float contactFriction;
     float neighbourDistance;  // nodes that start closer than this never repel
     uint beamCount;
-    uint padding0;
+    float elementSize;  // nominal, for the removal width (`erosionStrain` is per element size)
     uint padding1;
     uint padding2;
 };
+
+// Slip through the thickness at which concrete cracked across a plane fails in direct shear:
+// the removal width where no intact bars cross the plane; where they do, the slip at which the
+// bars, kinking across the crack over their debonded length, reach their rupture strain.
+static inline float slipLimit(bool bars, constant MaterialParameters &m, constant ShellUniforms &u) {
+    if (bars && m.steelPoints > 0) {
+        return sqrt(2.0f * m.steelStrain[m.steelPoints - 1]) * m.crackBand;
+    }
+    return m.erosionStrain * u.elementSize;
+}
 
 struct BeamElement {
     uint node[2];
@@ -104,6 +114,9 @@ struct ShellNode {
 };
 
 constant uint shellRotationHeld = 64u;
+// A node tied rigidly to another (a slab node within a column's footprint): it is moved with
+// the other, which takes its forces.
+constant uint shellTied = 128u;
 
 // State of one layer at one of the four in-plane points (or one fibre of a beam), as stored:
 // 20 bytes. The strain-rate average and the frozen tensile factor need only half precision.
@@ -204,8 +217,7 @@ static inline float shellOverpressure(float3 point, float3 normal, float halfThi
 // What a layer reports besides its stresses.
 struct LayerOutcome {
     float2 torn;      // per in-plane axis: 1 where the crack across that axis is wide enough to remove
-    float2 slid;      // per in-plane axis: 1 where the layer is cracked across it and has slipped
-                      // through the thickness by the removal width
+    float2 slid;      // per in-plane axis: 1 where the layer is cracked across it
     bool destroyed;   // crushed through, or cracked wide enough to remove, whatever the bars do
     bool failed;      // von Mises: past its failure strain
     bool open;        // cracked wider than the hard limit that removes it whatever bridges it
@@ -319,7 +331,7 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
 
     outcome.torn = float2(history.x >= m.erosionStrain ? 1.0f : 0.0f, history.y >= m.erosionStrain ? 1.0f : 0.0f);
     for (int j = 0; j < 2; ++j) {
-        outcome.slid[j] = history[j] > onset && fabs(transverse[j]) >= m.erosionStrain ? 1.0f : 0.0f;
+        outcome.slid[j] = history[j] > onset ? 1.0f : 0.0f;
     }
     outcome.destroyed = pulverised || crack >= m.erosionStrain;
     outcome.open = crack > max(1.0f, 3.0f * m.erosionStrain);
@@ -681,10 +693,11 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         // with no bars left at all, and any crack past the hard limit.
         bool torn = (tornEverywhere.x > 0.0f && barsIntact.x == 0.0f) || (tornEverywhere.y > 0.0f && barsIntact.y == 0.0f);
         bool bare = !anyBars || (barsIntact.x + barsIntact.y == 0.0f);
-        // Concrete cracked through its thickness and slipped across the crack by the removal
-        // width fails in direct shear, whatever bars cross it: in-plane bars give a shell no
-        // dowel action.
-        bool slid = slidEverywhere.x > 0.0f || slidEverywhere.y > 0.0f;
+        // Concrete cracked through its thickness fails in direct shear once it has slipped
+        // through the thickness, over the element's own length, by the slip limit.
+        float2 slip = abs(transverse) * float2(a, b);
+        bool slid = (slidEverywhere.x > 0.0f && slip.x >= slipLimit(barsIntact.x > 0.0f, m, u))
+            || (slidEverywhere.y > 0.0f && slip.y >= slipLimit(barsIntact.y > 0.0f, m, u));
         remove = remove || torn || slid || (destroyedEverywhere && bare) || openEverywhere;
 
         float tieWeight[4] = {0.5f * (1.0f - p.y), 0.5f * (1.0f + p.y), 0.5f * (1.0f - p.x), 0.5f * (1.0f + p.x)};
@@ -696,6 +709,10 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float3 f1m = e1 + h1m;
         float3 f2m = e2 + h2m;
         float3 areaVector = cross(f1m, f2m) * areaWeight;
+        // An element crushed to a quarter of its area, or turned inside out, is removed: it would
+        // otherwise outrun the time step, which is set by the undeformed mesh.
+        float stretch = dot(cross(f1m, f2m), normalize(normal + 0.25f * (offset[0] + offset[1] + offset[2] + offset[3])));
+        remove = remove || stretch < 0.25f;
         float3 load = float3(0.0f);
         if (u.coupled != 0) {
             float3 unit = normalize(areaVector);
@@ -774,6 +791,13 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
 // periodically. Each entry keeps the four lowest-numbered nodes that arrive, whatever the
 // thread timing, so runs repeat exactly. Nodes that began close together (within about an
 // element) never repel: while joined their elements hold them apart.
+constant float shellContactKick = 2.0f;  // m/s
+// Pieces in contact are pushed apart no faster than this; see `shellContactForces`.
+constant float shellSeparationLimit = 1.0f;  // m/s
+// Nodes kept in each entry of the shell contact table; debris piles up more densely on shell
+// meshes, whose cells are an element (250 mm) across.
+constant uint shellContactSlots = 8;
+
 static inline bool shellContactEnabled(constant ShellUniforms &u, const device uint *failureGate) {
     return u.contactMode == 2 || (u.contactMode == 1 && failureGate[0] != 0);
 }
@@ -802,8 +826,8 @@ kernel void shellContactClear(const device ShellNode *nodes [[buffer(0)]],
     }
     uint target = shellContactBucket(shellContactCell(reference[n].xyz + float3(nodes[n].displacement), u), u);
     heads[target] = u.stamp;
-    for (uint slot = 0; slot < contactSlots; ++slot) {
-        slots[target * contactSlots + slot] = emptySlot;
+    for (uint slot = 0; slot < shellContactSlots; ++slot) {
+        slots[target * shellContactSlots + slot] = emptySlot;
     }
 }
 
@@ -821,8 +845,8 @@ kernel void shellContactHash(const device ShellNode *nodes [[buffer(0)]],
     }
     uint target = shellContactBucket(shellContactCell(reference[n].xyz + float3(nodes[n].displacement), u), u);
     uint carried = n;
-    for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
-        uint held = atomic_fetch_min_explicit(&slots[target * contactSlots + slot], carried, memory_order_relaxed);
+    for (uint slot = 0; slot < shellContactSlots && carried != emptySlot; ++slot) {
+        uint held = atomic_fetch_min_explicit(&slots[target * shellContactSlots + slot], carried, memory_order_relaxed);
         carried = max(held, carried);
     }
 }
@@ -837,7 +861,7 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                                device packed_float3 *contact [[buffer(7)]],
                                uint n [[thread_position_in_grid]]) {
     bool active;
-    shellStep(u, control, active);
+    float dt = shellStep(u, control, active);
     if (!active || n >= u.nodeCount || !shellContactEnabled(u, failureGate)) {
         return;
     }
@@ -847,6 +871,18 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
     int3 cell = shellContactCell(position, u);
     float radius = u.contactRadius;
     float3 force = float3(0.0f);
+    // A node that its own crowded entry dropped is invisible to the others this step, so it must
+    // not push them either: then every pair sees each other or neither does, the forces between
+    // them are equal and opposite, and contact cannot pump momentum into a pile of debris.
+    uint own = shellContactBucket(cell, u);
+    bool listed = false;
+    for (uint slot = 0; slot < shellContactSlots; ++slot) {
+        listed = listed || slots[own * shellContactSlots + slot] == n;
+    }
+    if (!listed) {
+        contact[n] = float3(0.0f);
+        return;
+    }
     for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
@@ -855,8 +891,8 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                 if (heads[target] != u.stamp) {
                     continue;
                 }
-                for (uint slot = 0; slot < contactSlots; ++slot) {
-                    uint other = slots[target * contactSlots + slot];
+                for (uint slot = 0; slot < shellContactSlots; ++slot) {
+                    uint other = slots[target * shellContactSlots + slot];
                     if (other == emptySlot) {
                         break;
                     }
@@ -883,7 +919,13 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                     float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
                     float3 relative = float3(node.velocity) - float3(partner.velocity);
                     float approach = dot(relative, normal);
-                    float push = max(stiffness * (radius - gap) - damping * approach, 0.0f);
+                    // A penalty spring stores energy in its overlap. Nodes that were hidden from
+                    // each other in a crowded entry can meet already deeply overlapped, and the
+                    // spring would then fling them apart at hundreds of metres a second. So once
+                    // a pair is separating faster than `shellSeparationLimit` it is not pushed
+                    // further: contact stops pieces and keeps them apart, but never throws them.
+                    float push = approach > shellSeparationLimit
+                        ? 0.0f : max(stiffness * (radius - gap) - damping * approach, 0.0f);
                     force += push * normal;
                     float3 sliding = relative - approach * normal;
                     float speed = length(sliding);
@@ -893,6 +935,15 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                 }
             }
         }
+    }
+    // Contact may change a node's velocity by at most `shellContactKick` in one step. Pieces
+    // meeting at tens of metres a second are still stopped within a few steps, but nodes that
+    // already overlap deeply (a crowded entry of the table hides some until then) are eased
+    // apart instead of being shot off at hundreds of metres a second.
+    float largest = node.mass * shellContactKick / max(dt, 1e-12f);
+    float size = length(force);
+    if (size > largest) {
+        force *= largest / size;
     }
     contact[n] = force;
 }
@@ -952,7 +1003,7 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
         }
     }
     outcome.torn = float2(history >= m.erosionStrain ? 1.0f : 0.0f, 0.0f);
-    outcome.slid = float2(history > onset && magnitude >= m.erosionStrain ? 1.0f : 0.0f, 0.0f);
+    outcome.slid = float2(history > onset ? 1.0f : 0.0f, 0.0f);
     outcome.destroyed = pulverised || history >= m.erosionStrain;
     outcome.open = history > max(1.0f, 3.0f * m.erosionStrain);
     outcome.failed = false;
@@ -1132,7 +1183,12 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             q3 += zeta * t;
         }
     }
-    bool remove = failed || (tornAll && !barsIntact) || slidAll || (removeAll && !barsIntact) || openAll;
+    // A beam shortened to half its length is removed, as a crushed shell is.
+    bool crushedFlat = length(e1 + hm) < 0.5f;
+    // Direct shear: the section cracked through and slipped across the crack by the slip limit.
+    float2 shearStrain = float2(hm[i2] + delta2[k] + dot(hm, delta2), hm[i3] + delta3[k] + dot(hm, delta3));
+    bool slid = slidAll && length(shearStrain) * L >= slipLimit(barsIntact, m, u);
+    bool remove = failed || (tornAll && !barsIntact) || slid || (removeAll && !barsIntact) || openAll || crushedFlat;
 
     // Air pressure on the four sides.
     float3 load[2] = {float3(0.0f), float3(0.0f)};
@@ -1174,32 +1230,12 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     forces[e] = out;
 }
 
-static inline float4 quaternionProduct(float4 p, float4 q) {
-    return float4(p.w * q.xyz + q.w * p.xyz + cross(p.xyz, q.xyz), p.w * q.w - dot(p.xyz, q.xyz));
-}
-
-// Gathers the forces and moments of the elements around every node and advances its motion.
-kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
-                       const device ShellForces *forces [[buffer(1)]],
-                       device uchar *flags [[buffer(2)]],
-                       const device uint *incidenceStart [[buffer(3)]],
-                       const device uint *incidence [[buffer(4)]],
-                       const device float4 *reference [[buffer(5)]],
-                       constant ShellUniforms &u [[buffer(6)]],
-                       const device StepControl &control [[buffer(7)]],
-                       const device packed_float3 *contact [[buffer(8)]],
-                       const device uint *failureGate [[buffer(9)]],
-                       const device BeamForces *beamForces [[buffer(10)]],
-                       device uchar *beamFlags [[buffer(11)]],
-                       uint n [[thread_position_in_grid]]) {
-    bool active;
-    float dt = shellStep(u, control, active);
-    if (!active || n >= u.nodeCount) {
-        return;
-    }
-    ShellNode node = nodes[n];
-    float3 force = float3(0.0f);
-    float3 moment = float3(0.0f);
+// The forces and moments of the intact elements around node n, and its contact force.
+static inline void gatherNode(uint n, const device ShellForces *forces, device uchar *flags,
+                              const device uint *incidenceStart, const device uint *incidence,
+                              const device BeamForces *beamForces, device uchar *beamFlags,
+                              const device packed_float3 *contact, constant ShellUniforms &u,
+                              const device uint *failureGate, thread float3 &force, thread float3 &moment) {
     for (uint i = incidenceStart[n]; i < incidenceStart[n + 1]; ++i) {
         if ((incidence[i] & beamIncidence) != 0) {
             uint beam = (incidence[i] & ~beamIncidence) >> 2;
@@ -1228,6 +1264,53 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     }
     if (shellContactEnabled(u, failureGate)) {
         force += float3(contact[n]);
+    }
+}
+
+static inline float4 quaternionProduct(float4 p, float4 q) {
+    return float4(p.w * q.xyz + q.w * p.xyz + cross(p.xyz, q.xyz), p.w * q.w - dot(p.xyz, q.xyz));
+}
+
+// Gathers the forces and moments of the elements around every node and advances its motion.
+kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
+                       const device ShellForces *forces [[buffer(1)]],
+                       device uchar *flags [[buffer(2)]],
+                       const device uint *incidenceStart [[buffer(3)]],
+                       const device uint *incidence [[buffer(4)]],
+                       const device float4 *reference [[buffer(5)]],
+                       constant ShellUniforms &u [[buffer(6)]],
+                       const device StepControl &control [[buffer(7)]],
+                       const device packed_float3 *contact [[buffer(8)]],
+                       const device uint *failureGate [[buffer(9)]],
+                       const device BeamForces *beamForces [[buffer(10)]],
+                       device uchar *beamFlags [[buffer(11)]],
+                       const device uint *tiedStart [[buffer(12)]],
+                       const device uint *tied [[buffer(13)]],
+                       uint n [[thread_position_in_grid]]) {
+    bool active;
+    float dt = shellStep(u, control, active);
+    if (!active || n >= u.nodeCount) {
+        return;
+    }
+    ShellNode node = nodes[n];
+    if ((node.flags & shellTied) != 0) {
+        return;  // moved by the node it is tied to
+    }
+    float3 force = float3(0.0f);
+    float3 moment = float3(0.0f);
+    gatherNode(n, forces, flags, incidenceStart, incidence, beamForces, beamFlags, contact, u, failureGate, force,
+               moment);
+    // The nodes tied to this one hand over their forces, with the moments of those forces about it.
+    float3 position = reference[n].xyz + float3(node.displacement);
+    for (uint i = tiedStart[n]; i < tiedStart[n + 1]; ++i) {
+        uint other = tied[i];
+        float3 tiedForce = float3(0.0f);
+        float3 tiedMoment = float3(0.0f);
+        gatherNode(other, forces, flags, incidenceStart, incidence, beamForces, beamFlags, contact, u, failureGate,
+                   tiedForce, tiedMoment);
+        float3 arm = reference[other].xyz + float3(nodes[other].displacement) - position;
+        force += tiedForce;
+        moment += tiedMoment + cross(arm, tiedForce);
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
@@ -1390,4 +1473,32 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
             }
         }
     }
+}
+
+// After the node pass, every tied node is put where the node it is tied to carries it: its
+// reference offset from that node turned by that node's rotation, moving with its velocity and
+// spin.
+kernel void shellTies(device ShellNode *nodes [[buffer(0)]],
+                      const device float4 *reference [[buffer(1)]],
+                      const device uint2 *ties [[buffer(2)]],
+                      constant uint &tieCount [[buffer(3)]],
+                      constant ShellUniforms &u [[buffer(4)]],
+                      const device StepControl &control [[buffer(5)]],
+                      uint i [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || i >= tieCount) {
+        return;
+    }
+    uint2 tie = ties[i];
+    ShellNode master = nodes[tie.y];
+    ShellNode slave = nodes[tie.x];
+    float3 offset = reference[tie.x].xyz - reference[tie.y].xyz;
+    float3 shift = rotationOffset(master.rotation, offset);
+    float3 turned = offset + shift;
+    slave.displacement = float3(master.displacement) + shift;
+    slave.velocity = float3(master.velocity) + cross(float3(master.spin), turned);
+    slave.spin = master.spin;
+    slave.rotation = master.rotation;
+    nodes[tie.x] = slave;
 }

@@ -46,6 +46,10 @@ struct ShellMesh {
     var positions: [SIMD3<Float>] = []
     var elements: [Element] = []
     var beams: [Beam] = []
+    /// Nodes tied rigidly to another: the slab nodes within a column's footprint, tied to the
+    /// column's node where it meets the slab, so that the column bears on the slab over its whole
+    /// section instead of at one point.
+    var ties: [(slave: UInt32, master: UInt32)] = []
     /// Breakpoints along each axis.
     var grid: [[Float]] = [[], [], []]
 
@@ -169,13 +173,18 @@ struct ShellMesh {
             // flush with a column's face would otherwise leave a sliver of elements, and a time
             // step to match); parallel plates never merge.
             for column in columns where column.axis != k { offer(column.centre[k], spacing: 0.5 * size) }
+            // Column faces, so that slabs have nodes around a column's footprint to tie to it.
+            for column in columns where column.axis != k {
+                offer(column.box.min[k], spacing: 0.5 * size + tolerance)
+                offer(column.box.max[k], spacing: 0.5 * size + tolerance)
+            }
             for column in columns where column.axis == k {
-                offer(column.low, spacing: 0.5 * size)
-                offer(column.high, spacing: 0.5 * size)
+                offer(column.low, spacing: 0.5 * size + tolerance)
+                offer(column.high, spacing: 0.5 * size + tolerance)
             }
             for plate in plates where plate.axis != k {
-                offer(plate.low[k], spacing: 0.5 * size)
-                offer(plate.high[k], spacing: 0.5 * size)
+                offer(plate.low[k], spacing: 0.5 * size + tolerance)
+                offer(plate.high[k], spacing: 0.5 * size + tolerance)
             }
             for opening in model.openings {
                 let cuts = plates.contains { plate in
@@ -185,8 +194,8 @@ struct ShellMesh {
                         }
                 }
                 if cuts {
-                    offer(opening.min[k], spacing: 0.5 * size)
-                    offer(opening.max[k], spacing: 0.5 * size)
+                    offer(opening.min[k], spacing: 0.5 * size + tolerance)
+                    offer(opening.max[k], spacing: 0.5 * size + tolerance)
                 }
             }
             kept.sort()
@@ -313,6 +322,37 @@ struct ShellMesh {
                     Beam(
                         nodes: SIMD2(node(lower), node(upper)), axis: k, material: material, section: section,
                         length: grid[k][w + 1] - grid[k][w], bars: bars, tieRatio: ties, solid: column.solid))
+            }
+        }
+        // Column heads: where a column meets a slab, the slab's nodes within the column's footprint
+        // are tied to the column's node there.
+        var tied = Set<UInt32>()
+        let masters = Set(beams.flatMap { [$0.nodes.x, $0.nodes.y] })
+        for column in columns {
+            let k = column.axis
+            let first = (k + 1) % 3
+            let second = (k + 2) % 3
+            let half = 0.5 * SIMD2(column.box.size[first], column.box.size[second]) + tolerance
+            let ends = Set(
+                beams.filter { $0.solid == column.solid }.flatMap { [$0.nodes.x, $0.nodes.y] })
+            for master in ends {
+                let level = positions[Int(master)][k]
+                guard
+                    plates.contains(where: {
+                        $0.axis == k && abs(grid[k][nearest($0.mid, k)] - level) < tolerance
+                    })
+                else { continue }
+                let centre = positions[Int(master)]
+                for (n, position) in positions.enumerated() {
+                    let node = UInt32(n)
+                    guard node != master, !masters.contains(node), !tied.contains(node),
+                        abs(position[k] - level) < tolerance,
+                        abs(position[first] - centre[first]) <= half.x,
+                        abs(position[second] - centre[second]) <= half.y
+                    else { continue }
+                    ties.append((node, master))
+                    tied.insert(node)
+                }
             }
         }
         for (key, index) in claimed {

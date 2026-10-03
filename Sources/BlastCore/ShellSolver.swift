@@ -40,7 +40,7 @@ struct ShellUniforms {
     var contactFriction: Float = 0
     var neighbourDistance: Float = 0
     var beamCount: UInt32 = 0
-    var padding0: UInt32 = 0
+    var elementSize: Float = 0
     var padding1: UInt32 = 0
     var padding2: UInt32 = 0
 }
@@ -200,6 +200,12 @@ public final class ShellSolver {
     /// while the other, from the substep before, is read, so that rupture can be judged over a
     /// debonded length.
     private let barPlasticBuffers: [MTLBuffer]
+    private let tiedStartBuffer: MTLBuffer
+    private let tiedBuffer: MTLBuffer
+    private let tieBuffer: MTLBuffer
+    private let tiePipeline: MTLComputePipelineState
+    /// Nodes tied rigidly to a column's node at a slab.
+    public var tieCount: Int { mesh.ties.count }
     private let incidenceStartBuffer: MTLBuffer
     private let incidenceBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
@@ -262,6 +268,7 @@ public final class ShellSolver {
         elementPipeline = try pipeline("shellElements")
         beamPipeline = try pipeline("beamElements")
         nodePipeline = try pipeline("shellNodes")
+        tiePipeline = try pipeline("shellTies")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
@@ -320,7 +327,7 @@ public final class ShellSolver {
         contactPeriod = period
         let tableEntries = period.x * period.y * period.z
         contactHeadBuffer = try buffer(tableEntries * 4, "shell contact headers")
-        contactSlotBuffer = try buffer(tableEntries * 16, "shell contact slots")
+        contactSlotBuffer = try buffer(tableEntries * 32, "shell contact slots")
         contactForceBuffer = try buffer(nodes * 12, "shell contact forces")
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
@@ -370,6 +377,30 @@ public final class ShellSolver {
             entries += list
             starts.append(UInt32(entries.count))
         }
+        var tiedLists = [[UInt32]](repeating: [], count: nodes)
+        for tie in mesh.ties { tiedLists[Int(tie.master)].append(tie.slave) }
+        var tiedStarts: [UInt32] = [0]
+        var tiedEntries: [UInt32] = []
+        for list in tiedLists {
+            tiedEntries += list
+            tiedStarts.append(UInt32(tiedEntries.count))
+        }
+        let tiedStartStorage = try buffer(tiedStarts.count * 4, "shell tied starts")
+        let tiedStorage = try buffer(tiedEntries.count * 4, "shell tied nodes")
+        tiedStarts.withUnsafeBytes {
+            tiedStartStorage.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count)
+        }
+        tiedEntries.withUnsafeBytes { bytes in
+            if let base = bytes.baseAddress, !bytes.isEmpty {
+                tiedStorage.contents().copyMemory(from: base, byteCount: bytes.count)
+            }
+        }
+        tiedStartBuffer = tiedStartStorage
+        tiedBuffer = tiedStorage
+        tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
+        let tiePairs = tieBuffer.contents().bindMemory(
+            to: SIMD2<UInt32>.self, capacity: max(mesh.ties.count, 1))
+        for (n, tie) in mesh.ties.enumerated() { tiePairs[n] = SIMD2(tie.slave, tie.master) }
         incidenceStartBuffer = try buffer(starts.count * 4, "shell incidence starts")
         incidenceBuffer = try buffer(entries.count * 4, "shell incidence")
         starts.withUnsafeBytes {
@@ -429,6 +460,15 @@ public final class ShellSolver {
                 for n in nodes.indices where abs(mesh.positions[n].z) < 1e-4 {
                     nodes[n].isClamped = true
                 }
+            }
+            // A tied node's mass and inertia move with the node it is tied to.
+            for tie in mesh.ties {
+                let slave = Int(tie.slave)
+                let master = Int(tie.master)
+                let arm = simd_length_squared(mesh.positions[slave] - mesh.positions[master])
+                nodes[master].mass += nodes[slave].mass
+                nodes[master].inertia += nodes[slave].inertia + nodes[slave].mass * arm
+                nodes[slave].flags |= 128
             }
         }
     }
@@ -533,7 +573,10 @@ public final class ShellSolver {
     public func momentum() -> SIMD3<Double> {
         var total = SIMD3<Double>.zero
         mutateNodes { nodes in
-            for node in nodes { total += SIMD3<Double>(node.velocity) * Double(node.mass) }
+            // Tied nodes' mass is counted in the nodes they are tied to.
+            for node in nodes where node.flags & 128 == 0 {
+                total += SIMD3<Double>(node.velocity) * Double(node.mass)
+            }
         }
         return total
     }
@@ -542,7 +585,7 @@ public final class ShellSolver {
     public func kineticEnergy() -> Double {
         var total = 0.0
         mutateNodes { nodes in
-            for node in nodes {
+            for node in nodes where node.flags & 128 == 0 {
                 total += 0.5 * Double(node.mass) * Double(simd_length_squared(node.velocity))
                 total += 0.5 * Double(node.inertia) * Double(simd_length_squared(node.spin))
             }
@@ -718,8 +761,22 @@ public final class ShellSolver {
             encoder.setBuffer(failureGateBuffer, offset: 0, index: 9)
             encoder.setBuffer(beamForceBuffer, offset: 0, index: 10)
             encoder.setBuffer(beamFlagBuffer, offset: 0, index: 11)
+            encoder.setBuffer(tiedStartBuffer, offset: 0, index: 12)
+            encoder.setBuffer(tiedBuffer, offset: 0, index: 13)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if !mesh.ties.isEmpty {
+                var ties = UInt32(mesh.ties.count)
+                encoder.setComputePipelineState(tiePipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
+                encoder.setBuffer(tieBuffer, offset: 0, index: 2)
+                encoder.setBytes(&ties, length: 4, index: 3)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 4)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 5)
+                encoder.dispatchThreads(
+                    MTLSize(width: mesh.ties.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
         }
     }
 
@@ -773,6 +830,7 @@ public final class ShellSolver {
         var uniforms = ShellUniforms()
         uniforms.elementCount = UInt32(elementCount)
         uniforms.beamCount = UInt32(beamCount)
+        uniforms.elementSize = model.elementSize
         uniforms.nodeCount = UInt32(nodeCount)
         uniforms.layers = UInt32(layers)
         uniforms.barSlots = UInt32(barSlots)
