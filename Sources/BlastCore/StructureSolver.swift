@@ -17,6 +17,13 @@ public final class StructureSolver {
         public var grid: Grid
         public var gamma: Float
         public var ambientPressure: Float
+        /// Where loose debris returns to the air what it takes from it: four `Int32` per air cell
+        /// of `exchangeRegion`. Without it, debris is not loaded by the air.
+        public var exchange: MTLBuffer?
+        /// The frontal area of the loose debris in each air cell of `exchangeRegion`, one `Int32`
+        /// each, summed before the substeps and cleared after.
+        public var debrisArea: MTLBuffer?
+        public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
     }
 
     static let stateStride = 136
@@ -106,6 +113,7 @@ public final class StructureSolver {
     private let contactClearPipeline: MTLComputePipelineState
     private let contactHashPipeline: MTLComputePipelineState
     private let contactForcePipeline: MTLComputePipelineState
+    private let debrisAreaPipeline: MTLComputePipelineState
     /// Contact table over element-sized cells of all space, wrapping periodically: a header per
     /// entry, and four node slots per entry.
     private let contactHeadBuffer: MTLBuffer
@@ -160,6 +168,7 @@ public final class StructureSolver {
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")
         contactForcePipeline = try pipeline("contactForces")
+        debrisAreaPipeline = try pipeline("debrisAreas")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -569,6 +578,22 @@ public final class StructureSolver {
         // left out; they join in from the first batch encoded after a failure.
         let encodeContact = contactMode == .always || (contactMode == .afterFailure && hasFailed)
 
+        // Loose debris adds up its frontal area in each air cell before the substeps, for the
+        // implicit form of its drag. There is none until something has failed.
+        if uniforms.debrisDensity > 0, hasFailed, let fluid, let area = fluid.debrisArea {
+            encoder.setComputePipelineState(debrisAreaPipeline)
+            encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+            encoder.setBuffer(flagBuffer, offset: 0, index: 1)
+            encoder.setBuffer(fluid.control, offset: 0, index: 2)
+            encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 3)
+            encoder.setBuffer(nodeListBuffer, offset: 0, index: 4)
+            encoder.setBuffer(fluid.mask, offset: 0, index: 5)
+            encoder.setBuffer(area, offset: 0, index: 6)
+            encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
+            encoder.dispatchThreads(
+                MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+        }
+
         for substep in 0..<count {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
@@ -633,6 +658,8 @@ public final class StructureSolver {
             encoder.setBuffer(cellElementBuffer, offset: 0, index: 8)
             encoder.setBuffer(fluid?.state ?? placeholderBuffer, offset: 0, index: 9)
             encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 10)
+            encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 11)
+            encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 12)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
@@ -683,8 +710,17 @@ public final class StructureSolver {
         }
         if let fluid {
             uniforms.coupled = 1
-            // Debris stands for solid of the structure's main material.
-            uniforms.debrisDensity = debrisDrag ? model.material.density : 0
+            // Debris stands for solid of the structure's main material, and is loaded only where
+            // the air can be given the reaction.
+            if debrisDrag, fluid.exchange != nil, fluid.debrisArea != nil, let region = fluid.exchangeRegion {
+                uniforms.debrisDensity = model.material.density
+                uniforms.exchangeX = Int32(region.origin.x)
+                uniforms.exchangeY = Int32(region.origin.y)
+                uniforms.exchangeZ = Int32(region.origin.z)
+                uniforms.exchangeNx = Int32(region.dims.x)
+                uniforms.exchangeNy = Int32(region.dims.y)
+                uniforms.exchangeNz = Int32(region.dims.z)
+            }
             uniforms.ambientPressure = fluid.ambientPressure
             uniforms.fluidGamma = fluid.gamma
             uniforms.fluidCell = fluid.grid.cellSize

@@ -52,7 +52,24 @@ struct StructureUniforms {
     uint loadCount;  // entries in the applied-pressure table; 0 = none
     uint loadFace;   // 2 * axis + side of the element faces the pressure acts on
     float debrisDensity;  // > 0: loose debris is pushed by the air, as solid of this density
+    // Air cells around the structure in which debris and air exchange momentum and energy.
+    int exchangeX;
+    int exchangeY;
+    int exchangeZ;
+    int exchangeNx;
+    int exchangeNy;
+    int exchangeNz;
 };
+
+// What loose debris takes from the air is summed per air cell in fixed point, so that the
+// GPU's integer atomics give the same total whatever order the nodes arrive in. The sums are
+// per cubic metre of the cell: momentum in steps of 2^-16 kg/(m^2 s) and energy in steps of
+// 2^-8 J/m^3. The frontal area of the debris in each cell, per cubic metre, is summed the
+// same way, in steps of 2^-16 per metre.
+constant float exchangeMomentumScale = 65536.0f;
+constant float exchangeEnergyScale = 256.0f;
+constant float exchangeAreaScale = 65536.0f;
+constant uint exchangeStride = 4;
 
 // Properties of one material, as the element kernel needs them. A structure can have up to
 // `maxMaterials`, each element naming its own. Layout matches `MaterialParameters` in
@@ -1048,17 +1065,67 @@ static inline float3 nodePosition(uint compact, const device uint *nodeList, con
 // Force of the air on a loose node of debris: the pressure gradient across the solid it stands
 // for (its mass over the solid's density), plus drag on it as a cube in the relative wind with a
 // drag coefficient of one. The air does not feel the reaction.
-static inline float3 debrisAirForce(float3 position, float3 velocity, float mass, const device Cell *fluid,
-                                    const device uchar *fluidMask, constant StructureUniforms &u) {
+// The air cell, numbered within the exchange region, in which a loose node is loaded by the
+// air, or -1 if it is not: outside the region, where the air could not be given the reaction,
+// or in a solid cell.
+static inline int debrisCell(float3 position, const device uchar *fluidMask, constant StructureUniforms &u) {
     int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
     int3 cell = int3(floor(position / u.fluidCell));
-    if (any(cell < 0) || any(cell >= dims)) {
+    int3 local = cell - int3(u.exchangeX, u.exchangeY, u.exchangeZ);
+    int3 region = int3(u.exchangeNx, u.exchangeNy, u.exchangeNz);
+    if (any(cell < 0) || any(cell >= dims) || any(local < 0) || any(local >= region)) {
+        return -1;
+    }
+    if (fluidMask[cell.x + dims.x * (cell.y + dims.y * cell.z)] != 0) {
+        return -1;
+    }
+    return local.x + region.x * (local.y + region.y * local.z);
+}
+
+// Before each air step's substeps, every loose node adds its frontal area to its air cell.
+kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
+                        const device uchar *flags [[buffer(1)]],
+                        const device StepControl &control [[buffer(2)]],
+                        constant StructureUniforms &u [[buffer(3)]],
+                        const device uint *nodeList [[buffer(4)]],
+                        const device uchar *fluidMask [[buffer(5)]],
+                        device atomic_int *area [[buffer(6)]],
+                        const device uint *failureGate [[buffer(7)]],
+                        uint threadIndex [[thread_position_in_grid]]) {
+    if (control.dt <= 0.0f || failureGate[0] == 0) {
+        return;
+    }
+    StructureNode node = nodes[threadIndex];
+    if (node.mass <= 0.0f || (node.flags & nodeBuried) != 0) {
+        return;
+    }
+    uint3 tid = latticeNode(nodeList[threadIndex], u);
+    int3 dims = int3(u.ex, u.ey, u.ez);
+    for (uint a = 0; a < 8; ++a) {
+        int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
+        if (all(cell >= 0) && all(cell < dims) && flags[cell.x + dims.x * (cell.y + dims.y * cell.z)] == elementActive) {
+            return;
+        }
+    }
+    int exchangeCell = debrisCell(nodePosition(threadIndex, nodeList, nodes, u), fluidMask, u);
+    if (exchangeCell < 0) {
+        return;
+    }
+    float frontal = pow(node.mass / u.debrisDensity, 2.0f / 3.0f) / (u.fluidCell * u.fluidCell * u.fluidCell);
+    atomic_fetch_add_explicit(&area[exchangeCell], int(round(min(frontal * exchangeAreaScale, 1.0e9f))),
+                              memory_order_relaxed);
+}
+
+static inline float3 debrisAirForce(float3 position, float3 velocity, float mass, const device Cell *fluid,
+                                    const device uchar *fluidMask, const device int *area, float airStep,
+                                    constant StructureUniforms &u, thread int &exchangeCell) {
+    exchangeCell = debrisCell(position, fluidMask, u);
+    if (exchangeCell < 0) {
         return float3(0.0f);
     }
+    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+    int3 cell = int3(floor(position / u.fluidCell));
     int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-    if (fluidMask[index] != 0) {
-        return float3(0.0f);
-    }
     // Pressure of a fluid cell, or -1 where there is none.
     auto pressureAt = [&](int3 c) -> float {
         if (any(c < 0) || any(c >= dims)) {
@@ -1092,8 +1159,16 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float mass
     float rho = max(s.rho, 1e-6f);
     float3 wind = float3(s.mx, s.my, s.mz) / rho - velocity;
     float volume = mass / u.debrisDensity;
-    float area = pow(volume, 2.0f / 3.0f);
-    return -gradient * volume + 0.5f * rho * area * length(wind) * wind;
+    float frontal = pow(volume, 2.0f / 3.0f);
+    // The drag is held at the air's state for a whole air step. Where debris is packed densely
+    // into a cell, that could take more than the air's relative momentum and reverse the flow,
+    // so the drag takes its implicit (backward Euler) form for the cell's air relaxing towards
+    // the debris: scaled by 1 / (1 + K dt / m), K the drag of all the cell's debris per unit
+    // relative velocity and m the cell's air. Sparse debris is left almost alone.
+    float speed = length(wind);
+    float cellArea = max(float(area[exchangeCell]) / exchangeAreaScale, 0.0f);
+    float factor = 1.0f / (1.0f + 0.5f * speed * cellArea * airStep);
+    return -gradient * volume + factor * 0.5f * rho * frontal * speed * wind;
 }
 
 // Contact treats every node as a sphere one element across. Each substep the nodes are dropped
@@ -1269,6 +1344,8 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device uint *cellElement [[buffer(8)]],
                            const device Cell *fluid [[buffer(9)]],
                            const device uchar *fluidMask [[buffer(10)]],
+                           device atomic_int *exchange [[buffer(11)]],
+                           const device int *debrisArea [[buffer(12)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -1306,8 +1383,12 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     // surface nodes in front of it meeting that node first, so contact leaves it out.
     node.flags = intact == 8 ? (node.flags | nodeBuried) : (node.flags & ~nodeBuried);
     // Loose debris is not part of any element face the air loads, so the air pushes it directly.
+    float3 airForce = float3(0.0f);
+    int exchangeCell = -1;
     if (!attached && u.coupled != 0 && u.debrisDensity > 0.0f) {
-        force += debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity), node.mass, fluid, fluidMask, u);
+        airForce = debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity), node.mass,
+                                  fluid, fluidMask, debrisArea, control.dt, u, exchangeCell);
+        force += airForce;
     }
 
     if (contactEnabled(u, failureGate)) {
@@ -1339,6 +1420,22 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         displacement.z = -referenceHeight;
         velocity.z = max(velocity.z, 0.0f);
         velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+    }
+    if (exchangeCell >= 0) {
+        // The air loses the momentum it gives the debris, and the work it does on it; the work
+        // that drag dissipates stays in the air as heat.
+        float3 averageVelocity = 0.5f * (float3(node.velocity) + velocity);
+        float perVolume = dt / (u.fluidCell * u.fluidCell * u.fluidCell);
+        float3 momentum = -airForce * perVolume * exchangeMomentumScale;
+        float energy = -dot(airForce, averageVelocity) * perVolume * exchangeEnergyScale;
+        const float limit = 1.0e9f;
+        int3 fixedMomentum = int3(round(clamp(momentum, -limit, limit)));
+        int fixedEnergy = int(round(clamp(energy, -limit, limit)));
+        uint slot = exchangeStride * uint(exchangeCell);
+        atomic_fetch_add_explicit(&exchange[slot], fixedMomentum.x, memory_order_relaxed);
+        atomic_fetch_add_explicit(&exchange[slot + 1], fixedMomentum.y, memory_order_relaxed);
+        atomic_fetch_add_explicit(&exchange[slot + 2], fixedMomentum.z, memory_order_relaxed);
+        atomic_fetch_add_explicit(&exchange[slot + 3], fixedEnergy, memory_order_relaxed);
     }
     node.displacement = displacement;
     node.velocity = velocity;
@@ -1478,6 +1575,35 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
         state[index] = fill;
     }
     mask[index] = (wasSolid ? 1 : 0) | (solid ? 2 : 0);
+}
+
+// Gives the air, once per air step, what the debris took from it in the structure's substeps,
+// and clears the debris areas for the next step.
+kernel void debrisExchange(device Cell *state [[buffer(0)]],
+                           device int *exchange [[buffer(1)]],
+                           constant CouplingUniforms &u [[buffer(2)]],
+                           device int *debrisArea [[buffer(3)]],
+                           uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
+        return;
+    }
+    uint local = tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
+    debrisArea[local] = 0;
+    uint slot = exchangeStride * local;
+    int4 sum = int4(exchange[slot], exchange[slot + 1], exchange[slot + 2], exchange[slot + 3]);
+    if (all(sum == 0)) {
+        return;
+    }
+    int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
+    int index = cell.x + int(u.fluidNx) * (cell.y + int(u.fluidNy) * cell.z);
+    float3 momentum = float3(sum.xyz) / exchangeMomentumScale;
+    state[index].mx += momentum.x;
+    state[index].my += momentum.y;
+    state[index].mz += momentum.z;
+    state[index].energy += float(sum.w) / exchangeEnergyScale;
+    for (uint n = 0; n < exchangeStride; ++n) {
+        exchange[slot + n] = 0;
+    }
 }
 
 kernel void remaskApply(device uchar *mask [[buffer(0)]],

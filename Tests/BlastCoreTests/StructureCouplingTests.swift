@@ -353,78 +353,85 @@ struct StructureCouplingTests {
         }
     }
 
-    @Test("Loose debris in a steady wind gains the momentum drag theory predicts", arguments: [true, false])
-    func debrisDrag(enabled: Bool) throws {
+    /// Air in a 4 m cube with open sides, holding the loose nodes of a broken block. The block is
+    /// broken and the air's mask opened where it stood, so that the air flows through it.
+    private func looseDebris(
+        _ block: Box, elementSize: Float, cellSize: Float, domain: Float = 4, debrisDrag: Bool = true,
+        air: (_ i: Int, _ j: Int, _ k: Int) -> Primitive
+    ) throws -> (BlastSolver, StructureSolver) {
         var scenario = Scenario(
-            name: "Wind", domainSize: SIMD3(4, 4, 4), boxes: [],
+            name: "Debris", domainSize: SIMD3(repeating: domain), boxes: [],
             charge: Charge(mass: 0, position: SIMD3(1, 1, 1)),
             structure: StructureModel(
-                solids: [Box(min: SIMD3(1.5, 1.5, 1.5), max: SIMD3(2, 2, 2))], material: Self.elastic,
-                elementSize: 0.125, fixedBase: false))
+                solids: [block], material: Self.elastic, elementSize: elementSize, fixedBase: false))
         scenario.reflectiveFaces = []
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        // Steady wind is quiet air to the solver; keep it awake.
+        solver.configuration.airSleepThreshold = 0
         let structure = try #require(solver.structure)
         structure.gravity = 0
         structure.groundContact = false
-        structure.debrisDrag = enabled
-        let ambient = scenario.atmosphere
-        let wind: Float = 100
-        solver.fill(
-            uniform: Primitive(
-                density: ambient.density, velocity: SIMD3(wind, 0, 0), pressure: ambient.pressure))
-        // Break the block into loose nodes and open the air's mask where it stood, so that the
-        // wind blows through it undisturbed.
+        structure.debrisDrag = debrisDrag
+        solver.fill(air)
         structure.erode { _, _, _ in true }
         solver.mutateMask { mask in
             for index in mask.indices { mask[index] = 0 }
+        }
+        return (solver, structure)
+    }
+
+    /// One 62.5 mm element in the middle of a 0.5 m air cell: debris too sparse to slow the air.
+    private static let sparseBlock = Box(min: SIMD3(2.1875, 2.1875, 2.1875), max: SIMD3(2.25, 2.25, 2.25))
+
+    @Test(
+        "Sparse loose debris in a steady wind gains the momentum drag theory predicts",
+        arguments: [true, false])
+    func debrisDrag(enabled: Bool) throws {
+        let ambient = Atmosphere()
+        let wind: Float = 100
+        let (solver, structure) = try looseDebris(
+            Self.sparseBlock, elementSize: 0.0625, cellSize: 0.5, debrisDrag: enabled
+        ) { _, _, _ in
+            Primitive(density: ambient.density, velocity: SIMD3(wind, 0, 0), pressure: ambient.pressure)
         }
         solver.advance(until: 0.01)
         let elapsed = solver.time
 
         // Each node stands for a cube of the block's solid of its own mass, with a drag
-        // coefficient of one; the air is uniform, so there is no pressure gradient.
+        // coefficient of one, in the relative wind; it has gained speed steadily, so its mean
+        // speed is half its final one. The air is uniform, so there is no pressure gradient.
         var expected = 0.0
         structure.mutateNodes { nodes in
             for node in nodes where node.mass > 0 {
                 let area = pow(Double(node.mass) / 2400, 2.0 / 3.0)
-                expected += 0.5 * Double(ambient.density) * area * Double(wind * wind) * elapsed
+                let relative = Double(wind - node.vx / 2)
+                expected += 0.5 * Double(ambient.density) * area * relative * relative * elapsed
             }
         }
         let momentum = structure.momentum()
         if enabled {
-            #expect(abs(momentum.x - expected) / expected < 0.02, "momentum \(momentum.x) vs \(expected) N s")
+            #expect(abs(momentum.x - expected) / expected < 0.03, "momentum \(momentum.x) vs \(expected) N s")
             #expect(abs(momentum.y) + abs(momentum.z) < 0.01 * expected)
         } else {
             #expect(simd_length(momentum) < 1e-6 * expected)
         }
     }
 
-    @Test("Loose debris in a pressure gradient is pushed down it, as the solid it stands for")
+    @Test("Sparse loose debris in a pressure gradient is pushed down it, as the solid it stands for")
     func debrisPressureGradient() throws {
-        var scenario = Scenario(
-            name: "Gradient", domainSize: SIMD3(4, 4, 4), boxes: [],
-            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)),
-            structure: StructureModel(
-                solids: [Box(min: SIMD3(1.75, 1.75, 1.75), max: SIMD3(2.25, 2.25, 2.25))],
-                material: Self.elastic,
-                elementSize: 0.125, fixedBase: false))
-        scenario.reflectiveFaces = []
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
-        let structure = try #require(solver.structure)
-        structure.gravity = 0
-        structure.groundContact = false
-        let ambient = scenario.atmosphere
-        // Pressure falling by 10 kPa per metre along x. Until waves from the boundaries arrive,
-        // the air accelerates uniformly and the gradient stays the same.
-        let gradient: Float = 10_000
-        solver.fill { i, _, _ in
+        let ambient = Atmosphere()
+        // Pressure falling by 1 kPa per metre along x. Until waves from the boundaries arrive,
+        // the air accelerates uniformly and the gradient stays the same. The gradient is gentle
+        // so that the drag of the air it accelerates is a small part of the push.
+        let gradient: Float = 1_000
+        // In the middle of an 8 m cube of air, so that the open sides do not disturb the gradient
+        // around the debris in the time run.
+        let block = Box(min: SIMD3(4.1875, 4.1875, 4.1875), max: SIMD3(4.25, 4.25, 4.25))
+        let (solver, structure) = try looseDebris(block, elementSize: 0.0625, cellSize: 0.5, domain: 8) {
+            i, _, _ in
             Primitive(
-                density: ambient.density,
-                pressure: ambient.pressure + gradient * (2 - (Float(i) + 0.5) * 0.25))
-        }
-        structure.erode { _, _, _ in true }
-        solver.mutateMask { mask in
-            for index in mask.indices { mask[index] = 0 }
+                density: ambient.density, pressure: ambient.pressure + gradient * (4 - (Float(i) + 0.5) * 0.5)
+            )
         }
         solver.advance(until: 0.001)
         let elapsed = solver.time
@@ -445,6 +452,40 @@ struct StructureCouplingTests {
         let momentum = structure.momentum()
         #expect(abs(momentum.x - expected) / expected < 0.02, "momentum \(momentum.x) vs \(expected) N s")
         #expect(abs(momentum.y) + abs(momentum.z) < 0.01 * expected)
+    }
+
+    @Test("Debris packed into the air conserves momentum, and slows the air through it without reversing it")
+    func debrisMomentumExchange() throws {
+        let ambient = Atmosphere()
+        // Fine debris filling one 0.5 m air cell: unchecked, its drag over one air step would
+        // take nearly twice the air's momentum.
+        let wind: Float = 300
+        // The cell is the middle one of 17, far enough from the open sides that what leaves through
+        // them in the time run is negligible.
+        let (solver, structure) = try looseDebris(
+            Box(min: SIMD3(4, 4, 4), max: SIMD3(4.5, 4.5, 4.5)), elementSize: 0.03125, cellSize: 0.5,
+            domain: 8.5
+        ) { _, _, _ in
+            Primitive(density: ambient.density, velocity: SIMD3(wind, 0, 0), pressure: ambient.pressure)
+        }
+        // Full-length air steps from the start, as when a blast arrives at debris already flying.
+        solver.configuration.startupSteps = 1
+        let before = solver.momentum()
+        var slowest = Float.infinity
+        // Stop before the disturbance reaches the open boundaries, through which momentum
+        // would leave.
+        while solver.time < 0.002 {
+            let result = solver.advance(steps: 1)
+            #expect(result.isStable)
+            slowest = min(slowest, solver.primitive(8, 8, 8).velocity.x)
+        }
+        let debris = structure.momentum()
+        let total = solver.momentum() + debris
+        #expect(debris.x > 5, "debris momentum \(debris.x) N s")
+        #expect(
+            simd_length(total - before) < 0.01 * debris.x,
+            "total momentum changed by \(total - before) N s; debris took \(debris.x) N s")
+        #expect(slowest > 0 && slowest < 0.8 * wind, "slowest air in the debris \(slowest) m/s")
     }
 
     @Test("A wall broken by the blast, run twice, gives the same answer to the last bit")

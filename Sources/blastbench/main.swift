@@ -334,7 +334,8 @@ func runStructure() throws {
         // The same mesh with a linear elastic material, to show what the concrete law costs.
         let concrete = model.material
         model.material = .elastic(
-            density: concrete.density, youngsModulus: concrete.youngsModulus, poissonRatio: concrete.poissonRatio)
+            density: concrete.density, youngsModulus: concrete.youngsModulus,
+            poissonRatio: concrete.poissonRatio)
         model.reinforcement = []
     }
     let solver = try StructureSolver(device: device, model: model)

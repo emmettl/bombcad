@@ -32,6 +32,10 @@ public final class BlastSolver {
     /// Cells of the air grid, around the structure, whose solid flag follows the structure.
     private var couplingRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
     private var occupancyBuffer: MTLBuffer?
+    /// What loose debris takes from the air in each cell of the coupling region during one air step.
+    private var debrisExchangeBuffer: MTLBuffer?
+    /// The frontal area of the loose debris in each cell of the coupling region.
+    private var debrisAreaBuffer: MTLBuffer?
     /// Velocity of the solid in each cell of the coupling region, three floats per cell. A
     /// single zero cell stands in when there is no structure.
     private var wallVelocityBuffer: MTLBuffer
@@ -45,6 +49,7 @@ public final class BlastSolver {
     private let splatPipeline: MTLComputePipelineState
     private let remaskPreparePipeline: MTLComputePipelineState
     private let remaskApplyPipeline: MTLComputePipelineState
+    private let debrisExchangePipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
     private var current = 0
@@ -93,6 +98,7 @@ public final class BlastSolver {
         splatPipeline = try pipeline("splatStructure")
         remaskPreparePipeline = try pipeline("remaskPrepare")
         remaskApplyPipeline = try pipeline("remaskApply")
+        debrisExchangePipeline = try pipeline("debrisExchange")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
@@ -197,6 +203,8 @@ public final class BlastSolver {
         structure = nil
         couplingRegion = nil
         occupancyBuffer = nil
+        debrisExchangeBuffer = nil
+        debrisAreaBuffer = nil
         wallVelocityBuffer = stillWallBuffer
         memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
         guard let model else { return }
@@ -216,23 +224,38 @@ public final class BlastSolver {
             let occupancy = device.makeBuffer(
                 length: 4 * regionCells * MemoryLayout<UInt32>.stride, options: .storageModeShared),
             let wallVelocity = device.makeBuffer(
-                length: 3 * regionCells * MemoryLayout<Float>.stride, options: .storageModeShared)
+                length: 3 * regionCells * MemoryLayout<Float>.stride, options: .storageModeShared),
+            let exchange = device.makeBuffer(
+                length: 4 * regionCells * MemoryLayout<Int32>.stride, options: .storageModeShared),
+            let debrisArea = device.makeBuffer(
+                length: regionCells * MemoryLayout<Int32>.stride, options: .storageModeShared)
         else {
             throw BlastError.allocationFailed("coupling occupancy")
         }
         memset(occupancy.contents(), 0, occupancy.length)
         memset(wallVelocity.contents(), 0, wallVelocity.length)
+        memset(exchange.contents(), 0, exchange.length)
         couplingRegion = (origin, dims)
         occupancyBuffer = occupancy
         wallVelocityBuffer = wallVelocity
+        debrisExchangeBuffer = exchange
+        debrisAreaBuffer = debrisArea
+        resetDebrisExchange()
     }
 
-    /// Encodes one update of the solid mask from the structure's current shape.
-    private func encodeRemask(_ encoder: MTLComputeCommandEncoder) {
-        guard let structure, let region = couplingRegion, let occupancyBuffer else { return }
+    private func resetDebrisExchange() {
+        if let debrisExchangeBuffer {
+            memset(debrisExchangeBuffer.contents(), 0, debrisExchangeBuffer.length)
+        }
+        if let debrisAreaBuffer { memset(debrisAreaBuffer.contents(), 0, debrisAreaBuffer.length) }
+    }
+
+    private func couplingUniforms(
+        _ structure: StructureSolver, _ region: (origin: SIMD3<Int>, dims: SIMD3<Int>)
+    ) -> CouplingUniforms {
         let h = structure.model.elementSize
         let perCell = pow(grid.cellSize / h, 3)
-        var uniforms = CouplingUniforms(
+        return CouplingUniforms(
             regionX: UInt32(region.origin.x), regionY: UInt32(region.origin.y),
             regionZ: UInt32(region.origin.z),
             regionNx: UInt32(region.dims.x), regionNy: UInt32(region.dims.y), regionNz: UInt32(region.dims.z),
@@ -244,6 +267,31 @@ public final class BlastSolver {
             originX: structure.origin.x, originY: structure.origin.y, originZ: structure.origin.z,
             gamma: configuration.gamma, ambientDensity: ambientDensity,
             ambientPressure: configuration.ambientPressure)
+    }
+
+    private func regionThreads(_ pipeline: MTLComputePipelineState) -> MTLSize {
+        let width = pipeline.threadExecutionWidth
+        return MTLSize(width: width, height: max(1, pipeline.maxTotalThreadsPerThreadgroup / width), depth: 1)
+    }
+
+    /// Encodes the return to the air of what loose debris took from it during the substeps.
+    private func encodeDebrisExchange(_ encoder: MTLComputeCommandEncoder) {
+        guard let structure, let region = couplingRegion, let debrisExchangeBuffer else { return }
+        var uniforms = couplingUniforms(structure, region)
+        encoder.setComputePipelineState(debrisExchangePipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(debrisExchangeBuffer, offset: 0, index: 1)
+        encoder.setBytes(&uniforms, length: MemoryLayout<CouplingUniforms>.stride, index: 2)
+        encoder.setBuffer(debrisAreaBuffer, offset: 0, index: 3)
+        encoder.dispatchThreads(
+            MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z),
+            threadsPerThreadgroup: regionThreads(debrisExchangePipeline))
+    }
+
+    /// Encodes one update of the solid mask from the structure's current shape.
+    private func encodeRemask(_ encoder: MTLComputeCommandEncoder) {
+        guard let structure, let region = couplingRegion, let occupancyBuffer else { return }
+        var uniforms = couplingUniforms(structure, region)
         let length = MemoryLayout<CouplingUniforms>.stride
 
         encoder.setComputePipelineState(splatPipeline)
@@ -297,6 +345,7 @@ public final class BlastSolver {
             commandBuffer.waitUntilCompleted()
         }
         gaugeHistories = Array(repeating: [], count: gaugeCount)
+        resetDebrisExchange()
         memset(peakBuffer.contents(), 0, peakBuffer.length)
         memset(impulseBuffer.contents(), 0, impulseBuffer.length)
         maxSpeedBuffer.contents().storeBytes(of: 0, as: UInt64.self)
@@ -397,11 +446,18 @@ public final class BlastSolver {
             if let structure {
                 // The structure covers the same interval in several smaller steps, loaded by
                 // the pressure the air has just reached.
+                // While the air is frozen it cannot take back what debris would take from it, so
+                // debris then moves on without it.
                 let binding = StructureSolver.FluidBinding(
                     state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
-                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure)
+                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
+                    exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
+                    exchangeRegion: couplingRegion)
                 structure.encodeSubsteps(
                     encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
+                if !asleep {
+                    encodeDebrisExchange(encoder)
+                }
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
                 }
@@ -546,6 +602,21 @@ public final class BlastSolver {
                 energy += Double(cells[index].energy)
             }
             return (mass * volume, energy * volume)
+        }
+    }
+
+    /// Total momentum of the gas in kg m/s.
+    public func momentum() -> SIMD3<Double> {
+        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
+        return withState { cells in
+            var total = SIMD3<Double>.zero
+            for index in 0..<grid.cellCount where mask[index] == 0 {
+                total += SIMD3(
+                    Double(cells[index].momentumX), Double(cells[index].momentumY),
+                    Double(cells[index].momentumZ))
+            }
+            return total * volume
         }
     }
 

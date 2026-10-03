@@ -532,6 +532,12 @@ struct StructureUniforms {
     var loadCount: UInt32 = 0
     var loadFace: UInt32 = 0
     var debrisDensity: Float = 0
+    var exchangeX: Int32 = 0
+    var exchangeY: Int32 = 0
+    var exchangeZ: Int32 = 0
+    var exchangeNx: Int32 = 0
+    var exchangeNy: Int32 = 0
+    var exchangeNz: Int32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

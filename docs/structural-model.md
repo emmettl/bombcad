@@ -130,10 +130,29 @@ material of its own mass, so of volume *V* = mass / density, and feels
   |*u* − *v*| (*u* − *v*), with *C*<sub>d</sub> = 1.
 
 The first throws debris along with the blast front; the second carries it in the flow that
-follows. The air does not feel the reaction, so it loses no momentum to the debris it pushes;
-with debris of a few tonnes against the much larger mass of air a blast sets moving, this is a
-small error. `StructureSolver.debrisDrag` switches the loading off. A masonry panel shattered
-by a charge is now thrown into the building rather than left hanging in place.
+follows. A masonry panel shattered by a charge is thrown into the building rather than left
+hanging in place. `StructureSolver.debrisDrag` switches the loading off.
+
+The air feels the reaction. Each node adds what it takes, the momentum −**F** Δt and the work
+−**F**·**v** Δt, into its air cell, and after the substeps the air is given the sums (the work
+that drag dissipates stays in the air as heat). The sums are kept in fixed point so that the
+GPU's integer atomics give the same answer whatever order the nodes arrive in. Momentum is
+then conserved between air and debris: in a steady wind, the air loses what the debris gains
+to within 1%. Rubble still packed where its wall stood therefore slows the gas through it, and
+the pressure that builds up in front of it pushes it on, much as it would push the wall.
+
+Drag is computed from the air as it stands at the start of an air step, and held for the
+whole step. Where debris is packed densely into a cell, that could take more than the air's
+relative momentum and reverse the flow (a test with fine debris filling a cell in a 300 m/s
+wind reversed the air to −170 m/s). So before the substeps a short pass adds up the frontal
+area of the loose debris in each air cell, and each node's drag is scaled by 1 / (1 + ½ |*u* −
+*v*| *A*<sub>cell</sub> Δ*t* / *V*<sub>cell</sub>): the implicit (backward Euler) form of the
+cell's air relaxing towards its debris. With it the same test slows the air to 116 m/s in its
+first step and never reverses it. Sparse debris is barely affected.
+
+Debris is loaded only within the region around the structure where the air's mask is
+followed, since only there can the reaction be given back, and not at all while the air is
+frozen.
 
 **Moving walls.** The same pass sums the velocities of the elements in each solid cell (as
 fixed-point integers, so that the GPU's atomic additions are exact and order-independent). The
@@ -165,11 +184,13 @@ shock, and the drag and pressure-gradient push on loose debris.
    materials, and pieces that touch are fully bonded. There are no interfaces: no mortar
    joints, no sliding of infill against its frame, no bearings that can separate. Rigid
    blocks never respond.
-2. **Debris is pushed crudely, and does not push back.** Loose nodes feel the air's pressure
-   gradient and a drag with a fixed coefficient, as cubes of the main material whatever they
-   are made of, and the air feels no reaction. A node still attached to one intact element
-   is not loose and is loaded only through that element's faces. Debris is never a solid
-   to the air: gas passes through rubble as if it were not there.
+2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
+   fixed coefficient, as cubes of the main material whatever they are made of. The air feels
+   the reaction, so packed rubble slows the gas through it, but only through drag spread over
+   a whole air cell: rubble is never solid to the air, and a cell's air sees all its debris as
+   moving together. A node still attached to one intact element is not loose and is loaded
+   only through that element's faces. Debris more than a few metres from the structure, or
+   moving after the air has been frozen, is not loaded at all.
 3. **Walls are a staircase of whole cells.** A wall's surface in the air is placed to the
    nearest cell, and its thickness there can flicker by a cell as it moves (a 0.5 m wall on
    0.25 m cells covers two cells or three). The gas itself is conserved: the face flux of a
