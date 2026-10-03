@@ -70,6 +70,8 @@ displacement). Both run over lists of the elements and nodes that exist, not the
 Supports and loading:
 
 - a node can be held still along any of x, y, z, or given a prescribed velocity;
+- every node inside a support region (`StructureModel.supports`, a list of boxes) is held
+  still, for structures cut off at a part treated as rigid, such as a massive end wall;
 - a node can rest on a support that pushes it up but does not hold it down, so a member can
   rotate onto the edge of a bearing and lift off it;
 - gravity acts on every node;
@@ -146,10 +148,23 @@ hanging in place. `StructureSolver.debrisDrag` switches the loading off.
 
 The air feels the reaction. Each node adds what it takes, the momentum −**F** Δt and the work
 −**F**·**v** Δt, into its air cell, and after the substeps the air is given the sums (the work
-that drag dissipates stays in the air as heat). The sums are kept in fixed point so that the
-GPU's integer atomics give the same answer whatever order the nodes arrive in. Momentum is
-then conserved between air and debris: in a steady wind, the air loses what the debris gains
-to within 1%. Rubble still packed where its wall stood therefore slows the gas through it, and
+that drag dissipates stays in the air as heat). The sums are kept as 64-bit fixed-point
+integers (two 32-bit atomic words, with the carry passed by hand), so that they are exact, give
+the same answer whatever order the nodes arrive in, and cannot overflow beside a charge.
+Momentum is then conserved between air and debris: in a steady wind, the air loses what the
+debris gains to within 1%. (32-bit sums either overflowed beside a charge, with the sign of the
+change wrapping round, or, made coarser to prevent that, rounded away the small pushes on
+single nodes and lost 5% of the momentum.)
+
+Three guards keep the exchange from wrecking the air where it is extreme. A cell of gas
+thinner than a hundredth of ambient density (a crack just opened beside a chamber at
+megapascals) loads no debris. A cell is given at most 1,000 m/s of velocity change in one air
+step, the exchange being scaled down past that, so momentum is not conserved there. And debris
+may not take a cell below 1% of ambient pressure: the drag and the pressure gradient, held for
+a whole air step, could otherwise leave negative internal energy, which the air solver's own
+floors never see because the exchange comes after its sweeps. Without them, the internal
+explosion test (see [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber))
+blew up: a cell inside a cracking wall reached 10¹¹ m/s. Rubble still packed where its wall stood therefore slows the gas through it, and
 the pressure that builds up in front of it pushes it on, much as it would push the wall.
 
 Drag is computed from the air as it stands at the start of an air step, and held for the

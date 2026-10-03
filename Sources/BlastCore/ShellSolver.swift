@@ -475,6 +475,13 @@ public final class ShellSolver {
                     nodes[n].isClamped = true
                 }
             }
+            let slack = 1e-3 * model.elementSize
+            for n in nodes.indices
+            where model.supports.contains(where: {
+                all(mesh.positions[n] .>= $0.min - slack) && all(mesh.positions[n] .<= $0.max + slack)
+            }) {
+                nodes[n].isClamped = true
+            }
             // A tied node's mass and inertia move with the node it is tied to.
             for tie in mesh.ties {
                 let slave = Int(tie.slave)

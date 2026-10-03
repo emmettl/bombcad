@@ -1298,7 +1298,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device uint *tied [[buffer(13)]],
                        const device Cell *fluid [[buffer(14)]],
                        const device uchar *fluidMask [[buffer(15)]],
-                       device atomic_int *exchange [[buffer(16)]],
+                       device atomic_uint *exchange [[buffer(16)]],
                        const device int *debrisArea [[buffer(17)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;

@@ -241,8 +241,9 @@ public final class BlastSolver {
                 length: 4 * regionCells * MemoryLayout<UInt32>.stride, options: .storageModeShared),
             let wallVelocity = device.makeBuffer(
                 length: 3 * regionCells * MemoryLayout<Float>.stride, options: .storageModeShared),
+            // Momentum and energy per cell, each a 64-bit sum in two words.
             let exchange = device.makeBuffer(
-                length: 4 * regionCells * MemoryLayout<Int32>.stride, options: .storageModeShared),
+                length: 8 * regionCells * MemoryLayout<UInt32>.stride, options: .storageModeShared),
             let debrisArea = device.makeBuffer(
                 length: regionCells * MemoryLayout<Int32>.stride, options: .storageModeShared)
         else {

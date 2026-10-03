@@ -72,6 +72,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var domainSize: SIMD3<Float>
     public var boxes: [Box]
     public var charge: Charge
+    /// Further charges, fired at the same moment as `charge`. (Optional so that layouts saved
+    /// before it existed still open.)
+    public var additionalCharges: [Charge]?
     public var gauges: [Gauge]
     /// An optional deformable body. The air treats it as rigid; it responds to the air's pressure.
     public var structure: StructureModel?
@@ -160,6 +163,7 @@ extension BlastSolver {
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
         deposit(scenario.charge)
+        for charge in scenario.additionalCharges ?? [] { deposit(charge) }
         setGauges(cells: scenario.gauges.map { nearestFluidCell(to: $0.position) })
         restart()
     }

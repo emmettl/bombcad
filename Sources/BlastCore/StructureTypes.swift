@@ -278,6 +278,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var elementKind: ElementKind = .solid
     /// Layers of concrete (or other material) through the thickness of each shell.
     public var shellLayers: Int = 8
+    /// Regions in which the structure is held still: nodes inside any of them do not move
+    /// (beyond the ground plane, which `fixedBase` holds). For walls built into rigid scenery.
+    public var supports: [Box] = []
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -701,5 +704,6 @@ extension StructureModel {
         solidMaterial = try container.decodeIfPresent([StructureMaterial?].self, forKey: .solidMaterial) ?? []
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
+        supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
     }
 }

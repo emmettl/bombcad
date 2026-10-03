@@ -62,14 +62,26 @@ struct StructureUniforms {
 };
 
 // What loose debris takes from the air is summed per air cell in fixed point, so that the
-// GPU's integer atomics give the same total whatever order the nodes arrive in. The sums are
-// per cubic metre of the cell: momentum in steps of 2^-16 kg/(m^2 s) and energy in steps of
-// 2^-8 J/m^3. The frontal area of the debris in each cell, per cubic metre, is summed the
-// same way, in steps of 2^-16 per metre.
-constant float exchangeMomentumScale = 65536.0f;
-constant float exchangeEnergyScale = 256.0f;
+// GPU's integer atomics give the same total whatever order the nodes arrive in. Each sum is 64
+// bits, kept as two 32-bit words with the carry passed from the low word to the high one, so it
+// is exact and cannot overflow even beside a charge. The sums are per cubic metre of the cell:
+// momentum in steps of 2^-24 kg/(m^2 s) and energy in steps of 2^-16 J/m^3, fine enough that
+// the smallest pushes on single nodes are not rounded away. The frontal area of the debris in
+// each cell, per cubic metre, is summed in 32 bits, in steps of 2^-16 per metre.
+constant float exchangeMomentumScale = 16777216.0f;
+constant float exchangeEnergyScale = 65536.0f;
 constant float exchangeAreaScale = 65536.0f;
-constant uint exchangeStride = 4;
+constant uint exchangeStride = 8;
+
+// Adds a 64-bit integer to a pair of words (low, then high), exactly and in any order.
+static inline void atomicAdd64(device atomic_uint *pair, long value) {
+    uint2 words = as_type<uint2>(value);
+    uint old = atomic_fetch_add_explicit(&pair[0], words.x, memory_order_relaxed);
+    uint carry = old + words.x < old ? 1u : 0u;
+    if (words.y + carry != 0u) {
+        atomic_fetch_add_explicit(&pair[1], words.y + carry, memory_order_relaxed);
+    }
+}
 
 // Properties of one material, as the element kernel needs them. A structure can have up to
 // `maxMaterials`, each element naming its own. Layout matches `MaterialParameters` in
@@ -1074,19 +1086,17 @@ static inline float3 nodePosition(uint compact, const device uint *nodeList, con
 // drag coefficient of one. The air does not feel the reaction.
 // The air loses the momentum it gives a loose node, and the work it does on it; the work that
 // drag dissipates stays in the air as heat.
-static inline void recordExchange(device atomic_int *exchange, int exchangeCell, float3 airForce,
+static inline void recordExchange(device atomic_uint *exchange, int exchangeCell, float3 airForce,
                                   float3 averageVelocity, float dt, float fluidCell) {
     float perVolume = dt / (fluidCell * fluidCell * fluidCell);
     float3 momentum = -airForce * perVolume * exchangeMomentumScale;
     float energy = -dot(airForce, averageVelocity) * perVolume * exchangeEnergyScale;
-    const float limit = 1.0e9f;
-    int3 fixedMomentum = int3(round(clamp(momentum, -limit, limit)));
-    int fixedEnergy = int(round(clamp(energy, -limit, limit)));
+    const float limit = 1.0e15f;
+    float4 values = clamp(float4(momentum, energy), -limit, limit);
     uint slot = exchangeStride * uint(exchangeCell);
-    atomic_fetch_add_explicit(&exchange[slot], fixedMomentum.x, memory_order_relaxed);
-    atomic_fetch_add_explicit(&exchange[slot + 1], fixedMomentum.y, memory_order_relaxed);
-    atomic_fetch_add_explicit(&exchange[slot + 2], fixedMomentum.z, memory_order_relaxed);
-    atomic_fetch_add_explicit(&exchange[slot + 3], fixedEnergy, memory_order_relaxed);
+    for (uint n = 0; n < 4; ++n) {
+        atomicAdd64(exchange + slot + 2 * n, long(rint(values[n])));
+    }
 }
 
 // The air cell, numbered within the exchange region, in which a loose node is loaded by the
@@ -1177,9 +1187,14 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
         Cell s = fluid[i];
         float rho = max(s.rho, 1e-6f);
         float kinetic = 0.5f * (s.mx * s.mx + s.my * s.my + s.mz * s.mz) / rho;
-        return (u.fluidGamma - 1.0f) * (s.energy - kinetic);
+        float pressure = (u.fluidGamma - 1.0f) * (s.energy - kinetic);
+        return isfinite(pressure) ? pressure : -1.0f;
     };
     float here = pressureAt(cell);
+    if (!isfinite(here)) {
+        exchangeCell = -1;
+        return float3(0.0f);
+    }
     float3 gradient = float3(0.0f);
     for (int axis = 0; axis < 3; ++axis) {
         int3 step = int3(0);
@@ -1195,7 +1210,13 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
         }
     }
     Cell s = fluid[index];
-    float rho = max(s.rho, 1e-6f);
+    // Gas thinner than a hundredth of the air's ambient density (a crack just opened) has
+    // nothing to push debris with.
+    if (s.rho < 0.012f) {
+        exchangeCell = -1;
+        return float3(0.0f);
+    }
+    float rho = s.rho;
     float3 wind = float3(s.mx, s.my, s.mz) / rho - velocity;
     float frontal = pow(volume, 2.0f / 3.0f);
     // The drag is held at the air's state for a whole air step. Where debris is packed densely
@@ -1399,7 +1420,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device uint *cellElement [[buffer(8)]],
                            const device Cell *fluid [[buffer(9)]],
                            const device uchar *fluidMask [[buffer(10)]],
-                           device atomic_int *exchange [[buffer(11)]],
+                           device atomic_uint *exchange [[buffer(11)]],
                            const device int *debrisArea [[buffer(12)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
@@ -1627,7 +1648,7 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
 // Gives the air, once per air step, what the debris took from it in the structure's substeps,
 // and clears the debris areas for the next step.
 kernel void debrisExchange(device Cell *state [[buffer(0)]],
-                           device int *exchange [[buffer(1)]],
+                           device uint *exchange [[buffer(1)]],
                            constant CouplingUniforms &u [[buffer(2)]],
                            device int *debrisArea [[buffer(3)]],
                            uint3 tid [[thread_position_in_grid]]) {
@@ -1637,17 +1658,46 @@ kernel void debrisExchange(device Cell *state [[buffer(0)]],
     uint local = tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
     debrisArea[local] = 0;
     uint slot = exchangeStride * local;
-    int4 sum = int4(exchange[slot], exchange[slot + 1], exchange[slot + 2], exchange[slot + 3]);
-    if (all(sum == 0)) {
+    float4 sum;
+    bool touched = false;
+    for (uint n = 0; n < 4; ++n) {
+        uint2 words = uint2(exchange[slot + 2 * n], exchange[slot + 2 * n + 1]);
+        touched = touched || any(words != 0u);
+        sum[n] = float(as_type<long>(words));
+    }
+    if (!touched) {
         return;
     }
     int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
     int index = cell.x + int(u.fluidNx) * (cell.y + int(u.fluidNy) * cell.z);
-    float3 momentum = float3(sum.xyz) / exchangeMomentumScale;
-    state[index].mx += momentum.x;
-    state[index].my += momentum.y;
-    state[index].mz += momentum.z;
-    state[index].energy += float(sum.w) / exchangeEnergyScale;
+    float3 momentum = sum.xyz / exchangeMomentumScale;
+    float energy = sum.w / exchangeEnergyScale;
+    Cell c = state[index];
+    // A cell can be given at most 1,000 m/s of velocity change in one air step: debris packed
+    // into a cell of thin gas (a crack just opened beside a chamber at megapascals) would
+    // otherwise hand that little gas absurd speeds. Past the cap the exchange is scaled down,
+    // and momentum is not conserved exactly.
+    float limit = 1000.0f * max(c.rho, 0.0f);
+    float size = length(momentum);
+    if (size > limit) {
+        float scale = limit / size;
+        momentum *= scale;
+        energy *= scale;
+    }
+    c.mx += momentum.x;
+    c.my += momentum.y;
+    c.mz += momentum.z;
+    c.energy += energy;
+    // Debris may not take the air below a small positive pressure (1% of ambient): in the
+    // extreme gas beside a charge the drag and the pressure gradient, held for a whole air
+    // step, could otherwise leave a cell with negative internal energy, which the air solver's
+    // own floors never see because the exchange comes after its sweeps.
+    float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
+    float floorEnergy = kinetic + 0.01f * u.ambientPressure / (u.gamma - 1.0f);
+    c.energy = max(c.energy, floorEnergy);
+    if (all(isfinite(float4(c.mx, c.my, c.mz, c.energy)))) {
+        state[index] = c;
+    }
     for (uint n = 0; n < exchangeStride; ++n) {
         exchange[slot + n] = 0;
     }

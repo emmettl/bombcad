@@ -352,6 +352,29 @@ public final class StructureSolver {
                 }
             }
         }
+        holdSupports()
+    }
+
+    /// Holds the nodes inside the model's support regions (with a little tolerance, so that a
+    /// region ending on a face holds the nodes on it).
+    private func holdSupports() {
+        guard !model.supports.isEmpty else { return }
+        let slack = 1e-3 * model.elementSize
+        mutateNodes { nodes in
+            for k in 0...ez {
+                for j in 0...ey {
+                    for i in 0...ex {
+                        guard let n = storedNode(i, j, k) else { continue }
+                        let p = referencePosition(i, j, k)
+                        if model.supports.contains(where: {
+                            all(p .>= $0.min - slack) && all(p .<= $0.max + slack)
+                        }) {
+                            nodes[n].isFixed = true
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Direct access to the nodes, for setting supports and initial velocities. Index them with
