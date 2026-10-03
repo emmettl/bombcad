@@ -66,6 +66,30 @@ The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
 - A scenario can fire several charges at once (`additionalCharges`); each is laid down the
   same way.
 
+## Skipping still air
+
+Air the blast has not yet reached is in exactly the uniform state it was filled with, and a
+sweep leaves such a cell unchanged when every cell its update reads is in that state too. So
+the grid is cut into tiles of 8 × 8 × 8 cells, and only the awake tiles are swept:
+
+- A cell's update reads two cells either side along the sweep, so in one step (three sweeps)
+  a change spreads at most two cells along each axis.
+- After each step, a cell that differs from the uniform state by any amount wakes every tile
+  within two cells of it. A tile is therefore awake before any change can reach its cells.
+- At a restart, the tiles near every cell not in the uniform state are woken, and so are the
+  tiles around a structure, where the moving mask and the debris trade with the air.
+- Tiles never go back to sleep, and both state buffers start alike, so a skipped tile holds
+  exactly the uniform state.
+- Skipped air still counts towards the time step, with exactly the wave speed a sweep would
+  have recorded for it.
+
+The answer is therefore identical to the last bit; tests compare a street scene and a wall
+broken by the blast with and without skipping, cell by cell. The list of awake tiles is built
+on the GPU before each step and the sweeps are dispatched indirectly, so stepping still needs
+no round trip to the CPU. Only the peak overpressure and impulse of air the blast never
+reached can differ, by the rounding error that still air reads as overpressure (under 0.1 Pa).
+`SolverConfiguration.skipStillAir` switches it off.
+
 ## Freezing the air
 
 When a deformable structure is present, the air is frozen (its sweeps are skipped) once either

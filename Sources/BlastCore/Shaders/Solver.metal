@@ -5,6 +5,14 @@
 // and reflective domain faces are handled with mirrored ghost states, so stationary
 // obstacles are exactly conservative. A moving solid mirrors the gas about its own
 // velocity, which makes it act as a piston. Layouts here must match `SolverTypes.swift`.
+//
+// Still air is skipped. The grid is divided into tiles of 8 x 8 x 8 cells, and a tile is swept
+// only once a cell within reach of it has left the uniform state the air was filled with. A
+// cell's update reads two cells either side along each sweep, so in one step (three sweeps) a
+// change spreads at most two cells along each axis: a tile woken when a changed cell comes
+// within two cells of it is always woken before the change can reach it. Tiles never go back
+// to sleep, so a skipped tile holds exactly the uniform state in both state buffers, and the
+// result is the same as sweeping everything.
 
 #include <metal_stdlib>
 using namespace metal;
@@ -42,7 +50,22 @@ struct SolverUniforms {
     uint regionNy;
     uint regionNz;
     float maxStep;  // > 0: never step further than this (what the structure's substeps cover)
+    // Tiles of still air: the grid's size in tiles (0 when every cell is swept), and the uniform
+    // state the air was filled with.
+    uint tileNx;
+    uint tileNy;
+    uint tileNz;
+    float stillRho;
+    float stillMx;
+    float stillMy;
+    float stillMz;
+    float stillEnergy;
 };
+
+constant int tileSize = 8;
+// How far a change spreads in one step, along each axis.
+constant int tileReach = 2;
+enum TileFlag { tileStill = 0, tileActive = 1, tileWoken = 2 };
 
 struct StepControl {
     float dt;
@@ -51,6 +74,8 @@ struct StepControl {
     uint stepIndex;
     uint activeSteps;
     float maxOverpressure;  // largest |overpressure| anywhere after the previous step
+    uint activeTiles;       // tiles swept in the last step
+    uint tileSweeps;        // tiles swept, summed over the batch's steps
 };
 
 // Primitive state in the sweep frame: v.x is the velocity along the sweep axis.
@@ -245,29 +270,51 @@ static inline void recordWaveSpeed(device atomic_uint *maxSpeed, float speed) {
     }
 }
 
-// One-dimensional MUSCL-Hancock sweep along `u.axis`.
-kernel void sweep(const device Cell *src [[buffer(0)]],
-                  device Cell *dst [[buffer(1)]],
-                  const device uchar *mask [[buffer(2)]],
-                  device float *peak [[buffer(3)]],
-                  device float *impulse [[buffer(4)]],
-                  const device StepControl &control [[buffer(5)]],
-                  device atomic_uint *maxSpeed [[buffer(6)]],
-                  constant SolverUniforms &u [[buffer(7)]],
-                  const device float *wallVelocity [[buffer(8)]],
-                  uint3 tid [[thread_position_in_grid]]) {
-    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
-        return;
+static inline bool isStill(Cell c, constant SolverUniforms &u) {
+    return c.rho == u.stillRho && c.mx == u.stillMx && c.my == u.stillMy && c.mz == u.stillMz
+        && c.energy == u.stillEnergy;
+}
+
+// Marks every tile within `tileReach` cells of `cell` with `flag`, unless already awake.
+static inline void wakeTilesAround(int3 cell, device uchar *tileFlags, uchar flag, constant SolverUniforms &u) {
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    int3 low = max(cell - tileReach, 0) / tileSize;
+    int3 high = min(cell + tileReach, dims - 1) / tileSize;
+    for (int z = low.z; z <= high.z; ++z) {
+        for (int y = low.y; y <= high.y; ++y) {
+            for (int x = low.x; x <= high.x; ++x) {
+                int tile = x + int(u.tileNx) * (y + int(u.tileNy) * z);
+                if (tileFlags[tile] == tileStill) {
+                    tileFlags[tile] = flag;
+                }
+            }
+        }
     }
-    int index = int(tid.x + u.nx * (tid.y + u.ny * tid.z));
+}
+
+// What a cell contributes to the next step's limits: its fastest wave and its overpressure.
+static inline void recordCell(device atomic_uint *maxSpeed, float3 momentum, float rho, float pressure,
+                              constant SolverUniforms &u) {
+    float3 speed = fabs(momentum) / rho;
+    float fastest = max(speed.x, max(speed.y, speed.z)) + sqrt(u.gamma * pressure / rho);
+    recordWaveSpeed(maxSpeed, fastest);
+    // The second slot tracks how disturbed the air still is.
+    recordWaveSpeed(maxSpeed + 1, fabs(pressure - u.ambientPressure));
+}
+
+// One-dimensional MUSCL-Hancock update of one cell along `u.axis`.
+static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst, const device uchar *mask,
+                             device float *peak, device float *impulse, const device StepControl &control,
+                             device atomic_uint *maxSpeed, constant SolverUniforms &u,
+                             const device float *wallVelocity, device uchar *tileFlags) {
+    int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (mask[index] != 0) {
         return;
     }
-    int3 cell = int3(tid);
 
     uint axis = u.axis;
     int n = axis == 0 ? int(u.nx) : (axis == 1 ? int(u.ny) : int(u.nz));
-    int i = int(tid[axis]);
+    int i = cell[axis];
     int stride = axis == 0 ? 1 : (axis == 1 ? int(u.nx) : int(u.nx * u.ny));
     bool lowWall = ((u.boundaryFlags >> (2 * axis)) & 1u) != 0;
     bool highWall = ((u.boundaryFlags >> (2 * axis + 1)) & 1u) != 0;
@@ -355,12 +402,105 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
         float overpressure = pressure - u.ambientPressure;
         peak[index] = max(peak[index], overpressure);
         impulse[index] += max(overpressure, 0.0f) * dt;
+        recordCell(maxSpeed, momentum, rho, pressure, u);
+        // A changed cell near the edge of its tile wakes the tiles it can reach next step.
+        if (u.tileNx != 0 && !isStill(result, u)) {
+            int3 local = cell % tileSize;
+            if (any(local < tileReach) || any(local >= tileSize - tileReach)) {
+                wakeTilesAround(cell, tileFlags, tileWoken, u);
+            }
+        }
+    }
+}
 
-        float3 speed = fabs(momentum) / rho;
-        float fastest = max(speed.x, max(speed.y, speed.z)) + sqrt(u.gamma * pressure / rho);
-        recordWaveSpeed(maxSpeed, fastest);
-        // The second slot tracks how disturbed the air still is.
-        recordWaveSpeed(maxSpeed + 1, fabs(overpressure));
+// Sweeps every cell.
+kernel void sweep(const device Cell *src [[buffer(0)]],
+                  device Cell *dst [[buffer(1)]],
+                  const device uchar *mask [[buffer(2)]],
+                  device float *peak [[buffer(3)]],
+                  device float *impulse [[buffer(4)]],
+                  const device StepControl &control [[buffer(5)]],
+                  device atomic_uint *maxSpeed [[buffer(6)]],
+                  constant SolverUniforms &u [[buffer(7)]],
+                  const device float *wallVelocity [[buffer(8)]],
+                  device uchar *tileFlags [[buffer(10)]],
+                  uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
+        return;
+    }
+    sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags);
+}
+
+// Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
+// a column of the tile through z.
+kernel void sweepTiles(const device Cell *src [[buffer(0)]],
+                       device Cell *dst [[buffer(1)]],
+                       const device uchar *mask [[buffer(2)]],
+                       device float *peak [[buffer(3)]],
+                       device float *impulse [[buffer(4)]],
+                       const device StepControl &control [[buffer(5)]],
+                       device atomic_uint *maxSpeed [[buffer(6)]],
+                       constant SolverUniforms &u [[buffer(7)]],
+                       const device float *wallVelocity [[buffer(8)]],
+                       const device uint *tiles [[buffer(9)]],
+                       device uchar *tileFlags [[buffer(10)]],
+                       uint3 group [[threadgroup_position_in_grid]],
+                       uint3 local [[thread_position_in_threadgroup]],
+                       uint3 groupSize [[threads_per_threadgroup]]) {
+    uint tile = tiles[group.x];
+    uint3 origin = uint3(tile % u.tileNx, (tile / u.tileNx) % u.tileNy, tile / (u.tileNx * u.tileNy))
+        * uint(tileSize);
+    for (uint z = local.z; z < uint(tileSize); z += groupSize.z) {
+        uint3 cell = origin + uint3(local.x, local.y, z);
+        if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
+            sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags);
+        }
+    }
+}
+
+// After a restart: wakes the tiles within reach of every fluid cell that is not still.
+kernel void wakeTiles(const device Cell *state [[buffer(0)]],
+                      const device uchar *mask [[buffer(1)]],
+                      device uchar *tileFlags [[buffer(2)]],
+                      constant SolverUniforms &u [[buffer(3)]],
+                      uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
+        return;
+    }
+    int index = int(tid.x + u.nx * (tid.y + u.ny * tid.z));
+    if (mask[index] == 0 && !isStill(state[index], u)) {
+        wakeTilesAround(int3(tid), tileFlags, tileActive, u);
+    }
+}
+
+// Before each step: lists the awake tiles for the sweeps. Still air, and air woken during the
+// last step, was not swept then, so its contribution to the time step is added here, exactly
+// as the final sweep would have computed it for a still cell.
+kernel void collectTiles(device uchar *tileFlags [[buffer(0)]],
+                         device uint *tiles [[buffer(1)]],
+                         device atomic_uint *tileCount [[buffer(2)]],
+                         device atomic_uint *maxSpeed [[buffer(3)]],
+                         constant SolverUniforms &u [[buffer(4)]],
+                         uint tid [[thread_position_in_grid]]) {
+    if (tid >= u.tileNx * u.tileNy * u.tileNz) {
+        return;
+    }
+    uchar flag = tileFlags[tid];
+    if (flag != tileActive) {
+        float rho = max(u.stillRho, u.densityFloor);
+        float3 momentum = float3(u.stillMx, u.stillMy, u.stillMz);
+        float kinetic = 0.5f * dot(momentum, momentum) / rho;
+        float pressure = (u.gamma - 1.0f) * (u.stillEnergy - kinetic);
+        if (pressure < u.pressureFloor) {
+            pressure = u.pressureFloor;
+        }
+        recordCell(maxSpeed, momentum, rho, pressure, u);
+    }
+    if (flag != tileStill) {
+        tiles[atomic_fetch_add_explicit(tileCount, 1u, memory_order_relaxed)] = tid;
+        if (flag == tileWoken) {
+            tileFlags[tid] = tileActive;
+        }
     }
 }
 
@@ -372,9 +512,20 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                         device float *gaugeLog [[buffer(3)]],
                         const device uint *gaugeCells [[buffer(4)]],
                         constant SolverUniforms &u [[buffer(5)]],
+                        device atomic_uint *tileCount [[buffer(6)]],
+                        device uint *tileDispatch [[buffer(7)]],
                         uint tid [[thread_position_in_grid]]) {
     if (tid != 0) {
         return;
+    }
+    if (u.tileNx != 0) {
+        // One threadgroup per awake tile in the sweeps that follow.
+        uint count = atomic_exchange_explicit(tileCount, 0u, memory_order_relaxed);
+        tileDispatch[0] = count;
+        tileDispatch[1] = 1;
+        tileDispatch[2] = 1;
+        control.activeTiles = count;
+        control.tileSweeps += count;
     }
     float fastest = as_type<float>(atomic_exchange_explicit(maxSpeed, 0u, memory_order_relaxed));
     float dt = u.cfl * u.dx / max(fastest, 1e-6f);

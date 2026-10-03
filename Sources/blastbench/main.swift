@@ -76,21 +76,31 @@ func runThroughput() throws {
     print("")
     print(
         pad("cell", 8) + pad("cells", 12) + pad("memory", 10) + pad("steps/s", 10) + pad("Mcell/s", 10)
-            + pad("slow-mo", 10) + pad("steps", 8) + pad("event wall time", 20))
+            + pad("slow-mo", 10) + pad("steps", 8) + pad("swept", 8) + pad("event wall time", 20))
 
     var stepsPerMetre = 0.0
+    var lastSwept = 1.0
     for cellSize in [Float(0.5), 0.25, 0.125] {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         let cells = solver.grid.cellCount
         // Run the whole event unless it would take minutes; then time a sample and extrapolate
-        // the step count from the previous, coarser run.
+        // the step count from the previous, coarser run. The sample sweeps every tile, since
+        // early steps skip far more air than the event as a whole; the estimate assumes the
+        // coarser run's swept fraction.
         let runWholeEvent = cells < 20_000_000 || flag("full")
+        if flag("no-skip") || !runWholeEvent {
+            solver.configuration.skipStillAir = false
+            solver.restart()
+        }
         let start = ContinuousClock.now
         var steps = 0
+        var swept = 1.0
         if runWholeEvent {
-            steps = solver.advance(until: event).steps
+            let result = solver.advance(until: event)
+            (steps, swept) = (result.steps, result.sweptFraction)
         } else {
-            steps = solver.advance(steps: 192).steps
+            let result = solver.advance(steps: 192)
+            (steps, swept) = (result.steps, result.sweptFraction)
         }
         let elapsed = ContinuousClock.now - start
         let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
@@ -100,10 +110,12 @@ func runThroughput() throws {
         var wallTime = seconds
         if runWholeEvent {
             stepsPerMetre = Double(steps) * Double(cellSize)
+            lastSwept = swept
         } else {
             // The step count scales inversely with cell size.
             totalSteps = stepsPerMetre / Double(cellSize)
-            wallTime = totalSteps / stepRate
+            swept = flag("no-skip") ? 1 : lastSwept
+            wallTime = totalSteps / stepRate * swept
         }
         let slowMotion = wallTime / event
         print(
@@ -114,6 +126,7 @@ func runThroughput() throws {
                 + pad(format(stepRate * Double(cells) / 1e6, 0), 10)
                 + pad("\(format(slowMotion, 0))x", 10)
                 + pad(format(totalSteps, 0), 8)
+                + pad("\(format(100 * swept, 0))%", 8)
                 + pad("\(format(wallTime, 1)) s" + (runWholeEvent ? "" : " (est.)"), 20))
     }
 }

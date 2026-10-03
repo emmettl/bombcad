@@ -85,6 +85,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Let a moving part of the structure push and pull the air like a piston. When false the
     /// air treats the structure's surface as stationary wherever it currently is.
     public var movingWalls = true
+    /// Sweep only the tiles of 8 x 8 x 8 cells that the blast has reached (or is about to),
+    /// leaving air that is still in its initial uniform state untouched. The answer is the same
+    /// either way. Read at `restart()`.
+    public var skipStillAir = true
     /// Once no air cell is further than this fraction of ambient pressure from ambient, and
     /// there is a structure to keep following, the air is frozen and only the structure is
     /// advanced. Zero disables this. The default, 2 kPa at sea level, is small beside the
@@ -114,7 +118,7 @@ public struct Primitive: Sendable, Hashable {
 }
 
 /// Conserved variables as stored on the GPU. Layout matches `Cell` in `Solver.metal`.
-public struct CellState: Sendable {
+public struct CellState: Sendable, Equatable {
     public var density: Float
     public var momentumX: Float
     public var momentumY: Float
@@ -163,6 +167,14 @@ struct SolverUniforms {
     var regionNy: UInt32 = 0
     var regionNz: UInt32 = 0
     var maxStep: Float = 0
+    var tileNx: UInt32 = 0
+    var tileNy: UInt32 = 0
+    var tileNz: UInt32 = 0
+    var stillRho: Float = 0
+    var stillMx: Float = 0
+    var stillMy: Float = 0
+    var stillMz: Float = 0
+    var stillEnergy: Float = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -173,6 +185,8 @@ struct StepControl {
     var stepIndex: UInt32 = 0
     var activeSteps: UInt32 = 0
     var maxOverpressure: Float = .greatestFiniteMagnitude
+    var activeTiles: UInt32 = 0
+    var tileSweeps: UInt32 = 0
 }
 
 /// Pressure history recorded at a gauge cell, one sample per solver step.
@@ -194,6 +208,9 @@ public struct BatchResult: Sendable {
     public var isStable: Bool
     /// Largest magnitude of overpressure anywhere in the air at the end of the batch, in Pa.
     public var maxOverpressure: Float = .greatestFiniteMagnitude
+    /// Fraction of the grid's tiles swept, averaged over the batch's steps (1 when still air is
+    /// not skipped).
+    public var sweptFraction: Double = 1
 }
 
 public enum BlastError: Error, CustomStringConvertible {

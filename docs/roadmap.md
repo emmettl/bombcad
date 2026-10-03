@@ -69,9 +69,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 10. **Adaptive resolution in the air.**
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
-(the internal explosion); shell elements for walls and slabs and beam elements for columns (2 to 35
-times faster coupled, see the [shell model](shell-model.md)); debris loaded by the air (pressure gradient and drag on loose nodes, with
-the reaction given back to the air).
+(the internal explosion); shell elements for walls and slabs and beam elements for columns (2
+to 35 times faster coupled, see the [shell model](shell-model.md)); debris loaded by the air
+(pressure gradient and drag on loose nodes, with the reaction given back to the air); still
+air skipped, with an identical answer (1.6 to 1.7 times faster on the street scene, see
+[Performance](performance.md#air-solver)).
 
 ### Usability, in parallel
 

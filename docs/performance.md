@@ -10,9 +10,9 @@ power or thermal state; figures here are from cool runs.
 
 | What is simulated                                   | Slower than real time |
 |-----------------------------------------------------|-----------------------|
-| Air blast, 1 million cells (0.5 m in a street scene) | 2×                    |
-| Air blast, 8.4 million cells (0.25 m)               | 27×                   |
-| Air blast, 67 million cells (0.125 m)               | about 430×            |
+| Air blast, 1 million cells (0.5 m in a street scene) | 1×                    |
+| Air blast, 8.4 million cells (0.25 m)               | 17×                   |
+| Air blast, 67 million cells (0.125 m)               | 252×                  |
 | A 225,000-element concrete building, alone          | 54×                   |
 | The same, once pieces are colliding                 | 98×                   |
 | That building coupled to 1 million air cells        | 70×                   |
@@ -32,20 +32,28 @@ swift run -c release blastbench throughput
 
 Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulated.
 
-| Cell size | Cells  | GPU memory | Steps/s | Steps | Whole event  | Slower than real time |
-|-----------|--------|------------|---------|-------|--------------|-----------------------|
-| 0.5 m     | 1.0 M  | 0.06 GB    | 2,300   | 727   | 0.3 s        | 2×                    |
-| 0.25 m    | 8.4 M  | 0.48 GB    | 340     | 1,526 | 4.5 s        | 27×                   |
-| 0.125 m   | 67 M   | 3.8 GB     | 42      | 3,052 | 72 s (est.)  | 430×                  |
+| Cell size | Cells  | GPU memory | Steps/s | Steps | Air swept | Whole event | Slower than real time | Sweeping all of it |
+|-----------|--------|------------|---------|-------|-----------|-------------|-----------------------|--------------------|
+| 0.5 m     | 1.0 M  | 0.06 GB    | 3,060   | 727   | 64%       | 0.2 s       | 1×                    | 2×                 |
+| 0.25 m    | 8.4 M  | 0.48 GB    | 524     | 1,526 | 50%       | 2.9 s       | 17×                   | 27×                |
+| 0.125 m   | 67 M   | 3.8 GB     | 71      | 3,055 | 42%       | 43 s        | 252×                  | 427× (est.)        |
 
-- Throughput is about **2.8 billion cell-updates per second** at every size, each update being
-  three directional sweeps.
+- **Still air is skipped.** The grid is cut into tiles of 8 × 8 × 8 cells, and a tile is swept
+  only from the step before the blast can first reach it (see the
+  [air-blast model](air-blast-model.md#skipping-still-air)). Over the street event 42% to 64%
+  of the tiles are swept on average, and the event computes 1.6 to 1.7 times faster. The answer
+  is the same to the last bit; `--no-skip` sweeps everything.
+- Throughput is about **2.8 billion cell-updates per second** at every size when every cell is
+  swept, each update being three directional sweeps; counting the skipped cells as updated,
+  it is 3.2 to 4.8 billion.
 - Halving the cell size costs 16 times as much: eight times the cells and twice the steps.
 - Memory is 57 bytes per cell: two copies of the state, peak pressure, impulse, the solid mask
   and the visualisation volume.
 - The time step is about a third of what still air would allow, because the hot gas left by
   the fireball has a high sound speed for the whole event.
-- The finest figure is extrapolated from a timed sample of 192 steps.
+- Without `--full`, the finest figure is extrapolated from a timed sample of 192 steps of full
+  sweeps, scaled by the swept fraction of the 0.25 m run (an estimate of 36 s, against 43 s
+  measured).
 
 ## Structural solver
 
@@ -147,6 +155,11 @@ using the GPU, so all the figures in this table are a little high:
 | 0.25 m        | 7×             | 81×                     |
 | 0.125 m       | 83×            | 157×                    |
 
+Skipping still air helps the shell building little: its 32 m domain is mostly within a few
+metres of the structure, where the air is always swept, and the charge stands close to it. On
+0.125 m cells, 76% of the air is swept over the event and the run is 11% faster (70× slower
+than real time, against 79×, in a later session).
+
 With shells the air sets the pace instead: on 0.5 m cells the building runs at a couple of
 times slower than real time, and on 0.125 m cells the air alone takes most of the time. The
 shells' time step (34 µs for 250 mm concrete elements, against 9 µs) means a few substeps per
@@ -228,9 +241,11 @@ and a kernel to write the dispatch sizes, for at most those 3%; it has not been 
 | Cost                                              | Possible remedy                                        |
 |---------------------------------------------------|--------------------------------------------------------|
 | Structural time step tied to the smallest element | Shell and beam elements (done: 2–35× faster coupled); mass scaling |
-| Air solved everywhere at one resolution           | Adaptive refinement; a moving window that follows the shock |
+| Air solved everywhere at one resolution           | Adaptive refinement                                    |
+| Air solved before the blast reaches it            | Done: still air is skipped, 1.6–1.7× faster on the street scene |
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
 | Idle substep dispatches in coupled runs           | Now sized from the last batch; worth about 3%, too little for indirect dispatch (below) |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
 
-None of these has been done. The first two are the ones that would change what is feasible.
+Shells and the skipping of still air are done. Adaptive refinement is the one left that would
+change what is feasible.

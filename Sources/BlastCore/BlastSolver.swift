@@ -49,6 +49,9 @@ public final class BlastSolver {
 
     let library: MTLLibrary
     private let sweepPipeline: MTLComputePipelineState
+    private let sweepTilesPipeline: MTLComputePipelineState
+    private let wakeTilesPipeline: MTLComputePipelineState
+    private let collectTilesPipeline: MTLComputePipelineState
     private let preparePipeline: MTLComputePipelineState
     private let measurePipeline: MTLComputePipelineState
     private let visualizationPipeline: MTLComputePipelineState
@@ -71,6 +74,18 @@ public final class BlastSolver {
     private let gaugeLogBuffer: MTLBuffer
     private let gaugeCellBuffer: MTLBuffer
     private var gaugeCount = 0
+    /// Still air: one flag per tile of 8 x 8 x 8 cells (still, awake, or woken during the last
+    /// step), the list of awake tiles, its length, and the sweeps' threadgroup counts.
+    static let tileSize = 8
+    let tileDims: SIMD3<Int>
+    private let tileFlagBuffer: MTLBuffer
+    private let tileListBuffer: MTLBuffer
+    private let tileCountBuffer: MTLBuffer
+    private let tileDispatchBuffer: MTLBuffer
+    /// Whether still air is being skipped since the last restart.
+    private var tilesEnabled = false
+    /// The uniform state the air was last filled with: air still in it is not swept.
+    private var stillCell = CellState(Primitive(density: 1.225, pressure: 101_325), gamma: 1.4)
     private var batchInFlight = false
     /// True once the blast has left and the air has been frozen; only the structure advances.
     public private(set) var airIsAsleep = false
@@ -100,6 +115,9 @@ public final class BlastSolver {
             return try device.makeComputePipelineState(function: function)
         }
         sweepPipeline = try pipeline("sweep")
+        sweepTilesPipeline = try pipeline("sweepTiles")
+        wakeTilesPipeline = try pipeline("wakeTiles")
+        collectTilesPipeline = try pipeline("collectTiles")
         preparePipeline = try pipeline("prepareStep")
         measurePipeline = try pipeline("measureWaveSpeed")
         visualizationPipeline = try pipeline("updateVisualization")
@@ -132,6 +150,14 @@ public final class BlastSolver {
         gaugeLogBuffer = try buffer(
             Self.maxStepsPerBatch * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
+        let tile = Self.tileSize
+        tileDims = SIMD3(
+            (grid.nx + tile - 1) / tile, (grid.ny + tile - 1) / tile, (grid.nz + tile - 1) / tile)
+        let tiles = tileDims.x * tileDims.y * tileDims.z
+        tileFlagBuffer = try buffer(tiles, "tile flags")
+        tileListBuffer = try buffer(tiles * MemoryLayout<UInt32>.stride, "awake tiles")
+        tileCountBuffer = try buffer(MemoryLayout<UInt32>.stride, "awake tile count")
+        tileDispatchBuffer = try buffer(3 * MemoryLayout<UInt32>.stride, "tile dispatch")
 
         let descriptor = MTLTextureDescriptor()
         descriptor.textureType = .type3D
@@ -157,6 +183,7 @@ public final class BlastSolver {
     /// Sets every cell to the same state and restarts the clock.
     public func fill(uniform primitive: Primitive) {
         let cell = CellState(primitive, gamma: configuration.gamma)
+        stillCell = cell
         for buffer in stateBuffers {
             buffer.contents().bindMemory(to: CellState.self, capacity: grid.cellCount)
                 .update(repeating: cell, count: grid.cellCount)
@@ -406,6 +433,28 @@ public final class BlastSolver {
         memset(impulseBuffer.contents(), 0, impulseBuffer.length)
         maxSpeedBuffer.contents().storeBytes(of: 0, as: UInt64.self)
         airIsAsleep = false
+        // Both state buffers start alike, so that a tile never swept holds the same state in each.
+        memcpy(
+            stateBuffers[1 - current].contents(), stateBuffers[current].contents(),
+            stateBuffers[current].length)
+        tilesEnabled = configuration.skipStillAir
+        memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
+        tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
+        if tilesEnabled, let region = couplingRegion {
+            // Around the structure the mask moves and debris trades with the air, so those
+            // tiles are always swept.
+            let reach = 2
+            let low = simd_max(region.origin &- reach, .zero) / Self.tileSize
+            let high =
+                simd_min(region.origin &+ region.dims &+ (reach - 1), SIMD3(grid.nx, grid.ny, grid.nz) &- 1)
+                / Self.tileSize
+            let flags = tileFlagBuffer.contents().bindMemory(to: UInt8.self, capacity: tileFlagBuffer.length)
+            for z in low.z...high.z {
+                for y in low.y...high.y {
+                    for x in low.x...high.x { flags[x + tileDims.x * (y + tileDims.y * z)] = 1 }
+                }
+            }
+        }
 
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
@@ -417,6 +466,14 @@ public final class BlastSolver {
         encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 2)
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
         dispatchGrid(encoder, pipeline: measurePipeline)
+        if tilesEnabled {
+            encoder.setComputePipelineState(wakeTilesPipeline)
+            encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+            encoder.setBuffer(tileFlagBuffer, offset: 0, index: 2)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
+            dispatchGrid(encoder, pipeline: wakeTilesPipeline)
+        }
         encodeVisualization(encoder)
         encoder.endEncoding()
         commandBuffer.commit()
@@ -464,6 +521,23 @@ public final class BlastSolver {
                 uniforms.maxStep = 0.999 * Float(substeps) * bodyStep
             }
 
+            if asleep {
+                uniforms.tileNx = 0
+            } else if tilesEnabled {
+                let tiles = tileDims.x * tileDims.y * tileDims.z
+                encoder.setComputePipelineState(collectTilesPipeline)
+                encoder.setBuffer(tileFlagBuffer, offset: 0, index: 0)
+                encoder.setBuffer(tileListBuffer, offset: 0, index: 1)
+                encoder.setBuffer(tileCountBuffer, offset: 0, index: 2)
+                encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 3)
+                encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 4)
+                encoder.dispatchThreads(
+                    MTLSize(width: tiles, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(
+                        width: min(tiles, collectTilesPipeline.maxTotalThreadsPerThreadgroup), height: 1,
+                        depth: 1))
+            }
+
             encoder.setComputePipelineState(preparePipeline)
             encoder.setBuffer(controlBuffer, offset: 0, index: 0)
             encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 1)
@@ -471,6 +545,8 @@ public final class BlastSolver {
             encoder.setBuffer(gaugeLogBuffer, offset: 0, index: 3)
             encoder.setBuffer(gaugeCellBuffer, offset: 0, index: 4)
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+            encoder.setBuffer(tileCountBuffer, offset: 0, index: 6)
+            encoder.setBuffer(tileDispatchBuffer, offset: 0, index: 7)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -482,20 +558,28 @@ public final class BlastSolver {
             var axes = order.filter { extents[$0] > 1 }
             if axes.isEmpty { axes = [0] }
 
-            encoder.setComputePipelineState(sweepPipeline)
+            encoder.setComputePipelineState(tilesEnabled ? sweepTilesPipeline : sweepPipeline)
             encoder.setBuffer(maskBuffer, offset: 0, index: 2)
             encoder.setBuffer(peakBuffer, offset: 0, index: 3)
             encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
             encoder.setBuffer(controlBuffer, offset: 0, index: 5)
             encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
             encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
+            encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
+            encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
             for (n, axis) in axes.enumerated() where !asleep {
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
                 encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
                 encoder.setBuffer(stateBuffers[1 - current], offset: 0, index: 1)
                 encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 7)
-                dispatchGrid(encoder, pipeline: sweepPipeline)
+                if tilesEnabled {
+                    encoder.dispatchThreadgroups(
+                        indirectBuffer: tileDispatchBuffer, indirectBufferOffset: 0,
+                        threadsPerThreadgroup: tileThreads)
+                } else {
+                    dispatchGrid(encoder, pipeline: sweepPipeline)
+                }
                 current = 1 - current
             }
 
@@ -573,10 +657,17 @@ public final class BlastSolver {
             airIsAsleep = quiet || late
         }
         if control.activeSteps > 0 { lastFluidStep = control.dt }
+        var swept = 1.0
+        if tilesEnabled {
+            let tiles = Double(tileDims.x * tileDims.y * tileDims.z)
+            swept =
+                control.activeSteps > 0
+                ? Double(control.tileSweeps) / (Double(control.activeSteps) * tiles) : 0
+        }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(control.dt),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
-            maxOverpressure: control.maxOverpressure)
+            maxOverpressure: control.maxOverpressure, sweptFraction: swept)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -590,6 +681,7 @@ public final class BlastSolver {
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
             let result = completeBatch()
+            total.sweptFraction = Self.mergeSwept(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
@@ -607,6 +699,7 @@ public final class BlastSolver {
         var total = BatchResult(steps: 0, elapsed: 0, lastTimeStep: 0, isStable: true)
         while endTime - time > 1e-7 * max(endTime, 1e-3) {
             let result = advance(steps: 64, timeLimit: endTime)
+            total.sweptFraction = Self.mergeSwept(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
@@ -615,6 +708,14 @@ public final class BlastSolver {
             if result.steps == 0 || !result.isStable { break }
         }
         return total
+    }
+
+    /// The swept fraction of two runs of steps together, weighted by their steps.
+    private static func mergeSwept(_ total: BatchResult, _ result: BatchResult) -> Double {
+        let steps = total.steps + result.steps
+        guard steps > 0 else { return result.sweptFraction }
+        return (total.sweptFraction * Double(total.steps) + result.sweptFraction * Double(result.steps))
+            / Double(steps)
     }
 
     /// Rebuilds `visualizationTexture` from the current state, blocking until done.
@@ -726,6 +827,16 @@ public final class BlastSolver {
             riemannSolver: configuration.riemannSolver.rawValue,
             boundaryFlags: configuration.reflectiveFaces.rawValue,
             gaugeCount: UInt32(gaugeCount))
+        if tilesEnabled {
+            uniforms.tileNx = UInt32(tileDims.x)
+            uniforms.tileNy = UInt32(tileDims.y)
+            uniforms.tileNz = UInt32(tileDims.z)
+        }
+        uniforms.stillRho = stillCell.density
+        uniforms.stillMx = stillCell.momentumX
+        uniforms.stillMy = stillCell.momentumY
+        uniforms.stillMz = stillCell.momentumZ
+        uniforms.stillEnergy = stillCell.energy
         if let region = couplingRegion, configuration.movingWalls {
             uniforms.regionX = UInt32(region.origin.x)
             uniforms.regionY = UInt32(region.origin.y)
@@ -735,6 +846,18 @@ public final class BlastSolver {
             uniforms.regionNz = UInt32(region.dims.z)
         }
         return uniforms
+    }
+
+    /// Threads per tile in the tiled sweep: a column through the tile for each, or several if the
+    /// pipeline cannot hold a whole tile's worth.
+    private var tileThreads: MTLSize {
+        var depth = Self.tileSize
+        while depth > 1
+            && Self.tileSize * Self.tileSize * depth > sweepTilesPipeline.maxTotalThreadsPerThreadgroup
+        {
+            depth /= 2
+        }
+        return MTLSize(width: Self.tileSize, height: Self.tileSize, depth: depth)
     }
 
     private func dispatchGrid(_ encoder: MTLComputeCommandEncoder, pipeline: MTLComputePipelineState) {

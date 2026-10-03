@@ -82,9 +82,11 @@ struct SimulationModelTests {
         try await waitUntil { model.time > 0.005 }
         model.toggleRun()
         try await waitUntil { !model.isRunning }
+        // A batch already on the GPU still lands; after that, time stands still.
+        try await Task.sleep(for: .milliseconds(50))
         let paused = model.time
         try await Task.sleep(for: .milliseconds(50))
-        #expect(model.time - paused < 0.005)
+        #expect(model.time == paused)
         model.toggleRun()
         try await waitUntil { model.time > paused + 0.005 }
         model.toggleRun()

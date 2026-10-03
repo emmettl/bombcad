@@ -474,7 +474,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 84 tests. The physical checks are:
+The test suite has 98 tests. The physical checks are:
 
 **Air solver**
 
