@@ -88,9 +88,10 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
   the peak pressures on the walls are 0.9 to 1.6 times those measured. With the default gas
   the roof's free edge is left 98 mm deflected where 95 mm was measured, but that gas is too
-  weak; with afterburning and hot air it is left 0.9 m up. The test exposed two missing
-  mechanisms in the concrete model, now added (bars resisting sliding across cracks, and
-  cracks held closed across a section by its bars), and shows the joints are still too weak.
+  weak; with afterburning and hot air it is left 0.9 m up, or 10 mm with cracks fixed along
+  their first direction, an option. The test exposed two missing mechanisms in the concrete
+  model, now added (bars resisting sliding across cracks, and cracks held closed across a
+  section by its bars), and shows that the joints' inclined cracking decides the outcome.
 
 Collapse and debris have not been compared with anything.
 

@@ -63,7 +63,7 @@ public enum ChamberTest {
 
     public static func scenario(
         elementSize: Float = 0.1, downstand: Bool = true, ties: Bool = true, elastic: Bool = false,
-        chargeScale: Float = 1, haunches: Bool = true
+        chargeScale: Float = 1, haunches: Bool = true, orientedCracks: Bool = false
     ) -> Scenario {
         let w1 = Box(min: SIMD3(0, sideWalls.low, 0), max: SIMD3(partitionFace, inside.low, roof.high))
         let w3 = Box(min: SIMD3(0, inside.high, 0), max: SIMD3(partitionFace, sideWalls.high, roof.high))
@@ -109,6 +109,7 @@ public enum ChamberTest {
         }
         var model = StructureModel(
             solids: solids, material: material(), elementSize: elementSize, fixedBase: true)
+        model.orientedCracks = orientedCracks
         // Held at the end wall's outer face, in the partition and in the foundation.
         model.supports = [
             Box(min: SIMD3(-1, 0, -1), max: SIMD3(0, 10, 10)),
@@ -239,13 +240,14 @@ public enum ChamberTest {
     public static func run(
         device: MTLDevice, cellSize: Float = 0.1, elementSize: Float = 0.1, downstand: Bool = true,
         ties: Bool = true, elastic: Bool = false, chargeScale: Float = 1, afterburning: Bool = false,
-        afterburnEnergy: Float? = nil, airModel: AirModel = .idealGas, duration: Double = 0.3
+        afterburnEnergy: Float? = nil, airModel: AirModel = .idealGas, orientedCracks: Bool = false,
+        duration: Double = 0.3
     ) throws -> Result {
         try run(
             device: device,
             scenario: scenario(
                 elementSize: elementSize, downstand: downstand, ties: ties, elastic: elastic,
-                chargeScale: chargeScale),
+                chargeScale: chargeScale, orientedCracks: orientedCracks),
             cellSize: cellSize, duration: duration, afterburning: afterburning,
             afterburnEnergy: afterburnEnergy, airModel: airModel)
     }

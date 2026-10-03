@@ -32,7 +32,7 @@ swift run -c release blastbench chamber
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 112 mm (104%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; roof edge left 98 mm deflected against 95 mm with the default gas, but 0.9 m with the gas the design manual supports | Low: the structure is too weak at joints, or the gas vents too slowly |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; with the gas the design manual supports, the roof edge is left 0.9 m up (lattice cracks) or 10 mm (oriented cracks) against 95 mm | Low: the joints' inclined cracking decides it, and the two crack models bracket it |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -477,7 +477,21 @@ thrown, a little below the paper's model's:
 | 1.5                                 | Roof thrown              | 251 / 168 mm                             |
 | 2                                   | Roof thrown              | Roof thrown                              |
 
-The side walls bow out 11 mm, and nothing fails in the walls, the end wall or the roof slab;
+**With oriented cracks** (`--oriented`; see the [concrete model](concrete-model.md#cracking)),
+the joints' inclined cracks open as single planes, and the response follows the paper's own
+model across the sweep, whichever gas is used:
+
+| Charge, as a fraction of the test's | Default gas | Afterburning and hot air | Paper's model |
+|-------------------------------------|-------------|--------------------------|---------------|
+| 0.5                                 | 9 / 1 mm    |                          | 22 / 17 mm    |
+| 1                                   | 65 / 9 mm   | 69 / 10 mm               | 87 / 62 mm    |
+| 1.5                                 | 363 / 106 mm | 374 / 97 mm             | 251 / 168 mm  |
+| 2                                   | Roof thrown | Roof thrown              | Roof thrown   |
+
+The peak at the test's charge is three-quarters of the paper's model's, but the roof springs
+back to 10 mm where 95 mm was measured: fixed cracks are stiff on the way back.
+
+With the default lattice-plane cracks and default gas, the side walls bow out 11 mm, and nothing fails in the walls, the end wall or the roof slab;
 the down-stand at the roof's free edge and the unreinforced chamfers lose 2,300 elements
 between them. The measured structure was itself close to its cliff: chamber B nearly lost its
 roof edge.
@@ -524,12 +538,11 @@ What remains, in rough order:
 The model reproduces the kind of damage seen (cracking and crushing concentrated at the
 joints and supports, held together by the bars, and a roof left deflected upwards), and it
 exposed two missing mechanisms in the concrete model, now added from published mechanics with
-the slab test unchanged. But the residual's agreement holds only with the default gas, which
-is too weak; with the gas as strong as the design manual says (afterburning and hot air), the
-roof's edge ends about 0.9 m up against 95 mm. Either the structure is still too weak, by a
-margin the slab test (in bending, without joints) does not show, or the model's gas vents too
-slowly; this test cannot separate them. Peak wall pressures are within the loose check that
-the gauge positions allow.
+the slab test unchanged. With the gas as strong as the design manual says (afterburning and
+hot air), the two crack models bracket the measurement: across the lattice planes the roof's
+edge ends about 0.9 m up, with oriented cracks about 10 mm, against 95 mm. The joints' inclined
+cracking decides it, and neither crack model gets it right on its own. Peak wall pressures
+are within the loose check that the gauge positions allow.
 
 ## Consistency across air grids
 
@@ -552,7 +565,7 @@ compare these with.
 
 ## Verification against theory
 
-The test suite has 107 tests. The physical checks are:
+The test suite has 108 tests. The physical checks are:
 
 **Air solver**
 
@@ -632,7 +645,8 @@ equations are the right ones.
 
 In rough order of value:
 
-1. The chamber's joints: diagonal bars across its chamfers, and its down-stand's stirrups (see
+1. Inclined cracking at joints, between the two crack models' errors (a crack that may turn
+   until it opens); then the chamber's diagonal bars and stirrups (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 2. A second and third structural test, of different kinds (see the
    [concrete model's future work](concrete-model.md#future-work)).

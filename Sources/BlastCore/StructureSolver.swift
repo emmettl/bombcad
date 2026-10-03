@@ -28,7 +28,7 @@ public final class StructureSolver {
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
     }
 
-    static let stateStride = 136
+    static let stateStride = 144
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -729,6 +729,7 @@ public final class StructureSolver {
             contactFriction: contactFriction)
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
+        uniforms.orientedCracks = model.orientedCracks ? 1 : 0
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))

@@ -281,6 +281,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Regions in which the structure is held still: nodes inside any of them do not move
     /// (beyond the ground plane, which `fixedBase` holds). For walls built into rigid scenery.
     public var supports: [Box] = []
+    /// Let concrete crack along the principal axes of its strain when it first cracks, and keep
+    /// those axes, so that inclined (shear) cracks open and slide as single planes. By default
+    /// cracks lie across the lattice planes, and an inclined crack is shared between them. See
+    /// the concrete model's notes: fixed cracks lock stress where cracking turns afterwards.
+    public var orientedCracks = false
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -561,6 +566,7 @@ struct StructureUniforms {
     var exchangeNy: Int32 = 0
     var exchangeNz: Int32 = 0
     var fluidAirModel: UInt32 = 0
+    var orientedCracks: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -707,5 +713,6 @@ extension StructureModel {
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
+        orientedCracks = try container.decodeIfPresent(Bool.self, forKey: .orientedCracks) ?? false
     }
 }

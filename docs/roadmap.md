@@ -54,8 +54,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    (Done: afterburning, limited by mixing and oxygen, and thermally perfect air, which together
    bring the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the
    open within 6% of Kingery–Bulmash.)
-4. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
-   shared between lattice planes.
+4. **Shear in concrete.** Cracks that may turn until they open, or a second crack once the
+   principal direction has turned far enough, to sit between the lattice planes' over-softening
+   and fixed cracks' stress locking. (Done: oriented cracks, fixed at first cracking, as an
+   option; with them the chamber follows the paper's own model, but other cases stiffen.)
 5. **The rebound, and compaction** under very high pressure. The slab's mid-span hinge springs
    back twice as far as the specimen did on every mesh.
 6. **Cut cells** between moving solids and the air. Moving walls already push the air (a

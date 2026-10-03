@@ -174,7 +174,9 @@ func runChamber() throws {
         ties: !flag("no-ties"), elastic: flag("elastic"), chargeScale: chargeScale,
         afterburning: flag("afterburn"),
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
-        airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas, duration: duration)
+        airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas,
+        orientedCracks: flag("oriented"),
+        duration: duration)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )
@@ -618,7 +620,8 @@ func runSlab() throws {
     }
     for (layers, rate) in cases {
         let result = try SlabBenchmark.run(
-            device: device, elementsThroughThickness: layers, rate: rate, width: width)
+            device: device, elementsThroughThickness: layers, rate: rate, width: width,
+            orientedCracks: flag("oriented"))
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""

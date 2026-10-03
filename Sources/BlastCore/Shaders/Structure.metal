@@ -60,7 +60,35 @@ struct StructureUniforms {
     int exchangeNy;
     int exchangeNz;
     uint fluidAirModel;  // the air's equation of state (`AirModel`)
+    uint orientedCracks;  // non-zero: concrete cracks along the principal axes it first cracked on
 };
+
+// Rotation matrix (columns: the rotated axes) of a unit quaternion (x, y, z, w), and back.
+static inline float3x3 rotationOf(float4 q) {
+    float x = q.x, y = q.y, z = q.z, w = q.w;
+    return float3x3(float3(1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w)),
+                    float3(2 * (x * y - z * w), 1 - 2 * (x * x + z * z), 2 * (y * z + x * w)),
+                    float3(2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y)));
+}
+
+static inline float4 quaternionOf(float3x3 r) {
+    float trace = r[0][0] + r[1][1] + r[2][2];
+    float4 q;
+    if (trace > 0.0f) {
+        float s = 0.5f / sqrt(trace + 1.0f);
+        q = float4((r[1][2] - r[2][1]) * s, (r[2][0] - r[0][2]) * s, (r[0][1] - r[1][0]) * s, 0.25f / s);
+    } else if (r[0][0] > r[1][1] && r[0][0] > r[2][2]) {
+        float s = 2.0f * sqrt(1.0f + r[0][0] - r[1][1] - r[2][2]);
+        q = float4(0.25f * s, (r[1][0] + r[0][1]) / s, (r[2][0] + r[0][2]) / s, (r[1][2] - r[2][1]) / s);
+    } else if (r[1][1] > r[2][2]) {
+        float s = 2.0f * sqrt(1.0f + r[1][1] - r[0][0] - r[2][2]);
+        q = float4((r[1][0] + r[0][1]) / s, 0.25f * s, (r[2][1] + r[1][2]) / s, (r[2][0] - r[0][2]) / s);
+    } else {
+        float s = 2.0f * sqrt(1.0f + r[2][2] - r[0][0] - r[1][1]);
+        q = float4((r[2][0] + r[0][2]) / s, (r[2][1] + r[1][2]) / s, 0.25f * s, (r[0][1] - r[1][0]) / s);
+    }
+    return normalize(q);
+}
 
 // What loose debris takes from the air is summed per air cell in fixed point, so that the
 // GPU's integer atomics give the same total whatever order the nodes arrive in. Each sum is 64
@@ -153,6 +181,10 @@ struct ElementState {
     float crackingFactor;        // tensile rate factor frozen when the element first cracked
     packed_float3 confinementGain;  // running average of each axis's confinement factor, less one
     packed_float3 crushStrain;      // concrete: largest compressive strain so far along x, y, z
+    // With oriented cracks, the axes the concrete cracked across, as a rotation from the lattice
+    // axes (a unit quaternion; all zero until it first cracks). The three crack, crush and
+    // confinement histories above are then along these axes.
+    packed_half4 crackFrame;
 };
 
 // Reinforcement area per unit area of concrete, along each lattice axis.
@@ -650,7 +682,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     } else {
         // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
         float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
-        float3x3 strain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
+        float3x3 latticeStrain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
+        // The bars lie along the lattice axes and are strained along them.
+        float3 barStrain = float3(latticeStrain[0][0], latticeStrain[1][1], latticeStrain[2][2]);
+        // With oriented cracks the concrete works in its crack axes (columns of `frame`), fixed
+        // when it first cracks; before that, and without them, in the lattice axes.
+        float3x3 frame = float3x3(1.0f);
+        bool framed = false;
+        if (u.orientedCracks != 0) {
+            float4 stored = float4(state.crackFrame);
+            if (any(stored != 0.0f)) {
+                frame = rotationOf(normalize(stored));
+                framed = true;
+            }
+        }
+        float3x3 strain = transpose(frame) * latticeStrain * frame;
         float3 normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
 
         // Strength rises with strain rate; a running average keeps element-scale noise out.
@@ -696,6 +742,19 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3 principal;
         float3x3 axes;
         symmetricEigen(effective, principal, axes);
+        if (u.orientedCracks != 0 && !framed && max(principal.x, max(principal.y, principal.z)) > onset) {
+            // First crack: the crack axes are the principal axes of this strain (made right-handed).
+            if (determinant(axes) < 0.0f) {
+                axes[2] = -axes[2];
+            }
+            frame = axes;
+            framed = true;
+            state.crackFrame = packed_half4(half4(quaternionOf(frame)));
+            strain = transpose(axes) * strain * axes;
+            effective = transpose(axes) * effective * axes;
+            normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
+            axes = float3x3(1.0f);
+        }
         for (int i = 0; i < 3; ++i) {
             float3 weight = axes[i] * axes[i];
             float seen = dot(weight, history);
@@ -815,8 +874,20 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
                 int across = history[a] >= history[b] ? a : b;
-                float crossing = barRatio[across];
-                if (crossing > 0.0f && fabs(state.steelPlastic[across]) < 1e8f) {
+                // Bars along lattice axis j cross a crack of unit normal n in proportion to |n_j|;
+                // the most nearly crossing set ruptures if kinked too far.
+                float3 normal = frame[across];
+                float crossing = 0.0f;
+                int crossingAxis = 0;
+                for (int j = 0; j < 3; ++j) {
+                    if (fabs(state.steelPlastic[j]) < 1e8f) {
+                        crossing += barRatio[j] * fabs(normal[j]);
+                    }
+                    if (barRatio[j] * fabs(normal[j]) > barRatio[crossingAxis] * fabs(normal[crossingAxis])) {
+                        crossingAxis = j;
+                    }
+                }
+                if (crossing > 0.0f) {
                     // Dowel action: each bar resists 1.3 d^2 sqrt(fc fy) of sliding (Rasmussen,
                     // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
                     float yield = m.steelStress[0];
@@ -829,7 +900,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     float elastic = yield / m.steelModulus;
                     float plasticStretch = stretch - elastic;
                     if (plasticStretch > m.steelStrain[m.steelPoints - 1]) {
-                        state.steelPlastic[across] = 1e9f;  // ruptured for good
+                        state.steelPlastic[crossingAxis] = 1e9f;  // ruptured for good
                     } else {
                         float slope;
                         float tension = stretch <= elastic ? m.steelModulus * stretch
@@ -844,6 +915,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 material = float3x3(float3(normalStress.x, shearStress.x, shearStress.z),
                                      float3(shearStress.x, normalStress.y, shearStress.y),
                                      float3(shearStress.z, shearStress.y, normalStress.z));
+        if (framed) {
+            material = frame * material * transpose(frame);
+        }
 
         // Smeared reinforcement: bars along the lattice axes, strained with the element. They
         // follow the measured curve while loaded one way, and the cyclic law once reversed.
@@ -856,7 +930,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 continue;
             }
             // Stretch of the fibre from its Green-Lagrange strain, without cancellation.
-            float green = normalStrain[j];
+            float green = barStrain[j];
             float root = sqrt(max(1.0f + 2.0f * green, 1e-6f));
             float fibre = 2.0f * green / (1.0f + root);
             float stress = m.steelModulus * (fibre - plastic[j]);
@@ -937,8 +1011,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // from the element to the member's surface, for an element with intact bars across it
         // (as of the previous substep).
         bool torn = false;
-        for (int j = 0; j < 3 && !torn; ++j) {
-            if (history[j] < m.erosionStrain || intact[j] != 0.0f) {
+        for (int c = 0; c < 3 && !torn; ++c) {
+            if (history[c] < m.erosionStrain) {
+                continue;
+            }
+            // The lattice axis most nearly across the crack carries the bars that cross it; the
+            // section is searched along the other two.
+            float3 normal = abs(frame[c]);
+            int j = normal.x >= normal.y && normal.x >= normal.z ? 0 : (normal.y >= normal.z ? 1 : 2);
+            if (intact[j] != 0.0f) {
                 continue;
             }
             bool bridged = false;
