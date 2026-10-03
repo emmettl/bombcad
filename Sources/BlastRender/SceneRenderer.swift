@@ -324,6 +324,7 @@ public final class SceneRenderer {
             sceneEncoder.setVertexBuffer(structure.flagBuffer, offset: 0, index: 2)
             sceneEncoder.setVertexBuffer(structure.stateBuffer, offset: 0, index: 3)
             sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
+            sceneEncoder.setVertexBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
             sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: structure.elementCount)

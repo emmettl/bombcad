@@ -66,8 +66,12 @@ public final class StructureSolver {
 
     // Exposed for rendering. Element data (state, forces, reinforcement and their histories) is
     // stored compactly, one entry per element the body started with, in the order of
-    // `instanceBuffer`; flags and nodes cover the whole lattice.
+    // `instanceBuffer`, and nodes likewise, one per node of those elements in lattice order;
+    // flags cover the whole lattice.
     public let nodeBuffer: MTLBuffer
+    /// For every lattice node, its compact index in `nodeBuffer`, or `UInt32.max` where there is
+    /// none.
+    public let nodeMapBuffer: MTLBuffer
     public let flagBuffer: MTLBuffer
     public let stateBuffer: MTLBuffer
     /// Lattice indices of the initial elements, one `UInt32` each.
@@ -93,9 +97,9 @@ public final class StructureSolver {
     private let materialIndexBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
-    /// Indices of the nodes that belong to at least one element.
+    /// Lattice indices of the nodes that belong to at least one element, in ascending order.
     private let nodeListBuffer: MTLBuffer
-    private let nodeCount: Int
+    public let nodeCount: Int
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
@@ -166,7 +170,6 @@ public final class StructureSolver {
         }
         let cells = ex * ey * ez
         let nodes = (ex + 1) * (ey + 1) * (ez + 1)
-        nodeBuffer = try buffer(nodes * MemoryLayout<StructureNode>.stride, "structure nodes")
         flagBuffer = try buffer(cells, "structure flags")
         materials = model.materials
         guard materials.count <= StructureModel.maxMaterials else {
@@ -267,6 +270,13 @@ public final class StructureSolver {
         let nodeList = used.indices.filter { used[$0] }.map { UInt32($0) }
         nodeCount = nodeList.count
         nodeListBuffer = try indexBuffer(nodeList, "structure node list")
+        nodeBuffer = try buffer(max(nodeCount, 1) * MemoryLayout<StructureNode>.stride, "structure nodes")
+        nodeMapBuffer = try buffer(nodes * 4, "structure lattice to node")
+        let nodeMap = nodeMapBuffer.contents().bindMemory(to: UInt32.self, capacity: nodes)
+        nodeMap.update(repeating: .max, count: nodes)
+        for (compact, index) in nodeList.enumerated() {
+            nodeMap[Int(index)] = UInt32(compact)
+        }
 
         // Contact cells map into a table that wraps space periodically, offset by half an element
         // so that every undeformed node sits in the middle of its cell. Each period is the
@@ -335,15 +345,28 @@ public final class StructureSolver {
         }
     }
 
-    /// Direct access to the nodes, for setting supports and initial velocities.
+    /// Direct access to the nodes, for setting supports and initial velocities. Index them with
+    /// `nodeIndex(_:_:_:)`.
     public func mutateNodes(_ body: (UnsafeMutableBufferPointer<StructureNode>) throws -> Void) rethrows {
-        let count = (ex + 1) * (ey + 1) * (ez + 1)
-        let pointer = nodeBuffer.contents().bindMemory(to: StructureNode.self, capacity: count)
-        try body(UnsafeMutableBufferPointer(start: pointer, count: count))
+        let pointer = nodeBuffer.contents().bindMemory(to: StructureNode.self, capacity: max(nodeCount, 1))
+        try body(UnsafeMutableBufferPointer(start: pointer, count: nodeCount))
     }
 
-    @inlinable
-    public func nodeIndex(_ i: Int, _ j: Int, _ k: Int) -> Int { i + (ex + 1) * (j + (ey + 1) * k) }
+    /// Where node (i, j, k) is stored, if any element uses it.
+    public func storedNode(_ i: Int, _ j: Int, _ k: Int) -> Int? {
+        guard i >= 0, j >= 0, k >= 0, i <= ex, j <= ey, k <= ez else { return nil }
+        let value = nodeMapBuffer.contents().load(
+            fromByteOffset: (i + (ex + 1) * (j + (ey + 1) * k)) * 4, as: UInt32.self)
+        return value == .max ? nil : Int(value)
+    }
+
+    /// Where node (i, j, k) is stored. The node must belong to an element.
+    public func nodeIndex(_ i: Int, _ j: Int, _ k: Int) -> Int {
+        guard let index = storedNode(i, j, k) else {
+            preconditionFailure("No element uses node (\(i), \(j), \(k))")
+        }
+        return index
+    }
 
     @inlinable
     public func elementIndex(_ i: Int, _ j: Int, _ k: Int) -> Int { i + ex * (j + ey * k) }
@@ -366,9 +389,11 @@ public final class StructureSolver {
         return stateBuffer.contents().load(fromByteOffset: index * Self.stateStride + offset, as: Float.self)
     }
 
+    /// Node (i, j, k), or an empty node where no element uses it.
     public func node(_ i: Int, _ j: Int, _ k: Int) -> StructureNode {
-        nodeBuffer.contents().load(
-            fromByteOffset: nodeIndex(i, j, k) * MemoryLayout<StructureNode>.stride, as: StructureNode.self)
+        guard let index = storedNode(i, j, k) else { return StructureNode() }
+        return nodeBuffer.contents().load(
+            fromByteOffset: index * MemoryLayout<StructureNode>.stride, as: StructureNode.self)
     }
 
     /// Undeformed position of a node.
@@ -483,7 +508,7 @@ public final class StructureSolver {
     public var memoryFootprint: Int {
         [
             nodeBuffer, flagBuffer, stateBuffer, forceBuffer, steelBuffer, barHistoryBuffer, instanceBuffer,
-            nodeListBuffer, cellElementBuffer, materialIndexBuffer,
+            nodeListBuffer, nodeMapBuffer, cellElementBuffer, materialIndexBuffer,
             contactHeadBuffer, contactSlotBuffer, contactForceBuffer,
         ].reduce(0) { $0 + $1.length }
     }
@@ -569,6 +594,7 @@ public final class StructureSolver {
             encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 17)
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 18)
             encoder.setBuffer(cellElementBuffer, offset: 0, index: 19)
+            encoder.setBuffer(nodeMapBuffer, offset: 0, index: 20)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 

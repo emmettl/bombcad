@@ -260,7 +260,8 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
                                const device MeshNode *nodes [[buffer(1)]],
                                const device uchar *flags [[buffer(2)]],
                                const device float *states [[buffer(3)]],
-                               constant MeshUniforms &u [[buffer(4)]]) {
+                               constant MeshUniforms &u [[buffer(4)]],
+                               const device uint *nodeMap [[buffer(5)]]) {
     MeshOut out;
     out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
     out.world = float3(0.0f);
@@ -293,7 +294,7 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
             return out;
         }
         int3 point = cell + offset;
-        MeshNode node = nodes[point.x + nodesX * (point.y + nodesY * point.z)];
+        MeshNode node = nodes[nodeMap[point.x + nodesX * (point.y + nodesY * point.z)]];
         world = u.lattice.xyz + float3(point) * u.lattice.w + float3(node.displacement);
         out.damage = states[instanceID * 34 + 7];
     } else if (flag == 2) {
@@ -301,7 +302,7 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
         float3 centre = float3(0.0f);
         for (int a = 0; a < 8; ++a) {
             int3 point = cell + int3(a & 1, (a >> 1) & 1, (a >> 2) & 1);
-            MeshNode node = nodes[point.x + nodesX * (point.y + nodesY * point.z)];
+            MeshNode node = nodes[nodeMap[point.x + nodesX * (point.y + nodesY * point.z)]];
             centre += 0.125f * (u.lattice.xyz + float3(point) * u.lattice.w + float3(node.displacement));
         }
         world = centre + (float3(offset) - 0.5f) * (0.6f * u.lattice.w);

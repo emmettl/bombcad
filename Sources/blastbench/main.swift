@@ -343,7 +343,8 @@ func runStructure() throws {
     print(
         "Structure: \(solver.elementCount) hexahedral elements of \(format(Double(model.elementSize) * 1000, 1)) mm, "
             + "\(model.material.name.lowercased()), time step \(format(stepSeconds * 1e6, 1)) µs, "
-            + "contact \(solver.contactMode == .always ? "on" : "off until something fails")")
+            + "contact \(solver.contactMode == .always ? "on" : "off until something fails"), "
+            + "\(format(Double(solver.memoryFootprint) / 1e6, 0)) MB")
     print(
         "\(format(Double(steps) / seconds, 0)) steps/s, "
             + "\(format(Double(steps) * Double(solver.elementCount) / seconds / 1e6, 0)) M element-updates/s, "

@@ -82,12 +82,15 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   is read only for bars that have yielded; reading it for every bar cost twice as much.
 - **Memory goes with the elements, not the lattice.** Element data (state, forces,
   reinforcement and its histories) is stored once per element, about 380 bytes with
-  reinforcement; the lattice itself costs 5 bytes per cell (a flag and the cell's element
-  number) and 32 per node; and contacts use a table that wraps space periodically, sized to
-  about eight entries per node at 20 bytes each. The concrete building, 225,000 elements in a
-  1.4-million-cell lattice, takes 179 MB, where storing everything per lattice cell and a
-  dense contact grid around the structure took 640 MB. The coupled run's GPU memory falls
-  from 0.70 GB to 0.19 GB.
+  reinforcement, and node data once per node of an element, 32 bytes; the lattice itself
+  costs 5 bytes per cell (a flag and the cell's element number) and 4 per node (the node's
+  number); and contacts use a table that wraps space periodically, sized to about eight
+  entries per node at 20 bytes each. The concrete building, 225,000 elements and 283,000 nodes
+  in a 1.4-million-cell lattice, takes 147 MB. Storing nodes for the whole lattice took 179 MB,
+  and storing everything per lattice cell with a dense contact grid around the structure took
+  640 MB. The coupled run takes 0.21 GB in all at 0.25 m air cells, against 0.70 GB at first.
+  Reaching a node through its number costs nothing measurable, and the results are identical
+  to the last bit, since the nodes keep their lattice order.
 - The wrapped contact table costs 10% of contact throughput against a dense grid (253 against
   282 million element-updates per second), because cells a period apart share entries. A
   scrambling hash with the same memory cost 38%, because it put neighbouring cells far apart in
@@ -166,6 +169,5 @@ batch of steps to keep the view fluid.
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
 | Idle substep dispatches in coupled runs           | Now sized from the last batch; indirect dispatch would remove the rest |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
-| Dense storage of nodes                            | Store nodes compactly too (32 bytes per lattice node now) |
 
 None of these has been done. The first two are the ones that would change what is feasible.

@@ -374,7 +374,11 @@ struct StructureVerificationTests {
         solver.mutateNodes { nodes in
             for k in 0...solver.ez {
                 for j in 0...solver.ey {
-                    for i in 0...solver.ex { nodes[solver.nodeIndex(i, j, k)].vx = i <= 4 ? speed : -speed }
+                    for i in 0...solver.ex {
+                        // The gap between the blocks has no nodes.
+                        guard let index = solver.storedNode(i, j, k) else { continue }
+                        nodes[index].vx = i <= 4 ? speed : -speed
+                    }
                 }
             }
         }

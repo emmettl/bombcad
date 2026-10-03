@@ -252,6 +252,7 @@ public final class BlastSolver {
         encoder.setBuffer(structure.nodeBuffer, offset: 0, index: 2)
         encoder.setBuffer(occupancyBuffer, offset: 0, index: 3)
         encoder.setBytes(&uniforms, length: length, index: 4)
+        encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
         encoder.dispatchThreads(
             MTLSize(width: structure.elementCount, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(

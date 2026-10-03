@@ -469,6 +469,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               device float4 *plasticOut [[buffer(17)]],
                               const device float4 *plasticBefore [[buffer(18)]],
                               const device uint *cellElement [[buffer(19)]],
+                              const device uint *nodeMap [[buffer(20)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -499,7 +500,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float3 g2 = float3(0.0f);
     for (uint a = 0; a < 8; ++a) {
         uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
-        StructureNode node = nodes[corner.x + nodesX * (corner.y + nodesY * corner.z)];
+        StructureNode node = nodes[nodeMap[corner.x + nodesX * (corner.y + nodesY * corner.z)]];
         float3 displacement = float3(node.displacement);
         x[a] = origin + float3(corner) * u.h + displacement;
         v[a] = node.velocity;
@@ -1028,12 +1029,17 @@ static inline bool contactEnabled(constant StructureUniforms &u, const device ui
     return u.contactMode == 2 || (u.contactMode == 1 && failureGate[0] != 0);
 }
 
-static inline float3 nodePosition(uint index, const device StructureNode *nodes,
-                                  constant StructureUniforms &u) {
+// Nodes are stored compactly, in the order of `nodeList`, which holds each one's lattice index.
+static inline uint3 latticeNode(uint index, constant StructureUniforms &u) {
     uint nodesX = u.ex + 1;
     uint nodesY = u.ey + 1;
-    float3 lattice = float3(index % nodesX, (index / nodesX) % nodesY, index / (nodesX * nodesY));
-    return float3(u.originX, u.originY, u.originZ) + lattice * u.h + float3(nodes[index].displacement);
+    return uint3(index % nodesX, (index / nodesX) % nodesY, index / (nodesX * nodesY));
+}
+
+static inline float3 nodePosition(uint compact, const device uint *nodeList, const device StructureNode *nodes,
+                                  constant StructureUniforms &u) {
+    return float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[compact], u)) * u.h
+        + float3(nodes[compact].displacement);
 }
 
 // Force of the air on a loose node of debris: the pressure gradient across the solid it stands
@@ -1120,8 +1126,7 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    uint index = nodeList[threadIndex];
-    float3 position = nodePosition(index, nodes, u);
+    float3 position = nodePosition(threadIndex, nodeList, nodes, u);
     int3 cell = contactCell(position, u);
     // Several nodes may write the same values here; that is harmless.
     uint target = contactBucket(cell, u);
@@ -1147,11 +1152,11 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    uint index = nodeList[threadIndex];
-    float3 position = nodePosition(index, nodes, u);
+    float3 position = nodePosition(threadIndex, nodeList, nodes, u);
     int3 cell = contactCell(position, u);
     uint target = contactBucket(cell, u);
-    uint carried = index;
+    // Compact indices follow lattice order, so the smallest are the same nodes either way.
+    uint carried = threadIndex;
     for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
         uint held = atomic_fetch_min_explicit(&slots[target * contactSlots + slot], carried, memory_order_relaxed);
         carried = max(held, carried);
@@ -1172,12 +1177,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    uint index = nodeList[threadIndex];
-    StructureNode node = nodes[index];
-    float3 position = nodePosition(index, nodes, u);
-    int nodesX = int(u.ex) + 1;
-    int nodesY = int(u.ey) + 1;
-    int3 lattice = int3(int(index) % nodesX, (int(index) / nodesX) % nodesY, int(index) / (nodesX * nodesY));
+    StructureNode node = nodes[threadIndex];
+    float3 position = nodePosition(threadIndex, nodeList, nodes, u);
+    int3 lattice = int3(latticeNode(nodeList[threadIndex], u));
 
     int3 cell = contactCell(position, u);
     float3 force = float3(0.0f);
@@ -1196,10 +1198,10 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     if (otherIndex == emptySlot) {
                         break;
                     }
-                    if (otherIndex == index) {
+                    if (otherIndex == threadIndex) {
                         continue;
                     }
-                    float3 otherPosition = nodePosition(otherIndex, nodes, u);
+                    float3 otherPosition = nodePosition(otherIndex, nodeList, nodes, u);
                     // An entry can hold nodes of other cells that hash to it; count each node only
                     // when visiting its own cell.
                     if (any(contactCell(otherPosition, u) != c)) {
@@ -1210,9 +1212,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     if (distance >= u.h || distance < 1e-9f) {
                         continue;
                     }
-                    int other = int(otherIndex);
-                    int3 difference =
-                        int3(other % nodesX, (other / nodesX) % nodesY, other / (nodesX * nodesY)) - lattice;
+                    int3 difference = int3(latticeNode(nodeList[otherIndex], u)) - lattice;
                     // Nodes that began as neighbours never repel each other. While joined they are
                     // held apart by their element; once it has failed they may already be closer
                     // than a sphere's width, and a spring switched on there would create energy.
@@ -1262,9 +1262,8 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (!active) {
         return;
     }
-    uint index = nodeList[threadIndex];
-    uint3 tid = uint3(index % (u.ex + 1), (index / (u.ex + 1)) % (u.ey + 1), index / ((u.ex + 1) * (u.ey + 1)));
-    StructureNode node = nodes[index];
+    uint3 tid = latticeNode(nodeList[threadIndex], u);
+    StructureNode node = nodes[threadIndex];
 
     int3 dims = int3(u.ex, u.ey, u.ez);
     // Each element's failure is committed by its lowest corner. The gather below only asks
@@ -1291,7 +1290,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     // Loose debris is not part of any element face the air loads, so the air pushes it directly.
     if (!attached && u.coupled != 0 && u.debrisDensity > 0.0f) {
-        force += debrisAirForce(nodePosition(index, nodes, u), float3(node.velocity), node.mass, fluid, fluidMask, u);
+        force += debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity), node.mass, fluid, fluidMask, u);
     }
 
     if (contactEnabled(u, failureGate)) {
@@ -1326,7 +1325,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     node.displacement = displacement;
     node.velocity = velocity;
-    nodes[index] = node;
+    nodes[threadIndex] = node;
 }
 
 // Two-way coupling: the air's solid mask follows the structure. Each air step, intact elements
@@ -1365,6 +1364,7 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
                            const device StructureNode *nodes [[buffer(2)]],
                            device atomic_uint *occupancy [[buffer(3)]],
                            constant CouplingUniforms &u [[buffer(4)]],
+                           const device uint *nodeMap [[buffer(5)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     uint element = elementList[threadIndex];
     if (flags[element] != elementActive) {
@@ -1373,8 +1373,9 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     uint3 cell = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
     uint nodesX = u.ex + 1;
     uint nodesY = u.ey + 1;
-    uint low = cell.x + nodesX * (cell.y + nodesY * cell.z);
-    uint high = low + 1 + nodesX + nodesX * nodesY;
+    uint lowCorner = cell.x + nodesX * (cell.y + nodesY * cell.z);
+    uint low = nodeMap[lowCorner];
+    uint high = nodeMap[lowCorner + 1 + nodesX + nodesX * nodesY];
     float3 centre = float3(u.originX, u.originY, u.originZ) + (float3(cell) + 0.5f) * u.h
         + 0.5f * (float3(nodes[low].displacement) + float3(nodes[high].displacement));
     int3 target = int3(floor(centre / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
