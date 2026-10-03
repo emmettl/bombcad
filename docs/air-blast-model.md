@@ -66,6 +66,30 @@ The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
 - A scenario can fire several charges at once (`additionalCharges`); each is laid down the
   same way.
 
+### Afterburning
+
+TNT is short of oxygen: its detonation products are mostly carbon monoxide, hydrogen and
+carbon, which burn when they mix with air, releasing about twice the energy of the detonation
+again. With `SolverConfiguration.afterburning` on:
+
+- The air carries two more densities, of unburnt products ("fuel") and of oxygen (23.2% of
+  air by mass). They move with the gas, each leaving a cell at that cell's mass fraction
+  (first-order upwind), so they stay positive and are conserved.
+- Where fuel and oxygen share a cell, the fuel burns, at TNT's ratio of 0.74 kg of oxygen per
+  kg (C7H5N3O6 + 5.25 O2 → 7 CO2 + 2.5 H2O + 1.5 N2), releasing 10 MJ/kg (TNT's heat of
+  combustion, about 15 MJ/kg, less its heat of detonation), over a time
+  τ = 10 ms × W^(1/3) (W in kg). Mixing is the grid's own: products meet air as numerical
+  diffusion spreads them.
+- With τ = 0 everything at the charge's edge burns in the first steps and joins the leading
+  shock, as if the charge were three times heavier: arrival times come 10–25% early and the
+  incident impulse 8–22% high. τ was chosen to match the incident impulse of Kingery–Bulmash
+  (see [Validation](validation.md#afterburning)); 46 ms for 100 kg is of the order of the
+  fireball's life.
+
+It is off by default: it costs about 1.8 times as much (more work per step, and a shorter step
+in the hotter gas), and with one γ for all the gas it overstates pressures in rooms by about
+30% (below), which a separate equation of state for the products would correct.
+
 ## Skipping still air
 
 Air the blast has not yet reached is in exactly the uniform state it was filled with, and a
@@ -114,12 +138,12 @@ UFC 3-340-02, lowest for light charges.
 ## Limitations
 
 1. **The source model is crude.** An ideal-gas balloon with γ = 1.4 ignores the detonation
-   wave, the real equation of state of the detonation products, and afterburning. It is poor
-   within a few charge diameters, or a few cells, of the charge, and it under-predicts incident
-   impulse by 13% to 22% at all ranges tested. Impulse on a wall facing the charge is much
-   better, within 6%. **Afterburning** matters most in confined spaces: a closed room's gas
-   pressure is only half the design value for light charges (0.25 to 0.5 kg/m³), since the
-   products would burn in the room's oxygen and release more energy than the detonation.
+   wave and the real equation of state of the detonation products. It is poor within a few
+   charge diameters, or a few cells, of the charge. Without afterburning it under-predicts
+   incident impulse by 13% to 22% at all ranges tested, and a closed room's gas pressure is
+   half the design value for light charges; with it, the incident impulse is within 4% beyond
+   1 m/kg^(1/3), but the burning time is fitted, mixing is numerical, and the products' γ of
+   1.4 overstates the gas pressure in a closed room by about 30%.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
@@ -143,10 +167,9 @@ UFC 3-340-02, lowest for light charges.
 
 ## Future work
 
-- **Afterburning**: energy released into the gas behind the shock as it mixes with air,
-  limited by the oxygen available, with the gas pressure of UFC 3-340-02 (Figure 2-152) and the
-  incident impulse of Kingery–Bulmash as its two checks. This is the charge model's first
-  priority.
+- **The products' own γ**, about 1.25 to 1.3 for hot combustion products against 1.4 for air,
+  weighted by their mass fraction: the closed-room pressures with afterburning are about 1.3
+  times UFC 3-340-02's at every charge density, which is close to what that would remove.
 - **Better source.** Two options, in order of effort: start from a one-dimensional, finely
   resolved spherical solution and map it onto the grid once the shock has grown to several
   cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of

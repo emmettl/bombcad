@@ -81,7 +81,7 @@ func runThroughput() throws {
     var stepsPerMetre = 0.0
     var lastSwept = 1.0
     for cellSize in [Float(0.5), 0.25, 0.125] {
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        let solver = try makeAirSolver(scenario, cellSize: cellSize)
         let cells = solver.grid.cellCount
         // Run the whole event unless it would take minutes; then time a sample and extrapolate
         // the step count from the previous, coarser run. The sample sweeps every tile, since
@@ -171,7 +171,10 @@ func runChamber() throws {
             + (downstand ? "" : ", no down-stand"))
     let result = try ChamberTest.run(
         device: device, cellSize: cellSize, elementSize: elementSize, downstand: downstand,
-        ties: !flag("no-ties"), elastic: flag("elastic"), chargeScale: chargeScale, duration: duration)
+        ties: !flag("no-ties"), elastic: flag("elastic"), chargeScale: chargeScale,
+        afterburning: flag("afterburn"),
+        afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
+        duration: duration)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )
@@ -202,21 +205,39 @@ func runChamber() throws {
 }
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
+/// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
+func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
+    let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    if flag("afterburn") {
+        solver.configuration.afterburning = true
+        if let time = option("burn-time").flatMap({ Float($0) }) {
+            solver.configuration.afterburnTime = time / 1000
+        }
+        if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
+            solver.configuration.afterburnEnergy = energy * 1e6
+        }
+        try solver.load(scenario)
+    }
+    return solver
+}
+
 func runGasPressure() throws {
     let side: Float = 6
-    print("Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (80 ms)")
+    print(
+        "Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (80 ms)"
+            + (flag("afterburn") ? ", with afterburning" : ""))
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
             + pad("UFC 2-152", 12)
-            + pad("model/UFC", 11))
+            + pad("model/UFC", 11) + pad("burnt", 8))
     for chargePerVolume in [0.25, 0.5, 1, 2, 4] as [Float] {
         var scenario = Scenario(
             name: "Room", domainSize: SIMD3(repeating: side), boxes: [],
             charge: Charge(mass: chargePerVolume * side * side * side, position: SIMD3(repeating: side / 2)))
         scenario.reflectiveFaces = .all
-        let solver = try BlastSolver(
-            device: device, scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.25)
+        let solver = try makeAirSolver(scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.25)
         solver.advance(until: 0.08)
+        let burnt = 1 - solver.speciesTotals().fuel / Double(scenario.charge.mass)
         let volume = Double(side * side * side)
         let totals = solver.totals()
         // Mean pressure of the gas: (gamma - 1) times its internal energy per volume, less the
@@ -242,7 +263,8 @@ func runGasPressure() throws {
             pad(format(Double(chargePerVolume), 2), 11) + pad("\(Int(scenario.charge.mass)) kg", 10)
                 + pad("\(format(mean / 1e6, 2)) MPa", 12) + pad("\(format(ideal / 1e6, 2)) MPa", 12)
                 + pad("\(format(reference / 1e6, 2)) MPa", 12)
-                + pad("\(format(100 * mean / reference, 0))%", 11))
+                + pad("\(format(100 * mean / reference, 0))%", 11)
+                + pad(solver.configuration.afterburning ? "\(format(100 * burnt, 0))%" : "-", 8))
     }
 }
 
@@ -258,6 +280,10 @@ func runValidation() throws {
             solver.configuration.minimumBalloonCells = cells
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
+        if flag("afterburn") { solver.configuration.afterburning = true }
+        if let time = option("burn-time").flatMap({ Float($0) }) {
+            solver.configuration.afterburnTime = time / 1000
+        }
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)

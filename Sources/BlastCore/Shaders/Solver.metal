@@ -60,6 +60,12 @@ struct SolverUniforms {
     float stillMy;
     float stillMz;
     float stillEnergy;
+    // Afterburning (0 when off): the energy released per kilogram of detonation products that
+    // burns, the oxygen it takes per kilogram, and the oxygen density of still air.
+    float afterburnEnergy;
+    float oxygenPerFuel;
+    float stillOxygen;
+    float afterburnRate;  // 1 / the time over which mixed products burn
 };
 
 constant int tileSize = 8;
@@ -270,9 +276,10 @@ static inline void recordWaveSpeed(device atomic_uint *maxSpeed, float speed) {
     }
 }
 
-static inline bool isStill(Cell c, constant SolverUniforms &u) {
+static inline bool isStill(Cell c, float2 species, constant SolverUniforms &u) {
     return c.rho == u.stillRho && c.mx == u.stillMx && c.my == u.stillMy && c.mz == u.stillMz
-        && c.energy == u.stillEnergy;
+        && c.energy == u.stillEnergy
+        && (u.afterburnEnergy == 0.0f || (species.x == 0.0f && species.y == u.stillOxygen));
 }
 
 // Marks every tile within `tileReach` cells of `cell` with `flag`, unless already awake.
@@ -306,7 +313,8 @@ static inline void recordCell(device atomic_uint *maxSpeed, float3 momentum, flo
 static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst, const device uchar *mask,
                              device float *peak, device float *impulse, const device StepControl &control,
                              device atomic_uint *maxSpeed, constant SolverUniforms &u,
-                             const device float *wallVelocity, device uchar *tileFlags) {
+                             const device float *wallVelocity, device uchar *tileFlags,
+                             const device float2 *speciesSrc, device float2 *speciesDst) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (mask[index] != 0) {
         return;
@@ -381,6 +389,29 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
 
+    // Detonation products that have not yet burnt ("fuel") and oxygen, as densities, carried
+    // by the same mass fluxes, each at the mass fraction of the cell it leaves (first-order
+    // upwind, so they stay positive). Where they meet in a cell, the fuel burns at once, as far
+    // as the oxygen allows, after the final sweep of the step: afterburning limited by mixing,
+    // which here is the grid's own.
+    float2 species = float2(0.0f);
+    if (u.afterburnEnergy > 0.0f) {
+        float2 own = speciesSrc[index];
+        float2 fraction = own / max(c.rho, u.densityFloor);
+        float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho : fraction;
+        float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho : fraction;
+        float2 inflow = fluxLow.mass * (fluxLow.mass > 0.0f ? below : fraction);
+        float2 outflow = fluxHigh.mass * (fluxHigh.mass > 0.0f ? fraction : above);
+        species = max(own - lambda * (outflow - inflow), 0.0f);
+        if (u.finalSweep != 0) {
+            float burnt = min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-control.dt * u.afterburnRate));
+            species.x -= burnt;
+            species.y -= burnt * u.oxygenPerFuel;
+            energy += burnt * u.afterburnEnergy;
+        }
+        speciesDst[index] = species;
+    }
+
     rho = max(rho, u.densityFloor);
     float kinetic = 0.5f * dot(momentum, momentum) / rho;
     float pressure = (u.gamma - 1.0f) * (energy - kinetic);
@@ -404,7 +435,7 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
         impulse[index] += max(overpressure, 0.0f) * dt;
         recordCell(maxSpeed, momentum, rho, pressure, u);
         // A changed cell near the edge of its tile wakes the tiles it can reach next step.
-        if (u.tileNx != 0 && !isStill(result, u)) {
+        if (u.tileNx != 0 && !isStill(result, species, u)) {
             int3 local = cell % tileSize;
             if (any(local < tileReach) || any(local >= tileSize - tileReach)) {
                 wakeTilesAround(cell, tileFlags, tileWoken, u);
@@ -424,11 +455,14 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
                   constant SolverUniforms &u [[buffer(7)]],
                   const device float *wallVelocity [[buffer(8)]],
                   device uchar *tileFlags [[buffer(10)]],
+                  const device float2 *speciesSrc [[buffer(11)]],
+                  device float2 *speciesDst [[buffer(12)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
-    sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags);
+    sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
+              speciesSrc, speciesDst);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -444,6 +478,8 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
                        const device float *wallVelocity [[buffer(8)]],
                        const device uint *tiles [[buffer(9)]],
                        device uchar *tileFlags [[buffer(10)]],
+                       const device float2 *speciesSrc [[buffer(11)]],
+                       device float2 *speciesDst [[buffer(12)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -453,7 +489,8 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
     for (uint z = local.z; z < uint(tileSize); z += groupSize.z) {
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
-            sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags);
+            sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
+                      speciesSrc, speciesDst);
         }
     }
 }
@@ -463,12 +500,13 @@ kernel void wakeTiles(const device Cell *state [[buffer(0)]],
                       const device uchar *mask [[buffer(1)]],
                       device uchar *tileFlags [[buffer(2)]],
                       constant SolverUniforms &u [[buffer(3)]],
+                      const device float2 *species [[buffer(4)]],
                       uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     int index = int(tid.x + u.nx * (tid.y + u.ny * tid.z));
-    if (mask[index] == 0 && !isStill(state[index], u)) {
+    if (mask[index] == 0 && !isStill(state[index], species[index], u)) {
         wakeTilesAround(int3(tid), tileFlags, tileActive, u);
     }
 }

@@ -50,7 +50,13 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Two formulae in the code were written from memory and should be checked against the original.
+Three values in the code were written from memory and should be checked against the original.
+
+- **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
+  Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
+  15 MJ/kg) and its heat of detonation (about 4.6 to 5 MJ/kg), whose difference, 10 MJ/kg, is
+  the afterburn energy; and, for the products' equation of state, their ratio of specific heats
+  as they expand.
 
 - **Dowel strength.** B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and
   dowels embedded in concrete", *Bygningsstatiske Meddelelser* 34 (1963), or fib Model Code

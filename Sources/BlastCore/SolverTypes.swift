@@ -89,6 +89,18 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// leaving air that is still in its initial uniform state untouched. The answer is the same
     /// either way. Read at `restart()`.
     public var skipStillAir = true
+    /// Burn the detonation products in the air they mix with (afterburning), releasing
+    /// `afterburnEnergy` per kilogram of charge as far as the oxygen allows. Read at `restart()`;
+    /// takes effect for charges deposited after it is set.
+    public var afterburning = false
+    /// Energy released by burning one kilogram of TNT's detonation products in air, J/kg: its
+    /// heat of combustion less its heat of detonation.
+    public var afterburnEnergy: Float = 10.0e6
+    /// Time over which detonation products that have met air burn, per cube root of the charge's
+    /// mass, s/kg^(1/3): 46 ms for 100 kg. Chosen so that the incident impulse of a burst in the
+    /// open matches Kingery-Bulmash; burning at once would add to the leading shock, which those
+    /// tests show it barely does.
+    public var afterburnTime: Float = 10e-3
     /// Once no air cell is further than this fraction of ambient pressure from ambient, and
     /// there is a structure to keep following, the air is frozen and only the structure is
     /// advanced. Zero disables this. The default, 2 kPa at sea level, is small beside the
@@ -175,6 +187,10 @@ struct SolverUniforms {
     var stillMy: Float = 0
     var stillMz: Float = 0
     var stillEnergy: Float = 0
+    var afterburnEnergy: Float = 0
+    var oxygenPerFuel: Float = 0
+    var stillOxygen: Float = 0
+    var afterburnRate: Float = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

@@ -75,8 +75,8 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
 
 - **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 6% of
   the Kingery–Bulmash curves beyond 1.5 m/kg^(1/3), and within 5% everywhere checked on
-  0.125 m cells. Peak pressures are under-resolved, more so close to the charge. With no
-  afterburning, the incident impulse is 13–22% low.
+  0.125 m cells. Peak pressures are under-resolved, more so close to the charge. The incident
+  impulse is 13–22% low, or within 4% with afterburning switched on.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
   model predicts peak deflections of 101, 105 and 112 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
@@ -86,9 +86,10 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
   close to the measured one.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
   the peak pressures on the walls are 0.9 to 1.6 times those measured, and the roof's free
-  edge is left 123 mm deflected where 95 mm was measured. Getting there exposed two missing
-  mechanisms in the concrete model, now added: bars resisting sliding across cracks, and
-  cracks held closed across a whole section by its bars.
+  edge is left 123 mm deflected where 95 mm was measured, but only without the extra gas
+  pressure of afterburning; with the gas as strong as the design manual says, the roof is
+  still thrown. The test exposed two missing mechanisms in the concrete model, now added:
+  bars resisting sliding across cracks, and cracks held closed across a section by its bars.
 
 Collapse and debris have not been compared with anything.
 

@@ -27,12 +27,12 @@ swift run -c release blastbench chamber
 | Area                 | Evidence                                             | Confidence                         |
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
-| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3): impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) | Good for impulse on walls; peaks under-resolved; incident impulse 13–22% low |
-| Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve        | Low for light charges (no afterburning) |
+| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3): impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) | Good for impulse on walls; peaks under-resolved; incident impulse 13–22% low without afterburning, within 4% with it (fitted) |
+| Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve; 124% to 131% with afterburning | Moderate: right shape with afterburning, 30% high for want of the products' γ |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 112 mm (104%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; roof edge left 123 mm deflected against 95 mm | Low to moderate: one test, near a cliff |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; roof edge left 123 mm deflected against 95 mm, but only without afterburning's gas pressure | Low: one test, near a cliff, with compensating errors |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -307,6 +307,28 @@ Reading these:
 
 `blastbench validate` prints these tables; `--z` chooses other scaled distances.
 
+### Afterburning
+
+With [afterburning](air-blast-model.md#afterburning) on (`--afterburn`), on 0.25 m cells:
+
+| Range  | Z    | Incident peak | Incident impulse | Reflected impulse |
+|--------|------|---------------|------------------|-------------------|
+| 3.5 m  | 0.75 | 78%           | 122%             | 90%               |
+| 4.6 m  | 1    | 80%           | 96%              | 98%               |
+| 7.0 m  | 1.5  | 86%           | 97%              | 110%              |
+| 9.3 m  | 2    | 80%           | 96%              | 113%              |
+| 13.9 m | 3    | 84%           | 101%             | 115%              |
+| 18.6 m | 4    | 84%           | 100%             | 113%              |
+| 23.2 m | 5    | 85%           | 100%             | 110%              |
+| 27.8 m | 6    | 85%           | 98%              | 108%              |
+
+The incident impulse, 13% to 22% low without it, is within 4% beyond 1 m/kg^(1/3). That is
+by construction: the burning time was chosen to match it, and burning everything at once
+instead gave 108% to 122%, with arrival times 10% to 25% early. The reflected impulse, which
+was not fitted, rises with it and is now 8% to 15% high in the middle ranges: the model's ratio
+of reflected to incident impulse there is about 10% above Kingery–Bulmash's, with or without
+afterburning.
+
 ### Kinney–Graham
 
 The same burst against the Kinney–Graham free-air formulae for 200 kg (a charge on perfectly
@@ -355,8 +377,26 @@ for light charges, most likely because the detonation products burn in the room'
 (afterburning; TNT's heat of combustion is about three times its heat of detonation). In heavy
 charges there is too little oxygen for that, and the products' lower γ brings the pressure
 below the ideal gas's. Afterburning is the
-likeliest cause of the incident impulse's shortfall in the open, too. The digitised curve is in
-`UFC340.swift`, read off the chart by hand.
+likeliest cause of the incident impulse's shortfall in the open, too (see
+[Afterburning](#afterburning)). The digitised curve is in `UFC340.swift`, read off the chart by
+hand.
+
+With afterburning (`blastbench gas --afterburn`):
+
+| Charge per volume | Model    | UFC 3-340-02 | Model / UFC | Products burnt by 80 ms |
+|-------------------|----------|--------------|-------------|-------------------------|
+| 0.25 kg/m³        | 1.15 MPa | 0.88 MPa     | 131%        | 73%                     |
+| 0.5 kg/m³         | 1.93 MPa | 1.48 MPa     | 131%        | 55%                     |
+| 1 kg/m³           | 2.79 MPa | 2.16 MPa     | 129%        | 28%                     |
+| 2 kg/m³           | 4.34 MPa | 3.50 MPa     | 124%        | 12%                     |
+| 4 kg/m³           | 7.56 MPa | 5.88 MPa     | 129%        | 5%                      |
+
+The shape of the design curve is now right: the ratio to it is nearly the same at every
+density, where without afterburning it ran from 48% to 114%, and the heavier charges burn
+less for lack of oxygen. The level is about 30% high. That is about what treating the hot
+products as air with γ = 1.4 should cost: with γ near 1.28, (γ − 1) is 0.7 times as large. An
+afterburn energy of 5 MJ/kg instead of 10 brings the model within 10% of the curve below
+2 kg/m³, and is used below as a stand-in for the right gas.
 
 ## An internal explosion in a reinforced concrete chamber
 
@@ -403,9 +443,14 @@ walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positi
 approximate, and peaks this close to a charge change sharply with position, so this check is
 loose: the model is between 0.9 and 1.6 times the measured range.
 
-**The roof.** At the test's charge the roof's free edge rises 255 mm and settles back to
-123 mm, against a residual of 95 mm measured (30% more); the paper's own model gave 87 mm and
-62 mm. Like the paper's model, the response has a cliff, beyond which the roof is torn off and
+**The roof.** At the test's charge, without afterburning, the roof's free edge rises 255 mm and
+settles back to 123 mm, against a residual of 95 mm measured (30% more); the paper's own model
+gave 87 mm and 62 mm. But that leaves out a load the real chamber had: without afterburning the
+model's gas, at this room's 0.58 kg/m³, holds about 60% of the pressure UFC 3-340-02 gives for
+a closed room. With afterburning the roof is thrown (2.9 m); with afterburning cut to the
+5 to 6.5 MJ/kg that matches UFC's closed room (see Gas pressure in a closed room), its edge
+ends 1.1 to 1.4 m up. The agreement without afterburning is therefore partly a cancellation of
+errors. Like the paper's model, the response has a cliff, beyond which the roof is torn off and
 thrown; the model reaches it at a somewhat smaller charge:
 
 | Charge, as a fraction of the test's | Model: peak / end of run | Paper's model (Table 7): peak / residual |
@@ -461,12 +506,13 @@ What remains, in rough order:
 ### What this does and does not show
 
 The model reproduces the kind of damage seen (cracking and crushing concentrated at the
-joints and supports, held together by the bars, and a roof left deflected upwards) and the
-residual deflection to within 30%, with a cliff a little closer than the paper's own model
-puts it. That agreement came after two changes to the concrete model that this test exposed,
-each from published mechanics rather than fitted to it, and with the slab test unchanged; but
-it is one test, near a cliff, where small differences in load or strength move the answer a
-lot. Peak wall pressures are within the loose check that the gauge positions allow.
+joints and supports, held together by the bars, and a roof left deflected upwards), and it
+exposed two missing mechanisms in the concrete model, now added from published mechanics with
+the slab test unchanged. But the residual's agreement within 30% holds only without the gas
+pressure that afterburning adds; with the gas as strong as the design manual says it should
+be, the roof is still thrown or nearly so. Either the structure is still too weak, or the
+model's gas vents too slowly or presses too hard; this test cannot separate them. Peak wall
+pressures are within the loose check that the gauge positions allow.
 
 ## Consistency across air grids
 
@@ -489,7 +535,7 @@ compare these with.
 
 ## Verification against theory
 
-The test suite has 99 tests. The physical checks are:
+The test suite has 103 tests. The physical checks are:
 
 **Air solver**
 
@@ -503,6 +549,8 @@ The test suite has 99 tests. The physical checks are:
 | Centred burst in a cube                         | Mirror-symmetric to 1 part in 10³              |
 | Still air around obstacles                      | Stays still                                    |
 | Street blast and coupled wall, still air skipped | Identical to sweeping everything, cell for cell |
+| Charge burning in a closed room                  | Fuel and oxygen used at 0.74, energy released, mass kept, within 1% |
+| Heavy charge in a small room                    | Burns no more than the oxygen allows             |
 
 **Structural solver**
 
@@ -568,8 +616,8 @@ In rough order of value:
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 2. A second and third structural test, of different kinds (see the
    [concrete model's future work](concrete-model.md#future-work)).
-3. Afterburning in the charge model, checked against the gas pressures of UFC 3-340-02 and the
-   incident impulse of Kingery–Bulmash; then the vented gas impulse of UFC 3-340-02
-   (Figures 2-153 to 2-164), which would need digitising.
+3. The products' own γ, so that afterburning's gas pressures are right in rooms, and then the
+   chamber again with the gas as strong as it should be; and the vented gas impulse of
+   UFC 3-340-02 (Figures 2-153 to 2-164), which would need digitising.
 4. Blast loads closer in than 0.75 m/kg^(1/3).
 5. Any test of collapse or debris.

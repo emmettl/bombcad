@@ -15,9 +15,9 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with two tests | On a slab test the peak converges to 112 mm against 108 measured; in a full-scale internal explosion the roof is left 123 mm deflected against 95 mm, near a cliff | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with two tests | On a slab test the peak converges to 112 mm against 108 measured; in a full-scale internal explosion the roof is left 123 mm deflected against 95 mm without afterburning, but thrown with it | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
-| 3 | No afterburning in the charge model                                     | Incident impulse 13–22% low in the open; gas pressure in a closed room half the design value for light charges | [Air-blast model](air-blast-model.md#limitations) |
+| 3 | One γ for all the gas; afterburning optional and fitted                 | With afterburning, rooms' gas pressures are 30% high; without it, the incident impulse is 13–22% low and rooms' gas half the design value | [Air-blast model](air-blast-model.md#afterburning) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
@@ -40,7 +40,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    which the smeared lattice bars can only approximate; then the charge at which the roof is
    thrown, against the test and the paper's model. (Done so far: bars resisting sliding across
    cracks, and cracks bridged across a section, which took the roof from thrown to 123 mm
-   against 95 mm measured.)
+   against 95 mm measured; but with afterburning's gas pressure, at the strength the design
+   manual gives it, the roof is still thrown.)
 2. **A second and third structural test**, chosen to differ from the first two: a slab with
    steel in both faces, a member that failed in shear, and a wall under an open-air charge. The
    high-strength slabs of the same contest are the obvious next case, since the geometry and
@@ -48,27 +49,26 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 ### Then the physics the evidence points to
 
-3. **Afterburning**, the charge model's first priority: the energy the detonation products
-   release as they burn in air, limited by the oxygen they meet. It should raise the incident
-   impulse in the open and the gas pressure in rooms, both of which are low by the amounts
-   expected; UFC 3-340-02 and Kingery–Bulmash are its checks.
-4. **Charge model.** Close-in peaks are under-resolved. Replace the balloon with a mapped
-   one-dimensional solution or a products gas with its own equation of state.
-5. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
+3. **Charge model.** The products' own γ (about 1.28 against air's 1.4), weighted by their
+   mass fraction, so that afterburning's pressures in rooms come right; then the chamber again.
+   Close-in peaks are under-resolved: a mapped one-dimensional solution would help there.
+   (Done: afterburning, limited by mixing and oxygen, which brings the incident impulse in the
+   open within 4% of Kingery–Bulmash and the shape of the closed-room curve right.)
+4. **Shear in concrete.** Inclined cracks with their own opening and sliding, instead of damage
    shared between lattice planes.
-6. **The rebound, and compaction** under very high pressure. The slab's mid-span hinge springs
+5. **The rebound, and compaction** under very high pressure. The slab's mid-span hinge springs
    back twice as far as the specimen did on every mesh.
-7. **Cut cells** between moving solids and the air. Moving walls already push the air (a
+6. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.
 
 ### Then scale and scope
 
-8. **Shells and solids together**: solid elements near a charge, where the stress through a
+7. **Shells and solids together**: solid elements near a charge, where the stress through a
    wall's thickness matters, and shells and beams elsewhere.
-9. **Several bodies and interfaces**: pieces that can separate or slide (infill against its
+8. **Several bodies and interfaces**: pieces that can separate or slide (infill against its
    frame, masonry joints), steel sections, glazing. Several materials in one body are done.
-10. **Adaptive resolution in the air.**
+9. **Adaptive resolution in the air.**
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2

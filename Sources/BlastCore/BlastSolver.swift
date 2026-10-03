@@ -63,6 +63,17 @@ public final class BlastSolver {
     private let beamSplatPipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
+    /// Densities of unburnt detonation products and of oxygen in each cell, kept alongside the
+    /// state for afterburning; made when the air is filled with afterburning on. Until then a
+    /// one-cell stand-in is bound.
+    private var speciesBuffers: [MTLBuffer] = []
+    private let noSpecies: MTLBuffer
+    /// Whether the air carries fuel and oxygen, so that its charges burn.
+    private var hasSpecies: Bool { !speciesBuffers.isEmpty }
+    /// Mass fraction of oxygen in air, and the oxygen TNT's products need to burn completely
+    /// (C7H5N3O6 + 5.25 O2 -> 7 CO2 + 2.5 H2O + 1.5 N2), per kilogram.
+    static let oxygenInAir: Float = 0.232
+    static let oxygenPerFuel: Float = 5.25 * 32 / 227.13
     private var current = 0
     private let maskBuffer: MTLBuffer
     /// Solid flags of the rigid blocks alone, which never change.
@@ -84,6 +95,9 @@ public final class BlastSolver {
     private let tileDispatchBuffer: MTLBuffer
     /// Whether still air is being skipped since the last restart.
     private var tilesEnabled = false
+    /// The largest charge deposited since the air was last filled, kg, which sets how fast its
+    /// products burn.
+    var largestCharge: Float = 0
     /// The uniform state the air was last filled with: air still in it is not swept.
     private var stillCell = CellState(Primitive(density: 1.225, pressure: 101_325), gamma: 1.4)
     private var batchInFlight = false
@@ -138,6 +152,7 @@ public final class BlastSolver {
         let cells = grid.cellCount
         let stateLength = cells * MemoryLayout<CellState>.stride
         stateBuffers = [try buffer(stateLength, "state A"), try buffer(stateLength, "state B")]
+        noSpecies = try buffer(MemoryLayout<SIMD2<Float>>.stride, "no species")
         maskBuffer = try buffer(cells, "solid mask")
         rigidMaskBuffer = try buffer(cells, "rigid mask")
         stillWallBuffer = try buffer(3 * MemoryLayout<Float>.stride, "still wall")
@@ -184,11 +199,51 @@ public final class BlastSolver {
     public func fill(uniform primitive: Primitive) {
         let cell = CellState(primitive, gamma: configuration.gamma)
         stillCell = cell
+        largestCharge = 0
         for buffer in stateBuffers {
             buffer.contents().bindMemory(to: CellState.self, capacity: grid.cellCount)
                 .update(repeating: cell, count: grid.cellCount)
         }
+        if configuration.afterburning && !hasSpecies {
+            let length = grid.cellCount * MemoryLayout<SIMD2<Float>>.stride
+            if let first = device.makeBuffer(length: length, options: .storageModeShared),
+                let second = device.makeBuffer(length: length, options: .storageModeShared)
+            {
+                speciesBuffers = [first, second]
+            }
+        } else if !configuration.afterburning {
+            speciesBuffers = []
+        }
+        let air = SIMD2<Float>(0, Self.oxygenInAir * primitive.density)
+        for buffer in speciesBuffers {
+            buffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: grid.cellCount)
+                .update(repeating: air, count: grid.cellCount)
+        }
         restart()
+    }
+
+    /// Direct access to the densities of unburnt detonation products (x) and oxygen (y).
+    func mutateSpecies(_ body: (UnsafeMutableBufferPointer<SIMD2<Float>>) throws -> Void) rethrows {
+        precondition(!batchInFlight, "Cannot edit state while a batch is in flight")
+        guard hasSpecies else { return }
+        let pointer = speciesBuffers[current].contents().bindMemory(
+            to: SIMD2<Float>.self, capacity: grid.cellCount)
+        try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
+    /// Total unburnt detonation products (kg) and oxygen (kg) in the air.
+    public func speciesTotals() -> (fuel: Double, oxygen: Double) {
+        precondition(!batchInFlight, "Cannot read state while a batch is in flight")
+        guard hasSpecies else { return (0, 0) }
+        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let species = speciesBuffers[current].contents().bindMemory(
+            to: SIMD2<Float>.self, capacity: grid.cellCount)
+        let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
+        var total = SIMD2<Double>.zero
+        for index in 0..<grid.cellCount where mask[index] == 0 {
+            total += SIMD2(Double(species[index].x), Double(species[index].y))
+        }
+        return (total.x * volume, total.y * volume)
     }
 
     /// Sets every cell from a closure and restarts the clock. Intended for small grids.
@@ -437,6 +492,11 @@ public final class BlastSolver {
         memcpy(
             stateBuffers[1 - current].contents(), stateBuffers[current].contents(),
             stateBuffers[current].length)
+        if hasSpecies {
+            memcpy(
+                speciesBuffers[1 - current].contents(), speciesBuffers[current].contents(),
+                speciesBuffers[current].length)
+        }
         tilesEnabled = configuration.skipStillAir
         memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
         tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
@@ -472,6 +532,7 @@ public final class BlastSolver {
             encoder.setBuffer(maskBuffer, offset: 0, index: 1)
             encoder.setBuffer(tileFlagBuffer, offset: 0, index: 2)
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
+            encoder.setBuffer(hasSpecies ? speciesBuffers[current] : noSpecies, offset: 0, index: 4)
             dispatchGrid(encoder, pipeline: wakeTilesPipeline)
         }
         encodeVisualization(encoder)
@@ -572,6 +633,8 @@ public final class BlastSolver {
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
                 encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
                 encoder.setBuffer(stateBuffers[1 - current], offset: 0, index: 1)
+                encoder.setBuffer(hasSpecies ? speciesBuffers[current] : noSpecies, offset: 0, index: 11)
+                encoder.setBuffer(hasSpecies ? speciesBuffers[1 - current] : noSpecies, offset: 0, index: 12)
                 encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 7)
                 if tilesEnabled {
                     encoder.dispatchThreadgroups(
@@ -799,7 +862,7 @@ public final class BlastSolver {
 
     /// Bytes of GPU memory held by the solver's fields.
     public var memoryFootprint: Int {
-        let buffers = stateBuffers + [maskBuffer, peakBuffer, impulseBuffer]
+        let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8 + (structure?.memoryFootprint ?? 0)
             + (shells?.memoryFootprint ?? 0)
     }
@@ -837,6 +900,13 @@ public final class BlastSolver {
         uniforms.stillMy = stillCell.momentumY
         uniforms.stillMz = stillCell.momentumZ
         uniforms.stillEnergy = stillCell.energy
+        if hasSpecies {
+            uniforms.afterburnEnergy = configuration.afterburnEnergy
+            uniforms.oxygenPerFuel = Self.oxygenPerFuel
+            uniforms.stillOxygen = Self.oxygenInAir * stillCell.density
+            uniforms.afterburnRate =
+                1 / max(configuration.afterburnTime * cbrt(max(largestCharge, 1e-3)), 1e-9)
+        }
         if let region = couplingRegion, configuration.movingWalls {
             uniforms.regionX = UInt32(region.origin.x)
             uniforms.regionY = UInt32(region.origin.y)

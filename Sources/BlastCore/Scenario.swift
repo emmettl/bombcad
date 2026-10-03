@@ -225,6 +225,11 @@ extension BlastSolver {
                 cells[index].energy += energyDensity * fraction
             }
         }
+        largestCharge = max(largestCharge, charge.mass)
+        // The products, all unburnt; the air they displace keeps its oxygen.
+        mutateSpecies { species in
+            for (index, fraction) in weights { species[index].x += massDensity * fraction }
+        }
     }
 
     /// The cell containing `point`, or the closest fluid cell if that one is solid.
