@@ -8,19 +8,7 @@ the most valuable first.
 The citations below were written from memory and may contain small errors in page numbers or
 titles; the authors, journals and years should be enough to find each one.
 
-## 1. Kingery–Bulmash polynomial coefficients
-
-- **Where:** M. M. Swisdak, *Simplified Kingery Airblast Calculations*, Naval Surface Warfare
-  Center, 1994 (DTIC accession ADA526744). The same coefficients appear in NATO AASTP-1 and in
-  C. N. Kingery and G. Bulmash, ARBRL-TR-02555, 1984.
-- **Needed:** the coefficient tables for surface (hemispherical) bursts of TNT, covering
-  incident and reflected peak overpressure, incident and reflected positive impulse, arrival
-  time and positive duration, together with the valid range of scaled distance for each.
-- **Use:** replace the three tabulated points in `KingeryBulmash.swift` with the full curves,
-  extending the blast-load comparison in [Validation](validation.md) closer in and farther out.
-- **Why it failed:** DTIC returned HTTP 403 to automated requests.
-
-## 2. A second structural test from the same contest
+## 1. A second structural test from the same contest
 
 - **Where:** A. Thiagarajan, A. V. Kadambi and G. Morrill, "Experimental and finite element
   analysis of doubly reinforced concrete slabs subjected to blast loads", *International
@@ -41,7 +29,7 @@ titles; the authors, journals and years should be enough to find each one.
   displacement records are available. They would replace the curves currently digitised from
   presentation slides.
 
-## 3. A test that couples air and structure
+## 2. A test that couples air and structure
 
 - **Where:** any open publication that reports charge mass, stand-off, wall or slab details,
   and measured deflection together. Candidates: A. Schenker et al., "Full-scale field tests of
@@ -51,33 +39,43 @@ titles; the authors, journals and years should be enough to find each one.
   27 (2013).
 - **Needed:** the specimen geometry, reinforcement and material strengths, the support
   conditions, the charge mass, shape and position, and the measured deflection or damage.
-- **Use:** the first end-to-end test of both solvers together, rather than the structure alone
-  under a prescribed load.
+- **Use:** an end-to-end test of both solvers together under an open-air charge. The internal
+  explosion of Shang et al. (2026), now obtained, is one such test (see
+  [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)); an
+  open-air one would separate the structure's error from the gas phase's.
+- **Also needed, for the chamber test:** the size and spacing of the diagonal bars across the
+  chamfers, and how far the bars of the roof and walls are anchored into the end walls. The
+  paper says only that diagonal bars were "arranged along the chamfered surfaces". The model
+  leaves them out, and the joints decide whether its roof holds.
 
-## 4. Formulae quoted from memory
+## 3. Formulae quoted from memory
 
-Two formulae in the code were written from memory and should be checked against the original.
+One formula in the code was written from memory and should be checked against the original.
 
-- **Kinney–Graham positive impulse.** G. F. Kinney and K. J. Graham, *Explosive Shocks in Air*,
-  2nd ed., Springer, 1985. Needed: the scaled-impulse formula for free-air bursts, as used in
-  `KinneyGraham.swift`. Only the peak-overpressure formula has been confirmed.
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.
   Needed: the relation between the envelope strain reached and the permanent strain left on
   unloading, as used in `concreteCompression` in `Structure.metal`.
 
-## 5. Design-manual reference
-
-- **Where:** UFC 3-340-02, *Structures to Resist the Effects of Accidental Explosions*, US
-  Department of Defense, 2008 (with later changes). It is publicly released.
-- **Needed:** the dynamic increase factors for concrete and reinforcement (chapter 4), and the
-  support-rotation and ductility limits used to classify damage.
-- **Use:** confirm the fixed design factors in the slab benchmark's sensitivity study, and give
-  the app a damage classification that engineers would recognise.
-
-## 6. Set aside, for completeness
+## 4. Set aside, for completeness
 
 - A paper on modified shock-wave parameter equations on MDPI, which returned HTTP 403. It is
-  not needed if the Kingery–Bulmash coefficients are obtained.
+  not needed now that the Kingery–Bulmash coefficients are in use.
 - Fan Jin's 2014 University of Ottawa thesis, which re-used each specimen for several shots.
   Only the first shot on each specimen would be usable, and only if it is reported separately.
+
+## Obtained
+
+Supplied by hand during development, and now in use:
+
+- M. M. Swisdak, *Simplified Kingery Airblast Calculations* (1994): the Kingery–Bulmash
+  polynomials, in `KingeryBulmash.swift`.
+- G. F. Kinney and K. J. Graham, *Explosive Shocks in Air* (1985): both free-air formulae
+  confirmed.
+- UFC 3-340-02 (2008): the peak gas pressure in a closed room, in `UFC340.swift`; and the
+  dynamic increase factors for bending in the far range used in the slab's sensitivity study
+  (Table 4-1: 1.17 on the bars' yield, 1.19 on the concrete), confirmed. Its vented gas
+  impulse charts (Figures 2-153 to 2-164) and its support-rotation limits are not yet used.
+- H. Shang et al., "Experimental Study on the Damage Mechanism of Reinforced Concrete Shear
+  Walls Under Internal Explosion", *Applied Sciences* 16, 48 (2026): the chamber test, in
+  `ChamberTest.swift`.

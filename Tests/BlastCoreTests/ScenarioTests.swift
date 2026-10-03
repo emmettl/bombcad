@@ -81,11 +81,15 @@ struct ScenarioTests {
         for preset in ScenarioPreset.allCases {
             let scenario = preset.scenario
             #expect(scenario.gauges.count <= BlastSolver.maxGauges)
+            let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
             for box in scenario.boxes {
                 #expect(all(box.min .>= 0) && all(box.max .<= scenario.domainSize))
-                #expect(!box.contains(scenario.charge.position), "\(preset.title): charge inside a block")
+                for charge in charges {
+                    #expect(!box.contains(charge.position), "\(preset.title): charge inside a block")
+                }
             }
-            #expect(scenario.acousticCrossingTime > 0.05 && scenario.acousticCrossingTime < 0.5)
+            // The internal explosion's domain is a single small room, crossed in about 30 ms.
+            #expect(scenario.acousticCrossingTime > 0.02 && scenario.acousticCrossingTime < 0.5)
         }
     }
 

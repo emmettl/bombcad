@@ -54,7 +54,7 @@ swift run -c release blastbench throughput
 swift run -c release blastbench slab --sensitivity
 ```
 
-`blastbench` also has `structure`, `validate` and `snapshot` commands; see
+`blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
 [Performance](docs/performance.md) and [Validation](docs/validation.md).
 
 ## Headline results
@@ -70,11 +70,12 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Three-storey frame with masonry cladding, 160,000 elements  | 60× slower                   |
 | Two-storey frame collapsing over 3 s                        | 9× slower                    |
 
-Two comparisons with the outside world, both in the [validation notes](docs/validation.md):
+Three comparisons with the outside world, all in the [validation notes](docs/validation.md):
 
-- **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 10% of
-  the Kingery–Bulmash reference at the three stand-offs checked. Peak pressures are
-  under-resolved, more so close to the charge.
+- **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 6% of
+  the Kingery–Bulmash curves beyond 1.5 m/kg^(1/3), and within 5% everywhere checked on
+  0.125 m cells. Peak pressures are under-resolved, more so close to the charge. With no
+  afterburning, the incident impulse is 13–22% low.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
   model predicts peak deflections of 101, 105 and 112 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
@@ -82,6 +83,10 @@ Two comparisons with the outside world, both in the [validation notes](docs/vali
   after it is twice the measured one, and the result is sensitive to the load and to how the
   supports are modelled. Shell elements converge to 124 mm in about a second, with a rebound
   close to the measured one.
+- **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
+  the peak pressures on the walls are 0.9 to 1.6 times those measured, but the roof is torn
+  off where the real one was left 95 mm deflected. The model's structure behaves as if the
+  charge were about 1.6 times larger, and the joints are the prime suspect.
 
 Collapse and debris have not been compared with anything.
 

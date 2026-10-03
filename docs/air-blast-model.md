@@ -63,6 +63,8 @@ The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
   normalised over fluid cells only. A charge on the ground or against a wall therefore releases
   all of its energy into the air; a charge on rigid ground behaves like a free-air charge of
   twice the mass.
+- A scenario can fire several charges at once (`additionalCharges`); each is laid down the
+  same way.
 
 ## Freezing the air
 
@@ -78,17 +80,22 @@ still 0.8 kPa from ambient.
 
 See [Validation](validation.md). In brief: the scheme reproduces Sod's shock tube, a reflected
 normal shock and the Sedov–Taylor blast, and conserves mass and energy exactly in a closed box.
-Against the Kingery–Bulmash reference for a surface burst, the impulse on a rigid wall is within
-5% to 10%, the incident impulse is 13% to 23% low on every grid, and peak pressures are
-under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with resolution).
+Against the Kingery–Bulmash curves for a surface burst, from 0.75 to 6 m/kg^(1/3), the impulse
+on a rigid wall is within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) and within 5% everywhere on
+0.125 m cells; the incident impulse is 13% to 22% low on every grid; and peak pressures are
+under-resolved (76% to 82% of the incident peak on 0.25 m cells, improving with resolution).
+In a closed room the gas pressure left after the shocks is 48% to 114% of the design curve of
+UFC 3-340-02, lowest for light charges.
 
 ## Limitations
 
 1. **The source model is crude.** An ideal-gas balloon with γ = 1.4 ignores the detonation
    wave, the real equation of state of the detonation products, and afterburning. It is poor
    within a few charge diameters, or a few cells, of the charge, and it under-predicts incident
-   impulse by 13% to 23% at all ranges tested. Impulse on a wall facing the charge is much
-   better, within 5% to 10%.
+   impulse by 13% to 22% at all ranges tested. Impulse on a wall facing the charge is much
+   better, within 6%. **Afterburning** matters most in confined spaces: a closed room's gas
+   pressure is only half the design value for light charges (0.25 to 0.5 kg/m³), since the
+   products would burn in the room's oxygen and release more energy than the detonation.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
@@ -112,9 +119,10 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
 
 ## Future work
 
-- **Compare with the full Kingery–Bulmash curves** (as simplified by Swisdak). The comparison so
-  far uses three tabulated points, at scaled distances of 1.1, 2.3 and 5 m/kg^(1/3); the
-  polynomial coefficients could not be retrieved from an accessible source during development.
+- **Afterburning**: energy released into the gas behind the shock as it mixes with air,
+  limited by the oxygen available, with the gas pressure of UFC 3-340-02 (Figure 2-152) and the
+  incident impulse of Kingery–Bulmash as its two checks. This is the charge model's first
+  priority.
 - **Better source.** Two options, in order of effort: start from a one-dimensional, finely
   resolved spherical solution and map it onto the grid once the shock has grown to several
   cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of
@@ -141,12 +149,16 @@ under-resolved (74% to 81% of the incident peak on 0.25 m cells, improving with 
 - H. L. Brode, "Numerical solutions of spherical blast waves", *Journal of Applied Physics*
   26(6), 1955. Blast from a sphere of hot gas, the idea behind the balloon source.
 - G. F. Kinney and K. J. Graham, *Explosive Shocks in Air*, 2nd ed., Springer, 1985. The
-  empirical overpressure and impulse curves used for validation.
+  free-air overpressure and impulse formulae (equations 6-2 and 6-12) used for validation,
+  both checked against the book.
 - C. N. Kingery and G. Bulmash, *Airblast Parameters from TNT Spherical Air Burst and
   Hemispherical Surface Burst*, ARBRL-TR-02555, US Army Ballistic Research Laboratory, 1984;
-  and M. M. Swisdak, "Simplified Kingery Airblast Calculations", 26th DoD Explosives Safety
-  Seminar, 1994. The reference for design practice; used here through the worked examples in
-  the next entry.
+  and M. M. Swisdak, *Simplified Kingery Airblast Calculations*, Naval Surface Warfare Center,
+  1994. The reference for design practice; Swisdak's polynomials for a hemispherical surface
+  burst are in `KingeryBulmash.swift`.
 - United Nations Office for Disarmament Affairs, *International Ammunition Technical
   Guidelines*, IATG 01.80, "Formulae for ammunition management", 3rd ed., 2021, Table 5.
-  Kingery–Bulmash values for a hemispherical surface burst at three scaled distances.
+  Three worked Kingery–Bulmash examples, an independent check on the polynomials.
+- US Department of Defense, UFC 3-340-02, *Structures to Resist the Effects of Accidental
+  Explosions*, 2008. Peak gas pressure in a closed room (Figure 2-152), digitised in
+  `UFC340.swift`.

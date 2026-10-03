@@ -10,6 +10,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case frame
     case infilledFrame
     case threeStorey
+    case internalExplosion
 
     public var id: String { rawValue }
 
@@ -24,6 +25,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .frame: "Two-storey frame"
         case .infilledFrame: "Frame with masonry infill"
         case .threeStorey: "Three-storey building"
+        case .internalExplosion: "Internal explosion (test)"
         }
     }
 
@@ -188,6 +190,10 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("Behind", at: SIMD3(20, 22, 1.5)),
                 ],
                 structure: structure)
+
+        case .internalExplosion:
+            // The reinforced concrete chamber of Shang et al. (2026), half of it: see ChamberTest.
+            return ChamberTest.scenario()
 
         case .threeStorey:
             // A three-storey concrete frame, three bays by two of 6 m, with 250 mm flat slabs and

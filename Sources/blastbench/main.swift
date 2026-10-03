@@ -37,6 +37,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "frame": .frame
     case "infill": .infilledFrame
     case "storeys": .threeStorey
+    case "chamber": .internalExplosion
     default: .streetCanyon
     }
 }
@@ -121,6 +122,46 @@ func runThroughput() throws {
 func arrivalTime(_ history: [GaugeSample], ambient: Float) -> Double {
     let peak = (history.map(\.pressure).max() ?? ambient) - ambient
     return history.first { $0.pressure - ambient >= 0.5 * peak }?.time ?? 0
+}
+
+/// The internal explosion test of Shang et al. (2026).
+func runChamber() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.1
+    let elementSize = option("h").flatMap { Float($0) } ?? 0.1
+    let duration = option("time").flatMap { Double($0) } ?? 0.3
+    let downstand = !flag("no-downstand")
+    let chargeScale = option("charge-scale").flatMap { Float($0) } ?? 1
+    print(
+        "Internal explosion in a reinforced concrete chamber (Shang et al., 2026): "
+            + "4 x \(format(Double(50 * chargeScale), 1)) kg TNT, half-model")
+    print(
+        "Air cells \(format(Double(cellSize), 3)) m, elements \(format(Double(elementSize), 3)) m, \(format(duration * 1000, 0)) ms"
+            + (downstand ? "" : ", no down-stand"))
+    let result = try ChamberTest.run(
+        device: device, cellSize: cellSize, elementSize: elementSize, downstand: downstand,
+        ties: !flag("no-ties"), elastic: flag("elastic"), chargeScale: chargeScale, duration: duration)
+    print(
+        "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
+    )
+    for (name, pressure) in result.gaugePeaks {
+        print("  \(pad(format(Double(pressure) / 1e6, 2), 6))  \(name)")
+    }
+    print(
+        "\nRoof free edge at mid-span: peak \(format(Double(result.peakDeflection) * 1000, 0)) mm, "
+            + "\(format(Double(result.residual) * 1000, 0)) mm at the end (measured residual \(format(Double(ChamberTest.measuredResidual) * 1000, 0)) mm)"
+    )
+    print(
+        "Structure: \(result.summary.erodedElements) of \(result.summary.activeElements + result.summary.erodedElements) elements failed; "
+            + "run took \(format(result.wallSeconds, 1)) s")
+    for (part, failed, total) in result.failures {
+        print("  \(pad("\(failed)", 6)) of \(pad("\(total)", 6))  \(part)")
+    }
+    if flag("history") {
+        for sample in result.edgeHistory where Int((sample.x * 1000).rounded()) % 10 == 0 {
+            print(
+                "    t = \(format(Double(sample.x) * 1000, 1)) ms   \(format(Double(sample.y) * 1000, 1)) mm")
+        }
+    }
 }
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
@@ -598,6 +639,7 @@ do {
     switch command {
     case "slab": try runSlab()
     case "gas": try runGasPressure()
+    case "chamber": try runChamber()
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()

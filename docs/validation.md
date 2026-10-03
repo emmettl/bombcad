@@ -18,15 +18,21 @@ swift run -c release blastbench slab --sensitivity
 swift run -c release blastbench validate
 ```
 
+```bash
+swift run -c release blastbench chamber
+```
+
 ## Summary
 
 | Area                 | Evidence                                             | Confidence                         |
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
-| Blast loads          | Kingery–Bulmash at three ranges: impulse on a wall within 5–10% | Moderate to good for impulse on walls; peaks under-resolved |
+| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3): impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) | Good for impulse on walls; peaks under-resolved; incident impulse 13–22% low |
+| Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve        | Low for light charges (no afterburning) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 112 mm (104%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is thrown at the test's charge, which left it 95 mm deflected | Low: the structure is too weak by about 1.6 on the charge |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -217,61 +223,89 @@ references.
 ### Kingery–Bulmash, the design-practice standard
 
 Kingery and Bulmash fitted polynomials to a large body of test data for a hemispherical surface
-burst of TNT; they underlie ConWep and UFC 3-340-02. The polynomials are not reproduced here.
-The comparison uses the three worked examples tabulated in the United Nations' *International
-Ammunition Technical Guidelines*, IATG 01.80 (3rd ed., 2021), Table 5, reduced to scaled form.
-For 100 kg they fall at 5.0 m, 10.8 m and 23.2 m.
+burst of TNT; they underlie ConWep and UFC 3-340-02. The curves used here are Swisdak's
+simplified form of them (1994), which the test suite checks against five rows of Swisdak's own
+table (within 1%) and against the three independent worked examples of the United Nations'
+*International Ammunition Technical Guidelines*, IATG 01.80 (within 6%). The comparison runs
+from 0.75 to 6 m/kg^(1/3), which for 100 kg is 3.5 m to 28 m.
 
 Incident (side-on) wave over open ground:
 
-| Range  | Reference peak | 0.5 m cells | 0.25 m cells | 0.125 m cells |
-|--------|----------------|-------------|--------------|---------------|
-| 5.0 m  | 1,150 kPa      | 55%         | 74%          | 93%           |
-| 10.8 m | 202 kPa        | 63%         | 77%          | 86%           |
-| 23.2 m | 43 kPa         | 68%         | 81%          | 90%           |
+| Range  | Z    | Reference peak | 0.5 m cells | 0.25 m cells | 0.125 m cells |
+|--------|------|----------------|-------------|--------------|---------------|
+| 3.5 m  | 0.75 | 2,411 kPa      | 59%         | 77%          | 97%           |
+| 4.6 m  | 1    | 1,354 kPa      | 57%         | 77%          | 94%           |
+| 7.0 m  | 1.5  | 551 kPa        | 66%         | 82%          | 94%           |
+| 9.3 m  | 2    | 284 kPa        | 62%         | 76%          | 86%           |
+| 13.9 m | 3    | 116 kPa        | 67%         | 80%          | 87%           |
+| 18.6 m | 4    | 65 kPa         | 66%         | 79%          | 89%           |
+| 23.2 m | 5    | 43 kPa         | 68%         | 81%          | 90%           |
+| 27.8 m | 6    | 32 kPa         | 69%         | 80%          | 90%           |
 
 | Range  | Reference impulse | 0.5 m cells | 0.25 m cells | 0.125 m cells |
 |--------|-------------------|-------------|--------------|---------------|
-| 5.0 m  | 1,060 Pa·s        | 78%         | 77%          | 82%           |
-| 10.8 m | 543 Pa·s          | 83%         | 82%          | 82%           |
-| 23.2 m | 274 Pa·s          | 85%         | 87%          | 87%           |
+| 3.5 m  | 890 Pa·s          | 116%        | 103%         | 106%          |
+| 4.6 m  | 1,097 Pa·s        | 82%         | 80%          | 84%           |
+| 7.0 m  | 824 Pa·s          | 81%         | 78%          | 78%           |
+| 9.3 m  | 625 Pa·s          | 81%         | 80%          | 80%           |
+| 13.9 m | 430 Pa·s          | 86%         | 86%          | 86%           |
+| 18.6 m | 336 Pa·s          | 84%         | 86%          | 87%           |
+| 23.2 m | 275 Pa·s          | 85%         | 86%          | 86%           |
+| 27.8 m | 233 Pa·s          | 85%         | 85%          | 86%           |
 
 | Range  | Reference arrival | 0.5 m cells | 0.25 m cells | 0.125 m cells |
 |--------|-------------------|-------------|--------------|---------------|
-| 5.0 m  | 2.5 ms            | 100%        | 97%          | 94%           |
-| 10.8 m | 10.4 ms           | 92%         | 95%          | 94%           |
-| 23.2 m | 38.2 ms           | 97%         | 97%          | 98%           |
+| 3.5 m  | 1.3 ms            | 81%         | 94%          | 95%           |
+| 4.6 m  | 2.2 ms            | 98%         | 92%          | 93%           |
+| 7.0 m  | 4.6 ms            | 87%         | 90%          | 90%           |
+| 9.3 m  | 7.9 ms            | 90%         | 94%          | 93%           |
+| 13.9 m | 16.5 ms           | 92%         | 95%          | 96%           |
+| 18.6 m | 26.9 ms           | 98%         | 97%          | 97%           |
+| 23.2 m | 38.3 ms           | 97%         | 97%          | 98%           |
+| 27.8 m | 50.2 ms           | 97%         | 98%          | 98%           |
 
 On a rigid wall facing the charge (the far face of the domain is made reflecting, with the
 charge at each stand-off in turn):
 
 | Stand-off | Reference peak | 0.5 m cells | 0.25 m cells | 0.125 m cells |
 |-----------|----------------|-------------|--------------|---------------|
-| 5.0 m     | 6,650 kPa      | 27%         | 45%          | 70%           |
-| 10.8 m    | 680 kPa        | 50%         | 69%          | 84%           |
+| 3.5 m     | 16,763 kPa     | 20%         | 37%          | 67%           |
+| 4.6 m     | 8,152 kPa      | 25%         | 44%          | 68%           |
+| 7.0 m     | 2,511 kPa      | 35%         | 58%          | 83%           |
+| 9.3 m     | 1,058 kPa      | 45%         | 65%          | 83%           |
+| 13.9 m    | 331 kPa        | 57%         | 76%          | 88%           |
+| 18.6 m    | 163 kPa        | 63%         | 80%          | 91%           |
 | 23.2 m    | 101 kPa        | 68%         | 80%          | 92%           |
+| 27.8 m    | 71 kPa         | 69%         | 82%          | 91%           |
 
 | Stand-off | Reference impulse | 0.5 m cells | 0.25 m cells | 0.125 m cells |
 |-----------|-------------------|-------------|--------------|---------------|
-| 5.0 m     | 3,720 Pa·s        | 77%         | 91%          | 102%          |
-| 10.8 m    | 1,411 Pa·s        | 98%         | 102%         | 104%          |
-| 23.2 m    | 585 Pa·s          | 94%         | 94%          | 95%           |
+| 3.5 m     | 6,102 Pa·s        | 73%         | 84%          | 96%           |
+| 4.6 m     | 4,107 Pa·s        | 77%         | 91%          | 102%          |
+| 7.0 m     | 2,417 Pa·s        | 88%         | 97%          | 102%          |
+| 9.3 m     | 1,689 Pa·s        | 95%         | 101%         | 105%          |
+| 13.9 m    | 1,041 Pa·s        | 99%         | 102%         | 104%          |
+| 18.6 m    | 748 Pa·s          | 94%         | 97%          | 98%           |
+| 23.2 m    | 583 Pa·s          | 94%         | 94%          | 95%           |
+| 27.8 m    | 477 Pa·s          | 93%         | 94%          | 94%           |
 
 Reading these:
 
-- **Reflected impulse, the load a wall actually feels, is within about 5%** at the two farther
-  stand-offs on every grid, and within 10% at 5 m on cells of 0.25 m or finer. This is the
-  quantity that governs the response of most structures.
+- **Reflected impulse, the load a wall actually feels, is within 6%** from 1.5 m/kg^(1/3)
+  outwards on cells of 0.25 m or finer, and within 5% everywhere on 0.125 m cells. Closer in it
+  needs finer cells: at 0.75 m/kg^(1/3) it is 84% on 0.25 m cells. This is the quantity that
+  governs the response of most structures.
 - **Peak pressures read low** because a captured shock is smeared over two or three cells. They
-  improve steadily with resolution and are worst close in: at 5 m the reflected peak is still
-  30% low on the finest grid.
-- **Incident impulse is 13% to 23% low on every grid**, so this shortfall is in the source
-  model, not the resolution. It matters for objects the wave passes over, less for surfaces it
-  strikes.
-- **Arrival times are within 8%**, slightly early.
+  improve steadily with resolution and are worst close in, where the reflected peak is a third
+  low even on 0.125 m cells.
+- **Incident impulse is 13% to 22% low** from 1 m/kg^(1/3) outwards, on every grid, so the
+  shortfall is in the source model, not the resolution. The likeliest cause is the missing
+  afterburning of the detonation products, which adds energy behind the shock (see the
+  [air-blast model](air-blast-model.md#limitations)). It matters for objects the wave passes
+  over, less for surfaces it strikes.
+- **Arrival times are 2% to 10% early.**
 
-Only three points of the reference are available, at scaled distances of 1.1, 2.3 and
-5 m/kg^(1/3). Nothing is known about agreement closer in or farther out.
+`blastbench validate` prints these tables; `--z` chooses other scaled distances.
 
 ### Kinney–Graham
 
@@ -288,6 +322,7 @@ rigid ground is equivalent to one of twice the mass in free air):
 
 | Range | Reference impulse | 0.5 m cells | 0.25 m cells | 0.125 m cells |
 |-------|-------------------|-------------|--------------|---------------|
+| 5 m   | 705 Pa·s          | 117%        | 116%         | 124%          |
 | 10 m  | 558 Pa·s          | 84%         | 85%          | 84%           |
 | 15 m  | 419 Pa·s          | 81%         | 82%          | 83%           |
 | 20 m  | 326 Pa·s          | 81%         | 83%          | 83%           |
@@ -296,9 +331,131 @@ rigid ground is equivalent to one of twice the mass in free air):
 This comparison is harsher than the first, and less fair. Real ground is not perfectly rigid:
 test data for surface bursts, which Kingery–Bulmash fits, correspond to about 1.8 times the mass
 in free air rather than 2. At 10 m the Kinney–Graham peak is about a quarter higher than the
-Kingery–Bulmash one.
-The overpressure formula was confirmed against a published copy; the impulse formula was written
-from memory and could not be.
+Kingery–Bulmash one. Both formulae (the book's equations 6-2 and 6-12) have been checked
+against the book.
+
+### Gas pressure in a closed room
+
+A charge fired in a closed room leaves, once the shocks have died down, hot gas at a steady
+pressure. UFC 3-340-02 (Figure 2-152) gives that pressure against the charge per unit of room
+volume, from tests. `blastbench gas` fires a charge in the middle of a closed 6 m cube and
+reads the pressure at 80 ms:
+
+| Charge per volume | Model    | UFC 3-340-02 | Model / UFC |
+|-------------------|----------|--------------|-------------|
+| 0.25 kg/m³        | 0.42 MPa | 0.88 MPa     | 48%         |
+| 0.5 kg/m³         | 0.84 MPa | 1.48 MPa     | 57%         |
+| 1 kg/m³           | 1.67 MPa | 2.16 MPa     | 77%         |
+| 2 kg/m³           | 3.35 MPa | 3.50 MPa     | 96%         |
+| 4 kg/m³           | 6.69 MPa | 5.88 MPa     | 114%        |
+
+The model's pressure is exactly (γ − 1)E/V, the TNT energy of 4.184 MJ/kg shared through the
+room as an ideal gas, as it should be for the source it uses. The tests give up to twice that
+for light charges, most likely because the detonation products burn in the room's oxygen
+(afterburning; TNT's heat of combustion is about three times its heat of detonation). In heavy
+charges there is too little oxygen for that, and the products' lower γ brings the pressure
+below the ideal gas's. Afterburning is the
+likeliest cause of the incident impulse's shortfall in the open, too. The digitised curve is in
+`UFC340.swift`, read off the chart by hand.
+
+## An internal explosion in a reinforced concrete chamber
+
+The one test so far that couples a real charge to a real structure, and the only one that
+reaches failure.
+
+### The test
+
+H. Shang, W. Guo, Y. Li, W. Pang and H. Liu, "Experimental Study on the Damage Mechanism of
+Reinforced Concrete Shear Walls Under Internal Explosion", *Applied Sciences* 16, 48 (2026).
+Two full-scale reinforced concrete chambers stand either side of a 1 m partition. Their walls,
+roofs and foundation are 0.8 m of C40 concrete with 16 mm bars at 150 mm in both faces both
+ways and 8 mm ties at 450 mm; the inside corners are chamfered, with diagonal bars; the end
+walls are 1.8 m thick. Each roof stops 1.2 m short of the partition, leaving a vent open to
+the sky. Four 50 kg TNT charges, in open steel sleeves through the partition, were fired
+together.
+
+| Measured                                     | Value                                 |
+|----------------------------------------------|---------------------------------------|
+| Peak reflected pressure, six wall sensors    | 3.2 to 4.4 MPa                        |
+| Residual deflection of chamber A's roof edge | 95 mm, read off the paper's Figure 21 |
+| Chamber B                                    | Roof edge fractured at the walls, left hanging on a few bars |
+
+Chamber B had been cast in two stages, and failed along the cold joint. The paper's own
+LS-DYNA model gives 61 mm for chamber A, and its parametric study (Table 7) gives a second
+reference for how the roof responds to the charge: 22, 87 and 251 mm peak for 100, 200 and
+300 kg, and the roof thrown off at 400 kg.
+
+### The model
+
+One chamber, with the partition's mid-plane as a mirror, so that each sleeve's charge counts
+as 25 kg on the mirror. Air cells and solid elements are 0.1 m (83,536 elements). The end wall,
+the partition and the foundation are rigid. The chamfers are steps of elements, without their
+diagonal bars. The other assumptions, and the geometry read off the paper's drawings, are
+listed in `ChamberTest.swift`. `blastbench chamber` runs 300 ms in about 15 s;
+`--charge-scale` scales the charges.
+
+### Results
+
+**Pressures.** At gauges placed near the sensors the model gives 4.3 and 6.8 MPa on the side
+walls and 3.0 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positions are
+approximate, and peaks this close to a charge change sharply with position, so this check is
+loose: the model is between 0.9 and 1.6 times the measured range.
+
+**The roof.** At the test's charge the model's roof is torn from its walls and thrown: its
+free edge is still rising at more than 2 m after 300 ms, against a residual of 95 mm. The
+response has a cliff, as the paper's own model does, but the model's cliff comes at a smaller
+charge:
+
+| Charge, as a fraction of the test's | Model: peak / end of run | Paper's model (Table 7): peak / residual |
+|-------------------------------------|--------------------------|------------------------------------------|
+| 0.5 (100 kg)                        | 15 / 2 mm                | 22 / 17 mm                               |
+| 0.625                               | 66 / 34 mm               |                                          |
+| 0.75                                | 313 / 206 mm             |                                          |
+| 0.875                               | Roof thrown              |                                          |
+| 1 (200 kg)                          | Roof thrown              | 87 / 62 mm; measured residual 95 mm      |
+| 1.5                                 |                          | 251 / 168 mm                             |
+| 2                                   |                          | Roof thrown                              |
+
+The model behaves like the paper's model with about 1.6 times the charge. Even so, the
+measured structure was close to its own cliff: chamber B nearly lost its roof edge.
+
+**What throws the roof.** Some variations narrow it down:
+
+- **Not the removal of elements.** With removal switched off entirely, the roof edge still
+  rose 293 mm in 60 ms, as fast as with it.
+- **Not a mistake in stiffness.** With elastic concrete the edge swings only ±7 mm.
+- **Not the mesh.** With 50 mm elements (about 670,000) the edge rises
+  118, 374 and 746 mm at 30, 60 and 100 ms, against 127, 423 and 818 mm on 0.1 m elements.
+- **The gas left behind by the shocks.** The roof gauge reads 200 to 500 kPa from 10 ms to
+  past 60 ms while the gas vents through the strip, and a hand estimate of the roof's
+  yield-line resistance is 250 to 350 kPa. Once yielded, the roof is pushed for as long as the
+  gas lasts, and nothing stops it. The model's gas pressure is if anything low (at this
+  room's 0.58 kg/m³, below the design manual's in the previous section), so the load is
+  unlikely to be too high.
+
+The chamfers matter: without them the cliff came between 0.5 and 0.75 of the charge. That
+points to the joints, which the paper also found decisive. Its chamber A's joints were
+shattered but held together by bars that "did not break", and its parametric roof with
+14 mm bars instead of 16 mm deflects 58% more. The likeliest causes of the model's weakness,
+in order:
+
+1. **The joints' detailing**: no diagonal bars across the chamfers, and mats smeared over a
+   band one element thick instead of lying 50 mm from the face.
+2. **Rigid end wall, partition and foundation**, held as fixed nodes. Elements beside fixed
+   nodes fail early (failures gather along the line where the side walls meet the partition).
+3. **What the model leaves out of the load path**: the steel sleeves, which take some of the
+   charges' energy and were modelled by the paper, and any compressive membrane action that
+   the rigid supports or the walls' flexibility misrepresent.
+
+### What this does and does not show
+
+The model reproduces the kind of failure seen (the roof yielding at the joints under the
+lingering gas pressure, with damage concentrated at the supports) and a response with a
+cliff, but it puts the cliff between 0.75 and 0.875 of the charge, where the test and the
+paper's model put it beyond 1. Against this test the structural model is on the weak side by
+a factor of about 1.6 on the charge, which near a cliff means its deflections can be wrong by
+an order of magnitude. Peak wall pressures are within the loose check that the gauge
+positions allow.
 
 ## Consistency across air grids
 
@@ -317,7 +474,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 71 tests. The physical checks are:
+The test suite has 84 tests. The physical checks are:
 
 **Air solver**
 
@@ -391,9 +548,12 @@ equations are the right ones.
 
 In rough order of value:
 
-1. A second and third structural test, of different kinds (see the
+1. Why the chamber's roof is too weak: the joints' detailing first (see
+   [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
+2. A second and third structural test, of different kinds (see the
    [concrete model's future work](concrete-model.md#future-work)).
-2. Blast loads against the full Kingery–Bulmash curves, closer in and farther out than the
-   three points available so far.
-3. A coupled test: a wall or slab loaded by a real charge at a known stand-off.
-4. Any test of failure: shear, breach or collapse.
+3. Afterburning in the charge model, checked against the gas pressures of UFC 3-340-02 and the
+   incident impulse of Kingery–Bulmash; then the vented gas impulse of UFC 3-340-02
+   (Figures 2-153 to 2-164), which would need digitising.
+4. Blast loads closer in than 0.75 m/kg^(1/3).
+5. Any test of collapse or debris.
