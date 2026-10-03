@@ -316,6 +316,13 @@ matter.
    specimen's hinge behaved differently, or the rig restrained its rebound, cannot be told
    from the published record.
 
+17. **Removal made independent of element size**, and a 32-layer check. Removal by crack
+   width had been capped at a strain of 0.5, which on elements under 10 mm removed concrete at
+   narrower cracks than intended; with the cap gone, a 25 mm strip of the slab peaks at 105,
+   111 and 112 mm with 8, 16 and 32 elements through the thickness. The full-width slab at 32
+   still collapses after 30 ms, through bar rupture at a crack one element wide (see
+   Limitations).
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -346,7 +353,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    compaction of the pores. Concrete under the very high pressures close to a charge is beyond
    the model's range.
 7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, dowel action, bar
-   buckling or lap failure, and bars are placed by the element, not individually. Under cyclic
+   buckling or lap failure, and bars are placed by the element, not individually. A bar takes
+   the strain of the element it sits in, so when a crack gathers into one element the bar's
+   strain is the crack opening over the element size, where a real bar spreads it over a
+   debonded length of several diameters. Elements much smaller than the bars therefore rupture
+   them too early: the validation slab with 3 mm elements and 9.5 mm bars collapses this way.
+   Keep elements no smaller than about the bar diameter. Under cyclic
    loading a bar returning past its earlier extreme follows the yield asymptote, not the
    measured monotonic curve, which can understate its stress by up to about 10% there; and
    the cyclic law ignores strain rate except in the yield stress used to place each branch.
@@ -368,8 +380,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
-- **Convergence**: a 32-layer run (4.4 million elements, 186,000 steps) would show whether the
-  peak levels off; one attempt, before the fixes of step 14, did not finish within two hours.
+- **Bond slip**, or at least spreading a bar's strain at a crack over a debonded length, so
+  that very fine meshes do not rupture bars at hairline cracks (see Limitations).
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
 - **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.

@@ -73,9 +73,10 @@ Two comparisons with the outside world, both in the [validation notes](docs/vali
   under-resolved, more so close to the charge.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
   model predicts peak deflections of 101, 105 and 112 mm with 4, 8 and 16 elements through the
-  thickness, where 108 mm was measured, with no material constant fitted to the test. The
-  peak still rises slowly with refinement, the rebound after it is twice the measured one, and
-  the result is sensitive to the load and to how the supports are modelled.
+  thickness, where 108 mm was measured, with no material constant fitted to the test; a strip
+  of the slab refined to 32 elements gives 112 mm, so the peak has levelled off. The rebound
+  after it is twice the measured one, and the result is sensitive to the load and to how the
+  supports are modelled.
 
 Collapse and debris have not been compared with anything.
 
