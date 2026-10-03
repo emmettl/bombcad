@@ -79,6 +79,7 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Case                             | Peak deflection | At    | At 70 ms | Elements failed |
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
+| Model, 32 elements through       | 112 mm (104%)   | 27 ms | 88 mm    | 83 of 4,423,680 |
 | Model, 16 elements through       | 112 mm (104%)   | 27 ms | 90 mm    | 0 of 552,960    |
 | Model, 8 elements through        | 105 mm (98%)    | 26 ms | 74 mm    | 0 of 68,608     |
 | Model, 4 elements through        | 101 mm (93%)    | 26 ms | 81 mm    | 0 of 8,704      |
@@ -113,16 +114,17 @@ rebound is set by a hinge at mid-span: once its crushed compression zone unloads
 cracks through its depth and the two halves swing back about the bars. The
 [concrete model](concrete-model.md#how-the-model-got-here) gives the evidence.
 
-**Finer still.** A strip of the slab 25 mm wide bends the same way and costs a thirtieth as
-much, so it can be refined further (`blastbench slab --strip 25 --layers 8,16,32`). It peaks
-at 105, 111 and 112 mm with 8, 16 and 32 elements through the thickness: the peak levels off.
-The full-width slab with 32 elements through the thickness (4.4 million elements, 48 minutes)
-follows the 16-layer history to 30 ms (114 mm) but then collapses, losing 11,755 elements. Its
-mid-span crack gathers into a single column of 3.2 mm elements, and smeared bars take the
-strain of the element they sit in, so a crack opening of 0.5 mm strains them past rupture. A
-real bar spreads a crack's opening over a debonded length several bar diameters long; at
-32 layers the elements are a third of the bar's own 9.5 mm diameter, which is below what
-smeared reinforcement can represent. Elements should not be much smaller than the bars.
+**Finer still.** The full-width slab with 32 elements through the thickness (4.4 million
+elements of 3.2 mm, 32 minutes) peaks at 112 mm at 27 ms, as with 16, with a history within
+6.9 mm of the measured one; 83 elements, cover below a wide flexural crack, are lost. **The
+peak has converged at 112 mm**, 4% above the measurement. A narrower strip of the slab, 25 mm
+wide, bends the same way at a thirtieth of the cost (`blastbench slab --strip 25 --layers
+8,16,32`) and agrees: 105, 111 and 112 mm.
+
+Getting there took one more change: bars now rupture when their plastic strain averaged over
+a debonded length (the crack spacing) passes the rupture strain, not their strain in the one
+element a crack runs through. Before that, the 32-layer slab's mid-span crack gathered into a
+single column of 3.2 mm elements, whose bars ruptured at a 0.5 mm opening, and it collapsed.
 
 Two errors had to be found before the fine mesh behaved: compressed concrete's sideways
 swelling was counted as cracking, and the compressive strain-rate law lost 97% of the
@@ -160,15 +162,18 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 | Supports as 1 in bearings, held down         | 84 mm (78%)     | 0               |
 | Supports as 1 in bearings, free to lift      | 92 mm (85%)     | 0               |
 | 16 elements through the thickness            | 112 mm (104%)   | 0               |
-| Fixed UFC 3-340-02 factors, no rate laws     | 661 mm, failing | 812             |
+| Fixed UFC 3-340-02 factors, no rate laws     | 130 mm (120%)   | 67              |
 | Static strengths                             | 368 mm, failing | 10,272          |
 
 Reading this table:
 
-- **The rate laws decide the outcome.** The load is far above the slab's static capacity, so it
-  survives only because steel and concrete are stronger when loaded quickly. With the fixed
-  design factors (which are deliberately conservative) or none, the model predicts failure.
-  The test is therefore a sharp check on the rate treatment, and a poor check on anything else.
+- **The rate treatment decides the outcome.** The load is far above the slab's static
+  capacity, so it survives only because steel and concrete are stronger when loaded quickly.
+  With static strengths the model predicts failure. With the fixed design factors of
+  UFC 3-340-02, which are deliberately conservative, it predicts 130 mm, 20% more than was
+  measured, with some elements failing at the hinge: conservative, as intended. (Before bar
+  rupture was judged over a debonded length, these factors gave a collapse.) The test is
+  therefore a sharp check on the rate treatment, and a poor check on anything else.
 - **A 5% change in load moves the peak by about 13%.** The hand-read pressure record could
   easily be 5% out in its shape, though its impulse is pinned.
 - **No material assumption tips the slab into failure any more.** Earlier versions sat near a
@@ -305,7 +310,7 @@ little. There is no test to compare these with.
 
 ## Verification against theory
 
-The test suite has 70 tests. The physical checks are:
+The test suite has 71 tests. The physical checks are:
 
 **Air solver**
 
@@ -345,6 +350,7 @@ The test suite has 70 tests. The physical checks are:
 | Fully restrained compression                    | Peak at 5.1 f_c within 3% (confinement)        |
 | Crack opened then closed                        | Closes at its residual opening; then full compressive stiffness |
 | Reinforced element in tension                   | Yield, hardening and rupture within 3%         |
+| Reinforced tie with one weak slice, two meshes  | Bars break at the same crack opening (13 and 11 mm) |
 | Shear across an open crack, two widths          | Interlock law within 5%                        |
 | Tension at 0.1 per second                       | Rate law within 6%                             |
 | Compression at 100 per second (1 mm cube)       | CEB-FIP rate law above 30 per second within 6% |

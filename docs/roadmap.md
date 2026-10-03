@@ -14,7 +14,7 @@ and nothing in it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with one test | Unknown accuracy elsewhere; on that test, peaks within 7% and converged | [Validation](validation.md#results) |
+| 1 | The structural model has been compared with one test | Unknown accuracy elsewhere; on that test the peak converges to 112 mm against 108 measured | [Validation](validation.md#results) |
 | 2 | Shear failure is the least reliable prediction                          | Breach, punching and direct-shear results are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
 | 4 | Incident impulse is 13–23% low; blast loads are checked at only three ranges | Loads on walls look right where checked, but the charge model is crude | [Validation](validation.md#blast-loads-against-empirical-references) |
@@ -80,8 +80,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
   switched off by default; the rest were removed. The lesson: trace a failing element before
   changing the model.
 
-- **Fixed design factors for strain rate** (UFC 3-340-02): too conservative to reproduce the
-  slab test, which they predict collapses. They remain available as an option.
+- **Fixed design factors for strain rate** (UFC 3-340-02): deliberately conservative; they
+  predict 130 mm for the slab test against 108 mm measured. The strain-rate laws are the
+  default; the factors remain available as an option.
 - **A rotating-crack concrete model**: simple and robust, but with no shear transfer across
   cracks it cannot hold together a slab without steel through its thickness.
 - **Tension softening scaled by element size in reinforced concrete**: dissipates a crack's

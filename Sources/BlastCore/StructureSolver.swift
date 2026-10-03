@@ -76,6 +76,9 @@ public final class StructureSolver {
     /// buffer while the other, from the substep before, is read. 16 bytes per lattice cell each
     /// (placeholders when crushing is local).
     private let crushBuffers: [MTLBuffer]
+    /// Bar plastic strains along each axis, written in alternate substeps like `crushBuffers`, so
+    /// that rupture can be judged over a debonded length.
+    private let barPlasticBuffers: [MTLBuffer]
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
     /// Index into `materials` of every lattice cell's material, one byte each.
@@ -170,6 +173,12 @@ public final class StructureSolver {
         let crushLength = averagesCrushing ? cells * 16 : 16
         materialIndexBuffer = try buffer(cells, "structure material indices")
         crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
+        let spreadsRupture = materials.contains { Self.barReach(of: $0, elementSize: h) > 0 }
+        let barPlasticLength = spreadsRupture ? cells * 16 : 16
+        barPlasticBuffers = [
+            try buffer(barPlasticLength, "bar plastic strain, even"),
+            try buffer(barPlasticLength, "bar plastic strain, odd"),
+        ]
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         placeholderBuffer = try buffer(64, "structure placeholder")
 
@@ -285,7 +294,7 @@ public final class StructureSolver {
         memset(stateBuffer.contents(), 0, stateBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
-        for crushBuffer in crushBuffers {
+        for crushBuffer in crushBuffers + barPlasticBuffers {
             memset(crushBuffer.contents(), 0, crushBuffer.length)
         }
 
@@ -528,6 +537,8 @@ public final class StructureSolver {
             encoder.setBuffer(materialIndexBuffer, offset: 0, index: 16)
             encoder.setBuffer(crushBuffers[substep % 2], offset: 0, index: 13)
             encoder.setBuffer(crushBuffers[1 - substep % 2], offset: 0, index: 14)
+            encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 17)
+            encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 18)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -630,6 +641,15 @@ public final class StructureSolver {
         material.model == .concrete ? Int((material.crushLength / h).rounded()) : 0
     }
 
+    /// Half the debonded length over which a bar's rupture is judged, in elements; the debonded
+    /// length is taken as the material's crack spacing. Zero below one element.
+    static func barReach(of material: StructureMaterial, elementSize h: Float) -> Float {
+        guard material.model == .concrete, material.steel != nil, material.bondSpreading,
+            material.crackSpacing > h
+        else { return 0 }
+        return material.crackSpacing / 2 / h
+    }
+
     /// A material's properties as the element kernel needs them, for this mesh.
     private func makeParameters(for material: StructureMaterial) -> MaterialParameters {
         let h = model.elementSize
@@ -664,6 +684,7 @@ public final class StructureSolver {
         parameters.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
         parameters.crackResidual = material.crackResidual
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
+        parameters.barReach = Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak
         parameters.crushEnd = end
         // The crack strain at which the removal width is reached in one element. (It was once

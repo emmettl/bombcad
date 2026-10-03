@@ -91,6 +91,7 @@ struct MaterialParameters {
     float crackResidual;        // fraction of a crack's opening left when its stress is released
     uint crushRadius;           // elements either side over which crushing is averaged; 0 = local
     float steelHardeningRatio;  // slope of the reinforcement's yield asymptotes over its modulus
+    float barReach;             // half the debonded length, in elements; 0 = judged locally
 };
 
 constant uint maxMaterials = 8;
@@ -464,6 +465,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device float4 *crushBefore [[buffer(14)]],
                               constant MaterialParameters *materials [[buffer(15)]],
                               const device uchar *materialIndex [[buffer(16)]],
+                              device float4 *plasticOut [[buffer(17)]],
+                              const device float4 *plasticBefore [[buffer(18)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -805,7 +808,37 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                   first * pow(rate, m.steelRateYield), m);
                 plastic[j] = inelastic;
             }
-            if (fabs(plastic[j]) > m.steelStrain[m.steelPoints - 1]) {
+            // A bar slips in its concrete either side of a crack, so it is strained by the crack's
+            // opening spread over a debonded length, not over the one element the crack happens
+            // to run through. Its stress follows its own strain, but it ruptures when its plastic
+            // strain averaged along its axis over that length (from the previous substep's
+            // neighbours that still carry bars that way) passes the rupture strain.
+            // The window is exactly the debonded length: elements at its ends count in part.
+            float spread = plastic[j];
+            if (m.barReach > 0.0f) {
+                int3 dims = int3(u.ex, u.ey, u.ez);
+                int r = int(ceil(m.barReach - 0.5f));
+                float sum = plastic[j];
+                float weights = 1.0f;
+                for (int offset = -r; offset <= r; ++offset) {
+                    int3 cell = int3(tid);
+                    cell[j] += offset;
+                    if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
+                        continue;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uchar flag = flags[other];
+                    float neighbour = plasticBefore[other][j];
+                    float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+                    if ((flag == elementActive || flag == elementFailing) && steel[other].ratio[j] > 0.0f
+                        && fabs(neighbour) < 1e8f) {
+                        sum += weight * neighbour;
+                        weights += weight;
+                    }
+                }
+                spread = sum / weights;
+            }
+            if (fabs(spread) > m.steelStrain[m.steelPoints - 1]) {
                 plastic[j] = 1e9f;  // ruptured for good
                 continue;
             }
@@ -815,6 +848,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             material[j][j] += ratio[j] * stress / root;
         }
         state.steelPlastic = plastic;
+        if (m.barReach > 0.0f) {
+            plasticOut[element] = float4(plastic, 0.0f);
+        }
         bool anySteel = intact.x + intact.y + intact.z > 0.0f;
 
         // A crack wide enough to count as a gap removes the element, unless intact bars cross it.
@@ -835,9 +871,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         syz = cauchy[2][1];
         szx = cauchy[0][2];
 
-        // Whatever bridges it, an element stretched to twice the removal width (or by 100%, on
-        // large elements) is gone.
-        eroded = eroded || torn || pulverised || crack > max(1.0f, 2.0f * m.erosionStrain);
+        // Whatever bridges it, an element stretched to three times the removal width (or by
+        // 100%, on large elements) is gone. Bars bridging a single crack rupture before that.
+        eroded = eroded || torn || pulverised || crack > max(1.0f, 3.0f * m.erosionStrain);
         // Squeezed concrete also resists the hourglass modes: a block at mean compressive stress s
         // and strength f can carry a bending moment in proportion to s (1 - s / f).
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);

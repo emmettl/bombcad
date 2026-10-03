@@ -97,6 +97,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// (nonlocal crushing). Zero, the default, or less than half an element keeps it local;
     /// three aggregate sizes (48 mm) is the usual choice when it is wanted.
     public var crushLength: Float = 0
+    /// Judge a bar's rupture by its plastic strain averaged over a debonded length (the crack
+    /// spacing) rather than in the one element a crack runs through.
+    public var bondSpreading = true
     /// Gain in compressive strength per unit of lateral confining stress (Richart's 4.1).
     public var confinementCoefficient: Float = 4.1
     /// Largest aggregate size in metres, which governs how well a crack still carries shear.
@@ -566,6 +569,7 @@ struct MaterialParameters {
     var crackResidual: Float = 0
     var crushRadius: UInt32 = 0
     var steelHardeningRatio: Float = 0.01
+    var barReach: Float = 0
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -645,6 +649,7 @@ extension StructureMaterial {
         crushBand = try value(.crushBand, crushBand)
         aggregateSize = try value(.aggregateSize, aggregateSize)
         crushLength = try value(.crushLength, crushLength)
+        bondSpreading = try value(.bondSpreading, bondSpreading)
         confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)

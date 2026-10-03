@@ -261,6 +261,71 @@ struct ConcreteModelTests {
         #expect(end < -0.4 * steel.yieldStress && end > -0.8 * steel.yieldStress, "end \(end / 1e6) MPa")
     }
 
+    @Test("A reinforced tie with one crack fails at the same opening on two meshes")
+    func tieFailureOpening() throws {
+        /// Pulls a 0.4 m tie, 1% steel, with a weaker slice in the middle so the crack gathers
+        /// there, and returns the end displacement at which it loses its load.
+        func failureOpening(elementSize h: Float) throws -> (opening: Float, peak: Float) {
+            let steel = SteelProperties.grade500
+            let material = Self.concrete(steel: steel)
+            var weak = material
+            weak.tensileStrength *= 0.8
+            weak.name = "Weak"
+            let tie = Box(min: SIMD3(0, 0, 1), max: SIMD3(0.4, 0.1, 1.1))
+            let slice = Box(min: SIMD3(0.2, 0, 1), max: SIMD3(0.2 + h, 0.1, 1.1))
+            var model = StructureModel(
+                solids: [tie, slice], material: material, elementSize: h, fixedBase: false)
+            model.setMaterial(weak, of: 1)
+            // A fifth less steel across the slice, so its bars reach their ultimate strength
+            // before the rest of the tie yields, as at a real crack.
+            model.reinforcement = [
+                ReinforcementLayer(region: tie, ratio: SIMD3(0.01, 0, 0)),
+                ReinforcementLayer(region: slice, ratio: SIMD3(-0.002, 0, 0)),
+            ]
+            let solver = try StructureSolver(device: device, model: model)
+            solver.gravity = 0
+            solver.groundContact = false
+            solver.damping = 200
+            let rate: Float = 0.2  // m/s
+            solver.mutateNodes { nodes in
+                for k in 0...solver.ez {
+                    for j in 0...solver.ey {
+                        nodes[solver.nodeIndex(0, j, k)].isFixed = true
+                        nodes[solver.nodeIndex(solver.ex, j, k)].isPrescribed = true
+                        nodes[solver.nodeIndex(solver.ex, j, k)].velocity = SIMD3(rate, 0, 0)
+                    }
+                }
+            }
+            var peak: Float = 0
+            let stepsPerSample = Int(0.0002 / solver.criticalTimeStep)
+            while solver.time < 0.15 {
+                solver.advance(steps: stepsPerSample)
+                var force: Float = 0
+                for k in 0...solver.ez {
+                    for j in 0...solver.ey { force += solver.nodalForce(solver.ex, j, k).x }
+                }
+                force = -force
+                peak = max(peak, force)
+                if peak > 0 && force < 0.1 * peak && solver.time > 0.005 {
+                    return (Float(solver.time) * rate, peak)
+                }
+            }
+            return (.infinity, peak)
+        }
+        let coarse = try failureOpening(elementSize: 0.02)
+        let fine = try failureOpening(elementSize: 0.01)
+        // Both reach the slice's bar strength, and lose it at the same opening, well beyond the
+        // 0.12 h (2.4 mm and 1.2 mm) at which a bar strained only in the cracked element would
+        // break.
+        let strength = 0.008 * 0.1 * 0.1 * SteelProperties.grade500.ultimateStress
+        #expect(
+            coarse.peak > 0.95 * strength && fine.peak > 0.95 * strength, "\(coarse.peak), \(fine.peak) N")
+        #expect(
+            abs(fine.opening - coarse.opening) / coarse.opening < 0.15,
+            "\(coarse.opening) m and \(fine.opening) m")
+        #expect(fine.opening > 0.005, "fine \(fine.opening) m")
+    }
+
     @Test("An unreinforced element is removed once its crack is fully open")
     func plainErosion() throws {
         // A 5 mm crack in a 50 mm element is a strain of 10%.
