@@ -794,9 +794,6 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
 // periodically. Each entry keeps the four lowest-numbered nodes that arrive, whatever the
 // thread timing, so runs repeat exactly. Nodes that began close together (within about an
 // element) never repel: while joined their elements hold them apart.
-constant float shellContactKick = 2.0f;  // m/s
-// Pieces in contact are pushed apart no faster than this; see `shellContactForces`.
-constant float shellSeparationLimit = 1.0f;  // m/s
 // Nodes kept in each entry of the shell contact table; debris piles up more densely on shell
 // meshes, whose cells are an element (250 mm) across.
 constant uint shellContactSlots = 8;
@@ -925,9 +922,9 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                     // A penalty spring stores energy in its overlap. Nodes that were hidden from
                     // each other in a crowded entry can meet already deeply overlapped, and the
                     // spring would then fling them apart at hundreds of metres a second. So once
-                    // a pair is separating faster than `shellSeparationLimit` it is not pushed
+                    // a pair is separating faster than `separationLimit` it is not pushed
                     // further: contact stops pieces and keeps them apart, but never throws them.
-                    float push = approach > shellSeparationLimit
+                    float push = approach > separationLimit
                         ? 0.0f : max(stiffness * (radius - gap) - damping * approach, 0.0f);
                     force += push * normal;
                     float3 sliding = relative - approach * normal;
@@ -939,11 +936,11 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
             }
         }
     }
-    // Contact may change a node's velocity by at most `shellContactKick` in one step. Pieces
+    // Contact may change a node's velocity by at most `contactKick` in one step. Pieces
     // meeting at tens of metres a second are still stopped within a few steps, but nodes that
     // already overlap deeply (a crowded entry of the table hides some until then) are eased
     // apart instead of being shot off at hundreds of metres a second.
-    float largest = node.mass * shellContactKick / max(dt, 1e-12f);
+    float largest = node.mass * contactKick / max(dt, 1e-12f);
     float size = length(force);
     if (size > largest) {
         force *= largest / size;

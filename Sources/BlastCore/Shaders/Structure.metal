@@ -121,6 +121,13 @@ constant bool singleMaterial [[function_constant(0)]];
 // Each cell of the contact grid holds up to this many nodes.
 constant uint contactSlots = 4;
 constant uint emptySlot = 0xFFFFFFFFu;
+// Contact safeguards, for solids and shells alike: a pair separating faster than
+// `separationLimit` is pushed no further, and contact changes a node's velocity by at most
+// `contactKick` in one step. A penalty spring stores energy in its overlap, and nodes hidden from
+// each other in a crowded entry of the table can meet already deeply overlapped; unguarded, the
+// spring then flings them apart at hundreds of metres a second.
+constant float separationLimit = 1.0f;  // m/s
+constant float contactKick = 2.0f;      // m/s
 
 struct ElementState {
     float stress[6];      // Cauchy stress: xx, yy, zz, xy, yz, zx
@@ -1268,7 +1275,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device uint *slots [[buffer(8)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
-    structureStep(u, control, active);
+    float dt = structureStep(u, control, active);
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
@@ -1282,6 +1289,18 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
 
     int3 cell = contactCell(position, u);
     float3 force = float3(0.0f);
+    // A node that its own crowded entry dropped is invisible to the others this step, so it does
+    // not push them either: every pair then sees each other or neither does, and the forces
+    // between them are equal and opposite.
+    uint own = contactBucket(cell, u);
+    bool listed = false;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        listed = listed || slots[own * contactSlots + slot] == threadIndex;
+    }
+    if (!listed) {
+        contact[threadIndex] = float3(0.0f);
+        return;
+    }
     for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
@@ -1327,7 +1346,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
                     float3 relative = float3(node.velocity) - float3(partner.velocity);
                     float approach = dot(relative, normal);
-                    float push = max(stiffness * (u.h - distance) - damping * approach, 0.0f);
+                    float push = approach > separationLimit ? 0.0f : max(stiffness * (u.h - distance) - damping * approach, 0.0f);
                     force += push * normal;
 
                     // Coulomb friction, regularised as a damper at low sliding speed.
@@ -1339,6 +1358,11 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                 }
             }
         }
+    }
+    float largest = node.mass * contactKick / max(dt, 1e-12f);
+    float size = length(force);
+    if (size > largest) {
+        force *= largest / size;
     }
     contact[threadIndex] = force;
 }

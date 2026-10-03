@@ -104,6 +104,15 @@ first meeting the surface nodes in front of it.
 3. The spring stiffness is a tenth of the stiffest spring the time step allows, based on the
    lighter of the two nodes, so contact never limits the time step.
 
+Three safeguards keep contact from creating energy. A node that its own crowded entry dropped
+takes no part that step, so two nodes either see each other or neither does and their forces are
+equal and opposite; once two nodes separate faster than 1 m/s the spring between them pushes no
+further; and contact changes a node's velocity by at most 2 m/s in one step. Without them, nodes
+hidden from each other in crowded entries can meet already deeply overlapped, and the penalty
+spring then flings them apart: the shell elements' debris was thrown at up to 1,000 m/s before
+they were added (see the [shell model](shell-model.md#coupling-to-the-air)). The two-storey frame
+behaves as before with them.
+
 Nodes that began as lattice neighbours never repel each other. While they share an intact
 element it holds them apart; once it has failed they may already be closer than a sphere's
 width, and a spring switched on in that state would create energy. The price is that two pieces

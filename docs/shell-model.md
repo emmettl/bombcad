@@ -143,10 +143,11 @@ do. A member thinner than an air cell is one cell thick to the air.
 
 **Contact.** As for the solid elements, once anything has failed every node is a sphere one
 element across, found through a periodic table, and nodes that began within 1.5 elements of each
-other never repel. Three safeguards were needed that the solid elements have not:
+other never repel. Three safeguards, added for the shells and since given to the solid elements
+too, keep it from creating energy:
 
-- an entry of the table holds eight nodes, and a node its entry has dropped takes no part that
-  step, so that two nodes either see each other or neither does and their forces are equal and
+- an entry of the table holds eight nodes (four for the solid elements' smaller cells), and a
+  node its entry has dropped takes no part that step, so that two nodes either see each other or neither does and their forces are equal and
   opposite;
 - once two nodes are separating faster than 1 m/s the spring between them pushes no further;
 - contact changes a node's velocity by at most 2 m/s in one step.
