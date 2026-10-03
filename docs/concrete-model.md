@@ -17,7 +17,7 @@ robust and exactly reversible in the elastic range.
 
 | Ingredient                  | Treatment                                                                 |
 |-----------------------------|---------------------------------------------------------------------------|
-| Cracking                    | Smeared over the three lattice planes, each with its own history; optionally over planes fixed at first cracking |
+| Cracking                    | Smeared over three planes across crack axes that turn with the stress until the crack opens |
 | Tension after cracking      | Exponential softening, scaled by fracture energy                          |
 | Compression                 | Parabola to peak, linear softening to a 20% residual; permanent strain on unloading |
 | Confinement                 | Strength and ductility rise with lateral compression                      |
@@ -44,38 +44,70 @@ crack is not elastic strain and must not put the directions alongside it into te
 
 ## Cracking
 
-Each lattice plane keeps the largest tensile equivalent strain it has seen, κ. Cracks that are
-not aligned with the lattice (diagonal cracks from shear) are detected from the principal
-values of the strain with the Poisson effect taken out, which is the elastic stress divided by
-E_c (a Rankine criterion): when one exceeds the cracking strain, it is added to the histories
-of the planes it cuts, in proportion to the squared direction cosines. Cracking across one
-direction therefore leaves the tensile strength of the others intact.
+An element cracks when a principal value of its strain with the Poisson effect taken out,
+which is the elastic stress divided by E_c (a Rankine criterion), exceeds the cracking strain.
+It then works in its **crack axes**, stored as a rotation (a half-precision quaternion): each
+of the three planes across them keeps the largest tensile equivalent strain it has seen, κ,
+and its own compression and confinement histories, and the shear across a plane is that on
+the crack itself. Cracking across one direction therefore leaves the tensile strength of the
+others intact. The bars stay on the lattice axes, strained along them, and their stress is
+added after the concrete's has been turned back; a crack's crossing bars, for dowel action,
+kinking and removal, are counted by the projection of its normal on each lattice axis.
 
-**Oriented cracks** (`StructureModel.orientedCracks`, off by default). Instead, an element's
-crack axes can be fixed when it first cracks, as the principal axes of that strain, stored as
-a rotation (a half-precision quaternion). The concrete then works in those axes: each of the
-three planes across them keeps its own crack, compression and confinement histories, and the
-shear across a plane is that on the crack itself. The bars stay on the lattice axes, strained
-along them, and their stress is added after the concrete's has been turned back; a crack's
-crossing bars, for dowel action, kinking and removal, are counted by the projection of its
-normal on each lattice axis. This is a fixed-crack model, and it trades one error for
-another:
+**The axes turn until the crack opens.** While a crack is still forming, its axes follow the
+principal axes of the strain every step, each axis taking the principal direction nearest to
+it so that each plane's history stays with its own direction. Once a crack has opened, its
+tension softened through a tenth of its softening strain (to about 90% of the tensile
+strength), the axes are fixed for good; so are they once the concrete has crushed past its
+peak. Later cracking at another angle is shared between the three planes in proportion to the
+squared direction cosines.
 
-| Case | Lattice planes (default) | Oriented cracks |
-|---|---|---|
-| Slab test, 4 / 8 / 16 elements through | 102 / 105 / 112 mm; history within 10 mm | 101 / 101 / 106 mm; rebounds further, history within 15 mm |
-| Chamber test, test's charge | Roof thrown with the gas the design manual supports | Roof peaks at 65 mm, settles to 10 mm; thrown only beyond 1.5 times the charge, like the paper's own model |
-| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 15 / 25 / 32 mm | 7 / 4 / 3 mm |
-| Two-storey frame, 1,000 kg | First floor falls | Stands, 92 mm |
-| Three-storey building's masonry, 100 kg | 1,505 elements removed | 296 |
+The tenth was chosen on the slab test supported on 1 in bearings that hold it down, one of its
+sensitivity cases. Left turning through the whole softening, the cracks at mid-span followed
+the stress round as the slab rebounded, until no axis carried the tension, and the slab came
+apart (245 mm, 999 elements removed). Fixed after a quarter of the softening it peaked at
+116 mm with 672 elements removed; after a tenth, at 80 mm with none, beside 81 mm for fixed
+cracks and 84 mm for the lattice planes. The other cases changed little between one and a
+tenth. A crack that turns only while it is barely open is, in practice, close to a fixed
+crack whose direction is chosen a little later; what it removes is the error of the very
+first, hairline cracking.
 
-The lattice planes over-soften inclined cracking, since each share of a crack damages a whole
-plane; that is what threw the chamber's roof. Fixed cracks lock stress where the principal
-directions turn after cracking (an early crack from the shock fixes axes that the later
-bending does not follow), and the wall's response shrinking as the air is refined, the
-frame that will not fall, and the slab's larger rebound look like that. Neither is right
-everywhere; the default stays with the model validated longest. A crack that may turn until
-it opens, or a second crack once the direction has turned far enough, is the usual remedy.
+`StructureModel.crackAxes` chooses between this (`.turningUntilOpen`, the default) and the two
+models it replaced:
+
+- **Lattice planes** (`.lattice`): the axes are always the lattice's, and an inclined crack is
+  shared between the planes it cuts. It is wrong both ways at once. A crack at 45° gives each
+  of the two planes its full strain, where geometry gives each half, so their normal stress
+  softens too soon; but the shear across those planes is then carried by aggregate interlock,
+  up to about 3 MPa at small openings, more than the tensile strength, and that shear carries
+  tension across the real crack. One element pulled along a diagonal of the lattice peaks at
+  1.18 times the tensile strength and releases 6.6 times the fracture energy (2.0 and 12 times
+  along the body diagonal); turning and fixed cracks give both within 0.1%, as along the
+  lattice. In the structures run, the softer side won: the lattice planes deflected more
+  wherever cracks were inclined.
+- **Fixed at first crack** (`.fixedAtFirstCrack`): the axes are those of the first crack, kept
+  from then on. An early hairline crack from the shock then fixes axes that the later bending
+  does not follow, and stress locks across it.
+
+| Case | Lattice planes | Fixed at first crack | Turning until open |
+|---|---|---|---|
+| Slab test, 4 / 8 / 16 / 32 elements through | 101 / 105 / 112 / 112 mm; history within 7–10 mm | 101 / 101 / 106 mm | 101 / 101 / 106 / 105 mm; history within 10–15 mm |
+| Slab test, 1 in bearings held down | 84 mm | 81 mm | 80 mm |
+| Chamber test, test's charge, with the gas the design manual supports | Roof's edge left 0.9 m up | 69 mm peak, 10 mm left | 72 mm peak, 10 mm left (paper's model 87 and 62; measured 95 left) |
+| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 15 / 25 / 32 mm | 7 / 4 / 3 mm | 5 / 2 / 5 mm |
+| Two-storey frame | First floor falls at 1,000 kg | Stands at 1,000 kg, 92 mm | Stands at 1,000 kg, 90 mm; falls at 2,000 kg |
+| Three-storey building's masonry, 100 kg | 1,505 elements removed | 296 | 320 |
+
+Turning cracks keep what fixed cracks gained on the chamber, whose joints crack at 45°, and
+the wall no longer shrinks steadily as the air is refined, though at 2–5 mm its response is too
+small to show a trend either way. Against the lattice planes they are stiffer wherever cracks
+are inclined; no test yet says where the truth lies.
+A 25 mm strip of the slab, which bends one way and cracks square to the lattice, gives the
+same 105, 113 and 112 mm on 8, 16 and 32 elements through as the lattice planes did, so the
+difference on the full slab comes from its inclined cracking. Two costs remain: the slab
+rebounds further after its peak (61 mm at the end of the record on 8 elements through,
+against 67 mm with the lattice planes and 91 mm measured), and both tests' permanent
+deflection comes out low (see Limitations).
 
 The principal values of the strain itself were used at first. They count the sideways swelling
 of squeezed concrete as cracking: under uniaxial compression at two-thirds of its strength the
@@ -114,7 +146,7 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
 - on unloading from a strain ε_un, the stress falls in a straight line to zero at a permanent
   strain ε_p given by Karsan and Jirsa's rule, ε_p / ε_c = 0.145 (ε_un / ε_c)² + 0.13 (ε_un / ε_c),
   never more steeply than elastic unloading. Below ε_p the concrete carries nothing, and
-  reloading retraces the line. Each lattice axis keeps its own compressive history.
+  reloading retraces the line. Each crack axis keeps its own compressive history.
 
   Past the peak, the softening can optionally be made **nonlocal** (`crushLength`, off by
   default): it then follows the crushing averaged over the intact elements of the same
@@ -441,6 +473,14 @@ matter.
    of the measured peak, but stiffened other cases in the way fixed cracks are known to (see
    Cracking), so it is not the default.
 
+21. **Cracks that turn until they open, by default.** The lattice planes turned out to give an
+   inclined crack's strain to each plane it cuts in full, and to carry tension across it by
+   interlock on those planes; fixed cracks locked stress. Letting the axes follow the stress until
+   the crack opens kept the chamber's agreement with the paper's model. Turning through the
+   whole softening let the held-down slab come apart in its rebound, so the axes are fixed
+   after a tenth of it. The slab: 101, 101, 106 and 105 mm on 4, 8, 16 and 32 elements
+   through the thickness, against 108 mm measured.
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -449,17 +489,18 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 ## Limitations
 
 1. **Validated against one test**, a one-way slab in bending under a uniform load. On it the
-   peak is 101, 105, 112 and 112 mm as the elements through the thickness go from 4 to 8 to 16
-   to 32: converged at 112 mm, 4% above the measurement, with coarse meshes a few per cent
-   low. Results for members in bending should still be checked at more than one mesh.
+   peak is 101, 101, 106 and 105 mm as the elements through the thickness go from 4 to 8 to 16
+   to 32: converged at about 105 mm, 3% below the measurement, with coarse meshes a few per
+   cent lower. Results for members in bending should still be checked at more than one mesh.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
    because the hourglass forces of squeezed elements add to the section's moment (see the
    structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
    section analysis.
-3. **Cracks lie on lattice planes**, so an inclined crack is shared between planes and
-   over-softens; the oriented-crack option fixes cracks at first cracking instead, which locks
-   stress where cracking turns afterwards. The chamber test lies between the two. Shear
-   failures remain the least trustworthy predictions the model makes.
+3. **Crack axes turn until the crack opens, then are fixed.** A crack that opens and then has
+   the stress turn across it still locks some stress, and a crack crossing another at an
+   angle is shared between planes. When the axes are fixed (a tenth of the softening) was
+   chosen on one sensitivity case of the slab, not measured. Shear failures remain the least
+   trustworthy predictions the model makes.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
    cross them, each from a published formula, not fitted. Earlier versions of the slab sat
    near a shear failure; since the errors of step 14 were fixed it does not. The chamber test
@@ -496,9 +537,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Candidates include the high-strength slabs of the same contest (Thiagarajan et al., 2015) and
   the University of Ottawa shock-tube programmes, most of which load each specimen several
   times and so need care.
-- **Cracks that can turn**: a multi-directional fixed-crack model, which opens a new crack when
-  the principal direction has turned past a threshold angle, to relieve stress locking; and
-  dilatancy (the opening that sliding forces) on the crack plane.
+- **A second crack**: once a crack's axes are fixed, a new crack opened when the principal
+  direction has turned past a threshold angle (a multi-directional fixed-crack model), to
+  relieve the stress locking that remains; and dilatancy (the opening that sliding forces) on
+  the crack plane.
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip

@@ -15,7 +15,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with two tests, and is too weak at joints | On a slab test the peak converges to 112 mm against 108 measured; in a full-scale internal explosion, with gas pressures that match the design manual, the roof is left 0.9 m up against 95 mm | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with two tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; in a full-scale internal explosion the roof's peak follows the test paper's own model, but its edge is left 10 mm up against 95 mm | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -40,8 +40,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    which the smeared lattice bars can only approximate; then the charge at which the roof is
    thrown, against the test and the paper's model. (Done so far: bars resisting sliding across
    cracks, and cracks bridged across a section, which took the roof from thrown to about
-   100 mm against 95 mm measured with the default gas; but with the gas as strong as the
-   design manual gives it, the roof's edge still ends 0.9 m up.)
+   100 mm; and cracks that turn with the stress until they open, after which the roof's peak
+   and the charge that throws it follow the paper's model with either gas. Its edge now ends
+   10 mm up against 95 mm measured: it springs back too far.)
 2. **A second and third structural test**, chosen to differ from the first two: a slab with
    steel in both faces, a member that failed in shear, and a wall under an open-air charge. The
    high-strength slabs of the same contest are the obvious next case, since the geometry and
@@ -54,10 +55,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    (Done: afterburning, limited by mixing and oxygen, and thermally perfect air, which together
    bring the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the
    open within 6% of Kingery–Bulmash.)
-4. **Shear in concrete.** Cracks that may turn until they open, or a second crack once the
-   principal direction has turned far enough, to sit between the lattice planes' over-softening
-   and fixed cracks' stress locking. (Done: oriented cracks, fixed at first cracking, as an
-   option; with them the chamber follows the paper's own model, but other cases stiffen.)
+4. **Shear in concrete.** A second crack once the principal direction has turned far enough
+   from a fixed one, and a test of a member that failed in shear. (Done: cracks whose axes
+   turn with the stress until the crack opens, by default, after the lattice planes were
+   found to mishandle inclined cracks; see [Cracking](concrete-model.md#cracking).)
 5. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done: compaction of the pores under very high confined pressure, after
    Holmquist, Johnson and Cook; unchecked against a close-in test.)
@@ -101,7 +102,7 @@ air skipped, with an identical answer (1.6 to 1.7 times faster on the street sce
   changing the model.
 
 - **Fixed design factors for strain rate** (UFC 3-340-02): deliberately conservative; they
-  predict 130 mm for the slab test against 108 mm measured. The strain-rate laws are the
+  predict 121 mm for the slab test against 108 mm measured. The strain-rate laws are the
   default; the factors remain available as an option.
 - **A rotating-crack concrete model**: simple and robust, but with no shear transfer across
   cracks it cannot hold together a slab without steel through its thickness.

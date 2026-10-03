@@ -191,9 +191,10 @@ parts, so debris of one passes through the other.
 | Front wall solid elements, the rest shells of 250 mm (`--solid-near 8.2`) | 24× |
 | All shells of 250 mm | 7× |
 
-At 500 kg the building with only its front wall solid deflects 280 mm at 100 ms, against
-217 mm all solid and 664 mm all shells: the front wall breaks as the all-solid one does
-(481 elements removed against 463), and the shell side walls and roof bend more.
+At 500 kg the building with only its front wall solid deflects 235 mm by 100 ms, against
+165 mm all solid and 664 mm all shells: the front wall cracks along its base as the all-solid
+one does (23 elements removed against none), and the shell side walls and roof, which hold it
+less stiffly, bend more.
 
 ## Verification
 
@@ -227,29 +228,31 @@ The contest slab of the [validation notes](validation.md) with shells, through
 | 1 in (25 mm) | 124 mm (115%) | 29 ms | 97 mm (106%) | 10.2 mm | 0.9 s |
 | 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (102%) | 9.6 mm | |
 | Measured | 108 mm | 30 ms | 91 mm | | |
-| Solid elements, 16 through | 112 mm (104%) | 27 ms | 90 mm (99%) | | minutes |
+| Solid elements, 16 through | 106 mm (99%) | 26 ms | 76 mm (84%) | 11.0 mm | minutes |
 
 With 4, 8, 16 and 32 layers the peak is 121, 124, 124 and 124 mm, so the shells' answer has
-converged, and it is 11% above the solid elements' converged 112 mm. Part of the gap is known:
+converged, and it is 18% above the solid elements' converged 105 mm. Part of the gap is known:
 on the reinforced strip the solid elements are 5–8% stronger than the shells, because of the
 hourglass forces of squeezed elements. With the fixed design factors of UFC 3-340-02 the shells
-peak at 154 mm (solids 130 mm); with static strengths both fail. The shells rebound about as
+peak at 154 mm (solids 121 mm); with static strengths both fail. The shells rebound about as
 little as the specimen did, where the solid elements rebound twice as far.
 
 **The presets, against the solid elements.**
 
 | Case | Shells and beams | Solid elements |
 |---|---|---|
-| Concrete building, 100 kg, at 100 ms | 7 mm, nothing removed | 12 mm, nothing removed |
-| Concrete building, 500 kg, at 100 ms | Front wall shears through (54 elements) and is pushed in 663 mm | Front wall cracks along its base and is pushed in 225 mm (461 elements) |
-| Three-storey building, 100 kg, at 150 ms | Ground-floor panels near the charge broken through, 1,264 elements removed | 1,505 removed |
-| Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Stands: 9 mm, nothing removed |
+| Concrete building, 100 kg, by 100 ms | 7 mm, nothing removed | 16 mm, nothing removed |
+| Concrete building, 500 kg, by 100 ms | Front wall shears through (54 elements) and is pushed in 663 mm | Front wall cracks along its base and is pushed in 165 mm, nothing removed |
+| Three-storey building, 100 kg, by 150 ms | Ground-floor panels near the charge broken through, 1,264 elements removed | 320 removed |
+| Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Stands: 8 mm, nothing removed |
 
 None of these has been compared with a test. The solid elements' column was measured after
 their bars were made to resist sliding across cracks and to hold cracked sections together
-(see the [concrete model](concrete-model.md#shear-across-cracks)); before that, the solid
-building's front wall was pushed in 675 mm at 500 kg and part of the frame's first floor fell
-at 250 kg. The shells have no dowel action or kinking yet, so the two models now differ most
+(see the [concrete model](concrete-model.md#shear-across-cracks)), and with cracks that turn
+with the stress until they open (see [Cracking](concrete-model.md#cracking)); before the
+first, the solid building's front wall was pushed in 675 mm at 500 kg and part of the frame's
+first floor fell at 250 kg, and with cracks on the lattice planes the front wall was pushed in
+225 mm and the three-storey building lost 1,505 elements. The shells have no dowel action or kinking yet, so the two models now differ most
 where a section cracks through and slides: the frame shows how far apart two reasonable
 models of a collapse can end up.
 

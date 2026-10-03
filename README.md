@@ -71,7 +71,7 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Three-storey building as shells and beams                   | 31× slower (17× on 0.5 m air) |
 | The building with its front wall solid, the rest shells     | 24× slower                   |
 | Three-storey frame with masonry cladding, 160,000 elements  | 60× slower                   |
-| Two-storey frame collapsing over 3 s                        | 9× slower                    |
+| Two-storey frame collapsing over 3 s                        | 11× slower                   |
 
 Three comparisons with the outside world, all in the [validation notes](docs/validation.md):
 
@@ -81,19 +81,18 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
   impulse is 13–22% low by default, or within 6% with afterburning and hot air switched on,
   which also bring the gas pressure in a closed room within 8% of the US design manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 101, 105 and 112 mm with 4, 8 and 16 elements through the
+  model predicts peak deflections of 101, 101 and 106 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
-  elements (4.4 million) it is again 112 mm, so the peak has converged. The rebound
+  elements (4.4 million) it is 105 mm, so the peak has converged. The rebound
   after it is twice the measured one, and the result is sensitive to the load and to how the
   supports are modelled. Shell elements converge to 124 mm in about a second, with a rebound
   close to the measured one.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
-  the peak pressures on the walls are 0.9 to 1.6 times those measured. With the default gas
-  the roof's free edge is left 98 mm deflected where 95 mm was measured, but that gas is too
-  weak; with afterburning and hot air it is left 0.9 m up, or 10 mm with cracks fixed along
-  their first direction, an option. The test exposed two missing mechanisms in the concrete
-  model, now added (bars resisting sliding across cracks, and cracks held closed across a
-  section by its bars), and shows that the joints' inclined cracking decides the outcome.
+  the peak pressures on the walls are 0.9 to 1.6 times those measured. The roof's peak
+  deflection and the charge at which it is thrown follow the paper's own model, but the roof
+  springs back to 10 mm where 95 mm was measured. The test exposed two missing mechanisms in
+  the concrete model (bars resisting sliding across cracks, and cracks held closed across a
+  section by its bars) and an error in inclined cracking, all now dealt with.
 
 Collapse and debris have not been compared with anything.
 

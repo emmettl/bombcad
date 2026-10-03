@@ -52,6 +52,10 @@ func chosenScenario() -> Scenario {
         if let layers = option("shell-layers").flatMap({ Int($0) }) { structure.shellLayers = layers }
         scenario.structure = structure
     }
+    if option("cracks") != nil || flag("oriented"), var structure = scenario.structure {
+        structure.crackAxes = chosenCrackAxes()
+        scenario.structure = structure
+    }
     // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
     if flag("bond"), var structure = scenario.structure {
         structure.interfaceBond = StructureModel.masonryBond
@@ -63,6 +67,15 @@ func chosenScenario() -> Scenario {
         scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
     }
     return scenario
+}
+
+/// `--cracks lattice` or `--cracks fixed` (or `--oriented`, the same as fixed); turning by default.
+func chosenCrackAxes() -> CrackAxes {
+    switch option("cracks") {
+    case "lattice": .lattice
+    case "fixed": .fixedAtFirstCrack
+    default: flag("oriented") ? .fixedAtFirstCrack : .turningUntilOpen
+    }
 }
 
 func pad(_ text: String, _ width: Int) -> String {
@@ -185,7 +198,7 @@ func runChamber() throws {
         afterburning: flag("afterburn"),
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas,
-        orientedCracks: flag("oriented"),
+        crackAxes: chosenCrackAxes(),
         duration: duration)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
@@ -634,9 +647,12 @@ func runSlab() throws {
         }
     }
     for (layers, rate) in cases {
+        // `--held-bearings` supports the slab on 1 in bearings that hold it down.
+        let supports: SlabBenchmark.Supports =
+            flag("held-bearings") ? .bearings(width: 0.0254, holdDown: true) : .lines
         let result = try SlabBenchmark.run(
-            device: device, elementsThroughThickness: layers, rate: rate, width: width,
-            orientedCracks: flag("oriented"))
+            device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
+            crackAxes: chosenCrackAxes())
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""

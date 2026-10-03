@@ -811,7 +811,7 @@ public final class StructureSolver {
             contactFriction: contactFriction)
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
-        uniforms.orientedCracks = model.orientedCracks ? 1 : 0
+        uniforms.orientedCracks = model.crackAxes.uniform
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))

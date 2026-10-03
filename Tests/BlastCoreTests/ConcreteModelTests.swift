@@ -91,6 +91,75 @@ struct ConcreteModelTests {
         #expect(solver.crackStrain(0, 0, 0) > 0.007)
     }
 
+    /// One cubic element of 50 mm stretched uniformly along `direction`, every node prescribed,
+    /// first slowly to `strains[0]`, then on to `strains[1]`. Returns the stress along the
+    /// direction against the strain.
+    private func pullCube(
+        along direction: SIMD3<Float>, crackAxes: CrackAxes, to strains: [Float]
+    ) throws -> [(strain: Float, stress: Float)] {
+        let size: Float = 0.05
+        let d = simd_normalize(direction)
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))], material: Self.concrete(),
+            elementSize: size, fixedBase: false)
+        model.crackAxes = crackAxes
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        let corners = (0...1).flatMap { k in (0...1).flatMap { j in (0...1).map { i in SIMD3(i, j, k) } } }
+        var curve: [(strain: Float, stress: Float)] = []
+        var strain: Float = 0
+        let samples = 150
+        let stepsPerSample = 20
+        for target in strains {
+            let rate = (target - strain) / (Float(samples * stepsPerSample) * solver.criticalTimeStep)
+            solver.mutateNodes { nodes in
+                for c in corners {
+                    let index = solver.nodeIndex(c.x, c.y, c.z)
+                    nodes[index].isPrescribed = true
+                    nodes[index].velocity = rate * simd_dot(d, size * SIMD3<Float>(c)) * d
+                }
+            }
+            for _ in 0..<samples {
+                solver.advance(steps: stepsPerSample)
+                // The power the nodes put in, over the volume and the strain rate, is the stress.
+                var power: Float = 0
+                for c in corners {
+                    power -= simd_dot(
+                        solver.nodalForce(c.x, c.y, c.z), rate * simd_dot(d, size * SIMD3<Float>(c)) * d)
+                }
+                strain += rate * Float(stepsPerSample) * solver.criticalTimeStep
+                curve.append((strain, power / (size * size * size * rate)))
+            }
+            strain = target
+        }
+        return curve
+    }
+
+    @Test("Concrete pulled across the lattice's diagonals cracks once, releasing its fracture energy")
+    func diagonalCrack() throws {
+        let material = Self.concrete()
+        let size: Float = 0.05
+        for direction in [SIMD3<Float>(1, 0, 0), SIMD3(1, 1, 0), SIMD3(1, 1, 1)] {
+            for axes in [CrackAxes.turningUntilOpen, .fixedAtFirstCrack] {
+                let curve = try pullCube(along: direction, crackAxes: axes, to: [0.0003, 0.008])
+                let peak = curve.map(\.stress).max() ?? 0
+                #expect(
+                    abs(peak - material.tensileStrength) / material.tensileStrength < 0.03,
+                    "\(axes), \(direction): peak \(peak) Pa")
+                let released = energyDensity(curve) * size
+                #expect(
+                    abs(released - material.fractureEnergy) / material.fractureEnergy < 0.05,
+                    "\(axes), \(direction): released \(released) J/m²")
+            }
+        }
+        // On the lattice planes interlock carries tension across a diagonal crack: about 1.2
+        // times the strength and 6.6 times the energy along a face diagonal.
+        let lattice = try pullCube(along: SIMD3(1, 1, 0), crackAxes: .lattice, to: [0.0003, 0.008])
+        #expect((lattice.map(\.stress).max() ?? 0) > 1.1 * material.tensileStrength)
+        #expect(energyDensity(lattice) * size > 3 * material.fractureEnergy)
+    }
+
     @Test("Concrete crushes at its compressive strength and softens to a residual")
     func compression() throws {
         let material = Self.concrete()

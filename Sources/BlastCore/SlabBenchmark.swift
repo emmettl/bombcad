@@ -185,10 +185,10 @@ public enum SlabBenchmark {
     public static func run(
         device: MTLDevice, elementsThroughThickness: Int = 8, rate: RateTreatment = .strainRate,
         loadScale: Float = 1, supports: Supports = .lines, width: Float = fullWidth,
-        orientedCracks: Bool = false, adjust: (inout StructureMaterial) -> Void = { _ in }
+        crackAxes: CrackAxes = .turningUntilOpen, adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughThickness: elementsThroughThickness, rate: rate, width: width)
-        model.orientedCracks = orientedCracks
+        model.crackAxes = crackAxes
         adjust(&model.material)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0

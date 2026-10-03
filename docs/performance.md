@@ -16,7 +16,7 @@ power or thermal state; figures here are from cool runs.
 | A 225,000-element concrete building, alone          | 54×                   |
 | The same, once pieces are colliding                 | 98×                   |
 | That building coupled to 1 million air cells        | 70×                   |
-| A 23,000-element frame collapsing                   | 9×                    |
+| A 23,000-element frame collapsing                   | 11×                   |
 | A 160,000-element three-storey building, coupled    | 60×                   |
 
 "Real time" for a blast is not a useful target in itself: the event lasts a fraction of a
@@ -214,21 +214,23 @@ structure runs at 6.6 times slower than real time.
 swift run -c release blastbench snapshot --preset frame --time 3 --no-wave --out frame.png
 ```
 
-The two-storey frame (23,004 elements of 125 mm, 1.3 million air cells of 0.25 m, 1,000 kg):
-3 s simulated in 27 s, in which the first floor breaks away from its columns and falls. The
+The two-storey frame (23,004 elements of 125 mm, 1.3 million air cells of 0.25 m, 2,000 kg):
+3 s simulated in 34 s, in which the columns nearest the charge break and both floors come
+down. The
 air was frozen after 0.80 s, when five acoustic crossing times had passed; from then on only
 the structure is advanced. Larger elements help twice over: fewer of them, and a time step
 twice as long. (The preset's charge was 250 kg until bars were made to hold cracked sections
-together; the frame now stands at that.)
+together, then 1,000 kg until cracks turned with the stress; the frame now stands at both.)
 
 ## The slab benchmark
 
 With shells (`blastbench slab --shells 2,1`), 80 ms of the validation slab takes 0.4 s and 0.9 s
 on 2 and 1 in elements, both with the converged answer.
 
-`blastbench slab` runs 80 ms of the validation slab in 7 s with eight elements through the
+`blastbench slab` runs 80 ms of the validation slab in 9 s with eight elements through the
 thickness (68,608 elements of 12.7 mm, time step 1.7 µs) and in under a second with four. With
-sixteen (553,000 elements) it takes under two minutes. Nonlocal crushing, when switched on,
+sixteen (553,000 elements) it takes about two minutes. Cracks that turn with the stress cost
+about 1% against cracks on the lattice planes. Nonlocal crushing, when switched on,
 adds about 3 s to the eight-layer time: each element past its peak strain averages a
 neighbourhood of up to nine points along each axis.
 

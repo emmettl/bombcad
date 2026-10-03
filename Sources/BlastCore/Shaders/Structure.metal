@@ -60,7 +60,9 @@ struct StructureUniforms {
     int exchangeNy;
     int exchangeNz;
     uint fluidAirModel;  // the air's equation of state (`AirModel`)
-    uint orientedCracks;  // non-zero: concrete cracks along the principal axes it first cracked on
+    // How concrete's crack axes are chosen: 0 the lattice's; 1 the principal axes it first
+    // cracked on; 2 the principal axes, followed until the crack has opened, then fixed.
+    uint orientedCracks;
     uint interfaceLinks;  // shell nodes tied into this body's elements (see `InterfaceLink`)
 };
 
@@ -727,15 +729,19 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 latticeStrain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
         // The bars lie along the lattice axes and are strained along them.
         float3 barStrain = float3(latticeStrain[0][0], latticeStrain[1][1], latticeStrain[2][2]);
-        // With oriented cracks the concrete works in its crack axes (columns of `frame`), fixed
-        // when it first cracks; before that, and without them, in the lattice axes.
+        // With oriented cracks the concrete works in its crack axes (columns of `frame`), set
+        // when it first cracks; before that, and without them, in the lattice axes. Axes that
+        // still turn with the principal directions are stored with the sign bit of w set (q and
+        // -q are the same rotation).
         float3x3 frame = float3x3(1.0f);
         bool framed = false;
+        bool turning = false;
         if (u.orientedCracks != 0) {
             float4 stored = float4(state.crackFrame);
             if (any(stored != 0.0f)) {
                 frame = rotationOf(normalize(stored));
                 framed = true;
+                turning = u.orientedCracks == 2 && signbit(stored.w);
             }
         }
         float3x3 strain = transpose(frame) * latticeStrain * frame;
@@ -784,18 +790,52 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3 principal;
         float3x3 axes;
         symmetricEigen(effective, principal, axes);
-        if (u.orientedCracks != 0 && !framed && max(principal.x, max(principal.y, principal.z)) > onset) {
-            // First crack: the crack axes are the principal axes of this strain (made right-handed).
-            if (determinant(axes) < 0.0f) {
-                axes[2] = -axes[2];
+        bool cracking = max(principal.x, max(principal.y, principal.z)) > onset;
+        if (u.orientedCracks != 0 && ((!framed && cracking) || turning)) {
+            // The crack axes become the principal axes of this strain: at the first crack, and
+            // every step while they still turn. Turning, each axis takes the principal direction
+            // nearest to it, so that each plane's history stays with its own direction.
+            float3x3 aligned = axes;
+            float3 values = principal;
+            if (framed) {
+                bool used[3] = {false, false, false};
+                for (int i = 0; i < 3; ++i) {
+                    int best = -1;
+                    for (int k = 0; k < 3; ++k) {
+                        if (!used[k] && (best < 0 || fabs(axes[k][i]) > fabs(axes[best][i]))) {
+                            best = k;
+                        }
+                    }
+                    used[best] = true;
+                    aligned[i] = axes[best][i] < 0.0f ? -axes[best] : axes[best];
+                    values[i] = principal[best];
+                }
             }
-            frame = axes;
+            if (determinant(aligned) < 0.0f) {
+                aligned[2] = -aligned[2];
+            }
+            frame = frame * aligned;
             framed = true;
-            state.crackFrame = packed_half4(half4(quaternionOf(frame)));
-            strain = transpose(axes) * strain * axes;
-            effective = transpose(axes) * effective * axes;
+            strain = transpose(aligned) * strain * aligned;
+            effective = transpose(aligned) * effective * aligned;
             normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
+            principal = values;
             axes = float3x3(1.0f);
+            // They stop turning once a crack has opened, its tension softened through a tenth of
+            // the softening strain, or once the concrete has crushed past its peak: a crushed
+            // axis turning with the stress would carry its crushing to directions that never saw
+            // it. (With fixed cracks, at once.) Left turning through the whole softening, cracks
+            // in a slab held down at its supports followed the stress round in the rebound
+            // until no axis carried tension, and the slab came apart.
+            float3 crushed = float3(state.crushStrain);
+            bool fix = u.orientedCracks == 1 || worst > onset + 0.1f * m.crackSoftening
+                || max(crushed.x, max(crushed.y, crushed.z)) > m.crushPeak;
+            float4 q = quaternionOf(frame);
+            q = (q.w < 0.0f) == fix ? -q : q;
+            if (q.w == 0.0f) {
+                q.w = fix ? 0.0f : -0.0f;
+            }
+            state.crackFrame = packed_half4(half4(q));
         }
         for (int i = 0; i < 3; ++i) {
             float3 weight = axes[i] * axes[i];

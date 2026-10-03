@@ -223,6 +223,28 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     }
 }
 
+/// The axes concrete cracks across.
+public enum CrackAxes: String, Sendable, Hashable, Codable, CaseIterable {
+    /// The lattice's planes: an inclined crack is shared between them, each given its full
+    /// strain, while interlock on them still carries tension across it.
+    case lattice
+    /// The principal axes of the strain when the concrete first cracks, kept from then on, so
+    /// that an inclined crack opens and slides as one plane; but stress locks across it if the
+    /// principal directions turn afterwards.
+    case fixedAtFirstCrack
+    /// The principal axes, followed while a crack is still forming and fixed once it has
+    /// softened through a tenth of its softening strain.
+    case turningUntilOpen
+
+    var uniform: UInt32 {
+        switch self {
+        case .lattice: 0
+        case .fixedAtFirstCrack: 1
+        case .turningUntilOpen: 2
+        }
+    }
+}
+
 /// How a structure is meshed.
 public enum ElementKind: String, Sendable, Hashable, Codable, CaseIterable {
     /// Cubic solid elements on a lattice, several through the thickness of a wall.
@@ -316,11 +338,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// A typical bond of masonry to concrete: 0.2 MPa and 10 J/m².
     public static let masonryBond = SIMD2<Float>(0.2e6, 10)
 
-    /// Let concrete crack along the principal axes of its strain when it first cracks, and keep
-    /// those axes, so that inclined (shear) cracks open and slide as single planes. By default
-    /// cracks lie across the lattice planes, and an inclined crack is shared between them. See
-    /// the concrete model's notes: fixed cracks lock stress where cracking turns afterwards.
-    public var orientedCracks = false
+    /// The axes concrete cracks across (see `CrackAxes`).
+    public var crackAxes: CrackAxes = .turningUntilOpen
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -818,7 +837,7 @@ extension StructureModel {
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
-        orientedCracks = try container.decodeIfPresent(Bool.self, forKey: .orientedCracks) ?? false
+        crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)

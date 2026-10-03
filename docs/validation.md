@@ -31,8 +31,8 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements converge to 112 mm (104%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; with the gas the design manual supports, the roof edge is left 0.9 m up (lattice cracks) or 10 mm (oriented cracks) against 95 mm | Low: the joints' inclined cracking decides it, and the two crack models bracket it |
+| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's peak follows the paper's model, but its edge is left 10 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -85,47 +85,49 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Case                             | Peak deflection | At    | At 70 ms | Elements failed |
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
-| Model, 32 elements through       | 112 mm (104%)   | 27 ms | 88 mm    | 83 of 4,423,680 |
-| Model, 16 elements through       | 112 mm (104%)   | 27 ms | 90 mm    | 0 of 552,960    |
-| Model, 8 elements through        | 105 mm (98%)    | 26 ms | 74 mm    | 0 of 68,608     |
-| Model, 4 elements through        | 101 mm (93%)    | 26 ms | 81 mm    | 0 of 8,704      |
+| Model, 32 elements through       | 105 mm (98%)    | 26 ms | 74 mm    | 32 of 4,423,680 |
+| Model, 16 elements through       | 106 mm (99%)    | 26 ms | 76 mm    | 0 of 552,960    |
+| Model, 8 elements through        | 101 mm (93%)    | 26 ms | 66 mm    | 0 of 68,608     |
+| Model, 4 elements through        | 101 mm (93%)    | 26 ms | 79 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
 
-| Time  | Measured | 16 through | 8 through | 4 through |
-|-------|----------|------------|-----------|-----------|
-| 5 ms  | 9        | 10         | 9         | 9         |
-| 10 ms | 35       | 37         | 36        | 35        |
-| 15 ms | 66       | 69         | 68        | 66        |
-| 20 ms | 88       | 96         | 93        | 90        |
-| 25 ms | 103      | 110        | 105       | 100       |
-| 30 ms | 108      | 110        | 102       | 97        |
-| 35 ms | 107      | 99         | 90        | 87        |
-| 40 ms | 98       | 87         | 81        | 83        |
-| 45 ms | 95       | 80         | 79        | 87        |
-| 50 ms | 98       | 81         | 83        | 91        |
-| 55 ms | 98       | 86         | 90        | 88        |
-| 60 ms | 96       | 93         | 90        | 81        |
-| 65 ms | 92       | 96         | 82        | 78        |
-| 70 ms | 90       | 90         | 74        | 81        |
+| Time  | Measured | 32 through | 16 through | 8 through | 4 through |
+|-------|----------|------------|------------|-----------|-----------|
+| 5 ms  | 9        | 10         | 10         | 9         | 9         |
+| 10 ms | 35       | 37         | 37         | 36        | 35        |
+| 15 ms | 66       | 68         | 69         | 67        | 66        |
+| 20 ms | 88       | 93         | 94         | 91        | 90        |
+| 25 ms | 103      | 105        | 106        | 100       | 100       |
+| 30 ms | 108      | 102        | 103        | 96        | 97        |
+| 35 ms | 107      | 91         | 90         | 83        | 86        |
+| 40 ms | 98       | 81         | 79         | 74        | 81        |
+| 45 ms | 95       | 78         | 75         | 73        | 86        |
+| 50 ms | 98       | 83         | 79         | 79        | 90        |
+| 55 ms | 98       | 91         | 88         | 85        | 87        |
+| 60 ms | 96       | 92         | 92         | 83        | 80        |
+| 65 ms | 92       | 84         | 87         | 74        | 77        |
+| 70 ms | 90       | 74         | 76         | 66        | 79        |
 
-The root-mean-square difference over the record is 8.1 mm for 16 elements through the
-thickness, 10.3 mm for 8 and 9.7 mm for 4. The peak rises with refinement, from 101 mm to
-105 mm to 112 mm, so the model is close to converged but still rising by about 5% per halving
-of the elements; the measured 108 mm lies between the two finer meshes. The 16-layer mesh
-responds smoothly to the load: 109, 112 and 115 mm at 0.99, 1.00 and 1.01 times it. The rise
-to the peak is reproduced within a few millimetres on every mesh. After the peak every mesh
-rebounds further than the specimen did (about 30 mm against 13 mm) before settling. The
-rebound is set by a hinge at mid-span: once its crushed compression zone unloads, the section
-cracks through its depth and the two halves swing back about the bars. The
-[concrete model](concrete-model.md#how-the-model-got-here) gives the evidence.
+The root-mean-square difference over the record is 10.1 mm for 32 elements through the
+thickness, 11.0 mm for 16, 15.2 mm for 8 and 10.6 mm for 4. **The peak has converged at about
+105 mm**, 3% below the measurement: 101, 101, 106 and 105 mm from 4 to 32 elements through.
+The rise to the peak is reproduced within a few millimetres on every mesh. After the peak every
+mesh rebounds further than the specimen did (about 30 mm against 13 mm) and settles lower, about
+75 mm on the finer meshes against 90 mm. The rebound is set by a hinge at mid-span: once its
+crushed compression zone unloads, the section cracks through its depth and the two halves
+swing back about the bars. The [concrete model](concrete-model.md#how-the-model-got-here)
+gives the evidence.
 
-**Finer still.** The full-width slab with 32 elements through the thickness (4.4 million
-elements of 3.2 mm, 32 minutes) peaks at 112 mm at 27 ms, as with 16, with a history within
-6.9 mm of the measured one; 83 elements, cover below a wide flexural crack, are lost. **The
-peak has converged at 112 mm**, 4% above the measurement. A narrower strip of the slab, 25 mm
-wide, bends the same way at a thirtieth of the cost (`blastbench slab --strip 25 --layers
-8,16,32`) and agrees: 105, 111 and 112 mm.
+**Finer still, and the crack model.** The 32-layer run (4.4 million elements of 3.2 mm,
+36 minutes) loses 32 elements, cover below a wide flexural crack. A strip of the slab 25 mm
+wide bends the same way at a thirtieth of the cost (`blastbench slab --strip 25 --layers
+8,16,32`): 105, 113 and 112 mm. The strip cracks square to the lattice, and gives the same
+whichever [crack model](concrete-model.md#cracking) is used; the full slab, whose cracks
+incline towards its corners and supports, does not. With cracks on the lattice planes, which
+mishandle inclined cracks, the full slab gave 101, 105, 112 and 112 mm from 4 to 32 elements
+through, with histories within 7 to 10 mm and less rebound. The measurement lies between the
+two models' converged peaks.
 
 Getting there took one more change: bars now rupture when their plastic strain averaged over
 a debonded length (the crack spacing) passes the rupture strain, not their strain in the one
@@ -141,7 +143,7 @@ both errors.
 
 **With shells.** The same slab meshed with [shell elements](shell-model.md) peaks at 124 mm
 (115%) on 2, 1 and 0.5 in elements and with 8 to 32 layers through the thickness, so the shells
-have converged too, 11% above the solid elements. They rebound about as little as the specimen
+have converged too, 18% above the solid elements. They rebound about as little as the specimen
 did: 94–97 mm at the end of the record against 91 mm measured, with a root-mean-square
 difference over the record of 10 mm. A run takes a second or two. The
 [shell model](shell-model.md#validation) has the details.
@@ -160,34 +162,34 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 
 | Change                                       | Peak            | Elements failed |
 |----------------------------------------------|-----------------|-----------------|
-| None                                         | 105 mm (98%)    | 0               |
-| Load 5% lower                                | 92 mm (85%)     | 0               |
-| Load 5% higher                               | 120 mm (112%)   | 0               |
-| Aggregate 10 mm instead of 16 mm             | 106 mm (98%)    | 0               |
-| Crack spacing 50 mm instead of 100 mm        | 102 mm (94%)    | 0               |
-| Crack spacing 200 mm                         | 106 mm (98%)    | 0               |
-| Fracture energy halved                       | 106 mm (98%)    | 0               |
-| Tensile strength 20% lower                   | 107 mm (99%)    | 0               |
-| Cracks close fully (no residual opening)     | 106 mm (98%)    | 0               |
-| Residual crack opening 30% instead of 10%    | 105 mm (98%)    | 0               |
-| Crushing spread over at least 50 mm          | 105 mm (98%)    | 0               |
-| Crushing averaged over 48 mm (nonlocal)      | 105 mm (98%)    | 0               |
-| Supports as 1 in bearings, held down         | 84 mm (78%)     | 0               |
-| Supports as 1 in bearings, free to lift      | 92 mm (85%)     | 0               |
-| 16 elements through the thickness            | 112 mm (104%)   | 0               |
-| Fixed UFC 3-340-02 factors, no rate laws     | 130 mm (120%)   | 67              |
-| Static strengths                             | 368 mm, failing | 10,272          |
+| None                                         | 101 mm (93%)    | 0               |
+| Load 5% lower                                | 88 mm (81%)     | 0               |
+| Load 5% higher                               | 115 mm (107%)   | 0               |
+| Aggregate 10 mm instead of 16 mm             | 101 mm (93%)    | 0               |
+| Crack spacing 50 mm instead of 100 mm        | 98 mm (91%)     | 0               |
+| Crack spacing 200 mm                         | 101 mm (94%)    | 0               |
+| Fracture energy halved                       | 100 mm (93%)    | 0               |
+| Tensile strength 20% lower                   | 103 mm (96%)    | 0               |
+| Cracks close fully (no residual opening)     | 101 mm (93%)    | 0               |
+| Residual crack opening 30% instead of 10%    | 100 mm (93%)    | 0               |
+| Crushing spread over at least 50 mm          | 101 mm (93%)    | 0               |
+| Crushing averaged over 48 mm (nonlocal)      | 101 mm (93%)    | 0               |
+| Supports as 1 in bearings, held down         | 80 mm (74%)     | 0               |
+| Supports as 1 in bearings, free to lift      | 87 mm (81%)     | 0               |
+| 16 elements through the thickness            | 106 mm (99%)    | 0               |
+| Fixed UFC 3-340-02 factors, no rate laws     | 121 mm (112%)   | 0               |
+| Static strengths                             | 208 mm, failing | 3,933           |
 
 Reading this table:
 
 - **The rate treatment decides the outcome.** The load is far above the slab's static
   capacity, so it survives only because steel and concrete are stronger when loaded quickly.
   With static strengths the model predicts failure. With the fixed design factors of
-  UFC 3-340-02, which are deliberately conservative, it predicts 130 mm, 20% more than was
-  measured, with some elements failing at the hinge: conservative, as intended. (Before bar
+  UFC 3-340-02, which are deliberately conservative, it predicts 121 mm, 12% more than was
+  measured: conservative, as intended. (Before bar
   rupture was judged over a debonded length, these factors gave a collapse.) The test is
   therefore a sharp check on the rate treatment, and a poor check on anything else.
-- **A 5% change in load moves the peak by about 13%.** The hand-read pressure record could
+- **A 5% change in load moves the peak by 13–14%.** The hand-read pressure record could
   easily be 5% out in its shape, though its impulse is pinned.
 - **No material assumption tips the slab into failure any more.** Earlier versions sat near a
   shear failure, which one assumption or another (a lower load, smaller aggregate, a wider
@@ -196,15 +198,15 @@ Reading this table:
 - **The concrete's tensile properties barely matter** here, as expected for a slab whose
   resistance comes from its bars.
 - **The supports matter by 15–20%.** The default is a pin and a roller on single lines of
-  nodes. Bearings one inch wide lower the peak to 84–92 mm. The source does not
+  nodes. Bearings one inch wide lower the peak to 80–87 mm. The source does not
   describe the rig; [Data wanted](data-wanted.md) lists it.
 
 ### What this does and does not show
 
 It shows that the model reproduces the flexural response of a lightly reinforced one-way slab
 under a uniform dynamic load, including the influence of strain rate, to within about 7% at
-the peak on meshes of 4 to 16 elements through the thickness, with the peak still rising
-slowly as the mesh is refined. The rebound after the peak is too large on every mesh.
+the peak on meshes of 4 to 32 elements through the thickness, converging at 3% below the
+measurement. The rebound after the peak is too large on every mesh.
 
 It does not show that the model predicts shear failure, breach, spalling, fragmentation or
 collapse correctly; that walls loaded by the air solver respond correctly (the air solver's
@@ -457,44 +459,33 @@ walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positi
 approximate, and peaks this close to a charge change sharply with position, so this check is
 loose: the model is between 0.9 and 1.6 times the measured range.
 
-**The roof.** At the test's charge, with the default gas (ideal, no afterburning), the roof's
-free edge rises 273 mm and settles back to 98 mm, against a residual of 95 mm measured; the
-paper's own model gave 87 mm and 62 mm. (Before rounding-level changes to the air solver the
-same model gave 255 and 123 mm: so close to its cliff, the result moves with the last bit.)
-But that leaves out a load the real chamber had: the default gas, at this room's 0.58 kg/m³,
-holds about 60% of the pressure UFC 3-340-02 gives for a closed room. With afterburning and hot
-air, which match that pressure within 8%, the walls hold (27 mm) but the roof's edge rises
-925 mm and stays 889 mm up; at half the charge it gives 19 mm and 3 mm, against the paper's
-model's 22 and 17 mm. The agreement with the default gas is therefore partly a cancellation of
-errors. With the default gas the response has a cliff, beyond which the roof is torn off and
-thrown, a little below the paper's model's:
+**The roof.** At the test's charge the roof's free edge rises 66 mm and settles back to
+10 mm with the default gas (ideal, no afterburning), and rises 72 mm and settles to 10 mm with
+afterburning and hot air, which bring the gas pressure within 8% of what UFC 3-340-02 gives
+for a closed room (the default gas, at this room's 0.58 kg/m³, holds about 60% of it). The
+paper's own model gave 87 mm and 62 mm; 95 mm was measured. The peak is three-quarters of the
+paper's model's, but the roof springs back too far, as the slab does (see the
+[concrete model](concrete-model.md#limitations)). Across the charge the response follows the
+paper's model, with a cliff at the same place:
 
-| Charge, as a fraction of the test's | Model: peak / end of run | Paper's model (Table 7): peak / residual |
-|-------------------------------------|--------------------------|------------------------------------------|
-| 0.5 (100 kg)                        | 16 / 2 mm                | 22 / 17 mm                               |
-| 1 (200 kg)                          | 273 / 98 mm              | 87 / 62 mm; measured residual 95 mm      |
-| 1.25                                | Roof thrown              |                                          |
-| 1.5                                 | Roof thrown              | 251 / 168 mm                             |
-| 2                                   | Roof thrown              | Roof thrown                              |
+| Charge, as a fraction of the test's | Default gas: peak / end of run | Afterburning and hot air | Paper's model (Table 7): peak / residual |
+|-------------------------------------|--------------------------------|--------------------------|------------------------------------------|
+| 0.5 (100 kg)                        | 9 / 1 mm                       | 9 / 1 mm                 | 22 / 17 mm                               |
+| 1 (200 kg)                          | 66 / 10 mm                     | 72 / 10 mm               | 87 / 62 mm; measured residual 95 mm      |
+| 1.25                                | 148 / 29 mm                    |                          |                                          |
+| 1.5                                 | 404 / 119 mm                   | 446 / 107 mm             | 251 / 168 mm                             |
+| 2                                   | Roof thrown                    | Roof thrown              | Roof thrown                              |
 
-**With oriented cracks** (`--oriented`; see the [concrete model](concrete-model.md#cracking)),
-the joints' inclined cracks open as single planes, and the response follows the paper's own
-model across the sweep, whichever gas is used:
+**The crack model decides it.** The joints crack at 45°. With cracks on the lattice planes
+(`--cracks lattice`), which mishandle an inclined crack (see the
+[concrete model](concrete-model.md#cracking)), the roof rose 273 mm and settled to 98 mm with
+the default gas, close to the measurement by a cancellation of errors, and was thrown at 1.25
+times the charge; with afterburning and hot air its edge was left 889 mm up. With cracks fixed
+at first cracking (`--cracks fixed`) it gave 65 / 9 mm and 69 / 10 mm, much as the default
+turning cracks do.
 
-| Charge, as a fraction of the test's | Default gas | Afterburning and hot air | Paper's model |
-|-------------------------------------|-------------|--------------------------|---------------|
-| 0.5                                 | 9 / 1 mm    |                          | 22 / 17 mm    |
-| 1                                   | 65 / 9 mm   | 69 / 10 mm               | 87 / 62 mm    |
-| 1.5                                 | 363 / 106 mm | 374 / 97 mm             | 251 / 168 mm  |
-| 2                                   | Roof thrown | Roof thrown              | Roof thrown   |
-
-The peak at the test's charge is three-quarters of the paper's model's, but the roof springs
-back to 10 mm where 95 mm was measured: fixed cracks are stiff on the way back.
-
-With the default lattice-plane cracks and default gas, the side walls bow out 11 mm, and nothing fails in the walls, the end wall or the roof slab;
-the down-stand at the roof's free edge and the unreinforced chamfers lose 2,300 elements
-between them. The measured structure was itself close to its cliff: chamber B nearly lost its
-roof edge.
+At the test's charge the side walls bow out 5 mm, and 4 elements fail in all; the measured
+structure was itself close to its cliff, since chamber B nearly lost its roof edge.
 
 **How the model got here.** The first version threw the roof at 0.875 of the test's charge and
 beyond. What was found on the way:
@@ -537,12 +528,11 @@ What remains, in rough order:
 
 The model reproduces the kind of damage seen (cracking and crushing concentrated at the
 joints and supports, held together by the bars, and a roof left deflected upwards), and it
-exposed two missing mechanisms in the concrete model, now added from published mechanics with
-the slab test unchanged. With the gas as strong as the design manual says (afterburning and
-hot air), the two crack models bracket the measurement: across the lattice planes the roof's
-edge ends about 0.9 m up, with oriented cracks about 10 mm, against 95 mm. The joints' inclined
-cracking decides it, and neither crack model gets it right on its own. Peak wall pressures
-are within the loose check that the gauge positions allow.
+exposed two missing mechanisms in the concrete model and one error (inclined cracks
+mishandled), now dealt with from published mechanics with the slab test little changed. With the
+gas as strong as the design manual says, the roof's peak and its cliff follow the paper's own
+model, but its permanent deflection is a tenth of the 95 mm measured: the model springs back
+too far. Peak wall pressures are within the loose check that the gauge positions allow.
 
 ## Consistency across air grids
 
@@ -550,18 +540,20 @@ The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solv
 
 | Charge | 0.5 m cells                | 0.25 m cells       | 0.125 m cells      |
 |--------|----------------------------|--------------------|--------------------|
-| 50 kg  | 15 mm deflection at 0.1 s  | 25 mm              | 32 mm              |
-| 200 kg | Hinged at its base, top 315 mm over at 0.1 s | 437 mm | 657 mm, 768 elements removed |
+| 50 kg  | 5 mm peak deflection by 0.1 s | 2 mm            | 5 mm               |
+| 200 kg | Hinged at its base, top 303 mm over by 0.1 s | 381 mm, 282 elements removed | 404 mm, 374 removed |
 
-![The wall leaning back on a hinge at its base, 1 s after 200 kg](wall-hinged.png)
+![The wall 1 s after 200 kg, cracked through along its base](wall-hinged.png)
 
 The qualitative outcome is the same on every grid. At 200 kg the wall cracks through at its
-base and leans back on its bars (0.87 m at the top after 1 s on 0.25 m cells). Before bars
+base and leans back on its bars (608 mm at the top within 1 s on 0.25 m cells). Before bars
 resisted sliding across cracks and cracks were bridged across the section (see the
 [concrete model](concrete-model.md#shear-across-cracks)), the wall sheared off at its base on
-every grid and toppled. The deflection at 50 kg has not converged: it grows with resolution as
-the peak pressure does, although the impulse on the wall changes little. There is no test to
-compare these with.
+every grid and toppled. At 50 kg the wall barely cracks, and its few millimetres show no trend
+with the grid. With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
+with resolution as the peak pressure does, and 315, 437 and 657 mm at 200 kg; that model
+mishandled inclined cracks (see the [concrete model](concrete-model.md#cracking)). There is
+no test to compare these with.
 
 ## Verification against theory
 
