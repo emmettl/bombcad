@@ -162,6 +162,7 @@ struct SolverUniforms {
     var regionNx: UInt32 = 0
     var regionNy: UInt32 = 0
     var regionNz: UInt32 = 0
+    var maxStep: Float = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

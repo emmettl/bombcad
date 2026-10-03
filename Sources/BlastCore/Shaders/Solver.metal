@@ -41,6 +41,7 @@ struct SolverUniforms {
     uint regionNx;
     uint regionNy;
     uint regionNz;
+    float maxStep;  // > 0: never step further than this (what the structure's substeps cover)
 };
 
 struct StepControl {
@@ -377,6 +378,9 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     }
     float fastest = as_type<float>(atomic_exchange_explicit(maxSpeed, 0u, memory_order_relaxed));
     float dt = u.cfl * u.dx / max(fastest, 1e-6f);
+    if (u.maxStep > 0.0f) {
+        dt = min(dt, u.maxStep);
+    }
     if (u.forcedStep > 0.0f) {
         dt = u.forcedStep;
     } else {

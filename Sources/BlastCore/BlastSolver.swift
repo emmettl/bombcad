@@ -61,6 +61,8 @@ public final class BlastSolver {
     private var batchInFlight = false
     /// True once the blast has left and the air has been frozen; only the structure advances.
     public private(set) var airIsAsleep = false
+    /// The air's time step at the end of the last batch, which sizes the next batch's substeps.
+    private var lastFluidStep: Float = 0
 
     public init(
         device: MTLDevice,
@@ -282,6 +284,7 @@ public final class BlastSolver {
         precondition(!batchInFlight, "Cannot restart while a batch is in flight")
         time = 0
         stepCount = 0
+        lastFluidStep = 0
         structure?.reset()
         if structure != nil, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
@@ -336,6 +339,11 @@ public final class BlastSolver {
         controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
 
         let extents = [grid.nx, grid.ny, grid.nz]
+        var substeps = structureSubsteps
+        if let structure, lastFluidStep > 0 {
+            let likely = Int((1.25 * lastFluidStep / structure.criticalTimeStep).rounded(.up)) + 1
+            substeps = min(max(likely, 1), structureSubsteps)
+        }
         for step in 0..<steps {
             let globalStep = stepCount + step
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
@@ -344,6 +352,10 @@ public final class BlastSolver {
             let asleep = airIsAsleep && structure != nil
             if asleep, let structure {
                 uniforms.forcedStep = 0.999 * Float(structureSubsteps) * structure.criticalTimeStep
+            } else if let structure {
+                // Only the substeps this step is likely to need are encoded, a quarter more than
+                // the last batch's step took; the air may step no further than they cover.
+                uniforms.maxStep = 0.999 * Float(substeps) * structure.criticalTimeStep
             }
 
             encoder.setComputePipelineState(preparePipeline)
@@ -387,7 +399,8 @@ public final class BlastSolver {
                 let binding = StructureSolver.FluidBinding(
                     state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
                     gamma: configuration.gamma, ambientPressure: configuration.ambientPressure)
-                structure.encodeSubsteps(encoder, count: structureSubsteps, fluid: binding)
+                structure.encodeSubsteps(
+                    encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
                 }
@@ -433,6 +446,7 @@ public final class BlastSolver {
                 && time > Double(configuration.airSleepCrossings) * crossing
             airIsAsleep = quiet || late
         }
+        if control.activeSteps > 0 { lastFluidStep = control.dt }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(control.dt),
             isStable: control.batchTime.isFinite && control.dt.isFinite,

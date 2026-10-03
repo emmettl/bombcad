@@ -15,7 +15,7 @@ power or thermal state; figures here are from cool runs.
 | Air blast, 67 million cells (0.125 m)               | about 430×            |
 | A 225,000-element concrete building, alone          | 54×                   |
 | The same, once pieces are colliding                 | 87×                   |
-| That building coupled to 1 million air cells        | 74×                   |
+| That building coupled to 1 million air cells        | 70×                   |
 | A 23,000-element frame collapsing                   | 7×                    |
 
 "Real time" for a blast is not a useful target in itself: the event lasts a fraction of a
@@ -93,12 +93,15 @@ The same building in 32 × 32 × 16 m of air, 100 kg at 8 m, 96 ms simulated.
 
 | Air cell size | Air cells | Whole event | Slower than real time |
 |---------------|-----------|-------------|-----------------------|
-| 0.5 m         | 0.1 M     | 6.6 s       | 69×                   |
-| 0.25 m        | 1.0 M     | 7.2 s       | 75×                   |
-| 0.125 m       | 8.4 M     | 14 s        | 146×                  |
+| 0.5 m         | 0.1 M     | 6.2 s       | 65×                   |
+| 0.25 m        | 1.0 M     | 6.7 s       | 70×                   |
+| 0.125 m       | 8.4 M     | 13 s        | 141×                  |
 
 The structure sets the pace: refining the air from 0.5 m to 0.25 m costs almost nothing extra.
-Each air step is followed by 5 to 15 structural substeps.
+Each air step is followed by 5 to 15 structural substeps. Only the substeps the last batch's
+air step suggests are encoded (a quarter more, plus one), and the air step is capped on the
+GPU to what they cover; encoding enough for still air, as before, left about two-thirds of them
+idle while the hot gas kept the air's step short, and cost 10%.
 
 ## Collapse
 
@@ -132,7 +135,7 @@ batch of steps to keep the view fluid.
 | Structural time step tied to the smallest element | Shell or beam elements for thin members; mass scaling; coarser elements away from damage |
 | Air solved everywhere at one resolution           | Adaptive refinement; a moving window that follows the shock |
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
-| Idle substep dispatches in coupled runs           | Decide the substep count on the GPU with indirect dispatch |
+| Idle substep dispatches in coupled runs           | Now sized from the last batch; indirect dispatch would remove the rest |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
 | Dense storage of a sparse structural lattice      | Compact storage indexed by element list                 |
 
