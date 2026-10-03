@@ -365,6 +365,22 @@ struct ShellMesh {
         }
     }
 
+    /// Each node's volume as loose debris: its share of the elements it belongs to.
+    func debrisVolumes() -> [Float] {
+        var volumes = [Float](repeating: 0, count: max(positions.count, 1))
+        for element in elements {
+            for corner in 0..<4 {
+                volumes[Int(element.nodes[corner])] += element.size.x * element.size.y * element.thickness / 4
+            }
+        }
+        for beam in beams {
+            for end in 0..<2 {
+                volumes[Int(beam.nodes[end])] += beam.section.x * beam.section.y * beam.length / 2
+            }
+        }
+        return volumes
+    }
+
     /// The bar layers of the reinforcement regions that cross a plate at `centre`. A region is
     /// taken as a mat at its centre, of its own thickness; its ratios along the plate's axes
     /// give the bar area per unit width.

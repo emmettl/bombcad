@@ -50,8 +50,15 @@ struct ShellUniforms {
     float neighbourDistance;  // nodes that start closer than this never repel
     uint beamCount;
     float elementSize;  // nominal, for the removal width (`erosionStrain` is per element size)
-    uint padding1;
-    uint padding2;
+    uint debrisLoading;  // non-zero: loose nodes are pushed by the air
+    // Air cells around the structure in which debris and air exchange momentum and energy.
+    int exchangeX;
+    int exchangeY;
+    int exchangeZ;
+    int exchangeNx;
+    int exchangeNy;
+    int exchangeNz;
+    uint padding;
 };
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
@@ -1235,7 +1242,8 @@ static inline void gatherNode(uint n, const device ShellForces *forces, device u
                               const device uint *incidenceStart, const device uint *incidence,
                               const device BeamForces *beamForces, device uchar *beamFlags,
                               const device packed_float3 *contact, constant ShellUniforms &u,
-                              const device uint *failureGate, thread float3 &force, thread float3 &moment) {
+                              const device uint *failureGate, thread float3 &force, thread float3 &moment,
+                              thread bool &attached) {
     for (uint i = incidenceStart[n]; i < incidenceStart[n + 1]; ++i) {
         if ((incidence[i] & beamIncidence) != 0) {
             uint beam = (incidence[i] & ~beamIncidence) >> 2;
@@ -1247,6 +1255,7 @@ static inline void gatherNode(uint n, const device ShellForces *forces, device u
             if (flag == elementActive) {
                 force += float3(beamForces[beam].force[end]);
                 moment += float3(beamForces[beam].moment[end]);
+                attached = true;
             }
             continue;
         }
@@ -1260,6 +1269,7 @@ static inline void gatherNode(uint n, const device ShellForces *forces, device u
         if (flag == elementActive) {
             force += float3(forces[element].force[corner]);
             moment += float3(forces[element].moment[corner]);
+            attached = true;
         }
     }
     if (shellContactEnabled(u, failureGate)) {
@@ -1286,6 +1296,10 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        device uchar *beamFlags [[buffer(11)]],
                        const device uint *tiedStart [[buffer(12)]],
                        const device uint *tied [[buffer(13)]],
+                       const device Cell *fluid [[buffer(14)]],
+                       const device uchar *fluidMask [[buffer(15)]],
+                       device atomic_int *exchange [[buffer(16)]],
+                       const device int *debrisArea [[buffer(17)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1298,19 +1312,31 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     }
     float3 force = float3(0.0f);
     float3 moment = float3(0.0f);
+    bool attached = false;
     gatherNode(n, forces, flags, incidenceStart, incidence, beamForces, beamFlags, contact, u, failureGate, force,
-               moment);
+               moment, attached);
     // The nodes tied to this one hand over their forces, with the moments of those forces about it.
     float3 position = reference[n].xyz + float3(node.displacement);
     for (uint i = tiedStart[n]; i < tiedStart[n + 1]; ++i) {
         uint other = tied[i];
         float3 tiedForce = float3(0.0f);
         float3 tiedMoment = float3(0.0f);
+        bool tiedAttached = false;
         gatherNode(other, forces, flags, incidenceStart, incidence, beamForces, beamFlags, contact, u, failureGate,
-                   tiedForce, tiedMoment);
+                   tiedForce, tiedMoment, tiedAttached);
+        attached = attached || tiedAttached;
         float3 arm = reference[other].xyz + float3(nodes[other].displacement) - position;
         force += tiedForce;
         moment += tiedMoment + cross(arm, tiedForce);
+    }
+    // Loose debris is part of no element the air loads, so the air pushes it directly, as solid
+    // debris is; its volume is its share of the elements it belonged to.
+    float3 airForce = float3(0.0f);
+    int exchangeCell = -1;
+    if (!attached && u.coupled != 0 && u.debrisLoading != 0) {
+        airForce = debrisAirForce(position, float3(node.velocity), reference[n].w, fluid, fluidMask, debrisArea,
+                                  control.dt, u, exchangeCell);
+        force += airForce;
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
@@ -1350,6 +1376,9 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     if (size > 0.0f) {
         float4 increment = float4(angle / size * sin(0.5f * size), cos(0.5f * size));
         rotation = normalize(quaternionProduct(increment, rotation));
+    }
+    if (exchangeCell >= 0) {
+        recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(node.velocity) + velocity), dt, u.fluidCell);
     }
     node.displacement = displacement;
     node.velocity = velocity;
@@ -1501,4 +1530,41 @@ kernel void shellTies(device ShellNode *nodes [[buffer(0)]],
     slave.spin = master.spin;
     slave.rotation = master.rotation;
     nodes[tie.x] = slave;
+}
+
+// Before each air step's substeps, every loose shell node adds its frontal area to its air cell,
+// for the implicit form of the debris drag (see `debrisAirForce`).
+kernel void shellDebrisAreas(const device ShellNode *nodes [[buffer(0)]],
+                             const device float4 *reference [[buffer(1)]],
+                             const device uchar *flags [[buffer(2)]],
+                             const device uchar *beamFlags [[buffer(3)]],
+                             const device uint *incidenceStart [[buffer(4)]],
+                             const device uint *incidence [[buffer(5)]],
+                             const device uchar *fluidMask [[buffer(6)]],
+                             device atomic_int *area [[buffer(7)]],
+                             constant ShellUniforms &u [[buffer(8)]],
+                             const device StepControl &control [[buffer(9)]],
+                             const device uint *failureGate [[buffer(10)]],
+                             uint n [[thread_position_in_grid]]) {
+    if (n >= u.nodeCount || control.dt <= 0.0f || failureGate[0] == 0) {
+        return;
+    }
+    ShellNode node = nodes[n];
+    if ((node.flags & shellTied) != 0 || node.mass <= 0.0f) {
+        return;
+    }
+    for (uint i = incidenceStart[n]; i < incidenceStart[n + 1]; ++i) {
+        uint entry = incidence[i];
+        uchar flag = (entry & beamIncidence) != 0 ? beamFlags[(entry & ~beamIncidence) >> 2] : flags[entry >> 2];
+        if (flag == elementActive) {
+            return;
+        }
+    }
+    int exchangeCell = debrisCell(reference[n].xyz + float3(node.displacement), fluidMask, u);
+    if (exchangeCell < 0) {
+        return;
+    }
+    float frontal = pow(reference[n].w, 2.0f / 3.0f) / (u.fluidCell * u.fluidCell * u.fluidCell);
+    atomic_fetch_add_explicit(&area[exchangeCell], int(round(min(frontal * exchangeAreaScale, 1.0e9f))),
+                              memory_order_relaxed);
 }

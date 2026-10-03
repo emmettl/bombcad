@@ -97,4 +97,49 @@ struct ShellCouplingTests {
         let peak = (downstream.map(\.pressure).max() ?? 0) - ambient.pressure
         #expect(peak > 10_000, "downstream overpressure \(peak) Pa")
     }
+
+    @Test("Loose shell debris in a steady wind gains the momentum drag theory predicts")
+    func debrisDrag() throws {
+        // One 250 mm plate, 50 mm thick, in the middle of an 8 m cube of air on 0.5 m cells.
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(4.125, 4.125, 4.225), max: SIMD3(4.375, 4.375, 4.275))],
+            material: Self.elastic,
+            elementSize: 0.25, fixedBase: false)
+        model.elementKind = .shell
+        var scenario = Scenario(
+            name: "Wind", domainSize: SIMD3(repeating: 8), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)),
+            structure: model)
+        scenario.reflectiveFaces = []
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+        solver.configuration.airSleepThreshold = 0
+        let shells = try #require(solver.shells)
+        shells.gravity = 0
+        shells.groundContact = false
+        let ambient = scenario.atmosphere
+        let wind: Float = 100
+        solver.fill { _, _, _ in
+            Primitive(density: ambient.density, velocity: SIMD3(wind, 0, 0), pressure: ambient.pressure)
+        }
+        shells.erode { _ in true }
+        solver.mutateMask { mask in
+            for index in mask.indices { mask[index] = 0 }
+        }
+        solver.advance(until: 0.01)
+        let elapsed = solver.time
+        // Each node stands for a quarter of the plate, a cube of that volume, drag coefficient one.
+        var expected = 0.0
+        shells.mutateNodes { nodes in
+            for node in nodes {
+                let area = pow(0.25 * 0.25 * 0.05 / 4, 2.0 / 3.0)
+                let relative = Double(wind - node.vx / 2)
+                expected += 0.5 * Double(ambient.density) * area * relative * relative * elapsed
+            }
+        }
+        let momentum = shells.momentum()
+        // The plate slows the air in its own cell, which takes the reaction, by about
+        // F / (2 rho U A), 3 m/s here: a few per cent less drag than in the free stream.
+        #expect(abs(momentum.x - expected) / expected < 0.06, "momentum \(momentum.x) vs \(expected) N s")
+        #expect(momentum.x < expected)
+    }
 }

@@ -297,7 +297,7 @@ public final class BlastSolver {
 
     /// Encodes the return to the air of what loose debris took from it during the substeps.
     private func encodeDebrisExchange(_ encoder: MTLComputeCommandEncoder) {
-        guard structure != nil, let region = couplingRegion, let debrisExchangeBuffer else { return }
+        guard hasBody, let region = couplingRegion, let debrisExchangeBuffer else { return }
         var uniforms = couplingUniforms(region)
         encoder.setComputePipelineState(debrisExchangePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
@@ -519,8 +519,13 @@ public final class BlastSolver {
             } else if let shells {
                 let binding = StructureSolver.FluidBinding(
                     state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
-                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure)
+                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
+                    exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
+                    exchangeRegion: couplingRegion)
                 shells.encodeSubsteps(encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
+                if !asleep {
+                    encodeDebrisExchange(encoder)
+                }
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
                 }

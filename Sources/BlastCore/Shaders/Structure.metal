@@ -1072,10 +1072,29 @@ static inline float3 nodePosition(uint compact, const device uint *nodeList, con
 // Force of the air on a loose node of debris: the pressure gradient across the solid it stands
 // for (its mass over the solid's density), plus drag on it as a cube in the relative wind with a
 // drag coefficient of one. The air does not feel the reaction.
+// The air loses the momentum it gives a loose node, and the work it does on it; the work that
+// drag dissipates stays in the air as heat.
+static inline void recordExchange(device atomic_int *exchange, int exchangeCell, float3 airForce,
+                                  float3 averageVelocity, float dt, float fluidCell) {
+    float perVolume = dt / (fluidCell * fluidCell * fluidCell);
+    float3 momentum = -airForce * perVolume * exchangeMomentumScale;
+    float energy = -dot(airForce, averageVelocity) * perVolume * exchangeEnergyScale;
+    const float limit = 1.0e9f;
+    int3 fixedMomentum = int3(round(clamp(momentum, -limit, limit)));
+    int fixedEnergy = int(round(clamp(energy, -limit, limit)));
+    uint slot = exchangeStride * uint(exchangeCell);
+    atomic_fetch_add_explicit(&exchange[slot], fixedMomentum.x, memory_order_relaxed);
+    atomic_fetch_add_explicit(&exchange[slot + 1], fixedMomentum.y, memory_order_relaxed);
+    atomic_fetch_add_explicit(&exchange[slot + 2], fixedMomentum.z, memory_order_relaxed);
+    atomic_fetch_add_explicit(&exchange[slot + 3], fixedEnergy, memory_order_relaxed);
+}
+
 // The air cell, numbered within the exchange region, in which a loose node is loaded by the
 // air, or -1 if it is not: outside the region, where the air could not be given the reaction,
 // or in a solid cell.
-static inline int debrisCell(float3 position, const device uchar *fluidMask, constant StructureUniforms &u) {
+// (Templated so that shells, with their own uniforms, share it.)
+template <typename Uniforms>
+static inline int debrisCell(float3 position, const device uchar *fluidMask, constant Uniforms &u) {
     int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
     int3 cell = int3(floor(position / u.fluidCell));
     int3 local = cell - int3(u.exchangeX, u.exchangeY, u.exchangeZ);
@@ -1135,9 +1154,10 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
                               memory_order_relaxed);
 }
 
+template <typename Uniforms>
 static inline float3 debrisAirForce(float3 position, float3 velocity, float volume, const device Cell *fluid,
                                     const device uchar *fluidMask, const device int *area, float airStep,
-                                    constant StructureUniforms &u, thread int &exchangeCell) {
+                                    constant Uniforms &u, thread int &exchangeCell) {
     exchangeCell = debrisCell(position, fluidMask, u);
     if (exchangeCell < 0) {
         return float3(0.0f);
@@ -1461,20 +1481,8 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
     }
     if (exchangeCell >= 0) {
-        // The air loses the momentum it gives the debris, and the work it does on it; the work
-        // that drag dissipates stays in the air as heat.
-        float3 averageVelocity = 0.5f * (float3(node.velocity) + velocity);
-        float perVolume = dt / (u.fluidCell * u.fluidCell * u.fluidCell);
-        float3 momentum = -airForce * perVolume * exchangeMomentumScale;
-        float energy = -dot(airForce, averageVelocity) * perVolume * exchangeEnergyScale;
-        const float limit = 1.0e9f;
-        int3 fixedMomentum = int3(round(clamp(momentum, -limit, limit)));
-        int fixedEnergy = int(round(clamp(energy, -limit, limit)));
-        uint slot = exchangeStride * uint(exchangeCell);
-        atomic_fetch_add_explicit(&exchange[slot], fixedMomentum.x, memory_order_relaxed);
-        atomic_fetch_add_explicit(&exchange[slot + 1], fixedMomentum.y, memory_order_relaxed);
-        atomic_fetch_add_explicit(&exchange[slot + 2], fixedMomentum.z, memory_order_relaxed);
-        atomic_fetch_add_explicit(&exchange[slot + 3], fixedEnergy, memory_order_relaxed);
+        recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(node.velocity) + velocity), dt,
+                       u.fluidCell);
     }
     node.displacement = displacement;
     node.velocity = velocity;

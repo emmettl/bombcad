@@ -225,8 +225,10 @@ of a collapse can end up.
 5. **More flexible than measured** on the one test: 15% over the measured peak, against 4% for
    the solid elements.
 6. **Debris is crude.** Contact spheres are as large as the elements, 250 mm by default, and the
-   contact safeguards above are numerical, not physical. Loose shell nodes are not pushed by the
-   air (intact flying panels are).
+   contact safeguards above are numerical, not physical. Loose shell nodes are pushed by the air
+   as solid debris is, each standing for its share of the elements it belonged to; being larger,
+   they slow the air in their cell more (a single loose 250 mm plate on 0.5 m cells gains 4% less
+   than free-stream drag).
 7. **Rotational inertia is scaled up**, which slightly slows rotation of short members.
 8. **Damage reads higher on larger elements** for the same crack, since the removal strain is
    the removal width over the element size.
@@ -235,7 +237,7 @@ of a collapse can end up.
 
 - **Shells and solids together**: solid elements near the charge, where the stress through the
   thickness matters, and shells elsewhere.
-- **Debris loading** for loose shell nodes, and contact that knows the shells' thickness.
+- **Contact that knows the shells' thickness.**
 - **A punching model** for slab–column joints in place of the slip rule.
 
 ## Sources

@@ -41,8 +41,14 @@ struct ShellUniforms {
     var neighbourDistance: Float = 0
     var beamCount: UInt32 = 0
     var elementSize: Float = 0
-    var padding1: UInt32 = 0
-    var padding2: UInt32 = 0
+    var debrisLoading: UInt32 = 0
+    var exchangeX: Int32 = 0
+    var exchangeY: Int32 = 0
+    var exchangeZ: Int32 = 0
+    var exchangeNx: Int32 = 0
+    var exchangeNy: Int32 = 0
+    var exchangeNz: Int32 = 0
+    var padding: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -171,6 +177,8 @@ public final class ShellSolver {
     public var timeStepSafety: Float = 0.5
     /// Let nodes that fall to z = 0 land instead of passing through.
     public var groundContact = true
+    /// Let the air push loose nodes (those of no intact element), when coupled to the air.
+    public var debrisDrag = true
     /// Whether separate pieces, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
     /// Contact spring stiffness as a fraction of the stiffest the time step allows.
@@ -212,6 +220,7 @@ public final class ShellSolver {
     private let failureGateBuffer: MTLBuffer
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
+    private let debrisAreaPipeline: MTLComputePipelineState
     private let beamPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
     public let beamBuffer: MTLBuffer
@@ -267,6 +276,7 @@ public final class ShellSolver {
         }
         elementPipeline = try pipeline("shellElements")
         beamPipeline = try pipeline("beamElements")
+        debrisAreaPipeline = try pipeline("shellDebrisAreas")
         nodePipeline = try pipeline("shellNodes")
         tiePipeline = try pipeline("shellTies")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
@@ -334,9 +344,13 @@ public final class ShellSolver {
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
 
+        // The fourth component is the node's volume as loose debris. (Worked out in a method of
+        // its own: the same loop written inline here made the optimised build crash in `reset`,
+        // although the code is sound and runs under the address sanitiser.)
+        let volumes = mesh.debrisVolumes()
         let references = referenceBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: nodes)
         for (n, position) in mesh.positions.enumerated() {
-            references[n] = SIMD4(position, 0)
+            references[n] = SIMD4(position, volumes[n])
         }
         let data = elementBuffer.contents().bindMemory(to: ShellElementData.self, capacity: elements)
         let layout = barLayoutBuffer.contents().bindMemory(
@@ -677,6 +691,24 @@ public final class ShellSolver {
         let group = MTLSize(width: elementPipeline.threadExecutionWidth, height: 1, depth: 1)
         // Until something has failed there is nothing to collide.
         let encodeContact = contactMode == .always || (contactMode == .afterFailure && hasFailed)
+
+        // Loose debris adds up its frontal area in each air cell before the substeps.
+        if uniforms.debrisLoading != 0, hasFailed, let fluid, let area = fluid.debrisArea {
+            encoder.setComputePipelineState(debrisAreaPipeline)
+            encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+            encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
+            encoder.setBuffer(flagBuffer, offset: 0, index: 2)
+            encoder.setBuffer(beamFlagBuffer, offset: 0, index: 3)
+            encoder.setBuffer(incidenceStartBuffer, offset: 0, index: 4)
+            encoder.setBuffer(incidenceBuffer, offset: 0, index: 5)
+            encoder.setBuffer(fluid.mask, offset: 0, index: 6)
+            encoder.setBuffer(area, offset: 0, index: 7)
+            encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 8)
+            encoder.setBuffer(fluid.control, offset: 0, index: 9)
+            encoder.setBuffer(failureGateBuffer, offset: 0, index: 10)
+            encoder.dispatchThreads(
+                MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+        }
         for substep in 0..<count {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
@@ -763,6 +795,10 @@ public final class ShellSolver {
             encoder.setBuffer(beamFlagBuffer, offset: 0, index: 11)
             encoder.setBuffer(tiedStartBuffer, offset: 0, index: 12)
             encoder.setBuffer(tiedBuffer, offset: 0, index: 13)
+            encoder.setBuffer(fluid?.state ?? placeholderBuffer, offset: 0, index: 14)
+            encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 15)
+            encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 16)
+            encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 17)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if !mesh.ties.isEmpty {
@@ -863,6 +899,14 @@ public final class ShellSolver {
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)
             uniforms.fluidNz = UInt32(fluid.grid.nz)
+            // Debris is loaded only where the air can be given the reaction.
+            if debrisDrag, fluid.exchange != nil, fluid.debrisArea != nil, let region = fluid.exchangeRegion {
+                uniforms.debrisLoading = 1
+                (uniforms.exchangeX, uniforms.exchangeY, uniforms.exchangeZ) =
+                    (Int32(region.origin.x), Int32(region.origin.y), Int32(region.origin.z))
+                (uniforms.exchangeNx, uniforms.exchangeNy, uniforms.exchangeNz) =
+                    (Int32(region.dims.x), Int32(region.dims.y), Int32(region.dims.z))
+            }
         } else {
             uniforms.fixedStep = criticalTimeStep
         }
