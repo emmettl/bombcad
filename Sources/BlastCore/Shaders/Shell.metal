@@ -136,6 +136,8 @@ static inline float shellOverpressure(float3 point, float3 normal, float halfThi
 // What a layer reports besides its stresses.
 struct LayerOutcome {
     float2 torn;      // per in-plane axis: 1 where the crack across that axis is wide enough to remove
+    float2 slid;      // per in-plane axis: 1 where the layer is cracked across it and has slipped
+                      // through the thickness by the removal width
     bool destroyed;   // crushed through, or cracked wide enough to remove, whatever the bars do
     bool failed;      // von Mises: past its failure strain
     bool open;        // cracked wider than the hard limit that removes it whatever bridges it
@@ -149,7 +151,8 @@ struct LayerOutcome {
 // across a cracked plane is carried by aggregate interlock, as in-plane shear is.
 static inline float3 shellConcrete(float3 strain, float2 transverse, float instantaneous, float dt,
                                    thread ShellLayer &state, constant MaterialParameters &m,
-                                   constant ShellUniforms &u, thread float2 &shear, thread LayerOutcome &outcome) {
+                                   constant ShellUniforms &u, bool reinforced, thread float2 &shear,
+                                   thread LayerOutcome &outcome) {
     state.rate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.rate);
     float2 history = state.crack;
     float worst = max(history.x, history.y);
@@ -185,6 +188,21 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
         float seen = dot(weight, history);
         if (principal[i] > seen && principal[i] > onset) {
             history += (principal[i] - seen) * weight / dot(weight, weight);
+        }
+    }
+    // Diagonal cracks through the thickness, from the normal stress along each axis with the
+    // transverse shear across it: the principal tension in that plane, shared with the plane
+    // across the thickness (which is not tracked, and taken as cracked alike), so that pure
+    // shear cracks as much as the solid elements' shared planes do.
+    for (int j = 0; j < 2; ++j) {
+        float normalOverE = uniaxial[j];
+        float shearOverE = u.shearFactor * transverse[j] / (2.0f * (1.0f + poisson));
+        float radius = sqrt(0.25f * normalOverE * normalOverE + shearOverE * shearOverE);
+        float tension = 0.5f * normalOverE + radius;
+        if (tension > history[j] && tension > onset && radius > 0.0f) {
+            float c2 = 0.5f * (1.0f + 0.5f * normalOverE / radius);
+            float s2 = 1.0f - c2;
+            history[j] += (tension - history[j]) * c2 / (c2 * c2 + s2 * s2);
         }
     }
     history = max(history, uniaxial);
@@ -231,10 +249,15 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     }
 
     outcome.torn = float2(history.x >= m.erosionStrain ? 1.0f : 0.0f, history.y >= m.erosionStrain ? 1.0f : 0.0f);
+    for (int j = 0; j < 2; ++j) {
+        outcome.slid[j] = history[j] > onset && fabs(transverse[j]) >= m.erosionStrain ? 1.0f : 0.0f;
+    }
     outcome.destroyed = pulverised || crack >= m.erosionStrain;
     outcome.open = crack > max(1.0f, 3.0f * m.erosionStrain);
     outcome.failed = false;
-    state.display = max(crack / m.erosionStrain, crushed);
+    // Damage as the solid elements show it: cracking against the bars' rupture strain where
+    // there are bars, or the removal strain where there are none.
+    state.display = max(crack / (reinforced ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
     return float3(normalStress, inPlane);
 }
 
@@ -293,6 +316,7 @@ static inline float3 shellVonMises(float3 strain, float2 transverse, thread Shel
     }
     shear = u.shearFactor * g * transverse;
     outcome.torn = float2(0.0f);
+    outcome.slid = float2(0.0f);
     outcome.destroyed = false;
     outcome.open = false;
     outcome.failed = plastic >= m.failureStrain;
@@ -467,6 +491,7 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
         float3 q2 = float3(0.0f);
         float2 shearSum = float2(0.0f);
         float2 tornEverywhere = float2(1.0f);
+        float2 slidEverywhere = float2(1.0f);
         bool destroyedEverywhere = true;
         bool openEverywhere = true;
         float rateSum = 0.0f;
@@ -490,12 +515,13 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
             LayerOutcome outcome;
             float3 stress = m.materialModel == 0
                 ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
-                : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, shear, outcome);
+                : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, shear, outcome);
             layers[slot] = state;
             rateSum += state.rate;
             worstDisplay = max(worstDisplay, state.display);
             remove = remove || outcome.failed;
             tornEverywhere *= outcome.torn;
+            slidEverywhere *= outcome.slid;
             destroyedEverywhere = destroyedEverywhere && outcome.destroyed;
             openEverywhere = openEverywhere && outcome.open;
 
@@ -571,7 +597,11 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
         // with no bars left at all, and any crack past the hard limit.
         bool torn = (tornEverywhere.x > 0.0f && barsIntact.x == 0.0f) || (tornEverywhere.y > 0.0f && barsIntact.y == 0.0f);
         bool bare = !anyBars || (barsIntact.x + barsIntact.y == 0.0f);
-        remove = remove || torn || (destroyedEverywhere && bare) || openEverywhere;
+        // Concrete cracked through its thickness and slipped across the crack by the removal
+        // width fails in direct shear, whatever bars cross it: in-plane bars give a shell no
+        // dowel action.
+        bool slid = slidEverywhere.x > 0.0f || slidEverywhere.y > 0.0f;
+        remove = remove || torn || slid || (destroyedEverywhere && bare) || openEverywhere;
 
         float tieWeight[4] = {0.5f * (1.0f - p.y), 0.5f * (1.0f + p.y), 0.5f * (1.0f - p.x), 0.5f * (1.0f + p.x)};
         for (uint q = 0; q < 4; ++q) {

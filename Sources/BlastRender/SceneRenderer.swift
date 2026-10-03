@@ -166,6 +166,7 @@ public final class SceneRenderer {
 
     private let scenePipeline: MTLRenderPipelineState
     private let meshPipeline: MTLRenderPipelineState
+    private let shellPipeline: MTLRenderPipelineState
     private let compositePipeline: MTLRenderPipelineState
     private let sceneDepthState: MTLDepthStencilState
     private let meshDepthState: MTLDepthStencilState
@@ -177,6 +178,7 @@ public final class SceneRenderer {
     private var cellSize: Float = 1
     private var field: MTLTexture?
     private var structure: StructureSolver?
+    private var shells: ShellSolver?
     private var ambientPressure: Float = 101_325
     private var colourTarget: MTLTexture?
     private var depthTarget: MTLTexture?
@@ -202,6 +204,7 @@ public final class SceneRenderer {
         }
         scenePipeline = try pipeline(vertex: "fullscreenVertex", fragment: "sceneFragment", depth: true)
         meshPipeline = try pipeline(vertex: "structureVertex", fragment: "structureFragment", depth: true)
+        shellPipeline = try pipeline(vertex: "shellVertex", fragment: "structureFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
@@ -236,6 +239,7 @@ public final class SceneRenderer {
         cellSize = solver.grid.cellSize
         field = solver.visualizationTexture
         structure = solver.structure
+        shells = solver.shells
         ambientPressure = scenario.atmosphere.pressure
 
         boxCount = min(scenario.boxes.count, Self.maxBoxes)
@@ -328,6 +332,25 @@ public final class SceneRenderer {
             sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: structure.elementCount)
+        }
+        if let shells, shells.elementCount > 0 {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            sceneEncoder.setRenderPipelineState(shellPipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setCullMode(.none)
+            sceneEncoder.setVertexBuffer(shells.elementBuffer, offset: 0, index: 0)
+            sceneEncoder.setVertexBuffer(shells.nodeBuffer, offset: 0, index: 1)
+            sceneEncoder.setVertexBuffer(shells.flagBuffer, offset: 0, index: 2)
+            sceneEncoder.setVertexBuffer(shells.displayBuffer, offset: 0, index: 3)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
+            sceneEncoder.setVertexBuffer(shells.referenceBuffer, offset: 0, index: 5)
+            sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.elementCount)
         }
         sceneEncoder.endEncoding()
 

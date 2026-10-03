@@ -41,6 +41,18 @@ func preset(named name: String?) -> ScenarioPreset {
     }
 }
 
+/// The preset named by `--preset`, with its structure meshed with shells of `--shells` metres
+/// (0.25 when given without a size) if asked.
+func chosenScenario() -> Scenario {
+    var scenario = preset(named: option("preset")).scenario
+    if flag("shells") || option("shells") != nil, var structure = scenario.structure {
+        structure.elementKind = .shell
+        structure.elementSize = option("shells").flatMap { Float($0) } ?? 0.25
+        scenario.structure = structure
+    }
+    return scenario
+}
+
 func pad(_ text: String, _ width: Int) -> String {
     text.count >= width ? text : String(repeating: " ", count: width - text.count) + text
 }
@@ -53,7 +65,7 @@ guard let device = MTLCreateSystemDefaultDevice() else {
 }
 
 func runThroughput() throws {
-    let scenario = preset(named: option("preset")).scenario
+    let scenario = chosenScenario()
     let event = scenario.acousticCrossingTime
     print("Device: \(device.name)")
     print(
@@ -261,7 +273,7 @@ func runValidation() throws {
 }
 
 func runSnapshot() throws {
-    var scenario = preset(named: option("preset")).scenario
+    var scenario = chosenScenario()
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
     let time = option("time").flatMap { Double($0) } ?? 0.03
@@ -317,7 +329,7 @@ func runSnapshot() throws {
     print(
         "Simulated in \(format(Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18, 1)) s"
             + (sleptAt.map { "; the air went quiet and was frozen at \(format($0 * 1000, 0)) ms" } ?? ""))
-    if let summary = solver.structure?.summary() {
+    if let summary = solver.structure?.summary() ?? solver.shells?.summary() {
         print(
             "Structure: \(summary.activeElements) elements intact, \(summary.erodedElements) failed, "
                 + "peak deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm, "

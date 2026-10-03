@@ -321,6 +321,83 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
     return out;
 }
 
+// Matches `ShellNode` and `ShellElement` in Shell.metal.
+struct ShellMeshNode {
+    packed_float3 displacement;
+    float mass;
+    packed_float3 velocity;
+    uint flags;
+    packed_float3 spin;
+    float inertia;
+    float4 rotation;
+};
+
+struct ShellMeshElement {
+    uint node[4];
+    uint axis;
+    uint material;
+    uint barCount;
+    float thickness;
+    float a;
+    float b;
+};
+
+// Draws each shell as the slab it stands for: a box between its two faces, which lie half its
+// thickness either side of the midsurface along the directors. A failed shell becomes a small
+// lump of rubble at the middle of its nodes.
+vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
+                           uint instanceID [[instance_id]],
+                           const device ShellMeshElement *elements [[buffer(0)]],
+                           const device ShellMeshNode *nodes [[buffer(1)]],
+                           const device uchar *flags [[buffer(2)]],
+                           const device float *damage [[buffer(3)]],
+                           constant MeshUniforms &u [[buffer(4)]],
+                           const device float4 *reference [[buffer(5)]]) {
+    MeshOut out;
+    out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    out.world = float3(0.0f);
+    out.damage = 0.0f;
+    uint flag = flags[instanceID];
+    if (flag == 0) {
+        return out;
+    }
+    ShellMeshElement el = elements[instanceID];
+    float3 normal = float3(0.0f);
+    normal[el.axis] = 1.0f;
+    // Box corners: the four nodes on the lower face, then on the upper.
+    const uint faces[6][4] = {{0, 1, 2, 3}, {4, 5, 6, 7}, {0, 1, 5, 4}, {1, 2, 6, 5}, {2, 3, 7, 6}, {3, 0, 4, 7}};
+    const uint triangle[6] = {0, 1, 2, 0, 2, 3};
+    uint corner = faces[vertexID / 6][triangle[vertexID % 6]];
+    uint c = corner & 3u;
+    float side = corner < 4 ? -1.0f : 1.0f;
+    float3 world;
+    if (flag == 1 || flag == 3) {
+        ShellMeshNode node = nodes[el.node[c]];
+        float4 q = node.rotation;
+        float3 t = 2.0f * cross(q.xyz, normal);
+        float3 director = normal + q.w * t + cross(q.xyz, t);
+        world = reference[el.node[c]].xyz + float3(node.displacement) + side * 0.5f * el.thickness * director;
+        out.damage = damage[instanceID];
+    } else {
+        float3 centre = float3(0.0f);
+        for (uint n = 0; n < 4; ++n) {
+            centre += 0.25f * (reference[el.node[n]].xyz + float3(nodes[el.node[n]].displacement));
+        }
+        float size = 0.3f * min(min(el.a, el.b), max(el.thickness, 0.05f) * 2.0f);
+        float3 offset = float3((c == 1 || c == 2) ? 0.5f : -0.5f, c >= 2 ? 0.5f : -0.5f, 0.5f * side);
+        world = centre + offset * size;
+        out.damage = 2.0f;
+    }
+    float3 relative = world - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    float near = u.projection.z;
+    float far = u.projection.w;
+    out.position = float4(view.x * u.projection.x, view.y * u.projection.y,
+                          far / (far - near) * (view.z - near), view.z);
+    out.world = world;
+    return out;
+}
+
 fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
     float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(normal, u.eye.xyz - in.world) < 0.0f) {
