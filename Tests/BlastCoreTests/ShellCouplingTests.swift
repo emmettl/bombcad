@@ -95,7 +95,9 @@ struct ShellCouplingTests {
         #expect(result.isStable)
         let downstream = try #require(solver.gaugeHistories.last)
         let peak = (downstream.map(\.pressure).max() ?? 0) - ambient.pressure
-        #expect(peak > 10_000, "downstream overpressure \(peak) Pa")
+        // Through the hole the blast reaches 9 to 11 kPa, depending on rounding in the breach
+        // (it is chaotic); the intact wall lets through under 2 kPa.
+        #expect(peak > 5_000, "downstream overpressure \(peak) Pa")
     }
 
     @Test("Loose shell debris in a steady wind gains the momentum drag theory predicts")

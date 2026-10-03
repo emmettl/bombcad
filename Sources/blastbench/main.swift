@@ -174,7 +174,7 @@ func runChamber() throws {
         ties: !flag("no-ties"), elastic: flag("elastic"), chargeScale: chargeScale,
         afterburning: flag("afterburn"),
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
-        duration: duration)
+        airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas, duration: duration)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )
@@ -208,6 +208,10 @@ func runChamber() throws {
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    if option("air") == "thermal" {
+        solver.configuration.airModel = .thermallyPerfect
+        try solver.load(scenario)
+    }
     if flag("afterburn") {
         solver.configuration.afterburning = true
         if let time = option("burn-time").flatMap({ Float($0) }) {
@@ -225,7 +229,8 @@ func runGasPressure() throws {
     let side: Float = 6
     print(
         "Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (80 ms)"
-            + (flag("afterburn") ? ", with afterburning" : ""))
+            + (flag("afterburn") ? ", with afterburning" : "")
+            + (option("air") == "thermal" ? ", thermally perfect air" : ""))
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
             + pad("UFC 2-152", 12)
@@ -255,7 +260,11 @@ func runGasPressure() throws {
         let cellVolume = Double(pow(solver.grid.cellSize, 3))
         let gamma = Double(solver.configuration.gamma)
         let mean =
-            (gamma - 1) * (totals.energy - kinetic * cellVolume) / volume
+            Double(
+                solver.configuration.airModel.pressure(
+                    density: Float(totals.mass / volume),
+                    internalEnergy: Float((totals.energy - kinetic * cellVolume) / volume),
+                    gamma: Float(gamma)))
             - Double(scenario.atmosphere.pressure)
         let ideal = (gamma - 1) * Double(scenario.charge.energy) / volume
         let reference = UFC340.peakGasPressure(chargePerVolume: Double(chargePerVolume)) ?? .nan
@@ -281,6 +290,7 @@ func runValidation() throws {
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
         if flag("afterburn") { solver.configuration.afterburning = true }
+        if option("air") == "thermal" { solver.configuration.airModel = .thermallyPerfect }
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000
         }

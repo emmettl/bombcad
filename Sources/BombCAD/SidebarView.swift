@@ -54,6 +54,11 @@ struct SidebarView: View {
                         set: { model.settings.chargeMass = Float(pow(10, $0).rounded()) }),
                     range: 0...3.3,
                     text: "\(Int(model.settings.chargeMass)) kg")
+                Toggle("Afterburning and hot air", isOn: $model.settings.detailedCharge)
+                    .help(
+                        "Burns the charge's products in the air they mix with, and lets hot air store energy "
+                            + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
+                            + "about twice as slow.")
                 LabeledSlider(
                     title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
                     text: metres(model.settings.chargePosition.x))

@@ -87,8 +87,32 @@ again. With `SolverConfiguration.afterburning` on:
   fireball's life.
 
 It is off by default: it costs about 1.8 times as much (more work per step, and a shorter step
-in the hotter gas), and with one γ for all the gas it overstates pressures in rooms by about
-30% (below), which a separate equation of state for the products would correct.
+in the hotter gas). With the ideal gas it overstates pressures in rooms by about 30%; with hot
+air (next) it does not.
+
+### Hot air
+
+The gas left by a charge, and burnt products all the more, is at 2000 to 3000 K, where the
+molecules of air store energy in vibration as well as in motion and rotation, so a joule of
+heat raises the pressure less than in cold air. `SolverConfiguration.airModel =
+.thermallyPerfect` includes this:
+
+- Internal energy per kilogram is e(T) = 5/2 R T + e_vib(T), with N2 and O2 (0.79 and 0.21 by
+  moles) as harmonic oscillators of characteristic temperatures 3390 K and 2270 K:
+  e_vib = R Σ x θ / (exp(θ/T) − 1). Pressure is ρ R T, R = 287.05 J/(kg K).
+- The temperature is found from e by two Newton steps from the temperature without
+  vibration, which reach single precision from room temperature to 20,000 K. The speed of
+  sound uses the ratio of specific heats at that temperature, which falls from 1.4 to about
+  1.29 near 3000 K. The Riemann solver's averaged sound speed is the Roe average of the two
+  sides' speeds.
+- Below about 500 K it is the ideal gas within 0.1%, so tests in units where the gas is cold
+  (the shock tube, the point blast) are unchanged. Dissociation, above about 2500 K, is left
+  out.
+
+It costs about a quarter more. Together with afterburning (the app's "Afterburning and hot air"
+switch) it brings the closed-room gas pressure within 8% of UFC 3-340-02's at every charge
+density tested, with nothing fitted to it, and keeps the incident impulse in the open within
+6% of Kingery–Bulmash (see [Validation](validation.md#afterburning)).
 
 ## Skipping still air
 
@@ -139,11 +163,12 @@ UFC 3-340-02, lowest for light charges.
 
 1. **The source model is crude.** An ideal-gas balloon with γ = 1.4 ignores the detonation
    wave and the real equation of state of the detonation products. It is poor within a few
-   charge diameters, or a few cells, of the charge. Without afterburning it under-predicts
-   incident impulse by 13% to 22% at all ranges tested, and a closed room's gas pressure is
-   half the design value for light charges; with it, the incident impulse is within 4% beyond
-   1 m/kg^(1/3), but the burning time is fitted, mixing is numerical, and the products' γ of
-   1.4 overstates the gas pressure in a closed room by about 30%.
+   charge diameters, or a few cells, of the charge. By default (no afterburning, an ideal gas)
+   it under-predicts incident impulse by 13% to 22% at all ranges tested, and a closed room's
+   gas pressure is half the design value for light charges. With afterburning and hot air the
+   incident impulse is within 6% beyond 1 m/kg^(1/3) and rooms within 8%, but the burning time
+   is fitted, mixing is numerical, the products are treated as air, and dissociation is left
+   out.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
@@ -157,8 +182,9 @@ UFC 3-340-02, lowest for light charges.
    on, and a blast running along a side or top boundary, with full overpressure and almost no
    flow through it, was turned into a strong spurious outflow that doubled the impulse at the
    gauge.
-4. **One gas.** Hot products and air share one γ, so the fireball's temperature and its late
-   pressure history are not realistic.
+4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
+   or as thermally perfect air, so the fireball's composition, and its temperature, are not
+   realistic.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
    ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
    does; see the structural model's coupling notes.
@@ -167,9 +193,7 @@ UFC 3-340-02, lowest for light charges.
 
 ## Future work
 
-- **The products' own γ**, about 1.25 to 1.3 for hot combustion products against 1.4 for air,
-  weighted by their mass fraction: the closed-room pressures with afterburning are about 1.3
-  times UFC 3-340-02's at every charge density, which is close to what that would remove.
+- **Dissociation**, and the products' own composition, for the gas very close to a charge.
 - **Better source.** Two options, in order of effort: start from a one-dimensional, finely
   resolved spherical solution and map it onto the grid once the shock has grown to several
   cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of
@@ -209,3 +233,7 @@ UFC 3-340-02, lowest for light charges.
 - US Department of Defense, UFC 3-340-02, *Structures to Resist the Effects of Accidental
   Explosions*, 2008. Peak gas pressure in a closed room (Figure 2-152), digitised in
   `UFC340.swift`.
+- The vibrational energy of a harmonic oscillator and the characteristic vibrational
+  temperatures of N2 (3390 K) and O2 (2270 K), as in any text on statistical thermodynamics,
+  for example J. D. Anderson, *Hypersonic and High-Temperature Gas Dynamics*, 2nd ed., AIAA,
+  2006, chapters 11 and 16. The temperatures were written from memory.

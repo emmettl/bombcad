@@ -560,6 +560,7 @@ struct StructureUniforms {
     var exchangeNx: Int32 = 0
     var exchangeNy: Int32 = 0
     var exchangeNz: Int32 = 0
+    var fluidAirModel: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -624,6 +625,7 @@ struct CouplingUniforms {
     var gamma: Float
     var ambientDensity: Float
     var ambientPressure: Float
+    var airModel: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.

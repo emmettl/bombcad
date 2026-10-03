@@ -52,6 +52,9 @@ struct SimulationSettings: Equatable {
     /// The scenario as edited: it starts as a copy of the preset and can then be changed freely.
     var scenario = ScenarioPreset.streetCanyon.scenario
     var resolution = Resolution.medium
+    /// Burn the charge's products in the air, and let hot air store energy in molecular
+    /// vibration: closer to tests, about twice as slow.
+    var detailedCharge = false
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -485,6 +488,12 @@ final class SimulationModel {
         }
     }
 
+    /// Sets the air's charge model from the settings; takes effect when the scenario is loaded.
+    private func configureAir(_ solver: BlastSolver) {
+        solver.configuration.afterburning = settings.detailedCharge
+        solver.configuration.airModel = settings.detailedCharge ? .thermallyPerfect : .idealGas
+    }
+
     private func rebuild() {
         isRunning = false
         rebuildPending = false
@@ -494,19 +503,26 @@ final class SimulationModel {
         let grid = scenario.grid(cellSize: settings.resolution.cellSize)
         do {
             if let solver, solver.grid == grid {
+                configureAir(solver)
                 try solver.load(scenario)
             } else {
                 solver = nil
-                // State (two copies), peak, impulse, mask and the visualisation volume; the
-                // structure's mesh is small by comparison.
-                let required = grid.cellCount * 57
+                // State (two copies), peak, impulse, mask and the visualisation volume, and with
+                // afterburning two copies of the fuel and oxygen; the structure's mesh is small by
+                // comparison.
+                let required = grid.cellCount * (settings.detailedCharge ? 73 : 57)
                 guard UInt64(required) < device.recommendedMaxWorkingSetSize / 10 * 7 else {
                     throw BlastError.allocationFailed(
                         "\(grid.cellCount / 1_000_000) million cells; try a coarser resolution")
                 }
-                solver = try BlastSolver(
+                let created = try BlastSolver(
                     device: device, commandQueue: commandQueue, scenario: scenario,
                     cellSize: settings.resolution.cellSize)
+                if settings.detailedCharge {
+                    configureAir(created)
+                    try created.load(scenario)
+                }
+                solver = created
             }
             errorMessage = nil
         } catch {

@@ -197,7 +197,7 @@ public final class BlastSolver {
 
     /// Sets every cell to the same state and restarts the clock.
     public func fill(uniform primitive: Primitive) {
-        let cell = CellState(primitive, gamma: configuration.gamma)
+        let cell = cellState(primitive)
         stillCell = cell
         largestCharge = 0
         for buffer in stateBuffers {
@@ -253,12 +253,32 @@ public final class BlastSolver {
             for k in 0..<grid.nz {
                 for j in 0..<grid.ny {
                     for i in 0..<grid.nx {
-                        cells[grid.index(i, j, k)] = CellState(body(i, j, k), gamma: gamma)
+                        cells[grid.index(i, j, k)] = cellState(body(i, j, k))
                     }
                 }
             }
         }
         restart()
+    }
+
+    /// The conserved state of air in `primitive` state, by the configured equation of state.
+    public func cellState(_ primitive: Primitive) -> CellState {
+        var cell = CellState(primitive, gamma: configuration.gamma)
+        let kinetic = 0.5 * primitive.density * simd_length_squared(primitive.velocity)
+        cell.energy =
+            configuration.airModel.internalEnergy(
+                density: primitive.density, pressure: primitive.pressure, gamma: configuration.gamma)
+            + kinetic
+        return cell
+    }
+
+    /// The primitive state of a cell, by the configured equation of state.
+    public func primitive(of cell: CellState) -> Primitive {
+        var primitive = cell.primitive(gamma: configuration.gamma)
+        let kinetic = 0.5 * primitive.density * simd_length_squared(primitive.velocity)
+        primitive.pressure = configuration.airModel.pressure(
+            density: primitive.density, internalEnergy: cell.energy - kinetic, gamma: configuration.gamma)
+        return primitive
     }
 
     /// Direct access to the current conserved state. Call `restart()` after editing.
@@ -358,7 +378,7 @@ public final class BlastSolver {
             // A cell any shell passes through is solid.
             threshold: 1, ex: 0, ey: 0, fluidCell: grid.cellSize, h: 0, originX: 0, originY: 0, originZ: 0,
             gamma: configuration.gamma, ambientDensity: ambientDensity,
-            ambientPressure: configuration.ambientPressure)
+            ambientPressure: configuration.ambientPressure, airModel: configuration.airModel.rawValue)
         if let structure {
             let h = structure.model.elementSize
             let perCell = pow(grid.cellSize / h, 3)
@@ -654,6 +674,7 @@ public final class BlastSolver {
                 let binding = StructureSolver.FluidBinding(
                     state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
                     gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
+                    airModel: configuration.airModel,
                     exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
                     exchangeRegion: couplingRegion)
                 structure.encodeSubsteps(
@@ -668,6 +689,7 @@ public final class BlastSolver {
                 let binding = StructureSolver.FluidBinding(
                     state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
                     gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
+                    airModel: configuration.airModel,
                     exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
                     exchangeRegion: couplingRegion)
                 shells.encodeSubsteps(encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
@@ -804,7 +826,7 @@ public final class BlastSolver {
     }
 
     public func primitive(_ i: Int, _ j: Int, _ k: Int) -> Primitive {
-        withState { $0[grid.index(i, j, k)].primitive(gamma: configuration.gamma) }
+        withState { primitive(of: $0[grid.index(i, j, k)]) }
     }
 
     public func isSolid(_ i: Int, _ j: Int, _ k: Int) -> Bool {
@@ -900,6 +922,7 @@ public final class BlastSolver {
         uniforms.stillMy = stillCell.momentumY
         uniforms.stillMz = stillCell.momentumZ
         uniforms.stillEnergy = stillCell.energy
+        uniforms.airModel = configuration.airModel.rawValue
         if hasSpecies {
             uniforms.afterburnEnergy = configuration.afterburnEnergy
             uniforms.oxygenPerFuel = Self.oxygenPerFuel

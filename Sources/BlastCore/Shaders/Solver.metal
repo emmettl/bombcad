@@ -66,6 +66,7 @@ struct SolverUniforms {
     float oxygenPerFuel;
     float stillOxygen;
     float afterburnRate;  // 1 / the time over which mixed products burn
+    uint airModel;        // 0: ideal gas with `gamma`; 1: thermally perfect air
 };
 
 constant int tileSize = 8;
@@ -84,11 +85,87 @@ struct StepControl {
     uint tileSweeps;        // tiles swept, summed over the batch's steps
 };
 
-// Primitive state in the sweep frame: v.x is the velocity along the sweep axis.
+// The gas's equation of state. An ideal gas has p = (gamma - 1) times the internal energy per
+// volume. Thermally perfect air is an ideal gas whose molecules also store energy in vibration
+// once hot: N2 and O2 as harmonic oscillators of characteristic temperatures 3390 K and 2270 K,
+// in proportion 0.79 to 0.21 by moles, on top of translation and rotation (5/2 R). So its
+// internal energy per kilogram is e(T) = 5/2 R T + e_vib(T), its pressure is rho R T, and its
+// ratio of specific heats falls from 1.4 at room temperature towards 1.29 near 3000 K.
+// Dissociation, which sets in above about 2500 K, is not included. Below about 500 K the two
+// agree to better than 0.1%; the shock-tube and point-blast tests, in units where T is tiny,
+// are unchanged.
+enum AirModel { airIdeal = 0, airThermallyPerfect = 1 };
+constant float airGasConstant = 287.05f;
+
+// Vibrational energy per kilogram (x) and its heat capacity (y) at `temperature`.
+static inline float2 vibration(float temperature) {
+    float t = max(temperature, 1.0f);
+    const float theta[2] = {3390.0f, 2270.0f};
+    const float share[2] = {0.79f, 0.21f};
+    float2 sum = float2(0.0f);
+    for (int n = 0; n < 2; ++n) {
+        float x = min(theta[n] / t, 80.0f);
+        float ex = exp(x);
+        float below = 1.0f / (ex - 1.0f);
+        sum += share[n] * float2(theta[n] * below, x * x * ex * below * below);
+    }
+    return airGasConstant * sum;
+}
+
+// Temperature of thermally perfect air of internal energy `e` per kilogram: Newton's method
+// from the temperature without vibration, which lies above the root; two steps reach single
+// precision everywhere from room temperature to 20,000 K.
+static inline float airTemperature(float e) {
+    float t = max(e, 0.0f) / (2.5f * airGasConstant);
+    for (int n = 0; n < 2; ++n) {
+        float2 v = vibration(t);
+        t -= (2.5f * airGasConstant * t + v.x - e) / (2.5f * airGasConstant + v.y);
+    }
+    return max(t, 0.0f);
+}
+
+// Pressure from density and internal energy per volume.
+static inline float gasPressure(float rho, float internalEnergy, uint model, float gamma) {
+    if (model == airIdeal) {
+        return (gamma - 1.0f) * internalEnergy;
+    }
+    return rho * airGasConstant * airTemperature(internalEnergy / rho);
+}
+
+// Pressure (x) and ratio of specific heats (y), from density and internal energy per volume.
+static inline float2 gasState(float rho, float internalEnergy, uint model, float gamma) {
+    if (model == airIdeal) {
+        return float2((gamma - 1.0f) * internalEnergy, gamma);
+    }
+    float t = airTemperature(internalEnergy / rho);
+    return float2(rho * airGasConstant * t, 1.0f + airGasConstant / (2.5f * airGasConstant + vibration(t).y));
+}
+
+// Internal energy per volume from density and pressure.
+static inline float gasEnergy(float rho, float pressure, uint model, float gamma) {
+    if (model == airIdeal) {
+        return pressure / (gamma - 1.0f);
+    }
+    float t = pressure / (rho * airGasConstant);
+    return rho * (2.5f * airGasConstant * t + vibration(t).x);
+}
+
+// Ratio of specific heats at the state (frozen), which sets the speed of sound: c^2 = g p / rho.
+static inline float gasGamma(float rho, float pressure, uint model, float gamma) {
+    if (model == airIdeal) {
+        return gamma;
+    }
+    float t = pressure / (rho * airGasConstant);
+    return 1.0f + airGasConstant / (2.5f * airGasConstant + vibration(t).y);
+}
+
+// Primitive state in the sweep frame: v.x is the velocity along the sweep axis; g is the ratio
+// of specific heats at the state.
 struct Prim {
     float rho;
     float3 v;
     float p;
+    float g;
 };
 
 struct Flux {
@@ -118,7 +195,9 @@ static inline Prim loadPrim(const device Cell *state, int index, constant Solver
     w.rho = max(c.rho, u.densityFloor);
     float3 velocity = float3(c.mx, c.my, c.mz) / w.rho;
     w.v = toSweep(velocity, u.axis);
-    w.p = max((u.gamma - 1.0f) * (c.energy - 0.5f * w.rho * dot(velocity, velocity)), u.pressureFloor);
+    float2 gas = gasState(w.rho, c.energy - 0.5f * w.rho * dot(velocity, velocity), u.airModel, u.gamma);
+    w.p = max(gas.x, u.pressureFloor);
+    w.g = gas.y;
     return w;
 }
 
@@ -178,15 +257,18 @@ static inline FacePair reconstruct(Prim w, Prim d, float halfLambda, constant So
     h.v.x = w.v.x - halfLambda * (w.v.x * d.v.x + d.p / w.rho);
     h.v.y = w.v.y - halfLambda * (w.v.x * d.v.y);
     h.v.z = w.v.z - halfLambda * (w.v.x * d.v.z);
-    h.p = w.p - halfLambda * (w.v.x * d.p + u.gamma * w.p * d.v.x);
+    h.p = w.p - halfLambda * (w.v.x * d.p + w.g * w.p * d.v.x);
+    h.g = w.g;
 
     FacePair faces;
     faces.lo.rho = h.rho - 0.5f * d.rho;
     faces.lo.v = h.v - 0.5f * d.v;
     faces.lo.p = h.p - 0.5f * d.p;
+    faces.lo.g = w.g;
     faces.hi.rho = h.rho + 0.5f * d.rho;
     faces.hi.v = h.v + 0.5f * d.v;
     faces.hi.p = h.p + 0.5f * d.p;
+    faces.hi.g = w.g;
 
     // Fall back to first order where the reconstruction would lose positivity.
     bool valid = min(faces.lo.rho, faces.hi.rho) > u.densityFloor
@@ -198,8 +280,8 @@ static inline FacePair reconstruct(Prim w, Prim d, float halfLambda, constant So
     return faces;
 }
 
-static inline float totalEnergy(Prim w, float gamma) {
-    return w.p / (gamma - 1.0f) + 0.5f * w.rho * dot(w.v, w.v);
+static inline float totalEnergy(Prim w, constant SolverUniforms &u) {
+    return gasEnergy(w.rho, w.p, u.airModel, u.gamma) + 0.5f * w.rho * dot(w.v, w.v);
 }
 
 static inline Flux physicalFlux(Prim w, float energy) {
@@ -213,10 +295,10 @@ static inline Flux physicalFlux(Prim w, float energy) {
 
 static inline Flux riemannFlux(Prim l, Prim r, constant SolverUniforms &u) {
     float gamma = u.gamma;
-    float el = totalEnergy(l, gamma);
-    float er = totalEnergy(r, gamma);
-    float cl = sqrt(gamma * l.p / l.rho);
-    float cr = sqrt(gamma * r.p / r.rho);
+    float el = totalEnergy(l, u);
+    float er = totalEnergy(r, u);
+    float cl = sqrt(l.g * l.p / l.rho);
+    float cr = sqrt(r.g * r.p / r.rho);
 
     // Einfeldt wave-speed estimates from Roe averages.
     float sl = sqrt(l.rho);
@@ -224,7 +306,10 @@ static inline Flux riemannFlux(Prim l, Prim r, constant SolverUniforms &u) {
     float inv = 1.0f / (sl + sr);
     float3 vRoe = (sl * l.v + sr * r.v) * inv;
     float hRoe = (sl * (el + l.p) / l.rho + sr * (er + r.p) / r.rho) * inv;
-    float cRoe = sqrt(max((gamma - 1.0f) * (hRoe - 0.5f * dot(vRoe, vRoe)), 1e-12f));
+    // For an ideal gas the Roe-averaged sound speed follows from the averaged enthalpy; for
+    // thermally perfect air the sound speeds themselves are averaged.
+    float cRoe = u.airModel == airIdeal ? sqrt(max((gamma - 1.0f) * (hRoe - 0.5f * dot(vRoe, vRoe)), 1e-12f))
+                                        : (sl * cl + sr * cr) * inv;
     float waveL = min(l.v.x - cl, vRoe.x - cRoe);
     float waveR = max(r.v.x + cr, vRoe.x + cRoe);
 
@@ -303,7 +388,8 @@ static inline void wakeTilesAround(int3 cell, device uchar *tileFlags, uchar fla
 static inline void recordCell(device atomic_uint *maxSpeed, float3 momentum, float rho, float pressure,
                               constant SolverUniforms &u) {
     float3 speed = fabs(momentum) / rho;
-    float fastest = max(speed.x, max(speed.y, speed.z)) + sqrt(u.gamma * pressure / rho);
+    float fastest = max(speed.x, max(speed.y, speed.z))
+        + sqrt(gasGamma(rho, pressure, u.airModel, u.gamma) * pressure / rho);
     recordWaveSpeed(maxSpeed, fastest);
     // The second slot tracks how disturbed the air still is.
     recordWaveSpeed(maxSpeed + 1, fabs(pressure - u.ambientPressure));
@@ -414,10 +500,10 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
 
     rho = max(rho, u.densityFloor);
     float kinetic = 0.5f * dot(momentum, momentum) / rho;
-    float pressure = (u.gamma - 1.0f) * (energy - kinetic);
+    float pressure = gasPressure(rho, energy - kinetic, u.airModel, u.gamma);
     if (pressure < u.pressureFloor) {
         pressure = u.pressureFloor;
-        energy = pressure / (u.gamma - 1.0f) + kinetic;
+        energy = gasEnergy(rho, pressure, u.airModel, u.gamma) + kinetic;
     }
 
     float3 worldMomentum = fromSweep(momentum, axis);
@@ -528,7 +614,7 @@ kernel void collectTiles(device uchar *tileFlags [[buffer(0)]],
         float rho = max(u.stillRho, u.densityFloor);
         float3 momentum = float3(u.stillMx, u.stillMy, u.stillMz);
         float kinetic = 0.5f * dot(momentum, momentum) / rho;
-        float pressure = (u.gamma - 1.0f) * (u.stillEnergy - kinetic);
+        float pressure = gasPressure(rho, u.stillEnergy - kinetic, u.airModel, u.gamma);
         if (pressure < u.pressureFloor) {
             pressure = u.pressureFloor;
         }
@@ -583,7 +669,7 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     for (uint g = 0; g < u.gaugeCount; ++g) {
         Cell c = state[gaugeCells[g]];
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);
-        gaugeLog[row + 1 + g] = (u.gamma - 1.0f) * (c.energy - kinetic);
+        gaugeLog[row + 1 + g] = gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
     }
 
     control.dt = dt;
@@ -608,17 +694,18 @@ kernel void measureWaveSpeed(const device Cell *state [[buffer(0)]],
     Cell c = state[index];
     float rho = max(c.rho, u.densityFloor);
     float3 velocity = float3(c.mx, c.my, c.mz) / rho;
-    float pressure = max((u.gamma - 1.0f) * (c.energy - 0.5f * rho * dot(velocity, velocity)),
+    float pressure = max(gasPressure(rho, c.energy - 0.5f * rho * dot(velocity, velocity), u.airModel, u.gamma),
                          u.pressureFloor);
     float3 speed = fabs(velocity);
-    recordWaveSpeed(maxSpeed, max(speed.x, max(speed.y, speed.z)) + sqrt(u.gamma * pressure / rho));
+    recordWaveSpeed(maxSpeed, max(speed.x, max(speed.y, speed.z))
+                                  + sqrt(gasGamma(rho, pressure, u.airModel, u.gamma) * pressure / rho));
     recordWaveSpeed(maxSpeed + 1, fabs(pressure - u.ambientPressure));
 }
 
 static inline float cellPressure(const device Cell *state, int index, constant SolverUniforms &u) {
     Cell c = state[index];
     float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);
-    return (u.gamma - 1.0f) * (c.energy - kinetic);
+    return gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
 }
 
 // Packs the fields the renderer needs into a filterable 3D texture:

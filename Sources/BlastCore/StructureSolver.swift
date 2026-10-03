@@ -17,6 +17,8 @@ public final class StructureSolver {
         public var grid: Grid
         public var gamma: Float
         public var ambientPressure: Float
+        /// The air's equation of state.
+        public var airModel: AirModel = .idealGas
         /// Where loose debris returns to the air what it takes from it: four `Int32` per air cell
         /// of `exchangeRegion`. Without it, debris is not loaded by the air.
         public var exchange: MTLBuffer?
@@ -745,6 +747,7 @@ public final class StructureSolver {
             }
             uniforms.ambientPressure = fluid.ambientPressure
             uniforms.fluidGamma = fluid.gamma
+            uniforms.fluidAirModel = fluid.airModel.rawValue
             uniforms.fluidCell = fluid.grid.cellSize
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)

@@ -51,6 +51,11 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
   and the visualisation volume.
 - The time step is about a third of what still air would allow, because the hot gas left by
   the fireball has a high sound speed for the whole event.
+- **Afterburning and hot air** (`--afterburn --air thermal`) cost about twice as much: the
+  street event at 0.25 m takes 7.5 s instead of 3.5 s in one session, from more work per cell
+  (the fuel and oxygen, and a temperature solved by two Newton steps for each pressure), a
+  shorter step in the hotter gas, and more of the air reached. Hot air alone costs about a
+  quarter.
 - Without `--full`, the finest figure is extrapolated from a timed sample of 192 steps of full
   sweeps, scaled by the swept fraction of the 0.25 m run (an estimate of 36 s, against 43 s
   measured).

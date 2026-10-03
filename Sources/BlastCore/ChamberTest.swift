@@ -239,7 +239,7 @@ public enum ChamberTest {
     public static func run(
         device: MTLDevice, cellSize: Float = 0.1, elementSize: Float = 0.1, downstand: Bool = true,
         ties: Bool = true, elastic: Bool = false, chargeScale: Float = 1, afterburning: Bool = false,
-        afterburnEnergy: Float? = nil, duration: Double = 0.3
+        afterburnEnergy: Float? = nil, airModel: AirModel = .idealGas, duration: Double = 0.3
     ) throws -> Result {
         try run(
             device: device,
@@ -247,7 +247,7 @@ public enum ChamberTest {
                 elementSize: elementSize, downstand: downstand, ties: ties, elastic: elastic,
                 chargeScale: chargeScale),
             cellSize: cellSize, duration: duration, afterburning: afterburning,
-            afterburnEnergy: afterburnEnergy)
+            afterburnEnergy: afterburnEnergy, airModel: airModel)
     }
 
     /// The chamber with its vent closed and no charge, filled with air at `overpressure` (Pa)
@@ -269,11 +269,13 @@ public enum ChamberTest {
     /// `interiorOverpressure` (Pa) at the start.
     public static func run(
         device: MTLDevice, scenario: Scenario, cellSize: Float, duration: Double,
-        interiorOverpressure: Float = 0, afterburning: Bool = false, afterburnEnergy: Float? = nil
+        interiorOverpressure: Float = 0, afterburning: Bool = false, afterburnEnergy: Float? = nil,
+        airModel: AirModel = .idealGas
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        if afterburning {
-            solver.configuration.afterburning = true
+        if afterburning || airModel != .idealGas {
+            solver.configuration.afterburning = afterburning
+            solver.configuration.airModel = airModel
             if let afterburnEnergy { solver.configuration.afterburnEnergy = afterburnEnergy }
             try solver.load(scenario)
         }
@@ -282,16 +284,14 @@ public enum ChamberTest {
             let room = Box(
                 min: SIMD3(endWallFace, inside.low, floorTop), max: SIMD3(mirror, inside.high, roof.high))
             let pressure = scenario.atmosphere.pressure + interiorOverpressure
-            let gamma = solver.configuration.gamma
             solver.mutateState { cells in
                 for k in 0..<grid.nz {
                     for j in 0..<grid.ny {
                         for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
                             let centre = (SIMD3(Float(i), Float(j), Float(k)) + 0.5) * grid.cellSize
                             guard room.contains(centre) else { continue }
-                            cells[grid.index(i, j, k)] = CellState(
-                                Primitive(density: scenario.atmosphere.density, pressure: pressure),
-                                gamma: gamma)
+                            cells[grid.index(i, j, k)] = solver.cellState(
+                                Primitive(density: scenario.atmosphere.density, pressure: pressure))
                         }
                     }
                 }

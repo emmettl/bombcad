@@ -48,7 +48,7 @@ struct ShellUniforms {
     var exchangeNx: Int32 = 0
     var exchangeNy: Int32 = 0
     var exchangeNz: Int32 = 0
-    var padding: UInt32 = 0
+    var fluidAirModel: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -902,6 +902,7 @@ public final class ShellSolver {
             uniforms.coupled = 1
             uniforms.ambientPressure = fluid.ambientPressure
             uniforms.fluidGamma = fluid.gamma
+            uniforms.fluidAirModel = fluid.airModel.rawValue
             uniforms.fluidCell = fluid.grid.cellSize
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)

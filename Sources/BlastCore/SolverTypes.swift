@@ -89,6 +89,8 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// leaving air that is still in its initial uniform state untouched. The answer is the same
     /// either way. Read at `restart()`.
     public var skipStillAir = true
+    /// How the air's pressure follows from its energy (see `AirModel`).
+    public var airModel: AirModel = .idealGas
     /// Burn the detonation products in the air they mix with (afterburning), releasing
     /// `afterburnEnergy` per kilogram of charge as far as the oxygen allows. Read at `restart()`;
     /// takes effect for charges deposited after it is set.
@@ -191,6 +193,7 @@ struct SolverUniforms {
     var oxygenPerFuel: Float = 0
     var stillOxygen: Float = 0
     var afterburnRate: Float = 0
+    var airModel: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -211,6 +214,52 @@ public struct GaugeSample: Sendable, Hashable {
     public var time: Double
     /// Absolute pressure in pascals.
     public var pressure: Float
+}
+
+/// The air's equation of state. Layout matches `AirModel` in `Solver.metal`.
+public enum AirModel: UInt32, Sendable, Codable, CaseIterable {
+    /// An ideal gas with the configuration's constant gamma.
+    case idealGas = 0
+    /// Air whose N2 and O2 store energy in vibration once hot, so that its gamma falls from 1.4
+    /// towards 1.29 near 3000 K; dissociation is not included.
+    case thermallyPerfect = 1
+
+    static let gasConstant: Float = 287.05
+
+    static func vibrationalEnergy(temperature: Float) -> Float {
+        let t = max(temperature, 1)
+        return gasConstant
+            * (0.79 * 3390 / (exp(min(3390 / t, 80)) - 1) + 0.21 * 2270 / (exp(min(2270 / t, 80)) - 1))
+    }
+
+    /// Internal energy per volume of air at `density` and `pressure`.
+    public func internalEnergy(density: Float, pressure: Float, gamma: Float) -> Float {
+        switch self {
+        case .idealGas: return pressure / (gamma - 1)
+        case .thermallyPerfect:
+            let t = pressure / (density * Self.gasConstant)
+            return density * (2.5 * Self.gasConstant * t + Self.vibrationalEnergy(temperature: t))
+        }
+    }
+
+    /// Pressure of air at `density` holding `internalEnergy` per volume.
+    public func pressure(density: Float, internalEnergy: Float, gamma: Float) -> Float {
+        switch self {
+        case .idealGas: return (gamma - 1) * internalEnergy
+        case .thermallyPerfect:
+            let e = internalEnergy / density
+            var t = max(e, 0) / (2.5 * Self.gasConstant)
+            for _ in 0..<6 {
+                let heat =
+                    (Self.vibrationalEnergy(temperature: t * 1.001) - Self.vibrationalEnergy(temperature: t))
+                    / (0.001 * max(t, 1))
+                t -=
+                    (2.5 * Self.gasConstant * t + Self.vibrationalEnergy(temperature: t) - e)
+                    / (2.5 * Self.gasConstant + max(heat, 0))
+            }
+            return density * Self.gasConstant * max(t, 0)
+        }
+    }
 }
 
 public struct BatchResult: Sendable {

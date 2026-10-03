@@ -58,7 +58,7 @@ struct ShellUniforms {
     int exchangeNx;
     int exchangeNy;
     int exchangeNz;
-    uint padding;
+    uint fluidAirModel;  // the air's equation of state (`AirModel`)
 };
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
@@ -217,7 +217,8 @@ static inline float shellOverpressure(float3 point, float3 normal, float halfThi
         if (fluidMask[index] == 0) {
             Cell c = fluid[index];
             float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
-            return (u.fluidGamma - 1.0f) * (c.energy - kinetic) - u.ambientPressure;
+            return gasPressure(max(c.rho, 1e-6f), c.energy - kinetic, u.fluidAirModel, u.fluidGamma)
+                - u.ambientPressure;
         }
         sample += normal * u.fluidCell;
     }

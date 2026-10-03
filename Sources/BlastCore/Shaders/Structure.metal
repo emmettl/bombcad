@@ -59,6 +59,7 @@ struct StructureUniforms {
     int exchangeNx;
     int exchangeNy;
     int exchangeNz;
+    uint fluidAirModel;  // the air's equation of state (`AirModel`)
 };
 
 // What loose debris takes from the air is summed per air cell in fixed point, so that the
@@ -228,7 +229,8 @@ static inline float faceOverpressure(float3 point, float3 normal, const device C
         if (fluidMask[index] == 0) {
             Cell c = fluid[index];
             float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
-            return (u.fluidGamma - 1.0f) * (c.energy - kinetic) - u.ambientPressure;
+            return gasPressure(max(c.rho, 1e-6f), c.energy - kinetic, u.fluidAirModel, u.fluidGamma)
+                - u.ambientPressure;
         }
         sample += normal * u.fluidCell;
     }
@@ -1248,7 +1250,7 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
         Cell s = fluid[i];
         float rho = max(s.rho, 1e-6f);
         float kinetic = 0.5f * (s.mx * s.mx + s.my * s.my + s.mz * s.mz) / rho;
-        float pressure = (u.fluidGamma - 1.0f) * (s.energy - kinetic);
+        float pressure = gasPressure(rho, s.energy - kinetic, u.fluidAirModel, u.fluidGamma);
         return isfinite(pressure) ? pressure : -1.0f;
     };
     float here = pressureAt(cell);
@@ -1596,6 +1598,7 @@ struct CouplingUniforms {
     float gamma;
     float ambientDensity;
     float ambientPressure;
+    uint airModel;
 };
 
 // Velocities handed to the air are limited to this (m/s) and summed in steps of 1/1024 m/s.
@@ -1692,7 +1695,8 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
             sum.energy += c.energy;
             neighbours += 1.0f;
         }
-        Cell fill = {u.ambientDensity, 0.0f, 0.0f, 0.0f, u.ambientPressure / (u.gamma - 1.0f)};
+        Cell fill = {u.ambientDensity, 0.0f, 0.0f, 0.0f,
+                     gasEnergy(u.ambientDensity, u.ambientPressure, u.airModel, u.gamma)};
         if (neighbours > 0.0f) {
             float scale = 1.0f / neighbours;
             fill.rho = sum.rho * scale;
@@ -1754,7 +1758,7 @@ kernel void debrisExchange(device Cell *state [[buffer(0)]],
     // step, could otherwise leave a cell with negative internal energy, which the air solver's
     // own floors never see because the exchange comes after its sweeps.
     float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
-    float floorEnergy = kinetic + 0.01f * u.ambientPressure / (u.gamma - 1.0f);
+    float floorEnergy = kinetic + 0.01f * gasEnergy(max(c.rho, 1e-6f), u.ambientPressure, u.airModel, u.gamma);
     c.energy = max(c.energy, floorEnergy);
     if (all(isfinite(float4(c.mx, c.my, c.mz, c.energy)))) {
         state[index] = c;
