@@ -57,6 +57,7 @@ public final class BlastSolver {
     private let remaskApplyPipeline: MTLComputePipelineState
     private let debrisExchangePipeline: MTLComputePipelineState
     private let shellSplatPipeline: MTLComputePipelineState
+    private let beamSplatPipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
     private var current = 0
@@ -107,6 +108,7 @@ public final class BlastSolver {
         remaskApplyPipeline = try pipeline("remaskApply")
         debrisExchangePipeline = try pipeline("debrisExchange")
         shellSplatPipeline = try pipeline("shellSplat")
+        beamSplatPipeline = try pipeline("beamSplat")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
@@ -325,7 +327,22 @@ public final class BlastSolver {
                 MTLSize(width: structure.elementCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(
                     width: splatPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1))
-        } else if let shells, shells.elementCount > 0 {
+        } else if let shells {
+            if shells.beamCount > 0 {
+                var beams = UInt32(shells.beamCount)
+                encoder.setComputePipelineState(beamSplatPipeline)
+                encoder.setBuffer(shells.beamBuffer, offset: 0, index: 0)
+                encoder.setBuffer(shells.beamFlagBuffer, offset: 0, index: 1)
+                encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
+                encoder.setBuffer(shells.referenceBuffer, offset: 0, index: 3)
+                encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: length, index: 5)
+                encoder.setBytes(&beams, length: 4, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: shells.beamCount, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(
+                        width: beamSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+            }
             var count = UInt32(shells.elementCount)
             encoder.setComputePipelineState(shellSplatPipeline)
             encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
@@ -335,10 +352,12 @@ public final class BlastSolver {
             encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
             encoder.setBytes(&uniforms, length: length, index: 5)
             encoder.setBytes(&count, length: 4, index: 6)
-            encoder.dispatchThreads(
-                MTLSize(width: shells.elementCount, height: 1, depth: 1),
-                threadsPerThreadgroup: MTLSize(
-                    width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+            if shells.elementCount > 0 {
+                encoder.dispatchThreads(
+                    MTLSize(width: shells.elementCount, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(
+                        width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+            }
         }
 
         let size = MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z)

@@ -167,6 +167,7 @@ public final class SceneRenderer {
     private let scenePipeline: MTLRenderPipelineState
     private let meshPipeline: MTLRenderPipelineState
     private let shellPipeline: MTLRenderPipelineState
+    private let beamPipeline: MTLRenderPipelineState
     private let compositePipeline: MTLRenderPipelineState
     private let sceneDepthState: MTLDepthStencilState
     private let meshDepthState: MTLDepthStencilState
@@ -205,6 +206,7 @@ public final class SceneRenderer {
         scenePipeline = try pipeline(vertex: "fullscreenVertex", fragment: "sceneFragment", depth: true)
         meshPipeline = try pipeline(vertex: "structureVertex", fragment: "structureFragment", depth: true)
         shellPipeline = try pipeline(vertex: "shellVertex", fragment: "structureFragment", depth: true)
+        beamPipeline = try pipeline(vertex: "beamVertex", fragment: "structureFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
@@ -333,7 +335,7 @@ public final class SceneRenderer {
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: structure.elementCount)
         }
-        if let shells, shells.elementCount > 0 {
+        if let shells, shells.elementCount + shells.beamCount > 0 {
             var mesh = MeshUniforms(
                 eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
                 projection: SIMD4(
@@ -349,8 +351,18 @@ public final class SceneRenderer {
             sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
             sceneEncoder.setVertexBuffer(shells.referenceBuffer, offset: 0, index: 5)
             sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
-            sceneEncoder.drawPrimitives(
-                type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.elementCount)
+            if shells.elementCount > 0 {
+                sceneEncoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.elementCount)
+            }
+            if shells.beamCount > 0 {
+                sceneEncoder.setRenderPipelineState(beamPipeline)
+                sceneEncoder.setVertexBuffer(shells.beamBuffer, offset: 0, index: 0)
+                sceneEncoder.setVertexBuffer(shells.beamFlagBuffer, offset: 0, index: 2)
+                sceneEncoder.setVertexBuffer(shells.beamDisplayBuffer, offset: 0, index: 3)
+                sceneEncoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.beamCount)
+            }
         }
         sceneEncoder.endEncoding()
 

@@ -216,7 +216,7 @@ public enum BlastError: Error, CustomStringConvertible {
         case .supportsMissNodes:
             "The supports do not fall on nodes of the mesh; choose an element size that divides 6 inches"
         case .notPlateLike(let index):
-            "Solid \(index + 1) is not a wall or slab, so it cannot be meshed with shells (beam elements for columns are not available)"
+            "Solid \(index + 1) is neither a wall or slab nor a column, so it cannot be meshed with shells and beams"
         }
     }
 }

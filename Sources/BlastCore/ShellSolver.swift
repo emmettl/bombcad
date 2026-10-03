@@ -39,6 +39,25 @@ struct ShellUniforms {
     var contactDamping: Float = 0
     var contactFriction: Float = 0
     var neighbourDistance: Float = 0
+    var beamCount: UInt32 = 0
+    var padding0: UInt32 = 0
+    var padding1: UInt32 = 0
+    var padding2: UInt32 = 0
+}
+
+/// Layout matches `BeamElement` in `Shell.metal`.
+struct BeamElementData {
+    var n0: UInt32
+    var n1: UInt32
+    var axis: UInt32
+    var material: UInt32
+    var width: Float
+    var depth: Float
+    var length: Float
+    var barCount: UInt32
+    var tieRatio: Float
+    var padding0: Float = 0
+    var padding1: Float = 0
 }
 
 /// Layout matches `ShellElement` in `Shell.metal`.
@@ -136,6 +155,8 @@ public final class ShellSolver {
     public let model: StructureModel
     public let materials: [StructureMaterial]
     public let elementCount: Int
+    /// Beam elements, on the centrelines of columns.
+    public let beamCount: Int
     public let nodeCount: Int
     public let layers: Int
     /// Bar layers stored per element.
@@ -185,7 +206,17 @@ public final class ShellSolver {
     private let failureGateBuffer: MTLBuffer
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
+    private let beamPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
+    public let beamBuffer: MTLBuffer
+    public let beamFlagBuffer: MTLBuffer
+    /// Damage of each beam, 0 (sound) to 1 (failing), for display.
+    public let beamDisplayBuffer: MTLBuffer
+    private let beamFibreBuffer: MTLBuffer
+    private let beamBarBuffer: MTLBuffer
+    private let beamForceBuffer: MTLBuffer
+    /// Bar groups of each beam: position across the section and area, eight per beam.
+    private let beamBarLayoutBuffer: MTLBuffer
     private let contactPipelines: [MTLComputePipelineState]
     private let contactHeadBuffer: MTLBuffer
     private let contactSlotBuffer: MTLBuffer
@@ -196,7 +227,7 @@ public final class ShellSolver {
     private static let maxLoadPoints = 256
     /// Gauss-Legendre points and weights through the thickness, from -1 to 1.
     private let thicknessRule: [SIMD2<Float>]
-    private static let layerStride = 32
+    private static let layerStride = 20
     private static let barStride = 36
 
     public init(
@@ -215,6 +246,7 @@ public final class ShellSolver {
         }
         mesh = try ShellMesh(model: model)
         elementCount = mesh.elements.count
+        beamCount = mesh.beams.count
         nodeCount = mesh.positions.count
         layers = max(1, model.shellLayers)
         barSlots = max(1, mesh.elements.map(\.bars.count).max() ?? 0)
@@ -228,6 +260,7 @@ public final class ShellSolver {
             return try device.makeComputePipelineState(function: function)
         }
         elementPipeline = try pipeline("shellElements")
+        beamPipeline = try pipeline("beamElements")
         nodePipeline = try pipeline("shellNodes")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 
@@ -239,7 +272,15 @@ public final class ShellSolver {
             return buffer
         }
         let elements = max(elementCount, 1)
+        let beams = max(beamCount, 1)
         let nodes = max(nodeCount, 1)
+        beamBuffer = try buffer(beams * MemoryLayout<BeamElementData>.stride, "beams")
+        beamFlagBuffer = try buffer(beams, "beam flags")
+        beamDisplayBuffer = try buffer(beams * 4, "beam damage")
+        beamFibreBuffer = try buffer(beams * 16 * Self.layerStride, "beam fibres")
+        beamBarBuffer = try buffer(beams * ShellMesh.maxBeamBars * Self.barStride, "beam bars")
+        beamBarLayoutBuffer = try buffer(beams * ShellMesh.maxBeamBars * 16, "beam bar layout")
+        beamForceBuffer = try buffer(beams * 48, "beam forces")
         nodeBuffer = try buffer(nodes * MemoryLayout<ShellNode>.stride, "shell nodes")
         referenceBuffer = try buffer(nodes * 16, "shell node positions")
         elementBuffer = try buffer(elements * MemoryLayout<ShellElementData>.stride, "shell elements")
@@ -307,6 +348,22 @@ public final class ShellSolver {
                 incidence[Int(element.nodes[corner])].append(UInt32(e * 4 + corner))
             }
         }
+        let beamData = beamBuffer.contents().bindMemory(to: BeamElementData.self, capacity: beams)
+        for (b, beam) in mesh.beams.enumerated() {
+            beamData[b] = BeamElementData(
+                n0: beam.nodes.x, n1: beam.nodes.y, axis: UInt32(beam.axis), material: UInt32(beam.material),
+                width: beam.section.x, depth: beam.section.y, length: beam.length,
+                barCount: UInt32(beam.bars.count), tieRatio: beam.tieRatio)
+            let layout = beamBarLayoutBuffer.contents().bindMemory(
+                to: SIMD4<Float>.self, capacity: beams * ShellMesh.maxBeamBars)
+            for slot in 0..<ShellMesh.maxBeamBars {
+                layout[b * ShellMesh.maxBeamBars + slot] =
+                    slot < beam.bars.count ? SIMD4(beam.bars[slot], 0) : .zero
+            }
+            for end in 0..<2 {
+                incidence[Int(beam.nodes[end])].append(0x8000_0000 | UInt32(b * 4 + end))
+            }
+        }
         var starts: [UInt32] = [0]
         var entries: [UInt32] = []
         for list in incidence {
@@ -333,6 +390,10 @@ public final class ShellSolver {
         time = 0
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
+        memset(beamFlagBuffer.contents(), Int32(ElementFlag.active.rawValue), beamFlagBuffer.length)
+        for buffer in [beamFibreBuffer, beamBarBuffer, beamForceBuffer, beamDisplayBuffer] {
+            memset(buffer.contents(), 0, buffer.length)
+        }
         for buffer in [layerBuffer, barBuffer, forceBuffer, displayBuffer, contactForceBuffer]
             + barPlasticBuffers
         {
@@ -350,6 +411,16 @@ public final class ShellSolver {
                 let radius = (element.thickness * element.thickness + area) / 12
                 for corner in 0..<4 {
                     let n = Int(element.nodes[corner])
+                    nodes[n].mass += share
+                    nodes[n].inertia += share * radius
+                }
+            }
+            for beam in mesh.beams {
+                let share =
+                    materials[beam.material].density * beam.section.x * beam.section.y * beam.length / 2
+                let radius = (beam.length * beam.length + simd_length_squared(beam.section)) / 12
+                for end in 0..<2 {
+                    let n = Int(beam.nodes[end])
                     nodes[n].mass += share
                     nodes[n].inertia += share * radius
                 }
@@ -401,6 +472,16 @@ public final class ShellSolver {
         let entries = incidenceBuffer.contents().bindMemory(to: UInt32.self, capacity: Int(starts[nodeCount]))
         var total = SIMD3<Float>.zero
         for i in Int(starts[index])..<Int(starts[index + 1]) {
+            if entries[i] & 0x8000_0000 != 0 {
+                let beam = Int((entries[i] & 0x7FFF_FFFF) >> 2)
+                let end = Int(entries[i] & 3)
+                guard beamFlag(beam) == .active else { continue }
+                let base = beamForceBuffer.contents().advanced(by: beam * 48 + end * 12)
+                total += SIMD3(
+                    base.load(as: Float.self), base.load(fromByteOffset: 4, as: Float.self),
+                    base.load(fromByteOffset: 8, as: Float.self))
+                continue
+            }
             let element = Int(entries[i] >> 2)
             let corner = Int(entries[i] & 3)
             guard flag(element) == .active else { continue }
@@ -419,9 +500,25 @@ public final class ShellSolver {
     }
 
     /// Removes elements by hand, as if they had failed, chosen by their reference centres.
+    public func beamFlag(_ beam: Int) -> ElementFlag {
+        ElementFlag(rawValue: beamFlagBuffer.contents().load(fromByteOffset: beam, as: UInt8.self)) ?? .eroded
+    }
+
+    /// Reference midpoint of each beam.
+    public func beamCentre(_ beam: Int) -> SIMD3<Float> {
+        let ends = mesh.beams[beam].nodes
+        return 0.5 * (mesh.positions[Int(ends.x)] + mesh.positions[Int(ends.y)])
+    }
+
     public func erode(where shouldErode: (SIMD3<Float>) -> Bool) {
         let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: max(elementCount, 1))
+        let beamFlags = beamFlagBuffer.contents().bindMemory(to: UInt8.self, capacity: max(beamCount, 1))
         var any = false
+        for b in 0..<beamCount where beamFlags[b] == ElementFlag.active.rawValue && shouldErode(beamCentre(b))
+        {
+            beamFlags[b] = ElementFlag.eroded.rawValue
+            any = true
+        }
         for e in 0..<elementCount
         where flags[e] == ElementFlag.active.rawValue && shouldErode(elementCentre(e)) {
             flags[e] = ElementFlag.eroded.rawValue
@@ -466,6 +563,16 @@ public final class ShellSolver {
                 summary.erodedElements += 1
             }
         }
+        let beamDamage = beamDisplayBuffer.contents().bindMemory(to: Float.self, capacity: max(beamCount, 1))
+        for (b, beam) in mesh.beams.enumerated() {
+            if beamFlag(b) == .active {
+                summary.activeElements += 1
+                summary.maxDamage = max(summary.maxDamage, beamDamage[b])
+                for end in 0..<2 { attached[Int(beam.nodes[end])] = true }
+            } else {
+                summary.erodedElements += 1
+            }
+        }
         var largest: Float = 0
         mutateNodes { nodes in
             for (n, node) in nodes.enumerated() where attached[n] {
@@ -481,7 +588,8 @@ public final class ShellSolver {
     public var memoryFootprint: Int {
         [
             nodeBuffer, referenceBuffer, elementBuffer, flagBuffer, displayBuffer, layerBuffer,
-            barLayoutBuffer,
+            barLayoutBuffer, beamBuffer, beamFlagBuffer, beamDisplayBuffer, beamFibreBuffer, beamBarBuffer,
+            beamForceBuffer, beamBarLayoutBuffer,
             barBuffer, forceBuffer, incidenceStartBuffer, incidenceBuffer, contactHeadBuffer,
             contactSlotBuffer,
             contactForceBuffer,
@@ -506,6 +614,10 @@ public final class ShellSolver {
             let speed = materials[element.material].plateWaveSpeed
             step = min(step, min(element.size.x, element.size.y) / speed)
         }
+        for beam in mesh.beams {
+            let material = materials[beam.material]
+            step = min(step, beam.length / (material.youngsModulus / material.density).squareRoot())
+        }
         return timeStepSafety * (step.isFinite ? step : 1e-4)
     }
 
@@ -514,7 +626,7 @@ public final class ShellSolver {
     public func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?
     ) {
-        guard elementCount > 0 else { return }
+        guard elementCount + beamCount > 0 else { return }
         var uniforms = makeUniforms(fluid: fluid)
         var parameters = materials.map {
             StructureSolver.parameters(for: $0, elementSize: model.elementSize)
@@ -548,8 +660,32 @@ public final class ShellSolver {
             encoder.setBuffer(neighbourBuffer, offset: 0, index: 17)
             encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 18)
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 19)
-            encoder.dispatchThreads(
-                MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if elementCount > 0 {
+                // Four threads per element, one per in-plane point.
+                encoder.dispatchThreads(
+                    MTLSize(width: 4 * elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
+            if beamCount > 0 {
+                encoder.setComputePipelineState(beamPipeline)
+                encoder.setBuffer(beamFibreBuffer, offset: 0, index: 0)
+                encoder.setBuffer(beamForceBuffer, offset: 0, index: 1)
+                encoder.setBuffer(beamFlagBuffer, offset: 0, index: 2)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 3)
+                encoder.setBuffer(referenceBuffer, offset: 0, index: 4)
+                encoder.setBuffer(beamBuffer, offset: 0, index: 5)
+                encoder.setBuffer(beamBarBuffer, offset: 0, index: 6)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 7)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 8)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 9)
+                encoder.setBuffer(fluid?.state ?? placeholderBuffer, offset: 0, index: 10)
+                encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 11)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 12)
+                encoder.setBuffer(beamDisplayBuffer, offset: 0, index: 13)
+                encoder.setBuffer(beamBarLayoutBuffer, offset: 0, index: 14)
+                encoder.dispatchThreads(
+                    MTLSize(width: beamCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
 
             if encodeContact {
                 stamp = stamp % 0x1FFF_FFF0 + 1
@@ -580,6 +716,8 @@ public final class ShellSolver {
             encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 7)
             encoder.setBuffer(contactForceBuffer, offset: 0, index: 8)
             encoder.setBuffer(failureGateBuffer, offset: 0, index: 9)
+            encoder.setBuffer(beamForceBuffer, offset: 0, index: 10)
+            encoder.setBuffer(beamFlagBuffer, offset: 0, index: 11)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
@@ -634,6 +772,7 @@ public final class ShellSolver {
     private func makeUniforms(fluid: StructureSolver.FluidBinding?) -> ShellUniforms {
         var uniforms = ShellUniforms()
         uniforms.elementCount = UInt32(elementCount)
+        uniforms.beamCount = UInt32(beamCount)
         uniforms.nodeCount = UInt32(nodeCount)
         uniforms.layers = UInt32(layers)
         uniforms.barSlots = UInt32(barSlots)

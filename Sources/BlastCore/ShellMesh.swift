@@ -1,12 +1,13 @@
 import simd
 
-/// A shell mesh of a structure whose solids are all walls and slabs.
+/// A mesh of shells and beams for a structure whose solids are all walls, slabs and columns.
 ///
-/// Each solid becomes a plate on its midsurface. The plates' nodes lie on one grid shared by the
-/// whole structure, a set of breakpoints along each axis, so that plates that meet share the
-/// nodes along the line where they meet and are joined rigidly. A plate that ends inside
-/// another (a wall under a slab, two walls at a corner) is extended or shortened to end on the
-/// other's midsurface.
+/// Each wall or slab becomes a plate of shells on its midsurface, and each column a line of
+/// beams on its centreline. Their nodes lie on one grid shared by the whole structure, a set of
+/// breakpoints along each axis, so that members that meet share the nodes where they meet and
+/// are joined rigidly. A member that ends inside another (a wall under a slab, two walls at a
+/// corner, a column under a slab, a panel between columns) is extended or shortened to end on
+/// the other's midsurface or centreline.
 struct ShellMesh {
     struct Element {
         /// Corners in order around the element: (0, 0), (1, 0), (1, 1), (0, 1) in its own axes.
@@ -27,8 +28,24 @@ struct ShellMesh {
         var neighbours = SIMD4<Int32>(repeating: -1)
     }
 
+    struct Beam {
+        var nodes: SIMD2<UInt32>
+        /// The axis along the beam; its section's sides are along the next two, in order.
+        var axis: Int
+        var material: Int
+        /// Sides of the section along the next two axes.
+        var section: SIMD2<Float>
+        var length: Float
+        /// Bars along the beam: position across the section (-1 to 1 along each side) and area.
+        var bars: [SIMD3<Float>]
+        /// Area of ties per unit area of concrete, for confinement.
+        var tieRatio: Float
+        var solid: Int
+    }
+
     var positions: [SIMD3<Float>] = []
     var elements: [Element] = []
+    var beams: [Beam] = []
     /// Breakpoints along each axis.
     var grid: [[Float]] = [[], [], []]
 
@@ -47,17 +64,45 @@ struct ShellMesh {
         var high: SIMD3<Float>
     }
 
+    private struct Column {
+        var solid: Int
+        var axis: Int
+        var box: Box
+        /// Centreline: the middle of the section, along the other two axes.
+        var centre: SIMD3<Float>
+        /// Ends along `axis`, after being made to end on the plates they meet.
+        var low: Float
+        var high: Float
+    }
+
+    /// Cover from a column's face to the centre of its corner bars.
+    static let columnCover: Float = 0.04
+    /// Most bar groups a beam can carry.
+    static let maxBeamBars = 8
+
     init(model: StructureModel) throws {
         let size = model.elementSize
         let tolerance: Float = 1e-4
         var plates: [Plate] = []
+        var columns: [Column] = []
         for (index, box) in model.solids.enumerated() {
             let extent = box.size
             let axis = (0..<3).min { extent[$0] < extent[$1] } ?? 0
             let others = (0..<3).filter { $0 != axis }
-            guard extent[axis] > 0, others.allSatisfy({ extent[axis] <= 0.5 * extent[$0] }) else {
-                throw BlastError.notPlateLike(index)
+            let long = (0..<3).max { extent[$0] < extent[$1] } ?? 2
+            let across = (0..<3).filter { $0 != long }
+            if extent[axis] > 0, !others.allSatisfy({ extent[axis] <= 0.5 * extent[$0] }) {
+                // Not a wall or slab: a column if it is at least twice as long as it is wide.
+                guard across.allSatisfy({ extent[$0] > 0 && 2 * extent[$0] <= extent[long] }) else {
+                    throw BlastError.notPlateLike(index)
+                }
+                columns.append(
+                    Column(
+                        solid: index, axis: long, box: box, centre: 0.5 * (box.min + box.max),
+                        low: box.min[long], high: box.max[long]))
+                continue
             }
+            guard extent[axis] > 0 else { throw BlastError.notPlateLike(index) }
             let mid = 0.5 * (box.min[axis] + box.max[axis])
             var low = box.min
             var high = box.max
@@ -79,6 +124,11 @@ struct ShellMesh {
             }
             return true
         }
+        func boxesTouch(_ a: Box, _ b: Box, along k: Int) -> Bool {
+            (0..<3).allSatisfy { j in
+                j == k || (a.max[j] >= b.min[j] - tolerance && b.max[j] >= a.min[j] - tolerance)
+            }
+        }
         for n in plates.indices {
             for k in 0..<3 where k != plates[n].axis {
                 for q in plates
@@ -87,6 +137,22 @@ struct ShellMesh {
                     if within.contains(plates[n].box.min[k]) { plates[n].low[k] = q.mid }
                     if within.contains(plates[n].box.max[k]) { plates[n].high[k] = q.mid }
                 }
+                // A panel that ends against a column ends on its centreline.
+                for column in columns
+                where column.axis != k && boxesTouch(plates[n].box, column.box, along: k) {
+                    let within = (column.box.min[k] - tolerance)...(column.box.max[k] + tolerance)
+                    if within.contains(plates[n].box.min[k]) { plates[n].low[k] = column.centre[k] }
+                    if within.contains(plates[n].box.max[k]) { plates[n].high[k] = column.centre[k] }
+                }
+            }
+        }
+        // A column that ends inside a slab ends on its midsurface.
+        for n in columns.indices {
+            let k = columns[n].axis
+            for plate in plates where plate.axis == k && boxesTouch(columns[n].box, plate.box, along: k) {
+                let within = (plate.box.min[k] - tolerance)...(plate.box.max[k] + tolerance)
+                if within.contains(columns[n].box.min[k]) { columns[n].low = plate.mid }
+                if within.contains(columns[n].box.max[k]) { columns[n].high = plate.mid }
             }
         }
 
@@ -99,6 +165,14 @@ struct ShellMesh {
                 if !kept.contains(where: { abs($0 - value) < spacing }) { kept.append(value) }
             }
             for plate in plates where plate.axis == k { offer(plate.mid, spacing: tolerance) }
+            // A column's centreline within half an element of a midsurface moves onto it (cladding
+            // flush with a column's face would otherwise leave a sliver of elements, and a time
+            // step to match); parallel plates never merge.
+            for column in columns where column.axis != k { offer(column.centre[k], spacing: 0.5 * size) }
+            for column in columns where column.axis == k {
+                offer(column.low, spacing: 0.5 * size)
+                offer(column.high, spacing: 0.5 * size)
+            }
             for plate in plates where plate.axis != k {
                 offer(plate.low[k], spacing: 0.5 * size)
                 offer(plate.high[k], spacing: 0.5 * size)
@@ -182,6 +256,63 @@ struct ShellMesh {
                         elements.append(element)
                     }
                 }
+            }
+        }
+        for column in columns {
+            let k = column.axis
+            let first = (k + 1) % 3
+            let second = (k + 2) % 3
+            let material = materials.firstIndex(of: model.material(of: column.solid)) ?? 0
+            let section = SIMD2(column.box.size[first], column.box.size[second])
+            // Bars from the reinforcement regions that cross the section: a region filling the
+            // section (a column's smeared steel) becomes four corner bars at the cover; one
+            // filling part of it (a mat near one face) becomes a bar at its middle. Ties come from
+            // the ratios across the beam.
+            var bars: [SIMD3<Float>] = []
+            var ties: Float = 0
+            if materials[material].steel != nil {
+                let cover = min(Self.columnCover, 0.25 * section.min())
+                let inset = SIMD2(1 - 2 * cover / section.x, 1 - 2 * cover / section.y)
+                for layer in model.reinforcement {
+                    let region = layer.region
+                    guard region.min[k] <= column.centre[k], column.centre[k] <= region.max[k] else {
+                        continue
+                    }
+                    let low = SIMD2(
+                        max(region.min[first], column.box.min[first]),
+                        max(region.min[second], column.box.min[second]))
+                    let high = SIMD2(
+                        min(region.max[first], column.box.max[first]),
+                        min(region.max[second], column.box.max[second]))
+                    let overlap = high - low
+                    guard overlap.x > 0, overlap.y > 0, layer.ratio[k] > 0 else { continue }
+                    ties = max(ties, max(layer.ratio[first], layer.ratio[second]))
+                    let area = layer.ratio[k] * overlap.x * overlap.y
+                    if overlap.x >= 0.99 * section.x && overlap.y >= 0.99 * section.y {
+                        for corner in 0..<4 where bars.count < Self.maxBeamBars {
+                            let sign = SIMD2<Float>(corner & 1 == 0 ? -1 : 1, corner & 2 == 0 ? -1 : 1)
+                            bars.append(SIMD3(sign * inset, area / 4))
+                        }
+                    } else if bars.count < Self.maxBeamBars {
+                        let middle = 0.5 * (low + high)
+                        let centre = SIMD2(column.centre[first], column.centre[second])
+                        let position = simd_clamp(2 * (middle - centre) / section, -inset, inset)
+                        bars.append(SIMD3(position, area))
+                    }
+                }
+            }
+            var key = SIMD3<Int32>(repeating: 0)
+            key[first] = Int32(nearest(column.centre[first], first))
+            key[second] = Int32(nearest(column.centre[second], second))
+            for w in nearest(column.low, k)..<nearest(column.high, k) {
+                var lower = key
+                var upper = key
+                lower[k] = Int32(w)
+                upper[k] = Int32(w + 1)
+                beams.append(
+                    Beam(
+                        nodes: SIMD2(node(lower), node(upper)), axis: k, material: material, section: section,
+                        length: grid[k][w + 1] - grid[k][w], bars: bars, tieRatio: ties, solid: column.solid))
             }
         }
         for (key, index) in claimed {

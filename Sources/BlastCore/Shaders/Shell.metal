@@ -48,7 +48,39 @@ struct ShellUniforms {
     float contactDamping;    // fraction of critical
     float contactFriction;
     float neighbourDistance;  // nodes that start closer than this never repel
+    uint beamCount;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
+
+struct BeamElement {
+    uint node[2];
+    uint axis;  // along the beam; the section's sides are along the next two axes, in order
+    uint material;
+    float width;   // side of the section along the first of those
+    float depth;   // along the second
+    float length;
+    uint barCount;  // bar groups, in `beamBarLayout`
+    float tieRatio;
+    float padding0;
+    float padding1;
+};
+
+constant uint maxBeamBars = 8;
+
+struct BeamForces {
+    packed_float3 force[2];
+    packed_float3 moment[2];
+};
+
+// Incidence entries with this bit set refer to beams.
+constant uint beamIncidence = 0x80000000u;
+
+// Fibres across a beam's section: 4 x 4 Gauss-Legendre points.
+constant uint beamFibres = 4;
+constant float beamFibrePoints[4] = {-0.86113631159f, -0.33998104541f, 0.33998104541f, 0.86113631159f};
+constant float beamFibreWeights[4] = {0.34785484514f, 0.65214515486f, 0.65214515486f, 0.34785484514f};
 
 struct ShellElement {
     uint node[4];  // corners (0, 0), (1, 0), (1, 1), (0, 1) along the element's own axes
@@ -73,17 +105,42 @@ struct ShellNode {
 
 constant uint shellRotationHeld = 64u;
 
-// State of one layer at one of the four in-plane points.
-struct ShellLayer {
-    float2 crack;  // concrete: largest tensile strain across the planes normal to the element's
-                   // axes; von Mises: plastic strain along them
-    float2 crush;  // concrete: largest compressive strain along the axes; von Mises: plastic
-                   // shear strain and equivalent plastic strain
-    float rate;    // running average of the effective strain rate
-    float crackingFactor;  // tensile rate factor frozen when the layer first cracked
-    float display;         // 0 (sound) to 1 (failing)
-    float spare;
+// State of one layer at one of the four in-plane points (or one fibre of a beam), as stored:
+// 20 bytes. The strain-rate average and the frozen tensile factor need only half precision.
+struct ShellLayerStore {
+    packed_float2 crack;  // concrete: largest tensile strain across the planes normal to the
+                          // element's axes; von Mises: plastic strain along them
+    packed_float2 crush;  // concrete: largest compressive strain along the axes; von Mises:
+                          // plastic shear strain and equivalent plastic strain
+    half rate;            // running average of the effective strain rate
+    half crackingFactor;  // tensile rate factor frozen when the layer first cracked
 };
+
+// The same, as worked on, with the layer's damage for display (0 sound, 1 failing).
+struct ShellLayer {
+    float2 crack;
+    float2 crush;
+    float rate;
+    float crackingFactor;
+    float display;
+};
+
+static inline ShellLayer loadLayer(const device ShellLayerStore &stored) {
+    ShellLayer layer;
+    layer.crack = float2(stored.crack);
+    layer.crush = float2(stored.crush);
+    layer.rate = float(stored.rate);
+    layer.crackingFactor = float(stored.crackingFactor);
+    layer.display = 0.0f;
+    return layer;
+}
+
+static inline void storeLayer(device ShellLayerStore &stored, thread const ShellLayer &layer) {
+    stored.crack = layer.crack;
+    stored.crush = layer.crush;
+    stored.rate = half(min(layer.rate, 60000.0f));
+    stored.crackingFactor = half(layer.crackingFactor);
+}
 
 // One bar layer, one direction, at one in-plane point.
 struct ShellBar {
@@ -174,7 +231,6 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
             state.crackingFactor = tensionFactor;
         }
     }
-    float compressionFactor = compressionIncrease(state.rate, m);
     float onset = m.crackOnset * tensionFactor;
 
     float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
@@ -189,11 +245,11 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     float shearOverE = strain.z / (1.0f + poisson);
     float centre = 0.5f * (uniaxial.x + uniaxial.y);
     float radius = sqrt(0.25f * (uniaxial.x - uniaxial.y) * (uniaxial.x - uniaxial.y) + shearOverE * shearOverE);
-    float angle = 0.5f * atan2(2.0f * shearOverE, uniaxial.x - uniaxial.y);
-    float c = cos(angle);
-    float s = sin(angle);
+    // Squared direction cosines of the major principal direction, without trigonometry.
+    float c2 = radius > 0.0f ? 0.5f * (1.0f + 0.5f * (uniaxial.x - uniaxial.y) / radius) : 1.0f;
+    float s2 = 1.0f - c2;
     float2 principal = float2(centre + radius, centre - radius);
-    float2 directions[2] = {float2(c * c, s * s), float2(s * s, c * c)};
+    float2 directions[2] = {float2(c2, s2), float2(s2, c2)};
     for (int i = 0; i < 2; ++i) {
         float2 weight = directions[i];
         float seen = dot(weight, history);
@@ -228,6 +284,8 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     float2 normalStress;
     float crushed = 0.0f;
     bool pulverised = false;
+    // The compressive rate factor is wanted only where the layer is squeezed.
+    float compressionFactor = any(squeeze > 0.0f) ? compressionIncrease(state.rate, m) : 1.0f;
     for (int j = 0; j < 2; ++j) {
         if (squeeze[j] <= 0.0f) {
             normalStress[j] = concreteTension(uniaxial[j], history[j], tensionFactor, m);
@@ -350,6 +408,17 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     root = sqrt(max(1.0f + 2.0f * green, 1e-6f));
     float fibre = 2.0f * green / (1.0f + root);
     stress = m.steelModulus * (fibre - plastic);
+    if (plastic == 0.0f && fabs(stress) <= m.steelStress[0]) {
+        // Below the static yield stress a bar that has never yielded is elastic whatever its
+        // rate factor (which is at least one), so the factor need not be worked out.
+        if (fabs(spread.y) > m.steelStrain[m.steelPoints - 1]) {
+            bar.plastic = 1e9f;  // its neighbours have pulled it past rupture
+            return false;
+        }
+        yieldOut = m.steelStress[0];
+        spread.x = 0.0f;
+        return true;
+    }
     float accumulated = fabs(plastic);
     float slope;
     float yield = steelYield(accumulated, m, slope);
@@ -379,7 +448,7 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     return true;
 }
 
-kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
+kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           device ShellForces *forces [[buffer(1)]],
                           device uchar *flags [[buffer(2)]],
                           const device ShellNode *nodes [[buffer(3)]],
@@ -399,7 +468,11 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
                           const device int4 *neighbours [[buffer(17)]],
                           device float *barPlasticOut [[buffer(18)]],
                           const device float *barPlasticBefore [[buffer(19)]],
-                          uint e [[thread_position_in_grid]]) {
+                          uint lane [[thread_position_in_grid]]) {
+    // Four threads per element, one for each of its in-plane points, in adjacent lanes (a quad);
+    // their shares of the forces are summed across the quad at the end.
+    uint e = lane >> 2;
+    uint g = lane & 3u;
     bool active;
     float dt = shellStep(u, control, active);
     if (!active || e >= u.elementCount || flags[e] != elementActive) {
@@ -468,7 +541,7 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
     float barMean[8] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     const float gauss = 0.57735026919f;
 
-    for (uint g = 0; g < 4; ++g) {
+    {
         float2 p = shellCorners[g] * gauss;
         float3 h1m = float3(0.0f);
         float3 h1b = float3(0.0f);
@@ -521,13 +594,13 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
             float3 rate = float3(dot(f1, d1), dot(f2, d2), 0.5f * (dot(f1, d2) + dot(f2, d1)));
             float instantaneous = sqrt((2.0f / 3.0f) * (rate.x * rate.x + rate.y * rate.y + 2.0f * rate.z * rate.z));
             uint slot = (e * 4 + g) * n + l;
-            ShellLayer state = layers[slot];
+            ShellLayer state = loadLayer(layers[slot]);
             float2 shear;
             LayerOutcome outcome;
             float3 stress = m.materialModel == 0
                 ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
                 : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, shear, outcome);
-            layers[slot] = state;
+            storeLayer(layers[slot], state);
             rateSum += state.rate;
             worstDisplay = max(worstDisplay, state.display);
             remove = remove || outcome.failed;
@@ -654,6 +727,19 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
         }
     }
 
+    // Sum the four points' shares across the quad.
+    for (uint c = 0; c < 4; ++c) {
+        nodeForce[c] = quad_sum(nodeForce[c]);
+        directorForce[c] = quad_sum(directorForce[c]);
+    }
+    remove = quad_max(remove ? 1.0f : 0.0f) > 0.0f;
+    worstDisplay = quad_max(worstDisplay);
+    for (uint s = 0; s < 8; ++s) {
+        barMean[s] = quad_sum(barMean[s]);
+    }
+    if (g != 0) {
+        return;
+    }
     if (m.barReach > 0.0f) {
         for (uint s = 0; s < el.barCount && s < u.barSlots; ++s) {
             for (uint j = 0; j < 2; ++j) {
@@ -811,6 +897,283 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
     contact[n] = force;
 }
 
+// One concrete fibre of a beam: the uniaxial laws along the beam, confined by its ties, with
+// shear across it carried by aggregate interlock once cracked, and diagonal cracks from the
+// principal tension of the axial stress with the shear.
+static inline float beamConcrete(float axial, float2 shear, float instantaneous, float dt, float confinement,
+                                 bool reinforced, thread ShellLayer &state, constant MaterialParameters &m,
+                                 constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
+    state.rate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.rate);
+    float history = state.crack.x;
+    float tensionFactor = state.crackingFactor;
+    if (tensionFactor <= 0.0f) {
+        tensionFactor = tensionIncrease(state.rate, m);
+        if (history > m.crackOnset * tensionFactor) {
+            state.crackingFactor = tensionFactor;
+        }
+    }
+    float onset = m.crackOnset * tensionFactor;
+    float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
+    float magnitude = length(shear);
+    float shearOverE = u.shearFactor * magnitude / (2.0f * (1.0f + poisson));
+    float radius = sqrt(0.25f * axial * axial + shearOverE * shearOverE);
+    float tension = 0.5f * axial + radius;
+    if (tension > history && tension > onset && radius > 0.0f) {
+        float c2 = 0.5f * (1.0f + 0.5f * axial / radius);
+        float s2 = 1.0f - c2;
+        history += (tension - history) * c2 / (c2 * c2 + s2 * s2);
+    }
+    history = max(history, axial);
+    state.crack.x = history;
+    float residual = crackResidual(history, tensionFactor, m);
+    float squeeze = residual - axial;
+    float crush = max(state.crush.x, squeeze);
+    state.crush.x = crush;
+    float stress;
+    float crushed = 0.0f;
+    bool pulverised = false;
+    if (squeeze <= 0.0f) {
+        stress = concreteTension(axial, history, tensionFactor, m);
+    } else {
+        float compressionFactor = compressionIncrease(state.rate, m);
+        stress = concreteCompression(squeeze, crush, crush, compressionFactor, confinement, m);
+        float2 limits = crushStrains(compressionFactor, confinement, m);
+        crushed = clamp((squeeze - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
+        pulverised = squeeze >= limits.y + m.crushErosion * (limits.y - limits.x);
+    }
+    shearStress = u.shearFactor * m.mu * shear;
+    float opened = history - onset;
+    if (opened > 0.0f) {
+        float width = opened * m.crackBand;
+        float limit = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+        float carried = m.shearRetention * length(shearStress);
+        if (carried > 0.0f) {
+            shearStress *= min(carried, limit) / length(shearStress);
+        }
+    }
+    outcome.torn = float2(history >= m.erosionStrain ? 1.0f : 0.0f, 0.0f);
+    outcome.slid = float2(history > onset && magnitude >= m.erosionStrain ? 1.0f : 0.0f, 0.0f);
+    outcome.destroyed = pulverised || history >= m.erosionStrain;
+    outcome.open = history > max(1.0f, 3.0f * m.erosionStrain);
+    outcome.failed = false;
+    state.display = max(history / (reinforced ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
+    return stress;
+}
+
+// One steel fibre of a beam: uniaxial von Mises with linear hardening; shear stays elastic.
+static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &state, constant MaterialParameters &m,
+                                 constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
+    float young = m.youngsModulus;
+    float stress = young * (axial - state.crack.x);
+    float yield = m.yieldStress + m.hardening * state.crush.y;
+    if (fabs(stress) > yield) {
+        float increment = (fabs(stress) - yield) / (young + m.hardening);
+        state.crack.x += stress > 0.0f ? increment : -increment;
+        state.crush.y += increment;
+        stress = young * (axial - state.crack.x);
+    }
+    shearStress = u.shearFactor * m.mu * shear;
+    outcome.torn = float2(0.0f);
+    outcome.slid = float2(0.0f);
+    outcome.destroyed = false;
+    outcome.open = false;
+    outcome.failed = state.crush.y >= m.failureStrain;
+    state.display = state.crush.y / m.failureStrain;
+    return stress;
+}
+
+// Two-node beams on the centrelines of columns, the line counterpart of the shells: a
+// degenerated solid whose section is carried by two directors at each node (the rotated
+// reference axes of the section), with one point along the beam, which neither locks in shear
+// nor has spurious modes, and 4 x 4 fibres across the section.
+kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
+                         device BeamForces *forces [[buffer(1)]],
+                         device uchar *flags [[buffer(2)]],
+                         const device ShellNode *nodes [[buffer(3)]],
+                         const device float4 *reference [[buffer(4)]],
+                         const device BeamElement *beams [[buffer(5)]],
+                         device ShellBar *bars [[buffer(6)]],
+                         constant MaterialParameters *materials [[buffer(7)]],
+                         constant ShellUniforms &u [[buffer(8)]],
+                         const device StepControl &control [[buffer(9)]],
+                         const device Cell *fluid [[buffer(10)]],
+                         const device uchar *fluidMask [[buffer(11)]],
+                         device uint *failureGate [[buffer(12)]],
+                         device float *display [[buffer(13)]],
+                         const device float4 *barLayout [[buffer(14)]],
+                         uint e [[thread_position_in_grid]]) {
+    bool active;
+    float dt = shellStep(u, control, active);
+    if (!active || e >= u.beamCount || flags[e] != elementActive) {
+        return;
+    }
+    BeamElement beam = beams[e];
+    constant MaterialParameters &m = materials[min(beam.material, maxMaterials - 1)];
+    uint k = beam.axis;
+    uint i2 = (k + 1) % 3;
+    uint i3 = (k + 2) % 3;
+    float3 e1 = float3(0.0f);
+    float3 e2 = float3(0.0f);
+    float3 e3 = float3(0.0f);
+    e1[k] = 1.0f;
+    e2[i2] = 1.0f;
+    e3[i3] = 1.0f;
+    float L = beam.length;
+
+    float3 x[2];
+    float3 disp[2];
+    float3 vel[2];
+    float3 offset2[2];
+    float3 offset3[2];
+    float3 director2[2];
+    float3 director3[2];
+    float3 turn2[2];
+    float3 turn3[2];
+    for (uint c = 0; c < 2; ++c) {
+        ShellNode node = nodes[beam.node[c]];
+        disp[c] = float3(node.displacement);
+        vel[c] = float3(node.velocity);
+        x[c] = reference[beam.node[c]].xyz + disp[c];
+        offset2[c] = rotationOffset(node.rotation, e2);
+        offset3[c] = rotationOffset(node.rotation, e3);
+        director2[c] = e2 + offset2[c];
+        director3[c] = e3 + offset3[c];
+        turn2[c] = cross(float3(node.spin), director2[c]);
+        turn3[c] = cross(float3(node.spin), director3[c]);
+    }
+    // Derivatives along the beam, and the directors at its middle.
+    float3 hm = (disp[1] - disp[0]) / L;
+    float3 h2 = 0.5f * beam.width * (offset2[1] - offset2[0]) / L;
+    float3 h3 = 0.5f * beam.depth * (offset3[1] - offset3[0]) / L;
+    float3 rm = (vel[1] - vel[0]) / L;
+    float3 r2 = 0.5f * beam.width * (turn2[1] - turn2[0]) / L;
+    float3 r3 = 0.5f * beam.depth * (turn3[1] - turn3[0]) / L;
+    float3 delta2 = 0.5f * (offset2[0] + offset2[1]);
+    float3 delta3 = 0.5f * (offset3[0] + offset3[1]);
+    float3 d2 = e2 + delta2;
+    float3 d3 = e3 + delta3;
+
+    // Ties confine the concrete: lateral pressure half the tie ratio times the bars' yield stress.
+    float confinement = 1.0f;
+    if (m.materialModel != 0 && beam.tieRatio > 0.0f && m.steelPoints > 0) {
+        confinement = 1.0f + m.confinement * 0.5f * beam.tieRatio * m.steelStress[0] / m.compressiveStrength;
+    }
+
+    float3 p = float3(0.0f);   // conjugate of the derivative along the beam
+    float3 q2 = float3(0.0f);  // ... weighted by position across the first side
+    float3 q3 = float3(0.0f);
+    float3 g2 = float3(0.0f);  // conjugate of the middle directors
+    float3 g3 = float3(0.0f);
+    float area = beam.width * beam.depth;
+    bool removeAll = true;
+    bool tornAll = true;
+    bool slidAll = true;
+    bool openAll = true;
+    bool failed = false;
+    float worst = 0.0f;
+    float rateSum = 0.0f;
+    for (uint a = 0; a < beamFibres; ++a) {
+        for (uint b = 0; b < beamFibres; ++b) {
+            float eta = beamFibrePoints[a];
+            float zeta = beamFibrePoints[b];
+            float weight = 0.25f * area * beamFibreWeights[a] * beamFibreWeights[b] * L;
+            float3 h = hm + eta * h2 + zeta * h3;
+            float3 f1 = e1 + h;
+            float axial = h[k] + 0.5f * dot(h, h);
+            float2 shear = float2(h[i2] + delta2[k] + dot(h, delta2), h[i3] + delta3[k] + dot(h, delta3));
+            float3 rate = rm + eta * r2 + zeta * r3;
+            float instantaneous = fabs(dot(f1, rate));
+            uint slot = e * beamFibres * beamFibres + a * beamFibres + b;
+            ShellLayer state = loadLayer(fibres[slot]);
+            float2 shearStress;
+            LayerOutcome outcome;
+            float stress = m.materialModel == 0
+                ? beamVonMises(axial, shear, state, m, u, shearStress, outcome)
+                : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
+                               state, m, u, shearStress, outcome);
+            storeLayer(fibres[slot], state);
+            rateSum += state.rate;
+            worst = max(worst, state.display);
+            failed = failed || outcome.failed;
+            removeAll = removeAll && outcome.destroyed;
+            tornAll = tornAll && outcome.torn.x > 0.0f;
+            slidAll = slidAll && outcome.slid.x > 0.0f;
+            openAll = openAll && outcome.open;
+            float3 t = stress * f1 + shearStress.x * d2 + shearStress.y * d3;
+            p += weight * t;
+            q2 += weight * eta * t;
+            q3 += weight * zeta * t;
+            g2 += weight * shearStress.x * f1;
+            g3 += weight * shearStress.y * f1;
+        }
+    }
+    // Bars along the beam.
+    bool barsIntact = false;
+    for (uint c = 0; c < beam.barCount && c < maxBeamBars; ++c) {
+        float4 layout = barLayout[e * maxBeamBars + c];
+        float eta = layout.x;
+        float zeta = layout.y;
+        float barArea = layout.z;
+        {
+            float3 h = hm + eta * h2 + zeta * h3;
+            float green = h[k] + 0.5f * dot(h, h);
+            float stress;
+            float root;
+            float yield;
+            float2 spread = float2(1.0f, 0.0f);
+            if (!shellBar(bars[e * maxBeamBars + c], green, rateSum / float(beamFibres * beamFibres), m, stress, root,
+                          yield, spread)) {
+                continue;
+            }
+            barsIntact = true;
+            float3 t = (barArea * L * stress / root) * (e1 + h);
+            p += t;
+            q2 += eta * t;
+            q3 += zeta * t;
+        }
+    }
+    bool remove = failed || (tornAll && !barsIntact) || slidAll || (removeAll && !barsIntact) || openAll;
+
+    // Air pressure on the four sides.
+    float3 load[2] = {float3(0.0f), float3(0.0f)};
+    if (u.coupled != 0) {
+        float3 centre = 0.5f * (x[0] + x[1]);
+        float3 normals[2] = {normalize(d2), normalize(d3)};
+        float halves[2] = {0.5f * beam.width, 0.5f * beam.depth};
+        float faces[2] = {beam.depth * L, beam.width * L};
+        for (uint s = 0; s < 2; ++s) {
+            float plus = shellOverpressure(centre, normals[s], halves[s], fluid, fluidMask, u);
+            float minus = shellOverpressure(centre, -normals[s], halves[s], fluid, fluidMask, u);
+            float3 force = (minus - plus) * faces[s] * normals[s];
+            load[0] += 0.5f * force;
+            load[1] += 0.5f * force;
+        }
+    }
+
+    display[e] = worst;
+    BeamForces out;
+    if (remove) {
+        flags[e] = elementFailing;
+        failureGate[0] = 1;
+        for (uint c = 0; c < 2; ++c) {
+            out.force[c] = float3(0.0f);
+            out.moment[c] = float3(0.0f);
+        }
+    } else {
+        // Derivatives of the strain energy: the derivative along the beam takes the difference of
+        // the two nodes over the length, the middle directors half of each.
+        float3 sign[2] = {float3(-1.0f), float3(1.0f)};
+        for (uint c = 0; c < 2; ++c) {
+            float3 force = sign[c] * p / L;
+            float3 onDirector2 = sign[c] * 0.5f * beam.width * q2 / L + 0.5f * g2;
+            float3 onDirector3 = sign[c] * 0.5f * beam.depth * q3 / L + 0.5f * g3;
+            out.force[c] = load[c] - force;
+            out.moment[c] = -(cross(director2[c], onDirector2) + cross(director3[c], onDirector3));
+        }
+    }
+    forces[e] = out;
+}
+
 static inline float4 quaternionProduct(float4 p, float4 q) {
     return float4(p.w * q.xyz + q.w * p.xyz + cross(p.xyz, q.xyz), p.w * q.w - dot(p.xyz, q.xyz));
 }
@@ -826,6 +1189,8 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device StepControl &control [[buffer(7)]],
                        const device packed_float3 *contact [[buffer(8)]],
                        const device uint *failureGate [[buffer(9)]],
+                       const device BeamForces *beamForces [[buffer(10)]],
+                       device uchar *beamFlags [[buffer(11)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -836,6 +1201,19 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     float3 force = float3(0.0f);
     float3 moment = float3(0.0f);
     for (uint i = incidenceStart[n]; i < incidenceStart[n + 1]; ++i) {
+        if ((incidence[i] & beamIncidence) != 0) {
+            uint beam = (incidence[i] & ~beamIncidence) >> 2;
+            uint end = incidence[i] & 3u;
+            uchar flag = beamFlags[beam];
+            if (end == 0 && flag == elementFailing) {
+                beamFlags[beam] = elementEroded;
+            }
+            if (flag == elementActive) {
+                force += float3(beamForces[beam].force[end]);
+                moment += float3(beamForces[beam].moment[end]);
+            }
+            continue;
+        }
         uint element = incidence[i] >> 2;
         uint corner = incidence[i] & 3u;
         uchar flag = flags[element];
@@ -940,6 +1318,66 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
             for (uint l = 0; l < through; ++l) {
                 float zeta = -1.0f + (2.0f * float(l) + 1.0f) / float(through);
                 float3 sample = point + 0.5f * zeta * el.thickness * director;
+                int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
+                if (any(target < 0) || any(target >= dims)) {
+                    continue;
+                }
+                uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+                atomic_fetch_add_explicit(&occupancy[slot], 1u, memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x), memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y), memory_order_relaxed);
+                atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z), memory_order_relaxed);
+            }
+        }
+    }
+}
+
+// The air cells a beam's volume occupies, at points no more than half a cell apart.
+kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
+                      const device uchar *flags [[buffer(1)]],
+                      const device ShellNode *nodes [[buffer(2)]],
+                      const device float4 *reference [[buffer(3)]],
+                      device atomic_uint *occupancy [[buffer(4)]],
+                      constant CouplingUniforms &u [[buffer(5)]],
+                      constant uint &beamCount [[buffer(6)]],
+                      uint e [[thread_position_in_grid]]) {
+    if (e >= beamCount || flags[e] != elementActive) {
+        return;
+    }
+    BeamElement beam = beams[e];
+    float3 e2 = float3(0.0f);
+    float3 e3 = float3(0.0f);
+    e2[(beam.axis + 1) % 3] = 1.0f;
+    e3[(beam.axis + 2) % 3] = 1.0f;
+    float3 x[2];
+    float3 v[2];
+    float3 d2[2];
+    float3 d3[2];
+    for (uint c = 0; c < 2; ++c) {
+        ShellNode node = nodes[beam.node[c]];
+        x[c] = reference[beam.node[c]].xyz + float3(node.displacement);
+        v[c] = float3(node.velocity);
+        d2[c] = e2 + rotationOffset(node.rotation, e2);
+        d3[c] = e3 + rotationOffset(node.rotation, e3);
+    }
+    float spacing = 0.5f * u.fluidCell;
+    uint along = clamp(uint(ceil(beam.length / spacing)) + 1u, 2u, 17u);
+    uint across2 = clamp(uint(ceil(beam.width / spacing)), 1u, 8u);
+    uint across3 = clamp(uint(ceil(beam.depth / spacing)), 1u, 8u);
+    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
+    for (uint i = 0; i < along; ++i) {
+        float s = float(i) / float(along - 1);
+        float3 centre = mix(x[0], x[1], s);
+        float3 velocity = mix(v[0], v[1], s);
+        float3 side2 = mix(d2[0], d2[1], s);
+        float3 side3 = mix(d3[0], d3[1], s);
+        velocity = select(clamp(velocity, -wallSpeedLimit, wallSpeedLimit), float3(0.0f), isnan(velocity));
+        int3 fixed = int3(round(velocity * wallSpeedScale));
+        for (uint a = 0; a < across2; ++a) {
+            float eta = -1.0f + (2.0f * float(a) + 1.0f) / float(across2);
+            for (uint b = 0; b < across3; ++b) {
+                float zeta = -1.0f + (2.0f * float(b) + 1.0f) / float(across3);
+                float3 sample = centre + 0.5f * eta * beam.width * side2 + 0.5f * zeta * beam.depth * side3;
                 int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
                 if (any(target < 0) || any(target >= dims)) {
                     continue;

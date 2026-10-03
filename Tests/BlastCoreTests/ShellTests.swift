@@ -48,7 +48,8 @@ struct ShellTests {
         }
         #expect(throws: BlastError.self) {
             var columns = model
-            columns.solids.append(Box(x: 18...18.4, y: 15...15.4, height: 3.5))
+            // A block as long as it is wide is neither a wall nor a column.
+            columns.solids.append(Box(x: 18...18.4, y: 15...15.4, height: 0.4))
             _ = try ShellMesh(model: columns)
         }
     }
@@ -291,5 +292,147 @@ struct ShellTests {
         #expect(gap() > 0.25, "gap at the end \(gap()) m")
         let momentum = solver.momentum().x
         #expect(abs(momentum) < 0.01 * 2400 * 0.1 * 1 * Double(speed), "momentum \(momentum)")
+    }
+
+    // MARK: Beams
+
+    @Test("Frames mesh with beams on their columns, sharing nodes with the slabs")
+    func frameMesh() throws {
+        var model = try #require(ScenarioPreset.threeStorey.scenario.structure)
+        model.elementKind = .shell
+        model.elementSize = 0.25
+        let mesh = try ShellMesh(model: model)
+        // Twelve columns, each from the ground to the roof slab's midsurface.
+        let columnCentres = Set(
+            mesh.beams.map { beam -> SIMD2<Float> in
+                let p = mesh.positions[Int(beam.nodes.x)]
+                return SIMD2(p.x, p.y)
+            })
+        #expect(columnCentres.count == 12)
+        #expect(mesh.beams.allSatisfy { $0.axis == 2 && $0.bars.count == 4 && $0.tieRatio > 0 })
+        // Every column node at a slab's midsurface is also a node of that slab.
+        let slabNodes = Set(
+            mesh.elements.filter { $0.axis == 2 }.flatMap { e in (0..<4).map { Int(e.nodes[$0]) } })
+        let levels: [Float] = [3.375, 6.875, 10.375]
+        for beam in mesh.beams {
+            for end in 0..<2 {
+                let n = Int(beam.nodes[end])
+                if levels.contains(where: { abs(mesh.positions[n].z - $0) < 1e-4 }) {
+                    #expect(slabNodes.contains(n))
+                }
+            }
+        }
+        let top = mesh.beams.map { max(mesh.positions[Int($0.nodes.x)].z, mesh.positions[Int($0.nodes.y)].z) }
+            .max()
+        #expect(abs((top ?? 0) - 10.375) < 1e-4)
+    }
+
+    /// A beam 3 m long along x with a 200 mm wide, 300 mm deep section, clamped at x = 0.
+    private func cantileverBeam() throws -> ShellSolver {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(3, 0.2, 1.3))], material: Self.elastic,
+            elementSize: 0.25,
+            fixedBase: false)
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        #expect(solver.beamCount == 12 && solver.elementCount == 0)
+        solver.groundContact = false
+        let clamped = solver.nodes { $0.x < 1e-4 }
+        solver.mutateNodes { nodes in
+            for n in clamped { nodes[n].isClamped = true }
+        }
+        return solver
+    }
+
+    @Test("A cantilever beam sags under its own weight as beam theory says")
+    func beamSag() throws {
+        let solver = try cantileverBeam()
+        solver.damping = 40
+        solver.advance(steps: Int(1.5 / solver.criticalTimeStep))
+        // q L^4 / (8 E I) with I = b d^3 / 12, plus q L^2 / (2 k G A) for shear.
+        let q = 2400 * 9.81 * 0.06
+        let expected = Float(q * 81 / (8 * 20e9 * 0.2 * 0.027 / 12) + q * 9 / (2 * (5.0 / 6.0) * 10e9 * 0.06))
+        let tip = solver.node(solver.nearestNode(to: SIMD3(3, 0.1, 1.15))).displacement.z
+        #expect(abs(-tip - expected) / expected < 0.02, "tip \(tip) m, expected \(-expected) m")
+    }
+
+    @Test("A free beam spun through a right angle stays unstrained")
+    func beamRigidRotation() throws {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(-1.5, -0.1, -0.15), max: SIMD3(1.5, 0.1, 0.15))], material: Self.elastic,
+            elementSize: 0.25, fixedBase: false)
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        let rate: Float = 2
+        let positions = solver.referencePositions
+        // About z, which bends the beam's axis towards y, and about x, which twists it.
+        for axis in [SIMD3<Float>(0, 0, rate), SIMD3<Float>(rate, 0, 0)] {
+            solver.reset()
+            solver.mutateNodes { nodes in
+                for n in nodes.indices {
+                    nodes[n].velocity = cross(axis, positions[n])
+                    nodes[n].spin = axis
+                }
+            }
+            let energy = solver.kineticEnergy()
+            solver.advance(steps: Int(Double.pi / 2 / Double(rate) / Double(solver.criticalTimeStep)))
+            let a = solver.position(solver.nearestNode(to: SIMD3(1.5, 0, 0)))
+            let b = solver.position(solver.nearestNode(to: SIMD3(-1.5, 0, 0)))
+            #expect(abs(simd_distance(a, b) - 3) < 1e-3, "length \(simd_distance(a, b)) m")
+            #expect(abs(solver.kineticEnergy() - energy) / energy < 1e-3)
+        }
+    }
+
+    @Test("A reinforced concrete beam reaches the moment capacity given by section analysis")
+    func beamElementCapacity() throws {
+        let yield = SteelProperties.grade500.yieldStress
+        let width: Float = 0.1
+        let depth: Float = 0.15 - 0.0375
+        let tension = 500e-6 * width * yield
+        let block = tension / (0.85 * 30e6 * width)
+        let expected = tension * (depth - block / 2) / (1.2 / 4)
+        let coarse = try beamElementLoad(elementSize: 0.05)
+        let fine = try beamElementLoad(elementSize: 0.025)
+        #expect(abs(coarse - expected) / expected < 0.1, "coarse: \(coarse) N against \(expected) N")
+        #expect(abs(fine - expected) / expected < 0.1, "fine: \(fine) N against \(expected) N")
+        #expect(abs(fine - coarse) / coarse < 0.05, "coarse \(coarse) N, fine \(fine) N")
+    }
+
+    /// Plateau load of the solid elements' test beam, 1.2 m span, 100 mm wide and 150 mm deep,
+    /// meshed with beams and loaded at mid-span under displacement control.
+    private func beamElementLoad(elementSize h: Float) throws -> Float {
+        var steel = SteelProperties.grade500
+        steel.ultimateStress = steel.yieldStress
+        steel.ruptureStrain = 10
+        var material = StructureMaterial.concrete(name: "Test", compressiveStrength: 30e6, steel: steel)
+        material.poissonRatio = 0.2
+        let beam = Box(min: SIMD3(0, 0, 1), max: SIMD3(1.3, 0.1, 1.15))
+        var model = StructureModel(solids: [beam], material: material, elementSize: h, fixedBase: false)
+        model.addMat(
+            to: beam, thicknessAxis: 2, areaPerMetre: 500e-6, transverseAreaPerMetre: 0, longitudinalAxis: 0,
+            depth: 0.0375, faces: (low: true, high: false))
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        #expect(solver.beamCount > 0)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.damping = 100
+        let supports = solver.nodes { abs($0.x - 0.05) < 1e-4 || abs($0.x - 1.25) < 1e-4 }
+        let load = solver.nearestNode(to: SIMD3(0.65, 0.05, 1.075))
+        solver.mutateNodes { nodes in
+            for n in supports { nodes[n].restrain(y: true, z: true) }
+            nodes[load].isPrescribed = true
+            nodes[load].velocity = SIMD3(0, 0, -0.12)
+        }
+        var plateau: [Float] = []
+        let stepsPerSample = max(1, Int(0.0008 / solver.criticalTimeStep))
+        while solver.time < 0.1 {
+            solver.advance(steps: stepsPerSample)
+            if -solver.node(load).displacement.z > 0.006 { plateau.append(solver.nodalForce(load).z) }
+        }
+        #expect(!plateau.isEmpty)
+        return plateau.reduce(0, +) / Float(max(plateau.count, 1))
     }
 }

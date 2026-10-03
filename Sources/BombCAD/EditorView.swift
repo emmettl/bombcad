@@ -71,8 +71,9 @@ struct EditorView: View {
                 Text(
                     "Walls and slabs deform and break. Each piece can have its own material; thin pieces "
                         + "are reinforced with a mat of bars in each face and stocky ones as columns unless "
-                        + "set otherwise. Openings are cut out of them. Shell elements run many times "
-                        + "faster but need every piece to be a wall or slab, not a column.")
+                        + "set otherwise. Openings are cut out of them. Shell elements (with beams for "
+                        + "columns) run many times faster, but every piece must then be a wall, slab or column."
+                )
             }
 
             Section {

@@ -151,9 +151,14 @@ struct SimulationModelTests {
         model.settingsChanged()
         try await waitUntil { model.time == 0 && (model.structureSummary?.activeElements ?? 0) > 100_000 }
         #expect(model.settings.scenario.structure?.elementSize == 0.0625)
-        // A frame has columns, which shells cannot mesh: the editor reports why.
+        // A frame's columns become beams.
         model.select(.frame)
         model.settings.elementKind = .shell
+        model.settingsChanged()
+        try await waitUntil { model.time == 0 && model.structureSummary != nil }
+        #expect(model.errorMessage == nil)
+        // A block as long as it is wide is neither a wall nor a column: the editor reports why.
+        model.settings.scenario.structure?.solids.append(Box(x: 18...19, y: 15...16, height: 1))
         model.settingsChanged()
         try await waitUntil { model.errorMessage != nil }
         #expect(model.errorMessage?.contains("column") == true)

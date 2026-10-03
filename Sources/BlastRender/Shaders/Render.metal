@@ -398,6 +398,69 @@ vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
     return out;
 }
 
+// Matches `BeamElement` in Shell.metal.
+struct BeamMeshElement {
+    uint node[2];
+    uint axis;
+    uint material;
+    float width;
+    float depth;
+    float length;
+    uint barCount;
+    float tieRatio;
+    float padding0;
+    float padding1;
+};
+
+// Draws each beam as the bar it stands for: a box around its centreline, its section carried by
+// the rotated section axes at each end.
+vertex MeshOut beamVertex(uint vertexID [[vertex_id]],
+                          uint instanceID [[instance_id]],
+                          const device BeamMeshElement *beams [[buffer(0)]],
+                          const device ShellMeshNode *nodes [[buffer(1)]],
+                          const device uchar *flags [[buffer(2)]],
+                          const device float *damage [[buffer(3)]],
+                          constant MeshUniforms &u [[buffer(4)]],
+                          const device float4 *reference [[buffer(5)]]) {
+    MeshOut out;
+    out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    out.world = float3(0.0f);
+    out.damage = 0.0f;
+    uint flag = flags[instanceID];
+    if (flag != 1 && flag != 3) {
+        return out;
+    }
+    BeamMeshElement beam = beams[instanceID];
+    float3 e2 = float3(0.0f);
+    float3 e3 = float3(0.0f);
+    e2[(beam.axis + 1) % 3] = 1.0f;
+    e3[(beam.axis + 2) % 3] = 1.0f;
+    // Box corners: bit 0 picks the end, bits 1 and 2 the side of the section.
+    const uint faces[6][4] = {{0, 2, 6, 4}, {1, 3, 7, 5}, {0, 1, 3, 2}, {4, 5, 7, 6}, {0, 1, 5, 4}, {2, 3, 7, 6}};
+    const uint triangle[6] = {0, 1, 2, 0, 2, 3};
+    uint corner = faces[vertexID / 6][triangle[vertexID % 6]];
+    uint end = corner & 1u;
+    ShellMeshNode node = nodes[beam.node[end]];
+    float4 q = node.rotation;
+    float3 t2 = 2.0f * cross(q.xyz, e2);
+    float3 t3 = 2.0f * cross(q.xyz, e3);
+    float3 d2 = e2 + q.w * t2 + cross(q.xyz, t2);
+    float3 d3 = e3 + q.w * t3 + cross(q.xyz, t3);
+    float s2 = (corner & 2u) != 0 ? 0.5f : -0.5f;
+    float s3 = (corner & 4u) != 0 ? 0.5f : -0.5f;
+    float3 world = reference[beam.node[end]].xyz + float3(node.displacement) + s2 * beam.width * d2
+        + s3 * beam.depth * d3;
+    out.damage = damage[instanceID];
+    float3 relative = world - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    float near = u.projection.z;
+    float far = u.projection.w;
+    out.position = float4(view.x * u.projection.x, view.y * u.projection.y,
+                          far / (far - near) * (view.z - near), view.z);
+    out.world = world;
+    return out;
+}
+
 fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
     float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(normal, u.eye.xyz - in.world) < 0.0f) {
