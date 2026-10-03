@@ -580,7 +580,7 @@ public final class StructureSolver {
 
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
-        if uniforms.debrisDensity > 0, hasFailed, let fluid, let area = fluid.debrisArea {
+        if uniforms.debrisLoading != 0, hasFailed, let fluid, let area = fluid.debrisArea {
             encoder.setComputePipelineState(debrisAreaPipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(flagBuffer, offset: 0, index: 1)
@@ -710,10 +710,9 @@ public final class StructureSolver {
         }
         if let fluid {
             uniforms.coupled = 1
-            // Debris stands for solid of the structure's main material, and is loaded only where
-            // the air can be given the reaction.
+            // Debris is loaded only where the air can be given the reaction.
             if debrisDrag, fluid.exchange != nil, fluid.debrisArea != nil, let region = fluid.exchangeRegion {
-                uniforms.debrisDensity = model.material.density
+                uniforms.debrisLoading = 1
                 uniforms.exchangeX = Int32(region.origin.x)
                 uniforms.exchangeY = Int32(region.origin.y)
                 uniforms.exchangeZ = Int32(region.origin.z)

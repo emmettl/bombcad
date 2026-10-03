@@ -121,8 +121,8 @@ is pushed along, and opens where a wall breaks, letting the blast through. A cel
 filled with the average of its fluid neighbours.
 
 **Debris.** A node with no intact element left around it is loose debris, and the air loads it
-directly, since it no longer belongs to any face. It stands for a lump of the structure's main
-material of its own mass, so of volume *V* = mass / density, and feels
+directly, since it no longer belongs to any face. It stands for a lump of volume *V*, an eighth
+of each element the body started with around it, whatever those were made of, and feels
 
 - the air's pressure gradient across that volume, −∇*p* *V*, from central differences of the
   air cells around it (one-sided beside a solid cell), and
@@ -185,7 +185,7 @@ shock, and the drag and pressure-gradient push on loose debris.
    joints, no sliding of infill against its frame, no bearings that can separate. Rigid
    blocks never respond.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
-   fixed coefficient, as cubes of the main material whatever they are made of. The air feels
+   fixed coefficient, as cubes of their share of the elements around them. The air feels
    the reaction, so packed rubble slows the gas through it, but only through drag spread over
    a whole air cell: rubble is never solid to the air, and a cell's air sees all its debris as
    moving together. A node still attached to one intact element is not loose and is loaded

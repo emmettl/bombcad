@@ -51,7 +51,7 @@ struct StructureUniforms {
     float loadTime;
     uint loadCount;  // entries in the applied-pressure table; 0 = none
     uint loadFace;   // 2 * axis + side of the element faces the pressure acts on
-    float debrisDensity;  // > 0: loose debris is pushed by the air, as solid of this density
+    uint debrisLoading;  // non-zero: loose debris is pushed by the air
     // Air cells around the structure in which debris and air exchange momentum and energy.
     int exchangeX;
     int exchangeY;
@@ -1082,6 +1082,12 @@ static inline int debrisCell(float3 position, const device uchar *fluidMask, con
     return local.x + region.x * (local.y + region.y * local.z);
 }
 
+// A loose node stands for an eighth of each element the body started with around it, whatever
+// they were made of.
+static inline float debrisVolume(uint share, constant StructureUniforms &u) {
+    return float(share) * 0.125f * u.h * u.h * u.h;
+}
+
 // Before each air step's substeps, every loose node adds its frontal area to its air cell.
 kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
                         const device uchar *flags [[buffer(1)]],
@@ -1101,22 +1107,28 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
     }
     uint3 tid = latticeNode(nodeList[threadIndex], u);
     int3 dims = int3(u.ex, u.ey, u.ez);
+    uint share = 0;
     for (uint a = 0; a < 8; ++a) {
         int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
-        if (all(cell >= 0) && all(cell < dims) && flags[cell.x + dims.x * (cell.y + dims.y * cell.z)] == elementActive) {
+        if (any(cell < 0) || any(cell >= dims)) {
+            continue;
+        }
+        uchar flag = flags[cell.x + dims.x * (cell.y + dims.y * cell.z)];
+        if (flag == elementActive) {
             return;
         }
+        share += flag != elementEmpty ? 1u : 0u;
     }
     int exchangeCell = debrisCell(nodePosition(threadIndex, nodeList, nodes, u), fluidMask, u);
     if (exchangeCell < 0) {
         return;
     }
-    float frontal = pow(node.mass / u.debrisDensity, 2.0f / 3.0f) / (u.fluidCell * u.fluidCell * u.fluidCell);
+    float frontal = pow(debrisVolume(share, u), 2.0f / 3.0f) / (u.fluidCell * u.fluidCell * u.fluidCell);
     atomic_fetch_add_explicit(&area[exchangeCell], int(round(min(frontal * exchangeAreaScale, 1.0e9f))),
                               memory_order_relaxed);
 }
 
-static inline float3 debrisAirForce(float3 position, float3 velocity, float mass, const device Cell *fluid,
+static inline float3 debrisAirForce(float3 position, float3 velocity, float volume, const device Cell *fluid,
                                     const device uchar *fluidMask, const device int *area, float airStep,
                                     constant StructureUniforms &u, thread int &exchangeCell) {
     exchangeCell = debrisCell(position, fluidMask, u);
@@ -1158,7 +1170,6 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float mass
     Cell s = fluid[index];
     float rho = max(s.rho, 1e-6f);
     float3 wind = float3(s.mx, s.my, s.mz) / rho - velocity;
-    float volume = mass / u.debrisDensity;
     float frontal = pow(volume, 2.0f / 3.0f);
     // The drag is held at the air's state for a whole air step. Where debris is packed densely
     // into a cell, that could take more than the air's relative momentum and reverse the flow,
@@ -1366,6 +1377,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     float3 force = float3(0.0f);
     uint intact = 0;
+    uint share = 0;
     for (uint a = 0; a < 8; ++a) {
         // This node is corner `a` of the element offset by -a.
         int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
@@ -1373,10 +1385,12 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
             continue;
         }
         int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
-        if (flags[element] == elementActive) {
+        uchar flag = flags[element];
+        if (flag == elementActive) {
             force += float3(forces[cellElement[element]].force[a]);
             intact += 1;
         }
+        share += flag != elementEmpty ? 1u : 0u;
     }
     bool attached = intact > 0;
     // A node inside intact solid cannot meet a node of another piece without one of the
@@ -1385,8 +1399,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     // Loose debris is not part of any element face the air loads, so the air pushes it directly.
     float3 airForce = float3(0.0f);
     int exchangeCell = -1;
-    if (!attached && u.coupled != 0 && u.debrisDensity > 0.0f) {
-        airForce = debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity), node.mass,
+    if (!attached && u.coupled != 0 && u.debrisLoading != 0) {
+        airForce = debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity),
+                                  debrisVolume(share, u),
                                   fluid, fluidMask, debrisArea, control.dt, u, exchangeCell);
         force += airForce;
     }

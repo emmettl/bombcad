@@ -531,7 +531,7 @@ struct StructureUniforms {
     var loadTime: Float = 0
     var loadCount: UInt32 = 0
     var loadFace: UInt32 = 0
-    var debrisDensity: Float = 0
+    var debrisLoading: UInt32 = 0
     var exchangeX: Int32 = 0
     var exchangeY: Int32 = 0
     var exchangeZ: Int32 = 0
