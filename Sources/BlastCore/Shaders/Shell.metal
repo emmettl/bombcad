@@ -301,9 +301,13 @@ static inline float3 shellVonMises(float3 strain, float2 transverse, thread Shel
 }
 
 // Stress in one direction of a bar layer, as the solid elements' bars: the measured curve while
-// loaded one way, the cyclic law once reversed. Returns false once the bars have ruptured.
+// loaded one way, the cyclic law once reversed. A bar slips in its concrete either side of a
+// crack, so it ruptures when its plastic strain averaged over the debonded length passes the
+// rupture strain: `spread` gives that average from this bar's plastic strain. Returns false once
+// the bars have ruptured.
 static inline bool shellBar(device ShellBar &bar, float green, float rate, constant MaterialParameters &m,
-                            thread float &stress, thread float &root, thread float &yieldOut) {
+                            thread float &stress, thread float &root, thread float &yieldOut,
+                            thread float2 &spread) {
     float plastic = bar.plastic;
     if (fabs(plastic) > 1e8f) {
         return false;
@@ -329,11 +333,13 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     } else {
         stress = cycleBar(bar.history, fibre, plastic, yield, slope * factor, first * pow(ratio, m.steelRateYield), m);
     }
-    if (fabs(plastic) > m.steelStrain[m.steelPoints - 1]) {
+    float averaged = (plastic * spread.x + spread.y);
+    if (fabs(averaged) > m.steelStrain[m.steelPoints - 1]) {
         bar.plastic = 1e9f;  // ruptured for good
         return false;
     }
     bar.plastic = plastic;
+    spread.x = plastic;
     yieldOut = yield;
     return true;
 }
@@ -355,6 +361,9 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
                           device uint *failureGate [[buffer(14)]],
                           device float *display [[buffer(15)]],
                           constant float2 *thickness [[buffer(16)]],
+                          const device int4 *neighbours [[buffer(17)]],
+                          device float *barPlasticOut [[buffer(18)]],
+                          const device float *barPlasticBefore [[buffer(19)]],
                           uint e [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -420,6 +429,8 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
     float areaWeight = 0.25f * a * b;
     bool remove = false;
     float worstDisplay = 0.0f;
+    // Each bar layer's plastic strain, averaged over the element, for its neighbours' rupture.
+    float barMean[8] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     const float gauss = 0.57735026919f;
 
     for (uint g = 0; g < 4; ++g) {
@@ -509,6 +520,30 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
                     continue;
                 }
                 anyBars = true;
+                // The neighbours along the bars, out to the debonded length, as of the previous
+                // substep; elements at the ends of the window count in part.
+                float2 spread = float2(1.0f, 0.0f);
+                if (m.barReach > 0.0f) {
+                    float weights = 1.0f;
+                    float sum = 0.0f;
+                    int r = int(ceil(m.barReach - 0.5f));
+                    for (int side = 0; side < 2; ++side) {
+                        int current = int(e);
+                        for (int step = 1; step <= r; ++step) {
+                            current = neighbours[current][2 * j + side];
+                            if (current < 0) {
+                                break;
+                            }
+                            float neighbour = barPlasticBefore[(uint(current) * u.barSlots + s) * 2 + j];
+                            if (fabs(neighbour) < 1e8f) {
+                                float weight = clamp(m.barReach + 0.5f - float(step), 0.0f, 1.0f);
+                                sum += weight * neighbour;
+                                weights += weight;
+                            }
+                        }
+                    }
+                    spread = float2(1.0f / weights, sum / weights);
+                }
                 float3 h = j == 0 ? h1m + zeta * h1b : h2m + zeta * h2b;
                 float green = (j == 0 ? h[i1] : h[i2]) + 0.5f * dot(h, h);
                 float3 f = (j == 0 ? e1 : e2) + h;
@@ -516,9 +551,10 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
                 float root;
                 float yield;
                 device ShellBar &bar = bars[((e * 4 + g) * u.barSlots + s) * 2 + j];
-                if (!shellBar(bar, green, rateSum / float(n), m, stress, root, yield)) {
+                if (!shellBar(bar, green, rateSum / float(n), m, stress, root, yield, spread)) {
                     continue;
                 }
+                barMean[s * 2 + j] += 0.25f * spread.x;
                 barsIntact[j] = 1.0f;
                 float3 r = (areaWeight * area * stress / root) * f;
                 if (j == 0) {
@@ -577,6 +613,16 @@ kernel void shellElements(device ShellLayer *layers [[buffer(0)]],
         }
     }
 
+    if (m.barReach > 0.0f) {
+        for (uint s = 0; s < el.barCount && s < u.barSlots; ++s) {
+            for (uint j = 0; j < 2; ++j) {
+                // A ruptured layer drops out of its neighbours' averages.
+                float mean = barMean[s * 2 + j];
+                bool broken = fabs(bars[((e * 4) * u.barSlots + s) * 2 + j].plastic) > 1e8f;
+                barPlasticOut[(e * u.barSlots + s) * 2 + j] = broken ? 1e9f : mean;
+            }
+        }
+    }
     display[e] = worstDisplay;
     ShellForces out;
     if (remove) {

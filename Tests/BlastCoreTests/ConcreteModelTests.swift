@@ -553,4 +553,25 @@ struct SlabBenchmarkTests {
         // rebounds too far, so this is looser than the 9 mm a 16-layer mesh achieves.)
         #expect(result.historyError < 0.016, "history differs by \(result.historyError) m")
     }
+
+    @Test("Shells give a peak within 20% of the measured one, the same on two meshes")
+    func shellPeakDeflection() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let coarse = try SlabBenchmark.runShells(device: device, elementSize: 2 * 0.0254)
+        let fine = try SlabBenchmark.runShells(device: device, elementSize: 1 * 0.0254)
+        for result in [coarse, fine] {
+            #expect(
+                abs(result.peak - SlabBenchmark.measuredPeak) / SlabBenchmark.measuredPeak < 0.2,
+                "peak \(result.peak) m")
+            #expect(result.summary.erodedElements == 0)
+            // Shells rebound about as little as the specimen did.
+            #expect(
+                abs(result.residual - SlabBenchmark.measuredResidual) / SlabBenchmark.measuredResidual < 0.15)
+            #expect(result.historyError < 0.012, "history differs by \(result.historyError) m")
+        }
+        #expect(abs(fine.peak - coarse.peak) / coarse.peak < 0.03)
+        #expect(throws: BlastError.self) {
+            _ = try SlabBenchmark.runShells(device: device, elementSize: 4 * 0.0254)
+        }
+    }
 }

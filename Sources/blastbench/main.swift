@@ -13,6 +13,7 @@ import simd
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
+//                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -384,6 +385,28 @@ func runSlab() throws {
     }
     let width = option("strip").flatMap { Float($0) }.map { $0 / 1000 } ?? SlabBenchmark.fullWidth
     var meshes: [(layers: Int, result: SlabBenchmark.Result)] = []
+    // `--shells 2,1` runs shells of those sizes in inches instead, with `--shell-layers` layers.
+    if let sizes = option("shells") {
+        cases = []
+        let layers = option("shell-layers").flatMap { Int($0) } ?? 8
+        for size in sizes.split(separator: ",").compactMap({ Float($0) }) {
+            let rate =
+                option("shell-rate").flatMap { SlabBenchmark.RateTreatment(rawValue: $0) } ?? .strainRate
+            let result = try SlabBenchmark.runShells(
+                device: device, elementSize: size * 0.0254, layers: layers, rate: rate, width: width)
+            meshes.append((layers, result))
+            print(
+                pad("\(layers)", 8) + pad("\(result.elementCount)", 10)
+                    + pad("shells \(format(Double(size), 2)) in", 14)
+                    + pad("\(format(Double(result.peak) * 1000, 0)) mm", 10)
+                    + pad("\(format(Double(result.peak / SlabBenchmark.measuredPeak) * 100, 0))%", 9)
+                    + pad("\(format(Double(result.peakTime) * 1000, 0)) ms", 8)
+                    + pad("\(format(Double(result.residual) * 1000, 0)) mm", 10)
+                    + pad("\(format(Double(result.residual / SlabBenchmark.measuredResidual) * 100, 0))%", 9)
+                    + pad("\(result.summary.erodedElements)", 8)
+                    + pad("\(format(result.wallSeconds, 1)) s", 10))
+        }
+    }
     for (layers, rate) in cases {
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, width: width)

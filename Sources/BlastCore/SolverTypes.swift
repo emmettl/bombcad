@@ -203,6 +203,8 @@ public enum BlastError: Error, CustomStringConvertible {
     case tooManyMaterials(Int)
     /// Shells need every solid to be plate-like; this one is not.
     case notPlateLike(Int)
+    /// The benchmark's supports do not fall on nodes of the mesh.
+    case supportsMissNodes
 
     public var description: String {
         switch self {
@@ -211,6 +213,8 @@ public enum BlastError: Error, CustomStringConvertible {
         case .allocationFailed(let what): "Could not allocate \(what)"
         case .tooManyMaterials(let count):
             "The structure has \(count) materials; at most \(StructureModel.maxMaterials) are supported"
+        case .supportsMissNodes:
+            "The supports do not fall on nodes of the mesh; choose an element size that divides 6 inches"
         case .notPlateLike(let index):
             "Solid \(index + 1) is not a wall or slab, so it cannot be meshed with shells (beam elements for columns are not available)"
         }

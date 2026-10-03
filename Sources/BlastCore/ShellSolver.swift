@@ -157,6 +157,11 @@ public final class ShellSolver {
     private let barLayoutBuffer: MTLBuffer
     private let barBuffer: MTLBuffer
     private let forceBuffer: MTLBuffer
+    private let neighbourBuffer: MTLBuffer
+    /// Each bar layer's plastic strain per element, written in alternate substeps to one buffer
+    /// while the other, from the substep before, is read, so that rupture can be judged over a
+    /// debonded length.
+    private let barPlasticBuffers: [MTLBuffer]
     private let incidenceStartBuffer: MTLBuffer
     private let incidenceBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
@@ -220,6 +225,13 @@ public final class ShellSolver {
         let hasBars = mesh.elements.contains { !$0.bars.isEmpty }
         barBuffer = try buffer(hasBars ? elements * 4 * barSlots * 2 * Self.barStride : 64, "shell bars")
         forceBuffer = try buffer(elements * 96, "shell forces")
+        neighbourBuffer = try buffer(elements * 16, "shell neighbours")
+        let neighbours = neighbourBuffer.contents().bindMemory(to: SIMD4<Int32>.self, capacity: elements)
+        for (e, element) in mesh.elements.enumerated() { neighbours[e] = element.neighbours }
+        barPlasticBuffers = [
+            try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, even"),
+            try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, odd"),
+        ]
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
@@ -271,7 +283,7 @@ public final class ShellSolver {
         time = 0
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
-        for buffer in [layerBuffer, barBuffer, forceBuffer, displayBuffer] {
+        for buffer in [layerBuffer, barBuffer, forceBuffer, displayBuffer] + barPlasticBuffers {
             memset(buffer.contents(), 0, buffer.length)
         }
         mutateNodes { nodes in
@@ -328,6 +340,24 @@ public final class ShellSolver {
 
     public func flag(_ element: Int) -> ElementFlag {
         ElementFlag(rawValue: flagBuffer.contents().load(fromByteOffset: element, as: UInt8.self)) ?? .eroded
+    }
+
+    /// Net force (N) that the elements around a node exerted on it in the last step. At a
+    /// restrained or prescribed node this is minus the reaction.
+    public func nodalForce(_ index: Int) -> SIMD3<Float> {
+        let starts = incidenceStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodeCount + 1)
+        let entries = incidenceBuffer.contents().bindMemory(to: UInt32.self, capacity: Int(starts[nodeCount]))
+        var total = SIMD3<Float>.zero
+        for i in Int(starts[index])..<Int(starts[index + 1]) {
+            let element = Int(entries[i] >> 2)
+            let corner = Int(entries[i] & 3)
+            guard flag(element) == .active else { continue }
+            let base = forceBuffer.contents().advanced(by: element * 96 + corner * 12)
+            total += SIMD3(
+                base.load(as: Float.self), base.load(fromByteOffset: 4, as: Float.self),
+                base.load(fromByteOffset: 8, as: Float.self))
+        }
+        return total
     }
 
     public var hasFailed: Bool { failureGateBuffer.contents().load(as: UInt32.self) != 0 }
@@ -441,6 +471,9 @@ public final class ShellSolver {
             encoder.setBuffer(displayBuffer, offset: 0, index: 15)
             var rule = thicknessRule
             encoder.setBytes(&rule, length: rule.count * MemoryLayout<SIMD2<Float>>.stride, index: 16)
+            encoder.setBuffer(neighbourBuffer, offset: 0, index: 17)
+            encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 18)
+            encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 19)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 

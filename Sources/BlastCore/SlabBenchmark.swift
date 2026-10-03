@@ -231,12 +231,57 @@ public enum SlabBenchmark {
             history.append(SIMD2(Float(solver.time), -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z))
         }
         let elapsed = ContinuousClock.now - start
+        return result(history, summary: solver.summary(), elementCount: solver.elementCount, elapsed: elapsed)
+    }
+
+    private static func result(
+        _ history: [SIMD2<Float>], summary: StructureSummary, elementCount: Int, elapsed: Duration
+    ) -> Result {
         let peak = history.max { $0.y < $1.y } ?? .zero
         let tail = history.filter { $0.x >= 0.07 }
         return Result(
             history: history, peak: peak.y, peakTime: peak.x,
             residual: tail.reduce(0) { $0 + $1.y } / Float(max(tail.count, 1)),
-            summary: solver.summary(), elementCount: solver.elementCount,
+            summary: summary, elementCount: elementCount,
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
+    }
+
+    /// Runs the slab meshed with shells of side `elementSize` (a whole fraction of an inch keeps
+    /// the supports on nodes) and `layers` layers through the thickness, for 80 ms. The supports
+    /// are lines of nodes on the midsurface, a pin and a roller.
+    public static func runShells(
+        device: MTLDevice, elementSize: Float = 0.0254, layers: Int = 8, rate: RateTreatment = .strainRate,
+        loadScale: Float = 1, width: Float = fullWidth, adjust: (inout StructureMaterial) -> Void = { _ in }
+    ) throws -> Result {
+        var model = model(elementsThroughThickness: 4, rate: rate, width: width)
+        adjust(&model.material)
+        model.elementKind = .shell
+        model.elementSize = elementSize
+        model.shellLayers = layers
+        let solver = try ShellSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        var load = load
+        load.history = load.history.map { SIMD2($0.x, $0.y * loadScale) }
+        solver.appliedLoad = load
+        let pin = solver.nodes { abs($0.x - 6 * inch) < 1e-4 }
+        let roller = solver.nodes { abs($0.x - 58 * inch) < 1e-4 }
+        // The supports must fall on nodes: the element size has to divide 6 in.
+        guard !pin.isEmpty, !roller.isEmpty else { throw BlastError.supportsMissNodes }
+        solver.mutateNodes { nodes in
+            for n in pin { nodes[n].restrain(x: true, z: true) }
+            for n in roller { nodes[n].restrain(z: true) }
+        }
+        let middle = solver.nearestNode(to: SIMD3(32 * inch, width / 2, solver.referencePositions[0].z))
+
+        let start = ContinuousClock.now
+        var history: [SIMD2<Float>] = []
+        let stepsPerSample = max(1, Int(0.00025 / solver.criticalTimeStep))
+        while solver.time < 0.08 {
+            solver.advance(steps: stepsPerSample)
+            history.append(SIMD2(Float(solver.time), -solver.node(middle).displacement.z))
+        }
+        let elapsed = ContinuousClock.now - start
+        return result(history, summary: solver.summary(), elementCount: solver.elementCount, elapsed: elapsed)
     }
 }

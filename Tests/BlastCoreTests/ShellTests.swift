@@ -196,4 +196,63 @@ struct ShellTests {
         // All the energy is still in the rotation: nothing went into straining the plate.
         #expect(abs(solver.kineticEnergy() - energy) / energy < 1e-3)
     }
+
+    @Test("A reinforced concrete strip reaches the moment capacity given by section analysis")
+    func beamCapacity() throws {
+        // Section analysis with a rectangular stress block, as for the solid elements.
+        let fc: Float = 30e6
+        let yield = SteelProperties.grade500.yieldStress
+        let width: Float = 0.4
+        let depth: Float = 0.15 - 0.0375
+        let tension = 500e-6 * width * yield
+        let block = tension / (0.85 * fc * width)
+        let expected = tension * (depth - block / 2) / (1.2 / 4 - 0.05 / 8)
+
+        let coarse = try beamLoad(elementSize: 0.05)
+        let fine = try beamLoad(elementSize: 0.025)
+        #expect(abs(coarse - expected) / expected < 0.1, "coarse: \(coarse) N against \(expected) N")
+        #expect(abs(fine - expected) / expected < 0.1, "fine: \(fine) N against \(expected) N")
+        #expect(abs(fine - coarse) / coarse < 0.05, "coarse \(coarse) N, fine \(fine) N")
+    }
+
+    /// Plateau load of a 1.2 m span, 400 mm wide, 150 mm deep reinforced strip in three-point
+    /// bending under displacement control, through a loading plate 50 mm wide.
+    private func beamLoad(elementSize h: Float) throws -> Float {
+        var steel = SteelProperties.grade500
+        steel.ultimateStress = steel.yieldStress
+        steel.ruptureStrain = 10
+        var material = StructureMaterial.concrete(name: "Test", compressiveStrength: 30e6, steel: steel)
+        material.poissonRatio = 0.2
+        let beam = Box(min: SIMD3(0, 0, 1), max: SIMD3(1.3, 0.4, 1.15))
+        var model = StructureModel(solids: [beam], material: material, elementSize: h, fixedBase: false)
+        model.addMat(
+            to: beam, thicknessAxis: 2, areaPerMetre: 500e-6, transverseAreaPerMetre: 0, longitudinalAxis: 0,
+            depth: 0.0375, faces: (low: true, high: false))
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.damping = 100
+        let rate: Float = 0.12
+        let supports = solver.nodes { abs($0.x - 0.05) < 1e-4 || abs($0.x - 1.25) < 1e-4 }
+        let load = solver.nodes { abs($0.x - 0.65) <= 0.025 + 1e-4 }
+        let middle = solver.nearestNode(to: SIMD3(0.65, 0.2, 1.075))
+        solver.mutateNodes { nodes in
+            for n in supports { nodes[n].restrain(y: true, z: true) }
+            for n in load {
+                nodes[n].isPrescribed = true
+                nodes[n].velocity = SIMD3(0, 0, -rate)
+            }
+        }
+        var plateau: [Float] = []
+        let stepsPerSample = max(1, Int(0.0008 / solver.criticalTimeStep))
+        while solver.time < 0.1 {
+            solver.advance(steps: stepsPerSample)
+            let deflection = -solver.node(middle).displacement.z
+            let reaction = load.reduce(Float(0)) { $0 + solver.nodalForce($1).z }
+            if deflection > 0.006 { plateau.append(reaction) }
+        }
+        #expect(!plateau.isEmpty)
+        return plateau.reduce(0, +) / Float(max(plateau.count, 1))
+    }
 }

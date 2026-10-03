@@ -22,6 +22,9 @@ struct ShellMesh {
         var bars: [SIMD3<Float>]
         /// The solid it was made from.
         var solid: Int
+        /// The elements of the same plate beyond its edges at -first, +first, -second and +second,
+        /// or -1 where there is none.
+        var neighbours = SIMD4<Int32>(repeating: -1)
     }
 
     var positions: [SIMD3<Float>] = []
@@ -179,6 +182,14 @@ struct ShellMesh {
                         elements.append(element)
                     }
                 }
+            }
+        }
+        for (key, index) in claimed {
+            let offsets: [SIMD4<Int32>] = [
+                SIMD4(0, 0, -1, 0), SIMD4(0, 0, 1, 0), SIMD4(0, 0, 0, -1), SIMD4(0, 0, 0, 1),
+            ]
+            for (side, offset) in offsets.enumerated() {
+                elements[index].neighbours[side] = Int32(claimed[key &+ offset] ?? -1)
             }
         }
     }
