@@ -381,9 +381,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
 - **Bond slip**, or at least spreading a bar's strain at a crack over a debonded length, so
-  that very fine meshes do not rupture bars at hairline cracks (see Limitations).
+  that very fine meshes do not rupture bars at hairline cracks (see Limitations), and so that
+  bond governs crack spacing instead of its being assumed.
 - **Compaction** of the pores under very high pressure, for concrete close to a charge.
-- **Bond slip** between bars and concrete, which governs crack spacing instead of assuming it.
 - **Discrete bars** as truss elements for heavily reinforced joints and for dowel action.
 - **Masonry with joints.**
 
