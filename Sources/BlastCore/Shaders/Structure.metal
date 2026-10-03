@@ -148,8 +148,11 @@ struct StructureNode {
     float mass;
     packed_float3 velocity;
     uint flags;  // bits 0-2: x, y, z held still; bit 3: velocity prescribed (never updated);
-                 // bit 4: rests on a support, cannot fall below its starting height
+                 // bit 4: rests on a support, cannot fall below its starting height;
+                 // bit 5: buried, all eight elements around it intact (set by the node pass)
 };
+
+constant uint nodeBuried = 32u;
 
 // An element that fails is first marked as failing, which the other elements still treat as
 // intact for the rest of that pass, and becomes eroded in the node pass that follows. Without
@@ -1126,6 +1129,9 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
+    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+        return;
+    }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
     int3 cell = contactCell(position, u);
     // Several nodes may write the same values here; that is harmless.
@@ -1150,6 +1156,9 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     bool active;
     structureStep(u, control, active);
     if (!active || !contactEnabled(u, failureGate)) {
+        return;
+    }
+    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -1178,6 +1187,10 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
         return;
     }
     StructureNode node = nodes[threadIndex];
+    if ((node.flags & nodeBuried) != 0) {
+        contact[threadIndex] = float3(0.0f);
+        return;
+    }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
     int3 lattice = int3(latticeNode(nodeList[threadIndex], u));
 
@@ -1275,7 +1288,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         }
     }
     float3 force = float3(0.0f);
-    bool attached = false;
+    uint intact = 0;
     for (uint a = 0; a < 8; ++a) {
         // This node is corner `a` of the element offset by -a.
         int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
@@ -1285,9 +1298,13 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
         if (flags[element] == elementActive) {
             force += float3(forces[cellElement[element]].force[a]);
-            attached = true;
+            intact += 1;
         }
     }
+    bool attached = intact > 0;
+    // A node inside intact solid cannot meet a node of another piece without one of the
+    // surface nodes in front of it meeting that node first, so contact leaves it out.
+    node.flags = intact == 8 ? (node.flags | nodeBuried) : (node.flags & ~nodeBuried);
     // Loose debris is not part of any element face the air loads, so the air pushes it directly.
     if (!attached && u.coupled != 0 && u.debrisDensity > 0.0f) {
         force += debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity), node.mass, fluid, fluidMask, u);

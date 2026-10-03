@@ -61,8 +61,13 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 
 | Mode                          | Steps/s | Element-updates/s | Slower than real time |
 |-------------------------------|---------|-------------------|-----------------------|
-| Before anything has failed    | 2,061   | 463 million       | 54×                   |
-| With contact running          | 1,123   | 253 million       | 98×                   |
+| Before anything has failed    | 1,906   | 428 million       | 58×                   |
+| With contact running          | 1,400   | 315 million       | 79×                   |
+| Linear elastic, for comparison (`--elastic`) | 2,236 | 503 million | 49×             |
+
+The first two rows were 2,061 and 1,123 steps per second in earlier measurements; the first
+has drifted down by about 8% with the features added since (and with the machine's thermal
+state), and the second has gained from leaving buried nodes out of contact (below).
 
 - The explicit time step is set by the element size and the speed of sound in concrete, and it
   is what makes structures expensive: 110,000 steps per simulated second at this resolution.
@@ -74,6 +79,15 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   deterministically (a clearing pass, then an atomic-minimum chain) later cost about 4% of
   that. The air solver, which is
   limited by memory bandwidth, is indifferent to its group size.
+- **The concrete law is not the bottleneck.** The same mesh with a linear elastic material
+  runs only 17% faster. Most of the time goes on reading and writing element and node data,
+  and on hourglass control, which every material needs.
+- **Contact is.** Switched on, it took 45% of the time. Nodes with all eight elements around
+  them intact cannot meet a node of another piece without a surface node meeting it first, so
+  the node pass marks them buried and contact leaves them out of its table and its search.
+  That raised throughput with contact from 253 to 315 million element-updates per second, and
+  the coupled runs of the three-storey building and the infilled frame gave the same results
+  to the last digit.
 - Skipping the eigenvalue problem that finds diagonal cracks, for elements strained below
   cracking, was tried and made no measurable difference.
 - Reading each element's material from a table (for structures of several materials) cost
@@ -91,8 +105,8 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
   640 MB. The coupled run takes 0.21 GB in all at 0.25 m air cells, against 0.70 GB at first.
   Reaching a node through its number costs nothing measurable, and the results are identical
   to the last bit, since the nodes keep their lattice order.
-- The wrapped contact table costs 10% of contact throughput against a dense grid (253 against
-  282 million element-updates per second), because cells a period apart share entries. A
+- The wrapped contact table cost 10% of contact throughput against a dense grid (253 against
+  282 million element-updates per second, before buried nodes were left out), because cells a period apart share entries. A
   scrambling hash with the same memory cost 38%, because it put neighbouring cells far apart in
   memory.
 

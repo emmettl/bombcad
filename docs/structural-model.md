@@ -87,7 +87,9 @@ resists compression and removing it too early destroys load paths.
 
 ## Contact
 
-Once anything has failed, every node acts as a sphere one element across.
+Once anything has failed, every node on a surface acts as a sphere one element across. A node
+with all eight elements around it intact is buried and left out: nothing can reach it without
+first meeting the surface nodes in front of it.
 
 1. Each substep, nodes are binned into element-sized cells of all space, which map into a
    table that wraps periodically (its period is the structure's extent rounded up to a power of

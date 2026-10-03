@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys] [--full]
-//   blastbench structure [--preset wall|box] [--contact]
+//   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
@@ -326,9 +326,16 @@ func runSnapshot() throws {
 
 /// Times the structural solver on its own, without the air.
 func runStructure() throws {
-    guard let model = preset(named: option("preset") ?? "box").scenario.structure else {
+    guard var model = preset(named: option("preset") ?? "box").scenario.structure else {
         print("That preset has no deformable structure; try --preset wall or --preset box.")
         return
+    }
+    if flag("elastic") {
+        // The same mesh with a linear elastic material, to show what the concrete law costs.
+        let concrete = model.material
+        model.material = .elastic(
+            density: concrete.density, youngsModulus: concrete.youngsModulus, poissonRatio: concrete.poissonRatio)
+        model.reinforcement = []
     }
     let solver = try StructureSolver(device: device, model: model)
     if flag("contact") { solver.contactMode = .always }

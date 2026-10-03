@@ -421,7 +421,8 @@ public struct StructureNode: Sendable {
     public var vy: Float = 0
     public var vz: Float = 0
     /// Bits 0-2 hold the node still along x, y, z; bit 3 keeps its velocity as set; bit 4
-    /// lets it rise but not fall below where it started.
+    /// lets it rise but not fall below where it started. Bit 5 is set by the solver when all
+    /// eight elements around the node are intact, which leaves it out of contact.
     public var flags: UInt32 = 0
 
     public init() {}
