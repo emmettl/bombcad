@@ -16,6 +16,11 @@ import simd
 /// Each substep runs the solid elements, then a whole shell substep (in which the tied nodes
 /// report their loads instead of moving), then the solid nodes, which take those loads, and
 /// last the tied shell nodes, which follow.
+///
+/// Once contact is on in either part, it is on in both, and the parts meet each other too: in
+/// each substep, after both have found their own contacts and before either moves, each solid
+/// surface node and each shell node is pushed by the nodes of the other part within half the sum
+/// of their spheres' widths (see `crossContactSolid` and `crossContactShell`).
 public final class MixedStructure {
     public let solids: StructureSolver
     public let shells: ShellSolver
@@ -26,6 +31,11 @@ public final class MixedStructure {
     private let interface: StructureSolver.InterfaceBuffers
     private let shellLink: MTLBuffer
     private let followPipeline: MTLComputePipelineState
+    private let crossSolidPipeline: MTLComputePipelineState
+    private let crossShellPipeline: MTLComputePipelineState
+    private let placeholder: MTLBuffer
+    /// Per shell node: found within reach of a solid node this substep.
+    private let nearSolid: MTLBuffer
     private let commandQueue: MTLCommandQueue
     private let links: [(shellNode: Int, nodes: [Int], arms: [SIMD3<Float>])]
 
@@ -53,10 +63,22 @@ public final class MixedStructure {
         let step = min(solids.stableTimeStep, shells.stableTimeStep)
         solids.stepOverride = step
         shells.stepOverride = step
-        guard let function = library.makeFunction(name: "shellFollowSolid") else {
-            throw BlastError.missingFunction("shellFollowSolid")
+        func pipeline(_ name: String) throws -> MTLComputePipelineState {
+            guard let function = library.makeFunction(name: name) else {
+                throw BlastError.missingFunction(name)
+            }
+            return try device.makeComputePipelineState(function: function)
         }
-        followPipeline = try device.makeComputePipelineState(function: function)
+        followPipeline = try pipeline("shellFollowSolid")
+        crossSolidPipeline = try pipeline("crossContactSolid")
+        crossShellPipeline = try pipeline("crossContactShell")
+        guard let placeholder = device.makeBuffer(length: 64, options: .storageModeShared) else {
+            throw BlastError.allocationFailed("body interface")
+        }
+        self.placeholder = placeholder
+        guard let near = device.makeBuffer(length: max(shells.nodeCount, 1) * 4, options: .storageModeShared)
+        else { throw BlastError.allocationFailed("body interface") }
+        nearSolid = near
 
         // Shell nodes inside, or on the surface of, a solid element (other than those already
         // tied to a column head) are tied to the line of the solid's nodes that spans the
@@ -159,6 +181,7 @@ public final class MixedStructure {
     public func reset() {
         solids.reset()
         shells.reset()
+        memset(nearSolid.contents(), 0, nearSolid.length)
         // The tied shell nodes move with the solid, which carries their mass.
         var masses: [(node: Int, mass: Float)] = []
         shells.mutateNodes { nodes in
@@ -179,12 +202,33 @@ public final class MixedStructure {
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?
     ) {
         let tie = (link: shellLink, loads: interface.loads)
+        // Contact between the parts needs both parts' tables, so once either part would collide,
+        // both do, for this batch.
+        let modes = (solids.contactMode, shells.contactMode)
+        let failed = solids.hasFailed || shells.hasFailed
+        let touching =
+            modes.0 != .off && modes.1 != .off
+            && (modes.0 == .always || modes.1 == .always || failed)
+        if touching {
+            solids.contactMode = .always
+            shells.contactMode = .always
+        }
+        defer { (solids.contactMode, shells.contactMode) = modes }
+        // Spheres of the two sizes touch at half the sum of their widths; nodes that began within
+        // 1.5 of the larger element never repel, as within each part.
+        var cross = SIMD2<Float>(
+            0.5 * (solids.model.elementSize + shells.model.elementSize),
+            1.5 * max(solids.model.elementSize, shells.model.elementSize))
         var first = true
         solids.encodeSubsteps(
             encoder, count: count, fluid: fluid, interface: links.isEmpty ? nil : interface,
-            beforeNodes: { [self] substep in
+            beforeNodes: { [self] substep, solidUniforms in
                 shells.encodeSubsteps(
-                    encoder, substeps: substep..<(substep + 1), fluid: fluid, prelude: first, interface: tie)
+                    encoder, substeps: substep..<(substep + 1), fluid: fluid, prelude: first, interface: tie,
+                    beforeNodes: { [self] shellUniforms in
+                        guard touching else { return }
+                        encodeCrossContact(encoder, solidUniforms, shellUniforms, &cross, fluid: fluid)
+                    })
                 first = false
             },
             afterNodes: { [self] _ in
@@ -200,6 +244,59 @@ public final class MixedStructure {
                     threadsPerThreadgroup: MTLSize(
                         width: followPipeline.threadExecutionWidth, height: 1, depth: 1))
             })
+    }
+
+    /// Each part's nodes against the other's, both from the substep's starting positions.
+    private func encodeCrossContact(
+        _ encoder: MTLComputeCommandEncoder, _ solidUniforms: StructureUniforms,
+        _ shellUniforms: ShellUniforms,
+        _ cross: inout SIMD2<Float>, fluid: StructureSolver.FluidBinding?
+    ) {
+        var solidUniforms = solidUniforms
+        var shellUniforms = shellUniforms
+        let control = fluid?.control ?? placeholder
+        let pairs: [(MTLComputePipelineState, Int, [MTLBuffer], [MTLBuffer])] = [
+            (
+                crossSolidPipeline, solids.nodeCount,
+                [solids.nodeListBuffer, solids.nodeBuffer, solids.contactSlotBuffer],
+                [
+                    solids.contactForceBuffer, shells.nodeBuffer, shells.referenceBuffer,
+                    shells.contactHeadBuffer,
+                    shells.contactSlotBuffer,
+                ]
+            ),
+            (
+                crossShellPipeline, shells.nodeCount,
+                [shells.nodeBuffer, shells.referenceBuffer, shells.contactSlotBuffer],
+                [
+                    shells.contactForceBuffer, solids.nodeListBuffer, solids.nodeBuffer,
+                    solids.contactHeadBuffer,
+                    solids.contactSlotBuffer,
+                ]
+            ),
+        ]
+        for (index, (pipeline, count, own, other)) in pairs.enumerated() where count > 0 {
+            let solidFirst = index == 0
+            encoder.setComputePipelineState(pipeline)
+            for (slot, buffer) in own.enumerated() { encoder.setBuffer(buffer, offset: 0, index: slot) }
+            if solidFirst {
+                encoder.setBytes(&solidUniforms, length: MemoryLayout<StructureUniforms>.stride, index: 3)
+            } else {
+                encoder.setBytes(&shellUniforms, length: MemoryLayout<ShellUniforms>.stride, index: 3)
+            }
+            encoder.setBuffer(control, offset: 0, index: 4)
+            for (slot, buffer) in other.enumerated() { encoder.setBuffer(buffer, offset: 0, index: 5 + slot) }
+            if solidFirst {
+                encoder.setBytes(&shellUniforms, length: MemoryLayout<ShellUniforms>.stride, index: 10)
+            } else {
+                encoder.setBytes(&solidUniforms, length: MemoryLayout<StructureUniforms>.stride, index: 10)
+            }
+            encoder.setBytes(&cross, length: MemoryLayout<SIMD2<Float>>.stride, index: 11)
+            encoder.setBuffer(nearSolid, offset: 0, index: 12)
+            encoder.dispatchThreads(
+                MTLSize(width: count, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: pipeline.threadExecutionWidth, height: 1, depth: 1))
+        }
     }
 
     /// Advances the body on its own by `steps` steps, blocking until done.

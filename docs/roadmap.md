@@ -68,9 +68,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 ### Then scale and scope
 
-7. **Contact between the parts of a mixed body.** (Done: shells and solids together, tied
+7. **Contact that knows the shells' thickness.** (Done: shells and solids together, tied
    through the thickness, three times faster than all solid elements on the single-storey
-   building with only its front wall solid; see the [shell model](shell-model.md#shells-and-solids-together).)
+   building with only its front wall solid, and in contact with each other once anything has
+   failed; see the [shell model](shell-model.md#shells-and-solids-together).)
 8. **Joints within materials**: masonry as units and mortar, bearings that separate. (Done:
    several materials in one body; joints between materials that open at the bond of mortar to
    concrete; structural steel and annealed glass, the glass as shells in panes.)

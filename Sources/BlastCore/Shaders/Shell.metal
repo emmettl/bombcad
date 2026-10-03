@@ -1615,3 +1615,183 @@ kernel void shellFollowSolid(device ShellNode *nodes [[buffer(0)]],
     node.rotation = float4(axis * sin(0.5f * angle), cos(0.5f * angle));
     nodes[link.shellNode] = node;
 }
+
+// Contact between the two parts of a mixed body. Each part has its own contact table; these
+// passes let each node of one part meet the nodes of the other through the other's table, after
+// both tables have been filled and each part's own contact found, and before either part moves.
+// A solid node and a shell node touch closer than half the sum of their spheres' widths. Every
+// pair is worked out the same way from both sides, from positions and velocities at the start of
+// the substep, so the forces are equal and opposite, and each sum runs in table order, so runs
+// repeat exactly. As within a part, nodes dropped by their own crowded entry take no part, shell
+// nodes tied into the solid (which move with it) are left out, and pairs that began closer than
+// `neighbourDistance` never repel. The solid pass marks each shell node it finds within reach, so
+// the shell pass, whose search of the solid's smaller cells is the wider, runs only for those:
+// they are exactly the shell nodes that have a solid partner.
+struct CrossContact {
+    float reach;
+    float neighbourDistance;
+};
+
+// The force on the first of two nodes from the second, `offset` and `relative` being its position
+// and velocity relative to the second's: the same spring, damper and friction as within a part.
+static inline float3 crossPairForce(float3 offset, float3 relative, float mass, float reach,
+                                    constant StructureUniforms &u) {
+    float gap = length(offset);
+    if (gap >= reach || gap < 1e-9f) {
+        return float3(0.0f);
+    }
+    float3 normal = offset / gap;
+    float stiffness = u.contactStiffness * mass;
+    float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
+    float approach = dot(relative, normal);
+    float push = approach > separationLimit ? 0.0f : max(stiffness * (reach - gap) - damping * approach, 0.0f);
+    float3 force = push * normal;
+    float3 sliding = relative - approach * normal;
+    float speed = length(sliding);
+    if (speed > 1e-6f) {
+        force -= min(u.contactFriction * push, damping * speed) * (sliding / speed);
+    }
+    return force;
+}
+
+// Each surface node of the solid part, against the shell nodes near it.
+kernel void crossContactSolid(const device uint *nodeList [[buffer(0)]],
+                              const device StructureNode *nodes [[buffer(1)]],
+                              const device uint *slots [[buffer(2)]],
+                              constant StructureUniforms &u [[buffer(3)]],
+                              const device StepControl &control [[buffer(4)]],
+                              device packed_float3 *contact [[buffer(5)]],
+                              const device ShellNode *shellNodes [[buffer(6)]],
+                              const device float4 *reference [[buffer(7)]],
+                              const device uint *shellHeads [[buffer(8)]],
+                              const device uint *shellSlots [[buffer(9)]],
+                              constant ShellUniforms &su [[buffer(10)]],
+                              constant CrossContact &cross [[buffer(11)]],
+                              device uint *nearSolid [[buffer(12)]],
+                              uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    StructureNode node = nodes[threadIndex];
+    if ((node.flags & nodeBuried) != 0) {
+        return;
+    }
+    float3 position = nodePosition(threadIndex, nodeList, nodes, u);
+    uint own = contactBucket(contactCell(position, u), u);
+    bool listed = false;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        listed = listed || slots[own * contactSlots + slot] == threadIndex;
+    }
+    if (!listed) {
+        return;
+    }
+    float3 home = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
+    int3 low = shellContactCell(position - cross.reach, su);
+    int3 high = shellContactCell(position + cross.reach, su);
+    float3 force = float3(0.0f);
+    for (int z = low.z; z <= high.z; ++z) {
+        for (int y = low.y; y <= high.y; ++y) {
+            for (int x = low.x; x <= high.x; ++x) {
+                int3 c = int3(x, y, z);
+                uint target = shellContactBucket(c, su);
+                if (shellHeads[target] != su.stamp) {
+                    continue;
+                }
+                for (uint slot = 0; slot < shellContactSlots; ++slot) {
+                    uint other = shellSlots[target * shellContactSlots + slot];
+                    if (other == emptySlot) {
+                        break;
+                    }
+                    ShellNode partner = shellNodes[other];
+                    float3 otherPosition = reference[other].xyz + float3(partner.displacement);
+                    if ((partner.flags & shellOnSolid) != 0 || any(shellContactCell(otherPosition, su) != c)
+                        || distance(home, reference[other].xyz) < cross.neighbourDistance
+                        || distance(position, otherPosition) >= cross.reach) {
+                        continue;
+                    }
+                    nearSolid[other] = 1u;
+                    force += crossPairForce(position - otherPosition,
+                                            float3(node.velocity) - float3(partner.velocity),
+                                            min(node.mass, partner.mass), cross.reach, u);
+                }
+            }
+        }
+    }
+    float3 total = float3(contact[threadIndex]) + force;
+    float largest = node.mass * contactKick / max(dt, 1e-12f);
+    float size = length(total);
+    contact[threadIndex] = size > largest ? total * (largest / size) : total;
+}
+
+// Each shell node, against the surface nodes of the solid part near it.
+kernel void crossContactShell(const device ShellNode *nodes [[buffer(0)]],
+                              const device float4 *reference [[buffer(1)]],
+                              const device uint *slots [[buffer(2)]],
+                              constant ShellUniforms &su [[buffer(3)]],
+                              const device StepControl &control [[buffer(4)]],
+                              device packed_float3 *contact [[buffer(5)]],
+                              const device uint *solidList [[buffer(6)]],
+                              const device StructureNode *solidNodes [[buffer(7)]],
+                              const device uint *solidHeads [[buffer(8)]],
+                              const device uint *solidSlots [[buffer(9)]],
+                              constant StructureUniforms &u [[buffer(10)]],
+                              constant CrossContact &cross [[buffer(11)]],
+                              device uint *nearSolid [[buffer(12)]],
+                              uint n [[thread_position_in_grid]]) {
+    bool active;
+    float dt = shellStep(su, control, active);
+    if (!active || n >= su.nodeCount || nearSolid[n] == 0) {
+        return;
+    }
+    nearSolid[n] = 0;
+    ShellNode node = nodes[n];
+    if ((node.flags & shellOnSolid) != 0) {
+        return;
+    }
+    float3 home = reference[n].xyz;
+    float3 position = home + float3(node.displacement);
+    uint own = shellContactBucket(shellContactCell(position, su), su);
+    bool listed = false;
+    for (uint slot = 0; slot < shellContactSlots; ++slot) {
+        listed = listed || slots[own * shellContactSlots + slot] == n;
+    }
+    if (!listed) {
+        return;
+    }
+    int3 low = contactCell(position - cross.reach, u);
+    int3 high = contactCell(position + cross.reach, u);
+    float3 force = float3(0.0f);
+    for (int z = low.z; z <= high.z; ++z) {
+        for (int y = low.y; y <= high.y; ++y) {
+            for (int x = low.x; x <= high.x; ++x) {
+                int3 c = int3(x, y, z);
+                uint target = contactBucket(c, u);
+                if (solidHeads[target] != u.stamp) {
+                    continue;
+                }
+                for (uint slot = 0; slot < contactSlots; ++slot) {
+                    uint other = solidSlots[target * contactSlots + slot];
+                    if (other == emptySlot) {
+                        break;
+                    }
+                    float3 otherPosition = nodePosition(other, solidList, solidNodes, u);
+                    float3 otherHome = float3(u.originX, u.originY, u.originZ)
+                        + float3(latticeNode(solidList[other], u)) * u.h;
+                    if (any(contactCell(otherPosition, u) != c) || distance(home, otherHome) < cross.neighbourDistance) {
+                        continue;
+                    }
+                    StructureNode partner = solidNodes[other];
+                    force += crossPairForce(position - otherPosition,
+                                            float3(node.velocity) - float3(partner.velocity),
+                                            min(node.mass, partner.mass), cross.reach, u);
+                }
+            }
+        }
+    }
+    float3 total = float3(contact[n]) + force;
+    float largest = node.mass * contactKick / max(dt, 1e-12f);
+    float size = length(total);
+    contact[n] = size > largest ? total * (largest / size) : total;
+}

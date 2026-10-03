@@ -233,9 +233,9 @@ public final class ShellSolver {
     /// Bar groups of each beam: position across the section and area, eight per beam.
     private let beamBarLayoutBuffer: MTLBuffer
     private let contactPipelines: [MTLComputePipelineState]
-    private let contactHeadBuffer: MTLBuffer
-    private let contactSlotBuffer: MTLBuffer
-    private let contactForceBuffer: MTLBuffer
+    let contactHeadBuffer: MTLBuffer
+    let contactSlotBuffer: MTLBuffer
+    let contactForceBuffer: MTLBuffer
     private let contactPeriod: SIMD3<Int>
     private let contactOrigin: SIMD3<Float>
     private var stamp: UInt32 = 0
@@ -697,15 +697,18 @@ public final class ShellSolver {
     public func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?
     ) {
-        encodeSubsteps(encoder, substeps: 0..<count, fluid: fluid, prelude: true, interface: nil)
+        encodeSubsteps(
+            encoder, substeps: 0..<count, fluid: fluid, prelude: true, interface: nil, beforeNodes: nil)
     }
 
     /// Encodes the substeps in `substeps`, with the once-per-batch work first if `prelude`. With
     /// an interface, nodes tied into a solid body write their force and moment to `loads`, at
-    /// the link index in `link`, instead of moving.
+    /// the link index in `link`, instead of moving. `beforeNodes` runs after each substep's
+    /// contact pass, with its uniforms.
     func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, fluid: StructureSolver.FluidBinding?,
-        prelude: Bool, interface: (link: MTLBuffer, loads: MTLBuffer)?
+        prelude: Bool, interface: (link: MTLBuffer, loads: MTLBuffer)?,
+        beforeNodes: ((ShellUniforms) -> Void)?
     ) {
         guard elementCount + beamCount > 0 else { return }
         var uniforms = makeUniforms(fluid: fluid)
@@ -803,6 +806,7 @@ public final class ShellSolver {
                         MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
                 }
             }
+            beforeNodes?(uniforms)
 
             encoder.setComputePipelineState(nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)

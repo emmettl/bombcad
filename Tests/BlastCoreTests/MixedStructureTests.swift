@@ -148,3 +148,99 @@ extension MixedStructureTests {
             "solid \(solid.deflection) m, shells \(shells.deflection) m, mixed \(mixed.deflection) m")
     }
 }
+
+extension MixedStructureTests {
+    /// An elastic block of solid elements, 0.25 m across, thrown down at 2 m/s onto a free shell
+    /// plate 1 m square and 0.1 m thick, with no gravity: the block's lowest point and the
+    /// momentum of both parts, before and after.
+    func throwBlock(contact: ContactMode) throws -> (
+        lowest: Float, before: SIMD3<Double>, after: SIMD3<Double>
+    ) {
+        var model = StructureModel(
+            solids: [
+                Box(min: SIMD3(0.375, 0.375, 1.5), max: SIMD3(0.625, 0.625, 1.75)),
+                Box(min: SIMD3(0, 0, 1), max: SIMD3(1, 1, 1.1)),
+            ], material: Self.elastic, elementSize: 0.125, fixedBase: false)
+        model.elementKind = .solid
+        model.setElementKind(.shell, of: 1)
+        model.shellElementSize = 0.25
+        let body = try MixedStructure(device: device, model: model)
+        #expect(body.tiedNodes.isEmpty)
+        body.solids.gravity = 0
+        body.shells.gravity = 0
+        body.solids.groundContact = false
+        body.shells.groundContact = false
+        body.solids.contactMode = contact
+        body.shells.contactMode = contact
+        body.solids.mutateNodes { nodes in
+            for n in nodes.indices where nodes[n].mass > 0 { nodes[n].velocity = SIMD3(0, 0, -2) }
+        }
+        let before = body.solids.momentum() + body.shells.momentum()
+        body.advance(steps: Int(0.4 / body.criticalTimeStep))
+        var lowest = Float.infinity
+        let solids = body.solids
+        for k in 0...solids.ez {
+            for j in 0...solids.ey {
+                for i in 0...solids.ex where solids.storedNode(i, j, k) != nil {
+                    lowest = min(lowest, solids.position(i, j, k).z)
+                }
+            }
+        }
+        return (lowest, before, body.solids.momentum() + body.shells.momentum())
+    }
+
+    @Test("A block of solid elements thrown at a shell plate bounces off it, conserving momentum")
+    func blockMeetsPlate() throws {
+        let met = try throwBlock(contact: .always)
+        let passed = try throwBlock(contact: .off)
+        // Without contact the block passes through the plate's midsurface at z = 1.05.
+        #expect(passed.lowest < 1.0, "lowest point without contact \(passed.lowest) m")
+        // With it, the block's nodes stop half the sum of the elements' sizes away.
+        #expect(met.lowest > 1.05 + 0.1, "lowest point with contact \(met.lowest) m")
+        let change = simd_length(met.after - met.before) / simd_length(met.before)
+        #expect(change < 0.01, "momentum \(met.before) before, \(met.after) after")
+    }
+}
+
+extension MixedStructureTests {
+    @Test("A block of solid elements dropped onto a shell slab comes to rest on it")
+    func blockRestsOnSlab() throws {
+        var model = StructureModel(
+            solids: [
+                Box(min: SIMD3(0.375, 0.375, 1.5), max: SIMD3(0.625, 0.625, 1.75)),
+                Box(min: SIMD3(0, 0, 1), max: SIMD3(1, 1, 1.1)),
+            ], material: Self.elastic, elementSize: 0.125, fixedBase: false)
+        model.elementKind = .solid
+        model.setElementKind(.shell, of: 1)
+        model.shellElementSize = 0.25
+        // The slab is held along its edges.
+        model.supports = [
+            Box(min: SIMD3(-1, -1, 0), max: SIMD3(0.01, 2, 2)),
+            Box(min: SIMD3(0.99, -1, 0), max: SIMD3(2, 2, 2)),
+            Box(min: SIMD3(-1, -1, 0), max: SIMD3(2, 0.01, 2)),
+            Box(min: SIMD3(-1, 0.99, 0), max: SIMD3(2, 2, 2)),
+        ]
+        let body = try MixedStructure(device: device, model: model)
+        body.solids.contactMode = .always
+        body.shells.contactMode = .always
+        // Undamped, the elastic block bounces with a restitution near 0.9 (1.7, 1.6, 1.5 m/s);
+        // damped, it settles.
+        body.solids.damping = 5
+        body.shells.damping = 5
+        body.advance(steps: Int(2.0 / body.criticalTimeStep))
+        let solids = body.solids
+        var lowest = Float.infinity
+        var fastest: Float = 0
+        for k in 0...solids.ez {
+            for j in 0...solids.ey {
+                for i in 0...solids.ex where solids.storedNode(i, j, k) != nil {
+                    lowest = min(lowest, solids.position(i, j, k).z)
+                    fastest = max(fastest, simd_length(solids.node(i, j, k).velocity))
+                }
+            }
+        }
+        // It falls 0.26 m onto the slab, and stays on it.
+        #expect(lowest > 1.15 && lowest < 1.3, "lowest point \(lowest) m")
+        #expect(fastest < 0.05, "still moving at \(fastest) m/s, lowest \(lowest) m")
+    }
+}

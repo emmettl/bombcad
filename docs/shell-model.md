@@ -178,12 +178,29 @@ the Solid/Shell switch on each piece). `elementSize` is then the solid elements'
   moving, then the solid nodes, which take them, and last the tied shell nodes, which follow.
 - **The air.** Both parts are loaded by the air and both mark its mask; a shell's point counts
   as a whole cell's worth of solid elements, so the mask follows each part by its own rule.
+- **Contact.** Once contact is on in either part (once anything in either has failed, by
+  default), it is on in both, and the parts meet each other too. Each substep, after both have
+  found their own contacts and before either moves, each solid surface node looks through the
+  shell part's contact table for shell nodes, and each shell node through the solid part's
+  table for solid nodes, within half the sum of their spheres' widths (0.16 m for 62.5 mm solid
+  elements and 250 mm shells). The spring, damper, friction and safeguards are those within a
+  part. Each pair is worked out the same way from both sides, from the substep's starting
+  positions and velocities, so the forces are equal and opposite and the sums run in table
+  order: runs repeat exactly. Shell nodes tied into the solid are left out, and so are pairs
+  that began within 1.5 of the larger element, as within each part. The solid pass marks the
+  shell nodes it finds within reach, and the shell pass, whose search over the solid's smaller
+  cells is the wider, runs only for those.
 
 A first tie, to the eight corners of the one solid element the shell node lies in, let the
 moment in over a single element's height and was 10% soft; tied across the thickness, a
 cantilever strip whose first quarter is solid elements and the rest shells sags within 1.3% of
-beam theory, as the all-shell and all-solid strips do. There is no contact between the two
-parts, so debris of one passes through the other.
+beam theory, as the all-shell and all-solid strips do. A block of solid elements thrown at a
+free shell plate bounces off it with the total momentum unchanged to one part in a million,
+where without contact it passed through; dropped onto a shell slab held at its edges, it
+comes to rest on it. At 2,000 kg the building with only its front wall solid throws that wall
+into the room, and over 2 s the shell wall that falls in after it now comes to rest on its
+debris, where before it fell through it (2,776 elements removed against 2,571); the run takes 19% longer (13% over the first 0.5 s), most of it
+the shells' own contact, which the solid's failure now switches on.
 
 | Single-storey building, 100 kg (`blastbench throughput --preset box --full`) | 0.25 m air cells |
 |---|---|
@@ -213,6 +230,8 @@ less stiffly, bend more.
 | The same beam meshed with beams | 1–2% above section analysis on 50 and 25 mm elements |
 | Two-storey frame under its own weight | Stands, sagging a few millimetres, nothing removed |
 | Two plates thrown together | Turn back at one element apart; momentum conserved |
+| Block of solid elements thrown at a shell plate | Bounces off; momentum conserved within 10⁻⁶; passes through without contact |
+| The block dropped onto a shell slab | Comes to rest on it |
 | Free shell wall closing a shock tube | Gains the air's impulse within 2% |
 | Intact shell wall across the tube | Far side hears only the flexing wall |
 | Hole in it | Mask opens; blast passes through |
@@ -281,9 +300,8 @@ models of a collapse can end up.
 
 ## Future work
 
-- **Contact between the parts of a mixed body**, so that debris of solid elements meets shells.
-
-- **Contact that knows the shells' thickness.**
+- **Contact that knows the shells' thickness**, within the shells and between shells and solid
+  elements.
 - **A punching model** for slab–column joints in place of the slip rule.
 
 ## Sources

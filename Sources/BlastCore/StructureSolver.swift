@@ -108,7 +108,7 @@ public final class StructureSolver {
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
     /// Lattice indices of the nodes that belong to at least one element, in ascending order.
-    private let nodeListBuffer: MTLBuffer
+    let nodeListBuffer: MTLBuffer
     public let nodeCount: Int
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
@@ -119,12 +119,12 @@ public final class StructureSolver {
     private let debrisAreaPipeline: MTLComputePipelineState
     /// Contact table over element-sized cells of all space, wrapping periodically: a header per
     /// entry, and four node slots per entry.
-    private let contactHeadBuffer: MTLBuffer
-    private let contactSlotBuffer: MTLBuffer
+    let contactHeadBuffer: MTLBuffer
+    let contactSlotBuffer: MTLBuffer
     private let contactPeriod: SIMD3<Int>
     private let contactGridOrigin: SIMD3<Float>
     /// Contact force on each listed node.
-    private let contactForceBuffer: MTLBuffer
+    let contactForceBuffer: MTLBuffer
     /// Non-zero once any element has failed.
     private let failureGateBuffer: MTLBuffer
     private var stamp: UInt32 = 0
@@ -661,10 +661,11 @@ public final class StructureSolver {
     }
 
     /// Encodes `count` substeps, running `beforeNodes` after each substep's element and contact
-    /// passes and `afterNodes` after its node pass, for a body tied to this one.
+    /// passes (with the substep and its uniforms) and `afterNodes` after its node pass, for a body
+    /// tied to this one.
     func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?, interface: InterfaceBuffers?,
-        beforeNodes: ((Int) -> Void)?, afterNodes: ((Int) -> Void)?
+        beforeNodes: ((Int, StructureUniforms) -> Void)?, afterNodes: ((Int) -> Void)?
     ) {
         var uniforms = makeUniforms(fluid: fluid)
         uniforms.interfaceLinks = UInt32(interface?.count ?? 0)
@@ -747,7 +748,7 @@ public final class StructureSolver {
                 }
             }
 
-            beforeNodes?(substep)
+            beforeNodes?(substep, uniforms)
             encoder.setComputePipelineState(nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
