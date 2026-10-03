@@ -28,10 +28,11 @@ swift run -c release BombCAD
 ```
 
 ```bash
-./Scripts/make-app.sh
+make app
 ```
 
-The second command builds `build/BombCAD.app`, which can be launched from Finder.
+The second command builds `dist/BombCAD.app`, which can be launched from Finder.
+[Releasing](docs/releasing.md) describes signed, notarized builds for other Macs.
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
 wheel to zoom. Space runs and pauses, ⌘R resets.
@@ -102,6 +103,7 @@ Collapse and debris have not been compared with anything.
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
+| [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
 
 Each model document lists its sources, its limitations and the work that would address them.
 

@@ -1,6 +1,6 @@
 // Draws the app icon, a stylised surface burst: a starburst on the ground inside two shock
 // fronts, beside a building, on a dark tile.
-// Writes Resources/AppIcon.icns.
+// Writes Support/AppIcon.icns.
 //
 //     swift Scripts/make-icon.swift
 import AppKit
@@ -19,7 +19,8 @@ func draw(size: Int) -> CGImage {
     let s = CGFloat(size)
     let context = CGContext(
         data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
-        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )!
     context.scaleBy(x: s / 1024, y: s / 1024)
 
     // The tile, inset and rounded as macOS icons are.
@@ -44,13 +45,15 @@ func draw(size: Int) -> CGImage {
     // A warm glow behind everything.
     let glow = CGGradient(
         colorsSpace: nil, colors: [colour(0xff8a2a, 0.55), colour(0xff8a2a, 0)] as CFArray, locations: [0, 1])!
-    context.drawRadialGradient(glow, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 460, options: [])
+    context.drawRadialGradient(
+        glow, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 460, options: [])
 
     // Two shock fronts, the outer one fainter.
     for (radius, alpha, width) in [(CGFloat(500), CGFloat(0.3), CGFloat(16)), (390, 0.65, 20)] {
         context.setStrokeColor(colour(0xffc56b, alpha))
         context.setLineWidth(width)
-        context.strokeEllipse(in: CGRect(x: centre.x - radius, y: centre.y - radius, width: 2 * radius, height: 2 * radius))
+        context.strokeEllipse(
+            in: CGRect(x: centre.x - radius, y: centre.y - radius, width: 2 * radius, height: 2 * radius))
     }
 
     // The burst: a twelve-pointed star with uneven points, filled from yellow to orange.
@@ -72,13 +75,15 @@ func draw(size: Int) -> CGImage {
     let fire = CGGradient(
         colorsSpace: nil, colors: [colour(0xfff1b8), colour(0xffb02e), colour(0xf2541b)] as CFArray,
         locations: [0, 0.45, 1])!
-    context.drawRadialGradient(fire, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 300, options: [])
+    context.drawRadialGradient(
+        fire, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 300, options: [])
     context.restoreGState()
     // A bright core.
     let core = CGGradient(
         colorsSpace: nil, colors: [colour(0xfffdf2), colour(0xfffdf2, 0.9), colour(0xfff1b8, 0)] as CFArray,
         locations: [0, 0.55, 1])!
-    context.drawRadialGradient(core, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 130, options: [])
+    context.drawRadialGradient(
+        core, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 130, options: [])
 
     // A building beside it, lit on the face towards the blast.
     let building = CGRect(x: 738, y: 252, width: 120, height: 210)
@@ -115,11 +120,10 @@ for base in [16, 32, 128, 256, 512] {
         try rep.representation(using: .png, properties: [:])!.write(to: iconset.appendingPathComponent(name))
     }
 }
-let resources = root.appendingPathComponent("Resources")
-try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+let support = root.appendingPathComponent("Support")
 let process = Process()
 process.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
-process.arguments = ["-c", "icns", iconset.path, "-o", resources.appendingPathComponent("AppIcon.icns").path]
+process.arguments = ["-c", "icns", iconset.path, "-o", support.appendingPathComponent("AppIcon.icns").path]
 try process.run()
 process.waitUntilExit()
-print(process.terminationStatus == 0 ? "Wrote Resources/AppIcon.icns" : "iconutil failed")
+print(process.terminationStatus == 0 ? "Wrote Support/AppIcon.icns" : "iconutil failed")
