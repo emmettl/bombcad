@@ -90,6 +90,28 @@ It is off by default: it costs about 1.8 times as much (more work per step, and 
 in the hotter gas). With the ideal gas it overstates pressures in rooms by about 30%; with hot
 air (next) it does not.
 
+### A finely resolved start
+
+`SolverConfiguration.mappedCharge` starts a lone charge from a one-dimensional solution
+instead of the balloon. The blast is solved with spherical symmetry (the same MUSCL–Hancock
+and HLLC scheme, with the face areas 4πr² and the pressure's geometric source), on a radial
+grid of a few millimetres, from a sphere of the charge's own size (TNT's density), until its
+shock reaches 0.8 of the distance to the nearest block, structure or open face, at most 16
+cells; a charge on the ground spreads as one of twice the mass, mirrored. The state is then
+laid onto the grid (each cell averaged over 64 samples, the radial momentum turned into
+vectors) and the clock set to the time that took. Gauges and cells the shock has already
+passed take their histories, peaks and impulses from the one-dimensional solution.
+
+The one-dimensional solver keeps its energy within 1% and, from a point source, spreads as
+Sedov and Taylor say within 8%. On the Kingery–Bulmash comparison (on 0.5 m cells, mapped out
+to 8 m) the incident peaks inside the mapped region read 116% to 131% instead of 57% to 66%:
+no longer smeared, but now high, as an ideal gas expanding from the charge's own size does
+next to a real explosive. Beyond the mapped region nothing changes: within a couple of metres
+the grid smears the shock again as much as before (62% to 73% from 9 m out, against 62% to
+69%). So it gives exact one-dimensional records close in and a correct start, but no lasting
+gain in resolution; only refinement of the grid near the shock would give that. It is off by
+default, and only for a single charge, an ideal gas and no afterburning.
+
 ### Hot air
 
 The gas left by a charge, and burnt products all the more, is at 2000 to 3000 K, where the
@@ -200,8 +222,10 @@ UFC 3-340-02, lowest for light charges.
   state and optional afterburn energy.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
-- **Adaptive resolution** near the charge and the shock, the standard answer to the
-  thin-shock problem, at a large cost in complexity on the GPU.
+- **Adaptive resolution** near the shock, the standard answer to the thin-shock problem, at a
+  large cost in complexity on the GPU: blocks of finer cells that follow the shock, with
+  fluxes matched at their edges and smaller time steps inside. The mapped start shows that
+  resolving only the first moments does not last.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
 

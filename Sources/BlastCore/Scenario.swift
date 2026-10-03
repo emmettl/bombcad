@@ -162,10 +162,51 @@ extension BlastSolver {
 
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
-        deposit(scenario.charge)
-        for charge in scenario.additionalCharges ?? [] { deposit(charge) }
-        setGauges(cells: scenario.gauges.map { nearestFluidCell(to: $0.position) })
+        let mapping = mapping(for: scenario)
+        let gaugeCells = scenario.gauges.map { nearestFluidCell(to: $0.position) }
+        let gaugeCentres = gaugeCells.map { grid.cellCentre($0.i, $0.j, $0.k) }
+        var mapped: SphericalBlast?
+        if let mapping {
+            mapped = depositMapped(
+                scenario.charge, radius: mapping.radius, onGround: mapping.onGround, probes: gaugeCentres)
+        } else {
+            deposit(scenario.charge)
+            for charge in scenario.additionalCharges ?? [] { deposit(charge) }
+        }
+        setGauges(cells: gaugeCells)
         restart()
+        if let mapping, let mapped {
+            recordMapped(mapped, charge: scenario.charge, radius: mapping.radius, gauges: gaugeCentres)
+        }
+    }
+
+    /// How far a lone charge's blast can be solved in one dimension before it meets anything:
+    /// 0.8 of the distance to the nearest block, structure or open face of the domain (a
+    /// reflecting face the charge sits on mirrors it instead), at most 16 cells; nil if mapping is
+    /// off or not possible, or would not reach 3 cells.
+    func mapping(for scenario: Scenario) -> (radius: Float, onGround: Bool)? {
+        guard configuration.mappedCharge, !configuration.afterburning, configuration.airModel == .idealGas,
+            (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
+        else { return nil }
+        let c = scenario.charge.position
+        let dx = grid.cellSize
+        let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin)
+        var nearest = Float.infinity
+        var obstacles = scenario.boxes
+        if let structure = scenario.structure { obstacles.append(structure.bounds) }
+        for box in obstacles {
+            nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
+        }
+        let size = scenario.domainSize
+        let faces: [(BoundaryFaces, Float)] = [
+            (.xMin, c.x), (.xMax, size.x - c.x), (.yMin, c.y), (.yMax, size.y - c.y), (.zMin, c.z),
+            (.zMax, size.z - c.z),
+        ]
+        for (face, distance) in faces where !(face == .zMin && onGround) {
+            nearest = min(nearest, distance)
+        }
+        let radius = min(0.8 * nearest, 16 * dx)
+        return radius >= 3 * dx ? (radius, onGround) : nil
     }
 
     /// Radius of the sphere the charge's energy is spread over: the physical charge size,

@@ -498,6 +498,27 @@ public final class BlastSolver {
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
     }
 
+    /// Sets the clock without touching the state, after `restart()`: for a blast laid down as it
+    /// is some time after detonation.
+    func startClock(at start: Double) {
+        time = start
+    }
+
+    /// Direct access to the peak overpressure and impulse fields.
+    func setFields(_ body: (UnsafeMutableBufferPointer<Float>, UnsafeMutableBufferPointer<Float>) -> Void) {
+        let peak = peakBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        let impulse = impulseBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        body(
+            UnsafeMutableBufferPointer(start: peak, count: grid.cellCount),
+            UnsafeMutableBufferPointer(start: impulse, count: grid.cellCount))
+    }
+
+    /// Puts `samples` in front of gauge `index`'s history.
+    func prependGaugeHistory(_ index: Int, _ samples: [GaugeSample]) {
+        guard gaugeHistories.indices.contains(index) else { return }
+        gaugeHistories[index] = samples + gaugeHistories[index]
+    }
+
     /// Resets time, histories and the peak/impulse fields, treating the current state as initial.
     /// The structure, if any, returns to its undeformed state.
     public func restart() {

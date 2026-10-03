@@ -103,6 +103,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// open matches Kingery-Bulmash; burning at once would add to the leading shock, which those
     /// tests show it barely does.
     public var afterburnTime: Float = 10e-3
+    /// Start a lone charge from a fine one-dimensional solution of its first moments, mapped
+    /// onto the grid once its shock has spread as far as it can before meeting anything (at most
+    /// 16 cells), instead of from a sphere of hot gas a few cells across. Only with an ideal gas
+    /// and without afterburning.
+    public var mappedCharge = false
     /// Once no air cell is further than this fraction of ambient pressure from ambient, and
     /// there is a structure to keep following, the air is frozen and only the structure is
     /// advanced. Zero disables this. The default, 2 kPa at sea level, is small beside the

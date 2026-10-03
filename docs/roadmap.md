@@ -73,7 +73,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 8. **Joints within materials**: masonry as units and mortar, bearings that separate. (Done:
    several materials in one body; joints between materials that open at the bond of mortar to
    concrete; structural steel and annealed glass, the glass as shells in panes.)
-9. **Adaptive resolution in the air.**
+9. **Adaptive resolution in the air**: refined blocks that follow the shock. Not done. A
+   finely resolved one-dimensional start, mapped onto the grid, was tried first (see the
+   [air-blast model](air-blast-model.md#a-finely-resolved-start)): it gives exact records close
+   to a charge, but the grid smears the shock again within a couple of metres, so only true
+   refinement would make close-in peaks right.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2

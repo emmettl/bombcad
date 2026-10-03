@@ -565,7 +565,7 @@ compare these with.
 
 ## Verification against theory
 
-The test suite has 112 tests. The physical checks are:
+The test suite has 114 tests. The physical checks are:
 
 **Air solver**
 
@@ -588,6 +588,8 @@ The test suite has 112 tests. The physical checks are:
 | Wall in a blast, solid base, shell top          | Bends between the all-solid and all-shell walls  |
 | Concrete and masonry elements pulled apart, joint bonded | Separate at the bond, 0.2 MPa, within 5%   |
 | Glass pane, 1 kg at 3 m and 0.5 g at 3 m        | Breaks, and survives                             |
+| One-dimensional blast, point source             | Energy within 1%; Sedov–Taylor radius within 8%  |
+| Charge mapped onto the grid                     | Same energy as the balloon within 3%; gauges passed keep their record |
 
 **Structural solver**
 

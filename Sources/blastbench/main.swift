@@ -224,6 +224,10 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
         solver.configuration.airModel = .thermallyPerfect
         try solver.load(scenario)
     }
+    if flag("mapped") {
+        solver.configuration.mappedCharge = true
+        try solver.load(scenario)
+    }
     if flag("afterburn") {
         solver.configuration.afterburning = true
         if let time = option("burn-time").flatMap({ Float($0) }) {
@@ -303,6 +307,7 @@ func runValidation() throws {
         if flag("hll") { solver.configuration.riemannSolver = .hll }
         if flag("afterburn") { solver.configuration.afterburning = true }
         if option("air") == "thermal" { solver.configuration.airModel = .thermallyPerfect }
+        if flag("mapped") { solver.configuration.mappedCharge = true }
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000
         }
