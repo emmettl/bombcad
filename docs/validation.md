@@ -487,6 +487,7 @@ The test suite has 98 tests. The physical checks are:
 | Closed box with an obstacle                     | Mass and energy conserved to 1 part in 10⁴     |
 | Centred burst in a cube                         | Mirror-symmetric to 1 part in 10³              |
 | Still air around obstacles                      | Stays still                                    |
+| Street blast and coupled wall, still air skipped | Identical to sweeping everything, cell for cell |
 
 **Structural solver**
 
