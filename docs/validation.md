@@ -621,8 +621,18 @@ beyond. What was found on the way:
 
 What remains, in rough order:
 
-1. **The joints' detailing**: no diagonal bars across the chamfers, so they crack away; and
-   mats smeared over a band one element thick.
+1. **The joints' detailing**: no diagonal bars across the chamfers, and mats smeared over a
+   band one element thick. In the test the joints were cut through by oblique shear cracks
+   from the chamfers' edges within a few milliseconds and became hinges held only by their
+   bars, their cores fragmented; in the model they crack (1 to 3% across a band running up
+   from the chamfer's edge) but no crack runs through the section. Two changes were tried and
+   neither kept. Bars in the chamfers (as lattice bars in both directions, more steel than the
+   diagonal bars) stiffen the roof: 56 to 58 mm peak, 8 mm left. Softening the compression of
+   concrete cracked the other way, by 1 / (0.8 + 170 ε₁) as in the modified compression field
+   theory, raised the roof's peak to 78 mm (97 mm with afterburning and hot air) and left it
+   14 to 16 mm up, but stripped the unreinforced chamfers and the down-stand (1,100 elements)
+   and made other cases fail: the slab held down at its supports came apart, and the
+   two-storey frame fell at 1,000 kg.
 2. **The down-stand**, which loses about 40% of its elements; its stirrups are not modelled.
 3. **What the model leaves out of the load path**: the steel sleeves, which take some of the
    charges' energy and were modelled by the paper, and afterburning, which would raise the
