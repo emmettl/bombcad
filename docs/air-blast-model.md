@@ -173,7 +173,7 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   the lower, and so is any block within two cells of such a pair: a shock moves under half a
   cell a step, and the blocks are placed afresh every step, so it cannot outrun them. Each
   refined block is a patch of (4r)³ fine cells, taken from a pool of fixed size
-  (`refinementMemory`, 1 GB by default, about 48 kB a patch at ratio 2 and 245 kB at ratio 4).
+  (`refinementMemory`, 1 GB by default, about 63 kB a patch at ratio 2 and 364 kB at ratio 4).
   Where the shock would need more, the rest of it stays coarse.
 - **Each coarse step:** the coarse cells around each patch are saved; the coarse grid is swept
   as usual, and every coarse cell beside a patch records the flux it used through their shared
@@ -184,8 +184,19 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   fine fluxes through their face and its own put right (refluxing), so mass, momentum and
   energy are conserved across the level's edge; each coarse cell under a patch becomes the mean
   of its fine cells; and the patches are placed afresh, new ones filled from the coarse cells.
-- **What it records.** Fine cells take the solid mask of the coarse cell they lie in. A coarse
-  cell's peak overpressure is the largest its fine cells reach, and its impulse is what it had
+- **The outline.** Fine cells have their own solid mask, at their own resolution: a fine cell
+  is solid where its centre lies in a rigid block (or, where the mask was set by hand rather than
+  from blocks, where its coarse cell is solid), or where a deformable structure fills a third of
+  it, the structure's elements sampled at points no further apart than a fine cell and its shells
+  and beams at half one. A fine cell that opens takes the mean of the fluid fine cells beside it.
+  A coarse cell under a patch becomes the mean of its fluid fine cells. Refluxing does not ask
+  what the coarse cell inside is: a coarse cell beside a patch records the flux it used, through
+  fluid or wall, and the fine level gives the flux of every fine face, the wall's where the fine
+  cell is solid. Where the two outlines differ, though, placing or releasing a patch moves gas
+  between grids that disagree about the volume there: in a closed room with a block offset by
+  half a cell, mass and energy swing by up to 0.14% as patches come and go, and come back to
+  within 2 × 10⁻⁵ (where the outlines agree they are conserved to rounding).
+- **What it records.** A coarse cell's peak overpressure is the largest its fine cells reach, and its impulse is what it had
   when the patch was placed plus the largest any of its fine cells has gathered since: in open
   air its fine cells agree, and against a wall, where impulse falls off steeply, it reads the
   wall's value as a coarse cell beside a wall does. A gauge reads the fine cell holding its
@@ -195,10 +206,10 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   wall the pressure changes too steeply for that mean to stand for it. A fine cell in a moving
   solid's coarse cell mirrors the gas about the solid's speed, as a coarse cell does. After the
   structure's substeps, what it changed in the coarse cells under the patches is carried into
-  their fine cells: a cell the structure has uncovered, refilled from the air beside it, gives
-  its state to all its fine cells, and the momentum and energy debris trades with the air are
-  added evenly to each fine cell (a cell nothing touched is left exactly as it was). The
-  structure's outline in the air stays that of the coarse cells.
+  their fine cells: the momentum and energy debris trades with the air are
+  added evenly to each fluid fine cell (a cell nothing touched is left exactly as it was); the
+  structure's own outline in the fine cells follows it as above, each solid fine cell moving with
+  the mean velocity of the structure in it.
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,
@@ -256,8 +267,7 @@ UFC 3-340-02, lowest for light charges.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, but only one finer
-   level, not with afterburning, and with solids' outlines, a structure's included, as coarse as
-   the coarse cells.
+   level, and not with afterburning.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
    or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
@@ -288,9 +298,9 @@ UFC 3-340-02, lowest for light charges.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: several levels, so that a ratio of 4 is reached in two steps of 2;
-  solids' outlines, and a structure's mask, at the fine cells' resolution; afterburning on the
-  fine level; and smaller blocks, or blocks that follow the shock's shape, since the shell's
-  thickness sets the cost.
+  afterburning on the fine level; patches placed and released over a fine outline without the
+  gas they move between grids being gained or lost; and smaller blocks, or blocks that follow
+  the shock's shape, since the shell's thickness sets the cost.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
 

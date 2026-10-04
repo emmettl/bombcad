@@ -515,9 +515,11 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
     // A cell of unrefined air beside a patch records the flux it used through the face they
     // share, so that the patch's own fluxes can replace it (see Refine.metal).
     if (u.refineRatio != 0) {
+        // The cell across may be fluid or solid here; either way this cell's flux through the
+        // face is what the patch's fine fluxes replace.
         int local = i % patchSize;
-        bool lowEdge = local == 0 && kindM1 == kindFluid;
-        bool highEdge = local == patchSize - 1 && kindP1 == kindFluid;
+        bool lowEdge = local == 0 && i > 0;
+        bool highEdge = local == patchSize - 1 && i < n - 1;
         if ((lowEdge || highEdge) && patchAt(cell, patchOfTile, u) < 0) {
             int3 across = cell;
             across[axis] += lowEdge ? -1 : 1;
@@ -711,6 +713,7 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                         const device int *patchOfTile [[buffer(8)]],
                         const device Cell *fine [[buffer(9)]],
                         const device uint *gaugeChildren [[buffer(10)]],
+                        const device uchar *fineMask [[buffer(11)]],
                         uint tid [[thread_position_in_grid]]) {
     if (tid != 0) {
         return;
@@ -751,7 +754,10 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                 int r = int(u.refineRatio);
                 int side = patchSize * r;
                 int3 local = (cell % patchSize) * r + int3(child % uint(r), (child / uint(r)) % uint(r), child / uint(r * r));
-                c = fine[uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z))];
+                uint at = uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
+                if ((fineMask[at] & 1) == 0) {
+                    c = fine[at];
+                }
             }
         }
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);

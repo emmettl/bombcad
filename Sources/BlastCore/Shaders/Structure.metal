@@ -299,8 +299,9 @@ static inline float3 cornerSign(uint a) {
 // Overpressure of the air just outside an element face: the first fluid cell within two cells.
 static inline float faceOverpressure(float3 point, float3 normal, const device Cell *fluid,
                                      const device uchar *fluidMask, const device int *patchOfTile,
-                                     const device Cell *fine, constant StructureUniforms &u) {
-    return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, u.fluidRefine,
+                                     const device Cell *fine, const device uchar *fineMask,
+                                     constant StructureUniforms &u) {
+    return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, fineMask, u.fluidRefine,
                              u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
                              u.fluidAirModel, u.fluidGamma, u.ambientPressure);
 }
@@ -581,6 +582,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device uint *nodeMap [[buffer(20)]],
                               const device int *patchOfTile [[buffer(21)]],
                               const device Cell *fineAir [[buffer(22)]],
+                              const device uchar *fineAirMask [[buffer(23)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -1301,7 +1303,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 normal = -normal;
             }
             float overpressure =
-                u.coupled != 0 ? faceOverpressure(faceCentre, normal, fluid, fluidMask, patchOfTile, fineAir, u) : 0.0f;
+                u.coupled != 0 ? faceOverpressure(faceCentre, normal, fluid, fluidMask, patchOfTile, fineAir, fineAirMask, u) : 0.0f;
             // The prescribed pressure acts only on the original outer surface it was given for.
             if (face == u.loadFace && neighbourFlag == elementEmpty) {
                 overpressure += applied;
@@ -1811,7 +1813,42 @@ struct CouplingUniforms {
     float ambientPressure;
     uint airModel;
     uint splatWeight;  // what each point counts for in a cell's occupancy, against `threshold`
+    // The air's refinement (see Refine.metal): its ratio (0 when not refined), its grid of blocks,
+    // the count that makes a fine cell solid, and the points along each edge of an element
+    // sampled for the fine cells.
+    uint refineRatio;
+    uint blocksX;
+    uint blocksY;
+    uint fineThreshold;
+    uint fineSamples;
 };
+
+// Where the air is refined, adds a point of the structure, moving with `fixed` (fixed point), to
+// the occupancy of the fine cell holding it: four counters per fine cell, as for the coarse ones.
+static inline void splatFine(float3 sample, int3 fixed, uint weight, const device int *patchOfTile,
+                             device atomic_uint *fineOccupancy, constant CouplingUniforms &u) {
+    if (u.refineRatio == 0) {
+        return;
+    }
+    float fineCell = u.fluidCell / float(u.refineRatio);
+    int3 fine = int3(floor(sample / fineCell));
+    int3 cells = int3(u.fluidNx, u.fluidNy, u.fluidNz) * int(u.refineRatio);
+    if (any(fine < 0) || any(fine >= cells)) {
+        return;
+    }
+    int side = patchSize * int(u.refineRatio);
+    int3 block = fine / side;
+    int patch = patchOfTile[block.x + int(u.blocksX) * (block.y + int(u.blocksY) * block.z)];
+    if (patch < 0) {
+        return;
+    }
+    int3 local = fine - block * side;
+    uint slot = 4u * (uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z)));
+    atomic_fetch_add_explicit(&fineOccupancy[slot], weight, memory_order_relaxed);
+    atomic_fetch_add_explicit(&fineOccupancy[slot + 1], uint(fixed.x) * weight, memory_order_relaxed);
+    atomic_fetch_add_explicit(&fineOccupancy[slot + 2], uint(fixed.y) * weight, memory_order_relaxed);
+    atomic_fetch_add_explicit(&fineOccupancy[slot + 3], uint(fixed.z) * weight, memory_order_relaxed);
+}
 
 // Velocities handed to the air are limited to this (m/s) and summed in steps of 1/1024 m/s.
 constant float wallSpeedLimit = 1000.0f;
@@ -1823,6 +1860,8 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
                            device atomic_uint *occupancy [[buffer(3)]],
                            constant CouplingUniforms &u [[buffer(4)]],
                            const device uint *nodeMap [[buffer(5)]],
+                           const device int *patchOfTile [[buffer(6)]],
+                           device atomic_uint *fineOccupancy [[buffer(7)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     uint element = elementList[threadIndex];
     if (flags[element] != elementActive) {
@@ -1836,6 +1875,17 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     uint high = nodeMap[lowCorner + 1 + nodesX + nodesX * nodesY];
     float3 centre = float3(u.originX, u.originY, u.originZ) + (float3(cell) + 0.5f) * u.h
         + 0.5f * (float3(nodes[low].displacement) + float3(nodes[high].displacement));
+    float3 velocity = 0.5f * (float3(nodes[low].velocity) + float3(nodes[high].velocity));
+    velocity = select(clamp(velocity, -wallSpeedLimit, wallSpeedLimit), float3(0.0f), isnan(velocity));
+    int3 fixed = int3(round(velocity * wallSpeedScale));
+    // Where the air is refined, the element is sampled at points no further apart than a fine
+    // cell, each counting towards the fine cell it falls in.
+    uint samples = u.fineSamples;
+    for (uint n = 0; u.refineRatio != 0 && n < samples * samples * samples; ++n) {
+        float3 offset = (float3(n % samples, (n / samples) % samples, n / (samples * samples)) + 0.5f) / float(samples)
+            - 0.5f;
+        splatFine(centre + offset * u.h, fixed, 1u, patchOfTile, fineOccupancy, u);
+    }
     int3 target = int3(floor(centre / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
     if (any(target < 0) || any(target >= dims)) {
@@ -1844,9 +1894,6 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     // Each cell has four counters: the number of elements, then the sum of their velocities
     // in fixed point (two's-complement addition makes the unsigned counters signed sums).
     uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
-    float3 velocity = 0.5f * (float3(nodes[low].velocity) + float3(nodes[high].velocity));
-    velocity = select(clamp(velocity, -wallSpeedLimit, wallSpeedLimit), float3(0.0f), isnan(velocity));
-    int3 fixed = int3(round(velocity * wallSpeedScale));
     atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
     atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
     atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
@@ -1993,5 +2040,94 @@ kernel void remaskApply(device uchar *mask [[buffer(0)]],
     uint slot = 4 * (tid.x + u.regionNx * (tid.y + u.regionNy * tid.z));
     for (uint n = 0; n < 4; ++n) {
         occupancy[slot + n] = 0;
+    }
+}
+
+// Where the air is refined, the fine cells' own outline follows the structure the same way, at
+// their resolution: a fine cell is solid when it lies in a rigid block, or when the structure's
+// points counted into it (`splatFine`) reach `threshold`, and moves with their mean velocity. A
+// fine cell that opens takes the mean of the fluid fine cells beside it in its patch, or failing
+// those the coarse cell it lies in. Two passes, as for the coarse cells: bit 0 of `fineMask` is
+// solid, bit 1 rigid, and bit 2 holds the new solid flag until `refineRemaskApply`.
+kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
+                                device packed_float3 *fineWall [[buffer(1)]],
+                                const device uint *fineOccupancy [[buffer(2)]],
+                                device Cell *fine [[buffer(3)]],
+                                const device Cell *coarse [[buffer(4)]],
+                                constant SolverUniforms &u [[buffer(5)]],
+                                const device uint *tileOfPatch [[buffer(6)]],
+                                const device uint *patchList [[buffer(7)]],
+                                constant uint &threshold [[buffer(8)]],
+                                uint gid [[thread_position_in_grid]]) {
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    uint cells = uint(side * side * side);
+    uint patch = patchList[gid / cells];
+    uint position = gid % cells;
+    int3 local = int3(position % uint(side), (position / uint(side)) % uint(side), position / uint(side * side));
+    int3 tile = tileCoordinates(tileOfPatch[patch], u);
+    int3 cell = (tile * side + local) / r;
+    if (any(cell >= int3(u.nx, u.ny, u.nz))) {
+        return;
+    }
+    uint at = patch * cells + position;
+    uchar m = fineMask[at];
+    bool rigid = (m & 2) != 0;
+    uint count = fineOccupancy[4 * at];
+    bool solid = rigid || count >= threshold;
+    float3 velocity = float3(0.0f);
+    if (!rigid && count >= threshold) {
+        int3 sum = int3(int(fineOccupancy[4 * at + 1]), int(fineOccupancy[4 * at + 2]), int(fineOccupancy[4 * at + 3]));
+        velocity = float3(sum) / (wallSpeedScale * float(count));
+    }
+    fineWall[at] = velocity;
+    bool was = (m & 1) != 0;
+    if (was && !solid) {
+        Cell sum = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+        float neighbours = 0.0f;
+        for (int n = 0; n < 6; ++n) {
+            int3 q = local;
+            q[n / 2] += (n % 2) * 2 - 1;
+            if (any(q < 0) || any(q >= side)) {
+                continue;
+            }
+            uint there = patch * cells + uint(q.x + side * (q.y + side * q.z));
+            if ((fineMask[there] & 1) != 0) {
+                continue;
+            }
+            Cell c = fine[there];
+            sum.rho += c.rho;
+            sum.mx += c.mx;
+            sum.my += c.my;
+            sum.mz += c.mz;
+            sum.energy += c.energy;
+            neighbours += 1.0f;
+        }
+        Cell fill = coarse[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)];
+        if (neighbours > 0.0f) {
+            float scale = 1.0f / neighbours;
+            fill.rho = sum.rho * scale;
+            fill.mx = sum.mx * scale;
+            fill.my = sum.my * scale;
+            fill.mz = sum.mz * scale;
+            fill.energy = sum.energy * scale;
+        }
+        fine[at] = fill;
+    }
+    fineMask[at] = (m & 3) | (solid ? 4 : 0);
+}
+
+kernel void refineRemaskApply(device uchar *fineMask [[buffer(0)]],
+                              device uint *fineOccupancy [[buffer(1)]],
+                              constant SolverUniforms &u [[buffer(2)]],
+                              const device uint *patchList [[buffer(3)]],
+                              uint gid [[thread_position_in_grid]]) {
+    uint side = uint(patchSize) * u.refineRatio;
+    uint cells = side * side * side;
+    uint at = patchList[gid / cells] * cells + gid % cells;
+    uchar m = fineMask[at];
+    fineMask[at] = (m & 2) | ((m >> 2) & 1);
+    for (uint n = 0; n < 4; ++n) {
+        fineOccupancy[4 * at + n] = 0;
     }
 }

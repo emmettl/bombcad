@@ -213,8 +213,10 @@ constant float2 shellCorners[4] = {float2(-1.0f, -1.0f), float2(1.0f, -1.0f), fl
 // within three cells.
 static inline float shellOverpressure(float3 point, float3 normal, float halfThickness, const device Cell *fluid,
                                       const device uchar *fluidMask, const device int *patchOfTile,
-                                      const device Cell *fine, constant ShellUniforms &u) {
-    return overpressureAlong(point, normal, halfThickness, 3, fluid, fluidMask, patchOfTile, fine, u.fluidRefine,
+                                      const device Cell *fine, const device uchar *fineMask,
+                                      constant ShellUniforms &u) {
+    return overpressureAlong(point, normal, halfThickness, 3, fluid, fluidMask, patchOfTile, fine, fineMask,
+                             u.fluidRefine,
                              u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
                              u.fluidAirModel, u.fluidGamma, u.ambientPressure);
 }
@@ -487,6 +489,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           const device float *barPlasticBefore [[buffer(19)]],
                           const device int *patchOfTile [[buffer(20)]],
                           const device Cell *fineAir [[buffer(21)]],
+                          const device uchar *fineAirMask [[buffer(22)]],
                           uint lane [[thread_position_in_grid]]) {
     // Four threads per element, one for each of its in-plane points, in adjacent lanes (a quad);
     // their shares of the forces are summed across the quad at the end.
@@ -723,8 +726,10 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float3 load = float3(0.0f);
         if (u.coupled != 0) {
             float3 unit = normalize(areaVector);
-            float front = shellOverpressure(centre, unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir, u);
-            float back = shellOverpressure(centre, -unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir, u);
+            float front = shellOverpressure(centre, unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir,
+                                            fineAirMask, u);
+            float back = shellOverpressure(centre, -unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir,
+                                            fineAirMask, u);
             load += (back - front) * areaVector;
         }
         if (u.loadCount != 0 && (u.loadFace >> 1) == k) {
@@ -1058,6 +1063,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
                          const device float4 *barLayout [[buffer(14)]],
                          const device int *patchOfTile [[buffer(15)]],
                          const device Cell *fineAir [[buffer(16)]],
+                         const device uchar *fineAirMask [[buffer(17)]],
                          uint e [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1204,8 +1210,10 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
         float halves[2] = {0.5f * beam.width, 0.5f * beam.depth};
         float faces[2] = {beam.depth * L, beam.width * L};
         for (uint s = 0; s < 2; ++s) {
-            float plus = shellOverpressure(centre, normals[s], halves[s], fluid, fluidMask, patchOfTile, fineAir, u);
-            float minus = shellOverpressure(centre, -normals[s], halves[s], fluid, fluidMask, patchOfTile, fineAir, u);
+            float plus = shellOverpressure(centre, normals[s], halves[s], fluid, fluidMask, patchOfTile, fineAir,
+                                            fineAirMask, u);
+            float minus = shellOverpressure(centre, -normals[s], halves[s], fluid, fluidMask, patchOfTile, fineAir,
+                                            fineAirMask, u);
             float3 force = (minus - plus) * faces[s] * normals[s];
             load[0] += 0.5f * force;
             load[1] += 0.5f * force;
@@ -1406,6 +1414,8 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
                        device atomic_uint *occupancy [[buffer(4)]],
                        constant CouplingUniforms &u [[buffer(5)]],
                        constant uint &elementCount [[buffer(6)]],
+                       const device int *patchOfTile [[buffer(7)]],
+                       device atomic_uint *fineOccupancy [[buffer(8)]],
                        uint e [[thread_position_in_grid]]) {
     if (e >= elementCount || flags[e] != elementActive) {
         return;
@@ -1422,9 +1432,11 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
         v[c] = float3(node.velocity);
         d[c] = normal + rotationOffset(node.rotation, normal);
     }
-    float spacing = 0.5f * u.fluidCell;
-    uint along = clamp(uint(ceil(max(el.a, el.b) / spacing)) + 1u, 2u, 17u);
-    uint through = clamp(uint(ceil(el.thickness / spacing)), 1u, 8u);
+    // Points no more than half a cell apart, or half a fine cell where the air is refined.
+    float spacing = 0.5f * u.fluidCell / float(max(u.refineRatio, 1u));
+    uint most = u.refineRatio != 0 ? 33u : 17u;
+    uint along = clamp(uint(ceil(max(el.a, el.b) / spacing)) + 1u, 2u, most);
+    uint through = clamp(uint(ceil(el.thickness / spacing)), 1u, most / 2u);
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
     for (uint i = 0; i < along; ++i) {
         float s = float(i) / float(along - 1);
@@ -1438,6 +1450,7 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
             for (uint l = 0; l < through; ++l) {
                 float zeta = -1.0f + (2.0f * float(l) + 1.0f) / float(through);
                 float3 sample = point + 0.5f * zeta * el.thickness * director;
+                splatFine(sample, fixed, u.fineThreshold, patchOfTile, fineOccupancy, u);
                 int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
                 if (any(target < 0) || any(target >= dims)) {
                     continue;
@@ -1460,6 +1473,8 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
                       device atomic_uint *occupancy [[buffer(4)]],
                       constant CouplingUniforms &u [[buffer(5)]],
                       constant uint &beamCount [[buffer(6)]],
+                      const device int *patchOfTile [[buffer(7)]],
+                      device atomic_uint *fineOccupancy [[buffer(8)]],
                       uint e [[thread_position_in_grid]]) {
     if (e >= beamCount || flags[e] != elementActive) {
         return;
@@ -1480,10 +1495,11 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
         d2[c] = e2 + rotationOffset(node.rotation, e2);
         d3[c] = e3 + rotationOffset(node.rotation, e3);
     }
-    float spacing = 0.5f * u.fluidCell;
-    uint along = clamp(uint(ceil(beam.length / spacing)) + 1u, 2u, 17u);
-    uint across2 = clamp(uint(ceil(beam.width / spacing)), 1u, 8u);
-    uint across3 = clamp(uint(ceil(beam.depth / spacing)), 1u, 8u);
+    float spacing = 0.5f * u.fluidCell / float(max(u.refineRatio, 1u));
+    uint most = u.refineRatio != 0 ? 33u : 17u;
+    uint along = clamp(uint(ceil(beam.length / spacing)) + 1u, 2u, most);
+    uint across2 = clamp(uint(ceil(beam.width / spacing)), 1u, most / 2u);
+    uint across3 = clamp(uint(ceil(beam.depth / spacing)), 1u, most / 2u);
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
     for (uint i = 0; i < along; ++i) {
         float s = float(i) / float(along - 1);
@@ -1498,6 +1514,7 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
             for (uint b = 0; b < across3; ++b) {
                 float zeta = -1.0f + (2.0f * float(b) + 1.0f) / float(across3);
                 float3 sample = centre + 0.5f * eta * beam.width * side2 + 0.5f * zeta * beam.depth * side3;
+                splatFine(sample, fixed, u.fineThreshold, patchOfTile, fineOccupancy, u);
                 int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
                 if (any(target < 0) || any(target >= dims)) {
                     continue;

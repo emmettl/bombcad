@@ -592,9 +592,9 @@ resisted sliding across cracks and cracks were bridged across the section (see t
 [concrete model](concrete-model.md#shear-across-cracks)), the wall sheared off at its base on
 every grid and toppled. At 50 kg the wall barely cracks, and its few millimetres show no trend
 with the grid. With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 and the
-wall loaded by the fine cells beside it, 0.5 m cells give 373 mm and 267 elements removed at
-200 kg, as 0.25 m cells do (381 mm, 282), and 0.25 m cells give 428 mm and 545 removed, against
-404 mm and 374 on 0.125 m cells. With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
+wall loaded by the fine cells beside it and outlined at their resolution, 0.5 m cells give
+383 mm and 287 elements removed at 200 kg, as 0.25 m cells do (381 mm, 282), and 0.25 m cells
+give 429 mm and 543 removed, against 404 mm and 374 on 0.125 m cells. With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
 with resolution as the peak pressure does, and 315, 437 and 657 mm at 200 kg; that model
 mishandled inclined cracks (see the [concrete model](concrete-model.md#cracking)). There is
 no test to compare these with.

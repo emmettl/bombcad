@@ -127,8 +127,8 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.
     public var refinementThreshold: Float = 0.1
-    /// GPU memory for the refined tiles, in bytes; where the shock would need more, the rest of
-    /// it stays coarse. About 400 kB a tile at ratio 2, 1.5 MB at ratio 4.
+    /// GPU memory for the refined blocks, in bytes; where the shock would need more, the rest of
+    /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4.
     public var refinementMemory = 1 << 30
 
     public init() {}

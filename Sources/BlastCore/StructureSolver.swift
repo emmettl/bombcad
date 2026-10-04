@@ -28,7 +28,8 @@ public final class StructureSolver {
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
         /// Where the air is refined: which block each patch refines, the patches' fine cells,
         /// the ratio and the grid of blocks' size. Faces then read the fine cells beside them.
-        var refinement: (patchOfTile: MTLBuffer, fine: MTLBuffer, ratio: Int, blocks: SIMD3<Int>)?
+        var refinement:
+            (patchOfTile: MTLBuffer, fine: MTLBuffer, mask: MTLBuffer, ratio: Int, blocks: SIMD3<Int>)?
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
@@ -727,6 +728,7 @@ public final class StructureSolver {
             encoder.setBuffer(nodeMapBuffer, offset: 0, index: 20)
             encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 21)
             encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 22)
+            encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 23)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 

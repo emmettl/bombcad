@@ -159,6 +159,7 @@ extension BlastSolver {
                 }
             }
         }
+        rigidBoxes = scenario.boxes
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try setStructure(scenario.structure)
 

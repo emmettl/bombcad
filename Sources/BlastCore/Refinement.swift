@@ -30,6 +30,15 @@ final class AirRefinement {
     private let wanted: MTLBuffer
     /// Per coarse cell of each patch: whether it was solid when the fine cells last saw it.
     private let seenMask: MTLBuffer
+    /// Per fine cell: solid (bit 0) and rigid (bit 1), the fine cells' own outline; the velocity
+    /// of the structure where it is solid; and the structure's points counted into it.
+    let fineMask: MTLBuffer
+    private let fineWall: MTLBuffer
+    let fineOccupancy: MTLBuffer
+    /// The rigid blocks, as minimum and maximum corners, for the fine outline; none to take the
+    /// coarse cells' rigid mask instead.
+    private var boxes: MTLBuffer
+    private var boxCount: UInt32 = 0
     /// The fine state, twice for the sweeps to alternate between; the first is current between
     /// coarse steps, since a step takes an even number of fine sweeps.
     let fine: [MTLBuffer]
@@ -42,6 +51,7 @@ final class AirRefinement {
     private let fineImpulse: MTLBuffer
     private let impulseBase: MTLBuffer
     let coarseFlux: MTLBuffer
+    private let device: MTLDevice
 
     private let sweepPipeline: MTLComputePipelineState
     private let ghostPipeline: MTLComputePipelineState
@@ -51,6 +61,8 @@ final class AirRefinement {
     private let flagPipeline: MTLComputePipelineState
     private let flagTilesPipeline: MTLComputePipelineState
     private let syncPipeline: MTLComputePipelineState
+    private let remaskPreparePipeline: MTLComputePipelineState
+    private let remaskApplyPipeline: MTLComputePipelineState
     private let releasePipeline: MTLComputePipelineState
     private let allocatePipeline: MTLComputePipelineState
     private let listPipeline: MTLComputePipelineState
@@ -61,7 +73,7 @@ final class AirRefinement {
     static func bytesPerPatch(ratio: Int) -> Int {
         let side = patchSize * ratio
         let cell = MemoryLayout<CellState>.stride
-        return 2 * side * side * side * cell + side * side * side * 4 + 64 * 5 + 512 * cell
+        return 2 * side * side * side * cell + side * side * side * (4 + 1 + 12 + 16) + 64 * 5 + 512 * cell
             + 4 * side * side * (cell + 1) + 6 * side * side * 5 * 4 + 6 * patchSize * patchSize * 5 * 4
     }
 
@@ -89,6 +101,8 @@ final class AirRefinement {
         flagPipeline = try pipeline("refineFlag")
         flagTilesPipeline = try pipeline("refineFlagTiles")
         syncPipeline = try pipeline("refineSync")
+        remaskPreparePipeline = try pipeline("refineRemaskPrepare")
+        remaskApplyPipeline = try pipeline("refineRemaskApply")
         releasePipeline = try pipeline("refineRelease")
         allocatePipeline = try pipeline("refineAllocate")
         listPipeline = try pipeline("refineList")
@@ -112,6 +126,12 @@ final class AirRefinement {
         arguments = try buffer(32 * 4, "refinement dispatches")
         wanted = try buffer(tiles, "blocks flagged")
         seenMask = try buffer(maxPatches * Self.patchSize * Self.patchSize * Self.patchSize, "mask seen")
+        let fineCells = maxPatches * side * side * side
+        fineMask = try buffer(fineCells, "fine mask")
+        fineWall = try buffer(fineCells * 12, "fine wall velocity")
+        fineOccupancy = try buffer(fineCells * 16, "fine occupancy")
+        boxes = try buffer(32, "rigid blocks")
+        self.device = device
         let fineLength = maxPatches * side * side * side * cell
         fine = [try buffer(fineLength, "fine state A"), try buffer(fineLength, "fine state B")]
         halo = try buffer(maxPatches * 512 * cell, "halo")
@@ -128,12 +148,60 @@ final class AirRefinement {
         ([
             patchOfTile, tileOfPatch, freeStack, patchList, newPatches, wanted, seenMask, halo, ghosts,
             ghostKinds,
-            fineFlux, fineImpulse, impulseBase, coarseFlux,
+            fineFlux, fineImpulse, impulseBase, coarseFlux, fineMask, fineWall, fineOccupancy,
         ] + fine).reduce(0) { $0 + $1.length }
     }
 
     /// Patches in use after the last regrid.
-    var patchCount: Int { Int(arguments.contents().load(fromByteOffset: 18 * 4, as: UInt32.self)) }
+    var patchCount: Int { Int(arguments.contents().load(fromByteOffset: 21 * 4, as: UInt32.self)) }
+
+    /// The gas the patches hold: which coarse cells they cover, and the mass, energy and momentum
+    /// of their fluid fine cells.
+    func gas(in grid: Grid) -> (covered: Set<Int>, mass: Double, energy: Double, momentum: SIMD3<Double>) {
+        let block = Self.patchSize
+        let cells = side * side * side
+        let volume = Double(pow(grid.cellSize / Float(ratio), 3))
+        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let state = fine[0].contents().bindMemory(to: CellState.self, capacity: maxPatches * cells)
+        let solid = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * cells)
+        var covered = Set<Int>()
+        var (mass, energy, momentum) = (0.0, 0.0, SIMD3<Double>.zero)
+        for patch in 0..<maxPatches where owners[patch] != .max {
+            let tile = Int(owners[patch])
+            let origin =
+                SIMD3(
+                    tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* block
+            for n in 0..<cells {
+                let local = SIMD3(n % side, (n / side) % side, n / (side * side))
+                let cell = origin &+ local / ratio
+                guard grid.contains(cell.x, cell.y, cell.z) else { continue }
+                covered.insert(grid.index(cell.x, cell.y, cell.z))
+                guard solid[patch * cells + n] & 1 == 0 else { continue }
+                let c = state[patch * cells + n]
+                mass += Double(c.density) * volume
+                energy += Double(c.energy) * volume
+                momentum += SIMD3(Double(c.momentumX), Double(c.momentumY), Double(c.momentumZ)) * volume
+            }
+        }
+        return (covered, mass, energy, momentum)
+    }
+
+    /// Sets the rigid blocks whose outline the fine cells follow; nil to follow the coarse cells'.
+    func setBoxes(_ list: [Box]?) {
+        let corners = (list ?? []).flatMap { [SIMD4($0.min, 0), SIMD4($0.max, 0)] }
+        boxCount = UInt32(corners.count / 2)
+        if corners.count * 16 > boxes.length,
+            let bigger = device.makeBuffer(length: corners.count * 16, options: .storageModeShared)
+        {
+            boxes = bigger
+        }
+        corners.withUnsafeBytes { bytes in
+            if let base = bytes.baseAddress {
+                boxes.contents().copyMemory(from: base, byteCount: bytes.count)
+            }
+        }
+    }
 
     /// Releases every patch.
     func reset() {
@@ -148,6 +216,7 @@ final class AirRefinement {
         memset(wanted.contents(), 0, wanted.length)
         memset(fineFlux.contents(), 0, fineFlux.length)
         memset(fineImpulse.contents(), 0, fineImpulse.length)
+        memset(fineOccupancy.contents(), 0, fineOccupancy.length)
     }
 
     private func group(_ pipeline: MTLComputePipelineState, _ width: Int) -> MTLSize {
@@ -210,6 +279,10 @@ final class AirRefinement {
                 encoder.setBuffer(coarse, offset: 0, index: 8)
                 encoder.setBuffer(halo, offset: 0, index: 9)
                 encoder.setBuffer(wallVelocity, offset: 0, index: 10)
+                encoder.setBuffer(fineMask, offset: 0, index: 11)
+                encoder.setBuffer(fineWall, offset: 0, index: 12)
+                encoder.setBuffer(fineFlux, offset: 0, index: 13)
+                encoder.setBuffer(control, offset: 0, index: 14)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -228,7 +301,8 @@ final class AirRefinement {
                 encoder.setBuffer(patchList, offset: 0, index: 10)
                 encoder.setBuffer(fineFlux, offset: 0, index: 12)
                 encoder.setBuffer(fineImpulse, offset: 0, index: 13)
-                encoder.setBuffer(wallVelocity, offset: 0, index: 14)
+                encoder.setBuffer(fineMask, offset: 0, index: 14)
+                encoder.setBuffer(fineWall, offset: 0, index: 15)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
@@ -274,10 +348,42 @@ final class AirRefinement {
         encoder.setBuffer(impulse, offset: 0, index: 7)
         encoder.setBuffer(fineImpulse, offset: 0, index: 8)
         encoder.setBuffer(impulseBase, offset: 0, index: 9)
+        encoder.setBuffer(fineMask, offset: 0, index: 10)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 36,
             threadsPerThreadgroup: MTLSize(
                 width: Self.patchSize * Self.patchSize * Self.patchSize, height: 1, depth: 1))
+    }
+
+    /// After the structure's points have been counted into the fine cells (with the coarse
+    /// remask): the fine cells' outline follows the structure, a fine cell being solid where
+    /// `threshold` of its points are.
+    func encodeRemask(
+        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, threshold: UInt32, uniforms: SolverUniforms
+    ) {
+        var uniforms = uniforms
+        var threshold = threshold
+        encoder.setComputePipelineState(remaskPreparePipeline)
+        encoder.setBuffer(fineMask, offset: 0, index: 0)
+        encoder.setBuffer(fineWall, offset: 0, index: 1)
+        encoder.setBuffer(fineOccupancy, offset: 0, index: 2)
+        encoder.setBuffer(fine[0], offset: 0, index: 3)
+        encoder.setBuffer(coarse, offset: 0, index: 4)
+        setUniforms(encoder, &uniforms, index: 5)
+        encoder.setBuffer(tileOfPatch, offset: 0, index: 6)
+        encoder.setBuffer(patchList, offset: 0, index: 7)
+        encoder.setBytes(&threshold, length: 4, index: 8)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: arguments, indirectBufferOffset: 72,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        encoder.setComputePipelineState(remaskApplyPipeline)
+        encoder.setBuffer(fineMask, offset: 0, index: 0)
+        encoder.setBuffer(fineOccupancy, offset: 0, index: 1)
+        setUniforms(encoder, &uniforms, index: 2)
+        encoder.setBuffer(patchList, offset: 0, index: 3)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: arguments, indirectBufferOffset: 72,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
     }
 
     /// Step 6, after a structure's substeps: carries into the fine cells what it changed in the
@@ -296,6 +402,7 @@ final class AirRefinement {
         encoder.setBuffer(patchList, offset: 0, index: 5)
         encoder.setBuffer(seenMask, offset: 0, index: 6)
         encoder.setBuffer(control, offset: 0, index: 7)
+        encoder.setBuffer(fineMask, offset: 0, index: 8)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 36,
             threadsPerThreadgroup: MTLSize(
@@ -305,8 +412,8 @@ final class AirRefinement {
     /// Step 7: places the patches afresh from the coarse state, and lists them for the next step.
     /// With `tiles` (the awake tiles' list and its dispatch), only awake tiles are searched.
     func encodeRegrid(
-        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, mask: MTLBuffer, control: MTLBuffer,
-        impulse: MTLBuffer, tileFlags: MTLBuffer,
+        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, mask: MTLBuffer, rigidMask: MTLBuffer,
+        wallVelocity: MTLBuffer, control: MTLBuffer, impulse: MTLBuffer, tileFlags: MTLBuffer,
         tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid, uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
@@ -387,6 +494,13 @@ final class AirRefinement {
         encoder.setBuffer(impulse, offset: 0, index: 7)
         encoder.setBuffer(impulseBase, offset: 0, index: 8)
         encoder.setBuffer(seenMask, offset: 0, index: 9)
+        encoder.setBuffer(rigidMask, offset: 0, index: 10)
+        encoder.setBuffer(boxes, offset: 0, index: 11)
+        var count = boxCount
+        encoder.setBytes(&count, length: 4, index: 12)
+        encoder.setBuffer(fineMask, offset: 0, index: 13)
+        encoder.setBuffer(fineWall, offset: 0, index: 14)
+        encoder.setBuffer(wallVelocity, offset: 0, index: 15)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))

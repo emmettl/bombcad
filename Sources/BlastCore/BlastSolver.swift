@@ -117,6 +117,9 @@ public final class BlastSolver {
     /// `UInt32.max` to read the coarse cell.
     private let gaugeChildBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
+    /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
+    /// nil once the mask has been edited by hand.
+    var rigidBoxes: [Box]?
 
     public init(
         device: MTLDevice,
@@ -308,6 +311,7 @@ public final class BlastSolver {
     /// Direct access to the solid mask (non-zero marks a rigid cell). Call `restart()` after editing.
     public func mutateMask(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
+        rigidBoxes = nil
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
@@ -422,11 +426,25 @@ public final class BlastSolver {
             threshold: 1, ex: 0, ey: 0, fluidCell: grid.cellSize, h: 0, originX: 0, originY: 0, originZ: 0,
             gamma: configuration.gamma, ambientDensity: ambientDensity,
             ambientPressure: configuration.ambientPressure, airModel: configuration.airModel.rawValue)
+        if let refinement {
+            uniforms.refineRatio = UInt32(refinement.ratio)
+            uniforms.blocksX = UInt32(refinement.tileDims.x)
+            uniforms.blocksY = UInt32(refinement.tileDims.y)
+        }
         if let structure {
             let h = structure.model.elementSize
             let perCell = pow(grid.cellSize / h, 3)
             // A cell is solid when at least a third of it is filled with intact elements.
             uniforms.threshold = UInt32(max(1, (perCell / 3).rounded(.up)))
+            if let refinement {
+                // For the fine cells, each element is sampled at points no further apart than a
+                // fine cell, and a fine cell is solid when a third of it is covered.
+                let fineCell = grid.cellSize / Float(refinement.ratio)
+                let samples = max(1, Int((h / fineCell - 1e-3).rounded(.up)))
+                uniforms.fineSamples = UInt32(samples)
+                uniforms.fineThreshold = UInt32(
+                    max(1, (pow(fineCell * Float(samples) / h, 3) / 3).rounded(.up)))
+            }
             uniforms.ex = UInt32(structure.ex)
             uniforms.ey = UInt32(structure.ey)
             uniforms.h = h
@@ -455,11 +473,15 @@ public final class BlastSolver {
             threadsPerThreadgroup: regionThreads(debrisExchangePipeline))
     }
 
-    /// Encodes one update of the solid mask from the structure's current shape.
-    private func encodeRemask(_ encoder: MTLComputeCommandEncoder) {
+    /// Encodes one update of the solid mask from the structure's current shape, and of the fine
+    /// cells' outline too where the air is refined, unless `fine` is false.
+    private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true) {
         guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
         var uniforms = couplingUniforms(region)
+        if !fine { uniforms.refineRatio = 0 }
         let length = MemoryLayout<CouplingUniforms>.stride
+        let patches = refinement?.patchOfTile ?? refinementPlaceholder
+        let fineOccupancy = refinement?.fineOccupancy ?? refinementPlaceholder
 
         if let structure {
             encoder.setComputePipelineState(splatPipeline)
@@ -469,6 +491,8 @@ public final class BlastSolver {
             encoder.setBuffer(occupancyBuffer, offset: 0, index: 3)
             encoder.setBytes(&uniforms, length: length, index: 4)
             encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
+            encoder.setBuffer(patches, offset: 0, index: 6)
+            encoder.setBuffer(fineOccupancy, offset: 0, index: 7)
             encoder.dispatchThreads(
                 MTLSize(width: structure.elementCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(
@@ -487,6 +511,8 @@ public final class BlastSolver {
                 encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
                 encoder.setBytes(&uniforms, length: length, index: 5)
                 encoder.setBytes(&beams, length: 4, index: 6)
+                encoder.setBuffer(patches, offset: 0, index: 7)
+                encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
                 encoder.dispatchThreads(
                     MTLSize(width: shells.beamCount, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(
@@ -501,6 +527,8 @@ public final class BlastSolver {
             encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
             encoder.setBytes(&uniforms, length: length, index: 5)
             encoder.setBytes(&count, length: 4, index: 6)
+            encoder.setBuffer(patches, offset: 0, index: 7)
+            encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
             if shells.elementCount > 0 {
                 encoder.dispatchThreads(
                     MTLSize(width: shells.elementCount, height: 1, depth: 1),
@@ -528,6 +556,12 @@ public final class BlastSolver {
         encoder.setBuffer(occupancyBuffer, offset: 0, index: 1)
         encoder.setBytes(&uniforms, length: length, index: 2)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
+
+        if fine, let refinement {
+            refinement.encodeRemask(
+                encoder, coarse: stateBuffers[current], threshold: uniforms.fineThreshold,
+                uniforms: makeUniforms())
+        }
     }
 
     /// Sets the clock without touching the state, after `restart()`: for a blast laid down as it
@@ -568,7 +602,7 @@ public final class BlastSolver {
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
             // Mark the undeformed structure in the solid mask.
-            encodeRemask(encoder)
+            encodeRemask(encoder, fine: false)
             encoder.endEncoding()
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
@@ -635,8 +669,13 @@ public final class BlastSolver {
             control.dt = 1
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
             refinement.encodeRegrid(
-                encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer,
-                impulse: impulseBuffer, tileFlags: tileFlagBuffer, tiles: nil, grid: grid, uniforms: uniforms)
+                encoder, coarse: stateBuffers[current], mask: maskBuffer,
+                rigidMask: hasBody ? rigidMaskBuffer : maskBuffer, wallVelocity: wallVelocityBuffer,
+                control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer, tiles: nil,
+                grid: grid,
+                uniforms: uniforms)
+            // The structure's own outline in the new patches.
+            encodeRemask(encoder)
         }
         encodeVisualization(encoder)
         encoder.endEncoding()
@@ -661,6 +700,7 @@ public final class BlastSolver {
                 device: device, library: library, grid: grid, ratio: ratio, memory: memory)
         }
         refinement?.reset()
+        refinement?.setBoxes(rigidBoxes)
         updateGaugeChildren()
     }
 
@@ -734,6 +774,7 @@ public final class BlastSolver {
             encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 8)
             encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 9)
             encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
+            encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -802,7 +843,8 @@ public final class BlastSolver {
                     exchangeRegion: couplingRegion)
                 if let refinement {
                     binding.refinement = (
-                        refinement.patchOfTile, refinement.fine[0], refinement.ratio, refinement.tileDims
+                        refinement.patchOfTile, refinement.fine[0], refinement.fineMask, refinement.ratio,
+                        refinement.tileDims
                     )
                 }
                 let count = asleep ? structureSubsteps : substeps
@@ -827,8 +869,9 @@ public final class BlastSolver {
             }
             if let refinement, refining {
                 refinement.encodeRegrid(
-                    encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer,
-                    impulse: impulseBuffer, tileFlags: tileFlagBuffer,
+                    encoder, coarse: stateBuffers[current], mask: maskBuffer,
+                    rigidMask: hasBody ? rigidMaskBuffer : maskBuffer, wallVelocity: wallVelocityBuffer,
+                    control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer,
                     tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil, grid: grid,
                     uniforms: uniforms)
             }
@@ -980,33 +1023,36 @@ public final class BlastSolver {
             fromByteOffset: grid.index(i, j, k) * MemoryLayout<Float>.stride, as: Float.self)
     }
 
-    /// Total mass (kg) and energy (J) of the gas, summed over fluid cells.
+    /// Total mass (kg) and energy (J) of the gas, summed over fluid cells; under the patches of
+    /// refined air, over their fluid fine cells.
     public func totals() -> (mass: Double, energy: Double) {
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
+        let fine = refinement?.gas(in: grid)
         return withState { cells in
             var mass = 0.0
             var energy = 0.0
-            for index in 0..<grid.cellCount where mask[index] == 0 {
+            for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
                 mass += Double(cells[index].density)
                 energy += Double(cells[index].energy)
             }
-            return (mass * volume, energy * volume)
+            return (mass * volume + (fine?.mass ?? 0), energy * volume + (fine?.energy ?? 0))
         }
     }
 
-    /// Total momentum of the gas in kg m/s.
+    /// Total momentum of the gas in kg m/s, counted as `totals()` is.
     public func momentum() -> SIMD3<Double> {
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
+        let fine = refinement?.gas(in: grid)
         return withState { cells in
             var total = SIMD3<Double>.zero
-            for index in 0..<grid.cellCount where mask[index] == 0 {
+            for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
                 total += SIMD3(
                     Double(cells[index].momentumX), Double(cells[index].momentumY),
                     Double(cells[index].momentumZ))
             }
-            return total * volume
+            return total * volume + (fine?.momentum ?? .zero)
         }
     }
 

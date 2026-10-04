@@ -331,3 +331,66 @@ extension RefinementTests {
         #expect(differing == 0, "\(differing) of \(first.nodes.count) nodes differ")
     }
 }
+
+/// The fine cells' own outline.
+extension RefinementTests {
+    /// When a shock run down a closed tube 4 m long, reflected by a wall whose face is at 3.509 m
+    /// (so at 3.50 m on cells of 0.02 m, at 3.51 m on cells of 0.01 m), passes back over 3.2 m.
+    private func reflectedArrival(cellSize: Float, ratio: Int) throws -> (
+        time: Double, mass: (Double, Double)
+    ) {
+        let ambient = Primitive(density: 1.225, pressure: 101_325)
+        let shocked = Primitive(density: 2.4, velocity: SIMD3(330, 0, 0), pressure: 3 * 101_325)
+        var scenario = Scenario(
+            name: "Tube", domainSize: SIMD3(4, cellSize, cellSize),
+            boxes: [Box(min: SIMD3(3.509, -1, -1), max: SIMD3(5, 1, 1))],
+            charge: Charge(mass: 0, position: SIMD3(0.5, 0, 0)))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: cellSize,
+            configuration: ratio > 1 ? refined(ratio) : SolverConfiguration())
+        solver.fill { i, _, _ in Float(i) * cellSize < 1 ? shocked : ambient }
+        let before = solver.totals().mass
+        solver.setGauges(
+            cells: [solver.grid.cell(containing: SIMD3(3.2, 0, 0))], points: [SIMD3(3.2, 0.001, 0.001)])
+        solver.advance(until: 0.006)
+        let history = solver.gaugeHistories[0]
+        let peak = history.map(\.pressure).max() ?? 0
+        let time = history.first { $0.time > 0.0035 && $0.pressure > 0.5 * (peak + 3 * 101_325) }?.time ?? 0
+        return (time, (before, solver.totals().mass))
+    }
+
+    @Test("Refined air sees a wall where the fine cells put it, not the coarse ones")
+    func fineOutline() throws {
+        let coarse = try reflectedArrival(cellSize: 0.02, ratio: 1)
+        let refined = try reflectedArrival(cellSize: 0.02, ratio: 2)
+        let fine = try reflectedArrival(cellSize: 0.01, ratio: 1)
+        // The coarse wall stands 1 cm nearer, so its echo comes back about 50 µs sooner.
+        #expect(
+            abs(refined.time - fine.time) < 0.25 * abs(coarse.time - fine.time),
+            "echo at \(coarse.time), \(refined.time) and \(fine.time) s")
+    }
+
+    @Test("Across a fine outline that differs from the coarse one, mass and energy stay within 0.3%")
+    func offsetOutlineConservation() throws {
+        var scenario = Scenario(
+            name: "Closed box", domainSize: SIMD3(24, 20, 16),
+            boxes: [Box(min: SIMD3(13.25, 6.25, 0), max: SIMD3(18.25, 14.25, 9.25))],
+            charge: Charge(mass: 5, position: SIMD3(8, 10, 1)))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: refined(2))
+        let before = solver.totals()
+        // Placing or releasing a patch over the block's faces moves gas between grids that disagree
+        // about the volume there; the two largely cancel as the patches come and go.
+        for _ in 0..<4 {
+            let result = solver.advance(steps: 100)
+            #expect(result.isStable)
+            let now = solver.totals()
+            #expect(abs(now.mass - before.mass) / before.mass < 0.003, "mass \(before.mass) -> \(now.mass)")
+            #expect(
+                abs(now.energy - before.energy) / before.energy < 0.003,
+                "energy \(before.energy) -> \(now.energy)")
+        }
+    }
+}

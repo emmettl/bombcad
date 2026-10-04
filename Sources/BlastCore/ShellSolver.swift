@@ -767,6 +767,7 @@ public final class ShellSolver {
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 19)
             encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 20)
             encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 21)
+            encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 22)
             if elementCount > 0 {
                 // Four threads per element, one per in-plane point.
                 encoder.dispatchThreads(
@@ -792,6 +793,7 @@ public final class ShellSolver {
                 encoder.setBuffer(beamBarLayoutBuffer, offset: 0, index: 14)
                 encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 15)
                 encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 16)
+                encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 17)
                 encoder.dispatchThreads(
                     MTLSize(width: beamCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             }

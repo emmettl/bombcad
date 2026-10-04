@@ -759,6 +759,14 @@ struct CouplingUniforms {
     var airModel: UInt32 = 0
     /// What each splatted point counts for in a cell's occupancy (see `threshold`).
     var splatWeight: UInt32 = 1
+    /// The air's refinement: its ratio (0 when not refined), the size of its grid of blocks, the
+    /// count that makes a fine cell solid, and the points along each edge an element is sampled
+    /// at for the fine cells.
+    var refineRatio: UInt32 = 0
+    var blocksX: UInt32 = 0
+    var blocksY: UInt32 = 0
+    var fineThreshold: UInt32 = 1
+    var fineSamples: UInt32 = 1
 }
 
 /// When nodes of the structure repel each other.
