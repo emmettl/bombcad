@@ -115,7 +115,7 @@ first meeting the surface nodes in front of it.
 
 1. Each substep, nodes are binned into element-sized cells of all space, which map into a
    table that wraps periodically (its period is the structure's extent rounded up to a power of
-   two, shortened if need be to keep it near eight entries per node). An entry holds up to four
+   two, shortened if need be to keep it near four entries per node). An entry holds up to eight
    nodes, the lowest-numbered that arrive, whatever the thread timing; entries are tagged with
    the substep's number, and only those touched are cleared.
 2. Each node looks in the 27 cells around it, ignoring nodes from other cells that share an
@@ -253,8 +253,12 @@ shock, and the drag and pressure-gradient push on loose debris.
    to the air like one moving in a straight line.
 4. **Contact is approximate.** Surfaces are bumpy at the element scale, formerly joined pieces
    overlap by up to an element, and a crowded entry of the contact table drops nodes beyond its
-   four lowest-numbered. The table wraps space periodically, so debris anywhere still collides,
-   but cells a period apart share an entry and its four slots. Debris more than a few metres
+   eight lowest-numbered. The table wraps space periodically, so debris anywhere still collides,
+   but cells a period apart share an entry and its eight slots. Entries used to hold four: on
+   25 mm elements debris packed more nodes than that into a cell, and the nodes left out sank
+   into the others and were pushed back out when they reappeared, feeding energy to the debris
+   until it tore half a million elements off the chamber test's walls and roof in 8 ms. With
+   eight (or sixteen) nothing of the kind happens. Debris more than a few metres
    from the structure leaves the air's mask.
 5. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
    the same machine, but a collapse amplifies small differences, so a slightly different input

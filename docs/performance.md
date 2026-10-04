@@ -143,9 +143,9 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   reinforcement and its histories) is stored once per element, about 400 bytes with
   reinforcement, and node data once per node of an element, 32 bytes; the lattice itself
   costs 5 bytes per cell (a flag and the cell's element number) and 4 per node (the node's
-  number); and contacts use a table that wraps space periodically, sized to about eight
-  entries per node at 20 bytes each. The concrete building, 225,000 elements and 283,000 nodes
-  in a 1.4-million-cell lattice, takes 156 MB. Storing nodes for the whole lattice took 179 MB,
+  number); and contacts use a table that wraps space periodically, sized to about four
+  entries per node at 36 bytes each (a header and eight slots). The concrete building,
+  225,000 elements and 283,000 nodes in a 1.4-million-cell lattice, takes 152 MB. Storing nodes for the whole lattice took 179 MB,
   and storing everything per lattice cell with a dense contact grid around the structure took
   640 MB. The coupled run takes 0.21 GB in all at 0.25 m air cells, against 0.70 GB at first.
   Reaching a node through its number costs nothing measurable, and the results are identical
@@ -160,7 +160,11 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   by 5%, 10% and 16% (286, 271, 257 and 241 million element-updates per second in one
   session), because more cells share each entry and every extra candidate costs a node read
   before it is rejected. The results were identical to the last digit at every size, so no
-  entry overflowed. The table stays at about eight entries per node.
+  entry overflowed. Entries then held four nodes; on 25 mm elements they overflowed, with
+  disastrous results (see the [structural model](structural-model.md#limitations)), so they
+  now hold eight, and the table has four entries per node to keep its memory: contact
+  throughput fell by about 6% (108 to 111 against 117 million element-updates per second,
+  measured back to back).
 
 ## Coupled runs
 
