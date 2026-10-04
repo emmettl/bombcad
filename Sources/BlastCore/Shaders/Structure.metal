@@ -217,6 +217,7 @@ struct ElementState {
     packed_half4 secondCrack;
     float secondOpening;
     float secondHistory;
+    float inclinedPlastic;  // plastic strain of the inclined bars (1e9 once ruptured)
 };
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
@@ -247,11 +248,24 @@ static inline float compactionPressure(float mu, float peak, float bulk, float f
     return max(loading(peak) - bulk * (peak - mu), 0.0f);
 }
 
-// Reinforcement area per unit area of concrete, along each lattice axis.
+// Reinforcement area per unit area of concrete, along each lattice axis; and of one set of bars
+// at 45 degrees to two lattice axes (such as the diagonal bars across a chamfered corner), with
+// which: 0 none, or 1 + 2 * plane + (1 if the second axis runs backwards), the planes being
+// those of x and y, y and z, z and x.
 struct ElementSteel {
     packed_float3 ratio;
-    float padding;
+    half inclined;
+    ushort inclinedAxes;
 };
+
+// The unit direction of inclined bars of `axes` (see `ElementSteel`).
+static inline float3 inclinedDirection(uint axes) {
+    uint plane = (axes - 1u) / 2u;
+    float3 d = float3(0.0f);
+    d[plane] = 0.70710678f;
+    d[(plane + 1u) % 3u] = (axes - 1u) % 2u == 0u ? 0.70710678f : -0.70710678f;
+    return d;
+}
 
 // Cyclic history of the bars along one axis of an element. Until the bars first reverse after
 // yielding, they follow the measured monotonic curve and only the extreme point is tracked.
@@ -615,6 +629,41 @@ static inline float tablePressure(const device float2 *table, uint count, float 
 }
 
 // Updates the stress of every active element and stores the forces it exerts on its nodes.
+// Stress in a set of smeared bars stretched along them by Green-Lagrange strain `green`, with
+// plastic strain `plastic` (updated) and cyclic history `bar`: the measured curve while loaded
+// one way, the cyclic law once reversed, with the strength raised by the strain rate. `root` is
+// the bars' stretch, and `yield` their current yield stress.
+static inline float smearedBar(float green, thread float &plastic, device BarHistory &bar, float strainRate,
+                               constant MaterialParameters &m, thread float &root, thread float &yield) {
+    // Stretch of the fibre from its Green-Lagrange strain, without cancellation.
+    root = sqrt(max(1.0f + 2.0f * green, 1e-6f));
+    float fibre = 2.0f * green / (1.0f + root);
+    float stress = m.steelModulus * (fibre - plastic);
+    // The rate factor falls from its value at yield to its (smaller) value at ultimate.
+    float accumulated = fabs(plastic);
+    float slope;
+    yield = steelYield(accumulated, m, slope);
+    float first = m.steelStress[0];
+    float top = m.steelStress[m.steelPoints - 1];
+    float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
+    float rate = max(strainRate, 1e-4f) / 1e-4f;
+    float factor = mix(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate), along);
+    yield *= factor;
+    if (plastic == 0.0f) {
+        // Not yet yielded: elastic, and no history to keep.
+        if (fabs(stress) > yield) {
+            float increment = (fabs(stress) - yield) / max(m.steelModulus + slope * factor, 0.1f * m.steelModulus);
+            plastic = stress > 0.0f ? increment : -increment;
+            stress = m.steelModulus * (fibre - plastic);
+        }
+    } else {
+        float inelastic = plastic;
+        stress = cycleBar(bar, fibre, inelastic, yield, slope * factor, first * pow(rate, m.steelRateYield), m);
+        plastic = inelastic;
+    }
+    return stress;
+}
+
 kernel void structureElements(device ElementState *states [[buffer(0)]],
                               device ElementForces *forces [[buffer(1)]],
                               device uchar *flags [[buffer(2)]],
@@ -1029,6 +1078,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         crossingAxis = j;
                     }
                 }
+                uint inclinedSet = steel[compact].inclinedAxes;
+                if (inclinedSet != 0u && fabs(state.inclinedPlastic) < 1e8f) {
+                    crossing += float(steel[compact].inclined) * fabs(dot(inclinedDirection(inclinedSet), normal));
+                }
                 if (crossing > 0.0f) {
                     // Dowel action: each bar resists 1.3 d^2 sqrt(fc fy) of sliding (Rasmussen,
                     // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
@@ -1146,34 +1199,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             if (ratio[j] <= 0.0f || fabs(plastic[j]) > 1e8f) {
                 continue;
             }
-            // Stretch of the fibre from its Green-Lagrange strain, without cancellation.
-            float green = barStrain[j];
-            float root = sqrt(max(1.0f + 2.0f * green, 1e-6f));
-            float fibre = 2.0f * green / (1.0f + root);
-            float stress = m.steelModulus * (fibre - plastic[j]);
-            // The rate factor falls from its value at yield to its (smaller) value at ultimate.
-            float accumulated = fabs(plastic[j]);
-            float slope;
-            float yield = steelYield(accumulated, m, slope);
-            float first = m.steelStress[0];
-            float top = m.steelStress[m.steelPoints - 1];
-            float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
-            float rate = max(state.strainRate, 1e-4f) / 1e-4f;
-            float factor = mix(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate), along);
-            yield *= factor;
-            if (plastic[j] == 0.0f) {
-                // Not yet yielded: elastic, and no history to keep.
-                if (fabs(stress) > yield) {
-                    float increment = (fabs(stress) - yield) / max(m.steelModulus + slope * factor, 0.1f * m.steelModulus);
-                    plastic[j] = stress > 0.0f ? increment : -increment;
-                    stress = m.steelModulus * (fibre - plastic[j]);
-                }
-            } else {
-                float inelastic = plastic[j];
-                stress = cycleBar(bars[3 * compact + uint(j)], fibre, inelastic, yield, slope * factor,
-                                  first * pow(rate, m.steelRateYield), m);
-                plastic[j] = inelastic;
-            }
+            float root;
+            float yield;
+            float own = plastic[j];
+            float stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], state.strainRate, m, root, yield);
+            plastic[j] = own;
             // A bar slips in its concrete either side of a crack, so it is strained by the crack's
             // opening spread over a debonded length, not over the one element the crack happens
             // to run through. Its stress follows its own strain, but it ruptures when its plastic
@@ -1216,10 +1246,59 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             material[j][j] += ratio[j] * stress / root;
         }
         state.steelPlastic = plastic;
-        if (m.barReach > 0.0f) {
-            plasticOut[compact] = float4(plastic, 0.0f);
+
+        // Inclined bars, strained along their own direction, which ruptures by the same rule
+        // with the debonded length measured along them (each diagonal step is an element's
+        // diagonal).
+        float inclinedRatio = float(steel[compact].inclined);
+        uint inclinedAxes = steel[compact].inclinedAxes;
+        float3 inclined = inclinedAxes != 0u ? inclinedDirection(inclinedAxes) : float3(0.0f);
+        bool inclinedIntact = false;
+        if (inclinedRatio > 0.0f && inclinedAxes != 0u && fabs(state.inclinedPlastic) < 1e8f) {
+            float root;
+            float yield;
+            float own = state.inclinedPlastic;
+            float stress = smearedBar(dot(inclined, latticeStrain * inclined), own, bars[4 * compact + 3u],
+                                      state.strainRate, m, root, yield);
+            float spread = own;
+            if (m.barReach > 0.0f) {
+                float reach = m.barReach * 0.70710678f;
+                int r = int(ceil(reach - 0.5f));
+                int3 step = int3(round(inclined * 1.41421356f));
+                int3 dims = int3(u.ex, u.ey, u.ez);
+                float sum = own;
+                float weights = 1.0f;
+                for (int offset = -r; offset <= r; ++offset) {
+                    int3 cell = int3(tid) + offset * step;
+                    if (offset == 0 || any(cell < 0) || any(cell >= dims)) {
+                        continue;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uchar flag = flags[other];
+                    uint compactOther = cellElement[other];
+                    float weight = clamp(reach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+                    if ((flag == elementActive || flag == elementFailing) && steel[compactOther].inclinedAxes == inclinedAxes
+                        && float(steel[compactOther].inclined) > 0.0f && fabs(plasticBefore[compactOther].w) < 1e8f) {
+                        sum += weight * plasticBefore[compactOther].w;
+                        weights += weight;
+                    }
+                }
+                spread = sum / weights;
+            }
+            if (fabs(spread) > m.steelStrain[m.steelPoints - 1]) {
+                own = 1e9f;  // ruptured for good
+            } else {
+                inclinedIntact = true;
+                steelCapacity += inclinedRatio * yield;
+                float3x3 outer = float3x3(inclined * inclined.x, inclined * inclined.y, inclined * inclined.z);
+                material += outer * (inclinedRatio * stress / root);
+            }
+            state.inclinedPlastic = own;
         }
-        bool anySteel = intact.x + intact.y + intact.z > 0.0f;
+        if (m.barReach > 0.0f) {
+            plasticOut[compact] = float4(plastic, state.inclinedPlastic);
+        }
+        bool anySteel = intact.x + intact.y + intact.z > 0.0f || inclinedIntact;
 
         // A crack wide enough to count as a gap removes the element, unless intact bars cross it.
         // The crack runs across the member, so bars that cross it elsewhere in the section hold
@@ -1236,9 +1315,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             if (reached < m.erosionStrain) {
                 continue;
             }
+            // Intact inclined bars across the crack bridge it.
+            float3 crackNormal = c < 3 ? frame[c] : frame * normalize(second.xyz);
+            if (inclinedIntact && fabs(dot(inclined, crackNormal)) >= 0.5f) {
+                continue;
+            }
             // The lattice axis most nearly across the crack carries the bars that cross it; the
             // section is searched along the other two.
-            float3 normal = abs(c < 3 ? frame[c] : frame * normalize(second.xyz));
+            float3 normal = abs(crackNormal);
             int j = normal.x >= normal.y && normal.x >= normal.z ? 0 : (normal.y >= normal.z ? 1 : 2);
             if (intact[j] != 0.0f) {
                 continue;

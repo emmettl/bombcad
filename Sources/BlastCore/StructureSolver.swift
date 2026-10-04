@@ -33,7 +33,7 @@ public final class StructureSolver {
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
-    public static let stateStride = 176
+    public static let stateStride = 180
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -266,7 +266,7 @@ public final class StructureSolver {
         forceBuffer = try buffer(elements * Self.forceStride, "structure element forces")
         steelBuffer = try buffer(elements * 16, "structure reinforcement")
         let hasSteel = materials.contains { $0.steel != nil }
-        barHistoryBuffer = try buffer(hasSteel ? elements * 96 : 96, "structure reinforcement history")
+        barHistoryBuffer = try buffer(hasSteel ? elements * 128 : 128, "structure reinforcement history")
         let averagesCrushing = materials.contains { Self.crushRadius(of: $0, elementSize: h) > 0 }
         let crushLength = averagesCrushing ? elements * 16 : 16
         let materialIndex = try buffer(elements, "structure material indices")
@@ -300,6 +300,29 @@ public final class StructureSolver {
                     ratio += layer.ratio * (overlap.x * overlap.y * overlap.z / (h * h * h))
                 }
                 ratios[n] = SIMD4(ratio, 0)
+                // Inclined bars: the share of each layer this element's diagonal row takes.
+                let centre = low + 0.5 * h
+                let rowSpacing = h / Float(2).squareRoot()
+                var best: (ratio: Float, code: UInt16) = (0, 0)
+                for bars in model.inclinedBars {
+                    guard let axes = bars.axes, bars.span.contains(centre[axes.third]) else { continue }
+                    let direction = simd_normalize(bars.direction)
+                    var offset = centre - bars.start
+                    offset[axes.third] = 0
+                    let along = simd_dot(offset, direction)
+                    guard along >= -0.5 * rowSpacing, along <= bars.length + 0.5 * rowSpacing else {
+                        continue
+                    }
+                    let across = simd_length(offset - along * direction)
+                    let weight = max(0, 1 - across / rowSpacing)
+                    let share = bars.areaPerMetre * weight / rowSpacing
+                    if share > best.ratio { best = (share, axes.code) }
+                }
+                if best.ratio > 0 {
+                    let base = steelBuffer.contents().advanced(by: n * 16 + 12)
+                    base.storeBytes(of: Float16(best.ratio), as: Float16.self)
+                    base.advanced(by: 2).storeBytes(of: best.code, as: UInt16.self)
+                }
             }
         }
         func indexBuffer(_ indices: [UInt32], _ label: String) throws -> MTLBuffer {

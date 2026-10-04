@@ -280,6 +280,47 @@ public struct ReinforcementLayer: Sendable, Hashable, Codable {
     }
 }
 
+/// A layer of straight bars at 45 degrees to two lattice axes, such as the diagonal bars across
+/// a chamfered corner. In the plane of those two axes the bars run from `start` along
+/// `direction` (which has equal and opposite or equal components along the two axes and none
+/// along the third) for `length`; the layer repeats along the third axis over `span`, with
+/// `areaPerMetre` of bar per metre along it. It is smeared over the diagonal rows of elements
+/// the bars pass through, in proportion to how near each row lies, so that its steel is kept.
+/// An element holds one set of inclined bars; where layers of different directions overlap,
+/// the larger wins.
+public struct InclinedBars: Sendable, Hashable, Codable {
+    public var start: SIMD3<Float>
+    public var direction: SIMD3<Float>
+    public var length: Float
+    public var span: ClosedRange<Float>
+    public var areaPerMetre: Float
+
+    public init(
+        start: SIMD3<Float>, direction: SIMD3<Float>, length: Float, span: ClosedRange<Float>,
+        areaPerMetre: Float
+    ) {
+        self.start = start
+        self.direction = direction
+        self.length = length
+        self.span = span
+        self.areaPerMetre = areaPerMetre
+    }
+
+    /// The two lattice axes the bars lie between, the third, and the code the element kernel
+    /// knows them by (see `ElementSteel` in Structure.metal).
+    var axes: (third: Int, code: UInt16)? {
+        let magnitude = simd_abs(direction)
+        guard let third = (0..<3).first(where: { magnitude[$0] < 1e-6 }) else { return nil }
+        let plane = (third + 1) % 3  // the planes are (x, y), (y, z), (z, x): their first axis
+        let other = (plane + 1) % 3
+        guard abs(magnitude[plane] - magnitude[other]) < 1e-4 * max(magnitude[plane], 1e-6) else {
+            return nil
+        }
+        let backwards = (direction[plane] > 0) != (direction[other] > 0)
+        return (third, UInt16(1 + 2 * plane + (backwards ? 1 : 0)))
+    }
+}
+
 /// A pressure history applied to one outer face of a structure, for running it without the air.
 public struct PressureLoad: Sendable, Hashable {
     /// Axis (0, 1, 2 for x, y, z) normal to the loaded faces.
@@ -311,6 +352,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Clamp the nodes that sit on the ground plane.
     public var fixedBase: Bool
     public var reinforcement: [ReinforcementLayer] = []
+    /// Bars at 45 degrees to the lattice (see `InclinedBars`).
+    public var inclinedBars: [InclinedBars] = []
     /// How each solid is reinforced, by index into `solids`; solids beyond the end of this list
     /// are reinforced automatically. Applied by `autoReinforce()`.
     public var solidReinforcement: [Reinforcement] = []
@@ -847,6 +890,7 @@ extension StructureModel {
         elementSize = try container.decode(Float.self, forKey: .elementSize)
         fixedBase = try container.decode(Bool.self, forKey: .fixedBase)
         reinforcement = try container.decodeIfPresent([ReinforcementLayer].self, forKey: .reinforcement) ?? []
+        inclinedBars = try container.decodeIfPresent([InclinedBars].self, forKey: .inclinedBars) ?? []
         solidReinforcement =
             try container.decodeIfPresent([Reinforcement].self, forKey: .solidReinforcement) ?? []
         solidMaterial = try container.decodeIfPresent([StructureMaterial?].self, forKey: .solidMaterial) ?? []

@@ -21,9 +21,12 @@ import simd
 ///   face can spread into it; it has mats on its inner face like the walls';
 /// - the sleeves are 0.9 m square holes, of the same area as the 1 m circles;
 /// - the roof's free edge has a down-stand 0.8 m wide and 1.85 m deep overall;
-/// - the 0.5 m chamfers at the inside corners are steps of elements, without their diagonal bars;
+/// - the 0.5 m chamfers at the inside corners are steps of elements; their diagonal bars, whose
+///   size the paper does not give, are taken as the mats' (16 mm at 150 mm), parallel to the
+///   sloped face 50 mm in from it and anchored 0.6 m into each member;
 /// - bars are 50 mm from the faces to their centres; the ties (8 mm on a 450 mm grid) are
-///   smeared through the walls and roof.
+///   smeared through the walls and roof, and, as the paper does not detail it, through the
+///   down-stand's width as well, standing for its stirrups.
 public enum ChamberTest {
     /// Peak reflected pressures at the six sensors (P1-P6, both chambers), in pascals.
     public static let measuredPeaks: [(sensor: String, pressure: Float)] = [
@@ -71,44 +74,70 @@ public enum ChamberTest {
         // The modelled part of the end wall.
         let endWall = Box(min: SIMD3(0, sideWalls.low, 0), max: SIMD3(endWallFace, sideWalls.high, roof.high))
         var solids = [w1, w3, s1, endWall]
+        // The chamfers' diagonal bars, recorded as each chamfer is made.
+        var diagonals: [InclinedBars] = []
+        func chamfer(along: Int, from: Float, to: Float, corner: [Int: Float], into: [Int: Float], h: Float)
+            -> [Box]
+        {
+            let axes = corner.keys.sorted()
+            var ends = [SIMD3<Float>(repeating: 0), SIMD3<Float>(repeating: 0)]
+            for (n, axis) in axes.enumerated() {
+                ends[n][axes[0]] = corner[axes[0]]!
+                ends[n][axes[1]] = corner[axes[1]]!
+                ends[n][axis] += into[axis]! * chamferSize
+            }
+            let direction = simd_normalize(ends[1] - ends[0])
+            var inward = SIMD3<Float>(repeating: 0)  // from the sloped face towards the corner
+            for axis in axes { inward[axis] = -into[axis]! }
+            inward = simd_normalize(inward)
+            let anchorage: Float = 0.6
+            diagonals.append(
+                InclinedBars(
+                    start: ends[0] + 0.05 * inward - anchorage * direction, direction: direction,
+                    length: simd_distance(ends[0], ends[1]) + 2 * anchorage,
+                    span: min(from, to)...max(from, to),
+                    areaPerMetre: 201e-6 / 0.15))
+            return haunch(along: along, from: from, to: to, corner: corner, into: into, h: h)
+        }
+        let beam = Box(
+            min: SIMD3(roofEdge - 0.8, inside.low, roof.high - 1.85),
+            max: SIMD3(roofEdge, inside.high, roof.low))
         if downstand {
-            solids.append(
-                Box(
-                    min: SIMD3(roofEdge - 0.8, inside.low, roof.high - 1.85),
-                    max: SIMD3(roofEdge, inside.high, roof.low)))
+            solids.append(beam)
         }
         if haunches {
             let room = (x: endWallFace, y: inside, z: floorTop)
             // Along the roof's underside: at both side walls and at the end wall.
-            solids += haunch(
+            solids += chamfer(
                 along: 0, from: room.x, to: roofEdge, corner: [1: room.y.low, 2: roof.low],
                 into: [1: 1, 2: -1],
                 h: elementSize)
-            solids += haunch(
+            solids += chamfer(
                 along: 0, from: room.x, to: roofEdge, corner: [1: room.y.high, 2: roof.low],
                 into: [1: -1, 2: -1],
                 h: elementSize)
-            solids += haunch(
+            solids += chamfer(
                 along: 1, from: room.y.low, to: room.y.high, corner: [0: room.x, 2: roof.low],
                 into: [0: 1, 2: -1], h: elementSize)
             // At the foot of the side walls, and where they meet the end wall.
-            solids += haunch(
+            solids += chamfer(
                 along: 0, from: room.x, to: partitionFace, corner: [1: room.y.low, 2: room.z],
                 into: [1: 1, 2: 1],
                 h: elementSize)
-            solids += haunch(
+            solids += chamfer(
                 along: 0, from: room.x, to: partitionFace, corner: [1: room.y.high, 2: room.z],
                 into: [1: -1, 2: 1], h: elementSize)
-            solids += haunch(
+            solids += chamfer(
                 along: 2, from: room.z, to: roof.low, corner: [0: room.x, 1: room.y.low], into: [0: 1, 1: 1],
                 h: elementSize)
-            solids += haunch(
+            solids += chamfer(
                 along: 2, from: room.z, to: roof.low, corner: [0: room.x, 1: room.y.high],
                 into: [0: 1, 1: -1],
                 h: elementSize)
         }
         var model = StructureModel(
             solids: solids, material: material(), elementSize: elementSize, fixedBase: true)
+        if !elastic { model.inclinedBars = diagonals }
         model.crackAxes = crackAxes
         // Held at the end wall's outer face, in the partition and in the foundation.
         model.supports = [
@@ -132,13 +161,17 @@ public enum ChamberTest {
                 density: concrete.density, youngsModulus: concrete.youngsModulus,
                 poissonRatio: concrete.poissonRatio)
         }
-        if downstand && !elastic, let beam = solids.last {
+        if downstand && !elastic {
             model.addMat(to: beam, thicknessAxis: 0, areaPerMetre: area, depth: 0.05)
         }
         // Ties through the thickness: 8 mm bars on a 450 mm square grid.
         if ties && !elastic {
             let tieRatio: Float = 50.3e-6 / (0.45 * 0.45)
-            for (box, axis) in [(w1, 1), (w3, 1), (s1, 2)] {
+            var tied = [(w1, 1), (w3, 1), (s1, 2)]
+            if downstand {
+                tied.append((beam, 0))
+            }
+            for (box, axis) in tied {
                 var ratio = SIMD3<Float>(repeating: 0)
                 ratio[axis] = tieRatio
                 model.reinforcement.append(ReinforcementLayer(region: box, ratio: ratio))
@@ -189,10 +222,12 @@ public enum ChamberTest {
     /// A 0.5 m chamfer in an inside corner, as steps one element high. The corner runs along
     /// axis `along`; `corner` gives its position on the other two axes and `into` the direction
     /// of the room from it on each.
+    static let chamferSize: Float = 0.5
+
     static func haunch(
         along: Int, from: Float, to: Float, corner: [Int: Float], into: [Int: Float], h: Float
     ) -> [Box] {
-        let size: Float = 0.5
+        let size = chamferSize
         let axes = corner.keys.sorted()
         var boxes: [Box] = []
         for (first, second) in [(axes[0], axes[1]), (axes[1], axes[0])] {

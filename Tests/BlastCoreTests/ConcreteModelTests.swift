@@ -296,11 +296,16 @@ struct ConcreteModelTests {
         private(set) var strain = simd_float3x3()
         private(set) var work: Double = 0
 
-        init(device: MTLDevice, material: StructureMaterial, secondCracks: Bool = true) throws {
+        init(
+            device: MTLDevice, material: StructureMaterial, secondCracks: Bool = true,
+            reinforcement: [ReinforcementLayer] = [], inclinedBars: [InclinedBars] = []
+        ) throws {
             let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
             var model = StructureModel(
                 solids: [cube], material: material, elementSize: size, fixedBase: false)
             model.secondCracks = secondCracks
+            model.reinforcement = reinforcement
+            model.inclinedBars = inclinedBars
             solver = try StructureSolver(device: device, model: model)
             solver.gravity = 0
             solver.groundContact = false
@@ -389,6 +394,34 @@ struct ConcreteModelTests {
                 )
             }
         }
+    }
+
+    @Test("Bars at 45 degrees pulled along their length carry what the same bars along an axis do")
+    func inclinedBarsMatchAxisBars() throws {
+        let steel = SteelProperties.grade500
+        let material = Self.concrete(steel: steel)
+        let ratio: Float = 0.01
+        let size: Float = 0.05
+        let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
+        // Pulled to 1% along the bars, past their yield.
+        let axial = try DrivenCube(
+            device: device, material: material,
+            reinforcement: [ReinforcementLayer(region: cube, ratio: SIMD3(ratio, 0, 0))])
+        axial.drive(to: Self.plane(0.01, 0, 0, 1), steps: 6000)
+        let alongAxis = axial.stress[0][0]
+        // The same ratio of bars along the xy diagonal, through the element's centre: smeared
+        // over a row h / sqrt(2) wide, so the area per metre is ratio times that.
+        let rowWidth = size / Float(2).squareRoot()
+        let bars = InclinedBars(
+            start: SIMD3(0, 0, 0), direction: SIMD3(1, 1, 0), length: 1, span: 0...2,
+            areaPerMetre: ratio * rowWidth)
+        let diagonal = try DrivenCube(device: device, material: material, inclinedBars: [bars])
+        let n = simd_normalize(SIMD3<Float>(1, 1, 0))
+        diagonal.drive(to: Self.plane(0.005, 0.005, 0.005, 1), steps: 6000)
+        let alongDiagonal = simd_dot(n, diagonal.stress * n)
+        #expect(alongAxis > 0.9 * ratio * steel.yieldStress, "axis bars carry \(alongAxis) Pa")
+        #expect(
+            abs(alongDiagonal / alongAxis - 1) < 0.05, "diagonal \(alongDiagonal) Pa against \(alongAxis) Pa")
     }
 
     @Test("A cracked element recovers its compressive stiffness once the crack closes")
