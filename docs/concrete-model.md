@@ -80,7 +80,9 @@ followed one component of strain and the stress all of them. The second crack co
 removal as the others do, bridged by the bars that cross it. On the element above the
 diagonal tension falls to 0.35 of the tensile strength: tension within 30° of the first
 crack's axes still locks, and a third crack is not opened. `StructureModel.secondCracks`
-(on by default; `--no-second-crack` in `blastbench`) turns it off. Shells and beams have none.
+(on by default; `--no-second-crack` in `blastbench`) turns it off. Shells and beams have none,
+and need none: their cracks lie on the element's axes, and the interlock across them fades as
+the shared cracking opens (see the [shell model](shell-model.md#materials)).
 
 The tenth was chosen on the slab test supported on 1 in bearings that hold it down, one of its
 sensitivity cases. Left turning through the whole softening, the cracks at mid-span followed
@@ -567,7 +569,7 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 3. **Crack axes turn until the crack opens, then are fixed.** A crack that opens and then has
    the stress turn across it opens a second crack past 30°, but tension within 30° of its axes
    still locks, a third crack is never opened, and a crack crossing another at an angle under
-   30° is shared between planes. Shells and beams have no second crack. When the axes are fixed (a tenth of the softening) was
+   30° is shared between planes. When the axes are fixed (a tenth of the softening) was
    chosen on one sensitivity case of the slab, not measured. Shear failures remain the least
    trustworthy predictions the model makes.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
@@ -609,8 +611,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Candidates include the high-strength slabs of the same contest (Thiagarajan et al., 2015) and
   the University of Ottawa shock-tube programmes, most of which load each specimen several
   times and so need care.
-- **More cracks**: a third crack, and second cracks in shells and beams, to relieve the stress
-  locking that remains; and dilatancy (the opening that sliding forces) on the crack plane.
+- **More cracks**: a third crack, to relieve the stress locking that remains; and dilatancy
+  (the opening that sliding forces) on the crack plane.
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip

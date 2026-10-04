@@ -450,4 +450,58 @@ struct ShellTests {
             summary.maxDisplacement > 1e-4 && summary.maxDisplacement < 0.02,
             "sag \(summary.maxDisplacement) m")
     }
+
+    @Test("A shell layer cracked one way and pulled along the diagonal softens: its stress does not lock")
+    func shellCracksDoNotLock() throws {
+        var material = StructureMaterial.concrete(name: "Test", compressiveStrength: 30e6)
+        material.poissonRatio = 0
+        let onset = material.tensileStrength / material.youngsModulus
+        let side: Float = 0.25
+        let thickness: Float = 0.1
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(side, side, 1 + thickness))], material: material,
+            elementSize: side, fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 2
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        let corners = solver.nodes { _ in true }
+        var strain = simd_float2x2()
+        // Drives the corners so that the membrane strain is uniform, and returns the stress
+        // from their reactions.
+        func drive(to target: simd_float2x2, steps: Int = 3000) -> simd_float2x2 {
+            let rate = (target - strain) * (1 / (Float(steps) * solver.criticalTimeStep))
+            solver.mutateNodes { nodes in
+                for n in corners {
+                    let p = solver.position(n)
+                    let v = rate * SIMD2(p.x, p.y)
+                    (nodes[n].vx, nodes[n].vy, nodes[n].vz) = (v.x, v.y, 0)
+                    nodes[n].flags |= 8  // moves as set
+                }
+            }
+            solver.advance(steps: steps)
+            strain = target
+            var (xx, xy, yy): (Float, Float, Float) = (0, 0, 0)
+            for n in corners {
+                let p = solver.position(n)
+                let f = -solver.nodalForce(n)
+                if p.x > side / 2 { (xx, xy) = (xx + f.x, xy + f.y) }
+                if p.y > side / 2 { yy += f.y }
+            }
+            let area = side * thickness
+            return simd_float2x2(rows: [SIMD2(xx, xy), SIMD2(xy, yy)]) * (1 / area)
+        }
+        func along(_ n: SIMD2<Float>, _ amount: Float) -> simd_float2x2 {
+            simd_float2x2(rows: [n * n.x, n * n.y]) * (amount * onset)
+        }
+        _ = drive(to: along(SIMD2(1, 0), 5))
+        _ = drive(to: simd_float2x2())
+        let diagonal = simd_normalize(SIMD2<Float>(1, 1))
+        let stress = drive(to: along(diagonal, 60), steps: 12000)
+        let carried = simd_dot(diagonal, stress * diagonal) / material.tensileStrength
+        // The interlock across the shared planes fades as they open (0.21 f_t here), where solid
+        // elements with fixed crack axes needed a second crack to get to 0.35.
+        #expect(carried < 0.3, "carries \(carried) f_t across the diagonal")
+    }
 }

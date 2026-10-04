@@ -101,6 +101,15 @@ with the stress through the thickness zero:
   interlock;
 - there is no confinement, since a plate in plane stress is free through its thickness.
 
+The planes are the element's own axes, as the solids' lattice planes were, and there is no
+second crack. None is needed: the interlock across the planes fades as the cracking shared
+into them opens, so tension that turns away from a crack does not lock. A layer cracked across
+one axis and then pulled along the diagonal carries 0.64, 0.36 and 0.21 times the tensile
+strength across it at 10, 30 and 60 times the cracking strain (0.16 at 30° and 60°), where a
+solid element with fixed crack axes carried 0.6 however far it was pulled, and 0.35 with its
+second crack (see [Cracking](concrete-model.md#cracking)). Beams' fibres share their cracking
+the same way.
+
 A beam's fibres crack across the beam, from their axial strain or the principal tension of axial
 stress with shear, and are confined by the column's ties: half the tie ratio times the bars'
 yield stress, as lateral pressure.
