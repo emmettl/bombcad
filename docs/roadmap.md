@@ -55,10 +55,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    (Done: afterburning, limited by mixing and oxygen, and thermally perfect air, which together
    bring the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the
    open within 6% of Kingery–Bulmash.)
-4. **Shear in concrete.** A second crack once the principal direction has turned far enough
-   from a fixed one, and a test of a member that failed in shear. (Done: cracks whose axes
+4. **Shear in concrete.** A test of a member that failed in shear. (Done: cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
-   found to mishandle inclined cracks; see [Cracking](concrete-model.md#cracking).)
+   found to mishandle inclined cracks, and a second crack once the tension has turned more
+   than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
 5. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done: compaction of the pores under very high confined pressure, after
    Holmquist, Johnson and Cook; unchecked against a close-in test.)

@@ -83,7 +83,7 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
   switched on, which also bring the gas pressure in a closed room within 8% of the US design
   manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 101, 100 and 107 mm with 4, 8 and 16 elements through the
+  model predicts peak deflections of 101, 101 and 108 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
   elements (4.4 million) it is 105 mm, so the peak has converged. The rebound
   after it is twice the measured one, and the result is sensitive to the load and to how the
@@ -92,7 +92,7 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
   the peak pressures on the walls are 0.9 to 1.6 times those measured. The roof's peak
   deflection and the charge at which it is thrown follow the paper's own model, but the roof
-  springs back to 10 mm where 95 mm was measured. The test exposed two missing mechanisms in
+  springs back to 12 mm where 95 mm was measured. The test exposed two missing mechanisms in
   the concrete model (bars resisting sliding across cracks, and cracks held closed across a
   section by its bars) and an error in inclined cracking, all now dealt with.
 

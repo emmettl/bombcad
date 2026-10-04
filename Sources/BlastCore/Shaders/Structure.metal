@@ -69,6 +69,7 @@ struct StructureUniforms {
     uint fluidRefine;
     uint fluidBlocksX;
     uint fluidBlocksY;
+    uint secondCracks;  // 1: concrete with fixed crack axes may open a second crack
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -207,6 +208,12 @@ struct ElementState {
     packed_half4 crackFrame;
     float compaction;  // concrete: largest volumetric compression so far, mu = V0 / V - 1
     packed_float3 crackResidual;  // concrete: opening each crack keeps once closed, as a strain
+    // Concrete whose crack axes are fixed: a second crack, where the tension has since turned
+    // well away from them. Its normal in the crack axes (w is 1 once it has formed), and its
+    // opening now and the largest it has reached, as strains across it.
+    packed_half4 secondCrack;
+    float secondOpening;
+    float secondHistory;
 };
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
@@ -341,6 +348,42 @@ static inline float tensionEnvelope(float history, float increase, constant Mate
     float onset = m.crackOnset * increase;
     return history <= onset ? m.youngsModulus * history
                             : m.tensileStrength * increase * exp(-(history - onset) / m.crackSoftening);
+}
+
+// A second crack forms where the tension has turned more than 30 degrees from every crack axis.
+constant float secondCrackCosine = 0.8660254f;
+
+// The second crack's opening, as a strain across it, after a step in which the concrete beside
+// it would carry `trial` across it with the crack opened to `opened`. The crack carries the
+// tension law's stress for its opening: softening exponentially from the tensile strength as it
+// opens, over the crack band (the same fracture energy as the first crack), and unloading
+// along a straight line to the residual opening, below which it is shut. The concrete's
+// stiffness across the crack, `stiffness`, relates the two: opening by d lowers the stress by
+// about stiffness * d.
+static inline float secondCrackOpening(float trial, float opened, float reached, float stiffness, float increase,
+                                       constant MaterialParameters &m) {
+    float strength = m.tensileStrength * increase;
+    float softening = m.crackSoftening + 0.5f * m.crackOnset;
+    auto envelope = [&](float e) { return strength * exp(-e / softening); };
+    float drive = trial + stiffness * opened;  // the stress across it were it shut
+    if (reached > 0.0f) {
+        float residual = m.crackResidual * reached;
+        float slope = envelope(reached) / (reached - residual);
+        float e = (drive + slope * residual) / (stiffness + slope);
+        if (e <= reached) {
+            return max(e, residual);
+        }
+    } else if (drive <= strength) {
+        return 0.0f;
+    }
+    // Opening further: drive - stiffness * e = envelope(e), by Newton's method from `reached`.
+    float e = reached;
+    for (int n = 0; n < 4; ++n) {
+        float g = drive - stiffness * e - envelope(e);
+        float slope = -stiffness + envelope(e) / softening;
+        e = max(e - g / slope, reached);
+    }
+    return e;
 }
 
 // Strain at which a crack that has opened to `history` carries no stress. Fragments and
@@ -751,6 +794,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
         }
         float3x3 strain = transpose(frame) * latticeStrain * frame;
+        // A second crack's opening is not the concrete's strain (see below).
+        float4 secondCrack = float4(state.secondCrack);
+        if (u.secondCracks != 0 && framed && !turning && secondCrack.w != 0.0f) {
+            float3 normal = normalize(secondCrack.xyz);
+            strain -= state.secondOpening * float3x3(normal * normal.x, normal * normal.y, normal * normal.z);
+        }
         float3 normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
 
         // Strength rises with strain rate; a running average keeps element-scale noise out.
@@ -1005,6 +1054,47 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 material = float3x3(float3(normalStress.x, shearStress.x, shearStress.z),
                                      float3(shearStress.x, normalStress.y, shearStress.y),
                                      float3(shearStress.z, shearStress.y, normalStress.z));
+        // A second crack. Once the crack axes are fixed, tension that turns away from them is
+        // carried across the cracked planes by their shear, which aggregate interlock holds up
+        // to more than the tensile strength: the stress locks, and a cracked element pulled at
+        // 45 degrees to its crack keeps half its tensile strength however far it is stretched.
+        // Where the concrete's principal tension passes its tensile strength more than 30
+        // degrees from every crack axis, a second crack forms across it, fixed from then on. Its
+        // opening is a strain of its own, taken out of the strain the rest of the concrete
+        // sees (above), and set each step so that the concrete's stress across it is what the
+        // crack carries at that opening (the multi-directional fixed crack of de Borst and
+        // Nauta). This step's stress is corrected for the change in opening elastically; the
+        // next step's sees it in full.
+        if (u.secondCracks != 0 && framed && !turning) {
+            float4 second = float4(state.secondCrack);
+            if (second.w == 0.0f) {
+                float3 values;
+                float3x3 directions;
+                symmetricEigen(material, values, directions);
+                int major = values.x >= values.y ? (values.x >= values.z ? 0 : 2) : (values.y >= values.z ? 1 : 2);
+                float3 normal = directions[major];
+                float3 cosines = abs(normal);
+                if (values[major] > m.tensileStrength * tensionFactor
+                    && max(cosines.x, max(cosines.y, cosines.z)) < secondCrackCosine) {
+                    second = float4(normal, 1.0f);
+                    state.secondCrack = packed_half4(half4(second));
+                    state.secondOpening = 0.0f;
+                    state.secondHistory = 0.0f;
+                }
+            }
+            if (second.w != 0.0f) {
+                float3 normal = normalize(second.xyz);
+                float stiffness = m.lambda + 2.0f * m.mu;
+                float opened = state.secondOpening;
+                float e = secondCrackOpening(dot(normal, material * normal), opened, state.secondHistory, stiffness,
+                                             tensionFactor, m);
+                state.secondOpening = e;
+                state.secondHistory = max(state.secondHistory, e);
+                float3x3 outer = float3x3(normal * normal.x, normal * normal.y, normal * normal.z);
+                material -= (e - opened) * (m.lambda * float3x3(1.0f) + 2.0f * m.mu * outer);
+                crack = max(crack, state.secondHistory + onset);
+            }
+        }
         if (framed) {
             material = frame * material * transpose(frame);
         }
@@ -1133,15 +1223,19 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // it closed here too: an element between the mats of a thick wall, or between a mat and
         // the far face, is bridged by them. The section is searched along the crack's plane,
         // from the element to the member's surface, for an element with intact bars across it
-        // (as of the previous substep).
+        // (as of the previous substep). The three planes of the crack axes are looked at, and a
+        // second crack if there is one.
         bool torn = false;
-        for (int c = 0; c < 3 && !torn; ++c) {
-            if (history[c] < m.erosionStrain) {
+        float4 second = float4(state.secondCrack);
+        bool hasSecond = u.secondCracks != 0 && framed && !turning && second.w != 0.0f;
+        for (int c = 0; c < (hasSecond ? 4 : 3) && !torn; ++c) {
+            float reached = c < 3 ? history[c] : state.secondHistory + onset;
+            if (reached < m.erosionStrain) {
                 continue;
             }
             // The lattice axis most nearly across the crack carries the bars that cross it; the
             // section is searched along the other two.
-            float3 normal = abs(frame[c]);
+            float3 normal = abs(c < 3 ? frame[c] : frame * normalize(second.xyz));
             int j = normal.x >= normal.y && normal.x >= normal.z ? 0 : (normal.y >= normal.z ? 1 : 2);
             if (intact[j] != 0.0f) {
                 continue;

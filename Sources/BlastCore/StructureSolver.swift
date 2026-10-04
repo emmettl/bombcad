@@ -33,7 +33,7 @@ public final class StructureSolver {
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
-    public static let stateStride = 160
+    public static let stateStride = 176
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -820,6 +820,7 @@ public final class StructureSolver {
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
         uniforms.orientedCracks = model.crackAxes.uniform
+        uniforms.secondCracks = model.secondCracks ? 1 : 0
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))

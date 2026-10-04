@@ -263,8 +263,8 @@ shock, and the drag and pressure-gradient push on loose debris.
    its upper floor has sometimes stayed up at 3 s and sometimes fallen, as changes to the
    concrete model that barely alter its first second tipped the collapse one way or the
    other; since bars resist sliding across cracks it stands at its old 250 kg charge, and
-   since cracks turn with the stress until they open it stands at 1,000 kg too (90 mm), so the
-   preset now uses 2,000 kg. No outcome has been compared with anything.
+   since cracks turn with the stress until they open it stands at 1,000 kg too (90 mm; 98 mm
+   with a second crack), so the preset now uses 2,000 kg, at which it falls. No outcome has been compared with anything.
 
    Repeatability took three fixes for races between GPU threads. An element failing in a pass
    was seen by some of its neighbours in that pass and not others; a failing element is now

@@ -288,6 +288,109 @@ struct ConcreteModelTests {
         #expect(abs(sheared - squeezed) < 0.05 * abs(squeezed), "sigma_xx \(squeezed) -> \(sheared) Pa")
     }
 
+    /// One cubic element whose eight nodes are all driven, so that its strain is uniform and
+    /// follows a prescribed path; `work` adds up the work done on it, per unit volume.
+    private final class DrivenCube {
+        let solver: StructureSolver
+        let size: Float = 0.05
+        private(set) var strain = simd_float3x3()
+        private(set) var work: Double = 0
+
+        init(device: MTLDevice, material: StructureMaterial, secondCracks: Bool = true) throws {
+            let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
+            var model = StructureModel(
+                solids: [cube], material: material, elementSize: size, fixedBase: false)
+            model.secondCracks = secondCracks
+            solver = try StructureSolver(device: device, model: model)
+            solver.gravity = 0
+            solver.groundContact = false
+        }
+
+        /// The stress tensor (Pa).
+        var stress: simd_float3x3 {
+            let s = solver.stress(0, 0, 0)
+            return simd_float3x3(rows: [
+                SIMD3(s[0], s[3], s[5]), SIMD3(s[3], s[1], s[4]), SIMD3(s[5], s[4], s[2]),
+            ])
+        }
+
+        /// Takes the strain to `target` at a steady rate over `steps` steps.
+        func drive(to target: simd_float3x3, steps: Int = 3000, sample: (() -> Void)? = nil) {
+            let dt = solver.criticalTimeStep
+            let rate = (target - strain) * (1 / (Float(steps) * dt))
+            let size = self.size
+            solver.mutateNodes { nodes in
+                for n in 0..<8 {
+                    let position = SIMD3(Float(n & 1), Float((n >> 1) & 1), Float(n >> 2)) * size
+                    nodes[solver.nodeIndex(n & 1, (n >> 1) & 1, n >> 2)].isPrescribed = true
+                    nodes[solver.nodeIndex(n & 1, (n >> 1) & 1, n >> 2)].velocity = rate * position
+                }
+            }
+            for _ in 0..<(steps / 20) {
+                solver.advance(steps: 20)
+                var power: Double = 0
+                for n in 0..<8 {
+                    let position = SIMD3(Float(n & 1), Float((n >> 1) & 1), Float(n >> 2)) * size
+                    power -= Double(simd_dot(solver.nodalForce(n & 1, (n >> 1) & 1, n >> 2), rate * position))
+                }
+                work += power * Double(20 * dt) / Double(size * size * size)
+                sample?()
+            }
+            strain = target
+        }
+    }
+
+    /// A strain of `xx`, `yy` and shear `xy` (engineering shear 2 xy), in units of `unit`.
+    private static func plane(_ xx: Float, _ yy: Float, _ xy: Float, _ unit: Float) -> simd_float3x3 {
+        simd_float3x3(columns: (SIMD3(xx, xy, 0), SIMD3(xy, yy, 0), .zero)) * unit
+    }
+
+    @Test("Tension turned 45 degrees from a fixed crack opens a second crack instead of locking")
+    func secondCrackRelievesLocking() throws {
+        var material = Self.concrete()
+        material.poissonRatio = 0
+        let onset = material.tensileStrength / material.youngsModulus
+        var carried: [Float] = []
+        for second in [false, true] {
+            let cube = try DrivenCube(device: device, material: material, secondCracks: second)
+            // A crack across x, opened far enough to fix its axes, then closed.
+            cube.drive(to: Self.plane(5, 0, 0, onset))
+            cube.drive(to: Self.plane(0, 0, 0, onset))
+            // Then stretched far along the diagonal, where a crack softens to nothing.
+            cube.drive(to: Self.plane(30, 30, 30, onset), steps: 12000)
+            let n = simd_normalize(SIMD3<Float>(1, 1, 0))
+            carried.append(simd_dot(n, cube.stress * n) / material.tensileStrength)
+        }
+        // Without it the first crack's interlock carries the tension; with it, much less is.
+        #expect(carried[0] > 0.5, "locked at \(carried[0]) f_t")
+        #expect(carried[1] < 0.75 * carried[0], "with a second crack \(carried[1]) f_t")
+    }
+
+    @Test("With a second crack, closed cycles of strain still dissipate energy")
+    func secondCrackDissipates() throws {
+        for residual: Float in [0.1, 0.5] {
+            var material = Self.concrete()
+            material.poissonRatio = 0.2
+            material.crackResidual = residual
+            let onset = material.tensileStrength / material.youngsModulus
+            let cube = try DrivenCube(device: device, material: material)
+            cube.drive(to: Self.plane(5, 0, 0, onset))
+            cube.drive(to: Self.plane(0, 0, 0, onset))
+            cube.drive(to: Self.plane(10, 10, 10, onset))
+            let corners = [(4, 4, 2), (4, -2, 6), (-2, -2, 1), (6, 1, -3), (4, 4, 2)].map {
+                Self.plane(Float($0.0), Float($0.1), Float($0.2), onset)
+            }
+            cube.drive(to: corners[0])
+            for loop in 0..<3 {
+                let before = cube.work
+                for corner in corners.dropFirst() { cube.drive(to: corner) }
+                #expect(
+                    cube.work - before > 0, "loop \(loop) at residual \(residual): \(cube.work - before) J/m3"
+                )
+            }
+        }
+    }
+
     @Test("A cracked element recovers its compressive stiffness once the crack closes")
     func crackClosure() throws {
         let material = Self.concrete()

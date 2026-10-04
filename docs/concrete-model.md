@@ -60,7 +60,27 @@ it so that each plane's history stays with its own direction. Once a crack has o
 tension softened through a tenth of its softening strain (to about 90% of the tensile
 strength), the axes are fixed for good; so are they once the concrete has crushed past its
 peak. Later cracking at another angle is shared between the three planes in proportion to the
-squared direction cosines.
+squared direction cosines, and, if it is more than 30° from all three, opens a second crack.
+
+**A second crack.** With the axes fixed, tension that turns away from them is carried across
+the cracked planes by their shear, which aggregate interlock holds at up to about 3 MPa, more
+than the tensile strength: the stress locks. One element cracked across x and then pulled far
+along the diagonal of x and y still carried 0.6 times the tensile strength across the
+diagonal, where a crack there would have softened to nothing. So where the concrete's principal
+tension passes its tensile strength more than 30° from every crack axis, a second crack forms
+across it, its normal fixed from then on (a multi-directional fixed crack, after de Borst and
+Nauta). Its opening is a strain of its own, taken out of the strain the rest of the concrete
+sees, and set each step so that the stress across it is what the crack carries at that
+opening: softening exponentially from the tensile strength over the same crack band and
+fracture energy as the first, unloading along a straight line to its residual opening, shut
+below that. The split keeps the work done on an element equal to the rest of the concrete's
+plus the crack's own opening work, so it dissipates; a first version that only capped the
+stress across the new crack returned energy on closed cycles of strain, since the cap
+followed one component of strain and the stress all of them. The second crack counts for
+removal as the others do, bridged by the bars that cross it. On the element above the
+diagonal tension falls to 0.35 of the tensile strength: tension within 30° of the first
+crack's axes still locks, and a third crack is not opened. `StructureModel.secondCracks`
+(on by default; `--no-second-crack` in `blastbench`) turns it off. Shells and beams have none.
 
 The tenth was chosen on the slab test supported on 1 in bearings that hold it down, one of its
 sensitivity cases. Left turning through the whole softening, the cracks at mid-span followed
@@ -97,6 +117,29 @@ models it replaced:
 | Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 15 / 25 / 32 mm | 7 / 4 / 3 mm | 5 / 2 / 5 mm |
 | Two-storey frame | First floor falls at 1,000 kg | Stands at 1,000 kg, 92 mm | Stands at 1,000 kg, 90 mm; falls at 2,000 kg |
 | Three-storey building's masonry, 100 kg | 1,505 elements removed | 296 | 320 |
+
+(This table predates the second crack.) With and without it, by default otherwise:
+
+| Case | Without a second crack | With one (the default) |
+|---|---|---|
+| Slab test, 4 / 8 / 16 elements through | 101 / 100 / 107 mm; history within 10.6 / 15.3 / 10.5 mm | 101 / 101 / 108 mm; within 10.5 / 14.4 / 9.8 mm |
+| Slab test, 1 in bearings held down | 81 mm | 81 mm |
+| Chamber test, default gas / with afterburning and hot air | 66 / 10 mm and 71 / 10 mm | 73 / 12 mm and 82 / 14 mm (paper's model 87 / 62) |
+| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 5 / 2 / 5 mm | 4 / 3 / 7 mm |
+| Cantilever wall, 200 kg, at 0.1 s | 303 / 382 / 405 mm; 0, 278 and 375 elements removed | 270 / 325 / 352 mm; none removed |
+| The same, 0.25 m air, at 1 s | Leaning back on its bars, 608 mm | Back to 202 mm |
+| Concrete building, 500 kg, 0.25 / 0.125 m air, 0.1 s | 164 / 138 mm; 22 and 44 removed | 173 / 148 mm; 56 and 44 removed |
+| Two-storey frame, 1,000 kg | Stands, 90 mm | Stands, 98 mm (2 s, 0.5 m air); falls at 2,000 kg |
+| Three-storey building, 0.1 s | 311 elements removed | 714 |
+| Infilled frame, 0.1 s | 112 mm; 879 removed | 545 mm; 1,316 removed |
+
+The chamber, three-storey and infilled cases without it are from `--no-second-crack`; the others
+from the code before it. (Metal compiles with fast arithmetic, so a change elsewhere in a shader
+can shift rounding and with it a few failing elements: the chamber lost 8 elements with
+`--no-second-crack` and 5 before.) The slab barely moves and the chamber moves towards the
+paper's model. The masonry of the three-storey and infilled buildings comes apart much more,
+and the cantilever wall no longer stays hinged over at 200 kg; there is nothing measured to
+say which is right.
 
 Turning cracks keep what fixed cracks gained on the chamber, whose joints crack at 45°, and
 the wall no longer shrinks steadily as the air is refined, though at 2–5 mm its response is too
@@ -501,6 +544,11 @@ matter.
    doing: at 0.5 it is still left only 35 mm up (see
    [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 
+23. **A second crack**, to relieve the stress locking of fixed axes (see Cracking). The slab is
+   unchanged within a millimetre (101, 101 and 108 mm on 4, 8 and 16 elements); the chamber's
+   roof rises 73 mm and is left 12 mm up (82 and 14 mm with afterburning and hot air, against
+   the paper's model's 87 and 62 mm). Masonry comes apart more; see the table in Cracking.
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -509,7 +557,7 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 ## Limitations
 
 1. **Validated against one test**, a one-way slab in bending under a uniform load. On it the
-   peak is 101, 100, 107 and 105 mm as the elements through the thickness go from 4 to 8 to 16
+   peak is 101, 101, 108 and 105 mm as the elements through the thickness go from 4 to 8 to 16
    to 32: converged at about 105 mm, 3% below the measurement, with coarse meshes a few per
    cent lower. Results for members in bending should still be checked at more than one mesh.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
@@ -517,8 +565,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
    section analysis.
 3. **Crack axes turn until the crack opens, then are fixed.** A crack that opens and then has
-   the stress turn across it still locks some stress, and a crack crossing another at an
-   angle is shared between planes. When the axes are fixed (a tenth of the softening) was
+   the stress turn across it opens a second crack past 30°, but tension within 30° of its axes
+   still locks, a third crack is never opened, and a crack crossing another at an angle under
+   30° is shared between planes. Shells and beams have no second crack. When the axes are fixed (a tenth of the softening) was
    chosen on one sensitivity case of the slab, not measured. Shear failures remain the least
    trustworthy predictions the model makes.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
@@ -558,10 +607,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Candidates include the high-strength slabs of the same contest (Thiagarajan et al., 2015) and
   the University of Ottawa shock-tube programmes, most of which load each specimen several
   times and so need care.
-- **A second crack**: once a crack's axes are fixed, a new crack opened when the principal
-  direction has turned past a threshold angle (a multi-directional fixed-crack model), to
-  relieve the stress locking that remains; and dilatancy (the opening that sliding forces) on
-  the crack plane.
+- **More cracks**: a third crack, and second cracks in shells and beams, to relieve the stress
+  locking that remains; and dilatancy (the opening that sliding forces) on the crack plane.
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
@@ -606,6 +653,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   concrete", *Bygningsstatiske Meddelelser* 34, 1963. The dowel strength 1.3 d² √(f_c f_y),
   widely quoted (for example in fib Model Code 2010, section 6.1); the formula and citation
   were written from memory.
+- R. de Borst and P. Nauta, "Non-orthogonal cracks in a smeared finite element model",
+  *Engineering Computations* 2(1), 1985. The multi-directional fixed crack, whose crack strains
+  are split from the concrete's and which opens a new crack past a threshold angle. The
+  citation was written from memory.
 - J. G. Rots, *Computational Modeling of Concrete Fracture*, PhD thesis, Delft University of
   Technology, 1988. Smeared fixed and rotating crack models, shear retention.
 - M. Menegotto and P. E. Pinto, "Method of analysis for cyclically loaded R.C. plane frames

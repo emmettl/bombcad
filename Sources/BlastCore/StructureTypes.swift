@@ -340,6 +340,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
 
     /// The axes concrete cracks across (see `CrackAxes`).
     public var crackAxes: CrackAxes = .turningUntilOpen
+    /// Whether concrete whose crack axes are fixed opens a second crack where the tension turns
+    /// more than 30 degrees away from them, instead of carrying it across the first by shear.
+    public var secondCracks = true
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -692,6 +695,7 @@ struct StructureUniforms {
     var fluidRefine: UInt32 = 0
     var fluidBlocksX: UInt32 = 0
     var fluidBlocksY: UInt32 = 0
+    var secondCracks: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -850,6 +854,7 @@ extension StructureModel {
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
         crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
+        secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)

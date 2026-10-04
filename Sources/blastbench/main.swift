@@ -56,6 +56,8 @@ func chosenScenario() -> Scenario {
         structure.crackAxes = chosenCrackAxes()
         scenario.structure = structure
     }
+    // `--no-second-crack` carries tension that turns away from fixed crack axes across them.
+    if flag("no-second-crack") { scenario.structure?.secondCracks = false }
     // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
     if flag("bond"), var structure = scenario.structure {
         structure.interfaceBond = StructureModel.masonryBond
@@ -218,6 +220,7 @@ func runChamber() throws {
         scenario.structure?.material.crackResidual = residual
         print("Residual crack opening \(format(Double(residual) * 100, 0))%")
     }
+    if flag("no-second-crack") { scenario.structure?.secondCracks = false }
     let result = try ChamberTest.run(
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: flag("afterburn"),

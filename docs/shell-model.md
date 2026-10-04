@@ -249,7 +249,7 @@ The contest slab of the [validation notes](validation.md) with shells, through
 | 1 in (25 mm) | 124 mm (115%) | 29 ms | 97 mm (106%) | 10.2 mm | 0.9 s |
 | 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (103%) | 9.7 mm | |
 | Measured | 108 mm | 30 ms | 91 mm | | |
-| Solid elements, 16 through | 107 mm (99%) | 26 ms | 77 mm (85%) | 10.5 mm | minutes |
+| Solid elements, 16 through | 108 mm (100%) | 27 ms | 80 mm (88%) | 9.8 mm | minutes |
 
 With 4, 8, 16 and 32 layers the peak is 121, 124, 124 and 124 mm, so the shells' answer has
 converged, and it is 18% above the solid elements' converged 105 mm. Part of the gap is known:

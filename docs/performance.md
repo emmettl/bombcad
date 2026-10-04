@@ -87,8 +87,8 @@ refined shell grows as the square of its radius and the air behind it as the cub
 `blastbench validate` gains less (13 s against 21 s on 0.5 m cells, 104 s against about 290 s on
 0.25 m; with afterburning and hot air, 18 s against 28 s and 146 s against 419 s), as its blast does not spread far. With a deformable structure the gain is smaller
 again, since the air around it is disturbed throughout: 100 ms of the cantilever wall at 200 kg
-takes 7.1 s on 0.25 m cells refined against 11.2 s on 0.125 m cells, and of the concrete
-building at 500 kg, 16.5 s against 22 s (137 mm of deflection against 138 mm). The fine cells' own outline (their mask, the structure
+takes 7.2 s on 0.25 m cells refined against 11.0 s on 0.125 m cells, and of the concrete
+building at 500 kg, 17.4 s against 22.4 s (149 mm of deflection against 148 mm). The fine cells' own outline (their mask, the structure
 counted into them, and the wall fluxes at a patch's face) costs about a tenth. The first version, with larger blocks, was slower than
 the finer grid; the [air-blast model](air-blast-model.md#refining-near-the-shock) has the story.
 
@@ -140,12 +140,12 @@ state), and the second has gained from leaving buried nodes out of contact (belo
 - The residual crack opening and the cyclic steel law cost about 8%. The cyclic law's history
   is read only for bars that have yielded; reading it for every bar cost twice as much.
 - **Memory goes with the elements, not the lattice.** Element data (state, forces,
-  reinforcement and its histories) is stored once per element, about 390 bytes with
+  reinforcement and its histories) is stored once per element, about 400 bytes with
   reinforcement, and node data once per node of an element, 32 bytes; the lattice itself
   costs 5 bytes per cell (a flag and the cell's element number) and 4 per node (the node's
   number); and contacts use a table that wraps space periodically, sized to about eight
   entries per node at 20 bytes each. The concrete building, 225,000 elements and 283,000 nodes
-  in a 1.4-million-cell lattice, takes 152 MB. Storing nodes for the whole lattice took 179 MB,
+  in a 1.4-million-cell lattice, takes 156 MB. Storing nodes for the whole lattice took 179 MB,
   and storing everything per lattice cell with a dense contact grid around the structure took
   640 MB. The coupled run takes 0.21 GB in all at 0.25 m air cells, against 0.70 GB at first.
   Reaching a node through its number costs nothing measurable, and the results are identical
