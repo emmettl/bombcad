@@ -551,9 +551,24 @@ higher, but not by enough: 4, 12, 19, 26 and 38 mm at the end of the run for 0, 
 and 0.5 (`--crack-residual`), with peaks of 76 to 65 mm. Looking into this found a fault: the
 residual had followed histories that diagonal cracks raise on planes held closed, and from 0.4
 up it made every structure run away (see the [concrete model](concrete-model.md), step 22).
-After the peak the bars at the joints yield back the other way as the roof swings down
-(their plastic strain falls between 60 and 300 ms), which may be what lets it settle so low;
-the slab's hinge springs back too far in a similar way.
+**What brings the roof back down.** Traced through the run (`StructureSolver.barPlasticStrain`):
+the free edge works as a deep beam spanning between the side walls, the roof slab its flange
+and the down-stand its web. By the peak (35 ms) both of the slab's mats at mid-span have
+yielded in tension, the top to 8% and the bottom to 4%, while the bars at the joints yield
+less (up to 5%). Between 40 and 70 ms the edge drops from 72 to 6 mm while the gas beneath
+still pushes up at 100 to 300 kPa, and every hinge closes: the mid-span bars yield back to 1%,
+the joints' to about 1%. What pushes it down is arching. Cracking lengthens the beam, the walls
+restrain it, and it carries 2 to 4 MN of thrust, high in the slab at the walls and low in the
+down-stand at mid-span: an inverted arch, which resists the upward load. The thrust outlasts
+the load (1.2 MN remains after 100 ms), and with nothing left to oppose it, it pushes the
+mid-span back down, its moment there reversing to −0.6 MN m. How far the hinges then close
+depends on when the cracks' faces bear (above). Ruled out: the gas above the roof (it never
+passes 60 kPa), the elements' hourglass stiffness (a quarter or four times it leaves 12 and
+13 mm), the bars' Bauschinger softening (sharp reversals leave 12 mm), and the side walls'
+own recovery (with their outer faces held the roof peaks at 27 mm and is left 3 mm up). In the
+test the joints were shattered, which would have released much of that thrust; the model's
+joints stay whole enough to carry it, and with lattice cracks, which soften inclined cracking
+more, the roof keeps 138 of 265 mm.
 
 At the test's charge the side walls bow out 5 mm, and 3 elements fail in all; the measured
 structure was itself close to its cliff, since chamber B nearly lost its roof edge.
@@ -602,8 +617,9 @@ What remains, in rough order:
 3. **What the model leaves out of the load path**: the steel sleeves, which take some of the
    charges' energy and were modelled by the paper, and afterburning, which would raise the
    gas pressure.
-4. **The springback**: the roof is left 10 mm up against 95 mm, and neither the crack model
-   nor the residual crack opening accounts for it (above).
+4. **The springback**: the roof is left 12 mm up against 95 mm, pulled back down by arching
+   thrust that the model's joints carry and the test's shattered joints probably could not
+   (above). This is the joints' detailing again (item 1).
 
 ### What this does and does not show
 

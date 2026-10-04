@@ -546,6 +546,12 @@ public final class StructureSolver {
         stateValue(i, j, k, offset: 24)
     }
 
+    /// Concrete: the plastic strain of its bars along the lattice axes (positive stretched; a
+    /// ruptured set reads 1e9).
+    public func barPlasticStrain(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
+        SIMD3((0..<3).map { stateValue(i, j, k, offset: 92 + 4 * $0) })
+    }
+
     /// Total linear momentum of the body in kg m/s.
     public func momentum() -> SIMD3<Double> {
         var total = SIMD3<Double>.zero

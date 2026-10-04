@@ -579,7 +579,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
    not a lack of damping. Cracked concrete still unloads and reloads along one line, so small
    cycles dissipate nothing in the concrete; only the bars have hysteresis. A larger residual
-   crack opening does not cure it, in the slab or in the chamber (step 22).
+   crack opening does not cure it, in the slab or in the chamber (step 22). In the chamber the
+   roof is pulled back by arching thrust in its restrained edge, which closes every hinge (see
+   [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 6. **Confined strength is capped** at about five times the unconfined strength; above it only
    the compaction curve raises the pressure, so the strength does not grow with pressure as
    in real concrete under triaxial load. The compaction curve's constants are for a 48 MPa
