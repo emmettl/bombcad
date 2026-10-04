@@ -297,21 +297,27 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
 
 func runGasPressure() throws {
     let side: Float = 6
+    let settle = option("time").flatMap { Double($0) } ?? 0.08
     print(
-        "Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (80 ms)"
+        "Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (\(format(settle * 1000, 0)) ms)"
             + (flag("afterburn") ? ", with afterburning" : "")
             + (option("air") == "thermal" ? ", thermally perfect air" : ""))
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
             + pad("UFC 2-152", 12)
             + pad("model/UFC", 11) + pad("burnt", 8))
-    for chargePerVolume in [0.25, 0.5, 1, 2, 4] as [Float] {
+    // `--per-volume 0.1415` runs other ratios (that one is Cooper's closed-vessel example).
+    let ratios =
+        option("per-volume").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [
+            0.25, 0.5, 1, 2, 4,
+        ]
+    for chargePerVolume in ratios {
         var scenario = Scenario(
             name: "Room", domainSize: SIMD3(repeating: side), boxes: [],
             charge: Charge(mass: chargePerVolume * side * side * side, position: SIMD3(repeating: side / 2)))
         scenario.reflectiveFaces = .all
         let solver = try makeAirSolver(scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.25)
-        solver.advance(until: 0.08)
+        solver.advance(until: settle)
         let burnt = 1 - solver.speciesTotals().fuel / Double(scenario.charge.mass)
         let volume = Double(side * side * side)
         let totals = solver.totals()

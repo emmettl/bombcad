@@ -58,6 +58,35 @@ struct AfterburningTests {
         #expect(after.oxygen < 0.2 * oxygen, "oxygen left \(after.oxygen) of \(oxygen) kg")
     }
 
+    @Test("Burnt out in a closed vessel, the gas pressure is within 15% of Cooper's worked example")
+    func cooperClosedVessel() throws {
+        // Cooper, Explosives Engineering, pp. 153-158: 2 kg of TNT burnt completely in 14.1 m³ of
+        // air leaves 7.35 atm of overpressure. The same charge per volume, 0.1415 kg/m³, here.
+        let side: Float = 2.5
+        let mass = 0.1415 * side * side * side
+        var scenario = Scenario(
+            name: "Vessel", domainSize: SIMD3(repeating: side), boxes: [],
+            charge: Charge(mass: mass, position: SIMD3(repeating: side / 2)))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        solver.configuration.afterburning = true
+        solver.configuration.airModel = .thermallyPerfect
+        try solver.load(scenario)
+        solver.advance(until: 0.3)
+        #expect(
+            solver.speciesTotals().fuel < 0.02 * Double(mass), "unburnt \(solver.speciesTotals().fuel) kg")
+        // The mean pressure of the gas, from its mean density and internal energy (what is still
+        // moving is negligible by now).
+        let volume = Double(side * side * side)
+        let totals = solver.totals()
+        let pressure = solver.configuration.airModel.pressure(
+            density: Float(totals.mass / volume), internalEnergy: Float(totals.energy / volume),
+            gamma: solver.configuration.gamma)
+        let overpressure = Double(pressure - scenario.atmosphere.pressure)
+        let cooper = 7.35 * 101_325.0
+        #expect(abs(overpressure / cooper - 1) < 0.15, "\(overpressure / 1e6) MPa against Cooper's 0.745")
+    }
+
     @Test("Without afterburning nothing burns and no fuel is tracked")
     func offMeansOff() throws {
         let solver = try room(side: 4, charge: 8, afterburning: false)

@@ -55,7 +55,9 @@ the app paints on the ground and on rigid blocks.
 
 The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
 
-- Its energy is the TNT-equivalent mass times 4.184 MJ/kg (the conventional energy of TNT), and
+- Its energy is the TNT-equivalent mass times 4.184 MJ/kg (the conventional energy of TNT;
+  Cooper gives TNT's heat of detonation as 4.56 MJ/kg with the water liquid, about 4.07 with it
+  as vapour, and 4.69 MJ/kg as the energy that fits a large set of air-blast tests), and
   its mass is added to the air's density in the sphere.
 - The sphere's radius is the physical charge radius (for a density of 1600 kg/m³) or two cells
   (two fine cells where the air is [refined](#refining-near-the-shock)), whichever is larger.
@@ -77,7 +79,8 @@ again. With `SolverConfiguration.afterburning` on:
   (first-order upwind), so they stay positive and are conserved.
 - Where fuel and oxygen share a cell, the fuel burns, at TNT's ratio of 0.74 kg of oxygen per
   kg (C7H5N3O6 + 5.25 O2 → 7 CO2 + 2.5 H2O + 1.5 N2), releasing 10 MJ/kg (TNT's heat of
-  combustion, about 15 MJ/kg, less its heat of detonation), over a time
+  combustion, about 15 MJ/kg, less its heat of detonation; Cooper's afterburn heat, the same
+  difference, is 566 kcal/mol, 10.4 MJ/kg, and his oxygen demand the same 5.25 mol), over a time
   τ = 10 ms × W^(1/3) (W in kg). Mixing is the grid's own: products meet air as numerical
   diffusion spreads them.
 - With τ = 0 everything at the charge's edge burns in the first steps and joins the leading
@@ -327,6 +330,13 @@ UFC 3-340-02, lowest for light charges.
   model's future work).
 
 ## Sources
+
+- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996. TNT's heats of detonation
+  (Table 9.4, p. 132; 1,090 cal/g with the water liquid, p. 161) and combustion (Table 9.3,
+  p. 130), its afterburn heat and oxygen demand (§9.6, pp. 132–133), the energy that fits
+  air-blast tests (1,120 cal/g, pp. 384 and 406), the yield a surface burst gains from real
+  ground (160–180%, p. 407), and the residual pressure of a charge burnt in a closed vessel
+  (pp. 153–158). Read from a scan.
 
 - E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer,
   2009. The MUSCL–Hancock scheme, slope limiting and the HLL and HLLC solvers.

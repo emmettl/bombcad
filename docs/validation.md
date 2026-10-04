@@ -28,7 +28,7 @@ swift run -c release blastbench chamber
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
 | Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3): impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3); refinement gives the next finer grid's peaks | Good for impulse on walls; peaks under-resolved; incident impulse 13–22% low without afterburning, within 4% with it (fitted) |
-| Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air | Good with afterburning and hot air, nothing fitted |
+| Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
@@ -473,6 +473,16 @@ combustion, the oxygen in air and the vibration of its molecules, with nothing f
 (the burning time hardly matters in a closed room). Hot air without afterburning gives 43% to
 91%.
 
+Cooper (*Explosives Engineering*, pp. 153–158) works a closed vessel through by hand: 2 kg of
+TNT burnt completely in 14.1 m³ of air (0.14 kg/m³) leaves 7.35 atm of overpressure, 0.745 MPa.
+At that density (`blastbench gas --per-volume 0.1415 --afterburn --air thermal --time 0.5`)
+the products have all burnt by 0.5 s and the model gives 0.67 MPa, 90% of it. Most of the
+difference is energy: Cooper burns 14.7 MJ/kg (his heat of combustion, less the latent heat of
+the water), the model 14.18 (4.184 for the detonation and 10 for the afterburn), and the rest
+his rough allowance for hot gas (a mean γ, with the gas's temperature taken as γ times that of
+constant pressure). The design curve gives 0.53 MPa there, where at 80 ms 82% has burnt and the
+model gives 0.60 MPa.
+
 ## An internal explosion in a reinforced concrete chamber
 
 The one test so far that couples a real charge to a real structure, and the only one that
@@ -676,6 +686,7 @@ The test suite has 114 tests. The physical checks are:
 | Still air around obstacles                      | Stays still                                    |
 | Street blast and coupled wall, still air skipped | Identical to sweeping everything, cell for cell |
 | Charge burning in a closed room                  | Fuel and oxygen used at 0.74, energy released, mass kept, within 1% |
+| A charge burnt out in a closed vessel            | Within 15% of Cooper's worked example (90%)    |
 | Heavy charge in a small room                    | Burns no more than the oxygen allows             |
 | Hot air: energy and pressure both ways          | Within 0.01% from 250 K to 6000 K; γ = 1.4 cold   |
 | Shock tube in cold units, hot air               | Same densities as the ideal gas within 10⁻⁴      |
