@@ -83,7 +83,7 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
   switched on, which also bring the gas pressure in a closed room within 8% of the US design
   manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 101, 101 and 106 mm with 4, 8 and 16 elements through the
+  model predicts peak deflections of 101, 100 and 107 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
   elements (4.4 million) it is 105 mm, so the peak has converged. The rebound
   after it is twice the measured one, and the result is sensitive to the load and to how the

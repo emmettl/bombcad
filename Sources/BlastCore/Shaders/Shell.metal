@@ -143,6 +143,7 @@ struct ShellLayerStore {
                           // plastic shear strain and equivalent plastic strain
     half rate;            // running average of the effective strain rate
     half crackingFactor;  // tensile rate factor frozen when the layer first cracked
+    packed_float2 residual;  // concrete: opening each crack keeps once closed, as a strain
 };
 
 // The same, as worked on, with the layer's damage for display (0 sound, 1 failing).
@@ -151,6 +152,7 @@ struct ShellLayer {
     float2 crush;
     float rate;
     float crackingFactor;
+    float2 residual;
     float display;
 };
 
@@ -160,6 +162,7 @@ static inline ShellLayer loadLayer(const device ShellLayerStore &stored) {
     layer.crush = float2(stored.crush);
     layer.rate = float(stored.rate);
     layer.crackingFactor = float(stored.crackingFactor);
+    layer.residual = float2(stored.residual);
     layer.display = 0.0f;
     return layer;
 }
@@ -169,6 +172,7 @@ static inline void storeLayer(device ShellLayerStore &stored, thread const Shell
     stored.crush = layer.crush;
     stored.rate = half(min(layer.rate, 60000.0f));
     stored.crackingFactor = half(layer.crackingFactor);
+    stored.residual = layer.residual;
 }
 
 // One bar layer, one direction, at one in-plane point.
@@ -254,7 +258,7 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
 
     float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
     if (worst > onset) {
-        poisson *= concreteTension(worst, worst, tensionFactor, m) / (m.youngsModulus * worst);
+        poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
     }
     float scale = 1.0f / (1.0f - poisson * poisson);
     float2 uniaxial = float2(strain.x + poisson * strain.y, strain.y + poisson * strain.x) * scale;
@@ -295,7 +299,9 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     state.crack = history;
     float crack = max(history.x, history.y);
 
-    float2 residual = float2(crackResidual(history.x, tensionFactor, m), crackResidual(history.y, tensionFactor, m));
+    float2 residual = float2(settledResidual(state.residual.x, history.x, uniaxial.x, tensionFactor, m),
+                             settledResidual(state.residual.y, history.y, uniaxial.y, tensionFactor, m));
+    state.residual = residual;
     float2 squeeze = residual - uniaxial;
     float2 crush = max(state.crush, squeeze);
     state.crush = crush;
@@ -307,7 +313,7 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     float compressionFactor = any(squeeze > 0.0f) ? compressionIncrease(state.rate, m) : 1.0f;
     for (int j = 0; j < 2; ++j) {
         if (squeeze[j] <= 0.0f) {
-            normalStress[j] = concreteTension(uniaxial[j], history[j], tensionFactor, m);
+            normalStress[j] = concreteTension(uniaxial[j], history[j], residual[j], tensionFactor, m);
             continue;
         }
         normalStress[j] = concreteCompression(squeeze[j], crush[j], crush[j], compressionFactor, 1.0f, m);
@@ -985,7 +991,8 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
     }
     history = max(history, axial);
     state.crack.x = history;
-    float residual = crackResidual(history, tensionFactor, m);
+    float residual = settledResidual(state.residual.x, history, axial, tensionFactor, m);
+    state.residual.x = residual;
     float squeeze = residual - axial;
     float crush = max(state.crush.x, squeeze);
     state.crush.x = crush;
@@ -993,7 +1000,7 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
     float crushed = 0.0f;
     bool pulverised = false;
     if (squeeze <= 0.0f) {
-        stress = concreteTension(axial, history, tensionFactor, m);
+        stress = concreteTension(axial, history, residual, tensionFactor, m);
     } else {
         float compressionFactor = compressionIncrease(state.rate, m);
         stress = concreteCompression(squeeze, crush, crush, compressionFactor, confinement, m);

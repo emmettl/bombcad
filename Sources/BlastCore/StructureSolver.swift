@@ -33,7 +33,7 @@ public final class StructureSolver {
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
-    public static let stateStride = 148
+    public static let stateStride = 160
     static let forceStride = 96
 
     public let device: MTLDevice

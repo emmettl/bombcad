@@ -206,6 +206,7 @@ struct ElementState {
     // confinement histories above are then along these axes.
     packed_half4 crackFrame;
     float compaction;  // concrete: largest volumetric compression so far, mu = V0 / V - 1
+    packed_float3 crackResidual;  // concrete: opening each crack keeps once closed, as a strain
 };
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
@@ -354,13 +355,22 @@ static inline float crackResidual(float history, float increase, constant Materi
 
 // Uniaxial tensile stress of concrete at strain `strain`, having previously reached `history`.
 // Unloading and reloading follow the straight line between the envelope and the residual strain.
-static inline float concreteTension(float strain, float history, float increase,
+static inline float concreteTension(float strain, float history, float residual, float increase,
                                     constant MaterialParameters &m) {
     if (history <= 0.0f) {
         return 0.0f;
     }
-    float residual = crackResidual(history, increase, m);
     return tensionEnvelope(history, increase, m) * max(strain - residual, 0.0f) / (history - residual);
+}
+
+// The residual opening a crack keeps, as a strain: it follows `crackResidual` of the crack's
+// history, but never rises past the plane's own strain `uniaxial`. A diagonal crack is shared
+// between the planes it cuts across, and raises their histories even where one of them is
+// closed and its faces bear on each other; a residual rising with it would push those faces
+// apart from nothing, putting energy into the solid at every turn.
+static inline float settledResidual(float stored, float history, float uniaxial, float increase,
+                                    constant MaterialParameters &m) {
+    return max(stored, min(crackResidual(history, increase, m), uniaxial));
 }
 
 // Strains at which concrete in compression reaches its peak and its residual, for strength
@@ -767,7 +777,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // crack's strain is not elastic strain and must not stretch the directions alongside it.
         float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
         if (worst > onset) {
-            poisson *= concreteTension(worst, worst, tensionFactor, m) / (m.youngsModulus * worst);
+            poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
         }
 
         // Cracks are smeared over the three lattice planes, each with its own history, so that
@@ -848,9 +858,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         state.crackStrain = history;
         float crack = max(history.x, max(history.y, history.z));
         // A crack keeps a residual opening, and compression develops only once that has closed.
-        float3 residual = float3(crackResidual(history.x, tensionFactor, m),
-                                 crackResidual(history.y, tensionFactor, m),
-                                 crackResidual(history.z, tensionFactor, m));
+        float3 stored = float3(state.crackResidual);
+        float3 residual = float3(settledResidual(stored.x, history.x, uniaxial.x, tensionFactor, m),
+                                 settledResidual(stored.y, history.y, uniaxial.y, tensionFactor, m),
+                                 settledResidual(stored.z, history.z, uniaxial.z, tensionFactor, m));
+        state.crackResidual = residual;
         float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
         float3 crush = max(float3(state.crushStrain), squeeze);
         // Softening past the peak follows the crushing averaged over the intact elements within
@@ -920,7 +932,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool pulverised = false;
         for (int j = 0; j < 3; ++j) {
             if (squeeze[j] <= 0.0f) {
-                normalStress[j] = concreteTension(uniaxial[j], history[j], tensionFactor, m);
+                normalStress[j] = concreteTension(uniaxial[j], history[j], residual[j], tensionFactor, m);
                 continue;
             }
             float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
@@ -1183,7 +1195,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);
         float strength = m.compressiveStrength * compressionFactor * max(confinement.x, max(confinement.y, confinement.z));
         float bending = squeezed * max(1.0f - squeezed / strength, 0.0f);
-        capacity = max(max(concreteTension(crack, crack, tensionFactor, m) + steelCapacity, bending),
+        capacity = max(max(tensionEnvelope(crack, tensionFactor, m) + steelCapacity, bending),
                        0.02f * m.tensileStrength);
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
     }

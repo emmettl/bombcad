@@ -245,7 +245,7 @@ public final class ShellSolver {
     private static let maxLoadPoints = 256
     /// Gauss-Legendre points and weights through the thickness, from -1 to 1.
     private let thicknessRule: [SIMD2<Float>]
-    private static let layerStride = 20
+    private static let layerStride = 28
     private static let barStride = 36
 
     public init(

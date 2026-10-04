@@ -244,6 +244,50 @@ struct ConcreteModelTests {
         #expect(abs(back.stress - turn.stress) / abs(turn.stress) < 0.01)
     }
 
+    @Test("A diagonal crack leaves no residual opening across a plane held closed")
+    func residualOnlyWhereOpened() throws {
+        // Lattice planes, so that the diagonal crack is shared between the x and y planes, and a
+        // large residual fraction, which before this rule pushed the x faces apart from nothing
+        // and made every structure tested run away.
+        var material = Self.concrete()
+        material.crackResidual = 0.5
+        let onset = material.tensileStrength / material.youngsModulus
+        let size: Float = 0.05
+        let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
+        var model = StructureModel(solids: [cube], material: material, elementSize: size, fixedBase: false)
+        model.crackAxes = .lattice
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+
+        // Every node moves with a uniform strain rate: squeezed along x, then sheared in xy.
+        func drive(_ rate: simd_float3x3, steps: Int) {
+            solver.mutateNodes { nodes in
+                for k in 0...1 {
+                    for j in 0...1 {
+                        for i in 0...1 {
+                            let position = SIMD3(Float(i), Float(j), Float(k)) * size
+                            nodes[solver.nodeIndex(i, j, k)].isPrescribed = true
+                            nodes[solver.nodeIndex(i, j, k)].velocity = rate * position
+                        }
+                    }
+                }
+            }
+            solver.advance(steps: steps)
+        }
+        let steps = 3000
+        let time = Float(steps) * solver.criticalTimeStep
+        drive(simd_float3x3(diagonal: SIMD3(-0.5 * onset / time, 0, 0)), steps: steps)
+        let squeezed = solver.stress(0, 0, 0)[0]
+        var shear = simd_float3x3()
+        shear[1][0] = 20 * onset / time  // x velocity grows along y
+        drive(shear, steps: steps)
+        #expect(solver.crackStrain(0, 0, 0) > 5 * onset, "the shear should crack it diagonally")
+        let sheared = solver.stress(0, 0, 0)[0]
+        #expect(squeezed < 0)
+        #expect(abs(sheared - squeezed) < 0.05 * abs(squeezed), "sigma_xx \(squeezed) -> \(sheared) Pa")
+    }
+
     @Test("A cracked element recovers its compressive stiffness once the crack closes")
     func crackClosure() throws {
         let material = Self.concrete()

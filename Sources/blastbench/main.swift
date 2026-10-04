@@ -211,14 +211,19 @@ func runChamber() throws {
     print(
         "Air cells \(format(Double(cellSize), 3)) m, elements \(format(Double(elementSize), 3)) m, \(format(duration * 1000, 0)) ms"
             + (downstand ? "" : ", no down-stand"))
+    var scenario = ChamberTest.scenario(
+        elementSize: elementSize, downstand: downstand, ties: !flag("no-ties"), elastic: flag("elastic"),
+        chargeScale: chargeScale, crackAxes: chosenCrackAxes())
+    if let residual = option("crack-residual").flatMap({ Float($0) }) {
+        scenario.structure?.material.crackResidual = residual
+        print("Residual crack opening \(format(Double(residual) * 100, 0))%")
+    }
     let result = try ChamberTest.run(
-        device: device, cellSize: cellSize, elementSize: elementSize, downstand: downstand,
-        ties: !flag("no-ties"), elastic: flag("elastic"), chargeScale: chargeScale,
+        device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: flag("afterburn"),
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas,
-        crackAxes: chosenCrackAxes(),
-        duration: duration, refinement: option("refine").flatMap { Int($0) } ?? 1)
+        refinement: option("refine").flatMap { Int($0) } ?? 1)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )
@@ -744,6 +749,7 @@ func runSlab() throws {
         ("cracks close fully (no residual opening)", 1, { $0.crackResidual = 0 }),
         ("residual crack opening 20%", 1, { $0.crackResidual = 0.2 }),
         ("residual crack opening 30%", 1, { $0.crackResidual = 0.3 }),
+        ("residual crack opening 50%", 1, { $0.crackResidual = 0.5 }),
         ("crushing spread over at least 50 mm", 1, { $0.crushBand = 0.05 }),
         ("crushing averaged over 48 mm (nonlocal)", 1, { $0.crushLength = 0.048 }),
     ]

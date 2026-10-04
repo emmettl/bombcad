@@ -79,7 +79,8 @@ section, each with the uniaxial law along the beam and shear across it.
 a shell of area A, and (L² + w² + d²) / 12 for a beam, so that rotation never limits the time
 step, which is half the time a compression wave takes to cross the shortest element side or beam.
 On the GPU a shell's four in-plane points run in four adjacent threads, whose forces are summed
-across the quad, and each layer's state is 20 bytes. Together with less work in the material
+across the quad, and each layer's state is 28 bytes (20 before each crack's residual opening
+was stored). Together with less work in the material
 laws, that took the three-storey building's structure, run on its own, from 9.6 to 6.6 times
 slower than real time, and the single-storey building's from 2.5 to 1.2 times.
 
@@ -244,11 +245,11 @@ The contest slab of the [validation notes](validation.md) with shells, through
 
 | Shell size | Peak | At | End of record | RMS difference | Run time |
 |---|---|---|---|---|---|
-| 2 in (51 mm) | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.2 mm | 0.4 s |
+| 2 in (51 mm) | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.3 mm | 0.4 s |
 | 1 in (25 mm) | 124 mm (115%) | 29 ms | 97 mm (106%) | 10.2 mm | 0.9 s |
-| 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (102%) | 9.6 mm | |
+| 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (103%) | 9.7 mm | |
 | Measured | 108 mm | 30 ms | 91 mm | | |
-| Solid elements, 16 through | 106 mm (99%) | 26 ms | 76 mm (84%) | 11.0 mm | minutes |
+| Solid elements, 16 through | 107 mm (99%) | 26 ms | 77 mm (85%) | 10.5 mm | minutes |
 
 With 4, 8, 16 and 32 layers the peak is 121, 124, 124 and 124 mm, so the shells' answer has
 converged, and it is 18% above the solid elements' converged 105 mm. Part of the gap is known:

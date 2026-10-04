@@ -86,8 +86,8 @@ spacing (100 mm) and the aggregate size (16 mm).
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
 | Model, 32 elements through       | 105 mm (98%)    | 26 ms | 74 mm    | 32 of 4,423,680 |
-| Model, 16 elements through       | 106 mm (99%)    | 26 ms | 76 mm    | 0 of 552,960    |
-| Model, 8 elements through        | 101 mm (93%)    | 26 ms | 66 mm    | 0 of 68,608     |
+| Model, 16 elements through       | 107 mm (99%)    | 26 ms | 77 mm    | 1 of 552,960    |
+| Model, 8 elements through        | 100 mm (93%)    | 26 ms | 66 mm    | 0 of 68,608     |
 | Model, 4 elements through        | 101 mm (93%)    | 26 ms | 79 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
@@ -99,19 +99,22 @@ Mid-span deflection through the record, in millimetres:
 | 15 ms | 66       | 68         | 69         | 67        | 66        |
 | 20 ms | 88       | 93         | 94         | 91        | 90        |
 | 25 ms | 103      | 105        | 106        | 100       | 100       |
-| 30 ms | 108      | 102        | 103        | 96        | 97        |
-| 35 ms | 107      | 91         | 90         | 83        | 86        |
+| 30 ms | 108      | 102        | 104        | 96        | 97        |
+| 35 ms | 107      | 91         | 91         | 83        | 86        |
 | 40 ms | 98       | 81         | 79         | 74        | 81        |
-| 45 ms | 95       | 78         | 75         | 73        | 86        |
-| 50 ms | 98       | 83         | 79         | 79        | 90        |
+| 45 ms | 95       | 78         | 76         | 73        | 86        |
+| 50 ms | 98       | 83         | 80         | 79        | 90        |
 | 55 ms | 98       | 91         | 88         | 85        | 87        |
-| 60 ms | 96       | 92         | 92         | 83        | 80        |
-| 65 ms | 92       | 84         | 87         | 74        | 77        |
-| 70 ms | 90       | 74         | 76         | 66        | 79        |
+| 60 ms | 96       | 92         | 93         | 83        | 80        |
+| 65 ms | 92       | 84         | 88         | 74        | 77        |
+| 70 ms | 90       | 74         | 77         | 66        | 79        |
 
 The root-mean-square difference over the record is 10.1 mm for 32 elements through the
-thickness, 11.0 mm for 16, 15.2 mm for 8 and 10.6 mm for 4. **The peak has converged at about
-105 mm**, 3% below the measurement: 101, 101, 106 and 105 mm from 4 to 32 elements through.
+thickness, 10.5 mm for 16, 15.3 mm for 8 and 10.6 mm for 4. **The peak has converged at about
+105 mm**, 3% below the measurement: 101, 100, 107 and 105 mm from 4 to 32 elements through.
+(The 32-element run predates keeping each crack's residual opening only where it opened, step
+22 of the [concrete model](concrete-model.md#how-the-model-got-here), which moved the others by
+a millimetre at most.)
 The rise to the peak is reproduced within a few millimetres on every mesh. After the peak every
 mesh rebounds further than the specimen did (about 30 mm against 13 mm) and settles lower, about
 75 mm on the finer meshes against 90 mm. The rebound is set by a hinge at mid-span: once its
@@ -162,21 +165,22 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 
 | Change                                       | Peak            | Elements failed |
 |----------------------------------------------|-----------------|-----------------|
-| None                                         | 101 mm (93%)    | 0               |
+| None                                         | 100 mm (93%)    | 0               |
 | Load 5% lower                                | 88 mm (81%)     | 0               |
 | Load 5% higher                               | 115 mm (107%)   | 0               |
 | Aggregate 10 mm instead of 16 mm             | 101 mm (93%)    | 0               |
 | Crack spacing 50 mm instead of 100 mm        | 98 mm (91%)     | 0               |
-| Crack spacing 200 mm                         | 101 mm (94%)    | 0               |
+| Crack spacing 200 mm                         | 101 mm (93%)    | 0               |
 | Fracture energy halved                       | 100 mm (93%)    | 0               |
 | Tensile strength 20% lower                   | 103 mm (96%)    | 0               |
-| Cracks close fully (no residual opening)     | 101 mm (93%)    | 0               |
-| Residual crack opening 30% instead of 10%    | 100 mm (93%)    | 0               |
+| Cracks close fully (no residual opening)     | 100 mm (93%)    | 0               |
+| Residual crack opening 30% instead of 10%    | 101 mm (93%)    | 0               |
+| Residual crack opening 50%                   | 101 mm (93%)    | 0               |
 | Crushing spread over at least 50 mm          | 101 mm (93%)    | 0               |
-| Crushing averaged over 48 mm (nonlocal)      | 101 mm (93%)    | 0               |
-| Supports as 1 in bearings, held down         | 80 mm (74%)     | 0               |
+| Crushing averaged over 48 mm (nonlocal)      | 100 mm (93%)    | 0               |
+| Supports as 1 in bearings, held down         | 81 mm (75%)     | 0               |
 | Supports as 1 in bearings, free to lift      | 87 mm (81%)     | 0               |
-| 16 elements through the thickness            | 106 mm (99%)    | 0               |
+| 16 elements through the thickness            | 107 mm (99%)    | 1               |
 | Fixed UFC 3-340-02 factors, no rate laws     | 121 mm (112%)   | 0               |
 | Static strengths                             | 208 mm, failing | 3,933           |
 
@@ -508,9 +512,9 @@ paper's model, with a cliff at the same place:
 | Charge, as a fraction of the test's | Default gas: peak / end of run | Afterburning and hot air | Paper's model (Table 7): peak / residual |
 |-------------------------------------|--------------------------------|--------------------------|------------------------------------------|
 | 0.5 (100 kg)                        | 9 / 1 mm                       | 9 / 1 mm                 | 22 / 17 mm                               |
-| 1 (200 kg)                          | 66 / 10 mm                     | 72 / 10 mm               | 87 / 62 mm; measured residual 95 mm      |
-| 1.25                                | 148 / 29 mm                    |                          |                                          |
-| 1.5                                 | 404 / 119 mm                   | 446 / 107 mm             | 251 / 168 mm                             |
+| 1 (200 kg)                          | 66 / 10 mm                     | 71 / 10 mm               | 87 / 62 mm; measured residual 95 mm      |
+| 1.25                                | 146 / 27 mm                    |                          |                                          |
+| 1.5                                 | 385 / 105 mm                   | 420 / 94 mm              | 251 / 168 mm                             |
 | 2                                   | Roof thrown                    | Roof thrown              | Roof thrown                              |
 
 **The crack model decides it.** The joints crack at 45°. With cracks on the lattice planes
@@ -521,11 +525,21 @@ times the charge; with afterburning and hot air its edge was left 889 mm up. Wit
 at first cracking (`--cracks fixed`) it gave 65 / 9 mm and 69 / 10 mm, much as the default
 turning cracks do.
 
-At the test's charge the side walls bow out 5 mm, and 4 elements fail in all; the measured
+**Nor does the residual crack opening.** A crack keeps a tenth of its opening when it closes,
+the value recommended for the concrete damaged plasticity model. With more, the roof is left
+higher, but not by enough: 4, 10, 16, 22 and 35 mm at the end of the run for 0, 0.1, 0.2, 0.3
+and 0.5 (`--crack-residual`), with peaks of 67 to 61 mm. Looking into this found a fault: the
+residual had followed histories that diagonal cracks raise on planes held closed, and from 0.4
+up it made every structure run away (see the [concrete model](concrete-model.md), step 22).
+After the peak the bars at the joints yield back the other way as the roof swings down
+(their plastic strain falls between 60 and 300 ms), which may be what lets it settle so low;
+the slab's hinge springs back too far in a similar way.
+
+At the test's charge the side walls bow out 5 mm, and 5 elements fail in all; the measured
 structure was itself close to its cliff, since chamber B nearly lost its roof edge.
 
 With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 (`--refine 2`, fine
-cells of 50 mm), the roof's edge rises 70 mm and settles to 13 mm, against 66 and 10 mm: the
+cells of 50 mm), the roof's edge rises 71 mm and settles to 13 mm, against 66 and 10 mm: the
 roof answers to impulse, which the 0.1 m cells already resolve. The peak pressures at the
 gauges are 5.3 to 6.6 MPa against 3.2 to 6.8 MPa unrefined and 3.2 to 4.4 MPa measured: a
 sharper shock beside four charges, read at approximate gauge positions. The run takes 36 s
@@ -567,6 +581,8 @@ What remains, in rough order:
 3. **What the model leaves out of the load path**: the steel sleeves, which take some of the
    charges' energy and were modelled by the paper, and afterburning, which would raise the
    gas pressure.
+4. **The springback**: the roof is left 10 mm up against 95 mm, and neither the crack model
+   nor the residual crack opening accounts for it (above).
 
 ### What this does and does not show
 
@@ -585,7 +601,7 @@ The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solv
 | Charge | 0.5 m cells                | 0.25 m cells       | 0.125 m cells      |
 |--------|----------------------------|--------------------|--------------------|
 | 50 kg  | 5 mm peak deflection by 0.1 s | 2 mm            | 5 mm               |
-| 200 kg | Hinged at its base, top 303 mm over by 0.1 s | 381 mm, 282 elements removed | 404 mm, 374 removed |
+| 200 kg | Hinged at its base, top 303 mm over by 0.1 s | 382 mm, 278 elements removed | 405 mm, 375 removed |
 
 ![The wall 1 s after 200 kg, cracked through along its base](wall-hinged.png)
 
@@ -596,8 +612,8 @@ resisted sliding across cracks and cracks were bridged across the section (see t
 every grid and toppled. At 50 kg the wall barely cracks, and its few millimetres show no trend
 with the grid. With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 and the
 wall loaded by the fine cells beside it and outlined at their resolution, 0.5 m cells give
-378 mm and 281 elements removed at 200 kg, as 0.25 m cells do (381 mm, 282), and 0.25 m cells
-give 404 mm and 358 removed, as 0.125 m cells do (404 mm, 374). With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
+378 mm and 282 elements removed at 200 kg, as 0.25 m cells do (382 mm, 278), and 0.25 m cells
+give 404 mm and 357 removed, as 0.125 m cells do (405 mm, 375). With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
 with resolution as the peak pressure does, and 315, 437 and 657 mm at 200 kg; that model
 mishandled inclined cracks (see the [concrete model](concrete-model.md#cracking)). There is
 no test to compare these with.

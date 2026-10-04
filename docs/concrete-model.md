@@ -91,9 +91,9 @@ models it replaced:
 
 | Case | Lattice planes | Fixed at first crack | Turning until open |
 |---|---|---|---|
-| Slab test, 4 / 8 / 16 / 32 elements through | 101 / 105 / 112 / 112 mm; history within 7–10 mm | 101 / 101 / 106 mm | 101 / 101 / 106 / 105 mm; history within 10–15 mm |
+| Slab test, 4 / 8 / 16 / 32 elements through | 101 / 105 / 112 / 112 mm; history within 7–10 mm | 101 / 101 / 106 mm | 101 / 100 / 107 / 105 mm; history within 10–15 mm |
 | Slab test, 1 in bearings held down | 84 mm | 81 mm | 80 mm |
-| Chamber test, test's charge, with the gas the design manual supports | Roof's edge left 0.9 m up | 69 mm peak, 10 mm left | 72 mm peak, 10 mm left (paper's model 87 and 62; measured 95 left) |
+| Chamber test, test's charge, with the gas the design manual supports | Roof's edge left 0.9 m up | 69 mm peak, 10 mm left | 71 mm peak, 10 mm left (paper's model 87 and 62; measured 95 left) |
 | Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 15 / 25 / 32 mm | 7 / 4 / 3 mm | 5 / 2 / 5 mm |
 | Two-storey frame | First floor falls at 1,000 kg | Stands at 1,000 kg, 92 mm | Stands at 1,000 kg, 90 mm; falls at 2,000 kg |
 | Three-storey building's masonry, 100 kg | 1,505 elements removed | 296 | 320 |
@@ -122,8 +122,12 @@ Tension follows
   inelastic opening (κ − σ_κ / E_c), because fragments and misfit stop the faces closing
   completely. Below that strain the faces bear on each other and full compressive stiffness
   returns, measured from where they met. The fraction (`crackResidual`, 0.1) is the ratio of
-  plastic to cracking strain commonly used with the concrete damaged plasticity model; it was
-  taken from memory and changes the slab result by less than 1 mm between 0 and 0.3.
+  plastic to cracking strain, b_t, that Birtel and Mark recommend for the concrete damaged
+  plasticity model from tests; it changes the slab result by less than 1 mm between 0 and 0.5.
+  Each plane keeps its residual opening, and it rises only as far as the plane's own strain
+  has opened: a diagonal crack is shared between the planes it cuts across, and raises their
+  histories even where one of them is held closed, and a residual rising with the history
+  there would push faces already bearing on each other apart from nothing (step 22).
 
 The softening strain ε_s is set so that the energy dissipated per unit area of crack equals the
 fracture energy G_f whatever the element size (crack band theory):
@@ -481,6 +485,22 @@ matter.
    after a tenth of it. The slab: 101, 101, 106 and 105 mm on 4, 8, 16 and 32 elements
    through the thickness, against 108 mm measured.
 
+22. **The residual opening kept where the crack opened.** Looking for why the chamber's roof
+   springs back (to 10 mm against 95 mm measured), the residual fraction was raised. At 0.3
+   the roof was left 47 mm up, with 1,400 elements removed from the down-stand and chamfers;
+   at 0.4 the chamber and the finest slab ran away, and at 0.5 every structure tried (the
+   wall and the single-storey building too), walls thrown at hundreds of metres a second. The residual had followed each
+   plane's history, which a diagonal crack raises even on a plane held closed, so a sheared
+   element squeezed across a plane gained compression across it with no change of strain:
+   energy from nothing, at a rate in proportion to the fraction. A single element pulled and
+   pushed along one axis, the only check there had been, never shows it. Each plane now keeps
+   its residual, which rises only as far as its own strain has opened. Every structure is
+   stable up to 0.5; at the default 0.1 the slab and the chamber are unchanged, and over
+   100 ms on 0.25 m air the single-storey building loses 22 elements where it lost none
+   (164 mm against 165) and the infilled frame's peak falls from 131 to 108 mm. The roof's springback is not the residual's
+   doing: at 0.5 it is still left only 35 mm up (see
+   [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)).
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -489,7 +509,7 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 ## Limitations
 
 1. **Validated against one test**, a one-way slab in bending under a uniform load. On it the
-   peak is 101, 101, 106 and 105 mm as the elements through the thickness go from 4 to 8 to 16
+   peak is 101, 100, 107 and 105 mm as the elements through the thickness go from 4 to 8 to 16
    to 32: converged at about 105 mm, 3% below the measurement, with coarse meshes a few per
    cent lower. Results for members in bending should still be checked at more than one mesh.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
@@ -509,7 +529,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    after its peak, where the specimen recovered about 13 mm and settled. The cause is the
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
    not a lack of damping. Cracked concrete still unloads and reloads along one line, so small
-   cycles dissipate nothing in the concrete; only the bars have hysteresis.
+   cycles dissipate nothing in the concrete; only the bars have hysteresis. A larger residual
+   crack opening does not cure it, in the slab or in the chamber (step 22).
 6. **Confined strength is capped** at about five times the unconfined strength; above it only
    the compaction curve raises the pressure, so the strength does not grow with pressure as
    in real concrete under triaxial load. The compaction curve's constants are for a 48 MPa
@@ -599,9 +620,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   1989, which puts the characteristic length near 2.7 aggregate sizes. Nonlocal crushing.
   The 2.7 was recalled from memory; three aggregate sizes are used.
 - J. Lee and G. L. Fenves, "Plastic-damage model for cyclic loading of concrete structures",
-  *Journal of Engineering Mechanics* 124(8), 1998. The concrete damaged plasticity model, whose
-  usual ratio of plastic to cracking strain in tension, about 0.1, is used for the residual
-  crack opening. That value was taken from memory.
+  *Journal of Engineering Mechanics* 124(8), 1998. The concrete damaged plasticity model.
+- V. Birtel and P. Mark, "Parameterised finite element modelling of RC beam shear failure",
+  ABAQUS Users' Conference, 2006. The ratio of plastic to cracking strain in tension,
+  b_t = 0.1, used for the residual crack opening (the value as quoted in later work on the
+  model; not checked against the paper itself).
 - T. J. Holmquist, G. R. Johnson and W. H. Cook, "A computational constitutive model for
   concrete subjected to large strains, high strain rates, and high pressures", 14th
   International Symposium on Ballistics, Quebec, 1993. The compaction curve and its constants
