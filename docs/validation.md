@@ -614,8 +614,9 @@ beyond. What was found on the way:
   edge settles at 123 mm.
 - **Not the end wall's rigidity.** Modelling the inner 0.6 m of the end wall instead of a
   rigid face changed little; the hinge just beyond it was real.
-- **Not stiffness or mesh.** With elastic concrete the edge swings ±7 mm. In the first version,
-  50 mm elements (about 670,000) gave the same response as 0.1 m elements within 10%.
+- **Not stiffness.** With elastic concrete the edge swings ±7 mm. In the first version, 50 mm
+  elements (about 670,000) gave the same response as 0.1 m elements within 10%; that no longer
+  holds (below).
 - **The chamfers matter.** Without them the first version's cliff came between 0.5 and 0.75
   of the charge.
 
@@ -639,7 +640,13 @@ What remains, in rough order:
    gas pressure.
 4. **The springback**: the roof is left 12 mm up against 95 mm, pulled back down by arching
    thrust that the model's joints carry and the test's shattered joints probably could not
-   (above). This is the joints' detailing again (item 1).
+   (above). This is the joints' detailing again (item 1), and the mesh (item 5).
+5. **The mesh.** The roof has not converged on 0.1 m elements. On 50 mm elements (942,643 of
+   them, `--h 0.05`) it rises 85 mm and is left 20 mm up with 0.1 m air cells, and 98 and
+   24 mm with 50 mm air cells (`--dx 0.05`), and it comes down far more slowly: 83 mm at 40 ms
+   and 68 mm at 60 ms, against 69 and 15 mm on 0.1 m elements. The paper's authors found the
+   same, 100 mm elements under-predicting both peak and residual, and used 50 mm. The runs take
+   3 and 4.3 minutes against 17 s; one on 25 mm elements did not finish within two hours.
 
 ### What this does and does not show
 
