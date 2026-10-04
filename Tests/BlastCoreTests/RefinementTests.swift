@@ -66,6 +66,35 @@ struct RefinementTests {
             "energy \(before.energy) -> \(after.energy)")
     }
 
+    @Test(
+        "With afterburning, mass is conserved and fuel burns into energy across the refined level",
+        arguments: [2, 4])
+    func afterburningConservation(ratio: Int) throws {
+        var configuration = refined(ratio)
+        configuration.afterburning = true
+        let solver = try closedBox(configuration)
+        let start = solver.totals()
+        let fuel = solver.speciesTotals()
+        #expect(abs(fuel.fuel - 5) < 1e-3, "fuel laid down \(fuel.fuel) kg")
+        let result = solver.advance(steps: 150)
+        #expect(result.isStable)
+        #expect(result.refinedTiles > 0)
+        let end = solver.totals()
+        let left = solver.speciesTotals()
+        #expect(fuel.fuel - left.fuel > 0.5, "only \(fuel.fuel - left.fuel) kg burnt")
+        // What burns leaves as energy, and takes its oxygen with it.
+        let heat = Double(configuration.afterburnEnergy)
+        let perFuel = Double(BlastSolver.oxygenPerFuel)
+        #expect(abs(end.mass - start.mass) / start.mass < 1e-4, "mass \(start.mass) -> \(end.mass)")
+        let before = start.energy + heat * fuel.fuel
+        let after = end.energy + heat * left.fuel
+        #expect(abs(after - before) / before < 1e-4, "energy and fuel \(before) -> \(after)")
+        let oxygenBefore = fuel.oxygen - perFuel * fuel.fuel
+        let oxygenAfter = left.oxygen - perFuel * left.fuel
+        #expect(
+            abs(oxygenAfter - oxygenBefore) / oxygenBefore < 1e-4, "oxygen \(oxygenBefore) -> \(oxygenAfter)")
+    }
+
     @Test("A refined run repeats exactly")
     func repeatable() throws {
         let first = try closedBox(refined(2))

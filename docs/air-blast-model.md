@@ -201,6 +201,15 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   gains still air once, 0.4% of its mass and energy, as patches go down along the block's faces,
   and conserves them to 10⁻⁴ from then on (where the outlines agree they are conserved to
   rounding).
+- **Afterburning.** The fine cells carry their own fuel and oxygen as the coarse cells do:
+  carried by the fine mass fluxes at the mass fraction of the cell they leave (a ghost from
+  unrefined air at its coarse cell's fractions), burnt after each substep's final sweep,
+  refluxed across the level's edge with the gas, averaged back into the coarse cells, and filled
+  into new patches at the coarse cell's fractions, so that the fine cells' mean is the coarse
+  cell's. In a closed room, mass, energy less the heat the fuel left will release, and oxygen less
+  what that fuel will take are each conserved to 10⁻⁴. The fuel and oxygen take 8 bytes a fine
+  cell, and a patch's share of the pool grows by about a fifth; without afterburning they take
+  nothing.
 - **The charge.** With refinement the charge is laid on the fine cells, its sphere two fine
   cells across at least, and the patches around it are placed before the first step. Laid on
   the coarse cells, it was a blocky cube of gas that the fine cells then resolved, and near the
@@ -280,7 +289,7 @@ UFC 3-340-02, lowest for light charges.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, but only one finer
-   level, and not with afterburning.
+   level.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
    or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
@@ -311,7 +320,7 @@ UFC 3-340-02, lowest for light charges.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: several levels, so that a ratio of 4 is reached in two steps of 2;
-  afterburning on the fine level; patches placed and released over a fine outline without the
+  patches placed and released over a fine outline without the
   gas they move between grids being gained or lost; and smaller blocks, or blocks that follow
   the shock's shape, since the shell's thickness sets the cost.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural

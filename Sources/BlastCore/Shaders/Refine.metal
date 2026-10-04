@@ -25,6 +25,10 @@
 //   7. the patches are placed afresh: kept where still wanted, released where not, and new ones
 //      filled from the coarse state.
 //
+// With afterburning, the fine cells carry their own fuel and oxygen through every step as the
+// coarse cells do: carried by the fine mass fluxes, burnt in each substep, refluxed across the
+// level's edge and averaged back, and filled at the coarse cell's mass fractions.
+//
 // Fine cells inherit the solid mask of the coarse cell they lie in, and its speed where it is a
 // moving solid. Peak overpressure is the
 // largest a coarse cell's fine cells reach, and so is its impulse: what it had when the patch was
@@ -204,6 +208,9 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device packed_float3 *fineWall [[buffer(12)]],
                          device float *fineFlux [[buffer(13)]],
                          const device StepControl &control [[buffer(14)]],
+                         const device float2 *fineSpecies [[buffer(15)]],
+                         device float2 *ghostSpecies [[buffer(16)]],
+                         const device float2 *coarseSpecies [[buffer(17)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -253,11 +260,19 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         }
         ghosts[index] = fineSrc[there];
         ghostKinds[index] = ghostFine;
+        if (u.afterburnEnergy > 0.0f) {
+            ghostSpecies[index] = fineSpecies[there];
+        }
         return;
     }
     Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u);
     ghosts[index] = outside;
     ghostKinds[index] = ghostCoarse;
+    if (u.afterburnEnergy > 0.0f) {
+        // At the coarse cell's mass fractions, as they are at the step's end.
+        int at = cell.x + dims.x * (cell.y + dims.y * cell.z);
+        ghostSpecies[index] = coarseSpecies[at] / max(coarse[at].rho, u.densityFloor) * outside.rho;
+    }
     // Unrefined fluid beside a patch's face, where the fine cell inside is solid: the coarse cell
     // used a flux through that face, which refluxing must replace with what the fine level has
     // there, the wall's (the fine sweep adds the fluxes of fine cells that are fluid).
@@ -276,14 +291,15 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
 }
 
 // One fine cell's one-dimensional update along `u.axis`, over a coarse step / r: as `sweepCell`,
-// without detonation products, with the patch's own outline (`fineMask`) and the speeds of its
-// solid cells (`fineWall`).
+// with the patch's own outline (`fineMask`) and the speeds of its solid cells (`fineWall`).
 static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device Cell *fineSrc, device Cell *fineDst,
                                  const device Cell *ghosts, const device uchar *ghostKinds, const device uchar *mask,
                                  device atomic_uint *peakBits, const device StepControl &control,
                                  device atomic_uint *maxSpeed, constant SolverUniforms &u, device float *fineFlux,
                                  device float *fineImpulse, const device uchar *fineMask,
-                                 const device packed_float3 *fineWall) {
+                                 const device packed_float3 *fineWall, const device float2 *speciesSrc,
+                                 device float2 *speciesDst, const device float2 *ghostSpecies,
+                                 device float *speciesFluxSums) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -400,6 +416,45 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     float rho = c.rho - lambda * (fluxHigh.mass - fluxLow.mass);
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
+
+    // Fuel and oxygen, as in `sweepCell`: at the mass fraction of the cell they leave, burnt
+    // after the substep's final sweep.
+    if (u.afterburnEnergy > 0.0f) {
+        float2 own = speciesSrc[index];
+        float2 fraction = own / max(c.rho, u.densityFloor);
+        auto speciesAt = [&](int offset, int kind, Prim w) {
+            if (kind != kindFluid) {
+                return fraction;
+            }
+            int along = local[axis] + offset;
+            if (along >= 0 && along < side) {
+                return speciesSrc[index + offset * stride] / w.rho;
+            }
+            uint layer = along < 0 ? uint(along + 2) : uint(along - side + 2);
+            return ghostSpecies[ghostIndex(patch, layer, a, b, uint(side))] / w.rho;
+        };
+        float2 inflow = speciesFlux(fluxLow.mass, speciesAt(-1, kindM1, wM1), fraction);
+        float2 outflow = speciesFlux(fluxHigh.mass, fraction, speciesAt(1, kindP1, wP1));
+        if (local[axis] == 0 && ghostKinds[ghostIndex(patch, 1u, a, b, uint(side))] == ghostCoarse) {
+            uint slot = speciesSlot(patch, 2u * axis, a, b, uint(side));
+            speciesFluxSums[slot] += inflow.x * dt;
+            speciesFluxSums[slot + 1] += inflow.y * dt;
+        }
+        if (local[axis] == side - 1 && ghostKinds[ghostIndex(patch, 2u, a, b, uint(side))] == ghostCoarse) {
+            uint slot = speciesSlot(patch, 2u * axis + 1u, a, b, uint(side));
+            speciesFluxSums[slot] += outflow.x * dt;
+            speciesFluxSums[slot + 1] += outflow.y * dt;
+        }
+        float2 species = max(own - lambda * (outflow - inflow), 0.0f);
+        if (u.finalSweep != 0) {
+            float fuel = burnt(species, dt, u);
+            species.x -= fuel;
+            species.y -= fuel * u.oxygenPerFuel;
+            energy += fuel * u.afterburnEnergy;
+        }
+        speciesDst[index] = species;
+    }
+
     rho = max(rho, u.densityFloor);
     float kinetic = 0.5f * dot(momentum, momentum) / rho;
     float pressure = gasPressure(rho, energy - kinetic, u.airModel, u.gamma);
@@ -442,6 +497,10 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         device float *fineImpulse [[buffer(13)]],
                         const device uchar *fineMask [[buffer(14)]],
                         const device packed_float3 *fineWall [[buffer(15)]],
+                        const device float2 *speciesSrc [[buffer(16)]],
+                        device float2 *speciesDst [[buffer(17)]],
+                        const device float2 *ghostSpecies [[buffer(18)]],
+                        device float *speciesFluxSums [[buffer(19)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -454,7 +513,8 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
     int3 origin = int3(block % across, (block / across) % across, block / (across * across)) * 8;
     for (uint z = local.z; z < 8u; z += groupSize.z) {
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
-                      peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall);
+                      peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
+                      speciesDst, ghostSpecies, speciesFluxSums);
     }
 }
 
@@ -491,6 +551,9 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
                          device float *fineFlux [[buffer(6)]],
                          const device float *coarseFlux [[buffer(7)]],
                          const device StepControl &control [[buffer(8)]],
+                         device float *fineSpeciesFlux [[buffer(9)]],
+                         const device float *coarseSpeciesFlux [[buffer(10)]],
+                         device float2 *coarseSpecies [[buffer(11)]],
                          uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -515,6 +578,17 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
             for (int k = 0; k < 5; ++k) {
                 sums[k] += fineFlux[slot + k];
                 fineFlux[slot + k] = 0.0f;
+            }
+        }
+    }
+    float2 speciesSums = float2(0.0f);
+    if (u.afterburnEnergy > 0.0f) {
+        for (int fb = 0; fb < r; ++fb) {
+            for (int fa = 0; fa < r; ++fa) {
+                uint slot = speciesSlot(patch, face, uint(a * r + fa), uint(b * r + fb), uint(side));
+                speciesSums += float2(fineSpeciesFlux[slot], fineSpeciesFlux[slot + 1]);
+                fineSpeciesFlux[slot] = 0.0f;
+                fineSpeciesFlux[slot + 1] = 0.0f;
             }
         }
     }
@@ -553,6 +627,11 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
         c.energy = gasEnergy(c.rho, u.pressureFloor, u.airModel, u.gamma) + kinetic;
     }
     coarse[outsideIndex] = c;
+    if (u.afterburnEnergy > 0.0f) {
+        uint at = speciesSlot(patch, face, uint(a), uint(b), uint(patchSize));
+        float2 used = float2(coarseSpeciesFlux[at], coarseSpeciesFlux[at + 1]);
+        coarseSpecies[outsideIndex] = max(coarseSpecies[outsideIndex] + scale * (area * speciesSums - used), 0.0f);
+    }
 }
 
 static inline Cell addCells(Cell a, Cell b) {
@@ -627,6 +706,41 @@ static inline Cell fineMean(int3 cell, uint patch, int3 tile, const device Cell 
     return mean;
 }
 
+// The fuel and oxygen of 2 x 2 x 2 fine cells, as `octetSum`.
+static inline float2 speciesOctet(int3 low, int spacing, uint patch, int3 tile, const device float2 *species,
+                                  constant SolverUniforms &u) {
+    float2 s[8];
+    for (int n = 0; n < 8; ++n) {
+        s[n] = species[fineIndex(patch, low + spacing * int3(n & 1, (n >> 1) & 1, n >> 2), tile, u)];
+    }
+    return ((s[0] + s[1]) + (s[2] + s[3])) + ((s[4] + s[5]) + (s[6] + s[7]));
+}
+
+// The mean fuel and oxygen of the fluid fine cells of coarse cell `cell`, as `fineMean`.
+static inline float2 speciesMean(int3 cell, uint patch, int3 tile, const device float2 *species,
+                                 const device uchar *fineMask, int count, constant SolverUniforms &u) {
+    int r = int(u.refineRatio);
+    int all = r * r * r;
+    if (count < all) {
+        float2 sum = float2(0.0f);
+        for (int n = 0; n < all; ++n) {
+            uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+            if ((fineMask[child] & 1) == 0) {
+                sum += species[child];
+            }
+        }
+        return sum / float(max(count, 1));
+    }
+    if (r == 2) {
+        return speciesOctet(cell * 2, 1, patch, tile, species, u) * 0.125f;
+    }
+    float2 o[8];
+    for (int n = 0; n < 8; ++n) {
+        o[n] = speciesOctet(cell * 4 + int3(n & 1, (n >> 1) & 1, n >> 2), 2, patch, tile, species, u);
+    }
+    return (((o[0] + o[1]) + (o[2] + o[3])) + ((o[4] + o[5]) + (o[6] + o[7]))) * (1.0f / 64.0f);
+}
+
 // Step 5: each coarse cell under a patch becomes the mean of its fine cells, and takes their
 // largest impulse.
 kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
@@ -640,6 +754,8 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
                            const device float *fineImpulse [[buffer(8)]],
                            const device float *impulseBase [[buffer(9)]],
                            const device uchar *fineMask [[buffer(10)]],
+                           const device float2 *fineSpecies [[buffer(11)]],
+                           device float2 *coarseSpecies [[buffer(12)]],
                            uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -667,6 +783,9 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
     Cell mean = fineMean(cell, patch, tile, fine, fineMask, u, count);
     if (count > 0) {
         coarse[index] = mean;
+        if (u.afterburnEnergy > 0.0f) {
+            coarseSpecies[index] = speciesMean(cell, patch, tile, fineSpecies, fineMask, count, u);
+        }
     }
 }
 
@@ -954,6 +1073,8 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        device uchar *fineMask [[buffer(13)]],
                        device packed_float3 *fineWall [[buffer(14)]],
                        const device float *wallVelocity [[buffer(15)]],
+                       const device float2 *coarseSpecies [[buffer(16)]],
+                       device float2 *fineSpecies [[buffer(17)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -998,6 +1119,12 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         still.energy = u.stillEnergy;
         fine[at] = still;
     }
+    if (u.afterburnEnergy > 0.0f) {
+        // At the coarse cell's mass fractions, so that the fine cells' mean is the coarse cell's.
+        fineSpecies[at] = mask[index] == 0
+            ? coarseSpecies[index] / max(coarse[index].rho, u.densityFloor) * fine[at].rho
+            : float2(0.0f, u.stillOxygen);
+    }
     fineImpulse[at] = 0.0f;
     // The first fine cell of each coarse cell keeps the impulse the coarse cell had so far.
     if (all(fineCoordinates == cell * int(r))) {
@@ -1018,6 +1145,7 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
                                const device uint *newPatches [[buffer(4)]],
                                const device uchar *fineMask [[buffer(5)]],
                                device uint *pinned [[buffer(6)]],
+                               device float2 *fineSpecies [[buffer(7)]],
                                uint gid [[thread_position_in_grid]]) {
     uint perPatch = uint(patchSize * patchSize * patchSize);
     uint patch = newPatches[gid / perPatch];
@@ -1034,12 +1162,17 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
     bool coarseSolid = mask[cell.x + dims.x * (cell.y + dims.y * cell.z)] != 0;
     int fluid = 0;
     Cell lost = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    float2 lostSpecies = float2(0.0f);
+    bool species = u.afterburnEnergy > 0.0f;
     for (int n = 0; n < all; ++n) {
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
         if ((fineMask[child] & 1) == 0) {
             fluid += 1;
         } else if (!coarseSolid) {
             lost = addCells(lost, fine[child]);
+            if (species) {
+                lostSpecies += fineSpecies[child];
+            }
         }
     }
     if (fluid == (coarseSolid ? 0 : all)) {
@@ -1060,6 +1193,9 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
             c.mz += lost.mz * share;
             c.energy += lost.energy * share;
             fine[child] = c;
+            if (species) {
+                fineSpecies[child] += lostSpecies * share;
+            }
         }
     }
 }

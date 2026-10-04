@@ -374,6 +374,24 @@ and is 6% to 15% high in the middle ranges: the model's ratio of reflected to in
 there is about 10% above Kingery–Bulmash's, with or without afterburning. Hot air on its own,
 without afterburning, lowers incident peaks and impulses by 1% to 6%.
 
+With afterburning and hot air, refining the air by 2 gives the uniform grid twice as fine, as
+it does without them (incident peak and reflected impulse):
+
+| Range  | 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m | Reflected impulse: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m |
+|--------|------|------|------|------|------|------|------|------|
+| 3.5 m  | 72%  | 72%  | 90%  | 90%  | 85%  | 85%  | 94%  | 94%  |
+| 4.6 m  | 74%  | 74%  | 89%  | 89%  | 93%  | 93%  | 103% | 103% |
+| 7.0 m  | 81%  | 82%  | 93%  | 93%  | 106% | 106% | 113% | 114% |
+| 9.3 m  | 77%  | 78%  | 87%  | 87%  | 110% | 110% | 112% | 113% |
+| 13.9 m | 83%  | 83%  | 88%  | 88%  | 113% | 113% | 111% | 112% |
+| 18.6 m | 82%  | 82%  | 91%  | 91%  | 109% | 110% | 106% | 107% |
+| 23.2 m | 84%  | 84%  | 92%  | 92%  | 106% | 107% | 104% | 104% |
+| 27.8 m | 84%  | 83%  | 92%  | 92%  | 105% | 106% | 102% | 103% |
+
+The reflected peaks and the incident impulses agree as closely (within 3 points and 4%).
+`blastbench validate --afterburn --air thermal` takes 18 s on 0.5 m cells refined against 28 s on
+0.25 m cells, and 146 s on 0.25 m cells refined against 419 s on 0.125 m cells.
+
 ### Kinney–Graham
 
 The same burst against the Kinney–Graham free-air formulae for 200 kg (a charge on perfectly
@@ -543,7 +561,8 @@ cells of 50 mm), the roof's edge rises 71 mm and settles to 13 mm, against 66 an
 roof answers to impulse, which the 0.1 m cells already resolve. The peak pressures at the
 gauges are 5.3 to 6.6 MPa against 3.2 to 6.8 MPa unrefined and 3.2 to 4.4 MPa measured: a
 sharper shock beside four charges, read at approximate gauge positions. The run takes 36 s
-instead of 15 s.
+instead of 15 s. With afterburning and hot air as well, refined, the edge rises 75 mm and
+settles to 15 mm, against 71 and 10 mm unrefined, in 45 s.
 
 **How the model got here.** The first version threw the roof at 0.875 of the test's charge and
 beyond. What was found on the way:

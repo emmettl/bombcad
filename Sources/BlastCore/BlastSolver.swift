@@ -74,6 +74,8 @@ public final class BlastSolver {
     private let noSpecies: MTLBuffer
     /// Whether the air carries fuel and oxygen, so that its charges burn.
     private var hasSpecies: Bool { !speciesBuffers.isEmpty }
+    /// The current fuel and oxygen, or a placeholder without them.
+    private var currentSpecies: MTLBuffer { hasSpecies ? speciesBuffers[current] : noSpecies }
     /// Mass fraction of oxygen in air, and the oxygen TNT's products need to burn completely
     /// (C7H5N3O6 + 5.25 O2 -> 7 CO2 + 2.5 H2O + 1.5 N2), per kilogram.
     static let oxygenInAir: Float = 0.232
@@ -263,11 +265,13 @@ public final class BlastSolver {
         let species = speciesBuffers[current].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
+        let fine = refinement?.gas(in: grid)
         var total = SIMD2<Double>.zero
-        for index in 0..<grid.cellCount where mask[index] == 0 {
+        for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
             total += SIMD2(Double(species[index].x), Double(species[index].y))
         }
-        return (total.x * volume, total.y * volume)
+        total = total * volume + (fine?.species ?? .zero)
+        return (total.x, total.y)
     }
 
     /// Sets every cell from a closure and restarts the clock. Intended for small grids.
@@ -683,7 +687,7 @@ public final class BlastSolver {
             control.dt = 1
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
             refinement.encodeRegrid(
-                encoder, coarse: stateBuffers[current], mask: maskBuffer,
+                encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
                 rigidMask: hasBody ? rigidMaskBuffer : maskBuffer, wallVelocity: wallVelocityBuffer,
                 control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer, tiles: nil,
                 grid: grid,
@@ -698,17 +702,21 @@ public final class BlastSolver {
         if let refinement, !fineDeposit.isEmpty {
             // The charges' fine cells, and every other fine cell of the coarse cells they touch,
             // whose mean the coarse cells already hold.
+            // With afterburning, the products are all unburnt fuel, and the air keeps its oxygen.
             let r = refinement.ratio
-            var cells: [SIMD3<Int>: CellState] = [:]
+            let stillOxygen = Self.oxygenInAir * stillCell.density
+            var cells: [SIMD3<Int>: (state: CellState, species: SIMD2<Float>)] = [:]
             for coarse in Set(fineDeposit.keys.map { $0 / r }) {
                 for n in 0..<(r * r * r) {
                     let fine = coarse &* r &+ SIMD3(n % r, (n / r) % r, n / (r * r))
                     var cell = stillCell
+                    var species = SIMD2<Float>(0, stillOxygen)
                     if let added = fineDeposit[fine] {
                         cell.density += added.x
                         cell.energy += added.y
+                        species.x += added.x
                     }
-                    cells[fine] = cell
+                    cells[fine] = (cell, species)
                 }
             }
             refinement.setFine(cells)
@@ -718,18 +726,20 @@ public final class BlastSolver {
     /// Makes, keeps or drops the finer level for the configuration, and releases its patches.
     private func setUpRefinement() {
         let ratio = configuration.refinement
-        guard ratio > 1, !hasSpecies else {
+        guard ratio > 1 else {
             refinement = nil
             updateGaugeChildren()
             return
         }
         let memory = configuration.refinementMemory
-        if refinement?.ratio != ratio
-            || refinement?.maxPatches != max(1, memory / AirRefinement.bytesPerPatch(ratio: ratio))
+        let patches = memory / AirRefinement.bytesPerPatch(ratio: ratio, species: hasSpecies)
+        if refinement?.ratio != ratio || refinement?.species != hasSpecies
+            || refinement?.maxPatches != max(1, patches)
         {
             refinement = nil
             refinement = try? AirRefinement(
-                device: device, library: library, grid: grid, ratio: ratio, memory: memory)
+                device: device, library: library, grid: grid, ratio: ratio, memory: memory,
+                species: hasSpecies)
         }
         refinement?.reset()
         refinement?.setBoxes(rigidBoxes)
@@ -835,6 +845,7 @@ public final class BlastSolver {
             encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
             encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 13)
             encoder.setBuffer(refinement?.coarseFlux ?? refinementPlaceholder, offset: 0, index: 14)
+            encoder.setBuffer(refinement?.coarseSpeciesFlux ?? refinementPlaceholder, offset: 0, index: 15)
             for (n, axis) in axes.enumerated() where !asleep {
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
@@ -854,12 +865,12 @@ public final class BlastSolver {
             }
             if let refinement, refining {
                 refinement.encodeSubsteps(
-                    encoder, axes: axes, coarse: stateBuffers[current], mask: maskBuffer, peak: peakBuffer,
-                    control: controlBuffer, maxSpeed: maxSpeedBuffer, wallVelocity: wallVelocityBuffer,
-                    uniforms: uniforms)
+                    encoder, axes: axes, coarse: stateBuffers[current], coarseSpecies: currentSpecies,
+                    mask: maskBuffer, peak: peakBuffer, control: controlBuffer, maxSpeed: maxSpeedBuffer,
+                    wallVelocity: wallVelocityBuffer, uniforms: uniforms)
                 refinement.encodeRefluxAndRestrict(
-                    encoder, axes: axes, coarse: stateBuffers[current], mask: maskBuffer,
-                    control: controlBuffer, impulse: impulseBuffer, uniforms: uniforms)
+                    encoder, axes: axes, coarse: stateBuffers[current], coarseSpecies: currentSpecies,
+                    mask: maskBuffer, control: controlBuffer, impulse: impulseBuffer, uniforms: uniforms)
             }
 
             if hasBody {
@@ -901,7 +912,7 @@ public final class BlastSolver {
             }
             if let refinement, refining {
                 refinement.encodeRegrid(
-                    encoder, coarse: stateBuffers[current], mask: maskBuffer,
+                    encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
                     rigidMask: hasBody ? rigidMaskBuffer : maskBuffer, wallVelocity: wallVelocityBuffer,
                     control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer,
                     tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil, grid: grid,

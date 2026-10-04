@@ -434,6 +434,22 @@ static inline uint registerSlot(uint patch, uint face, uint a, uint b, uint side
     return 5u * ((patch * 6u + face) * side * side + a + side * b);
 }
 
+// The same register's fuel and oxygen, in a buffer of their own.
+static inline uint speciesSlot(uint patch, uint face, uint a, uint b, uint side) {
+    return 2u * ((patch * 6u + face) * side * side + a + side * b);
+}
+
+// Fuel and oxygen carried through a face by mass flux `mass`, each at the mass fraction of the
+// cell it leaves: `behind` when the flow is positive, `ahead` when negative.
+static inline float2 speciesFlux(float mass, float2 behind, float2 ahead) {
+    return mass * (mass > 0.0f ? behind : ahead);
+}
+
+// Fuel burnt over `dt` in a cell holding `species`, as far as its oxygen allows (see `sweepCell`).
+static inline float burnt(float2 species, float dt, constant SolverUniforms &u) {
+    return min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-dt * u.afterburnRate));
+}
+
 static inline void storeFlux(device float *registers, uint slot, Flux f, uint axis, float dt) {
     float3 momentum = fromSweep(f.momentum, axis);
     registers[slot] = f.mass * dt;
@@ -449,7 +465,8 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
                              device atomic_uint *maxSpeed, constant SolverUniforms &u,
                              const device float *wallVelocity, device uchar *tileFlags,
                              const device float2 *speciesSrc, device float2 *speciesDst,
-                             const device int *patchOfTile, device float *coarseFlux) {
+                             const device int *patchOfTile, device float *coarseFlux,
+                             device float *coarseSpeciesFlux) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (mask[index] != 0) {
         return;
@@ -514,6 +531,8 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
 
     // A cell of unrefined air beside a patch records the flux it used through the face they
     // share, so that the patch's own fluxes can replace it (see Refine.metal).
+    int speciesRegister = -1;  // where its fuel and oxygen flux goes, if it records one
+    bool registerLow = false;
     if (u.refineRatio != 0) {
         // The cell across may be fluid or solid here; either way this cell's flux through the
         // face is what the patch's fine fluxes replace.
@@ -530,6 +549,9 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
                 uint slot = registerSlot(uint(patch), face, uint(inPatch[(axis + 1) % 3]),
                                          uint(inPatch[(axis + 2) % 3]), uint(patchSize));
                 storeFlux(coarseFlux, slot, lowEdge ? fluxLow : fluxHigh, axis, dt);
+                speciesRegister = int(speciesSlot(uint(patch), face, uint(inPatch[(axis + 1) % 3]),
+                                                  uint(inPatch[(axis + 2) % 3]), uint(patchSize)));
+                registerLow = lowEdge;
             }
         }
     }
@@ -551,14 +573,19 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
         float2 fraction = own / max(c.rho, u.densityFloor);
         float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho : fraction;
         float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho : fraction;
-        float2 inflow = fluxLow.mass * (fluxLow.mass > 0.0f ? below : fraction);
-        float2 outflow = fluxHigh.mass * (fluxHigh.mass > 0.0f ? fraction : above);
+        float2 inflow = speciesFlux(fluxLow.mass, below, fraction);
+        float2 outflow = speciesFlux(fluxHigh.mass, fraction, above);
         species = max(own - lambda * (outflow - inflow), 0.0f);
+        if (speciesRegister >= 0) {
+            float2 through = (registerLow ? inflow : outflow) * dt;
+            coarseSpeciesFlux[speciesRegister] = through.x;
+            coarseSpeciesFlux[speciesRegister + 1] = through.y;
+        }
         if (u.finalSweep != 0) {
-            float burnt = min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-control.dt * u.afterburnRate));
-            species.x -= burnt;
-            species.y -= burnt * u.oxygenPerFuel;
-            energy += burnt * u.afterburnEnergy;
+            float fuel = burnt(species, control.dt, u);
+            species.x -= fuel;
+            species.y -= fuel * u.oxygenPerFuel;
+            energy += fuel * u.afterburnEnergy;
         }
         speciesDst[index] = species;
     }
@@ -613,12 +640,13 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
                   device float2 *speciesDst [[buffer(12)]],
                   const device int *patchOfTile [[buffer(13)]],
                   device float *coarseFlux [[buffer(14)]],
+                  device float *coarseSpeciesFlux [[buffer(15)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-              speciesSrc, speciesDst, patchOfTile, coarseFlux);
+              speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -638,6 +666,7 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
                        device float2 *speciesDst [[buffer(12)]],
                        const device int *patchOfTile [[buffer(13)]],
                        device float *coarseFlux [[buffer(14)]],
+                       device float *coarseSpeciesFlux [[buffer(15)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -648,7 +677,7 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-                      speciesSrc, speciesDst, patchOfTile, coarseFlux);
+                      speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux);
         }
     }
 }

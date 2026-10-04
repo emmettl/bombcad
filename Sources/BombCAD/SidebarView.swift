@@ -60,11 +60,10 @@ struct SidebarView: View {
                             + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                             + "about twice as slow.")
                 Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
-                    .disabled(model.settings.detailedCharge)
                     .help(
                         "Refines the air twice over where the shock is, so that peak pressures and the loads "
                             + "on walls come out close to those of the next finer resolution, at a fraction of its "
-                            + "cost. Not with afterburning.")
+                            + "cost.")
                 LabeledSlider(
                     title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
                     text: metres(model.settings.chargePosition.x))

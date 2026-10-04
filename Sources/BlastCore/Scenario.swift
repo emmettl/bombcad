@@ -214,7 +214,7 @@ extension BlastSolver {
 
     /// The ratio the air will be refined by at the next `restart()`, or 1.
     var refinementAtRestart: Int {
-        configuration.refinement > 1 && !configuration.afterburning ? configuration.refinement : 1
+        configuration.refinement > 1 ? configuration.refinement : 1
     }
 
     /// Radius of the sphere the charge's energy is spread over: the physical charge size,
@@ -352,6 +352,9 @@ extension BlastSolver {
             }
         }
         largestCharge = max(largestCharge, charge.mass)
+        mutateSpecies { species in
+            for (index, added) in coarse { species[index].x += Float(added.x * share) }
+        }
     }
 
     /// The cell containing `point`, or the closest fluid cell if that one is solid.

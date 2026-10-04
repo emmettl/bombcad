@@ -85,7 +85,7 @@ of the refinement's work (saving the coarse cells around each patch, refluxing, 
 and placing the patches) is under a tenth of it. The gain grows as the blast spreads, since the
 refined shell grows as the square of its radius and the air behind it as the cube.
 `blastbench validate` gains less (13 s against 21 s on 0.5 m cells, 104 s against about 290 s on
-0.25 m), as its blast does not spread far. With a deformable structure the gain is smaller
+0.25 m; with afterburning and hot air, 18 s against 28 s and 146 s against 419 s), as its blast does not spread far. With a deformable structure the gain is smaller
 again, since the air around it is disturbed throughout: 100 ms of the cantilever wall at 200 kg
 takes 7.1 s on 0.25 m cells refined against 11.2 s on 0.125 m cells, and of the concrete
 building at 500 kg, 16.5 s against 22 s (137 mm of deflection against 138 mm). The fine cells' own outline (their mask, the structure

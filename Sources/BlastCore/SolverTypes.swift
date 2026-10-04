@@ -122,7 +122,7 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4
     /// cells the shock crosses is swept as (4r)^3 cells in r steps of its own, so that the shock
     /// stays sharp, and a deformable structure is loaded by the fine cells beside its faces. 1
-    /// leaves the grid uniform. Not with afterburning. Read at `restart()`.
+    /// leaves the grid uniform. Read at `restart()`.
     public var refinement = 1
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.

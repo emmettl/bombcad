@@ -56,7 +56,7 @@ struct SimulationSettings: Equatable {
     /// vibration: closer to tests, about twice as slow.
     var detailedCharge = false
     /// Refine the air twice over where the shock is, so that peak pressures come out as on a grid
-    /// twice as fine. Not with `detailedCharge`.
+    /// twice as fine.
     var sharpShocks = false
 
     var chargeMass: Float {
@@ -527,7 +527,7 @@ final class SimulationModel {
     private func configureAir(_ solver: BlastSolver) {
         solver.configuration.afterburning = settings.detailedCharge
         solver.configuration.airModel = settings.detailedCharge ? .thermallyPerfect : .idealGas
-        solver.configuration.refinement = settings.sharpShocks && !settings.detailedCharge ? 2 : 1
+        solver.configuration.refinement = settings.sharpShocks ? 2 : 1
     }
 
     private func rebuild() {
@@ -546,7 +546,7 @@ final class SimulationModel {
                 // State (two copies), peak, impulse, mask and the visualisation volume, and with
                 // afterburning two copies of the fuel and oxygen; the structure's mesh is small by
                 // comparison.
-                let refined = settings.sharpShocks && !settings.detailedCharge
+                let refined = settings.sharpShocks
                 let required =
                     grid.cellCount * (settings.detailedCharge ? 73 : 57)
                     + (refined ? SolverConfiguration().refinementMemory : 0)

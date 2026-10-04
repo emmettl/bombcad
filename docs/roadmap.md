@@ -75,10 +75,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 8. **Joints within materials**: masonry as units and mortar, bearings that separate. (Done:
    several materials in one body; joints between materials that open at the bond of mortar to
    concrete; structural steel and annealed glass, the glass as shells in panes.)
-9. **Adaptive resolution in the air**: several levels, and with afterburning. (Done: one finer
-   level, by 2 or 4, in blocks of 4 × 4 × 4 cells that follow the shock, conservative across its
-   edge, with its own outline of blocks and structure, loading a deformable structure from the
-   fine cells beside its faces; refined by 2, a grid gives the peaks of one twice as
+9. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
+   blocks of 4 × 4 × 4 cells that follow the shock, conservative across its edge, with its own
+   outline of blocks and structure, loading a deformable structure from the fine cells beside
+   its faces, and carrying afterburning's fuel and oxygen; refined by 2, a grid gives the peaks of one twice as
    fine three to five times faster in the open. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
