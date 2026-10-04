@@ -119,10 +119,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     public var airSleepCrossings: Float = 5
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
-    /// Refine the air where the blast's shock is by this ratio, 2 or 4: each tile of 8 x 8 x 8
-    /// cells the shock crosses is swept as (8r)^3 cells in r steps of its own, so that the shock
-    /// stays sharp. 1 leaves the grid uniform. Not with afterburning, and not within the region
-    /// around a deformable structure. Read at `restart()`.
+    /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4
+    /// cells the shock crosses is swept as (4r)^3 cells in r steps of its own, so that the shock
+    /// stays sharp, and a deformable structure is loaded by the fine cells beside its faces. 1
+    /// leaves the grid uniform. Not with afterburning. Read at `restart()`.
     public var refinement = 1
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.

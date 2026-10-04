@@ -689,6 +689,9 @@ struct StructureUniforms {
     var fluidAirModel: UInt32 = 0
     var orientedCracks: UInt32 = 0
     var interfaceLinks: UInt32 = 0
+    var fluidRefine: UInt32 = 0
+    var fluidBlocksX: UInt32 = 0
+    var fluidBlocksY: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

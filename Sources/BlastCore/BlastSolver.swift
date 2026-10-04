@@ -660,7 +660,7 @@ public final class BlastSolver {
             refinement = try? AirRefinement(
                 device: device, library: library, grid: grid, ratio: ratio, memory: memory)
         }
-        refinement?.reset(keepingCoarse: hasBody ? couplingRegion : nil)
+        refinement?.reset()
         updateGaugeChildren()
     }
 
@@ -782,58 +782,47 @@ public final class BlastSolver {
             if let refinement, refining {
                 refinement.encodeSubsteps(
                     encoder, axes: axes, coarse: stateBuffers[current], mask: maskBuffer, peak: peakBuffer,
-                    control: controlBuffer, maxSpeed: maxSpeedBuffer, uniforms: uniforms)
+                    control: controlBuffer, maxSpeed: maxSpeedBuffer, wallVelocity: wallVelocityBuffer,
+                    uniforms: uniforms)
                 refinement.encodeRefluxAndRestrict(
                     encoder, axes: axes, coarse: stateBuffers[current], mask: maskBuffer,
                     control: controlBuffer, impulse: impulseBuffer, uniforms: uniforms)
             }
 
-            if let mixed {
-                let binding = StructureSolver.FluidBinding(
+            if hasBody {
+                // The structure covers the same interval in several smaller steps, loaded by the
+                // pressure the air has just reached (the fine cells', where it is refined). While
+                // the air is frozen it cannot take back what debris would take from it, so debris
+                // then moves on without it.
+                var binding = StructureSolver.FluidBinding(
                     state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
                     gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
                     airModel: configuration.airModel,
                     exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
                     exchangeRegion: couplingRegion)
-                mixed.encodeSubsteps(encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
+                if let refinement {
+                    binding.refinement = (
+                        refinement.patchOfTile, refinement.fine[0], refinement.ratio, refinement.tileDims
+                    )
+                }
+                let count = asleep ? structureSubsteps : substeps
+                if let mixed {
+                    mixed.encodeSubsteps(encoder, count: count, fluid: binding)
+                } else if let structure {
+                    structure.encodeSubsteps(encoder, count: count, fluid: binding)
+                } else if let shells {
+                    shells.encodeSubsteps(encoder, count: count, fluid: binding)
+                }
                 if !asleep {
                     encodeDebrisExchange(encoder)
                 }
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
                 }
-            } else if let structure {
-                // The structure covers the same interval in several smaller steps, loaded by
-                // the pressure the air has just reached.
-                // While the air is frozen it cannot take back what debris would take from it, so
-                // debris then moves on without it.
-                let binding = StructureSolver.FluidBinding(
-                    state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
-                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
-                    airModel: configuration.airModel,
-                    exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
-                    exchangeRegion: couplingRegion)
-                structure.encodeSubsteps(
-                    encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
-                if !asleep {
-                    encodeDebrisExchange(encoder)
-                }
-                if configuration.twoWayCoupling && !asleep {
-                    encodeRemask(encoder)
-                }
-            } else if let shells {
-                let binding = StructureSolver.FluidBinding(
-                    state: stateBuffers[current], mask: maskBuffer, control: controlBuffer, grid: grid,
-                    gamma: configuration.gamma, ambientPressure: configuration.ambientPressure,
-                    airModel: configuration.airModel,
-                    exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
-                    exchangeRegion: couplingRegion)
-                shells.encodeSubsteps(encoder, count: asleep ? structureSubsteps : substeps, fluid: binding)
-                if !asleep {
-                    encodeDebrisExchange(encoder)
-                }
-                if configuration.twoWayCoupling && !asleep {
-                    encodeRemask(encoder)
+                if let refinement, refining {
+                    refinement.encodeSync(
+                        encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer,
+                        uniforms: uniforms)
                 }
             }
             if let refinement, refining {

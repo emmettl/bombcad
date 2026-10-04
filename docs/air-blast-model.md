@@ -190,6 +190,15 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   air its fine cells agree, and against a wall, where impulse falls off steeply, it reads the
   wall's value as a coarse cell beside a wall does. A gauge reads the fine cell holding its
   point.
+- **Around a deformable structure.** Each face of the structure is loaded by the first fluid
+  fine cell beyond it, where the air is refined, not by the mean of a coarse cell: against a
+  wall the pressure changes too steeply for that mean to stand for it. A fine cell in a moving
+  solid's coarse cell mirrors the gas about the solid's speed, as a coarse cell does. After the
+  structure's substeps, what it changed in the coarse cells under the patches is carried into
+  their fine cells: a cell the structure has uncovered, refilled from the air beside it, gives
+  its state to all its fine cells, and the momentum and energy debris trades with the air are
+  added evenly to each fine cell (a cell nothing touched is left exactly as it was). The
+  structure's outline in the air stays that of the coarse cells.
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,
@@ -247,9 +256,8 @@ UFC 3-340-02, lowest for light charges.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, but only one finer
-   level, not with afterburning, and not within the region around a deformable structure (a few
-   metres), where the air stays coarse: its moving mask and debris trade with the coarse air
-   only.
+   level, not with afterburning, and with solids' outlines, a structure's included, as coarse as
+   the coarse cells.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
    or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
@@ -280,9 +288,9 @@ UFC 3-340-02, lowest for light charges.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: several levels, so that a ratio of 4 is reached in two steps of 2;
-  refinement next to a deformable structure, which needs fine cells to follow its moving mask
-  and trade with its debris; afterburning on the fine level; and smaller blocks, or blocks that
-  follow the shock's shape, since the shell's thickness sets the cost.
+  solids' outlines, and a structure's mask, at the fine cells' resolution; afterburning on the
+  fine level; and smaller blocks, or blocks that follow the shock's shape, since the shell's
+  thickness sets the cost.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
 

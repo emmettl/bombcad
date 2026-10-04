@@ -64,6 +64,11 @@ struct StructureUniforms {
     // cracked on; 2 the principal axes, followed until the crack has opened, then fixed.
     uint orientedCracks;
     uint interfaceLinks;  // shell nodes tied into this body's elements (see `InterfaceLink`)
+    // The air's refinement (see Refine.metal): its ratio (0 when not refined) and the size of
+    // its grid of blocks.
+    uint fluidRefine;
+    uint fluidBlocksX;
+    uint fluidBlocksY;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -291,26 +296,13 @@ static inline float3 cornerSign(uint a) {
     return float3(float(a & 1u), float((a >> 1) & 1u), float((a >> 2) & 1u)) * 2.0f - 1.0f;
 }
 
-// Overpressure of the air just outside an element face, looked up in the fluid grid.
+// Overpressure of the air just outside an element face: the first fluid cell within two cells.
 static inline float faceOverpressure(float3 point, float3 normal, const device Cell *fluid,
-                                     const device uchar *fluidMask, constant StructureUniforms &u) {
-    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
-    float3 sample = point + normal * (0.5f * u.fluidCell);
-    for (int attempt = 0; attempt < 2; ++attempt) {
-        int3 cell = int3(floor(sample / u.fluidCell));
-        if (any(cell < 0) || any(cell >= dims)) {
-            return 0.0f;
-        }
-        int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-        if (fluidMask[index] == 0) {
-            Cell c = fluid[index];
-            float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
-            return gasPressure(max(c.rho, 1e-6f), c.energy - kinetic, u.fluidAirModel, u.fluidGamma)
-                - u.ambientPressure;
-        }
-        sample += normal * u.fluidCell;
-    }
-    return 0.0f;
+                                     const device uchar *fluidMask, const device int *patchOfTile,
+                                     const device Cell *fine, constant StructureUniforms &u) {
+    return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, u.fluidRefine,
+                             u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
+                             u.fluidAirModel, u.fluidGamma, u.ambientPressure);
 }
 
 // Eigenvalues and eigenvectors (columns) of a symmetric matrix by cyclic Jacobi rotations.
@@ -587,6 +579,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device float4 *plasticBefore [[buffer(18)]],
                               const device uint *cellElement [[buffer(19)]],
                               const device uint *nodeMap [[buffer(20)]],
+                              const device int *patchOfTile [[buffer(21)]],
+                              const device Cell *fineAir [[buffer(22)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -1306,7 +1300,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             if (dot(normal, faceCentre - centre) < 0.0f) {
                 normal = -normal;
             }
-            float overpressure = u.coupled != 0 ? faceOverpressure(faceCentre, normal, fluid, fluidMask, u) : 0.0f;
+            float overpressure =
+                u.coupled != 0 ? faceOverpressure(faceCentre, normal, fluid, fluidMask, patchOfTile, fineAir, u) : 0.0f;
             // The prescribed pressure acts only on the original outer surface it was given for.
             if (face == u.loadFace && neighbourFlag == elementEmpty) {
                 overpressure += applied;

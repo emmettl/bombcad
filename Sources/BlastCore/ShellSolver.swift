@@ -49,6 +49,9 @@ struct ShellUniforms {
     var exchangeNy: Int32 = 0
     var exchangeNz: Int32 = 0
     var fluidAirModel: UInt32 = 0
+    var fluidRefine: UInt32 = 0
+    var fluidBlocksX: UInt32 = 0
+    var fluidBlocksY: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -762,6 +765,8 @@ public final class ShellSolver {
             encoder.setBuffer(neighbourBuffer, offset: 0, index: 17)
             encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 18)
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 19)
+            encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 20)
+            encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 21)
             if elementCount > 0 {
                 // Four threads per element, one per in-plane point.
                 encoder.dispatchThreads(
@@ -785,6 +790,8 @@ public final class ShellSolver {
                 encoder.setBuffer(failureGateBuffer, offset: 0, index: 12)
                 encoder.setBuffer(beamDisplayBuffer, offset: 0, index: 13)
                 encoder.setBuffer(beamBarLayoutBuffer, offset: 0, index: 14)
+                encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 15)
+                encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 16)
                 encoder.dispatchThreads(
                     MTLSize(width: beamCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
@@ -926,6 +933,11 @@ public final class ShellSolver {
             uniforms.ambientPressure = fluid.ambientPressure
             uniforms.fluidGamma = fluid.gamma
             uniforms.fluidAirModel = fluid.airModel.rawValue
+            if let refinement = fluid.refinement {
+                uniforms.fluidRefine = UInt32(refinement.ratio)
+                uniforms.fluidBlocksX = UInt32(refinement.blocks.x)
+                uniforms.fluidBlocksY = UInt32(refinement.blocks.y)
+            }
             uniforms.fluidCell = fluid.grid.cellSize
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)

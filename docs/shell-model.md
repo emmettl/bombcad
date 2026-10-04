@@ -133,8 +133,9 @@ A beam is removed by the same rules over all its fibres, or when shortened to ha
 
 **Loads.** At each of its four points, a shell is loaded by the difference between the air's
 overpressure on its two sides, sampled half its thickness and half an air cell out from its
-midsurface (or further out if that cell is solid), along its current normal. A beam is loaded
-the same way on its four sides.
+midsurface (or further out if that cell is solid), along its current normal; where the air is
+[refined](air-blast-model.md#refining-near-the-shock), half a fine cell out, in the fine cells. A
+beam is loaded the same way on its four sides.
 
 **Mask.** Each intact shell and beam marks the air cells its volume occupies, at points no more
 than half a cell apart. Any point makes its cell solid, and the cell moves with the mean

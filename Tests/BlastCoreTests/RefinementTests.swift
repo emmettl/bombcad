@@ -181,3 +181,153 @@ struct RefinementTests {
         #expect(twice < coarse, "L1 error coarse \(coarse), refined \(twice), fine \(fine)")
     }
 }
+
+/// The finer level around a deformable structure.
+extension RefinementTests {
+    static let elastic = StructureMaterial.elastic(density: 2400, youngsModulus: 20e9, poissonRatio: 0.2)
+
+    /// Momentum a free wall 3 m from 5 kg on the ground has gained after 20 ms.
+    private func wallMomentum(cellSize: Float, ratio: Int) throws -> Double {
+        let scenario = Scenario(
+            name: "Free wall", domainSize: SIMD3(16, 12, 8), boxes: [],
+            charge: Charge(mass: 5, position: SIMD3(4, 6, 0)),
+            structure: StructureModel(
+                solids: [Box(min: SIMD3(7, 3, 0), max: SIMD3(7.5, 9, 4))], material: Self.elastic,
+                elementSize: 0.125, fixedBase: false))
+        var configuration = ratio > 1 ? refined(ratio) : SolverConfiguration()
+        configuration.refinementThreshold = 0.1
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        let result = solver.advance(until: 0.02)
+        #expect(result.isStable)
+        return structure.momentum().x
+    }
+
+    @Test("A wall near a charge, in refined air, takes about the load of air twice as fine")
+    func refinedLoadOnWall() throws {
+        // About 320, 880 and 950 N s.
+        let coarse = try wallMomentum(cellSize: 0.5, ratio: 1)
+        let refined = try wallMomentum(cellSize: 0.5, ratio: 2)
+        let fine = try wallMomentum(cellSize: 0.25, ratio: 1)
+        #expect(
+            abs(refined - fine) < 0.2 * abs(coarse - fine),
+            "coarse \(coarse) N s, refined \(refined) N s, fine \(fine) N s")
+    }
+
+    @Test("A free wall in refined air gains exactly the impulse the air delivers to its face")
+    func refinedImpulseTransfer() throws {
+        var scenario = Scenario(
+            name: "Piston", domainSize: SIMD3(16, 4, 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)),
+            structure: StructureModel(
+                solids: [Box(x: 8...8.5, y: 0...4, height: 4)], material: Self.elastic, elementSize: 0.125,
+                fixedBase: false))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.25, configuration: refined(2))
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        let ambient = scenario.atmosphere
+        solver.fill { i, _, _ in
+            Primitive(
+                density: ambient.density * (i < 8 ? 4 : 1), pressure: ambient.pressure * (i < 8 ? 5 : 1))
+        }
+        var refinedMost = 0
+        while solver.time < 0.025 {
+            let result = solver.advance(steps: 32, timeLimit: 0.025)
+            refinedMost = max(refinedMost, result.refinedTiles)
+            if result.steps == 0 { break }
+        }
+        #expect(refinedMost > 0)
+        // The impulse recorded by the air cells touching the wall's face (i = 31): under a patch,
+        // the largest of their fine cells', which is the fine cell beside the face the wall reads.
+        var delivered = 0.0
+        for k in 0..<solver.grid.nz {
+            for j in 0..<solver.grid.ny {
+                delivered += Double(solver.impulse(31, j, k)) * 0.25 * 0.25
+            }
+        }
+        let momentum = structure.momentum()
+        #expect(delivered > 10_000, "delivered \(delivered) N s")
+        #expect(abs(momentum.x - delivered) / delivered < 0.01, "momentum \(momentum.x) vs \(delivered) N s")
+    }
+
+    @Test("A wall driven into still refined air raises the piston shock ahead of it")
+    func refinedPiston() throws {
+        var scenario = Scenario(
+            name: "Piston", domainSize: SIMD3(16, 1, 1), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 0.5, 0.5)),
+            structure: StructureModel(
+                solids: [Box(x: 6...6.5, y: 0...1, height: 1)], material: Self.elastic, elementSize: 0.125,
+                fixedBase: false))
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.25, configuration: refined(2))
+        let structure = try #require(solver.structure)
+        structure.gravity = 0
+        structure.groundContact = false
+        let speed: Float = 100
+        structure.mutateNodes { nodes in
+            for index in nodes.indices {
+                nodes[index].velocity = SIMD3(speed, 0, 0)
+                nodes[index].isPrescribed = true
+            }
+        }
+        let before = solver.totals()
+        var refinedMost = 0
+        while solver.time < 0.01 {
+            let result = solver.advance(steps: 32, timeLimit: 0.01)
+            #expect(result.isStable)
+            refinedMost = max(refinedMost, result.refinedTiles)
+            if result.steps == 0 { break }
+        }
+        #expect(refinedMost > 0)
+        let ambient = scenario.atmosphere
+        let gamma: Float = 1.4
+        let mach = speed / (gamma * ambient.pressure / ambient.density).squareRoot()
+        let quarter = (gamma + 1) / 4
+        let ahead =
+            1 + gamma * quarter * mach * mach + gamma * mach
+            * (1 + quarter * quarter * mach * mach).squareRoot()
+        let face = structure.position(0, 4, 4).x
+        let front = solver.grid.cell(containing: SIMD3(face + 0.5 + 0.375, 0.5, 0.5))
+        for offset in 0..<6 {
+            let pressure = solver.primitive(front.i + offset, 0, 0).pressure / ambient.pressure
+            #expect(abs(pressure - ahead) < 0.02 * ahead, "ahead of the wall \(pressure), expected \(ahead)")
+        }
+        // The wall swept 1 m of a 16 m tube: the gas is conserved within what the staircase allows.
+        let after = solver.totals()
+        #expect(abs(after.mass - before.mass) / before.mass < 0.02, "mass \(before.mass) -> \(after.mass)")
+    }
+
+    @Test("A wall broken by the blast in refined air, run twice, gives the same answer to the last bit")
+    func refinedRepeatableBreach() throws {
+        func run() throws -> (nodes: [StructureNode], failed: Int, refined: Int) {
+            var scenario = ScenarioPreset.blastWall.scenario
+            scenario.charge.mass = 500
+            let solver = try BlastSolver(
+                device: device, scenario: scenario, cellSize: 0.5, configuration: refined(2))
+            let structure = try #require(solver.structure)
+            var refinedMost = 0
+            for steps in [7, 64, 3, 128, 1, 256, 256, 256] {
+                refinedMost = max(refinedMost, solver.advance(steps: steps).refinedTiles)
+            }
+            var copy: [StructureNode] = []
+            structure.mutateNodes { copy = Array($0) }
+            return (copy, structure.summary().erodedElements, refinedMost)
+        }
+        let first = try run()
+        let second = try run()
+        #expect(first.refined > 0)
+        #expect(first.failed > 100, "only \(first.failed) elements failed")
+        #expect(first.failed == second.failed)
+        let differing = zip(first.nodes, second.nodes).filter {
+            $0.0.displacement != $0.1.displacement || $0.0.velocity != $0.1.velocity
+        }.count
+        #expect(differing == 0, "\(differing) of \(first.nodes.count) nodes differ")
+    }
+}

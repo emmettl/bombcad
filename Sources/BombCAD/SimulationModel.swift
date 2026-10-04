@@ -56,7 +56,7 @@ struct SimulationSettings: Equatable {
     /// vibration: closer to tests, about twice as slow.
     var detailedCharge = false
     /// Refine the air twice over where the shock is, so that peak pressures come out as on a grid
-    /// twice as fine. Not with `detailedCharge`, nor near a deformable structure.
+    /// twice as fine. Not with `detailedCharge`.
     var sharpShocks = false
 
     var chargeMass: Float {

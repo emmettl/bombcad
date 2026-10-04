@@ -142,8 +142,10 @@ that were joined can overlap by up to one element before they touch.
 
 **Air to structure.** After each air step the structure takes as many substeps as its stability
 limit needs to cover the same interval (typically 5 to 15). Every element face that borders the
-air, or a failed element, is loaded by the overpressure of the air cell just outside it. The
-face's current position, normal and area are used, so loads follow the deformed shape.
+air, or a failed element, is loaded by the overpressure of the air cell just outside it, or,
+where the air is [refined](air-blast-model.md#refining-near-the-shock), of the fine cell just
+outside it. The face's current position, normal and area are used, so loads follow the deformed
+shape.
 
 **Structure to air.** After those substeps, intact elements are counted into the air cells
 they currently occupy. A cell within a few metres of the structure is solid when it is rigid

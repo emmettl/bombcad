@@ -242,7 +242,7 @@ public enum ChamberTest {
         ties: Bool = true, elastic: Bool = false, chargeScale: Float = 1, afterburning: Bool = false,
         afterburnEnergy: Float? = nil, airModel: AirModel = .idealGas,
         crackAxes: CrackAxes = .turningUntilOpen,
-        duration: Double = 0.3
+        duration: Double = 0.3, refinement: Int = 1
     ) throws -> Result {
         try run(
             device: device,
@@ -250,7 +250,7 @@ public enum ChamberTest {
                 elementSize: elementSize, downstand: downstand, ties: ties, elastic: elastic,
                 chargeScale: chargeScale, crackAxes: crackAxes),
             cellSize: cellSize, duration: duration, afterburning: afterburning,
-            afterburnEnergy: afterburnEnergy, airModel: airModel)
+            afterburnEnergy: afterburnEnergy, airModel: airModel, refinement: refinement)
     }
 
     /// The chamber with its vent closed and no charge, filled with air at `overpressure` (Pa)
@@ -273,12 +273,13 @@ public enum ChamberTest {
     public static func run(
         device: MTLDevice, scenario: Scenario, cellSize: Float, duration: Double,
         interiorOverpressure: Float = 0, afterburning: Bool = false, afterburnEnergy: Float? = nil,
-        airModel: AirModel = .idealGas
+        airModel: AirModel = .idealGas, refinement: Int = 1
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        if afterburning || airModel != .idealGas {
+        if afterburning || airModel != .idealGas || refinement > 1 {
             solver.configuration.afterburning = afterburning
             solver.configuration.airModel = airModel
+            solver.configuration.refinement = refinement
             if let afterburnEnergy { solver.configuration.afterburnEnergy = afterburnEnergy }
             try solver.load(scenario)
         }

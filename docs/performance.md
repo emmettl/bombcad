@@ -85,7 +85,10 @@ of the refinement's work (saving the coarse cells around each patch, refluxing, 
 and placing the patches) is under a tenth of it. The gain grows as the blast spreads, since the
 refined shell grows as the square of its radius and the air behind it as the cube.
 `blastbench validate` gains less (12 s against 21 s on 0.5 m cells, 113 s against about 290 s on
-0.25 m), as its blast does not spread far. The first version, with larger blocks, was slower than
+0.25 m), as its blast does not spread far. With a deformable structure the gain is smaller
+again, since the air around it is disturbed throughout: 100 ms of the cantilever wall at 200 kg
+takes 7.2 s on 0.25 m cells refined against 11.2 s on 0.125 m cells, and of the concrete
+building at 500 kg, 16 s against 22 s. The first version, with larger blocks, was slower than
 the finer grid; the [air-blast model](air-blast-model.md#refining-near-the-shock) has the story.
 
 ## Structural solver

@@ -59,6 +59,10 @@ struct ShellUniforms {
     int exchangeNy;
     int exchangeNz;
     uint fluidAirModel;  // the air's equation of state (`AirModel`)
+    // The air's refinement, as in `StructureUniforms`.
+    uint fluidRefine;
+    uint fluidBlocksX;
+    uint fluidBlocksY;
 };
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
@@ -205,26 +209,14 @@ static inline float2 shapeSlope(float2 corner, float2 p) {
 
 constant float2 shellCorners[4] = {float2(-1.0f, -1.0f), float2(1.0f, -1.0f), float2(1.0f, 1.0f), float2(-1.0f, 1.0f)};
 
-// Overpressure of the air on one side of a shell: the first fluid cell beyond the shell's face.
+// Overpressure of the air on one side of a shell: the first fluid cell beyond the shell's face,
+// within three cells.
 static inline float shellOverpressure(float3 point, float3 normal, float halfThickness, const device Cell *fluid,
-                                      const device uchar *fluidMask, constant ShellUniforms &u) {
-    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
-    float3 sample = point + normal * (halfThickness + 0.5f * u.fluidCell);
-    for (int attempt = 0; attempt < 3; ++attempt) {
-        int3 cell = int3(floor(sample / u.fluidCell));
-        if (any(cell < 0) || any(cell >= dims)) {
-            return 0.0f;
-        }
-        int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-        if (fluidMask[index] == 0) {
-            Cell c = fluid[index];
-            float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
-            return gasPressure(max(c.rho, 1e-6f), c.energy - kinetic, u.fluidAirModel, u.fluidGamma)
-                - u.ambientPressure;
-        }
-        sample += normal * u.fluidCell;
-    }
-    return 0.0f;
+                                      const device uchar *fluidMask, const device int *patchOfTile,
+                                      const device Cell *fine, constant ShellUniforms &u) {
+    return overpressureAlong(point, normal, halfThickness, 3, fluid, fluidMask, patchOfTile, fine, u.fluidRefine,
+                             u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
+                             u.fluidAirModel, u.fluidGamma, u.ambientPressure);
 }
 
 // What a layer reports besides its stresses.
@@ -493,6 +485,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           const device int4 *neighbours [[buffer(17)]],
                           device float *barPlasticOut [[buffer(18)]],
                           const device float *barPlasticBefore [[buffer(19)]],
+                          const device int *patchOfTile [[buffer(20)]],
+                          const device Cell *fineAir [[buffer(21)]],
                           uint lane [[thread_position_in_grid]]) {
     // Four threads per element, one for each of its in-plane points, in adjacent lanes (a quad);
     // their shares of the forces are summed across the quad at the end.
@@ -729,8 +723,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float3 load = float3(0.0f);
         if (u.coupled != 0) {
             float3 unit = normalize(areaVector);
-            float front = shellOverpressure(centre, unit, 0.5f * t, fluid, fluidMask, u);
-            float back = shellOverpressure(centre, -unit, 0.5f * t, fluid, fluidMask, u);
+            float front = shellOverpressure(centre, unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir, u);
+            float back = shellOverpressure(centre, -unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir, u);
             load += (back - front) * areaVector;
         }
         if (u.loadCount != 0 && (u.loadFace >> 1) == k) {
@@ -1062,6 +1056,8 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
                          device uint *failureGate [[buffer(12)]],
                          device float *display [[buffer(13)]],
                          const device float4 *barLayout [[buffer(14)]],
+                         const device int *patchOfTile [[buffer(15)]],
+                         const device Cell *fineAir [[buffer(16)]],
                          uint e [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1208,8 +1204,8 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
         float halves[2] = {0.5f * beam.width, 0.5f * beam.depth};
         float faces[2] = {beam.depth * L, beam.width * L};
         for (uint s = 0; s < 2; ++s) {
-            float plus = shellOverpressure(centre, normals[s], halves[s], fluid, fluidMask, u);
-            float minus = shellOverpressure(centre, -normals[s], halves[s], fluid, fluidMask, u);
+            float plus = shellOverpressure(centre, normals[s], halves[s], fluid, fluidMask, patchOfTile, fineAir, u);
+            float minus = shellOverpressure(centre, -normals[s], halves[s], fluid, fluidMask, patchOfTile, fineAir, u);
             float3 force = (minus - plus) * faces[s] * normals[s];
             load[0] += 0.5f * force;
             load[1] += 0.5f * force;

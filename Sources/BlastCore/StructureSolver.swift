@@ -26,6 +26,9 @@ public final class StructureSolver {
         /// each, summed before the substeps and cleared after.
         public var debrisArea: MTLBuffer?
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
+        /// Where the air is refined: which block each patch refines, the patches' fine cells,
+        /// the ratio and the grid of blocks' size. Faces then read the fine cells beside them.
+        var refinement: (patchOfTile: MTLBuffer, fine: MTLBuffer, ratio: Int, blocks: SIMD3<Int>)?
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
@@ -722,6 +725,8 @@ public final class StructureSolver {
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 18)
             encoder.setBuffer(cellElementBuffer, offset: 0, index: 19)
             encoder.setBuffer(nodeMapBuffer, offset: 0, index: 20)
+            encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 21)
+            encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 22)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -832,6 +837,11 @@ public final class StructureSolver {
             uniforms.ambientPressure = fluid.ambientPressure
             uniforms.fluidGamma = fluid.gamma
             uniforms.fluidAirModel = fluid.airModel.rawValue
+            if let refinement = fluid.refinement {
+                uniforms.fluidRefine = UInt32(refinement.ratio)
+                uniforms.fluidBlocksX = UInt32(refinement.blocks.x)
+                uniforms.fluidBlocksY = UInt32(refinement.blocks.y)
+            }
             uniforms.fluidCell = fluid.grid.cellSize
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)

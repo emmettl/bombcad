@@ -218,7 +218,7 @@ func runChamber() throws {
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas,
         crackAxes: chosenCrackAxes(),
-        duration: duration)
+        duration: duration, refinement: option("refine").flatMap { Int($0) } ?? 1)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )
