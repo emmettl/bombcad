@@ -646,7 +646,13 @@ What remains, in rough order:
    24 mm with 50 mm air cells (`--dx 0.05`), and it comes down far more slowly: 83 mm at 40 ms
    and 68 mm at 60 ms, against 69 and 15 mm on 0.1 m elements. The paper's authors found the
    same, 100 mm elements under-predicting both peak and residual, and used 50 mm. The runs take
-   3 and 4.3 minutes against 17 s; one on 25 mm elements did not finish within two hours.
+   3 and 4.3 minutes against 17 s. On 25 mm elements (7.5 million; run to 80 ms, 15 minutes)
+   the roof rises 123 mm, peaking at 50 ms, and is still at 53 mm and falling at 80 ms; the
+   joints come apart, with 17% of the side walls' elements above 4 m removed and 33% of the
+   roof slab's over the walls (6.6% of the structure, against 0.4% on 50 mm elements and
+   almost none on 0.1 m). That resembles the test's fragmented joints, but removal growing a
+   hundredfold as the elements halve means removal, or the damage that drives it, depends on
+   element size in this case, so no mesh can be trusted here until that is understood.
 
 ### What this does and does not show
 
