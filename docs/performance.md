@@ -13,7 +13,7 @@ power or thermal state; figures here are from cool runs.
 | Air blast, 1 million cells (0.5 m in a street scene) | 1×                    |
 | Air blast, 8.4 million cells (0.25 m)               | 17×                   |
 | Air blast, 67 million cells (0.125 m)               | 252×                  |
-| Air blast on 0.25 m cells refined by 2 near the shock (the peaks of 0.125 m) | 59× |
+| Air blast on 0.25 m cells refined by 2 near the shock (the peaks of 0.125 m) | 67× |
 | A 225,000-element concrete building, alone          | 54×                   |
 | The same, once pieces are colliding                 | 98×                   |
 | That building coupled to 1 million air cells        | 70×                   |
@@ -74,9 +74,9 @@ whole events:
 | Event | Refined by 2 | Uniform, twice as fine | Faster |
 |---|---|---|---|
 | Street, 0.5 m cells | 1.2 s | 3.3 s (0.25 m) | 2.8× |
-| Street, 0.25 m cells | 11.2 s | 46.5 s (0.125 m) | 4.2× |
+| Street, 0.25 m cells | 11.5 s | 46.5 s (0.125 m) | 4.0× |
 | Open ground, 0.5 m cells | 1.6 s | 5.5 s (0.25 m) | 3.4× |
-| Open ground, 0.25 m cells | 19.0 s | 97.6 s (0.125 m) | 5.1× |
+| Open ground, 0.25 m cells | 16.0 s | 97.6 s (0.125 m) | 6.1× |
 
 On 0.25 m cells about 4,000 to 5,000 blocks of 4 × 4 × 4 cells are refined on average, 3 to 4%
 of the grid, and memory is 1.55 GB (1 GB of it the pool of patches) against 3.8 GB on 0.125 m
@@ -84,11 +84,11 @@ cells. A fine cell's update, with its ghost cells, costs about 1.6 times a coars
 of the refinement's work (saving the coarse cells around each patch, refluxing, averaging back
 and placing the patches) is under a tenth of it. The gain grows as the blast spreads, since the
 refined shell grows as the square of its radius and the air behind it as the cube.
-`blastbench validate` gains less (12 s against 21 s on 0.5 m cells, 113 s against about 290 s on
+`blastbench validate` gains less (13 s against 21 s on 0.5 m cells, 104 s against about 290 s on
 0.25 m), as its blast does not spread far. With a deformable structure the gain is smaller
 again, since the air around it is disturbed throughout: 100 ms of the cantilever wall at 200 kg
-takes 7.3 s on 0.25 m cells refined against 11.2 s on 0.125 m cells, and of the concrete
-building at 500 kg, 19 s against 22 s. The fine cells' own outline (their mask, the structure
+takes 7.1 s on 0.25 m cells refined against 11.2 s on 0.125 m cells, and of the concrete
+building at 500 kg, 16.5 s against 22 s (136 mm of deflection against 138 mm). The fine cells' own outline (their mask, the structure
 counted into them, and the wall fluxes at a patch's face) costs about a tenth. The first version, with larger blocks, was slower than
 the finer grid; the [air-blast model](air-blast-model.md#refining-near-the-shock) has the story.
 

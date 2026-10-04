@@ -1821,6 +1821,10 @@ struct CouplingUniforms {
     uint blocksY;
     uint fineThreshold;
     uint fineSamples;
+    // Points along each edge an element is sampled at for the air cells: one, unless the
+    // elements are larger than the cells (then each element would mark only the cell its centre
+    // lies in, leaving the rest of a wall open to the air).
+    uint coarseSamples;
 };
 
 // Where the air is refined, adds a point of the structure, moving with `fixed` (fixed point), to
@@ -1886,18 +1890,23 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
             - 0.5f;
         splatFine(centre + offset * u.h, fixed, 1u, patchOfTile, fineOccupancy, u);
     }
-    int3 target = int3(floor(centre / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
-    if (any(target < 0) || any(target >= dims)) {
-        return;
+    uint coarse = u.coarseSamples;
+    for (uint n = 0; n < coarse * coarse * coarse; ++n) {
+        float3 offset = coarse == 1 ? float3(0.0f)
+            : (float3(n % coarse, (n / coarse) % coarse, n / (coarse * coarse)) + 0.5f) / float(coarse) - 0.5f;
+        int3 target = int3(floor((centre + offset * u.h) / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
+        if (any(target < 0) || any(target >= dims)) {
+            continue;
+        }
+        // Each cell has four counters: the number of elements, then the sum of their velocities
+        // in fixed point (two's-complement addition makes the unsigned counters signed sums).
+        uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+        atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
+        atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
+        atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
+        atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * u.splatWeight, memory_order_relaxed);
     }
-    // Each cell has four counters: the number of elements, then the sum of their velocities
-    // in fixed point (two's-complement addition makes the unsigned counters signed sums).
-    uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
-    atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
-    atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
-    atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
-    atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * u.splatWeight, memory_order_relaxed);
 }
 
 // Writes the new solid flag into bit 1 of the mask, leaving the old flag in bit 0 so that
@@ -2058,6 +2067,8 @@ kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
                                 const device uint *tileOfPatch [[buffer(6)]],
                                 const device uint *patchList [[buffer(7)]],
                                 constant uint &threshold [[buffer(8)]],
+                                const device uchar *mask [[buffer(9)]],
+                                device uint *pinned [[buffer(10)]],
                                 uint gid [[thread_position_in_grid]]) {
     int r = int(u.refineRatio);
     int side = patchSize * r;
@@ -2115,6 +2126,10 @@ kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
         fine[at] = fill;
     }
     fineMask[at] = (m & 3) | (solid ? 4 : 0);
+    // A fine outline that differs from the coarse cells' pins the patch (see `refineRelease`).
+    if (solid != (mask[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)] != 0)) {
+        pinned[patch] = 1;
+    }
 }
 
 kernel void refineRemaskApply(device uchar *fineMask [[buffer(0)]],

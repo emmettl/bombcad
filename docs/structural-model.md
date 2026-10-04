@@ -149,7 +149,10 @@ shape.
 
 **Structure to air.** After those substeps, intact elements are counted into the air cells
 they currently occupy. A cell within a few metres of the structure is solid when it is rigid
-scenery or at least a third full of elements. The solid mask therefore travels with a wall that
+scenery or at least a third full of elements. An element larger than an air cell is counted at
+points no further apart than an air cell; counted at its centre alone, a wall of 0.1 m elements
+on 0.05 m air cells was left porous, every other cell open, and the blast went through it. The
+solid mask therefore travels with a wall that
 is pushed along, and opens where a wall breaks, letting the blast through. A cell that opens is
 filled with the average of its fluid neighbours.
 

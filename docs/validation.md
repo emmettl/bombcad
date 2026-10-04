@@ -316,33 +316,35 @@ With the air [refined near the shock](air-blast-model.md#refining-near-the-shock
 
 | Range  | Incident peak: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m | Reflected peak: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m |
 |--------|------|------|------|------|------|------|------|------|
-| 3.5 m  | 67%  | 77%  | 99%  | 97%  | 36%  | 37%  | 71%  | 67%  |
-| 4.6 m  | 77%  | 77%  | 97%  | 94%  | 43%  | 44%  | 68%  | 68%  |
-| 7.0 m  | 80%  | 82%  | 92%  | 94%  | 55%  | 58%  | 80%  | 83%  |
-| 9.3 m  | 73%  | 76%  | 84%  | 86%  | 63%  | 65%  | 80%  | 83%  |
-| 13.9 m | 78%  | 80%  | 84%  | 87%  | 73%  | 76%  | 87%  | 88%  |
-| 18.6 m | 78%  | 79%  | 86%  | 89%  | 77%  | 80%  | 89%  | 91%  |
-| 23.2 m | 80%  | 81%  | 88%  | 90%  | 80%  | 80%  | 86%  | 92%  |
-| 27.8 m | 79%  | 80%  | 88%  | 90%  | 78%  | 82%  | 88%  | 91%  |
+| 3.5 m | 77% | 77% | 97% | 97% | 38% | 37% | 67% | 67% |
+| 4.6 m | 77% | 77% | 93% | 94% | 43% | 44% | 68% | 68% |
+| 7.0 m | 81% | 82% | 93% | 94% | 57% | 58% | 82% | 83% |
+| 9.3 m | 76% | 76% | 86% | 86% | 65% | 65% | 83% | 83% |
+| 13.9 m | 80% | 80% | 87% | 87% | 76% | 76% | 88% | 88% |
+| 18.6 m | 79% | 79% | 89% | 89% | 80% | 80% | 91% | 91% |
+| 23.2 m | 81% | 81% | 90% | 90% | 77% | 80% | 88% | 92% |
+| 27.8 m | 80% | 80% | 90% | 90% | 79% | 82% | 88% | 91% |
 
 | Stand-off | Reflected impulse: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m |
 |-----------|------|------|------|------|
-| 3.5 m     | 89%  | 84%  | 105% | 96%  |
-| 4.6 m     | 89%  | 91%  | 99%  | 102% |
-| 7.0 m     | 95%  | 97%  | 101% | 102% |
-| 9.3 m     | 100% | 101% | 101% | 105% |
-| 13.9 m    | 101% | 102% | 102% | 104% |
-| 18.6 m    | 95%  | 97%  | 97%  | 98%  |
-| 23.2 m    | 94%  | 94%  | 94%  | 95%  |
-| 27.8 m    | 93%  | 94%  | 95%  | 94%  |
+| 3.5 m | 85% | 84% | 96% | 96% |
+| 4.6 m | 91% | 91% | 103% | 102% |
+| 7.0 m | 97% | 97% | 102% | 102% |
+| 9.3 m | 101% | 101% | 104% | 105% |
+| 13.9 m | 102% | 102% | 104% | 104% |
+| 18.6 m | 97% | 97% | 98% | 98% |
+| 23.2 m | 95% | 94% | 95% | 95% |
+| 27.8 m | 95% | 94% | 94% | 94% |
 
-Arrival times are as on the coarse grid, within 2%, and so is the incident impulse from 7 m
-out; closer in it is up to 10% higher. `blastbench
-validate` takes 12 s on 0.5 m cells refined against 21 s on 0.25 m cells, and 113 s on 0.25 m
-cells refined against about 290 s on 0.125 m cells. Refined by 4, 0.5 m cells give most of the
-0.125 m grid's peaks (71% to 93% incident) in 180 s; refining a grid that fine by 2 is better.
-Close to the charge the refined grid can run higher than the finer uniform one, since it starts
-from the coarse grid's larger sphere of gas.
+Arrival times are as on the coarse grid, within 2%; the incident impulse is within 3% of the
+coarse grid's from 7 m out and up to 6% higher closer in. `blastbench validate` takes 13 s on
+0.5 m cells refined against 21 s on 0.25 m cells, and 104 s on 0.25 m cells refined against
+about 290 s on 0.125 m cells. Refined by 4, 0.5 m cells give the 0.125 m grid's peaks and
+impulses, within 5% (incident peaks 85% to 97%, reflected 66% to 93%), in 116 s, about as long
+as 0.25 m cells refined by 2.
+The charge is laid on the fine cells (see the
+[air-blast model](air-blast-model.md#refining-near-the-shock)); laid on the coarse ones, its
+blocky sphere ran the peaks close to the charge up to 30% above those of the finer grid.
 
 ### Afterburning
 
@@ -523,10 +525,11 @@ At the test's charge the side walls bow out 5 mm, and 4 elements fail in all; th
 structure was itself close to its cliff, since chamber B nearly lost its roof edge.
 
 With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 (`--refine 2`, fine
-cells of 50 mm), the roof's edge rises 70 mm and settles to 11 mm: the roof answers to impulse,
-which the 0.1 m cells already resolve. The peak wall pressures rise, to 4.1 to 8.7 MPa against
-3.2 to 4.4 MPa measured: a sharper shock beside four charges, read at approximate gauge
-positions. The run takes 34 s instead of 15 s.
+cells of 50 mm), the roof's edge rises 70 mm and settles to 13 mm, against 66 and 10 mm: the
+roof answers to impulse, which the 0.1 m cells already resolve. The peak pressures at the
+gauges are 5.3 to 6.6 MPa against 3.2 to 6.8 MPa unrefined and 3.2 to 4.4 MPa measured: a
+sharper shock beside four charges, read at approximate gauge positions. The run takes 36 s
+instead of 15 s.
 
 **How the model got here.** The first version threw the roof at 0.875 of the test's charge and
 beyond. What was found on the way:
@@ -593,8 +596,8 @@ resisted sliding across cracks and cracks were bridged across the section (see t
 every grid and toppled. At 50 kg the wall barely cracks, and its few millimetres show no trend
 with the grid. With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 and the
 wall loaded by the fine cells beside it and outlined at their resolution, 0.5 m cells give
-383 mm and 287 elements removed at 200 kg, as 0.25 m cells do (381 mm, 282), and 0.25 m cells
-give 429 mm and 543 removed, against 404 mm and 374 on 0.125 m cells. With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
+378 mm and 281 elements removed at 200 kg, as 0.25 m cells do (381 mm, 282), and 0.25 m cells
+give 404 mm and 358 removed, as 0.125 m cells do (404 mm, 374). With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing
 with resolution as the peak pressure does, and 315, 437 and 657 mm at 200 kg; that model
 mishandled inclined cracks (see the [concrete model](concrete-model.md#cracking)). There is
 no test to compare these with.

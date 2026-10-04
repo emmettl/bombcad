@@ -120,6 +120,10 @@ public final class BlastSolver {
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
     /// nil once the mask has been edited by hand.
     var rigidBoxes: [Box]?
+    /// Charges laid down in fine cells for refined air (see `deposit`): what each fine cell gained,
+    /// density and energy per volume, over the uniform state the air was filled with. Given to the
+    /// fine cells at the next `restart()`; forgotten when the air is filled or edited by hand.
+    var fineDeposit: [SIMD3<Int>: SIMD2<Float>] = [:]
 
     public init(
         device: MTLDevice,
@@ -219,6 +223,7 @@ public final class BlastSolver {
         let cell = cellState(primitive)
         stillCell = cell
         largestCharge = 0
+        fineDeposit = [:]
         for buffer in stateBuffers {
             buffer.contents().bindMemory(to: CellState.self, capacity: grid.cellCount)
                 .update(repeating: cell, count: grid.cellCount)
@@ -302,6 +307,12 @@ public final class BlastSolver {
 
     /// Direct access to the current conserved state. Call `restart()` after editing.
     public func mutateState(_ body: (UnsafeMutableBufferPointer<CellState>) throws -> Void) rethrows {
+        fineDeposit = [:]
+        try editState(body)
+    }
+
+    /// The same, keeping any charge laid down in fine cells.
+    func editState(_ body: (UnsafeMutableBufferPointer<CellState>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit state while a batch is in flight")
         let pointer = stateBuffers[current].contents().bindMemory(
             to: CellState.self, capacity: grid.cellCount)
@@ -433,8 +444,11 @@ public final class BlastSolver {
         }
         if let structure {
             let h = structure.model.elementSize
-            let perCell = pow(grid.cellSize / h, 3)
-            // A cell is solid when at least a third of it is filled with intact elements.
+            // A cell is solid when at least a third of it is filled with intact elements. Elements
+            // larger than the cells are sampled at points no further apart than a cell.
+            let coarse = max(1, Int((h / grid.cellSize - 1e-3).rounded(.up)))
+            uniforms.coarseSamples = UInt32(coarse)
+            let perCell = pow(grid.cellSize * Float(coarse) / h, 3)
             uniforms.threshold = UInt32(max(1, (perCell / 3).rounded(.up)))
             if let refinement {
                 // For the fine cells, each element is sampled at points no further apart than a
@@ -559,7 +573,7 @@ public final class BlastSolver {
 
         if fine, let refinement {
             refinement.encodeRemask(
-                encoder, coarse: stateBuffers[current], threshold: uniforms.fineThreshold,
+                encoder, coarse: stateBuffers[current], mask: maskBuffer, threshold: uniforms.fineThreshold,
                 uniforms: makeUniforms())
         }
     }
@@ -681,6 +695,24 @@ public final class BlastSolver {
         encoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
+        if let refinement, !fineDeposit.isEmpty {
+            // The charges' fine cells, and every other fine cell of the coarse cells they touch,
+            // whose mean the coarse cells already hold.
+            let r = refinement.ratio
+            var cells: [SIMD3<Int>: CellState] = [:]
+            for coarse in Set(fineDeposit.keys.map { $0 / r }) {
+                for n in 0..<(r * r * r) {
+                    let fine = coarse &* r &+ SIMD3(n % r, (n / r) % r, n / (r * r))
+                    var cell = stillCell
+                    if let added = fineDeposit[fine] {
+                        cell.density += added.x
+                        cell.energy += added.y
+                    }
+                    cells[fine] = cell
+                }
+            }
+            refinement.setFine(cells)
+        }
     }
 
     /// Makes, keeps or drops the finer level for the configuration, and releases its patches.

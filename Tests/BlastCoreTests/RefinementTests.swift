@@ -371,7 +371,7 @@ extension RefinementTests {
             "echo at \(coarse.time), \(refined.time) and \(fine.time) s")
     }
 
-    @Test("Across a fine outline that differs from the coarse one, mass and energy stay within 0.3%")
+    @Test("Across a fine outline that differs from the coarse one, mass and energy are conserved")
     func offsetOutlineConservation() throws {
         var scenario = Scenario(
             name: "Closed box", domainSize: SIMD3(24, 20, 16),
@@ -381,16 +381,61 @@ extension RefinementTests {
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: 0.5, configuration: refined(2))
         let before = solver.totals()
-        // Placing or releasing a patch over the block's faces moves gas between grids that disagree
-        // about the volume there; the two largely cancel as the patches come and go.
-        for _ in 0..<4 {
+        // The fine outline leaves a sliver of air along some of the block's faces that the coarse
+        // cells count as solid: placing patches there adds the still air it held, at most its
+        // volume's worth (0.25 m deep, under 1% of the room), and from then on
+        // the patches stay and the gas is conserved.
+        var placed = solver.totals()
+        for n in 0..<4 {
             let result = solver.advance(steps: 100)
             #expect(result.isStable)
             let now = solver.totals()
-            #expect(abs(now.mass - before.mass) / before.mass < 0.003, "mass \(before.mass) -> \(now.mass)")
-            #expect(
-                abs(now.energy - before.energy) / before.energy < 0.003,
-                "energy \(before.energy) -> \(now.energy)")
+            if n == 0 {
+                placed = now
+                #expect(now.mass > before.mass && (now.mass - before.mass) / before.mass < 0.006)
+            } else {
+                #expect(
+                    abs(now.mass - placed.mass) / placed.mass < 1e-4, "mass \(placed.mass) -> \(now.mass)")
+                #expect(
+                    abs(now.energy - placed.energy) / placed.energy < 1e-4,
+                    "energy \(placed.energy) -> \(now.energy)")
+            }
         }
+    }
+}
+
+extension RefinementTests {
+    /// Peak overpressure 0.75 m from 100 kg on the ground, and impulse on a wall 3.5 m away, in a
+    /// closed room.
+    private func nearField(cellSize: Float, ratio: Int) throws -> (peak: Float, impulse: Double) {
+        var scenario = Scenario(
+            name: "Room", domainSize: SIMD3(11.5, 16, 16), boxes: [],
+            charge: Charge(mass: 100, position: SIMD3(8, 8, 0)),
+            gauges: [Gauge("Near", at: SIMD3(8.76, 8.01, 0.05)), Gauge("Wall", at: SIMD3(11.46, 8.01, 0.05))])
+        scenario.reflectiveFaces = .all
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: cellSize,
+            configuration: ratio > 1 ? refined(ratio) : SolverConfiguration())
+        solver.advance(until: 0.006)
+        let near = (solver.gaugeHistories[0].map(\.pressure).max() ?? 0) - scenario.atmosphere.pressure
+        var impulse = 0.0
+        let wall = solver.gaugeHistories[1]
+        for (a, b) in zip(wall, wall.dropFirst()) {
+            impulse += Double(max(a.pressure - scenario.atmosphere.pressure, 0)) * (b.time - a.time)
+        }
+        return (near, impulse)
+    }
+
+    @Test("A charge in refined air starts as it would on a grid that fine")
+    func refinedCharge() throws {
+        // Laid down in coarse cells, a sphere two cells across is a blocky cube that the fine
+        // cells then resolve; it drove peaks 30% too high this close.
+        let refined = try nearField(cellSize: 0.25, ratio: 2)
+        let fine = try nearField(cellSize: 0.125, ratio: 1)
+        #expect(
+            abs(refined.peak - fine.peak) / fine.peak < 0.05, "peak \(refined.peak) against \(fine.peak) Pa")
+        #expect(
+            abs(refined.impulse - fine.impulse) / fine.impulse < 0.03,
+            "wall impulse \(refined.impulse) against \(fine.impulse) Pa s")
     }
 }

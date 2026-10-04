@@ -767,6 +767,7 @@ struct CouplingUniforms {
     var blocksY: UInt32 = 0
     var fineThreshold: UInt32 = 1
     var fineSamples: UInt32 = 1
+    var coarseSamples: UInt32 = 1
 }
 
 /// When nodes of the structure repel each other.

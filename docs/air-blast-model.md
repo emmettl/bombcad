@@ -57,8 +57,8 @@ The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
 
 - Its energy is the TNT-equivalent mass times 4.184 MJ/kg (the conventional energy of TNT), and
   its mass is added to the air's density in the sphere.
-- The sphere's radius is the physical charge radius (for a density of 1600 kg/m³) or two cells,
-  whichever is larger.
+- The sphere's radius is the physical charge radius (for a density of 1600 kg/m³) or two cells
+  (two fine cells where the air is [refined](#refining-near-the-shock)), whichever is larger.
 - Cells are weighted by the fraction of their volume inside the sphere, and the totals are
   normalised over fluid cells only. A charge on the ground or against a wall therefore releases
   all of its energy into the air; a charge on rigid ground behaves like a free-air charge of
@@ -192,10 +192,19 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   A coarse cell under a patch becomes the mean of its fluid fine cells. Refluxing does not ask
   what the coarse cell inside is: a coarse cell beside a patch records the flux it used, through
   fluid or wall, and the fine level gives the flux of every fine face, the wall's where the fine
-  cell is solid. Where the two outlines differ, though, placing or releasing a patch moves gas
-  between grids that disagree about the volume there: in a closed room with a block offset by
-  half a cell, mass and energy swing by up to 0.14% as patches come and go, and come back to
-  within 2 × 10⁻⁵ (where the outlines agree they are conserved to rounding).
+  cell is solid. A ghost cell takes its kind, fluid or wall, from the fine outline of the patch
+  that holds it, and only where no patch does from the coarse mask, so that the two sides of a
+  fine face always agree. Where the two outlines differ, a new patch shares the gas of a coarse
+  cell among those of its fine cells that are fluid, and fills fine cells that are fluid under a
+  solid coarse cell with still air; such a patch is never released, since its gas could not be
+  given back to the coarse cells. So a closed room with a block offset by a quarter of a cell
+  gains still air once, 0.4% of its mass and energy, as patches go down along the block's faces,
+  and conserves them to 10⁻⁴ from then on (where the outlines agree they are conserved to
+  rounding).
+- **The charge.** With refinement the charge is laid on the fine cells, its sphere two fine
+  cells across at least, and the patches around it are placed before the first step. Laid on
+  the coarse cells, it was a blocky cube of gas that the fine cells then resolved, and near the
+  charge the peaks ran up to 30% above those of the uniform grid twice as fine.
 - **What it records.** A coarse cell's peak overpressure is the largest its fine cells reach, and its impulse is what it had
   when the patch was placed plus the largest any of its fine cells has gathered since: in open
   air its fine cells agree, and against a wall, where impulse falls off steeply, it reads the
@@ -231,7 +240,11 @@ update about 1.6 times the cost of a coarse one instead of three. Refinement pay
 proportion to the blast's radius over three times the refined shell's thickness, so it pays
 more the further the blast has spread. And the reflected impulse on a wall first read 10% low:
 the coarse cell's mean over its fine cells, which against a wall dilutes the wall's value with
-that of the cells behind it; the solution itself was right.
+that of the cells behind it; the solution itself was right. Around the chamber's walls
+(see [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)) the
+refined air first lost 15% of its energy and the roof rose half as far: ghost cells took their
+kind from the coarse mask even inside a neighbouring patch, so where the fine outline differed
+the two sides of a face disagreed on whether it was a wall.
 
 ## Freezing the air
 

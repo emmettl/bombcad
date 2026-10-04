@@ -212,12 +212,18 @@ extension BlastSolver {
         return radius >= 3 * dx ? (radius, onGround) : nil
     }
 
+    /// The ratio the air will be refined by at the next `restart()`, or 1.
+    var refinementAtRestart: Int {
+        configuration.refinement > 1 && !configuration.afterburning ? configuration.refinement : 1
+    }
+
     /// Radius of the sphere the charge's energy is spread over: the physical charge size,
-    /// but never fewer than a couple of cells so the initial discontinuity is resolvable.
+    /// but never fewer than a couple of cells (fine cells, where the air is refined) so the
+    /// initial discontinuity is resolvable.
     public func balloonRadius(for charge: Charge) -> Float {
         let explosiveDensity: Float = 1600
         let physical = Float(cbrt(3 * Double(charge.mass) / (4 * Double.pi * Double(explosiveDensity))))
-        return max(physical, configuration.minimumBalloonCells * grid.cellSize)
+        return max(physical, configuration.minimumBalloonCells * grid.cellSize / Float(refinementAtRestart))
     }
 
     /// Adds the charge's mass and energy to the fluid cells inside its balloon radius.
@@ -227,6 +233,10 @@ extension BlastSolver {
     /// still releases all of its energy into the air.
     public func deposit(_ charge: Charge) {
         guard charge.mass > 0 else { return }
+        if refinementAtRestart > 1 {
+            depositRefined(charge)
+            return
+        }
         let grid = self.grid
         let dx = grid.cellSize
         let radius = balloonRadius(for: charge)
@@ -274,6 +284,74 @@ extension BlastSolver {
         mutateSpecies { species in
             for (index, fraction) in weights { species[index].x += massDensity * fraction }
         }
+    }
+
+    /// Where the air will be refined, the charge is laid down in the fine cells, as on a grid that
+    /// fine: a sphere a couple of coarse cells across is a blocky cube, which the fine cells
+    /// resolve, and which then drives a stronger blast along its faces' normals than the sphere it
+    /// stands for (30% higher peaks 1.5 radii out). The coarse cells take the mean of their fine
+    /// cells, and `restart()` gives the fine cells their own share once the patches are placed.
+    private func depositRefined(_ charge: Charge) {
+        let grid = self.grid
+        let r = refinementAtRestart
+        let fine = grid.cellSize / Float(r)
+        let radius = balloonRadius(for: charge)
+        let low = SIMD3<Int>(simd_max((charge.position - radius) / fine, .zero).rounded(.down))
+        let high = simd_min(
+            SIMD3<Int>(((charge.position + radius) / fine).rounded(.down)),
+            SIMD3(grid.nx, grid.ny, grid.nz) &* r &- 1)
+        let samples = 5
+        // Sample points are measured from the cell's centre, relative to the charge, so that cells
+        // mirrored about it do mirrored arithmetic and count the same points.
+        let charged = charge.position / fine
+        var weights: [(fine: SIMD3<Int>, fraction: Float)] = []
+        for k in low.z...high.z {
+            for j in low.y...high.y {
+                for i in low.x...high.x {
+                    let cell = SIMD3(i, j, k) / r
+                    let centre = SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5
+                    guard !isSolid(cell.x, cell.y, cell.z),
+                        !(rigidBoxes ?? []).contains(where: { $0.contains(centre * fine) })
+                    else { continue }
+                    let fromCharge = centre - charged
+                    var inside = 0
+                    for c in 0..<samples {
+                        for b in 0..<samples {
+                            for a in 0..<samples {
+                                let offset = (SIMD3(Float(a), Float(b), Float(c)) - 2) / Float(samples)
+                                if simd_length_squared((fromCharge + offset) * fine) <= radius * radius {
+                                    inside += 1
+                                }
+                            }
+                        }
+                    }
+                    if inside > 0 {
+                        weights.append((SIMD3(i, j, k), Float(inside) / Float(samples * samples * samples)))
+                    }
+                }
+            }
+        }
+        let total = weights.reduce(Float(0)) { $0 + $1.fraction }
+        guard total > 0 else { return }
+        let volume = total * fine * fine * fine
+        let massDensity = charge.mass / volume
+        let energyDensity = charge.energy / volume
+        // Each coarse cell's share is summed in double precision, where the sum of its fine cells'
+        // is exact, so that it does not depend on their order (a centred charge stays symmetric).
+        var coarse: [Int: SIMD2<Double>] = [:]
+        for (cell, fraction) in weights {
+            let added = SIMD2(massDensity, energyDensity) * fraction
+            fineDeposit[cell, default: .zero] += added
+            coarse[grid.index(cell.x / r, cell.y / r, cell.z / r), default: .zero] += SIMD2<Double>(added)
+        }
+        let share = 1 / Double(r * r * r)
+        editState { cells in
+            for (index, added) in coarse {
+                cells[index].density += Float(added.x * share)
+                cells[index].energy += Float(added.y * share)
+            }
+        }
+        largestCharge = max(largestCharge, charge.mass)
     }
 
     /// The cell containing `point`, or the closest fluid cell if that one is solid.
