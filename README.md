@@ -77,9 +77,11 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
 
 - **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 6% of
   the Kingery–Bulmash curves beyond 1.5 m/kg^(1/3), and within 5% everywhere checked on
-  0.125 m cells. Peak pressures are under-resolved, more so close to the charge. The incident
-  impulse is 13–22% low by default, or within 6% with afterburning and hot air switched on,
-  which also bring the gas pressure in a closed room within 8% of the US design manual's.
+  0.125 m cells. Peak pressures are under-resolved, more so close to the charge; refining the
+  air near the shock gives the peaks of a grid twice as fine at a fifth to a third of its cost.
+  The incident impulse is 13–22% low by default, or within 6% with afterburning and hot air
+  switched on, which also bring the gas pressure in a closed room within 8% of the US design
+  manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
   model predicts peak deflections of 101, 101 and 106 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32

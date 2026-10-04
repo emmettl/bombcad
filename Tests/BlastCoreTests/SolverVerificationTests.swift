@@ -17,7 +17,7 @@ struct SolverVerificationTests {
     // MARK: Sod shock tube
 
     /// Exact density of Sod's problem (gamma = 1.4) at position `x` and time `t`, diaphragm at 0.5.
-    private func sodDensity(x: Double, t: Double) -> Double {
+    static func sodDensity(x: Double, t: Double) -> Double {
         let gamma = 1.4
         let soundLeft = gamma.squareRoot()
         let starVelocity = 0.927_45
@@ -54,7 +54,7 @@ struct SolverVerificationTests {
         let error = solver.withState { state in
             (0..<cells).reduce(0.0) { sum, i in
                 let x = (Double(i) + 0.5) / Double(cells)
-                return sum + abs(Double(state[i].density) - sodDensity(x: x, t: solver.time))
+                return sum + abs(Double(state[i].density) - Self.sodDensity(x: x, t: solver.time))
             } / Double(cells)
         }
         #expect(error < 0.004, "L1 density error \(error)")

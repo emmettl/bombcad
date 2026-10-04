@@ -67,9 +67,22 @@ struct SolverUniforms {
     float stillOxygen;
     float afterburnRate;  // 1 / the time over which mixed products burn
     uint airModel;        // 0: ideal gas with `gamma`; 1: thermally perfect air
+    // Refinement (see Refine.metal; ratio 0 when the air is not refined): the grid's size in
+    // tiles, the fine substep under way and how far through the coarse step it starts, the
+    // pressure jump between neighbouring cells that asks for refinement, and the pool's size.
+    uint refineRatio;
+    uint refineTileNx;
+    uint refineTileNy;
+    uint refineTileNz;
+    uint refineSubstep;
+    float refineAlpha;
+    float refineThreshold;
+    uint refineMaxPatches;
 };
 
 constant int tileSize = 8;
+// The air is refined in patches of this many cells along each edge (see Refine.metal).
+constant int patchSize = 4;
 // How far a change spreads in one step, along each axis.
 constant int tileReach = 2;
 enum TileFlag { tileStill = 0, tileActive = 1, tileWoken = 2 };
@@ -395,12 +408,48 @@ static inline void recordCell(device atomic_uint *maxSpeed, float3 momentum, flo
     recordWaveSpeed(maxSpeed + 1, fabs(pressure - u.ambientPressure));
 }
 
+// The fluxes through the low and high faces of the middle cell of a five-cell stencil, by
+// MUSCL-Hancock over a step of `lambda` = dt / dx.
+static inline void stencilFluxes(Prim wM2, Prim wM1, Prim w0, Prim wP1, Prim wP2, float lambda,
+                                 constant SolverUniforms &u, thread Flux &low, thread Flux &high) {
+    float halfLambda = 0.5f * lambda;
+    float theta = u.limiterTheta;
+    FacePair facesM1 = reconstruct(wM1, slope(wM2, wM1, w0, theta), halfLambda, u);
+    FacePair faces0 = reconstruct(w0, slope(wM1, w0, wP1, theta), halfLambda, u);
+    FacePair facesP1 = reconstruct(wP1, slope(w0, wP1, wP2, theta), halfLambda, u);
+    low = riemannFlux(facesM1.hi, faces0.lo, u);
+    high = riemannFlux(faces0.hi, facesP1.lo, u);
+}
+
+// The patch refining coarse cell `cell`, or -1.
+static inline int patchAt(int3 cell, const device int *patchOfTile, constant SolverUniforms &u) {
+    int3 tile = cell / patchSize;
+    return patchOfTile[tile.x + int(u.refineTileNx) * (tile.y + int(u.refineTileNy) * tile.z)];
+}
+
+// Where in the flux registers of `patch` its face `face` (2 axis + side) records the flux
+// through the face at transverse position (a, b), cells along the next two axes in order, of
+// `side` cells to an edge.
+static inline uint registerSlot(uint patch, uint face, uint a, uint b, uint side) {
+    return 5u * ((patch * 6u + face) * side * side + a + side * b);
+}
+
+static inline void storeFlux(device float *registers, uint slot, Flux f, uint axis, float dt) {
+    float3 momentum = fromSweep(f.momentum, axis);
+    registers[slot] = f.mass * dt;
+    registers[slot + 1] = momentum.x * dt;
+    registers[slot + 2] = momentum.y * dt;
+    registers[slot + 3] = momentum.z * dt;
+    registers[slot + 4] = f.energy * dt;
+}
+
 // One-dimensional MUSCL-Hancock update of one cell along `u.axis`.
 static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst, const device uchar *mask,
                              device float *peak, device float *impulse, const device StepControl &control,
                              device atomic_uint *maxSpeed, constant SolverUniforms &u,
                              const device float *wallVelocity, device uchar *tileFlags,
-                             const device float2 *speciesSrc, device float2 *speciesDst) {
+                             const device float2 *speciesSrc, device float2 *speciesDst,
+                             const device int *patchOfTile, device float *coarseFlux) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (mask[index] != 0) {
         return;
@@ -459,15 +508,29 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
 
     float dt = control.dt;
     float lambda = dt / u.dx;
-    float halfLambda = 0.5f * lambda;
-    float theta = u.limiterTheta;
+    Flux fluxLow;
+    Flux fluxHigh;
+    stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
 
-    FacePair facesM1 = reconstruct(wM1, slope(wM2, wM1, w0, theta), halfLambda, u);
-    FacePair faces0 = reconstruct(w0, slope(wM1, w0, wP1, theta), halfLambda, u);
-    FacePair facesP1 = reconstruct(wP1, slope(w0, wP1, wP2, theta), halfLambda, u);
-
-    Flux fluxLow = riemannFlux(facesM1.hi, faces0.lo, u);
-    Flux fluxHigh = riemannFlux(faces0.hi, facesP1.lo, u);
+    // A cell of unrefined air beside a patch records the flux it used through the face they
+    // share, so that the patch's own fluxes can replace it (see Refine.metal).
+    if (u.refineRatio != 0) {
+        int local = i % patchSize;
+        bool lowEdge = local == 0 && kindM1 == kindFluid;
+        bool highEdge = local == patchSize - 1 && kindP1 == kindFluid;
+        if ((lowEdge || highEdge) && patchAt(cell, patchOfTile, u) < 0) {
+            int3 across = cell;
+            across[axis] += lowEdge ? -1 : 1;
+            int patch = patchAt(across, patchOfTile, u);
+            if (patch >= 0) {
+                int3 inPatch = cell % patchSize;
+                uint face = 2u * axis + (lowEdge ? 1u : 0u);
+                uint slot = registerSlot(uint(patch), face, uint(inPatch[(axis + 1) % 3]),
+                                         uint(inPatch[(axis + 2) % 3]), uint(patchSize));
+                storeFlux(coarseFlux, slot, lowEdge ? fluxLow : fluxHigh, axis, dt);
+            }
+        }
+    }
 
     Cell c = src[index];
     float3 momentum = toSweep(float3(c.mx, c.my, c.mz), axis);
@@ -518,7 +581,10 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
     if (u.finalSweep != 0) {
         float overpressure = pressure - u.ambientPressure;
         peak[index] = max(peak[index], overpressure);
-        impulse[index] += max(overpressure, 0.0f) * dt;
+        // Under a patch, impulse is taken from the fine cells instead (see Refine.metal).
+        if (u.refineRatio == 0 || patchAt(cell, patchOfTile, u) < 0) {
+            impulse[index] += max(overpressure, 0.0f) * dt;
+        }
         recordCell(maxSpeed, momentum, rho, pressure, u);
         // A changed cell near the edge of its tile wakes the tiles it can reach next step.
         if (u.tileNx != 0 && !isStill(result, species, u)) {
@@ -543,12 +609,14 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
                   device uchar *tileFlags [[buffer(10)]],
                   const device float2 *speciesSrc [[buffer(11)]],
                   device float2 *speciesDst [[buffer(12)]],
+                  const device int *patchOfTile [[buffer(13)]],
+                  device float *coarseFlux [[buffer(14)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-              speciesSrc, speciesDst);
+              speciesSrc, speciesDst, patchOfTile, coarseFlux);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -566,6 +634,8 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
                        device uchar *tileFlags [[buffer(10)]],
                        const device float2 *speciesSrc [[buffer(11)]],
                        device float2 *speciesDst [[buffer(12)]],
+                       const device int *patchOfTile [[buffer(13)]],
+                       device float *coarseFlux [[buffer(14)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -576,7 +646,7 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-                      speciesSrc, speciesDst);
+                      speciesSrc, speciesDst, patchOfTile, coarseFlux);
         }
     }
 }
@@ -638,6 +708,9 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                         constant SolverUniforms &u [[buffer(5)]],
                         device atomic_uint *tileCount [[buffer(6)]],
                         device uint *tileDispatch [[buffer(7)]],
+                        const device int *patchOfTile [[buffer(8)]],
+                        const device Cell *fine [[buffer(9)]],
+                        const device uint *gaugeChildren [[buffer(10)]],
                         uint tid [[thread_position_in_grid]]) {
     if (tid != 0) {
         return;
@@ -668,6 +741,19 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     gaugeLog[row] = control.batchTime;
     for (uint g = 0; g < u.gaugeCount; ++g) {
         Cell c = state[gaugeCells[g]];
+        // Where the gauge's cell is refined, the fine cell holding the gauge's point.
+        uint child = gaugeChildren[g];
+        if (u.refineRatio != 0 && child != 0xFFFFFFFFu) {
+            uint index = gaugeCells[g];
+            int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
+            int patch = patchAt(cell, patchOfTile, u);
+            if (patch >= 0) {
+                int r = int(u.refineRatio);
+                int side = patchSize * r;
+                int3 local = (cell % patchSize) * r + int3(child % uint(r), (child / uint(r)) % uint(r), child / uint(r * r));
+                c = fine[uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z))];
+            }
+        }
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);
         gaugeLog[row + 1 + g] = gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
     }

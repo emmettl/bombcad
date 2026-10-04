@@ -59,6 +59,12 @@ struct SidebarView: View {
                         "Burns the charge's products in the air they mix with, and lets hot air store energy "
                             + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                             + "about twice as slow.")
+                Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
+                    .disabled(model.settings.detailedCharge)
+                    .help(
+                        "Refines the air twice over where the shock is, so that peak pressures come out "
+                            + "close to those of the next finer resolution, at a fraction of its cost. Not "
+                            + "with afterburning, and the air near a deformable structure stays as it is.")
                 LabeledSlider(
                     title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
                     text: metres(model.settings.chargePosition.x))

@@ -109,7 +109,7 @@ no longer smeared, but now high, as an ideal gas expanding from the charge's own
 next to a real explosive. Beyond the mapped region nothing changes: within a couple of metres
 the grid smears the shock again as much as before (62% to 73% from 9 m out, against 62% to
 69%). So it gives exact one-dimensional records close in and a correct start, but no lasting
-gain in resolution; only refinement of the grid near the shock would give that. It is off by
+gain in resolution; refinement of the grid near the shock (below) does that. It is off by
 default, and only for a single charge, an ideal gas and no afterburning.
 
 ### Hot air
@@ -160,6 +160,59 @@ no round trip to the CPU. Only the peak overpressure and impulse of air the blas
 reached can differ, by the rounding error that still air reads as overpressure (under 0.1 Pa).
 `SolverConfiguration.skipStillAir` switches it off.
 
+## Refining near the shock
+
+A captured shock is smeared over two or three cells, so peak pressures read low unless the cells
+are small, and a grid fine everywhere costs eight times as much for each halving.
+`SolverConfiguration.refinement` (2 or 4; off by default) refines the air only where the shock
+is. In the app it is the "Sharpen shocks" switch (ratio 2); `blastbench` takes `--refine 2`. The
+code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
+
+- **Where.** The grid is cut into blocks of 4 × 4 × 4 cells. A block is refined where the
+  pressures of two neighbouring cells in it differ by more than `refinementThreshold` (10%) of
+  the lower, and so is any block within two cells of such a pair: a shock moves under half a
+  cell a step, and the blocks are placed afresh every step, so it cannot outrun them. Each
+  refined block is a patch of (4r)³ fine cells, taken from a pool of fixed size
+  (`refinementMemory`, 1 GB by default, about 48 kB a patch at ratio 2 and 245 kB at ratio 4).
+  Where the shock would need more, the rest of it stays coarse.
+- **Each coarse step:** the coarse cells around each patch are saved; the coarse grid is swept
+  as usual, and every coarse cell beside a patch records the flux it used through their shared
+  face; each patch takes r steps of its own of a coarse step / r, alternating the order of its
+  sweeps, with two layers of ghost cells filled before each sweep from the neighbouring patch or,
+  in unrefined air, from the coarse cells (limited linear in space, linear in time between the
+  step's start and end); each coarse cell beside a patch then has the difference between the
+  fine fluxes through their face and its own put right (refluxing), so mass, momentum and
+  energy are conserved across the level's edge; each coarse cell under a patch becomes the mean
+  of its fine cells; and the patches are placed afresh, new ones filled from the coarse cells.
+- **What it records.** Fine cells take the solid mask of the coarse cell they lie in. A coarse
+  cell's peak overpressure is the largest its fine cells reach, and its impulse is what it had
+  when the patch was placed plus the largest any of its fine cells has gathered since: in open
+  air its fine cells agree, and against a wall, where impulse falls off steeply, it reads the
+  wall's value as a coarse cell beside a wall does. A gauge reads the fine cell holding its
+  point.
+- **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
+  every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
+  exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,
+  as without refinement). A centred burst stays mirror-symmetric to 10⁻⁶ until rounding tips the
+  threshold for one block and not its mirror image; from then on the two sides are solved on
+  different grids and differ by up to about 1%.
+
+On Sod's shock tube, refinement by 2 takes the error two-thirds of the way to that of a grid
+twice as fine. On the Kingery–Bulmash comparison a grid refined by 2 gives the peaks and
+impulses of a uniform grid twice as fine, in half the time or less (see
+[Validation](validation.md#with-refinement) and [Performance](performance.md#refinement)).
+
+**How it got here.** The first version refined whole tiles of still air (8 × 8 × 8 cells) and
+every tile around a flagged one, and was slower than the uniform grid it imitated: a sphere cuts
+through many cubes, and with cubes that size the refined shell was 5 to 6 m thick around a shock
+a metre wide. Blocks of 4 cells, widened only towards the shock, halved it; moving the ghost
+cells' coarse interpolation out of the fine sweep into a kernel of its own made each fine
+update about 1.6 times the cost of a coarse one instead of three. Refinement pays roughly in
+proportion to the blast's radius over three times the refined shell's thickness, so it pays
+more the further the blast has spread. And the reflected impulse on a wall first read 10% low:
+the coarse cell's mean over its fine cells, which against a wall dilutes the wall's value with
+that of the cells behind it; the solution itself was right.
+
 ## Freezing the air
 
 When a deformable structure is present, the air is frozen (its sweeps are skipped) once either
@@ -193,6 +246,10 @@ UFC 3-340-02, lowest for light charges.
    out.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
+   Refinement (above) gives the peaks of a grid twice or four times as fine, but only one finer
+   level, not with afterburning, and not within the region around a deformable structure (a few
+   metres), where the air stays coarse: its moving mask and debris trade with the coarse air
+   only.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
    or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
@@ -222,10 +279,10 @@ UFC 3-340-02, lowest for light charges.
   state and optional afterburn energy.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
-- **Adaptive resolution** near the shock, the standard answer to the thin-shock problem, at a
-  large cost in complexity on the GPU: blocks of finer cells that follow the shock, with
-  fluxes matched at their edges and smaller time steps inside. The mapped start shows that
-  resolving only the first moments does not last.
+- **More of the refinement**: several levels, so that a ratio of 4 is reached in two steps of 2;
+  refinement next to a deformable structure, which needs fine cells to follow its moving mask
+  and trade with its debris; afterburning on the fine level; and smaller blocks, or blocks that
+  follow the shock's shape, since the shell's thickness sets the cost.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
 

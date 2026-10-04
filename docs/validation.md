@@ -27,7 +27,7 @@ swift run -c release blastbench chamber
 | Area                 | Evidence                                             | Confidence                         |
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
-| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3): impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) | Good for impulse on walls; peaks under-resolved; incident impulse 13–22% low without afterburning, within 4% with it (fitted) |
+| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3): impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3); refinement gives the next finer grid's peaks | Good for impulse on walls; peaks under-resolved; incident impulse 13–22% low without afterburning, within 4% with it (fitted) |
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
@@ -308,6 +308,41 @@ Reading these:
 - **Arrival times are 2% to 10% early.**
 
 `blastbench validate` prints these tables; `--z` chooses other scaled distances.
+
+### With refinement
+
+With the air [refined near the shock](air-blast-model.md#refining-near-the-shock) by 2
+(`--refine 2`), each grid gives about the peaks and impulses of the uniform grid twice as fine:
+
+| Range  | Incident peak: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m | Reflected peak: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m |
+|--------|------|------|------|------|------|------|------|------|
+| 3.5 m  | 67%  | 77%  | 99%  | 97%  | 36%  | 37%  | 71%  | 67%  |
+| 4.6 m  | 77%  | 77%  | 97%  | 94%  | 43%  | 44%  | 68%  | 68%  |
+| 7.0 m  | 80%  | 82%  | 92%  | 94%  | 55%  | 58%  | 80%  | 83%  |
+| 9.3 m  | 73%  | 76%  | 84%  | 86%  | 63%  | 65%  | 80%  | 83%  |
+| 13.9 m | 78%  | 80%  | 84%  | 87%  | 73%  | 76%  | 87%  | 88%  |
+| 18.6 m | 78%  | 79%  | 86%  | 89%  | 77%  | 80%  | 89%  | 91%  |
+| 23.2 m | 80%  | 81%  | 88%  | 90%  | 80%  | 80%  | 86%  | 92%  |
+| 27.8 m | 79%  | 80%  | 88%  | 90%  | 78%  | 82%  | 88%  | 91%  |
+
+| Stand-off | Reflected impulse: 0.5 m refined | 0.25 m | 0.25 m refined | 0.125 m |
+|-----------|------|------|------|------|
+| 3.5 m     | 89%  | 84%  | 105% | 96%  |
+| 4.6 m     | 89%  | 91%  | 99%  | 102% |
+| 7.0 m     | 95%  | 97%  | 101% | 102% |
+| 9.3 m     | 100% | 101% | 101% | 105% |
+| 13.9 m    | 101% | 102% | 102% | 104% |
+| 18.6 m    | 95%  | 97%  | 97%  | 98%  |
+| 23.2 m    | 94%  | 94%  | 94%  | 95%  |
+| 27.8 m    | 93%  | 94%  | 95%  | 94%  |
+
+Arrival times are as on the coarse grid, within 2%, and so is the incident impulse from 7 m
+out; closer in it is up to 10% higher. `blastbench
+validate` takes 12 s on 0.5 m cells refined against 21 s on 0.25 m cells, and 113 s on 0.25 m
+cells refined against about 290 s on 0.125 m cells. Refined by 4, 0.5 m cells give most of the
+0.125 m grid's peaks (71% to 93% incident) in 180 s; refining a grid that fine by 2 is better.
+Close to the charge the refined grid can run higher than the finer uniform one, since it starts
+from the coarse grid's larger sphere of gas.
 
 ### Afterburning
 

@@ -118,7 +118,26 @@ func runThroughput() throws {
         let start = ContinuousClock.now
         var steps = 0
         var swept = 1.0
-        if runWholeEvent {
+        if runWholeEvent && solver.configuration.refinement > 1 {
+            // Batch by batch, to follow how much of the air is refined.
+            var refined = 0.0
+            var batches = 0
+            while solver.time < event {
+                let result = solver.advance(steps: 64, timeLimit: event)
+                if result.steps == 0 { break }
+                swept =
+                    (swept * Double(steps) + result.sweptFraction * Double(result.steps))
+                    / Double(steps + result.steps)
+                steps += result.steps
+                refined += Double(result.refinedTiles)
+                batches += 1
+            }
+            let blocks = Double(
+                ((solver.grid.nx + 3) / 4) * ((solver.grid.ny + 3) / 4) * ((solver.grid.nz + 3) / 4))
+            print(
+                "  refined blocks of 4 x 4 x 4 cells: \(format(refined / Double(max(batches, 1)), 0)) on average, "
+                    + "of \(Int(blocks))")
+        } else if runWholeEvent {
             let result = solver.advance(until: event)
             (steps, swept) = (result.steps, result.sweptFraction)
         } else {
@@ -231,8 +250,22 @@ func runChamber() throws {
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
+/// The air's refinement from `--refine 2|4`, `--refine-threshold` and `--refine-memory` (MB).
+func configureRefinement(_ configuration: inout SolverConfiguration) {
+    if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }
+    if let threshold = option("refine-threshold").flatMap({ Float($0) }) {
+        configuration.refinementThreshold = threshold
+    }
+    if let memory = option("refine-memory").flatMap({ Int($0) }) {
+        configuration.refinementMemory = memory << 20
+    }
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
-    let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    var configuration = SolverConfiguration()
+    configureRefinement(&configuration)
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if option("air") == "thermal" {
         solver.configuration.airModel = .thermallyPerfect
         try solver.load(scenario)
@@ -324,6 +357,7 @@ func runValidation() throws {
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000
         }
+        configureRefinement(&solver.configuration)
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -477,7 +511,10 @@ func runSnapshot() throws {
     let width = option("width").flatMap { Int($0) } ?? 1600
     let height = option("height").flatMap { Int($0) } ?? 1000
 
-    let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+    var configuration = SolverConfiguration()
+    configureRefinement(&configuration)
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     solver.configuration.movingWalls = !flag("stationary-walls")
     let started = ContinuousClock.now
     var sleptAt: Double?

@@ -119,6 +119,17 @@ public struct SolverConfiguration: Sendable, Hashable {
     public var airSleepCrossings: Float = 5
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
+    /// Refine the air where the blast's shock is by this ratio, 2 or 4: each tile of 8 x 8 x 8
+    /// cells the shock crosses is swept as (8r)^3 cells in r steps of its own, so that the shock
+    /// stays sharp. 1 leaves the grid uniform. Not with afterburning, and not within the region
+    /// around a deformable structure. Read at `restart()`.
+    public var refinement = 1
+    /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
+    /// this fraction of the lower, and so are the tiles around it.
+    public var refinementThreshold: Float = 0.1
+    /// GPU memory for the refined tiles, in bytes; where the shock would need more, the rest of
+    /// it stays coarse. About 400 kB a tile at ratio 2, 1.5 MB at ratio 4.
+    public var refinementMemory = 1 << 30
 
     public init() {}
 }
@@ -199,6 +210,14 @@ struct SolverUniforms {
     var stillOxygen: Float = 0
     var afterburnRate: Float = 0
     var airModel: UInt32 = 0
+    var refineRatio: UInt32 = 0
+    var refineTileNx: UInt32 = 0
+    var refineTileNy: UInt32 = 0
+    var refineTileNz: UInt32 = 0
+    var refineSubstep: UInt32 = 0
+    var refineAlpha: Float = 0
+    var refineThreshold: Float = 0
+    var refineMaxPatches: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -281,6 +300,8 @@ public struct BatchResult: Sendable {
     /// Fraction of the grid's tiles swept, averaged over the batch's steps (1 when still air is
     /// not skipped).
     public var sweptFraction: Double = 1
+    /// Tiles refined at the end of the batch (0 when the air is not refined).
+    public var refinedTiles = 0
 }
 
 public enum BlastError: Error, CustomStringConvertible {

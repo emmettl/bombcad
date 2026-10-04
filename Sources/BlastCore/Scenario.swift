@@ -115,11 +115,13 @@ public struct Scenario: Sendable, Hashable, Codable {
 }
 
 extension BlastSolver {
-    /// Creates a solver sized for `scenario` and loads it.
+    /// Creates a solver sized for `scenario` and loads it, with `configuration` but the
+    /// scenario's atmosphere and reflecting faces.
     public convenience init(
-        device: MTLDevice, commandQueue: MTLCommandQueue? = nil, scenario: Scenario, cellSize: Float
+        device: MTLDevice, commandQueue: MTLCommandQueue? = nil, scenario: Scenario, cellSize: Float,
+        configuration: SolverConfiguration = SolverConfiguration()
     ) throws {
-        var configuration = SolverConfiguration()
+        var configuration = configuration
         configuration.ambientPressure = scenario.atmosphere.pressure
         configuration.reflectiveFaces = scenario.reflectiveFaces
         try self.init(
@@ -173,7 +175,7 @@ extension BlastSolver {
             deposit(scenario.charge)
             for charge in scenario.additionalCharges ?? [] { deposit(charge) }
         }
-        setGauges(cells: gaugeCells)
+        setGauges(cells: gaugeCells, points: scenario.gauges.map(\.position))
         restart()
         if let mapping, let mapped {
             recordMapped(mapped, charge: scenario.charge, radius: mapping.radius, gauges: gaugeCentres)

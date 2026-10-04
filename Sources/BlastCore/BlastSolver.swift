@@ -109,6 +109,14 @@ public final class BlastSolver {
     public private(set) var airIsAsleep = false
     /// The air's time step at the end of the last batch, which sizes the next batch's substeps.
     private var lastFluidStep: Float = 0
+    /// The finer level of the air, while it is refined (see `SolverConfiguration.refinement`).
+    private(set) var refinement: AirRefinement?
+    /// Bound in place of the refinement's buffers while the air is not refined.
+    private let refinementPlaceholder: MTLBuffer
+    /// Per gauge: the fine cell of its cell that holds its point, as x + r (y + r z), or
+    /// `UInt32.max` to read the coarse cell.
+    private let gaugeChildBuffer: MTLBuffer
+    private var gaugePoints: [SIMD3<Float>?] = []
 
     public init(
         device: MTLDevice,
@@ -169,6 +177,10 @@ public final class BlastSolver {
         gaugeLogBuffer = try buffer(
             Self.maxStepsPerBatch * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
+        gaugeChildBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge fine cells")
+        memset(gaugeChildBuffer.contents(), 0xFF, gaugeChildBuffer.length)
+        refinementPlaceholder = try buffer(64, "no refinement")
+        memset(refinementPlaceholder.contents(), 0xFF, refinementPlaceholder.length)
         let tile = Self.tileSize
         tileDims = SIMD3(
             (grid.nx + tile - 1) / tile, (grid.ny + tile - 1) / tile, (grid.nz + tile - 1) / tile)
@@ -300,8 +312,9 @@ public final class BlastSolver {
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
-    /// Chooses the cells whose pressure is recorded every step. Clears existing histories.
-    public func setGauges(cells: [(i: Int, j: Int, k: Int)]) {
+    /// Chooses the cells whose pressure is recorded every step. Clears existing histories. With
+    /// `points`, one per cell, a gauge whose cell is refined reads the fine cell holding its point.
+    public func setGauges(cells: [(i: Int, j: Int, k: Int)], points: [SIMD3<Float>]? = nil) {
         precondition(cells.count <= Self.maxGauges, "At most \(Self.maxGauges) gauges are supported")
         let pointer = gaugeCellBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
         for (n, cell) in cells.enumerated() {
@@ -310,6 +323,25 @@ public final class BlastSolver {
         }
         gaugeCount = cells.count
         gaugeHistories = Array(repeating: [], count: gaugeCount)
+        gaugePoints = (0..<cells.count).map { points?[$0] }
+        updateGaugeChildren()
+    }
+
+    /// Which fine cell of its cell each gauge reads, for the current refinement.
+    private func updateGaugeChildren() {
+        let pointer = gaugeChildBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
+        let cells = gaugeCellBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
+        for n in 0..<Self.maxGauges {
+            pointer[n] = .max
+            guard let refinement, n < gaugePoints.count, let point = gaugePoints[n] else { continue }
+            let index = Int(cells[n])
+            let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+            let r = refinement.ratio
+            let within = simd_clamp(
+                point / grid.cellSize - SIMD3<Float>(cell), .zero, SIMD3(repeating: 0.999))
+            let child = SIMD3<Int>((within * Float(r)).rounded(.down))
+            pointer[n] = UInt32(child.x + r * (child.y + r * child.z))
+        }
     }
 
     /// Replaces the deformable body. The current solid mask is taken as the rigid scenery, and
@@ -575,6 +607,8 @@ public final class BlastSolver {
             }
         }
 
+        setUpRefinement()
+
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         else { return }
@@ -594,10 +628,40 @@ public final class BlastSolver {
             encoder.setBuffer(hasSpecies ? speciesBuffers[current] : noSpecies, offset: 0, index: 4)
             dispatchGrid(encoder, pipeline: wakeTilesPipeline)
         }
+        if let refinement {
+            // Refine around the charge from the start; the regrid acts only on a step that
+            // advances, so the clock is given one.
+            var control = StepControl()
+            control.dt = 1
+            controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
+            refinement.encodeRegrid(
+                encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer,
+                impulse: impulseBuffer, tileFlags: tileFlagBuffer, tiles: nil, grid: grid, uniforms: uniforms)
+        }
         encodeVisualization(encoder)
         encoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
+    }
+
+    /// Makes, keeps or drops the finer level for the configuration, and releases its patches.
+    private func setUpRefinement() {
+        let ratio = configuration.refinement
+        guard ratio > 1, !hasSpecies else {
+            refinement = nil
+            updateGaugeChildren()
+            return
+        }
+        let memory = configuration.refinementMemory
+        if refinement?.ratio != ratio
+            || refinement?.maxPatches != max(1, memory / AirRefinement.bytesPerPatch(ratio: ratio))
+        {
+            refinement = nil
+            refinement = try? AirRefinement(
+                device: device, library: library, grid: grid, ratio: ratio, memory: memory)
+        }
+        refinement?.reset(keepingCoarse: hasBody ? couplingRegion : nil)
+        updateGaugeChildren()
     }
 
     // MARK: - Stepping
@@ -667,9 +731,18 @@ public final class BlastSolver {
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
             encoder.setBuffer(tileCountBuffer, offset: 0, index: 6)
             encoder.setBuffer(tileDispatchBuffer, offset: 0, index: 7)
+            encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 8)
+            encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 9)
+            encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+
+            let refining = refinement != nil && !asleep
+            if let refinement, refining {
+                refinement.encodeSaveHalo(
+                    encoder, coarse: stateBuffers[current], uniforms: uniforms, control: controlBuffer)
+            }
 
             // Alternate the sweep order each step so the splitting error stays second order.
             let order = globalStep.isMultiple(of: 2) ? [0, 1, 2] : [2, 1, 0]
@@ -687,6 +760,8 @@ public final class BlastSolver {
             encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
             encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
             encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
+            encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 13)
+            encoder.setBuffer(refinement?.coarseFlux ?? refinementPlaceholder, offset: 0, index: 14)
             for (n, axis) in axes.enumerated() where !asleep {
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
@@ -703,6 +778,14 @@ public final class BlastSolver {
                     dispatchGrid(encoder, pipeline: sweepPipeline)
                 }
                 current = 1 - current
+            }
+            if let refinement, refining {
+                refinement.encodeSubsteps(
+                    encoder, axes: axes, coarse: stateBuffers[current], mask: maskBuffer, peak: peakBuffer,
+                    control: controlBuffer, maxSpeed: maxSpeedBuffer, uniforms: uniforms)
+                refinement.encodeRefluxAndRestrict(
+                    encoder, axes: axes, coarse: stateBuffers[current], mask: maskBuffer,
+                    control: controlBuffer, impulse: impulseBuffer, uniforms: uniforms)
             }
 
             if let mixed {
@@ -752,6 +835,13 @@ public final class BlastSolver {
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
                 }
+            }
+            if let refinement, refining {
+                refinement.encodeRegrid(
+                    encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer,
+                    impulse: impulseBuffer, tileFlags: tileFlagBuffer,
+                    tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil, grid: grid,
+                    uniforms: uniforms)
             }
         }
         if updateVisualization {
@@ -805,7 +895,8 @@ public final class BlastSolver {
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(control.dt),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
-            maxOverpressure: control.maxOverpressure, sweptFraction: swept)
+            maxOverpressure: control.maxOverpressure, sweptFraction: swept,
+            refinedTiles: refinement?.patchCount ?? 0)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -825,6 +916,7 @@ public final class BlastSolver {
             total.lastTimeStep = result.lastTimeStep
             total.maxOverpressure = result.maxOverpressure
             total.isStable = total.isStable && result.isStable && commandBuffer.error == nil
+            total.refinedTiles = result.refinedTiles
             remaining -= count
             if result.steps < count || !result.isStable { break }
         }
@@ -843,6 +935,7 @@ public final class BlastSolver {
             total.lastTimeStep = result.lastTimeStep
             total.maxOverpressure = result.maxOverpressure
             total.isStable = total.isStable && result.isStable
+            total.refinedTiles = result.refinedTiles
             if result.steps == 0 || !result.isStable { break }
         }
         return total
@@ -949,7 +1042,7 @@ public final class BlastSolver {
     public var memoryFootprint: Int {
         let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8 + (structure?.memoryFootprint ?? 0)
-            + (shells?.memoryFootprint ?? 0)
+            + (shells?.memoryFootprint ?? 0) + (refinement?.memoryFootprint ?? 0)
     }
 
     /// Structural substeps encoded per fluid step. The fluid step never exceeds the CFL limit
@@ -986,6 +1079,7 @@ public final class BlastSolver {
         uniforms.stillMz = stillCell.momentumZ
         uniforms.stillEnergy = stillCell.energy
         uniforms.airModel = configuration.airModel.rawValue
+        refinement?.configure(&uniforms, threshold: configuration.refinementThreshold)
         if hasSpecies {
             uniforms.afterburnEnergy = configuration.afterburnEnergy
             uniforms.oxygenPerFuel = Self.oxygenPerFuel

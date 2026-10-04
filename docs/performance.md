@@ -13,6 +13,7 @@ power or thermal state; figures here are from cool runs.
 | Air blast, 1 million cells (0.5 m in a street scene) | 1×                    |
 | Air blast, 8.4 million cells (0.25 m)               | 17×                   |
 | Air blast, 67 million cells (0.125 m)               | 252×                  |
+| Air blast on 0.25 m cells refined by 2 near the shock (the peaks of 0.125 m) | 59× |
 | A 225,000-element concrete building, alone          | 54×                   |
 | The same, once pieces are colliding                 | 98×                   |
 | That building coupled to 1 million air cells        | 70×                   |
@@ -59,6 +60,33 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
 - Without `--full`, the finest figure is extrapolated from a timed sample of 192 steps of full
   sweeps, scaled by the swept fraction of the 0.25 m run (an estimate of 36 s, against 43 s
   measured).
+
+## Refinement
+
+```bash
+swift run -c release blastbench throughput --refine 2
+```
+
+Refined by 2 near the shock (see the [air-blast model](air-blast-model.md#refining-near-the-shock)),
+a grid gives about the peaks of one twice as fine. Against that finer grid, in one session,
+whole events:
+
+| Event | Refined by 2 | Uniform, twice as fine | Faster |
+|---|---|---|---|
+| Street, 0.5 m cells | 1.1 s | 3.3 s (0.25 m) | 3.0× |
+| Street, 0.25 m cells | 10.1 s | 46.5 s (0.125 m) | 4.6× |
+| Open ground, 0.5 m cells | 1.5 s | 5.5 s (0.25 m) | 3.7× |
+| Open ground, 0.25 m cells | 17.3 s | 97.6 s (0.125 m) | 5.6× |
+
+On 0.25 m cells about 4,000 to 5,000 blocks of 4 × 4 × 4 cells are refined on average, 3 to 4%
+of the grid, and memory is 1.55 GB (1 GB of it the pool of patches) against 3.8 GB on 0.125 m
+cells. A fine cell's update, with its ghost cells, costs about 1.6 times a coarse one; the rest
+of the refinement's work (saving the coarse cells around each patch, refluxing, averaging back
+and placing the patches) is under a tenth of it. The gain grows as the blast spreads, since the
+refined shell grows as the square of its radius and the air behind it as the cube.
+`blastbench validate` gains less (12 s against 21 s on 0.5 m cells, 113 s against about 290 s on
+0.25 m), as its blast does not spread far. The first version, with larger blocks, was slower than
+the finer grid; the [air-blast model](air-blast-model.md#refining-near-the-shock) has the story.
 
 ## Structural solver
 

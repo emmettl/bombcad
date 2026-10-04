@@ -55,6 +55,9 @@ struct SimulationSettings: Equatable {
     /// Burn the charge's products in the air, and let hot air store energy in molecular
     /// vibration: closer to tests, about twice as slow.
     var detailedCharge = false
+    /// Refine the air twice over where the shock is, so that peak pressures come out as on a grid
+    /// twice as fine. Not with `detailedCharge`, nor near a deformable structure.
+    var sharpShocks = false
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -519,10 +522,12 @@ final class SimulationModel {
         }
     }
 
-    /// Sets the air's charge model from the settings; takes effect when the scenario is loaded.
+    /// Sets the air's charge model and refinement from the settings; takes effect when the
+    /// scenario is loaded.
     private func configureAir(_ solver: BlastSolver) {
         solver.configuration.afterburning = settings.detailedCharge
         solver.configuration.airModel = settings.detailedCharge ? .thermallyPerfect : .idealGas
+        solver.configuration.refinement = settings.sharpShocks && !settings.detailedCharge ? 2 : 1
     }
 
     private func rebuild() {
@@ -541,7 +546,10 @@ final class SimulationModel {
                 // State (two copies), peak, impulse, mask and the visualisation volume, and with
                 // afterburning two copies of the fuel and oxygen; the structure's mesh is small by
                 // comparison.
-                let required = grid.cellCount * (settings.detailedCharge ? 73 : 57)
+                let refined = settings.sharpShocks && !settings.detailedCharge
+                let required =
+                    grid.cellCount * (settings.detailedCharge ? 73 : 57)
+                    + (refined ? SolverConfiguration().refinementMemory : 0)
                 guard UInt64(required) < device.recommendedMaxWorkingSetSize / 10 * 7 else {
                     throw BlastError.allocationFailed(
                         "\(grid.cellCount / 1_000_000) million cells; try a coarser resolution")
@@ -549,7 +557,7 @@ final class SimulationModel {
                 let created = try BlastSolver(
                     device: device, commandQueue: commandQueue, scenario: scenario,
                     cellSize: settings.resolution.cellSize)
-                if settings.detailedCharge {
+                if settings.detailedCharge || settings.sharpShocks {
                     configureAir(created)
                     try created.load(scenario)
                 }
