@@ -338,7 +338,8 @@ public final class StructureSolver {
         // Contact cells map into a table that wraps space periodically, offset by half an element
         // so that every undeformed node sits in the middle of its cell. Each period is the
         // structure's extent plus a few cells, rounded up to a power of two, then halved along the
-        // longest axis until the table has no more than about eight entries per node.
+        // longest axis until the table has no more than about four entries per node (of eight
+        // slots each).
         contactGridOrigin = origin - 0.5 * h
         func powerOfTwo(atLeast value: Int) -> Int {
             var result = 1
@@ -347,14 +348,14 @@ public final class StructureSolver {
         }
         var period = SIMD3(
             powerOfTwo(atLeast: ex + 4), powerOfTwo(atLeast: ey + 4), powerOfTwo(atLeast: ez + 4))
-        while period.x * period.y * period.z > max(8 * nodeCount, 4096) {
+        while period.x * period.y * period.z > max(4 * nodeCount, 4096) {
             let axis = period.x >= period.y && period.x >= period.z ? 0 : (period.y >= period.z ? 1 : 2)
             period[axis] /= 2
         }
         contactPeriod = period
         let gridCells = period.x * period.y * period.z
         contactHeadBuffer = try buffer(gridCells * 4, "contact grid headers")
-        contactSlotBuffer = try buffer(gridCells * 16, "contact grid slots")
+        contactSlotBuffer = try buffer(gridCells * 32, "contact grid slots")
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         contactForceBuffer = try buffer(nodeList.count * 12, "contact forces")
         failureGateBuffer = try buffer(16, "failure gate")

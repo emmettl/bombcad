@@ -180,8 +180,11 @@ constant uint maxMaterials = 8;
 // fold the per-element lookup away.
 constant bool singleMaterial [[function_constant(0)]];
 
-// Each cell of the contact grid holds up to this many nodes.
-constant uint contactSlots = 4;
+// Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
+// debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
+// were pushed back out when they reappeared, feeding energy to the debris until, in the chamber
+// test, half a million elements had been torn off by it.
+constant uint contactSlots = 8;
 constant uint emptySlot = 0xFFFFFFFFu;
 // Contact safeguards, for solids and shells alike: a pair separating faster than
 // `separationLimit` is pushed no further, and contact changes a node's velocity by at most
