@@ -308,7 +308,8 @@ public enum ChamberTest {
     public static func run(
         device: MTLDevice, scenario: Scenario, cellSize: Float, duration: Double,
         interiorOverpressure: Float = 0, afterburning: Bool = false, afterburnEnergy: Float? = nil,
-        airModel: AirModel = .idealGas, refinement: Int = 1
+        airModel: AirModel = .idealGas, refinement: Int = 1, contact: ContactMode? = nil,
+        progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         if afterburning || airModel != .idealGas || refinement > 1 {
@@ -338,6 +339,7 @@ public enum ChamberTest {
             solver.restart()
         }
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
+        if let contact { structure.contactMode = contact }
         let h = structure.model.elementSize
         let edge = SIMD3<Float>(roofEdge, 5.0, roof.high)
         let start = ContinuousClock.now
@@ -358,10 +360,20 @@ public enum ChamberTest {
             ),
         ]
         var probes = probePoints.map { ($0.0, [SIMD2<Float>]()) }
+        var nextReport = 0.01
         while solver.time < duration {
             let result = solver.advance(steps: 16, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
             history.append(SIMD2(Float(solver.time), structure.displacement(i, j, k).z))
+            if let progress, solver.time >= nextReport {
+                nextReport += 0.01
+                let summary = structure.summary()
+                let seconds = (ContinuousClock.now - start).components.seconds
+                progress(
+                    String(
+                        format: "%3.0f ms: roof edge %4.0f mm, %d elements failed, %d s", solver.time * 1000,
+                        structure.displacement(i, j, k).z * 1000, summary.erodedElements, seconds))
+            }
             for (n, probe) in probePoints.enumerated() {
                 let (a, b, c) = probe.1
                 probes[n].1.append(SIMD2(Float(solver.time), dot(structure.displacement(a, b, c), probe.2)))

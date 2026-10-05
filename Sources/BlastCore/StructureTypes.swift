@@ -284,8 +284,9 @@ public struct ReinforcementLayer: Sendable, Hashable, Codable {
 /// a chamfered corner. In the plane of those two axes the bars run from `start` along
 /// `direction` (which has equal and opposite or equal components along the two axes and none
 /// along the third) for `length`; the layer repeats along the third axis over `span`, with
-/// `areaPerMetre` of bar per metre along it. It is smeared over the diagonal rows of elements
-/// the bars pass through, in proportion to how near each row lies, so that its steel is kept.
+/// `areaPerMetre` of bar per metre along it. It is smeared across a band sqrt(2) elements wide,
+/// over the diagonal rows of elements there in proportion to how near each lies to the bars,
+/// so that its steel is kept.
 /// An element holds one set of inclined bars; where layers of different directions overlap,
 /// the larger wins.
 public struct InclinedBars: Sendable, Hashable, Codable {

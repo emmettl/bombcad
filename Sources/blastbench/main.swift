@@ -226,7 +226,14 @@ func runChamber() throws {
         afterburning: flag("afterburn"),
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas,
-        refinement: option("refine").flatMap { Int($0) } ?? 1)
+        refinement: option("refine").flatMap { Int($0) } ?? 1,
+        contact: flag("no-contact") ? .off : nil,
+        // `--progress` reports every 10 ms of a long run.
+        progress: flag("progress")
+            ? { line in
+                print(line)
+                fflush(stdout)
+            } : nil)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )

@@ -107,6 +107,9 @@ public final class StructureSolver {
     private let barPlasticBuffers: [MTLBuffer]
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
+    /// Per material, the most steel any of its elements holds along one direction (the largest
+    /// lattice ratio plus any inclined bars), for the time step.
+    private var densestSteel: [Float] = []
     /// Index into `materials` of every element's material, one byte each.
     private let materialIndexBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
@@ -287,6 +290,7 @@ public final class StructureSolver {
         // Smear each reinforcement layer into the elements it overlaps, in proportion to the
         // share of the element's volume inside the layer.
         memset(steelBuffer.contents(), 0, steelBuffer.length)
+        var densest = [Float](repeating: 0, count: materials.count)
         if hasSteel {
             let ratios = steelBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: elements)
             // Bars are ignored in elements whose material has no steel.
@@ -300,9 +304,12 @@ public final class StructureSolver {
                     ratio += layer.ratio * (overlap.x * overlap.y * overlap.z / (h * h * h))
                 }
                 ratios[n] = SIMD4(ratio, 0)
-                // Inclined bars: the share of each layer this element's diagonal row takes.
+                // Inclined bars: each layer is spread across a band sqrt(2) elements wide (two of
+                // the diagonal rows its elements form), as a hat centred on the bars, so that its
+                // steel is kept exactly. In one row, on fine meshes where the bars overlap a mat
+                // as they anchor into a member, the steel's stiffness outran the time step.
                 let centre = low + 0.5 * h
-                let rowSpacing = h / Float(2).squareRoot()
+                let band = h * Float(2).squareRoot()
                 var best: (ratio: Float, code: UInt16) = (0, 0)
                 for bars in model.inclinedBars {
                     guard let axes = bars.axes, bars.span.contains(centre[axes.third]) else { continue }
@@ -310,14 +317,14 @@ public final class StructureSolver {
                     var offset = centre - bars.start
                     offset[axes.third] = 0
                     let along = simd_dot(offset, direction)
-                    guard along >= -0.5 * rowSpacing, along <= bars.length + 0.5 * rowSpacing else {
-                        continue
-                    }
+                    guard along >= -0.25 * band, along <= bars.length + 0.25 * band else { continue }
                     let across = simd_length(offset - along * direction)
-                    let weight = max(0, 1 - across / rowSpacing)
-                    let share = bars.areaPerMetre * weight / rowSpacing
+                    let weight = max(0, 1 - across / band)
+                    let share = bars.areaPerMetre * weight / band
                     if share > best.ratio { best = (share, axes.code) }
                 }
+                let own = Int(elementMaterials[n])
+                densest[own] = max(densest[own], ratio.max() + best.ratio)
                 if best.ratio > 0 {
                     let base = steelBuffer.contents().advanced(by: n * 16 + 12)
                     base.storeBytes(of: Float16(best.ratio), as: Float16.self)
@@ -334,6 +341,7 @@ public final class StructureSolver {
             }
             return result
         }
+        densestSteel = densest
         instanceBuffer = try indexBuffer(active, "structure instances")
 
         // Only nodes touched by an element need integrating.
@@ -666,9 +674,18 @@ public final class StructureSolver {
     /// Set by a body this one is tied to, so both take the same steps.
     public var stepOverride: Float?
 
-    /// Largest stable time step of this body alone, in seconds.
+    /// Largest stable time step of this body alone, in seconds: the time a compression wave takes
+    /// to cross an element, its speed raised by the bars where they are densest.
     public var stableTimeStep: Float {
-        timeStepSafety * model.elementSize / (materials.map(\.dilatationalWaveSpeed).max() ?? 1)
+        let speeds = materials.enumerated().map { n, material -> Float in
+            guard let steel = material.steel, n < densestSteel.count, densestSteel[n] > 0 else {
+                return material.dilatationalWaveSpeed
+            }
+            let modulus =
+                material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * densestSteel[n]
+            return (modulus / material.density).squareRoot()
+        }
+        return timeStepSafety * model.elementSize / (speeds.max() ?? 1)
     }
 
     /// Substeps to encode per fluid step so that a fluid step of `fluidStepBound` seconds can be
