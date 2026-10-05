@@ -183,6 +183,8 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// strengths above are then the wall's as a whole, used where the elements are too coarse
     /// to show the joints.
     public var units: MasonryUnits?
+    /// Drawn as see-through glass rather than an opaque solid.
+    public var isTransparent = false
 
     /// A von Mises material.
     public init(
@@ -285,6 +287,7 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         material.crushingEnergy = 2000
         material.erosionOpening = 0.0005
         material.aggregateSize = 0
+        material.isTransparent = true
         return material
     }()
 
@@ -1014,6 +1017,8 @@ extension StructureMaterial {
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)
         units = try container.decodeIfPresent(MasonryUnits.self, forKey: .units)
+        // Glass saved before this property existed is still drawn as glass.
+        isTransparent = try value(.isTransparent, name.localizedCaseInsensitiveContains("glass"))
     }
 }
 

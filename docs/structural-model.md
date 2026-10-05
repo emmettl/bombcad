@@ -45,7 +45,7 @@ the charge break through anyway (1,969 against 1,936 elements removed; 350 again
 concrete block (hollow, as breeze block; see the
 [concrete model](concrete-model.md#default-parameters)), the presets include structural steel (S355: von Mises, 355 MPa, failing at 20% strain) and annealed glass
 (brittle: cracking at 45 MPa, with the fracture energy, 8 J/m², of its toughness, and gone
-after half a millimetre), meant for panes meshed as shells, alone or in a
+after half a millimetre), meant for panes meshed as shells (and drawn as see-through glass, turning milky as it cracks), alone or in a
 [mixed body](shell-model.md#shells-and-solids-together). A 1 m square pane of 6 mm glass held
 at its edges breaks under 1 kg at 3 m and survives 0.5 g.
 

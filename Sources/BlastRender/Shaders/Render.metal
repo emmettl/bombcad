@@ -252,6 +252,11 @@ struct MeshOut {
     float damage [[flat]];
 };
 
+// Which shells a draw takes: all of them, all but the glass, or the glass alone.
+constant uint drawAll = 0;
+constant uint drawOpaque = 1;
+constant uint drawGlass = 2;
+
 // Draws the outer faces of the structure's elements, pulled straight from the solver's buffers:
 // 36 vertices per element, with hidden and eroded faces collapsed to nothing.
 vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
@@ -352,7 +357,9 @@ vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
                            const device uchar *flags [[buffer(2)]],
                            const device float *damage [[buffer(3)]],
                            constant MeshUniforms &u [[buffer(4)]],
-                           const device float4 *reference [[buffer(5)]]) {
+                           const device float4 *reference [[buffer(5)]],
+                           constant uint &transparentMaterials [[buffer(6)]],
+                           constant uint &draw [[buffer(7)]]) {
     MeshOut out;
     out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
     out.world = float3(0.0f);
@@ -362,6 +369,15 @@ vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
         return out;
     }
     ShellMeshElement el = elements[instanceID];
+    bool glass = ((transparentMaterials >> min(el.material, 31u)) & 1u) != 0u;
+    if ((draw == drawOpaque && glass) || (draw == drawGlass && !glass)) {
+        return out;
+    }
+    // A pane is a sheet: blended, its thin sides and its second face would stack up into
+    // grid lines and moiré between neighbouring elements, so only its first face is drawn.
+    if (draw == drawGlass && (flag == 1 || flag == 3) && vertexID >= 6) {
+        return out;
+    }
     float3 normal = float3(0.0f);
     normal[el.axis] = 1.0f;
     // Box corners: the four nodes on the lower face, then on the upper.
@@ -479,6 +495,41 @@ fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms
         colour = float3(0.36f, 0.33f, 0.31f) * light;  // rubble
     }
     return float4(colour, 1.0f);
+}
+
+// Glass, drawn after everything opaque and blended over it without writing depth. Clear float
+// glass is a faint green-blue; it reflects the sky more as the view grazes it (Schlick's
+// approximation to the Fresnel term, with 4% reflected head-on) and shows a sharp highlight
+// of the sun. Cracking turns it milky and opaque, so damage still reads, and its shards are
+// pale, glinting chips.
+fragment float4 glassFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
+    float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
+    float3 view = normalize(u.eye.xyz - in.world);
+    if (dot(normal, view) < 0.0f) {
+        normal = -normal;
+    }
+    float facing = saturate(dot(normal, view));
+    float fresnel = 0.04f + 0.96f * pow(1.0f - facing, 5.0f);
+    float3 reflected = reflect(-view, normal);
+    float3 sky = mix(float3(0.36f, 0.37f, 0.38f), mix(float3(0.78f, 0.84f, 0.90f), float3(0.40f, 0.55f, 0.80f),
+                                                      saturate(reflected.z)),
+                     smoothstep(-0.15f, 0.15f, reflected.z));
+    float glint = pow(saturate(dot(reflected, u.sun.xyz)), 300.0f);
+    float3 tint = float3(0.55f, 0.74f, 0.74f);
+
+    if (in.damage > 1.5f) {
+        float light = 0.6f + 0.4f * saturate(dot(normal, u.sun.xyz));
+        float3 colour = mix(float3(0.70f, 0.84f, 0.86f) * light, sky, 0.35f) + 4.0f * glint;
+        return float4(colour, 0.85f);
+    }
+    float3 colour = mix(tint * 0.5f, sky, fresnel) + 3.0f * glint;
+    float alpha = 0.16f + 0.75f * fresnel + glint;
+    // Cracked: frosted white, from a hairline to fully crazed as the damage index rises.
+    float crazed = smoothstep(0.02f, 0.6f, saturate(in.damage));
+    float light = 0.65f + 0.35f * saturate(dot(normal, u.sun.xyz));
+    colour = mix(colour, float3(0.90f, 0.93f, 0.94f) * light, crazed);
+    alpha = mix(alpha, 0.85f, crazed);
+    return float4(colour, saturate(alpha));
 }
 
 // Second pass: lays the blast wave over the finished scene.

@@ -168,9 +168,12 @@ public final class SceneRenderer {
     private let meshPipeline: MTLRenderPipelineState
     private let shellPipeline: MTLRenderPipelineState
     private let beamPipeline: MTLRenderPipelineState
+    private let glassPipeline: MTLRenderPipelineState
     private let compositePipeline: MTLRenderPipelineState
     private let sceneDepthState: MTLDepthStencilState
     private let meshDepthState: MTLDepthStencilState
+    /// Tested against what is drawn but not written, for glass.
+    private let glassDepthState: MTLDepthStencilState
     private let boxBuffer: MTLBuffer
     private let gaugeBuffer: MTLBuffer
     private var boxCount = 0
@@ -193,11 +196,21 @@ public final class SceneRenderer {
             throw BlastError.missingShader("Render.metal")
         }
         let library = try device.makeLibrary(source: String(contentsOf: url, encoding: .utf8), options: nil)
-        func pipeline(vertex: String, fragment: String, depth: Bool) throws -> MTLRenderPipelineState {
+        func pipeline(vertex: String, fragment: String, depth: Bool, blended: Bool = false) throws
+            -> MTLRenderPipelineState
+        {
             let descriptor = MTLRenderPipelineDescriptor()
             descriptor.vertexFunction = library.makeFunction(name: vertex)
             descriptor.fragmentFunction = library.makeFunction(name: fragment)
             descriptor.colorAttachments[0].pixelFormat = Self.pixelFormat
+            if blended {
+                let attachment = descriptor.colorAttachments[0]!
+                attachment.isBlendingEnabled = true
+                attachment.sourceRGBBlendFactor = .sourceAlpha
+                attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+                attachment.sourceAlphaBlendFactor = .one
+                attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
             if depth {
                 descriptor.depthAttachmentPixelFormat = Self.depthFormat
             }
@@ -207,13 +220,15 @@ public final class SceneRenderer {
         meshPipeline = try pipeline(vertex: "structureVertex", fragment: "structureFragment", depth: true)
         shellPipeline = try pipeline(vertex: "shellVertex", fragment: "structureFragment", depth: true)
         beamPipeline = try pipeline(vertex: "beamVertex", fragment: "structureFragment", depth: true)
+        glassPipeline = try pipeline(
+            vertex: "shellVertex", fragment: "glassFragment", depth: true, blended: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
-        func depthState(_ compare: MTLCompareFunction) throws -> MTLDepthStencilState {
+        func depthState(_ compare: MTLCompareFunction, writes: Bool = true) throws -> MTLDepthStencilState {
             let descriptor = MTLDepthStencilDescriptor()
             descriptor.depthCompareFunction = compare
-            descriptor.isDepthWriteEnabled = true
+            descriptor.isDepthWriteEnabled = writes
             guard let state = device.makeDepthStencilState(descriptor: descriptor) else {
                 throw BlastError.allocationFailed("depth state")
             }
@@ -221,6 +236,7 @@ public final class SceneRenderer {
         }
         sceneDepthState = try depthState(.always)
         meshDepthState = try depthState(.less)
+        glassDepthState = try depthState(.less, writes: false)
 
         let vectorStride = MemoryLayout<SIMD4<Float>>.stride
         guard
@@ -335,6 +351,7 @@ public final class SceneRenderer {
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: structure.elementCount)
         }
+        var glass: ShellSolver?
         if let shells, shells.elementCount + shells.beamCount > 0 {
             var mesh = MeshUniforms(
                 eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
@@ -351,10 +368,19 @@ public final class SceneRenderer {
             sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
             sceneEncoder.setVertexBuffer(shells.referenceBuffer, offset: 0, index: 5)
             sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
+            // Glass is drawn last, over everything opaque (below).
+            var transparent: UInt32 = 0
+            for (n, material) in shells.materials.enumerated() where material.isTransparent && n < 32 {
+                transparent |= 1 << UInt32(n)
+            }
+            var draw: UInt32 = transparent == 0 ? 0 : 1
+            sceneEncoder.setVertexBytes(&transparent, length: 4, index: 6)
+            sceneEncoder.setVertexBytes(&draw, length: 4, index: 7)
             if shells.elementCount > 0 {
                 sceneEncoder.drawPrimitives(
                     type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.elementCount)
             }
+            glass = transparent != 0 && shells.elementCount > 0 ? shells : nil
             if shells.beamCount > 0 {
                 sceneEncoder.setRenderPipelineState(beamPipeline)
                 sceneEncoder.setVertexBuffer(shells.beamBuffer, offset: 0, index: 0)
@@ -363,6 +389,17 @@ public final class SceneRenderer {
                 sceneEncoder.drawPrimitives(
                     type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.beamCount)
             }
+        }
+        if let glass {
+            sceneEncoder.setRenderPipelineState(glassPipeline)
+            sceneEncoder.setDepthStencilState(glassDepthState)
+            sceneEncoder.setVertexBuffer(glass.elementBuffer, offset: 0, index: 0)
+            sceneEncoder.setVertexBuffer(glass.flagBuffer, offset: 0, index: 2)
+            sceneEncoder.setVertexBuffer(glass.displayBuffer, offset: 0, index: 3)
+            var draw: UInt32 = 2
+            sceneEncoder.setVertexBytes(&draw, length: 4, index: 7)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: glass.elementCount)
         }
         sceneEncoder.endEncoding()
 
