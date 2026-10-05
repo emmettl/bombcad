@@ -86,7 +86,8 @@ The whole path has been run for real, with the `BombCAD-notary` profile, on 2026
 | Build      | Commit    | Apple submission                       | Note                          |
 |------------|-----------|----------------------------------------|-------------------------------|
 | 0.1.0 (1)  | `cb90a14` | `5d9e4182-7794-49d2-a448-21d4eb68190d` | Superseded: no licence inside |
-| 0.1.0 (2)  | `2a906cb` | `1bf60a66-4602-46a3-b940-7eda11545870` | Current candidate             |
+| 0.1.0 (2)  | `2a906cb` | `1bf60a66-4602-46a3-b940-7eda11545870` | Published as v0.1.0           |
+| 0.1.1 (3)  | `646ff4e` | `59e35f9c-2aca-4144-8130-314d4604c5d5` | Published as v0.1.1           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -97,6 +98,14 @@ on a second Mac. The individual checks under "Before publishing" were not record
 Build 2's ZIP, checksum and manifest are attached to the GitHub release `v0.1.0`, published on
 2026-10-06 with its tag on `2a906cb`; the copy downloaded back from it matched the checksum.
 The repository was made public the same day, so anyone can download it.
+
+Build 3 (0.1.1) went the same way on 2026-10-06: Apple accepted it, and a fresh expansion of
+its ZIP matched the checksum, validated its stapled ticket, passed
+`codesign --verify --deep --strict`, was accepted by `spctl` as `Notarized Developer ID`, and
+holds the licence text and both shader bundles. Its ZIP, checksum and manifest are attached to
+the GitHub release `v0.1.1`, tagged on `646ff4e`; the copy downloaded back matched the
+checksum. The notary step had to be run from Terminal.app: in shells started by the Claude
+desktop app, `notarytool` reported no `BombCAD-notary` profile.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
