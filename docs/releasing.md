@@ -44,8 +44,8 @@ credentials are only tried on submission.
 1. runs `make check` (strict formatting lint, the test suite, the release-script tests and a
    build);
 2. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
-   app's version matches the source, that both shader bundles are inside it and that it is
-   arm64;
+   app's version matches the source, that both shader bundles and the licence text are inside
+   it and that it is arm64;
 3. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
    (the shaders are compiled at run time by Metal's own compiler service, which needs none);
 4. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
@@ -77,11 +77,26 @@ opening and saving a layout.
 ## Checked so far
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
-a rejected notarization, a Gatekeeper refusal and a missing shader bundle each stop it before
-an archive is written. On the development Mac the app has been signed with the Developer ID
-identity and the hardened runtime and passes `codesign --verify --deep --strict`, and
-`blastbench`, signed the same way, compiles the shaders and runs. No build has yet been
-submitted for notarization.
+a rejected notarization, a Gatekeeper refusal, a missing shader bundle and a missing licence
+each stop it before an archive is written. On the development Mac `blastbench`, signed with the
+Developer ID identity and the hardened runtime, compiles the shaders and runs.
 
-The repository has no licence file. One is not needed to notarize, but should be chosen before
-the source or a build is published.
+The whole path has been run for real, with the `BombCAD-notary` profile, on 2026-10-05:
+
+| Build      | Commit    | Apple submission                       | Note                          |
+|------------|-----------|----------------------------------------|-------------------------------|
+| 0.1.0 (1)  | `cb90a14` | `5d9e4182-7794-49d2-a448-21d4eb68190d` | Superseded: no licence inside |
+| 0.1.0 (2)  | `2a906cb` | `1bf60a66-4602-46a3-b940-7eda11545870` | Current candidate             |
+
+For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
+assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
+its checksum, validated its stapled ticket, passed `codesign --verify --deep --strict`, was
+accepted by `spctl` and holds the licence text. On 2026-10-06 build 2 was reported to work fine
+on a second Mac. The individual checks under "Before publishing" were not recorded one by one.
+
+Build 2's ZIP, checksum and manifest are attached to the GitHub release `v0.1.0`, published on
+2026-10-06 with its tag on `2a906cb`; the copy downloaded back from it matched the checksum.
+The repository was made public the same day, so anyone can download it.
+
+The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
+copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

@@ -276,7 +276,6 @@ public final class BlastSolver {
 
     /// Sets every cell from a closure and restarts the clock. Intended for small grids.
     public func fill(_ body: (_ i: Int, _ j: Int, _ k: Int) -> Primitive) {
-        let gamma = configuration.gamma
         mutateState { cells in
             for k in 0..<grid.nz {
                 for j in 0..<grid.ny {

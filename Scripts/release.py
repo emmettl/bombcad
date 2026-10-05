@@ -90,6 +90,8 @@ def release(args):
     missing = [name for name in RESOURCE_BUNDLES if not (app / "Contents/Resources" / name).is_dir()]
     if missing:
         raise ValueError(f"The app lacks its shader bundles: {', '.join(missing)}.")
+    if not (app / "Contents/Resources/LICENSE").is_file():
+        raise ValueError("The app lacks its licence text, which must ship with every copy.")
     architecture = run("lipo", "-archs", str(app / "Contents/MacOS" / EXECUTABLE), capture=True).strip()
     if architecture != "arm64":
         raise ValueError("This release channel expects an arm64 build.")
