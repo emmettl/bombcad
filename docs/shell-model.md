@@ -277,6 +277,19 @@ little as the specimen did, where the solid elements rebound twice as far.
 | Three-storey building, 100 kg, by 150 ms | Ground-floor panels near the charge broken through, 1,264 elements removed | 320 removed |
 | Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Stands: 8 mm, nothing removed |
 
+The two tall layouts are meshed with shells and beams only, since solid elements would be far
+too many, so they share the shells' readiness to collapse. Run for 4 s on 0.5 m air:
+
+| Layout | 250 kg | 350 kg | 500 kg | 1,000 kg |
+|---|---|---|---|---|
+| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 120 mm and stands | Loses the front column; the floors above bridge it | The floors tear from their columns one after another, from 1 to 3 s, and fall onto the ground floor; most columns are left standing bare | Most ground-floor columns snap in 0.5 s; collapses |
+| Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses the front column; the core and floors bridge it | | The front bays of every floor fold down about the core's face by 1.5 s; the rest follows by 4 s | Collapses |
+
+The way they fall, the slabs sliding off columns that stay up, is the slip rule at the column
+heads (limitation 4) at work: flat slabs without steel through the columns do fail like that,
+but the rule has not been compared with a test, and with solid elements, which have dowel
+action and kinking, the two-storey frame stands at charges that bring its shells down.
+
 None of these has been compared with a test. The solid elements' column was measured after
 their bars were made to resist sliding across cracks and to hold cracked sections together
 (see the [concrete model](concrete-model.md#shear-across-cracks)), and with cracks that turn

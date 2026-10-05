@@ -22,6 +22,8 @@ It is a study of the numerics and the performance, not a design tool.
 
 ![A two-storey frame's glass façade breaking up 100 ms after 20 kg in the street](docs/glass-facade.png)
 
+![A twelve-storey tower 1.5 s after losing its front columns: the front bays of every floor fold down](docs/twelve-storey.png)
+
 ## Running it
 
 Requires macOS 15 or later, Swift 6.4 and a Metal GPU.
@@ -43,7 +45,9 @@ wheel to zoom. Space runs and pauses, ⌘R resets.
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
-frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building, an
+frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building,
+an eight-storey frame and a twelve-storey tower with a concrete core (both shells and beams,
+for collapse over several seconds), an
 open-sided car park with a charge inside, an underpass, a column close to a charge, a
 two-storey house of concrete blockwork meshed with shells, a blockwork boundary wall meshed
 block by block with its mortar joints, and the internal-explosion test
@@ -83,6 +87,8 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | The building with its front wall solid, the rest shells     | 24× slower                   |
 | Three-storey frame with masonry cladding, 160,000 elements  | 60× slower                   |
 | Two-storey frame collapsing over 3 s                        | 11× slower                   |
+| Eight-storey frame collapsing over 4 s, 31,000 shells and beams, 0.5 m air | 19× slower    |
+| Twelve-storey tower collapsing over 4 s, 95,000 shells and beams, 0.5 m air | 48× slower   |
 
 Three comparisons with the outside world, all in the [validation notes](docs/validation.md):
 

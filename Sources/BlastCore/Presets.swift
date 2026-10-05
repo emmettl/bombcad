@@ -10,6 +10,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case frame
     case infilledFrame
     case threeStorey
+    case tallFrame
+    case coreTower
     case columnCloseIn
     case protectedBuilding
     case glassFacade
@@ -32,6 +34,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .frame: "Two-storey frame"
         case .infilledFrame: "Frame with masonry infill"
         case .threeStorey: "Three-storey building"
+        case .tallFrame: "Eight-storey frame"
+        case .coreTower: "Twelve-storey tower"
         case .columnCloseIn: "Column, close-in"
         case .protectedBuilding: "Wall in front of a building"
         case .glassFacade: "Glass façade"
@@ -408,6 +412,107 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .internalExplosion:
             // The reinforced concrete chamber of Shang et al. (2026), half of it: see ChamberTest.
             return ChamberTest.scenario()
+
+        case .tallFrame:
+            // An eight-storey concrete frame, 28 m high: three bays by two of 6 m, 3.5 m storeys,
+            // 250 mm flat slabs and 450 mm columns with 2.5% of steel, meshed as shells and
+            // beams of 0.25 m. The charge stands 3 m from a ground-floor column in the middle
+            // of the long face; what it breaks there decides whether the floors above can
+            // bridge the gap or come down onto those below. At 250 kg the frame sways and
+            // stands; at 350 kg it loses that column and the floors above bridge it; at 500 kg
+            // the floors tear from their columns one after another and fall, over 2 to 3 s.
+            let column: Float = 0.45
+            let storey: Float = 3.5
+            let xs: [Float] = [16, 22, 28, 34]
+            let ys: [Float] = [14, 20, 26]
+            let levels = (1...8).map { Float($0) * storey - 0.25 }
+            let top = levels.last! + 0.25
+            var columns: [Box] = []
+            for x in xs {
+                for y in ys {
+                    columns.append(Box(x: x...(x + column), y: y...(y + column), height: top))
+                }
+            }
+            let slabs = levels.map {
+                Box(
+                    min: SIMD3(xs.first!, ys.first!, $0),
+                    max: SIMD3(xs.last! + column, ys.last! + column, $0 + 0.25))
+            }
+            var structure = StructureModel(solids: columns + slabs, elementSize: 0.25)
+            structure.elementKind = .shell
+            for index in columns.indices {
+                structure.setReinforcement(.column(longitudinal: 0.025, ties: 0.005), of: index)
+            }
+            for index in slabs.indices {
+                structure.setReinforcement(
+                    .mats(areaPerMetre: 754e-6, depth: Self.barDepth, bothFaces: true),
+                    of: columns.count + index)
+            }
+            structure.autoReinforce()
+            return Scenario(
+                name: title, domainSize: SIMD3(56, 44, 36), boxes: [],
+                charge: Charge(mass: 500, position: SIMD3(22.2, 11, 1)),
+                gauges: [
+                    Gauge("Front column", at: SIMD3(22.2, 13.9, 1.5)),
+                    Gauge("Under first floor", at: SIMD3(25, 17, 3)),
+                    Gauge("Roof", at: SIMD3(25, 20, top + 0.5)),
+                ],
+                structure: structure)
+
+        case .coreTower:
+            // A twelve-storey tower, 42 m high: a 6 m square concrete core of 300 mm walls (lift
+            // and stair shafts, with a doorway on each floor) in the middle of a 20 m square
+            // floor plate, 250 mm flat slabs on twelve perimeter columns of 500 mm with 2.5% of
+            // steel, meshed as shells and beams of 0.25 m. The charge stands 3 m from the
+            // middle column of the front face.
+            let column: Float = 0.5
+            let storey: Float = 3.5
+            let (x0, x1): (Float, Float) = (18, 38)
+            let (y0, y1): (Float, Float) = (14, 34)
+            let levels = (1...12).map { Float($0) * storey - 0.25 }
+            let top = levels.last! + 0.25
+            let grid: [Float] = [0, 20.0 / 3, 40.0 / 3, 20 - column]
+            var columns: [Box] = []
+            for (n, a) in grid.enumerated() {
+                for b in n == 0 || n == 3 ? grid : [grid[0], grid[3]] {
+                    columns.append(
+                        Box(x: (x0 + a)...(x0 + a + column), y: (y0 + b)...(y0 + b + column), height: top))
+                }
+            }
+            let (c0, c1): (Float, Float) = (25, 31)
+            let (d0, d1): (Float, Float) = (21, 27)
+            let t: Float = 0.3
+            let core = [
+                Box(min: SIMD3(c0, d0, 0), max: SIMD3(c0 + t, d1, top)),
+                Box(min: SIMD3(c1 - t, d0, 0), max: SIMD3(c1, d1, top)),
+                Box(min: SIMD3(c0 + t, d0, 0), max: SIMD3(c1 - t, d0 + t, top)),
+                Box(min: SIMD3(c0 + t, d1 - t, 0), max: SIMD3(c1 - t, d1, top)),
+            ]
+            let slabs = levels.map { Box(min: SIMD3(x0, y0, $0), max: SIMD3(x1, y1, $0 + 0.25)) }
+            var structure = StructureModel(solids: columns + core + slabs, elementSize: 0.25)
+            structure.elementKind = .shell
+            for index in columns.indices {
+                structure.setReinforcement(.column(longitudinal: 0.025, ties: 0.005), of: index)
+            }
+            for index in slabs.indices {
+                structure.setReinforcement(
+                    .mats(areaPerMetre: 754e-6, depth: Self.barDepth, bothFaces: true),
+                    of: columns.count + core.count + index)
+            }
+            structure.autoReinforce()
+            // A doorway into the core on every floor, through its front wall.
+            structure.openings = ([0] + levels.dropLast().map { $0 + 0.25 }).map { floor in
+                Box(min: SIMD3(27.5, d0 - 0.1, floor), max: SIMD3(28.5, d0 + t + 0.1, floor + 2.1))
+            }
+            return Scenario(
+                name: title, domainSize: SIMD3(56, 48, 52), boxes: [],
+                charge: Charge(mass: 500, position: SIMD3(x0 + 20.0 / 3 + 0.25, y0 - 3, 1)),
+                gauges: [
+                    Gauge("Front column", at: SIMD3(x0 + 20.0 / 3 + 0.25, y0 - 0.1, 1.5)),
+                    Gauge("Core, front", at: SIMD3(28, d0 - 0.1, 1.5)),
+                    Gauge("Roof", at: SIMD3(28, 24, top + 0.5)),
+                ],
+                structure: structure)
 
         case .threeStorey:
             // A three-storey concrete frame, three bays by two of 6 m, with 250 mm flat slabs and

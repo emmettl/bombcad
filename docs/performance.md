@@ -279,6 +279,16 @@ the structure is advanced. Larger elements help twice over: fewer of them, and a
 twice as long. (The preset's charge was 250 kg until bars were made to hold cracked sections
 together, then 1,000 kg until cracks turned with the stress; the frame now stands at both.)
 
+Taller buildings, meshed as shells and beams of 0.25 m on 0.5 m air
+(`blastbench snapshot --preset tall --dx 0.5 --time 4`, and `--preset tower`):
+
+| Layout | Elements | Air | 4 s simulated in |
+|---|---|---|---|
+| Eight-storey frame, 28 m, 500 kg | 31,344 | 0.7 million cells | 75 s (19× slower than real time) |
+| Twelve-storey tower with a core, 42 m, 500 kg | 94,532 | 1.0 million cells | 191 s (48×) |
+
+The air is frozen after 0.8 to 1.1 s; the rest is the structure alone, falling.
+
 ## The slab benchmark
 
 With shells (`blastbench slab --shells 2,1`), 80 ms of the validation slab takes 0.4 s and 0.9 s

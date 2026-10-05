@@ -102,8 +102,9 @@ to 35 times faster coupled, see the [shell model](shell-model.md)); debris loade
 air skipped, with an identical answer (1.6 to 1.7 times faster on the street scene, see
 [Performance](performance.md#air-solver)); hollow concrete blockwork as a material; a
 structure's largest deflection reported beside its deflection now; and layouts for a close-in
-column, a wall in front of a building, a glass façade, a car park, an underpass and a
-block-built house.
+column, a wall in front of a building, a glass façade, a car park, an underpass, a
+block-built house, a blockwork wall, an eight-storey frame and a twelve-storey tower, the last
+two collapsing over several seconds.
 
 ### Usability, in parallel
 
