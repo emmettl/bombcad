@@ -171,13 +171,28 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         return material
     }()
 
-    /// Unreinforced blockwork, treated as a weak, brittle concrete.
+    /// Unreinforced solid masonry (brick), treated as a weak, brittle concrete.
     public static let masonry: Self = {
         var material = concrete(name: "Masonry", compressiveStrength: 8e6, density: 1900)
         material.youngsModulus = 6e9
         material.tensileStrength = 0.3e6
         material.fractureEnergy = 20
         material.crushingEnergy = 5000
+        material.erosionOpening = 0.003
+        return material
+    }()
+
+    /// Hollow dense concrete blockwork ("breeze block"), treated as masonry is: a weak, brittle
+    /// concrete, its properties for the wall as a whole, per gross area. Blocks of 7.3 MPa about
+    /// 55% solid, in general-purpose mortar: by Eurocode 6 (EN 1996-1-1), f_k = 0.45 f_b^0.7
+    /// f_m^0.3, about 3 MPa, and E = 1000 f_k; a tensile strength of 0.2 MPa, set by the bond to
+    /// the mortar, and 10 N/m of fracture energy.
+    public static let concreteBlock: Self = {
+        var material = concrete(name: "Concrete block", compressiveStrength: 3e6, density: 1400)
+        material.youngsModulus = 3e9
+        material.tensileStrength = 0.2e6
+        material.fractureEnergy = 10
+        material.crushingEnergy = 2500
         material.erosionOpening = 0.003
         return material
     }()
@@ -203,7 +218,7 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     }()
 
     public static let presets: [Self] = [
-        .reinforcedConcrete, .plainConcrete, .masonry, .structuralSteel, .annealedGlass,
+        .reinforcedConcrete, .plainConcrete, .masonry, .concreteBlock, .structuralSteel, .annealedGlass,
     ]
 
     public var shearModulus: Float { youngsModulus / (2 * (1 + poissonRatio)) }

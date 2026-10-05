@@ -95,4 +95,25 @@ struct InterfaceTests {
         #expect(strong.erodedElements > 0, "the pane should break")
         #expect(faint.erodedElements == 0, "the pane should survive, \(faint.erodedElements) failed")
     }
+
+    @Test("Hollow concrete blockwork gives way under a charge that solid masonry holds")
+    func concreteBlockIsWeaker() throws {
+        // The infilled frame's panels at 20 kg: brick cracks, blockwork is breached.
+        func failed(_ material: StructureMaterial) throws -> Int {
+            var scenario = ScenarioPreset.infilledFrame.scenario
+            scenario.charge.mass = 20
+            var structure = try #require(scenario.structure)
+            for index in structure.solids.indices where structure.material(of: index) == .masonry {
+                structure.setMaterial(material, of: index)
+            }
+            scenario.structure = structure
+            let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+            solver.advance(until: 0.1)
+            return try #require(solver.bodySummary()).erodedElements
+        }
+        let brick = try failed(.masonry)
+        let block = try failed(.concreteBlock)
+        #expect(brick < 100, "brick: \(brick) elements failed")
+        #expect(block > 500, "block: \(block) elements failed")
+    }
 }

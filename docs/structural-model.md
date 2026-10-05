@@ -39,8 +39,9 @@ separate at 0.2 MPa instead of masonry's 0.3. The presets keep their pieces bond
 infilled frame and the three-storey building the bond changes little, since their panels near
 the charge break through anyway (1,969 against 1,936 elements removed; 350 against 387 mm).
 
-**Steel and glass.** Besides reinforced concrete, plain concrete and masonry, the presets
-include structural steel (S355: von Mises, 355 MPa, failing at 20% strain) and annealed glass
+**Steel and glass.** Besides reinforced concrete, plain concrete, masonry (solid, as brick) and
+concrete block (hollow, as breeze block; see the
+[concrete model](concrete-model.md#default-parameters)), the presets include structural steel (S355: von Mises, 355 MPa, failing at 20% strain) and annealed glass
 (brittle: cracking at 45 MPa, with the fracture energy, 8 J/m², of its toughness, and gone
 after half a millimetre), meant for panes meshed as shells, alone or in a
 [mixed body](shell-model.md#shells-and-solids-together). A 1 m square pane of 6 mm glass held

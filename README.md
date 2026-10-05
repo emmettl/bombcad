@@ -8,7 +8,7 @@ It has two solvers, both on the GPU:
 
 - an **air-blast solver** that propagates the blast wave around obstacles and records peak
   overpressure and impulse on every surface;
-- a **structural solver** for reinforced concrete, masonry, steel and glass that cracks,
+- a **structural solver** for reinforced concrete, brick, concrete block, steel and glass that cracks,
   crushes, yields its reinforcement and breaks under those pressures. Broken pieces collide,
   fall and come to rest, and the air flows through the gaps they leave. Structures are meshed with solid elements, or
   with much faster shell elements for walls and slabs and beam elements for columns, or with

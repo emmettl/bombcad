@@ -425,7 +425,16 @@ Built-in materials:
 |---------------------|--------|--------------------|------------------|---------------------------------------|
 | Reinforced concrete | 30 MPa | Yes                | Yes              |                                       |
 | Plain concrete      | 30 MPa | No                 | Yes              | Same concrete, bars ignored           |
-| Masonry             | 8 MPa  | No                 | No               | E = 6 GPa, f_t = 0.3 MPa, G_f = 20 N/m |
+| Masonry             | 8 MPa  | No                 | No               | Solid (brick): E = 6 GPa, f_t = 0.3 MPa, G_f = 20 N/m, 1,900 kg/m³ |
+| Concrete block      | 3 MPa  | No                 | No               | Hollow ("breeze block"), per gross area: E = 3 GPa, f_t = 0.2 MPa, G_f = 10 N/m, 1,400 kg/m³ |
+
+Concrete block stands for hollow dense aggregate-concrete blocks, about 55% solid, of 7.3 MPa,
+in general-purpose mortar. Its compressive strength is Eurocode 6's for the wall,
+f_k = 0.45 f_b^0.7 f_m^0.3 (about 3 MPa with f_b 7.3 and f_m 4 MPa), its modulus 1000 f_k, and
+its tensile strength and fracture energy those of the bond to the mortar; like masonry it has
+no joints or cores of its own, only their effect on the wall's density, stiffness and strength.
+In the infilled frame at 20 kg its panels are breached (about 1,200 elements removed) where
+brick panels only crack (14).
 
 In the built-in layouts, walls and slabs have 12 mm bars at 200 mm centres both ways in each
 face (565 mm²/m, centred 40 mm below the surface); the frame's slabs have 754 mm²/m and its
@@ -636,6 +645,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 - **Masonry with joints.**
 
 ## Sources
+
+- CEN, *EN 1996-1-1: Eurocode 6, Design of masonry structures*. The characteristic compressive
+  strength of masonry, f_k = K f_b^0.7 f_m^0.3 with K = 0.45 for hollow (group 2) aggregate-
+  concrete units, and the short-term modulus 1000 f_k, used for the concrete block. Written
+  from memory.
 
 - Z. P. Bažant and B. H. Oh, "Crack band theory for fracture of concrete", *Materials and
   Structures* 16, 1983. Scaling tension softening by fracture energy and band width.
