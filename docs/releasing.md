@@ -96,7 +96,7 @@ on a second Mac. The individual checks under "Before publishing" were not record
 
 Build 2's ZIP, checksum and manifest are attached to the GitHub release `v0.1.0`, published on
 2026-10-06 with its tag on `2a906cb`; the copy downloaded back from it matched the checksum.
-While the repository is private, only its owner and collaborators can download it.
+The repository was made public the same day, so anyone can download it.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
