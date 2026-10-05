@@ -89,5 +89,6 @@ checksum, validated its stapled ticket, passed `codesign --verify --deep --stric
 accepted by `spctl` too. That copy has not yet been launched, nor tried on another Mac or after a
 browser download, so the checks under "Before publishing" are still to do.
 
-The repository has no licence file. One is not needed to notarize, but should be chosen before
-the source or a build is published.
+The source is under the MIT licence (`LICENSE`), added after that build. The release archive
+holds only the app, and the app does not yet bundle the licence text; MIT asks for the notice to
+travel with copies, so copy it into the bundle's resources before a build is published.

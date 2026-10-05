@@ -132,3 +132,7 @@ Each model document lists its sources, its limitations and the work that would a
 | `BlastRender` | Scene renderer, orbit camera, offscreen snapshots                    |
 | `BombCAD`     | SwiftUI app with the layout editor                                   |
 | `blastbench`  | Command-line throughput, validation and snapshot tool                |
+
+## Licence
+
+MIT; see [LICENSE](LICENSE).
