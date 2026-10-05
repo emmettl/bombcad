@@ -77,17 +77,23 @@ opening and saving a layout.
 ## Checked so far
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
-a rejected notarization, a Gatekeeper refusal and a missing shader bundle each stop it before
-an archive is written, as does an app without its licence text. On the development Mac `blastbench`, signed with the Developer ID
-identity and the hardened runtime, compiles the shaders and runs.
+a rejected notarization, a Gatekeeper refusal, a missing shader bundle and a missing licence
+each stop it before an archive is written. On the development Mac `blastbench`, signed with the
+Developer ID identity and the hardened runtime, compiles the shaders and runs.
 
-The whole path has been run once for real. On 2026-10-05, `make release` built 0.1.0 (build 1)
-from commit `cb90a14` with the `BombCAD-notary` profile; Apple accepted the submission
-(`5d9e4182-7794-49d2-a448-21d4eb68190d`), and the ticket was stapled and validated and Gatekeeper
-assessed the app as `Notarized Developer ID`. A fresh expansion of the final ZIP matched its
-checksum, validated its stapled ticket, passed `codesign --verify --deep --strict` and was
-accepted by `spctl` too. That copy has not yet been launched, nor tried on another Mac or after a
-browser download, so the checks under "Before publishing" are still to do.
+The whole path has been run for real, with the `BombCAD-notary` profile, on 2026-10-05:
+
+| Build      | Commit    | Apple submission                       | Note                          |
+|------------|-----------|----------------------------------------|-------------------------------|
+| 0.1.0 (1)  | `cb90a14` | `5d9e4182-7794-49d2-a448-21d4eb68190d` | Superseded: no licence inside |
+| 0.1.0 (2)  | `2a906cb` | `1bf60a66-4602-46a3-b940-7eda11545870` | Current candidate             |
+
+For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
+assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
+its checksum, validated its stapled ticket, passed `codesign --verify --deep --strict`, was
+accepted by `spctl` and holds the licence text. That copy has not yet been launched, nor tried
+on another Mac or after a browser download, so the checks under "Before publishing" are still
+to do.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
