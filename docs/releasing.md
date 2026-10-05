@@ -91,9 +91,8 @@ The whole path has been run for real, with the `BombCAD-notary` profile, on 2026
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
 its checksum, validated its stapled ticket, passed `codesign --verify --deep --strict`, was
-accepted by `spctl` and holds the licence text. That copy has not yet been launched, nor tried
-on another Mac or after a browser download, so the checks under "Before publishing" are still
-to do.
+accepted by `spctl` and holds the licence text. On 2026-10-06 build 2 was reported to work fine
+on a second Mac. The individual checks under "Before publishing" were not recorded one by one.
 
 Build 2's ZIP, checksum and manifest are attached to the GitHub release `v0.1.0`, published on
 2026-10-06 with its tag on `2a906cb`; the copy downloaded back from it matched the checksum.
