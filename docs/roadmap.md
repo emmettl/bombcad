@@ -7,7 +7,7 @@ detailed list; this one puts them in order across the whole project.
 
 BombCAD answers its original question: blast on simple structures can be simulated on a laptop
 GPU at tens to a hundred times slower than real time, with physics that is verified against
-theory. Against measurements it is close on one test (a slab) and too weak on another (a
+theory. Against measurements it is close on one test (a slab) and too stiff on another (a
 full-scale internal explosion). It is not validated for engineering decisions, and nothing in
 it should be used to judge the safety of a real structure.
 
@@ -15,7 +15,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with two tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; in a full-scale internal explosion the roof's peak follows the test paper's own model, but its edge is left 10 mm up against 95 mm | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with two tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 7 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -36,13 +36,17 @@ dialogs were written without being seen on screen.
 More evidence is worth more than more features. The sources each step needs, and what is
 needed from them, are listed in [Data wanted](data-wanted.md).
 
-1. **The chamber's joints.** Diagonal bars across the chamfers and stirrups in the down-stand,
-   which the smeared lattice bars can only approximate; then the charge at which the roof is
-   thrown, against the test and the paper's model. (Done so far: bars resisting sliding across
+1. **The chamber's joints.** In the test they were cut through within milliseconds and the
+   roof was left 95 mm up; the model's stay whole, carry an arching thrust that outlasts the
+   load, and bring the roof back to 7 mm. And the 25 mm mesh, on which the peak (65 mm) has
+   not converged and the wall tops tear on the rebound. (Done: bars resisting sliding across
    cracks, and cracks bridged across a section, which took the roof from thrown to about
-   100 mm; and cracks that turn with the stress until they open, after which the roof's peak
-   and the charge that throws it follow the paper's model with either gas. Its edge now ends
-   10 mm up against 95 mm measured: it springs back too far.)
+   100 mm; cracks that turn with the stress until they open; then the detailing itself, as
+   inclined bars across the chamfers and mats and ties in the down-stand, with a time step
+   that allows for the bars and contact that holds eight nodes a cell. With the detailing the
+   roof is about twice as stiff as the paper's model: 38 mm against 87 mm. The diagonal bars'
+   size and the down-stand's steel are assumptions; see
+   [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber).)
 2. **A second and third structural test**, chosen to differ from the first two: a slab with
    steel in both faces, a member that failed in shear, and a wall under an open-air charge. The
    high-strength slabs of the same contest are the obvious next case, since the geometry and
@@ -88,7 +92,10 @@ Done from these lists: blast loads against the full Kingery–Bulmash curves; a 
 to 35 times faster coupled, see the [shell model](shell-model.md)); debris loaded by the air
 (pressure gradient and drag on loose nodes, with the reaction given back to the air); still
 air skipped, with an identical answer (1.6 to 1.7 times faster on the street scene, see
-[Performance](performance.md#air-solver)).
+[Performance](performance.md#air-solver)); hollow concrete blockwork as a material; a
+structure's largest deflection reported beside its deflection now; and layouts for a close-in
+column, a wall in front of a building, a glass façade, a car park, an underpass and a
+block-built house.
 
 ### Usability, in parallel
 
