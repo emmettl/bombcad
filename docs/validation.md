@@ -624,9 +624,15 @@ What remains, in rough order:
    95 mm up; the model's stay whole enough to carry the arching thrust, and the roof is left
    7 mm up.
 2. **The 25 mm mesh.** Its peak (65 mm) is well above the coarser meshes' (38 to 42 mm), and
-   its runs come apart at the roof-wall joints after 50 ms, where the diagonal bars anchor
-   among the mats; halving the time step held that off to 60 ms but no further was tried.
-   Until it is understood the chamber's converged answer is not known.
+   on the rebound, as the edge falls from 22 to 9 mm between 50 and 60 ms, the tops of the side
+   walls and the roof over them tear and crush: 61,000 elements removed in 10 ms, by every
+   rule (cracks past the removal width unbridged, cracks past the hard limit, crushing, and
+   collapsed volume), then little more (88,600 by 110 ms with contact off). Elements holding
+   the diagonal bars hardly fail (700); their neighbours do. Without the diagonal bars the
+   25 mm run holds together (14,000 by 60 ms) but peaks at 107 mm. It looks like the stiffer
+   corners pushing the arching thrust into the wall tops, which tear on the finest mesh and not
+   on 50 mm elements: failure that depends on the element size. Until it is understood the
+   chamber's converged answer is not known.
 3. **The detailing the paper does not give**: the diagonal bars' size and anchorage and the
    down-stand's reinforcement are assumptions, and they decide the roof's stiffness (73 mm
    without them, 38 with them).
