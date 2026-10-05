@@ -78,10 +78,16 @@ opening and saving a layout.
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
 a rejected notarization, a Gatekeeper refusal and a missing shader bundle each stop it before
-an archive is written. On the development Mac the app has been signed with the Developer ID
-identity and the hardened runtime and passes `codesign --verify --deep --strict`, and
-`blastbench`, signed the same way, compiles the shaders and runs. No build has yet been
-submitted for notarization.
+an archive is written. On the development Mac `blastbench`, signed with the Developer ID
+identity and the hardened runtime, compiles the shaders and runs.
+
+The whole path has been run once for real. On 2026-10-05, `make release` built 0.1.0 (build 1)
+from commit `cb90a14` with the `BombCAD-notary` profile; Apple accepted the submission
+(`5d9e4182-7794-49d2-a448-21d4eb68190d`), and the ticket was stapled and validated and Gatekeeper
+assessed the app as `Notarized Developer ID`. A fresh expansion of the final ZIP matched its
+checksum, validated its stapled ticket, passed `codesign --verify --deep --strict` and was
+accepted by `spctl` too. That copy has not yet been launched, nor tried on another Mac or after a
+browser download, so the checks under "Before publishing" are still to do.
 
 The repository has no licence file. One is not needed to notarize, but should be chosen before
 the source or a build is published.
