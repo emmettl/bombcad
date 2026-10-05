@@ -261,7 +261,9 @@ private struct ReinforcementEditor: View {
         .padding(.leading, 18)
     }
 
-    private func number(_ title: String, _ unit: String, _ value: Double, set: @escaping (Double) -> Void)
+    private func number(
+        _ title: String, _ unit: String, _ value: Double, set: @escaping @MainActor (Double) -> Void
+    )
         -> some View
     {
         LabeledContent(title) {
