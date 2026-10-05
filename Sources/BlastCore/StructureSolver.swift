@@ -110,6 +110,8 @@ public final class StructureSolver {
     /// Per material, the most steel any of its elements holds along one direction (the largest
     /// lattice ratio plus any inclined bars), for the time step.
     private var densestSteel: [Float] = []
+    /// The lattice axes the body has bars along somewhere, as bits 0 to 2.
+    private var barAxes: UInt32 = 0
     /// Whether each material's masonry is meshed as units and mortar joints.
     private let jointed: [Bool]
     /// Index into `materials` of every element's material in the low four bits of one byte each;
@@ -328,6 +330,7 @@ public final class StructureSolver {
                     ratio += layer.ratio * (overlap.x * overlap.y * overlap.z / (h * h * h))
                 }
                 ratios[n] = SIMD4(ratio, 0)
+                for axis in 0..<3 where ratio[axis] > 0 { barAxes |= 1 << UInt32(axis) }
                 // Inclined bars: each layer is spread across a band sqrt(2) elements wide (two of
                 // the diagonal rows its elements form), as a hat centred on the bars, so that its
                 // steel is kept exactly. In one row, on fine meshes where the bars overlap a mat
@@ -350,6 +353,9 @@ public final class StructureSolver {
                 let own = Int(elementMaterials[n] & 15)
                 densest[own] = max(densest[own], ratio.max() + best.ratio)
                 if best.ratio > 0 {
+                    // Inclined bars lie between two of the axes (see `ElementSteel`).
+                    let plane = (Int(best.code) - 1) / 2
+                    barAxes |= (1 << UInt32(plane)) | (1 << UInt32((plane + 1) % 3))
                     let base = steelBuffer.contents().advanced(by: n * 16 + 12)
                     base.storeBytes(of: Float16(best.ratio), as: Float16.self)
                     base.advanced(by: 2).storeBytes(of: best.code, as: UInt16.self)
@@ -896,6 +902,7 @@ public final class StructureSolver {
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
         uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
+        uniforms.barAxes = barAxes
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))
@@ -984,6 +991,7 @@ public final class StructureSolver {
         let band = material.steel == nil ? h : max(h, material.crackSpacing)
         let fractureEnergy = units?.fractureEnergy ?? material.fractureEnergy
         parameters.crackSoftening = max(fractureEnergy / (band * ft) - onset / 2, onset / 2)
+        parameters.crackSofteningAlone = max(fractureEnergy / (h * ft) - onset / 2, onset / 2)
         if let units {
             // A joint is one element's plane: its opening and sliding are smeared over the
             // element, and its energies kept as a crack's is. Sliding by s wears the joint as

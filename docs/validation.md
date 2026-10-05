@@ -15,6 +15,10 @@ swift run -c release blastbench slab --sensitivity
 ```
 
 ```bash
+swift run -c release blastbench beam
+```
+
+```bash
 swift run -c release blastbench validate
 ```
 
@@ -31,7 +35,7 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
+| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm | Moderate for bending; nothing for shear |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -86,8 +90,8 @@ spacing (100 mm) and the aggregate size (16 mm).
 |----------------------------------|-----------------|-------|----------|-----------------|
 | **Measured**                     | **108 mm**      | 30 ms | 90 mm    |                 |
 | Model, 32 elements through       | 105 mm (98%)    | 26 ms | 74 mm    | 32 of 4,423,680 |
-| Model, 16 elements through       | 108 mm (100%)   | 27 ms | 80 mm    | 1 of 552,960    |
-| Model, 8 elements through        | 101 mm (94%)    | 26 ms | 67 mm    | 0 of 68,608     |
+| Model, 16 elements through       | 107 mm (99%)    | 26 ms | 67 mm    | 0 of 552,960    |
+| Model, 8 elements through        | 101 mm (93%)    | 26 ms | 66 mm    | 0 of 68,608     |
 | Model, 4 elements through        | 100 mm (93%)    | 26 ms | 79 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
@@ -111,10 +115,12 @@ Mid-span deflection through the record, in millimetres:
 
 The root-mean-square difference over the record is 10.1 mm for 32 elements through the
 thickness, 9.8 mm for 16, 14.4 mm for 8 and 10.5 mm for 4. **The peak has converged at 105 to
-108 mm**, at most 3% below the measurement: 101, 101, 108 and 105 mm from 4 to 32 elements
-through. (The 32-element run predates steps 22 and 23 of the
+107 mm**, at most 3% below the measurement: 100, 101, 107 and 105 mm from 4 to 32 elements
+through. (The 32-element run predates steps 22 to 24 of the
 [concrete model](concrete-model.md#how-the-model-got-here), the residual opening kept where a
-crack opened and a second crack, which moved the others by a millimetre or two at most.)
+crack opened, a second crack, and splitting cracks softened over one element, which moved the
+others by a millimetre or two at most. The 16-element history in the table predates step 24,
+which left its peak at 107 mm and its end at 67 mm.)
 The rise to the peak is reproduced within a few millimetres on every mesh. After the peak every
 mesh rebounds further than the specimen did (about 30 mm against 13 mm) and settles lower, about
 75 mm on the finer meshes against 90 mm. The rebound is set by a hinge at mid-span: once its
@@ -166,30 +172,32 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 | Change                                       | Peak            | Elements failed |
 |----------------------------------------------|-----------------|-----------------|
 | None                                         | 101 mm (94%)    | 0               |
-| Load 5% lower                                | 88 mm (82%)     | 0               |
-| Load 5% higher                               | 116 mm (107%)   | 0               |
-| Aggregate 10 mm instead of 16 mm             | 102 mm (94%)    | 0               |
+| Load 5% lower                                | 88 mm (81%)     | 0               |
+| Load 5% higher                               | 115 mm (107%)   | 0               |
+| Aggregate 10 mm instead of 16 mm             | 101 mm (93%)    | 0               |
 | Crack spacing 50 mm instead of 100 mm        | 98 mm (91%)     | 0               |
 | Crack spacing 200 mm                         | 101 mm (94%)    | 0               |
 | Fracture energy halved                       | 101 mm (94%)    | 0               |
-| Tensile strength 20% lower                   | 104 mm (96%)    | 0               |
+| Tensile strength 20% lower                   | 103 mm (96%)    | 0               |
 | Cracks close fully (no residual opening)     | 101 mm (94%)    | 0               |
 | Residual crack opening 30% instead of 10%    | 101 mm (94%)    | 0               |
 | Residual crack opening 50%                   | 101 mm (94%)    | 0               |
 | Crushing spread over at least 50 mm          | 102 mm (94%)    | 0               |
 | Crushing averaged over 48 mm (nonlocal)      | 101 mm (94%)    | 0               |
-| Supports as 1 in bearings, held down         | 81 mm (75%)     | 0               |
-| Supports as 1 in bearings, free to lift      | 88 mm (81%)     | 0               |
-| 16 elements through the thickness            | 108 mm (100%)   | 1               |
-| Fixed UFC 3-340-02 factors, no rate laws     | 122 mm (113%)   | 0               |
-| Static strengths                             | 197 mm, failing | 4,064           |
+| Supports as 1 in bearings, held down         | 79 mm (73%)     | 0               |
+| Supports as 1 in bearings, free to lift      | 87 mm (81%)     | 0               |
+| 16 elements through the thickness            | 107 mm (99%)    | 0               |
+| Fixed UFC 3-340-02 factors, no rate laws     | 121 mm (112%)   | 0               |
+| Static strengths                             | 143 mm (133%)   | 0               |
 
 Reading this table:
 
-- **The rate treatment decides the outcome.** The load is far above the slab's static
-  capacity, so it survives only because steel and concrete are stronger when loaded quickly.
-  With static strengths the model predicts failure. With the fixed design factors of
-  UFC 3-340-02, which are deliberately conservative, it predicts 122 mm, 13% more than was
+- **The rate treatment matters most.** The load is well above the slab's static capacity, so
+  how much stronger steel and concrete are when loaded quickly sets the peak. With static
+  strengths the model predicts 143 mm, a third more than was measured (it broke apart until
+  splitting cracks were softened over one element; see step 24 of the
+  [concrete model](concrete-model.md#how-the-model-got-here)). With the fixed design factors of
+  UFC 3-340-02, which are deliberately conservative, it predicts 121 mm, 12% more than was
   measured: conservative, as intended. (Before bar
   rupture was judged over a debonded length, these factors gave a collapse.) The test is
   therefore a sharp check on the rate treatment, and a poor check on anything else.
@@ -201,8 +209,8 @@ Reading this table:
   when the hourglass control was fixed, which suggests they were the zigzag modes, not shear.
 - **The concrete's tensile properties barely matter** here, as expected for a slab whose
   resistance comes from its bars.
-- **The supports matter by 15–20%.** The default is a pin and a roller on single lines of
-  nodes. Bearings one inch wide lower the peak to 80–87 mm. The source does not
+- **The supports matter by 15–25%.** The default is a pin and a roller on single lines of
+  nodes. Bearings one inch wide lower the peak to 79–87 mm. The source does not
   describe the rig; [Data wanted](data-wanted.md) lists it.
 
 ### What this does and does not show
@@ -220,6 +228,95 @@ a few per cent on one test with this much sensitivity is partly luck.
 The air solver's loads on a wall are close to the reference (next section), so a wall loaded by
 the air solver starts from about the right impulse. The combination has still not been compared
 with a test.
+
+## A reinforced beam bent to failure
+
+A second structural test, slow and in bending, chosen because it isolates what the slab
+leaves mixed with strain rate: whether the concrete and its bars hold together as a beam
+yields and deflects to failure.
+
+### The test
+
+One of the conventionally reinforced beams of J. R. Janney, E. Hognestad and D. McHenry,
+"Ultimate flexural strength of prestressed and conventionally reinforced concrete beams",
+*Journal of the American Concrete Institute* 52(1), 1956, as described and modelled by J. Xu
+and Y. Lu, "Numerical modelling for reinforced concrete response to blast load: understanding
+the demands on material models", ACI SP-306, 2016, whose figures supply the data used here.
+
+| Property  | Value                                                                       |
+|-----------|-----------------------------------------------------------------------------|
+| Beam      | 6 × 12 in (152 × 305 mm), 120 in (3,048 mm) long                            |
+| Supports  | Simple, 108 in (2,743 mm) apart                                             |
+| Load      | Four-point bending: two loads at the third points, 36 in (914 mm) apart      |
+| Concrete  | 5,250 psi (36.2 MPa)                                                        |
+| Bars      | Three No. 5, 8.3 in (211 mm) below the top (1.87%); no stirrups              |
+| Steel     | Yield 48.3 ksi (333 MPa), no hardening reported                             |
+| Measured  | Yield near 37 kN m at 11 mm; 41.5 kN m when it failed in flexure at about 42 mm |
+
+The beam has no stirrups, so shear and the bond of its bars are carried by the concrete
+alone; Xu and Lu chose it because one widely used concrete model in LS-DYNA, run with its
+default settings, has the concrete around the bars give way and the beam fail abruptly at
+18 mm. The measured curve was read off their plot by hand.
+
+### The model
+
+`BeamBenchmark.swift`: solid elements 6, 12 or 24 through the depth (51, 25 and 12.7 mm), the
+bars smeared through a band one element deep. The supports are a pin and a roller on lines
+of nodes at the bottom; the loads are applied through plates 2 in wide on rollers, moved down
+at 0.1 m/s, slow against the beam's 16 ms period, with light damping. The moment between the
+loads is half the reactions times the shear span. Nothing is fitted: the concrete's other
+properties come from the standard correlations, the steel is elastic–perfectly plastic as
+reported, and strain rate is off. `blastbench beam` runs it.
+
+### Results
+
+| Case                        | Peak moment         | Fails at  | RMS from the measured curve | Elements removed |
+|-----------------------------|---------------------|-----------|-----------------------------|------------------|
+| **Measured**                | **41.5 kN m**       | **42 mm** |                             |                  |
+| Section analysis, at yield  | 37.9 kN m           |           |                             |                  |
+| 24 elements through         | 40.2 kN m (97%)     | 52 mm     | 1.6 kN m                    | 177 of 69,120    |
+| 12 elements through         | 41.3 kN m (99%)     | 38 mm     | 3.2 kN m                    | 28 of 8,640      |
+| 12, plates at half the speed | 42.3 kN m (102%)   | holds to 60 mm | 2.2 kN m               | 0 of 8,640       |
+| 6 elements through          | 49.9 kN m (120%)    | 47 mm     | 4.9 kN m                    | 16 of 1,080      |
+
+"Fails at" is where the moment first falls below 85% of its peak; the RMS is taken every
+millimetre up to 42 mm.
+
+Mid-span moment against central deflection, in kN m:
+
+| Deflection | Measured | 12 through | 24 through |
+|------------|----------|------------|------------|
+| 2 mm       | 9.3      | 10.5       | 13.6       |
+| 5 mm       | 19.0     | 22.1       | 21.5       |
+| 10 mm      | 34.0     | 33.8       | 34.6       |
+| 12 mm      | 37.1     | 38.9       | 38.3       |
+| 20 mm      | 38.8     | 40.5       | 39.4       |
+| 30 mm      | 40.3     | 40.1       | 39.4       |
+| 40 mm      | 41.3     | 31.5       | 38.8       |
+| 50 mm      | failed   | 30.7       | 38.2       |
+
+The stiffness, yield and plateau are within a few per cent on 12 and 24 elements. The model
+does not show the slight hardening of the test (its steel has none), and the failure
+deflection, which depends on how the compression zone between the loads crushes, moves with
+the mesh and the loading rate: 38 and 52 mm, or no failure by 60 mm at half the speed, against
+42 mm measured. Six elements through the depth are 20% strong, as expected where the
+compression zone (about 40 mm) is thinner than an element (see
+[limitation 2](concrete-model.md#limitations)).
+
+**What the test found.** On 24 elements the first version split the beam along its bars at
+13 mm and lost a thousand elements: the cracks along the bars, which no bar crosses, were
+softened over the 100 mm crack spacing as if bars held them, so each released several
+elements' worth of fracture energy too little. They now soften over one element (step 24 of
+the [concrete model](concrete-model.md#how-the-model-got-here)). This is the same weakness Xu
+and Lu found in the LS-DYNA model, in the opposite direction: there the concrete around the
+bars lost all its strength too soon; here it lost too little energy in doing so.
+
+### What this does and does not show
+
+It shows that a beam with no stirrups yields and carries its plastic moment through large
+deflections in the model, with its concrete and bars holding together, on two meshes, with
+nothing fitted. It does not test strain rate, shear failure (the beam failed in flexure), or
+anything dynamic, and its failure deflection is not pinned down.
 
 ## Blast loads against empirical references
 
@@ -776,8 +873,10 @@ In rough order of value:
 1. Inclined cracking at joints, between the two crack models' errors (a crack that may turn
    until it opens); then the chamber's diagonal bars and stirrups (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
-2. A second and third structural test, of different kinds (see the
-   [concrete model's future work](concrete-model.md#future-work)).
+2. A third structural test, of a different kind: a member that failed in shear, or a wall
+   loaded in the open air (see the
+   [concrete model's future work](concrete-model.md#future-work)). The beam above is a second
+   test in bending.
 3. The vented gas impulse of UFC 3-340-02 (Figures 2-153 to 2-164), which would need
    digitising, to check how fast the model's gas leaves a room like the chamber.
 4. Blast loads closer in than 0.75 m/kg^(1/3).

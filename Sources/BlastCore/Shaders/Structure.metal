@@ -70,6 +70,7 @@ struct StructureUniforms {
     uint fluidBlocksX;
     uint fluidBlocksY;
     uint secondCracks;  // 1: concrete with fixed crack axes may open a second crack
+    uint barAxes;       // bits 0 to 2: the body has bars along x, y, z somewhere
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -180,6 +181,7 @@ struct MaterialParameters {
     float jointCohesion;
     float jointFriction;
     float jointSlipDamage;
+    float crackSofteningAlone;  // decay strain of a crack no bar crosses: one element's band
 };
 
 constant uint maxMaterials = 8;
@@ -1010,6 +1012,22 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // Not in an element with a mortar joint: its strain is mostly the joint's opening and
         // sliding, which says nothing of the stress in the unit beside it; inclined cracking
         // there is left to the second crack, which goes by the stress.
+        // Bars spread cracking along their length, so a crack across them softens over the crack
+        // spacing; a crack that no bar crosses, such as one splitting a beam along its bars,
+        // gathers in one row of elements and softens over that. A plane counts as crossed in
+        // full once its normal is within 45 degrees of an axis the body has bars on, which
+        // leaves bending and shear cracks as they were, and in part nearer to lying along
+        // the bars.
+        if (u.barAxes != 7u && m.crackSofteningAlone != m.crackSoftening) {
+            for (int i = 0; i < 3; ++i) {
+                if (((joints >> i) & 1u) == 0u) {
+                    float3 normal = frame[i] * frame[i];
+                    float crossed = ((u.barAxes & 1u) != 0u ? normal.x : 0.0f)
+                        + ((u.barAxes & 2u) != 0u ? normal.y : 0.0f) + ((u.barAxes & 4u) != 0u ? normal.z : 0.0f);
+                    planeSoftening[i] = mix(m.crackSofteningAlone, m.crackSoftening, min(2.0f * crossed, 1.0f));
+                }
+            }
+        }
         for (int i = 0; i < 3 && joints == 0u; ++i) {
             float3 weight = axes[i] * axes[i];
             float seen = dot(weight, history);
@@ -2068,6 +2086,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     velocity *= max(0.0f, 1.0f - u.damping * dt);
     if ((node.flags & 8u) != 0) {
         velocity = float3(node.velocity);  // prescribed motion
+    }
+    if ((node.flags & 64u) != 0) {
+        velocity.z = node.velocity.z;  // pushed up or down at a set speed, free sideways
     }
     if ((node.flags & 1u) != 0) {
         velocity.x = 0.0f;

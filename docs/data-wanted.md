@@ -107,6 +107,14 @@ Supplied by hand during development, and now in use:
   dynamic increase factors for bending in the far range used in the slab's sensitivity study
   (Table 4-1: 1.17 on the bars' yield, 1.19 on the concrete), confirmed. Its vented gas
   impulse charts (Figures 2-153 to 2-164) and its support-rotation limits are not yet used.
+- J. Xu and Y. Lu, "Numerical modelling for reinforced concrete response to blast load:
+  understanding the demands on material models", ACI SP-306 (2016): the dimensions,
+  materials and measured moment–deflection curve of one of Janney, Hognestad and McHenry's
+  beams (1956), in `BeamBenchmark.swift`. It also models the contest slab, giving its concrete
+  as 34.5 MPa (5 ksi) and its bars as Grade 60, where the source used here gives 37 MPa and
+  the bars' measured curve (yield 72 ksi); and its own models' peaks, about 100 mm and 113 mm
+  against the measured 108 mm. The slab's high-strength companion and the contest's records
+  are still wanted (above).
 - H. Shang et al., "Experimental Study on the Damage Mechanism of Reinforced Concrete Shear
   Walls Under Internal Explosion", *Applied Sciences* 16, 48 (2026): the chamber test, in
   `ChamberTest.swift`.

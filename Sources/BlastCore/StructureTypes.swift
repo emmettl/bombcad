@@ -722,7 +722,8 @@ public struct StructureNode: Sendable {
     public var vz: Float = 0
     /// Bits 0-2 hold the node still along x, y, z; bit 3 keeps its velocity as set; bit 4
     /// lets it rise but not fall below where it started. Bit 5 is set by the solver when all
-    /// eight elements around the node are intact, which leaves it out of contact.
+    /// eight elements around the node are intact, which leaves it out of contact. Bit 6 keeps
+    /// its vertical velocity as set.
     public var flags: UInt32 = 0
 
     public init() {}
@@ -759,6 +760,13 @@ public struct StructureNode: Sendable {
     public var isPrescribed: Bool {
         get { flags & 8 != 0 }
         set { flags = newValue ? flags | 8 : flags & ~8 }
+    }
+
+    /// Keeps its current vertical velocity regardless of the forces on it, and is free
+    /// sideways: a node under a loading plate on rollers.
+    public var isPushedVertically: Bool {
+        get { flags & 64 != 0 }
+        set { flags = newValue ? flags | 64 : flags & ~64 }
     }
 }
 
@@ -858,6 +866,7 @@ struct StructureUniforms {
     var fluidBlocksX: UInt32 = 0
     var fluidBlocksY: UInt32 = 0
     var secondCracks: UInt32 = 0
+    var barAxes: UInt32 = 7
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -906,6 +915,7 @@ struct MaterialParameters {
     var jointCohesion: Float = 0
     var jointFriction: Float = 0
     var jointSlipDamage: Float = 0
+    var crackSofteningAlone: Float = 1
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.

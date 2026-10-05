@@ -264,7 +264,8 @@ With 4, 8, 16 and 32 layers the peak is 121, 124, 124 and 124 mm, so the shells'
 converged, and it is 18% above the solid elements' converged 105 mm. Part of the gap is known:
 on the reinforced strip the solid elements are 5–8% stronger than the shells, because of the
 hourglass forces of squeezed elements. With the fixed design factors of UFC 3-340-02 the shells
-peak at 154 mm (solids 121 mm); with static strengths both fail. The shells rebound about as
+peak at 154 mm (solids 121 mm); with static strengths the shells fail (the solids reach
+143 mm). The shells rebound about as
 little as the specimen did, where the solid elements rebound twice as far.
 
 **The presets, against the solid elements.**

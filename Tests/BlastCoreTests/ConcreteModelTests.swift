@@ -837,3 +837,21 @@ struct SlabBenchmarkTests {
         }
     }
 }
+
+/// Janney's reinforced beam, bent slowly to failure.
+@Suite("Beam benchmark")
+struct BeamBenchmarkTests {
+    @Test("The beam's moment follows the measured curve, on two meshes")
+    func momentAgainstTest() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let coarse = try BeamBenchmark.run(device: device, elementsThroughDepth: 6, deflection: 0.04)
+        let fine = try BeamBenchmark.run(device: device, elementsThroughDepth: 12, deflection: 0.04)
+        let measured = BeamBenchmark.measuredPeakMoment
+        // Six elements through the depth run about 10% strong, as coarse meshes do in bending.
+        #expect(abs(coarse.peakMoment - measured) / measured < 0.15, "coarse: \(coarse.peakMoment) N m")
+        #expect(abs(fine.peakMoment - measured) / measured < 0.06, "fine: \(fine.peakMoment) N m")
+        #expect(fine.curveError(upTo: 0.04) < 0.12 * measured, "rms \(fine.curveError(upTo: 0.04)) N m")
+        // The test beam failed in flexure at 42 mm; the model's must not fail long before that.
+        #expect(fine.moment(at: 0.035) > 0.9 * measured, "at 35 mm: \(fine.moment(at: 0.035)) N m")
+    }
+}

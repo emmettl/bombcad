@@ -185,6 +185,14 @@ reinforced concrete the bars force a crack every so often, so ℓ is the larger 
 size and a typical crack spacing (100 mm by default). Without this, a fine mesh in reinforced
 concrete dissipates one crack's energy in every row of elements, which is far too much.
 
+That holds only for cracks that bars cross. A crack that no bar crosses, such as one splitting
+a beam along its bars, gathers in one row of elements as in plain concrete, and spread over
+the crack spacing it would soften as if several elements wide: on fine meshes it gave up its
+strength many times too readily. So each crack plane takes ℓ by how its normal lies to the
+lattice axes the body has bars along: the crack spacing once its normal is within 45° of such
+an axis, the element size when it lies square to all of them, and a blend between. Bending and
+shear cracks, whose normals lie along or close to the bars, are as they were.
+
 ## Compression and confinement
 
 Compression follows, for a compressive strain ε with peak strain ε_c and strength f_c,
@@ -600,7 +608,7 @@ matter.
    internal explosion threw a chamber's roof that had held in the test (see Shear across
    cracks and Removal). The slab is unchanged on 8 elements through the thickness (105 mm) and
    peaks at 102 mm on 4 (101 mm before); with the UFC factors it still reaches 130 mm, now with
-   no elements removed. With static strengths it still fails.
+   no elements removed. With static strengths it still fails (until step 24).
 
 20. **Oriented cracks, as an option.** With the gas made as strong as the design manual says,
    the chamber's roof was still thrown, and its joints crack at 45°, which the lattice planes
@@ -638,6 +646,18 @@ matter.
    roof rises 73 mm and is left 12 mm up (82 and 14 mm with afterburning and hot air, against
    the paper's model's 87 and 62 mm). Masonry comes apart more; see the table in Cracking.
 
+24. **A second test: a beam bent slowly to failure** (Janney, Hognestad and McHenry, 1956; see
+   [Validation](validation.md#a-reinforced-beam-bent-to-failure)). With twelve elements
+   through its depth the model followed the measured moment and failed at 39 mm against
+   42 mm; with 24 the beam split along its bars at 13 mm and lost a thousand elements.
+   Splitting cracks, which no bar crosses, had been softened over the 100 mm crack spacing
+   like cracks across the bars, which on 12.7 mm elements is eight elements' energy in one;
+   with a crack spacing of 50 mm the fine beam held to 46 mm. They now soften over one
+   element (see Tension). The beam then holds to 38 and 52 mm on the two meshes, peaking at
+   99% and 97% of the measured moment. The slab is unchanged within 2 mm on every mesh, the
+   layouts and the chamber within a millimetre, but with static strengths the slab no longer
+   fails: it peaks at 143 mm (133%), where it had broken apart at 197 mm.
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -645,10 +665,13 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Limitations
 
-1. **Validated against one test**, a one-way slab in bending under a uniform load. On it the
-   peak is 101, 101, 108 and 105 mm as the elements through the thickness go from 4 to 8 to 16
-   to 32: converged at about 105 mm, 3% below the measurement, with coarse meshes a few per
-   cent lower. Results for members in bending should still be checked at more than one mesh.
+1. **Validated against two tests, both in bending**: a one-way slab under a uniform blast
+   load, and a beam bent slowly to failure. On the slab the peak is 100, 101, 107 and 105 mm
+   as the elements through the thickness go from 4 to 8 to 16 to 32: converged at about
+   105 mm, 3% below the measurement. On the beam the peak moment is 99% and 97% of the
+   measured on 12 and 24 elements through the depth; six elements run 20% strong. Results for
+   members in bending should still be checked at more than one mesh. Nothing in shear,
+   punching or direct shear has been compared with a test.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
    because the hourglass forces of squeezed elements add to the section's moment (see the
    structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
