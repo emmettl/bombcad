@@ -94,7 +94,8 @@ struct SidebarView: View {
                         value: String(
                             format: "%d (%.1f%%)", summary.erodedElements, summary.erodedFraction * 100))
                     LabeledContent(
-                        "Peak deflection", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
+                        "Deflection now", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
+                    LabeledContent("Largest so far", value: String(format: "%.0f mm", model.peakDeflection))
                     LabeledContent(
                         "Worst damage", value: String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
                     LabeledContent("Substeps per air step", value: "up to \(model.structureSubsteps)")

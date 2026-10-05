@@ -207,10 +207,10 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .columnCloseIn:
             // A 400 mm square column, 4 m high, held at its top by the floor it carries, with
             // 2% of steel along it and ties, and 500 kg 1.8 m from its face: close in, where a
-            // column is broken by shear and its concrete torn off rather than bent. It takes that
-            // much here: the column is only a few air cells across, so the blast clears round it
-            // within a millisecond, and peaks this close in are under-resolved; at 200 kg it
-            // cracks but holds, which likely understates a real column's damage.
+            // column is broken by shear and its concrete torn off rather than bent (it loses
+            // elements and swings 200 mm on 0.125 m air). At 200 kg it cracks and swings 30 mm, or
+            // 48 mm on 0.0625 m air: the column is only a few air cells across, so it wants a
+            // fine grid.
             let column = Box(x: 15.8...16.2, y: 15.8...16.2, height: 4)
             var structure = StructureModel(solids: [column], elementSize: 0.05)
             structure.reinforcement.append(

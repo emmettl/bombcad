@@ -485,7 +485,7 @@ final class SimulationModel {
     // MARK: - Export
 
     /// The run's histories as comma-separated values: every recorded sample of every gauge,
-    /// then the structure's peak deflection, one row per sample.
+    /// then the structure's largest deflection at each sample, one row per sample.
     func resultsCSV() -> String {
         var lines = ["series,time (ms),value,unit"]
         func field(_ text: String) -> String {
@@ -505,7 +505,7 @@ final class SimulationModel {
         }
         for sample in structureHistory {
             lines.append(
-                "Peak deflection,\(String(format: "%.4f", sample.time)),\(String(format: "%.3f", sample.deflection)),mm"
+                "Largest deflection,\(String(format: "%.4f", sample.time)),\(String(format: "%.3f", sample.deflection)),mm"
             )
         }
         return lines.joined(separator: "\n") + "\n"

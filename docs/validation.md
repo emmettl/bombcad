@@ -657,8 +657,8 @@ The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solv
 
 | Charge | 0.5 m cells                | 0.25 m cells       | 0.125 m cells      |
 |--------|----------------------------|--------------------|--------------------|
-| 50 kg  | 4 mm peak deflection by 0.1 s | 3 mm            | 7 mm               |
-| 200 kg | Hinged at its base, top 270 mm over by 0.1 s | 326 mm | 352 mm |
+| 50 kg  | Top swings 40 mm, back to 4 mm by 0.1 s | 51 mm, 3 mm | 54 mm, 8 mm |
+| 200 kg | Hinged at its base, top 280 mm over, 270 mm by 0.1 s | 326 mm | 353 mm |
 
 ![The wall 1 s after 200 kg, cracked through along its base, before the second crack](wall-hinged.png)
 
@@ -670,8 +670,9 @@ tension there that the cracked planes' shear used to carry, and no element is no
 any grid. Before bars
 resisted sliding across cracks and cracks were bridged across the section (see the
 [concrete model](concrete-model.md#shear-across-cracks)), the wall sheared off at its base on
-every grid and toppled. At 50 kg the wall barely cracks, and its few millimetres show no trend
-with the grid. With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 and the
+every grid and toppled. At 50 kg the wall cracks and swings back: 40, 51 and 54 mm at the top
+on the three grids, converging. (These were once given as the deflection at 0.1 s, 3 to 8 mm,
+which the snapshot command had called the peak; it now reports both.) With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 and the
 wall loaded by the fine cells beside it and outlined at their resolution, 0.5 m cells give
 323 mm at 200 kg, as 0.25 m cells do (325 mm), and 0.25 m cells give 349 mm, as 0.125 m cells
 do (352 mm). With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg, growing

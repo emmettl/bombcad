@@ -656,7 +656,8 @@ public struct StructureSummary: Sendable, Hashable {
     public var activeElements = 0
     /// Elements removed after reaching the failure strain.
     public var erodedElements = 0
-    /// Largest displacement, in metres, of a node still attached to an active element.
+    /// Largest displacement now, in metres, of a node still attached to an active element: the
+    /// structure's deflection at this moment, not the largest it has reached.
     public var maxDisplacement: Float = 0
     /// Largest equivalent plastic strain (von Mises) or compressive strain (concrete) in an
     /// active element.

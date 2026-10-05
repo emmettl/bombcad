@@ -545,9 +545,11 @@ func runSnapshot() throws {
     solver.configuration.movingWalls = !flag("stationary-walls")
     let started = ContinuousClock.now
     var sleptAt: Double?
+    var largest: Float = 0  // the structure's largest deflection, sampled every batch
     while solver.time < time - 1e-9 {
         let result = solver.advance(steps: 64, timeLimit: time)
         if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
+        if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
         if result.steps == 0 || !result.isStable { break }
     }
     let wall = ContinuousClock.now - started
@@ -592,7 +594,8 @@ func runSnapshot() throws {
     if let summary = solver.bodySummary() {
         print(
             "Structure: \(summary.activeElements) elements intact, \(summary.erodedElements) failed, "
-                + "peak deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm, "
+                + "deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm "
+                + "(largest \(format(Double(largest) * 1000, 0)) mm), "
                 + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%")
     }
 }

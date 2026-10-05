@@ -46,7 +46,8 @@ a cantilever wall, a single-storey building, the same building behind a blast wa
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building, an
 open-sided car park with a charge inside, an underpass, a column close to a charge, and the
 internal-explosion test (deformable). The close-in column wants the fine grid: on coarser air it
-is less than a cell or two across and barely loaded.
+is less than a cell or two across. The sidebar shows a structure's deflection now and the
+largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
 pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). The toolbar opens and saves layouts as JSON and lets you move
 the charge, or the selected gauge, by clicking the ground. Gauge and deflection histories export

@@ -116,7 +116,7 @@ models it replaced:
 | Slab test, 4 / 8 / 16 / 32 elements through | 101 / 105 / 112 / 112 mm; history within 7–10 mm | 101 / 101 / 106 mm | 101 / 100 / 107 / 105 mm; history within 10–15 mm |
 | Slab test, 1 in bearings held down | 84 mm | 81 mm | 80 mm |
 | Chamber test, test's charge, with the gas the design manual supports | Roof's edge left 0.9 m up | 69 mm peak, 10 mm left | 71 mm peak, 10 mm left (paper's model 87 and 62; measured 95 left) |
-| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 15 / 25 / 32 mm | 7 / 4 / 3 mm | 5 / 2 / 5 mm |
+| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells: largest deflection | 41 / 60 / 64 mm | 40 / 50 / 53 mm | 40 / 51 / 54 mm |
 | Two-storey frame | First floor falls at 1,000 kg | Stands at 1,000 kg, 92 mm | Stands at 1,000 kg, 90 mm; falls at 2,000 kg |
 | Three-storey building's masonry, 100 kg | 1,505 elements removed | 296 | 320 |
 
@@ -127,7 +127,7 @@ models it replaced:
 | Slab test, 4 / 8 / 16 elements through | 101 / 100 / 107 mm; history within 10.6 / 15.3 / 10.5 mm | 101 / 101 / 108 mm; within 10.5 / 14.4 / 9.8 mm |
 | Slab test, 1 in bearings held down | 81 mm | 81 mm |
 | Chamber test, default gas / with afterburning and hot air | 66 / 10 mm and 71 / 10 mm | 73 / 12 mm and 82 / 14 mm (paper's model 87 / 62) |
-| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 5 / 2 / 5 mm | 4 / 3 / 7 mm |
+| Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells: largest deflection | 40 / 51 / 54 mm | 40 / 51 / 54 mm |
 | Cantilever wall, 200 kg, at 0.1 s | 303 / 382 / 405 mm; 0, 278 and 375 elements removed | 270 / 325 / 352 mm; none removed |
 | The same, 0.25 m air, at 1 s | Leaning back on its bars, 608 mm | Back to 202 mm |
 | Concrete building, 500 kg, 0.25 / 0.125 m air, 0.1 s | 164 / 138 mm; 22 and 44 removed | 173 / 148 mm; 13 and 44 removed |
@@ -143,10 +143,11 @@ paper's model. The masonry of the three-storey and infilled buildings comes apar
 and the cantilever wall no longer stays hinged over at 200 kg; there is nothing measured to
 say which is right.
 
-Turning cracks keep what fixed cracks gained on the chamber, whose joints crack at 45°, and
-the wall no longer shrinks steadily as the air is refined, though at 2–5 mm its response is too
-small to show a trend either way. Against the lattice planes they are stiffer wherever cracks
-are inclined; no test yet says where the truth lies.
+Turning cracks keep what fixed cracks gained on the chamber, whose joints crack at 45°. At
+50 kg the wall swings 40 to 64 mm with every crack model, converging as the air is refined (its
+rows were once given as the few millimetres it happened to be at at 0.1 s, which had read as
+noise). Against the lattice planes the other models are stiffer wherever cracks are inclined;
+no test yet says where the truth lies.
 A 25 mm strip of the slab, which bends one way and cracks square to the lattice, gives the
 same 105, 113 and 112 mm on 8, 16 and 32 elements through as the lattice planes did, so the
 difference on the full slab comes from its inclined cracking. Two costs remain: the slab

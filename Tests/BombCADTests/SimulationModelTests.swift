@@ -342,7 +342,7 @@ struct SimulationModelTests {
             let trace = try #require(model.traces.first { $0.name == name })
             #expect(abs(peak - trace.peak) < 0.01, "\(name): \(peak) vs \(trace.peak) kPa")
         }
-        let deflection = rows.filter { $0[0] == "Peak deflection" }
+        let deflection = rows.filter { $0[0] == "Largest deflection" }
         #expect(deflection.count == model.structureHistory.count && !deflection.isEmpty)
         #expect(deflection.allSatisfy { $0[3] == "mm" })
     }
