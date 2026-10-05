@@ -322,10 +322,10 @@ UFC 3-340-02, lowest for light charges.
   state and optional afterburn energy.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
-- **More of the refinement**: several levels, so that a ratio of 4 is reached in two steps of 2;
-  patches placed and released over a fine outline without the
-  gas they move between grids being gained or lost; and smaller blocks, or blocks that follow
-  the shock's shape, since the shell's thickness sets the cost.
+- **More of the refinement**: patches placed and released over a fine outline without the gas
+  they move between grids being gained or lost. Several levels and smaller blocks were weighed
+  and would gain little (see [Performance](performance.md#refinement)): the cost is set by the
+  area of the shock.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
 

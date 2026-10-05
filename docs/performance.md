@@ -92,6 +92,27 @@ building at 500 kg, 17.4 s against 22.4 s (149 mm of deflection against 148 mm).
 counted into them, and the wall fluxes at a patch's face) costs about a tenth. The first version, with larger blocks, was slower than
 the finer grid; the [air-blast model](air-blast-model.md#refining-near-the-shock) has the story.
 
+**What would not make it faster.** On `blastbench validate` the patches take about four fifths
+of a refined run (104 s on 0.25 m cells refined by 2, against 21 s for the same grid
+unrefined). Three ways to cut that were weighed:
+
+- **A second level** (0.5 m cells refined twice by 2) would put the finest patches over the
+  same 1 m blocks as 0.25 m cells refined by 2 do, so it could save only the coarse grid's work
+  away from the shock: about a fifth, for nesting every kernel. Not built.
+- **Smaller blocks** (2 × 2 × 2 cells): over the open-ground event on 0.25 m cells they would
+  cut the refined cells by about a quarter but add half again to the ghost cells filled at the
+  patches' faces, about 5% in all. Not built.
+- **Flagging by the jump against the overpressure** instead of against the pressure, so that a
+  weak shock and a strong one are refined alike: no faster (13.7 to 19 s against 13.4 s on
+  0.5 m cells refined by 2), since the shell is not thick for want of a sharper test.
+
+The cost is set by the area of the shock, which is largest where it is weakest. A higher
+`refinementThreshold` (`--refine-threshold`) releases the weak far field: at 0.2 instead of
+0.1 the same run takes 6.7 s instead of 13.4, with every peak and impulse the same except at
+the farthest range, 27.8 m (6 m/kg^(1/3)), where the incident and reflected peaks fall from 80%
+and 79% of Kingery–Bulmash to 70%. So for blasts that matter close in, a threshold of 0.2 halves
+the cost.
+
 ## Structural solver
 
 ```bash
