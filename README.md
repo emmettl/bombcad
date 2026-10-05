@@ -90,11 +90,11 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
   supports are modelled. Shell elements converge to 124 mm in about a second, with a rebound
   close to the measured one.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
-  the peak pressures on the walls are 0.9 to 1.6 times those measured. The roof's peak
-  deflection and the charge at which it is thrown follow the paper's own model, but the roof
-  springs back to 12 mm where 95 mm was measured. The test exposed two missing mechanisms in
-  the concrete model (bars resisting sliding across cracks, and cracks held closed across a
-  section by its bars) and an error in inclined cracking, all now dealt with.
+  the peak pressures on the walls are 0.9 to 1.6 times those measured. With the structure as
+  built, so far as the paper says, the roof is about twice as stiff as the paper's own model
+  and springs back to 7 mm where 95 mm was measured; its joints stay whole where the test's
+  were cut through. The test exposed missing mechanisms in the concrete model, errors in it,
+  in contact and in the time step, and an error in the test's own set-up, all now dealt with.
 
 Collapse and debris have not been compared with anything.
 

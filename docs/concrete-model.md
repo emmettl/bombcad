@@ -130,10 +130,10 @@ models it replaced:
 | Cantilever wall, 50 kg, on 0.5 / 0.25 / 0.125 m air cells | 5 / 2 / 5 mm | 4 / 3 / 7 mm |
 | Cantilever wall, 200 kg, at 0.1 s | 303 / 382 / 405 mm; 0, 278 and 375 elements removed | 270 / 325 / 352 mm; none removed |
 | The same, 0.25 m air, at 1 s | Leaning back on its bars, 608 mm | Back to 202 mm |
-| Concrete building, 500 kg, 0.25 / 0.125 m air, 0.1 s | 164 / 138 mm; 22 and 44 removed | 173 / 148 mm; 56 and 44 removed |
-| Two-storey frame, 1,000 kg | Stands, 90 mm | Stands, 98 mm (2 s, 0.5 m air); falls at 2,000 kg |
-| Three-storey building, 0.1 s | 311 elements removed | 714 |
-| Infilled frame, 0.1 s | 112 mm; 879 removed | 545 mm; 1,316 removed |
+| Concrete building, 500 kg, 0.25 / 0.125 m air, 0.1 s | 164 / 138 mm; 22 and 44 removed | 173 / 148 mm; 13 and 44 removed |
+| Two-storey frame, 1,000 kg | Stands, 90 mm | Stands, 100 mm (2 s, 0.5 m air); falls at 2,000 kg |
+| Three-storey building, 0.1 s | 311 elements removed | 703 |
+| Infilled frame, 0.1 s | 112 mm; 879 removed | 549 mm; 1,299 removed |
 
 The chamber, three-storey and infilled cases without it are from `--no-second-crack`; the others
 from the code before it. (Metal compiles with fast arithmetic, so a change elsewhere in a shader
@@ -294,6 +294,15 @@ Bars are smeared: each element carries a steel ratio (bar area per unit area of 
 each lattice axis. A reinforcement layer given to the model is shared between the elements it
 overlaps in proportion to the overlap, so a mat of bars lying on an element boundary is split
 between the two layers either side.
+
+**Inclined bars** (`StructureModel.inclinedBars`), such as the diagonal bars across a
+chamfered corner, run at 45° between two lattice axes. A layer of them is spread across a band
+√2 elements wide, over the diagonal rows of elements there in proportion to how near each lies
+to the bars, which keeps its steel exactly; an element holds one set. They follow the same law
+as the other bars, strained along their own direction, rupture by the same rule with the
+debonded length measured along them, bridge cracks across them for removal, and count in dowel
+action. Pulled along the diagonal, an element's inclined bars carry within 5% of what the same
+ratio of bars along an axis carries when pulled along it.
 
 A bar's strain is the stretch of the lattice direction it lies along, so bars rotate with the
 element. Loaded one way, its stress follows an elastic–plastic law with a multi-linear hardening

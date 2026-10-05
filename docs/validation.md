@@ -32,7 +32,7 @@ swift run -c release blastbench chamber
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%) | Low to moderate: one test, sensitive to supports |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's peak follows the paper's model, but its edge is left 12 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -181,15 +181,15 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 | Supports as 1 in bearings, held down         | 81 mm (75%)     | 0               |
 | Supports as 1 in bearings, free to lift      | 88 mm (81%)     | 0               |
 | 16 elements through the thickness            | 108 mm (100%)   | 1               |
-| Fixed UFC 3-340-02 factors, no rate laws     | 121 mm (112%)   | 0               |
-| Static strengths                             | 208 mm, failing | 3,933           |
+| Fixed UFC 3-340-02 factors, no rate laws     | 123 mm (113%)   | 0               |
+| Static strengths                             | 194 mm, failing | 3,939           |
 
 Reading this table:
 
 - **The rate treatment decides the outcome.** The load is far above the slab's static
   capacity, so it survives only because steel and concrete are stronger when loaded quickly.
   With static strengths the model predicts failure. With the fixed design factors of
-  UFC 3-340-02, which are deliberately conservative, it predicts 121 mm, 12% more than was
+  UFC 3-340-02, which are deliberately conservative, it predicts 123 mm, 13% more than was
   measured: conservative, as intended. (Before bar
   rupture was judged over a debonded length, these factors gave a collapse.) The test is
   therefore a sharp check on the rate treatment, and a poor check on anything else.
@@ -516,10 +516,14 @@ One chamber, with the partition's mid-plane as a mirror, so that each sleeve's c
 as 25 kg on the mirror. Air cells and solid elements are 0.1 m (116,760 elements). The
 partition and the foundation are rigid; of the 1.8 m end wall, the inner 0.6 m is modelled,
 held at its outer face, so that the bars of the roof and walls run on into it. The chamfers
-are steps of elements, without their diagonal bars. The other assumptions, and the geometry
-read off the paper's drawings, are listed in `ChamberTest.swift`. `blastbench chamber` runs
-300 ms in about 17 s; `--charge-scale` scales the charges, and `--pressures` fills the closed
-chamber with a steady overpressure instead (below).
+are steps of elements with their diagonal bars as [inclined bars](concrete-model.md#reinforcement),
+taken as the mats' (16 mm at 150 mm), 50 mm in from the sloped face and anchored 0.6 m into
+each member; the paper gives neither their size nor the down-stand's detailing, which is
+taken as the walls': mats on both faces and ties through its width, standing for its
+stirrups. The other assumptions, and the geometry read off the paper's drawings, are listed
+in `ChamberTest.swift`. `blastbench chamber` runs 300 ms in about 17 s; `--charge-scale`
+scales the charges, `--pressures` fills the closed chamber with a steady overpressure instead
+(below), and `--progress` reports every 10 ms of a long run.
 
 ### Results
 
@@ -528,148 +532,118 @@ walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positi
 approximate, and peaks this close to a charge change sharply with position, so this check is
 loose: the model is between 0.9 and 1.6 times the measured range.
 
-**The roof.** At the test's charge the roof's free edge rises 73 mm and settles back to
-12 mm with the default gas (ideal, no afterburning), and rises 82 mm and settles to 14 mm with
+**The roof.** At the test's charge the roof's free edge rises 38 mm and settles back to 7 mm
+with the default gas (ideal, no afterburning), and rises 37 mm and settles to 8 mm with
 afterburning and hot air, which bring the gas pressure within 8% of what UFC 3-340-02 gives
-for a closed room (the default gas, at this room's 0.58 kg/m³, holds about 60% of it). The
-paper's own model gave 87 mm and 62 mm; 95 mm was measured. The peak is close to the paper's
-model's, but the roof springs back too far, as the slab does (see the
-[concrete model](concrete-model.md#limitations)). Across the charge the response follows the
-paper's model, with a cliff at the same place:
+for a closed room. The paper's own model gave 87 mm and 62 mm; 95 mm was measured. The model's
+roof is about twice as stiff as the paper's model's, and springs back much further. Across the
+charge it holds up to about a third more than the paper's model:
 
 | Charge, as a fraction of the test's | Default gas: peak / end of run | Afterburning and hot air | Paper's model (Table 7): peak / residual |
 |-------------------------------------|--------------------------------|--------------------------|------------------------------------------|
-| 0.5 (100 kg)                        | 9 / 1 mm                       | 9 / 1 mm                 | 22 / 17 mm                               |
-| 1 (200 kg)                          | 73 / 12 mm                     | 82 / 14 mm               | 87 / 62 mm; measured residual 95 mm      |
-| 1.25                                | 160 / 35 mm                    |                          |                                          |
-| 1.5                                 | 432 / 109 mm                   | 479 / 87 mm              | 251 / 168 mm                             |
-| 2                                   | Roof thrown                    | Roof thrown              | Roof thrown                              |
+| 0.5 (100 kg)                        | 8 / 1 mm                       | 8 / 1 mm                 | 22 / 17 mm                               |
+| 1 (200 kg)                          | 38 / 7 mm                      | 37 / 8 mm                | 87 / 62 mm; measured residual 95 mm      |
+| 1.25                                | 72 / 16 mm                     |                          |                                          |
+| 1.5                                 | 141 / 40 mm                    | 145 / 35 mm              | 251 / 168 mm                             |
+| 2                                   | 641 / 230 mm                   | 520 / 130 mm             | Roof thrown                              |
+| 2.5                                 | Roof thrown                    |                          |                                          |
 
-**The crack model decides it.** The joints crack at 45°. With cracks on the lattice planes
-(`--cracks lattice`), which mishandle an inclined crack (see the
-[concrete model](concrete-model.md#cracking)), the roof rises 264 mm and is left 134 mm up
-with the default gas, with 1,777 elements removed; when last run it was thrown at 1.25 times
-the charge, and with afterburning and hot air its edge was left 889 mm up. With cracks fixed
-at first cracking (`--cracks fixed`) it gives 71 / 12 mm and 77 / 13 mm, much as the default
-turning cracks do. A second crack where the tension turns from fixed axes (on by default; see
-the [concrete model](concrete-model.md#cracking)) raised the peak from 66 to 73 mm, and 71 to
-82 mm with afterburning and hot air, and the edge left up from 10 to 12 and 14 mm.
+**The mesh.** On 50 mm elements (942,643) the roof rises 40 mm and is left 7 mm up with 0.1 m
+air cells, and 42 and 7 mm with 50 mm air cells, in 2.6 and 3.5 minutes: the same, within
+the model's own spread, as on 0.1 m elements. On 25 mm elements (7.5 million) it rises 65 mm
+by 30 ms, so the peak has not converged there; and after 50 ms those runs come apart at the
+roof's joints with the side walls, where the chamfers' diagonal bars anchor among the mats:
+70,000 elements removed between 50 and 60 ms with contact between pieces off, and far more
+with it on (an open problem; see below).
 
-**Nor does the residual crack opening.** A crack keeps a tenth of its opening when it closes,
-the value recommended for the concrete damaged plasticity model. With more, the roof is left
-higher, but not by enough: 4, 12, 19, 26 and 38 mm at the end of the run for 0, 0.1, 0.2, 0.3
-and 0.5 (`--crack-residual`), with peaks of 76 to 65 mm. Looking into this found a fault: the
-residual had followed histories that diagonal cracks raise on planes held closed, and from 0.4
-up it made every structure run away (see the [concrete model](concrete-model.md), step 22).
-**What brings the roof back down.** Traced through the run (`StructureSolver.barPlasticStrain`):
-the free edge works as a deep beam spanning between the side walls, the roof slab its flange
-and the down-stand its web. By the peak (35 ms) both of the slab's mats at mid-span have
-yielded in tension, the top to 8% and the bottom to 4%, while the bars at the joints yield
-less (up to 5%). Between 40 and 70 ms the edge drops from 72 to 6 mm while the gas beneath
-still pushes up at 100 to 300 kPa, and every hinge closes: the mid-span bars yield back to 1%,
-the joints' to about 1%. What pushes it down is arching. Cracking lengthens the beam, the walls
-restrain it, and it carries 2 to 4 MN of thrust, high in the slab at the walls and low in the
-down-stand at mid-span: an inverted arch, which resists the upward load. The thrust outlasts
-the load (1.2 MN remains after 100 ms), and with nothing left to oppose it, it pushes the
-mid-span back down, its moment there reversing to −0.6 MN m. How far the hinges then close
-depends on when the cracks' faces bear (above). Ruled out: the gas above the roof (it never
-passes 60 kPa), the elements' hourglass stiffness (a quarter or four times it leaves 12 and
-13 mm), the bars' Bauschinger softening (sharp reversals leave 12 mm), and the side walls'
-own recovery (with their outer faces held the roof peaks at 27 mm and is left 3 mm up). In the
-test the joints were shattered, which would have released much of that thrust; the model's
-joints stay whole enough to carry it, and with lattice cracks, which soften inclined cracking
-more, the roof keeps 138 of 265 mm.
+**What the detailing did.** Until the chamfers' diagonal bars and the down-stand's
+reinforcement were added, the roof rose 73 mm and was left 12 mm up on 0.1 m elements, close
+to the paper's model's peak, and the response did not converge with the mesh: 85 to 98 mm on
+50 mm elements and 123 mm on 25 mm, with the unreinforced chamfers and down-stand losing tens
+of thousands of elements. The down-stand had in fact had no bars at all: a slip in
+`ChamberTest.swift` gave its mats to the last chamfer step instead. With its mats the roof
+peaks at 46 to 48 mm; the diagonal bars take it to 37 mm; the ties make no difference on
+0.1 m elements.
 
-At the test's charge the side walls bow out 5 mm, and 3 elements fail in all; the measured
-structure was itself close to its cliff, since chamber B nearly lost its roof edge.
+**The crack model, the residual opening and the air grid matter little now.** Cracks on the
+lattice planes (`--cracks lattice`), which mishandle an inclined crack (see the
+[concrete model](concrete-model.md#cracking)), give 59 mm and 10 mm; cracks fixed at first
+cracking 39 and 7 mm; turning cracks without the second crack 36 and 6 mm. A residual crack
+opening of 0, 0.3 and 0.5 of the opening (`--crack-residual`) leaves the edge 5, 13 and 19 mm
+up. With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 (`--refine 2`) it
+rises 40 mm and is left 8 mm up, in 35 s. The side walls bow out 5 mm, and one element fails.
 
-With the air [refined](air-blast-model.md#refining-near-the-shock) by 2 (`--refine 2`, fine
-cells of 50 mm), the roof's edge rises 79 mm and settles to 14 mm, against 73 and 12 mm: the
-roof answers to impulse, which the 0.1 m cells already resolve. The peak pressures at the
-gauges are 5.3 to 6.6 MPa against 3.2 to 6.8 MPa unrefined and 3.2 to 4.4 MPa measured: a
-sharper shock beside four charges, read at approximate gauge positions. The run takes 38 s
-instead of 17 s. With afterburning and hot air as well, refined, the edge rises 89 mm and
-settles to 19 mm, against 82 and 14 mm unrefined, in 47 s.
+**What brings the roof back down.** Traced through the run before the detailing was added
+(`StructureSolver.barPlasticStrain`): the free edge works as a deep beam spanning between the
+side walls, the roof slab its flange and the down-stand its web. By the peak both of the
+slab's mats at mid-span had yielded in tension, and between 40 and 70 ms, while the gas beneath
+still pushed up at 100 to 300 kPa, every hinge closed again. What pushes it down is arching.
+Cracking lengthens the beam, the walls restrain it, and it carries 2 to 4 MN of thrust, high in
+the slab at the walls and low in the down-stand at mid-span: an inverted arch, which resists
+the upward load. The thrust outlasts the load, and with nothing left to oppose it, it pushes
+the mid-span back down. Ruled out: the gas above the roof, the elements' hourglass stiffness,
+the bars' Bauschinger softening and the side walls' own recovery. In the test the joints were
+cut through by oblique shear cracks within a few milliseconds and became hinges held only by
+their bars, their cores fragmented, which would have released much of that thrust; the
+model's joints crack across a band but no crack runs through the section. Softening the
+compression of concrete cracked the other way, by 1 / (0.8 + 170 ε₁) as in the modified
+compression field theory, did not cure it and made other cases fail (the slab held down at its
+supports came apart, and the two-storey frame fell at 1,000 kg).
 
 **How the model got here.** The first version threw the roof at 0.875 of the test's charge and
 beyond. What was found on the way:
 
 - **The gas is not what throws the roof.** With the vent closed and the chamber filled with a
   steady overpressure, applied all at once, the roof deflects 8 mm at 600 kPa and is thrown at
-  800 kPa. The gas behind the shocks in the real event, 200 to 500 kPa, is below that. So
-  the shocks of the first few milliseconds were destroying the supports.
+  800 kPa (before the detailing was added). The gas behind the shocks in the real event, 200
+  to 500 kPa, is below that. So the shocks of the first few milliseconds were destroying the
+  supports.
 - **Shear across cracked supports was the weakness.** With aggregate interlock five times
   stronger, the roof peaked at 50 mm and nothing ran away. So the model had too little shear
   transfer across sections cracked through at their supports: interlock fades as a crack
   opens, and the bars crossing it added nothing. The paper found the joints' bars "twisted but
   did not break", holding the shattered concrete in place. The model now has the bars'
   dowel action and kinking across a sliding crack (see the
-  [concrete model](concrete-model.md#shear-across-cracks)). With them the side walls stopped
-  running away, and the roof stopped at about 1 m.
-- **Removing the cores of cracked hinges** was the rest. An element was removed when its crack
-  passed 5 mm and no bar of its own crossed it, so the core of an 0.8 m section at a hinge,
-  between the mats, went at 5 mm and took the hinge's interlock and compression with it. A
-  crack crossed by intact bars anywhere in the section now counts as bridged (see
-  [Removal](concrete-model.md#removal)), as the shells already judged it. With that the roof
-  edge settles at 123 mm.
+  [concrete model](concrete-model.md#shear-across-cracks)).
+- **Removing the cores of cracked hinges.** An element was removed when its crack passed 5 mm
+  and no bar of its own crossed it, so the core of an 0.8 m section at a hinge, between the
+  mats, went at 5 mm and took the hinge's interlock and compression with it. A crack crossed
+  by intact bars anywhere in the section now counts as bridged (see
+  [Removal](concrete-model.md#removal)).
+- **Inclined cracks.** The lattice planes mishandled the joints' 45° cracks; cracks now turn
+  with the stress until they open, with a second crack where the tension turns further.
+- **Contact, the time step and the detailing**, found when the mesh was refined: contact
+  between pieces fed energy to crowded debris, dense bars outran the time step, and the
+  down-stand had no bars (see the [structural model](structural-model.md#limitations)).
 - **Not the end wall's rigidity.** Modelling the inner 0.6 m of the end wall instead of a
-  rigid face changed little; the hinge just beyond it was real.
-- **Not stiffness.** With elastic concrete the edge swings ±7 mm. In the first version, 50 mm
-  elements (about 670,000) gave the same response as 0.1 m elements within 10%; that no longer
-  holds (below).
-- **The chamfers matter.** Without them the first version's cliff came between 0.5 and 0.75
-  of the charge.
+  rigid face changed little.
 
 What remains, in rough order:
 
-1. **The joints' detailing**: no diagonal bars across the chamfers, and mats smeared over a
-   band one element thick. In the test the joints were cut through by oblique shear cracks
-   from the chamfers' edges within a few milliseconds and became hinges held only by their
-   bars, their cores fragmented; in the model they crack (1 to 3% across a band running up
-   from the chamfer's edge) but no crack runs through the section. Two changes were tried and
-   neither kept. Bars in the chamfers (as lattice bars in both directions, more steel than the
-   diagonal bars) stiffen the roof: 56 to 58 mm peak, 8 mm left. Softening the compression of
-   concrete cracked the other way, by 1 / (0.8 + 170 ε₁) as in the modified compression field
-   theory, raised the roof's peak to 78 mm (97 mm with afterburning and hot air) and left it
-   14 to 16 mm up, but stripped the unreinforced chamfers and the down-stand (1,100 elements)
-   and made other cases fail: the slab held down at its supports came apart, and the
-   two-storey frame fell at 1,000 kg.
-2. **The down-stand**: its stirrups are not modelled. It holds together on 0.1 m elements, but
-   on 25 mm elements loses 3% of its elements, its core unbridged by any bar.
-3. **What the model leaves out of the load path**: the steel sleeves, which take some of the
+1. **The joints.** In the test they were cut through within milliseconds and the roof was left
+   95 mm up; the model's stay whole enough to carry the arching thrust, and the roof is left
+   7 mm up.
+2. **The 25 mm mesh.** Its peak (65 mm) is well above the coarser meshes' (38 to 42 mm), and
+   its runs come apart at the roof-wall joints after 50 ms, where the diagonal bars anchor
+   among the mats; halving the time step held that off to 60 ms but no further was tried.
+   Until it is understood the chamber's converged answer is not known.
+3. **The detailing the paper does not give**: the diagonal bars' size and anchorage and the
+   down-stand's reinforcement are assumptions, and they decide the roof's stiffness (73 mm
+   without them, 38 with them).
+4. **What the model leaves out of the load path**: the steel sleeves, which take some of the
    charges' energy and were modelled by the paper.
-4. **The springback**: the roof is left 12 mm up against 95 mm (39 mm on 25 mm elements),
-   pulled back down by arching thrust that the model's joints carry and the test's shattered
-   joints probably could not (above). This is the joints' detailing again (item 1), and the
-   mesh (item 5).
-5. **The mesh.** The roof has not converged on 0.1 m elements:
-
-   | Elements | Air cells | Peak | Left at the end | Elements removed | Run |
-   |----------|-----------|------|-----------------|------------------|-----|
-   | 0.1 m (116,760) | 0.1 m | 73 mm | 12 mm | 3 | 17 s |
-   | 50 mm (942,643) | 0.1 m | 85 mm | 20 mm | 4,191 | 3 min |
-   | 50 mm | 50 mm | 98 mm | 24 mm | 4,587 | 4.3 min |
-   | 25 mm (7.5 million) | 50 mm | 123 mm | 39 mm | 22,220 | 45 min |
-
-   Each halving raises both the peak and what is left, and the finer meshes come down more
-   slowly (83 mm at 40 ms and 68 mm at 60 ms on 50 mm elements, against 69 and 15 mm on
-   0.1 m). The paper's authors found 100 mm elements under-predicting both too, and used
-   50 mm. On the finer meshes the removed elements are nearly all where the model leaves out
-   reinforcement the structure had: 8,430 in the chamfers, which lack their diagonal bars, and
-   8,957 in the down-stand, which lacks its stirrups (on 25 mm elements), so items 1 and 2
-   decide more the finer the mesh. A first run on 25 mm elements lost half a million elements
-   between 62 and 70 ms; that was the contact between pieces feeding energy to the debris, now
-   fixed (see the [structural model](structural-model.md#limitations)).
 
 ### What this does and does not show
 
-The model reproduces the kind of damage seen (cracking and crushing concentrated at the
-joints and supports, held together by the bars, and a roof left deflected upwards), and it
-exposed two missing mechanisms in the concrete model and one error (inclined cracks
-mishandled), now dealt with from published mechanics with the slab test little changed. With the
-gas as strong as the design manual says, the roof's peak and its cliff follow the paper's own
-model, but its permanent deflection is a sixth of the 95 mm measured: the model springs back
-too far. Peak wall pressures are within the loose check that the gauge positions allow.
+The model reproduces the kind of damage seen (cracking concentrated at the joints and
+supports, held together by the bars, and a roof left deflected upwards), and it exposed
+missing mechanisms in the concrete model, errors in it and in the contact and time step, and
+an error in the test's own set-up, all now dealt with. With the structure as built (so far as
+the paper says), its roof is about twice as stiff as both the paper's model and the test
+suggest, and springs back far further; its peak wall pressures are within the loose check that
+the gauge positions allow. One test, one measured residual, and two pieces of detailing that
+had to be assumed: the chamber shows how the model behaves at a full-scale joint, not that it
+is right there.
 
 ## Consistency across air grids
 
@@ -678,7 +652,7 @@ The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solv
 | Charge | 0.5 m cells                | 0.25 m cells       | 0.125 m cells      |
 |--------|----------------------------|--------------------|--------------------|
 | 50 kg  | 4 mm peak deflection by 0.1 s | 3 mm            | 7 mm               |
-| 200 kg | Hinged at its base, top 270 mm over by 0.1 s | 325 mm | 352 mm |
+| 200 kg | Hinged at its base, top 270 mm over by 0.1 s | 326 mm | 352 mm |
 
 ![The wall 1 s after 200 kg, cracked through along its base, before the second crack](wall-hinged.png)
 

@@ -81,7 +81,10 @@ still and was replaced.
 ## Time stepping
 
 Central differences (explicit). The stable step is half the time a compression wave takes to
-cross an element: 9 µs for 62.5 mm concrete elements. Each step is two kernels: one over the
+cross an element: 9 µs for 62.5 mm concrete elements. The wave's speed counts the bars where
+they are densest (the largest ratio along one lattice axis plus any inclined bars), which
+shortens the step by a few per cent in reinforced concrete; counting the concrete alone, a
+25 mm mesh whose inclined bars overlapped a mat's blew up. Each step is two kernels: one over the
 elements (strain, stress, nodal forces) and one over the nodes (acceleration, velocity,
 displacement). Both run over lists of the elements and nodes that exist, not the whole lattice.
 
