@@ -82,6 +82,14 @@ class ReleaseTests(unittest.TestCase):
         app = self.root / "dist/BombCAD.app/Contents"
         app.mkdir(parents=True)
         (app / "Info.plist").write_bytes(plistlib.dumps(self.info))
+        self.assert_never_signed("shader bundles")
+
+    def test_an_app_without_its_licence_is_never_signed(self):
+        self.make_app()
+        (self.root / "dist/BombCAD.app/Contents/Resources/LICENSE").unlink()
+        self.assert_never_signed("licence")
+
+    def assert_never_signed(self, reason):
         calls = []
 
         def command(*arguments, capture=False):
@@ -91,7 +99,7 @@ class ReleaseTests(unittest.TestCase):
         args = argparse.Namespace(command="prepare", identity="A" * 40, notary_profile="test")
         with patch.object(release, "ROOT", self.root), patch.object(release, "run", command), \
                 patch.object(release, "preflight", return_value=(args.identity, release.metadata(self.info))):
-            with self.assertRaisesRegex(ValueError, "shader bundles"):
+            with self.assertRaisesRegex(ValueError, reason):
                 release.release(args)
         self.assertFalse(any(call[0] == "codesign" for call in calls))
 
@@ -101,6 +109,7 @@ class ReleaseTests(unittest.TestCase):
         (app / "Info.plist").write_bytes(plistlib.dumps(self.info))
         for name in release.RESOURCE_BUNDLES:
             (app / "Resources" / name).mkdir(parents=True)
+        (app / "Resources/LICENSE").write_text("MIT")
 
     def complete_pipeline(self, gatekeeper_accepts):
         self.make_app()

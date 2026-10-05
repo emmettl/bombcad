@@ -44,8 +44,8 @@ credentials are only tried on submission.
 1. runs `make check` (strict formatting lint, the test suite, the release-script tests and a
    build);
 2. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
-   app's version matches the source, that both shader bundles are inside it and that it is
-   arm64;
+   app's version matches the source, that both shader bundles and the licence text are inside
+   it and that it is arm64;
 3. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
    (the shaders are compiled at run time by Metal's own compiler service, which needs none);
 4. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
@@ -78,7 +78,7 @@ opening and saving a layout.
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
 a rejected notarization, a Gatekeeper refusal and a missing shader bundle each stop it before
-an archive is written. On the development Mac `blastbench`, signed with the Developer ID
+an archive is written, as does an app without its licence text. On the development Mac `blastbench`, signed with the Developer ID
 identity and the hardened runtime, compiles the shaders and runs.
 
 The whole path has been run once for real. On 2026-10-05, `make release` built 0.1.0 (build 1)
@@ -89,6 +89,5 @@ checksum, validated its stapled ticket, passed `codesign --verify --deep --stric
 accepted by `spctl` too. That copy has not yet been launched, nor tried on another Mac or after a
 browser download, so the checks under "Before publishing" are still to do.
 
-The source is under the MIT licence (`LICENSE`), added after that build. The release archive
-holds only the app, and the app does not yet bundle the licence text; MIT asks for the notice to
-travel with copies, so copy it into the bundle's resources before a build is published.
+The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
+copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

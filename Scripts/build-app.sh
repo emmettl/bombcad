@@ -20,6 +20,8 @@ cp "$binary_directory/BombCAD" "$app/Contents/MacOS/BombCAD"
 cp Support/Info.plist "$app/Contents/Info.plist"
 # The icon is drawn by Scripts/make-icon.swift.
 cp Support/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
+# The MIT licence asks for its notice to travel with every copy.
+cp LICENSE "$app/Contents/Resources/LICENSE"
 # The shaders, compiled at run time. SwiftPM's resource accessor looks for its bundles in the
 # app's Resources directory first; nothing may sit at the app's root, or signing fails.
 for bundle in BombCAD_BlastCore.bundle BombCAD_BlastRender.bundle; do
