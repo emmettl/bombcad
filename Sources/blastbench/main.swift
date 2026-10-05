@@ -9,7 +9,8 @@ import simd
 // Command-line companion to the app: measures solver throughput, compares a surface burst
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
-//   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys] [--full]
+//   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|column|
+//               protected|glass|carpark|underpass|chamber] [--full]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
@@ -37,6 +38,11 @@ func preset(named name: String?) -> ScenarioPreset {
     case "frame": .frame
     case "infill": .infilledFrame
     case "storeys": .threeStorey
+    case "column": .columnCloseIn
+    case "protected": .protectedBuilding
+    case "glass": .glassFacade
+    case "carpark": .carPark
+    case "underpass": .underpass
     case "chamber": .internalExplosion
     default: .streetCanyon
     }

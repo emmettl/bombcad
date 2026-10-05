@@ -20,6 +20,8 @@ It is a study of the numerics and the performance, not a design tool.
 
 ![A three-storey concrete frame clad in masonry, 150 ms after a charge in front of it](docs/three-storey.png)
 
+![A two-storey frame's glass façade breaking up 100 ms after 20 kg in the street](docs/glass-facade.png)
+
 ## Running it
 
 Requires macOS 15 or later, Swift 6.4 and a Metal GPU.
@@ -39,6 +41,12 @@ In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan
 wheel to zoom. Space runs and pauses, ⌘R resets.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
+The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
+a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
+frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building, an
+open-sided car park with a charge inside, an underpass, a column close to a charge, and the
+internal-explosion test (deformable). The close-in column wants the fine grid: on coarser air it
+is less than a cell or two across and barely loaded.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
 pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). The toolbar opens and saves layouts as JSON and lets you move
 the charge, or the selected gauge, by clicking the ground. Gauge and deflection histories export

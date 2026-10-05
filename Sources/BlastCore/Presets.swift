@@ -10,6 +10,11 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case frame
     case infilledFrame
     case threeStorey
+    case columnCloseIn
+    case protectedBuilding
+    case glassFacade
+    case carPark
+    case underpass
     case internalExplosion
 
     public var id: String { rawValue }
@@ -25,6 +30,11 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .frame: "Two-storey frame"
         case .infilledFrame: "Frame with masonry infill"
         case .threeStorey: "Three-storey building"
+        case .columnCloseIn: "Column, close-in"
+        case .protectedBuilding: "Wall in front of a building"
+        case .glassFacade: "Glass façade"
+        case .carPark: "Car park"
+        case .underpass: "Underpass"
         case .internalExplosion: "Internal explosion (test)"
         }
     }
@@ -191,6 +201,131 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("Front column", at: SIMD3(20.2, 12.9, 1.5)),
                     Gauge("Under first slab", at: SIMD3(20, 16, 3)),
                     Gauge("Behind", at: SIMD3(20, 22, 1.5)),
+                ],
+                structure: structure)
+
+        case .columnCloseIn:
+            // A 400 mm square column, 4 m high, held at its top by the floor it carries, with
+            // 2% of steel along it and ties, and 500 kg 1.8 m from its face: close in, where a
+            // column is broken by shear and its concrete torn off rather than bent. It takes that
+            // much here: the column is only a few air cells across, so the blast clears round it
+            // within a millisecond, and peaks this close in are under-resolved; at 200 kg it
+            // cracks but holds, which likely understates a real column's damage.
+            let column = Box(x: 15.8...16.2, y: 15.8...16.2, height: 4)
+            var structure = StructureModel(solids: [column], elementSize: 0.05)
+            structure.reinforcement.append(
+                ReinforcementLayer(region: column, ratio: SIMD3(0.004, 0.004, 0.02)))
+            structure.supports = [Box(min: SIMD3(15, 15, 3.97), max: SIMD3(17, 17, 5))]
+            return Scenario(
+                name: title, domainSize: SIMD3(24, 24, 8), boxes: [],
+                charge: Charge(mass: 500, position: SIMD3(14, 16, 1)),
+                gauges: [
+                    Gauge("Column, front", at: SIMD3(15.75, 16, 1)),
+                    Gauge("Column, behind", at: SIMD3(16.3, 16, 1)),
+                    Gauge("5 m behind", at: SIMD3(21, 16, 1)),
+                ],
+                structure: structure)
+
+        case .protectedBuilding:
+            // The single-storey building of "Deformable building" with a 3 m cantilever wall
+            // between it and the same charge: what a blast wall takes off the building.
+            var scenario = Self.concreteBox.scenario
+            scenario.name = title
+            guard var structure = scenario.structure else { return scenario }
+            let wall = Box(x: 12...12.25, y: 8...24, height: 3)
+            structure.solids.append(wall)
+            structure.addMat(to: wall, thicknessAxis: 0, areaPerMetre: Self.barArea, depth: Self.barDepth)
+            scenario.structure = structure
+            scenario.gauges.insert(Gauge("Wall, front", at: SIMD3(11.9, 16, 1.5)), at: 0)
+            return scenario
+
+        case .glassFacade:
+            // The two-storey frame of "Two-storey frame" with its front bays glazed: panes of
+            // 10 mm annealed glass, meshed as shells, held in the frame. 20 kg in the street,
+            // 10 m out: enough to break glass, far too little to harm the frame.
+            var scenario = Self.frame.scenario
+            scenario.name = title
+            guard var structure = scenario.structure else { return scenario }
+            let pane: Float = 0.01
+            let y: Float = 13.18
+            for (x0, x1) in [(14.375, 20), (20.375, 26)] as [(Float, Float)] {
+                for (z0, z1) in [(0, 3.25), (3.5, 6.75)] as [(Float, Float)] {
+                    structure.solids.append(Box(min: SIMD3(x0, y, z0), max: SIMD3(x1, y + pane, z1)))
+                    let index = structure.solids.count - 1
+                    structure.setMaterial(.annealedGlass, of: index)
+                    structure.setElementKind(.shell, of: index)
+                }
+            }
+            structure.shellElementSize = 0.125
+            structure.shellLayers = 4
+            scenario.structure = structure
+            scenario.charge = Charge(mass: 20, position: SIMD3(20, 3, 1))
+            scenario.gauges = [
+                Gauge("Glass, ground floor", at: SIMD3(17, 13.1, 1.5)),
+                Gauge("Glass, first floor", at: SIMD3(17, 13.1, 5)),
+                Gauge("Inside", at: SIMD3(17, 16, 1.5)),
+            ]
+            return scenario
+
+        case .carPark:
+            // An open-sided car park: two decks and a roof of 250 mm flat slab on 400 mm columns
+            // on a 7.5 m grid, 2.85 m floor to floor, with 100 kg in a car on the ground floor.
+            let column: Float = 0.4
+            let xs: [Float] = [10, 17.5, 25]
+            let ys: [Float] = [10, 17.5, 25]
+            let levels: [Float] = [2.6, 5.45, 8.3]
+            let top = levels.last! + 0.25
+            var columns: [Box] = []
+            for x in xs {
+                for y in ys {
+                    columns.append(Box(x: x...(x + column), y: y...(y + column), height: top))
+                }
+            }
+            let slabs = levels.map {
+                Box(
+                    min: SIMD3(xs.first!, ys.first!, $0),
+                    max: SIMD3(xs.last! + column, ys.last! + column, $0 + 0.25))
+            }
+            var structure = StructureModel(solids: columns + slabs, elementSize: 0.125)
+            for box in columns {
+                structure.reinforcement.append(
+                    ReinforcementLayer(region: box, ratio: SIMD3(0.004, 0.004, 0.02)))
+            }
+            for slab in slabs {
+                structure.addMat(to: slab, thicknessAxis: 2, areaPerMetre: 754e-6, depth: Self.barDepth)
+            }
+            return Scenario(
+                name: title, domainSize: SIMD3(36, 36, 12), boxes: [],
+                charge: Charge(mass: 100, position: SIMD3(13.75, 13.75, 0.8)),
+                gauges: [
+                    Gauge("Under the first deck", at: SIMD3(13.75, 13.75, 2.5)),
+                    Gauge("Next bay", at: SIMD3(21.25, 13.75, 1.5)),
+                    Gauge("Outside", at: SIMD3(30, 13.75, 1.5)),
+                ],
+                structure: structure)
+
+        case .underpass:
+            // A reinforced concrete box underpass, 6 m wide and 5 m high inside, with 500 mm
+            // walls, floor and roof, 30 m long and open at both ends, and 100 kg inside: the
+            // tube keeps the blast from spreading, so it reaches far along it.
+            let walls: [(box: Box, axis: Int)] = [
+                (Box(min: SIMD3(4, 12.5, 0), max: SIMD3(34, 13, 6)), 1),
+                (Box(min: SIMD3(4, 19, 0), max: SIMD3(34, 19.5, 6)), 1),
+                (Box(min: SIMD3(4, 13, 0), max: SIMD3(34, 19, 0.5)), 2),
+                (Box(min: SIMD3(4, 13, 5.5), max: SIMD3(34, 19, 6)), 2),
+            ]
+            var structure = StructureModel(solids: walls.map(\.box), elementSize: 0.125)
+            for wall in walls {
+                structure.addMat(to: wall.box, thicknessAxis: wall.axis, areaPerMetre: 754e-6, depth: 0.05)
+            }
+            return Scenario(
+                name: title, domainSize: SIMD3(38, 32, 12), boxes: [],
+                charge: Charge(mass: 100, position: SIMD3(19, 16, 1.5)),
+                gauges: [
+                    Gauge("Wall beside the charge", at: SIMD3(19, 13.1, 1.5)),
+                    Gauge("10 m along", at: SIMD3(29, 16, 1.5)),
+                    Gauge("Outside the portal", at: SIMD3(36, 16, 1.5)),
+                    Gauge("Beside the underpass", at: SIMD3(19, 24, 1.5)),
                 ],
                 structure: structure)
 
