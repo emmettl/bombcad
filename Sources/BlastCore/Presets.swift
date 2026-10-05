@@ -15,6 +15,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case glassFacade
     case carPark
     case underpass
+    case blockHouse
     case internalExplosion
 
     public var id: String { rawValue }
@@ -35,6 +36,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .glassFacade: "Glass façade"
         case .carPark: "Car park"
         case .underpass: "Underpass"
+        case .blockHouse: "Block-built house"
         case .internalExplosion: "Internal explosion (test)"
         }
     }
@@ -326,6 +328,53 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("10 m along", at: SIMD3(29, 16, 1.5)),
                     Gauge("Outside the portal", at: SIMD3(36, 16, 1.5)),
                     Gauge("Beside the underpass", at: SIMD3(19, 24, 1.5)),
+                ],
+                structure: structure)
+
+        case .blockHouse:
+            // A two-storey house, 8 m deep and 9 m wide, of 200 mm concrete blockwork (a 150 mm
+            // block wall inside, with a doorway), with a 200 mm reinforced concrete first floor
+            // and flat roof; windows front and back on both floors and a front door. Meshed with
+            // shells, which suit walls and slabs this thin. 25 kg in the street, 10 m in front.
+            let (x0, x1): (Float, Float) = (16, 24)
+            let (y0, y1): (Float, Float) = (12, 21)
+            let t: Float = 0.2
+            let floors: [Float] = [2.6, 5.4]
+            let top = floors.last! + t
+            let walls: [Box] = [
+                Box(min: SIMD3(x0, y0, 0), max: SIMD3(x0 + t, y1, top)),  // front
+                Box(min: SIMD3(x1 - t, y0, 0), max: SIMD3(x1, y1, top)),  // back
+                Box(min: SIMD3(x0 + t, y0, 0), max: SIMD3(x1 - t, y0 + t, top)),  // sides
+                Box(min: SIMD3(x0 + t, y1 - t, 0), max: SIMD3(x1 - t, y1, top)),
+                Box(min: SIMD3(20, y0 + t, 0), max: SIMD3(20.15, y1 - t, floors[0])),  // inside, ground floor
+            ]
+            let slabs = floors.map { Box(min: SIMD3(x0 + t, y0 + t, $0), max: SIMD3(x1 - t, y1 - t, $0 + t)) }
+            var structure = StructureModel(solids: walls + slabs, elementSize: 0.125)
+            for index in walls.indices { structure.setMaterial(.concreteBlock, of: index) }
+            for slab in slabs {
+                structure.addMat(to: slab, thicknessAxis: 2, areaPerMetre: Self.barArea, depth: Self.barDepth)
+            }
+            structure.elementKind = .shell
+            var openings: [Box] = []
+            for x in [x0, x1 - t] {
+                for (z, height) in [(Float(0.9), Float(1.3)), (Float(3.5), Float(1.3))] {
+                    for y in [y0 + 1.5, y1 - 2.7] {
+                        openings.append(
+                            Box(min: SIMD3(x - 0.1, y, z), max: SIMD3(x + t + 0.1, y + 1.2, z + height)))
+                    }
+                }
+            }
+            openings.append(Box(min: SIMD3(x0 - 0.1, 15.9, 0), max: SIMD3(x0 + t + 0.1, 16.9, 2.1)))  // front door
+            openings.append(Box(min: SIMD3(19.9, 16, 0), max: SIMD3(20.25, 17, 2.1)))  // inner doorway
+            structure.openings = openings
+            return Scenario(
+                name: title, domainSize: SIMD3(32, 32, 12), boxes: [],
+                charge: Charge(mass: 25, position: SIMD3(6, 16.5, 0.8)),
+                gauges: [
+                    Gauge("Front wall", at: SIMD3(15.9, 14, 1.5)),
+                    Gauge("Front room", at: SIMD3(18, 14, 1.5)),
+                    Gauge("Back room", at: SIMD3(22, 14, 1.5)),
+                    Gauge("Behind the house", at: SIMD3(26, 16.5, 1.5)),
                 ],
                 structure: structure)
 

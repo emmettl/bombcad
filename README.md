@@ -44,8 +44,9 @@ The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge 
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building, an
-open-sided car park with a charge inside, an underpass, a column close to a charge, and the
-internal-explosion test (deformable). The close-in column wants the fine grid: on coarser air it
+open-sided car park with a charge inside, an underpass, a column close to a charge, a
+two-storey house of concrete blockwork meshed with shells, and the internal-explosion test
+(deformable). The close-in column wants the fine grid: on coarser air it
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and

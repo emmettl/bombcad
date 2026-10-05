@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|column|
-//               protected|glass|carpark|underpass|chamber] [--full]
+//               protected|glass|carpark|underpass|house|chamber] [--full]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
@@ -43,6 +43,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "glass": .glassFacade
     case "carpark": .carPark
     case "underpass": .underpass
+    case "house": .blockHouse
     case "chamber": .internalExplosion
     default: .streetCanyon
     }
