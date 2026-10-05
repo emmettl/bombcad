@@ -364,8 +364,9 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     }
                 }
             }
-            openings.append(Box(min: SIMD3(x0 - 0.1, 15.9, 0), max: SIMD3(x0 + t + 0.1, 16.9, 2.1)))  // front door
-            openings.append(Box(min: SIMD3(19.9, 16, 0), max: SIMD3(20.25, 17, 2.1)))  // inner doorway
+            // The front door and the doorway inside.
+            openings.append(Box(min: SIMD3(x0 - 0.1, 15.9, 0), max: SIMD3(x0 + t + 0.1, 16.9, 2.1)))
+            openings.append(Box(min: SIMD3(19.9, 16, 0), max: SIMD3(20.25, 17, 2.1)))
             structure.openings = openings
             return Scenario(
                 name: title, domainSize: SIMD3(32, 32, 12), boxes: [],
