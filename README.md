@@ -22,9 +22,15 @@ It is a study of the numerics and the performance, not a design tool.
 
 ![A two-storey frame's glass façade breaking up 100 ms after 20 kg in the street](docs/glass-facade.png)
 
+## Download
+
+A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
+[Releases](https://github.com/emmettl/bombcad/releases) page. Expand the ZIP and move
+`BombCAD.app` to Applications; the `.sha256` file beside it checks the download.
+
 ## Running it
 
-Requires macOS 15 or later, Swift 6.4 and a Metal GPU.
+To build from source instead: macOS 15 or later, Swift 6.4 and a Metal GPU.
 
 ```bash
 swift run -c release BombCAD
