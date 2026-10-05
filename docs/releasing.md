@@ -95,10 +95,9 @@ accepted by `spctl` and holds the licence text. That copy has not yet been launc
 on another Mac or after a browser download, so the checks under "Before publishing" are still
 to do.
 
-Build 2's ZIP, checksum and manifest are attached to a **draft** GitHub release, `v0.1.0`,
-targeting `2a906cb`; the copy downloaded back from it matched the checksum. A draft is visible
-only to the repository's owner, and the tag is created only when the release is published, so
-the README's download link works only after that.
+Build 2's ZIP, checksum and manifest are attached to the GitHub release `v0.1.0`, published on
+2026-10-06 with its tag on `2a906cb`; the copy downloaded back from it matched the checksum.
+While the repository is private, only its owner and collaborators can download it.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
