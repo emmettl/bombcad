@@ -16,6 +16,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case carPark
     case underpass
     case blockHouse
+    case blockWall
     case internalExplosion
 
     public var id: String { rawValue }
@@ -37,6 +38,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .carPark: "Car park"
         case .underpass: "Underpass"
         case .blockHouse: "Block-built house"
+        case .blockWall: "Blockwork wall"
         case .internalExplosion: "Internal explosion (test)"
         }
     }
@@ -376,6 +378,30 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("Front room", at: SIMD3(18, 14, 1.5)),
                     Gauge("Back room", at: SIMD3(22, 14, 1.5)),
                     Gauge("Behind the house", at: SIMD3(26, 16.5, 1.5)),
+                ],
+                structure: structure)
+
+        case .blockWall:
+            // A boundary wall of concrete blockwork, 225 mm thick, 2 m high and 9 m long between
+            // short return walls, unreinforced. Its 75 mm solid elements are a third of a course
+            // and a sixth of a block, so the blocks and their mortar joints are meshed: the wall
+            // cracks along its bed joints and in steps between them. 5 kg, 6 m in front.
+            let h: Float = 0.075
+            let (y0, y1): (Float, Float) = (11.4, 20.4)
+            let height = 27 * h
+            let walls = [
+                Box(min: SIMD3(18, y0, 0), max: SIMD3(18 + 3 * h, y1, height)),
+                Box(min: SIMD3(18 + 3 * h, y0, 0), max: SIMD3(18 + 23 * h, y0 + 3 * h, height)),
+                Box(min: SIMD3(18 + 3 * h, y1 - 3 * h, 0), max: SIMD3(18 + 23 * h, y1, height)),
+            ]
+            let structure = StructureModel(solids: walls, material: .concreteBlock, elementSize: h)
+            return Scenario(
+                name: title, domainSize: SIMD3(32, 32, 16), boxes: [],
+                charge: Charge(mass: 5, position: SIMD3(12, 15.9, 0.8)),
+                gauges: [
+                    Gauge("Wall, front", at: SIMD3(17.9, 15.9, 1)),
+                    Gauge("Wall, behind", at: SIMD3(18.4, 15.9, 1)),
+                    Gauge("5 m behind", at: SIMD3(23, 15.9, 1.5)),
                 ],
                 structure: structure)
 

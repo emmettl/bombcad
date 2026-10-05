@@ -45,6 +45,71 @@ public struct SteelProperties: Sendable, Hashable, Codable {
         yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.12)
 }
 
+/// The units masonry is laid in and the mortar joints between them, laid in running bond: each
+/// course is offset by half a unit from the one below. Where the solid elements are small enough
+/// to show the joints (no more than half a course high and a quarter of a unit long), the
+/// elements a joint passes through carry across it only the mortar's bond, and slide along it
+/// by Coulomb friction; everywhere else in the wall the units' own strength applies. On coarser
+/// elements, and in shells, the wall keeps its material's strength throughout.
+public struct MasonryUnits: Sendable, Hashable, Codable {
+    /// Length of a unit along the wall with one head joint, in metres.
+    public var length: Float
+    /// Height of a course: a unit with one bed joint, in metres.
+    public var courseHeight: Float
+    /// Tensile strength of a unit, in Pa, and the energy to crack a unit area of it, in J/m².
+    public var tensileStrength: Float
+    public var fractureEnergy: Float
+    /// Tensile strength of the bond of mortar to unit, in Pa, and the energy to open a unit
+    /// area of joint, in J/m².
+    public var bondStrength: Float
+    public var bondFractureEnergy: Float
+    /// Shear a joint carries with nothing pressing on it, in Pa; it is lost as the joint opens
+    /// or slides, over `shearFractureEnergy` (J/m²) of sliding.
+    public var cohesion: Float
+    /// Coefficient of friction along a joint.
+    public var friction: Float
+    public var shearFractureEnergy: Float
+
+    public init(
+        length: Float, courseHeight: Float, tensileStrength: Float, fractureEnergy: Float,
+        bondStrength: Float,
+        bondFractureEnergy: Float, cohesion: Float, friction: Float, shearFractureEnergy: Float
+    ) {
+        self.length = length
+        self.courseHeight = courseHeight
+        self.tensileStrength = tensileStrength
+        self.fractureEnergy = fractureEnergy
+        self.bondStrength = bondStrength
+        self.bondFractureEnergy = bondFractureEnergy
+        self.cohesion = cohesion
+        self.friction = friction
+        self.shearFractureEnergy = shearFractureEnergy
+    }
+
+    /// Solid clay bricks, 215 by 65 mm on face with 10 mm joints. The joints are those of
+    /// Lourenço and Rots (1997) for van der Pluijm's and Raijmakers and Vermeltfoort's brickwork:
+    /// 0.25 MPa and 18 J/m² in tension, a cohesion of 1.4 times that, friction 0.75 and 125 J/m²
+    /// in shear; a brick cracks at 2 MPa with 80 J/m².
+    public static let brick = MasonryUnits(
+        length: 0.225, courseHeight: 0.075, tensileStrength: 2e6, fractureEnergy: 80, bondStrength: 0.25e6,
+        bondFractureEnergy: 18, cohesion: 0.35e6, friction: 0.75, shearFractureEnergy: 125)
+
+    /// Hollow dense concrete blocks, 440 by 215 mm on face with 10 mm joints, per gross area: a
+    /// block of 7.3 MPa about 55% solid is of 13 MPa concrete, which by the correlations used
+    /// for concrete cracks at 1.7 MPa with 115 J/m², so the block at 0.9 MPa with 60 J/m²; the
+    /// joints have the blockwork's 0.2 MPa and 10 J/m² in tension, and the brickwork's ratios
+    /// in shear.
+    public static let concreteBlock = MasonryUnits(
+        length: 0.45, courseHeight: 0.225, tensileStrength: 0.9e6, fractureEnergy: 60, bondStrength: 0.2e6,
+        bondFractureEnergy: 10, cohesion: 0.28e6, friction: 0.75, shearFractureEnergy: 100)
+
+    /// Whether elements of size `h` are small enough to show the joints: at least two to a
+    /// course, and two to the half unit by which courses overlap.
+    public func isResolved(byElementsOf h: Float) -> Bool {
+        courseHeight >= 1.999 * h && length >= 3.999 * h
+    }
+}
+
 /// Material of a deformable structure.
 ///
 /// The concrete model works on total strain, with cracks smeared over the three lattice planes.
@@ -114,6 +179,10 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Raise strength with the local strain rate: CEB-FIP 1990 for concrete in compression,
     /// Malvar and Ross (1998) in tension, Malvar and Crawford (1998) for reinforcement.
     public var rateDependent = false
+    /// Masonry: the units it is laid in and the joints between them (see `MasonryUnits`). The
+    /// strengths above are then the wall's as a whole, used where the elements are too coarse
+    /// to show the joints.
+    public var units: MasonryUnits?
 
     /// A von Mises material.
     public init(
@@ -179,6 +248,7 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         material.fractureEnergy = 20
         material.crushingEnergy = 5000
         material.erosionOpening = 0.003
+        material.units = .brick
         return material
     }()
 
@@ -194,6 +264,7 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         material.fractureEnergy = 10
         material.crushingEnergy = 2500
         material.erosionOpening = 0.003
+        material.units = .concreteBlock
         return material
     }()
 
@@ -397,6 +468,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// A typical bond of masonry to concrete: 0.2 MPa and 10 J/m².
     public static let masonryBond = SIMD2<Float>(0.2e6, 10)
 
+    /// Whether masonry is meshed as units and mortar joints where its material gives them and
+    /// the solid elements are small enough (see `MasonryUnits`).
+    public var unitJoints = true
+
     /// The axes concrete cracks across (see `CrackAxes`).
     public var crackAxes: CrackAxes = .turningUntilOpen
     /// Whether concrete whose crack axes are fixed opens a second crack where the tension turns
@@ -562,6 +637,33 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public func materialIndex(at point: SIMD3<Float>) -> Int {
         guard let index = solids.lastIndex(where: { $0.contains(point) }) else { return 0 }
         return materials.firstIndex(of: material(of: index)) ?? 0
+    }
+
+    /// The mortar joints that pass through the element whose low corner is `low`, as bits 0 to 2
+    /// for joints across x, y and z. The element belongs to the last solid that contains its
+    /// centre, a wall of `units` laid from that solid's base: bed joints every course, across
+    /// z, and head joints every unit along the longer of the solid's horizontal sides, offset
+    /// by half a unit in alternate courses.
+    func jointPlanes(inElementAt low: SIMD3<Float>, units: MasonryUnits) -> UInt8 {
+        let h = elementSize
+        let centre = low + 0.5 * h
+        guard let wall = solids.last(where: { $0.contains(centre) }) else { return 0 }
+        let slack = 1e-3 * h
+        /// Whether a plane of the family `start + n * spacing` lies in [from, from + h).
+        func crosses(_ from: Float, start: Float, spacing: Float) -> Bool {
+            let next = start + ((from - slack - start) / spacing).rounded(.up) * spacing
+            return next < from + h - slack
+        }
+        var planes: UInt8 = 0
+        if crosses(low.z, start: wall.min.z, spacing: units.courseHeight) { planes |= 4 }
+        let along = wall.size.x >= wall.size.y ? 0 : 1
+        let course = Int(((centre.z - wall.min.z) / units.courseHeight).rounded(.down))
+        let start = wall.min[along] + (course % 2 == 0 ? 0 : 0.5 * units.length)
+        // The wall's own ends are not joints.
+        if crosses(low[along], start: start, spacing: units.length), low[along] - slack > wall.min[along] {
+            planes |= UInt8(1 << along)
+        }
+        return planes
     }
 
     /// Replaces the reinforcement with the arrangement each solid asks for. Solids left as
@@ -796,6 +898,14 @@ struct MaterialParameters {
     var crushRadius: UInt32 = 0
     var steelHardeningRatio: Float = 0.01
     var barReach: Float = 0
+    /// Mortar joints: the bond's tensile strength over the unit's, the decay strain of its
+    /// softening, the joint's cohesion and friction, and the opening (as a strain) that a unit
+    /// of sliding strain counts for.
+    var jointStrength: Float = 1
+    var jointSoftening: Float = 1
+    var jointCohesion: Float = 0
+    var jointFriction: Float = 0
+    var jointSlipDamage: Float = 0
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -893,6 +1003,7 @@ extension StructureMaterial {
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)
+        units = try container.decodeIfPresent(MasonryUnits.self, forKey: .units)
     }
 }
 
@@ -919,5 +1030,6 @@ extension StructureModel {
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
+        unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
     }
 }

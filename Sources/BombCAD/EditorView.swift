@@ -79,6 +79,12 @@ struct EditorView: View {
                             "Where two materials meet, as masonry against its concrete frame, hold them "
                                 + "together only by the bond of mortar to concrete (0.2 MPa), so infill can come away."
                         )
+                    Toggle("Masonry as units and mortar joints", isOn: unitJointsBinding)
+                        .help(
+                            "Where solid elements are no more than half a course high, mesh brickwork and "
+                                + "blockwork as units with mortar joints that open at the mortar's bond and "
+                                + "slide by friction. Otherwise the wall has one strength throughout."
+                        )
                 }
             } header: {
                 Text("Deformable structure")
@@ -169,6 +175,12 @@ struct EditorView: View {
         Binding(
             get: { model.settings.scenario.structure?.interfaceBond != nil },
             set: { on in model.editStructure { $0.interfaceBond = on ? StructureModel.masonryBond : nil } })
+    }
+
+    private var unitJointsBinding: Binding<Bool> {
+        Binding(
+            get: { model.settings.scenario.structure?.unitJoints ?? true },
+            set: { on in model.editStructure { $0.unitJoints = on } })
     }
 
     private func elementKindBinding(_ index: Int) -> Binding<ElementKind> {

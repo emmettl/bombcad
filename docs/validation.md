@@ -88,7 +88,7 @@ spacing (100 mm) and the aggregate size (16 mm).
 | Model, 32 elements through       | 105 mm (98%)    | 26 ms | 74 mm    | 32 of 4,423,680 |
 | Model, 16 elements through       | 108 mm (100%)   | 27 ms | 80 mm    | 1 of 552,960    |
 | Model, 8 elements through        | 101 mm (94%)    | 26 ms | 67 mm    | 0 of 68,608     |
-| Model, 4 elements through        | 101 mm (93%)    | 26 ms | 80 mm    | 0 of 8,704      |
+| Model, 4 elements through        | 100 mm (93%)    | 26 ms | 79 mm    | 0 of 8,704      |
 
 Mid-span deflection through the record, in millimetres:
 
@@ -181,15 +181,15 @@ Eight elements through the thickness, strain-rate laws, one thing changed at a t
 | Supports as 1 in bearings, held down         | 81 mm (75%)     | 0               |
 | Supports as 1 in bearings, free to lift      | 88 mm (81%)     | 0               |
 | 16 elements through the thickness            | 108 mm (100%)   | 1               |
-| Fixed UFC 3-340-02 factors, no rate laws     | 123 mm (113%)   | 0               |
-| Static strengths                             | 194 mm, failing | 3,939           |
+| Fixed UFC 3-340-02 factors, no rate laws     | 122 mm (113%)   | 0               |
+| Static strengths                             | 197 mm, failing | 4,064           |
 
 Reading this table:
 
 - **The rate treatment decides the outcome.** The load is far above the slab's static
   capacity, so it survives only because steel and concrete are stronger when loaded quickly.
   With static strengths the model predicts failure. With the fixed design factors of
-  UFC 3-340-02, which are deliberately conservative, it predicts 123 mm, 13% more than was
+  UFC 3-340-02, which are deliberately conservative, it predicts 122 mm, 13% more than was
   measured: conservative, as intended. (Before bar
   rupture was judged over a debonded length, these factors gave a collapse.) The test is
   therefore a sharp check on the rate treatment, and a poor check on anything else.
@@ -706,6 +706,10 @@ The test suite has 114 tests. The physical checks are:
 | Wall in a blast, solid base, shell top          | Bends between the all-solid and all-shell walls  |
 | Concrete and masonry elements pulled apart, joint bonded | Separate at the bond, 0.2 MPa, within 5%   |
 | Glass pane, 1 kg at 3 m and 0.5 g at 3 m        | Breaks, and survives                             |
+| Blockwork meshed as units and joints            | Joints in running bond; none on coarse elements  |
+| Blockwork pulled across and along its bed joints | Parts at the bond within 5%; stronger along, below the units' strength |
+| A bed joint pushed sideways, free and pressed   | Slides at cohesion, and cohesion plus friction, within 10% |
+| Blockwork wall cracked by a push, left alone    | Kinetic energy never rises; comes to rest        |
 | One-dimensional blast, point source             | Energy within 1%; Sedov–Taylor radius within 8%  |
 | Charge mapped onto the grid                     | Same energy as the balloon within 3%; gauges passed keep their record |
 

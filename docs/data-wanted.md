@@ -60,6 +60,14 @@ Seven values in the code were written from memory and should be checked against 
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
   **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2); ASTM E1300 or a
   glass handbook).
+- **Mortar joints.** P. B. Lourenço and J. G. Rots, "Multisurface interface model for analysis
+  of masonry structures", *Journal of Engineering Mechanics* 123(7) (1997) 660–668, and R. van
+  der Pluijm's tests behind it. Needed: the joints' tensile strength and mode I energy (taken
+  as 0.25 MPa and 18 J/m²), cohesion, friction and mode II energy (0.35 MPa, 0.75, 125 J/m²),
+  and the bricks' tensile strength and energy (2 MPa, 80 J/m²), used in `MasonryUnits.brick`;
+  the values for hollow concrete blockwork are scaled from these and from Eurocode 6, and a
+  source for them would be better. And any blast or shock-tube test of an unreinforced
+  masonry wall with its deflection history, to check the joint model at all.
 - **The Holmquist–Johnson–Cook compaction curve.** T. J. Holmquist, G. R. Johnson and
   W. H. Cook, 14th International Symposium on Ballistics, 1993. Needed: the locking pressure
   and strain and the constants K₁, K₂, K₃ (taken as 0.8 GPa, 0.1, and 85, −171, 208 GPa), used

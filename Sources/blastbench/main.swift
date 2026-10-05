@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|column|
-//               protected|glass|carpark|underpass|house|chamber] [--full]
+//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
@@ -44,6 +44,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "carpark": .carPark
     case "underpass": .underpass
     case "house": .blockHouse
+    case "blockwall": .blockWall
     case "chamber": .internalExplosion
     default: .streetCanyon
     }
@@ -65,6 +66,8 @@ func chosenScenario() -> Scenario {
     }
     // `--no-second-crack` carries tension that turns away from fixed crack axes across them.
     if flag("no-second-crack") { scenario.structure?.secondCracks = false }
+    // `--no-units` gives masonry its wall's strength throughout, without units and joints.
+    if flag("no-units") { scenario.structure?.unitJoints = false }
     // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
     if flag("bond"), var structure = scenario.structure {
         structure.interfaceBond = StructureModel.masonryBond

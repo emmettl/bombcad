@@ -76,9 +76,13 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    through the thickness, three times faster than all solid elements on the single-storey
    building with only its front wall solid, and in contact with each other once anything has
    failed; see the [shell model](shell-model.md#shells-and-solids-together).)
-8. **Joints within materials**: masonry as units and mortar, bearings that separate. (Done:
-   several materials in one body; joints between materials that open at the bond of mortar to
-   concrete; structural steel and annealed glass, the glass as shells in panes.)
+8. **Joints within materials**: bearings that separate; masonry's joints on coarse elements
+   and in shells, as strengths that differ across and along the bed joints. (Done: several
+   materials in one body; joints between materials that open at the bond of mortar to
+   concrete; structural steel and annealed glass, the glass as shells in panes; and masonry
+   as units and mortar joints in running bond, which open at the bond and slide by friction,
+   on solid elements no more than half a course high: see the
+   [concrete model](concrete-model.md#masonry-as-units-and-mortar-joints).)
 9. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
    blocks of 4 × 4 × 4 cells that follow the shock, conservative across its edge, with its own
    outline of blocks and structure, loading a deformable structure from the fine cells beside

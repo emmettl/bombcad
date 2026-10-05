@@ -172,6 +172,14 @@ struct MaterialParameters {
     uint crushRadius;           // elements either side over which crushing is averaged; 0 = local
     float steelHardeningRatio;  // slope of the reinforcement's yield asymptotes over its modulus
     float barReach;             // half the debonded length, in elements; 0 = judged locally
+    // Mortar joints (masonry meshed as units): the bond's tensile strength over the unit's, the
+    // decay strain of its softening, the joint's cohesion and friction, and the opening, as a
+    // strain, that a unit of sliding strain counts for.
+    float jointStrength;
+    float jointSoftening;
+    float jointCohesion;
+    float jointFriction;
+    float jointSlipDamage;
 };
 
 constant uint maxMaterials = 8;
@@ -218,6 +226,7 @@ struct ElementState {
     float secondOpening;
     float secondHistory;
     float inclinedPlastic;  // plastic strain of the inclined bars (1e9 once ruptured)
+    packed_float3 jointSlip;  // masonry: sliding along mortar joints, as shear strains xy, yz, zx
 };
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
@@ -361,10 +370,16 @@ static inline void symmetricEigen(float3x3 a, thread float3 &values, thread floa
 
 // Tensile stress of concrete on its envelope, at the largest strain it has reached. `increase`
 // is the dynamic increase factor: it raises the strength without changing the stiffness.
-static inline float tensionEnvelope(float history, float increase, constant MaterialParameters &m) {
+// `softening` is the decay strain of the softening: the material's, or a mortar joint's.
+static inline float tensionEnvelopeOver(float history, float increase, float softening,
+                                        constant MaterialParameters &m) {
     float onset = m.crackOnset * increase;
     return history <= onset ? m.youngsModulus * history
-                            : m.tensileStrength * increase * exp(-(history - onset) / m.crackSoftening);
+                            : m.tensileStrength * increase * exp(-(history - onset) / softening);
+}
+
+static inline float tensionEnvelope(float history, float increase, constant MaterialParameters &m) {
+    return tensionEnvelopeOver(history, increase, m.crackSoftening, m);
 }
 
 // A second crack forms where the tension has turned more than 30 degrees from every crack axis.
@@ -406,21 +421,31 @@ static inline float secondCrackOpening(float trial, float opened, float reached,
 // Strain at which a crack that has opened to `history` carries no stress. Fragments and
 // misfit between the faces stop a crack closing completely: a fixed fraction of the crack's
 // inelastic opening is left behind, as in the concrete damaged plasticity model.
-static inline float crackResidual(float history, float increase, constant MaterialParameters &m) {
+static inline float crackResidualOver(float history, float increase, float softening,
+                                      constant MaterialParameters &m) {
     if (history <= m.crackOnset * increase) {
         return 0.0f;
     }
-    return m.crackResidual * (history - tensionEnvelope(history, increase, m) / m.youngsModulus);
+    return m.crackResidual * (history - tensionEnvelopeOver(history, increase, softening, m) / m.youngsModulus);
+}
+
+static inline float crackResidual(float history, float increase, constant MaterialParameters &m) {
+    return crackResidualOver(history, increase, m.crackSoftening, m);
 }
 
 // Uniaxial tensile stress of concrete at strain `strain`, having previously reached `history`.
 // Unloading and reloading follow the straight line between the envelope and the residual strain.
-static inline float concreteTension(float strain, float history, float residual, float increase,
-                                    constant MaterialParameters &m) {
+static inline float concreteTensionOver(float strain, float history, float residual, float increase,
+                                        float softening, constant MaterialParameters &m) {
     if (history <= 0.0f) {
         return 0.0f;
     }
-    return tensionEnvelope(history, increase, m) * max(strain - residual, 0.0f) / (history - residual);
+    return tensionEnvelopeOver(history, increase, softening, m) * max(strain - residual, 0.0f) / (history - residual);
+}
+
+static inline float concreteTension(float strain, float history, float residual, float increase,
+                                    constant MaterialParameters &m) {
+    return concreteTensionOver(strain, history, residual, increase, m.crackSoftening, m);
 }
 
 // The residual opening a crack keeps, as a strain: it follows `crackResidual` of the crack's
@@ -428,9 +453,14 @@ static inline float concreteTension(float strain, float history, float residual,
 // between the planes it cuts across, and raises their histories even where one of them is
 // closed and its faces bear on each other; a residual rising with it would push those faces
 // apart from nothing, putting energy into the solid at every turn.
+static inline float settledResidualOver(float stored, float history, float uniaxial, float increase,
+                                        float softening, constant MaterialParameters &m) {
+    return max(stored, min(crackResidualOver(history, increase, softening, m), uniaxial));
+}
+
 static inline float settledResidual(float stored, float history, float uniaxial, float increase,
                                     constant MaterialParameters &m) {
-    return max(stored, min(crackResidual(history, increase, m), uniaxial));
+    return settledResidualOver(stored, history, uniaxial, increase, m.crackSoftening, m);
 }
 
 // Strains at which concrete in compression reaches its peak and its residual, for strength
@@ -703,7 +733,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         return;
     }
     uint3 tid = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
-    uchar own = singleMaterial ? 0 : materialIndex[compact];
+    // The material's index is in the low four bits; bits 4 to 6 mark the mortar joints the
+    // element holds, across x, y and z (masonry meshed as units).
+    uchar tag = singleMaterial ? uchar(0) : materialIndex[compact];
+    uchar own = tag & uchar(15);
+    uint joints = uint(tag) >> 4;
     constant MaterialParameters &m = materials[singleMaterial ? 0u : min(uint(own), maxMaterials - 1)];
 
     uint nodesX = u.ex + 1;
@@ -845,6 +879,13 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 turning = u.orientedCracks == 2 && signbit(stored.w);
             }
         }
+        // A mortar joint lies on a lattice plane, so an element that holds one cracks across the
+        // lattice axes from the start.
+        if (joints != 0u) {
+            frame = float3x3(1.0f);
+            framed = true;
+            turning = false;
+        }
         float3x3 strain = transpose(frame) * latticeStrain * frame;
         // A second crack's opening is not the concrete's strain (see below).
         float4 secondCrack = float4(state.secondCrack);
@@ -872,13 +913,35 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         float compressionFactor = compressionIncrease(state.strainRate, m);
         float onset = m.crackOnset * tensionFactor;
+        // Across a mortar joint the tension law is the bond's: weaker, and softening over its
+        // own fracture energy. The other planes keep the unit's.
+        float3 planeFactor = float3(tensionFactor);
+        float3 planeSoftening = float3(m.crackSoftening);
+        for (int j = 0; j < 3; ++j) {
+            if (((joints >> j) & 1u) != 0u) {
+                planeFactor[j] *= m.jointStrength;
+                planeSoftening[j] = m.jointSoftening;
+            }
+        }
+        float3 planeOnset = m.crackOnset * planeFactor;
 
         // Equivalent uniaxial strains along the axes: in the linear range these reproduce
         // isotropic elasticity. The Poisson coupling fades as the concrete cracks, since an open
         // crack's strain is not elastic strain and must not stretch the directions alongside it.
         float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
-        if (worst > onset) {
-            poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
+        if (joints == 0u) {
+            if (worst > onset) {
+                poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
+            }
+        } else {
+            float fade = 1.0f;
+            for (int j = 0; j < 3; ++j) {
+                if (history[j] > planeOnset[j]) {
+                    fade = min(fade, tensionEnvelopeOver(history[j], planeFactor[j], planeSoftening[j], m)
+                                         / (m.youngsModulus * history[j]));
+                }
+            }
+            poisson *= fade;
         }
 
         // Cracks are smeared over the three lattice planes, each with its own history, so that
@@ -944,7 +1007,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
             state.crackFrame = packed_half4(half4(q));
         }
-        for (int i = 0; i < 3; ++i) {
+        // Not in an element with a mortar joint: its strain is mostly the joint's opening and
+        // sliding, which says nothing of the stress in the unit beside it; inclined cracking
+        // there is left to the second crack, which goes by the stress.
+        for (int i = 0; i < 3 && joints == 0u; ++i) {
             float3 weight = axes[i] * axes[i];
             float seen = dot(weight, history);
             if (principal[i] > seen && principal[i] > onset) {
@@ -960,9 +1026,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float crack = max(history.x, max(history.y, history.z));
         // A crack keeps a residual opening, and compression develops only once that has closed.
         float3 stored = float3(state.crackResidual);
-        float3 residual = float3(settledResidual(stored.x, history.x, uniaxial.x, tensionFactor, m),
-                                 settledResidual(stored.y, history.y, uniaxial.y, tensionFactor, m),
-                                 settledResidual(stored.z, history.z, uniaxial.z, tensionFactor, m));
+        float3 residual = float3(
+            settledResidualOver(stored.x, history.x, uniaxial.x, planeFactor.x, planeSoftening.x, m),
+            settledResidualOver(stored.y, history.y, uniaxial.y, planeFactor.y, planeSoftening.y, m),
+            settledResidualOver(stored.z, history.z, uniaxial.z, planeFactor.z, planeSoftening.z, m));
         state.crackResidual = residual;
         float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
         float3 crush = max(float3(state.crushStrain), squeeze);
@@ -1001,7 +1068,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                             uint neighbour = cellElement[other];
                             // Crushing is averaged within one material only.
                             if ((flag == elementActive || flag == elementFailing)
-                                && (singleMaterial || materialIndex[neighbour] == own)) {
+                                && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
                                 sum += crushBefore[neighbour].xyz;
                                 count += 1.0f;
                             }
@@ -1033,7 +1100,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool pulverised = false;
         for (int j = 0; j < 3; ++j) {
             if (squeeze[j] <= 0.0f) {
-                normalStress[j] = concreteTension(uniaxial[j], history[j], residual[j], tensionFactor, m);
+                normalStress[j] = concreteTensionOver(uniaxial[j], history[j], residual[j], planeFactor[j],
+                                                      planeSoftening[j], m);
                 continue;
             }
             float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
@@ -1057,14 +1125,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             int a = pair;
             int b = (pair + 1) % 3;
             float engineering = 2.0f * strain[b][a];
-            float stress = m.mu * engineering;
-            float opened = max(history[a], history[b]) - onset;
+            // Along a mortar joint the shear is that of the strain less what has slid.
+            bool jointed = (((joints >> a) | (joints >> b)) & 1u) != 0u;
+            float slip = jointed ? state.jointSlip[pair] : 0.0f;
+            float stress = jointed ? m.mu * (engineering - slip) : m.mu * engineering;
+            float3 opening = history - planeOnset;
+            float opened = max(opening[a], opening[b]);
             if (opened > 0.0f) {
                 float width = opened * m.crackBand;
                 float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
-                int across = history[a] >= history[b] ? a : b;
+                int across = opening[a] >= opening[b] ? a : b;
                 // Bars along lattice axis j cross a crack of unit normal n in proportion to |n_j|;
                 // the most nearly crossing set ruptures if kinked too far.
                 float3 normal = frame[across];
@@ -1105,7 +1177,44 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 }
                 stress = clamp(m.shearRetention * stress, -interlock, interlock);
             }
+            // A mortar joint slides by Coulomb friction: along it the shear is held to the
+            // joint's cohesion, which is lost with its bond as it opens or slides, plus friction
+            // on whatever presses it shut; an open joint carries none. What the joint cannot
+            // hold, it slides by, for good: taking the shear from the strain alone, capped,
+            // returned the work of sliding and more when the pressure on the joint rose in
+            // between, and a cracked wall shook itself apart. Sliding wears the joint as opening
+            // does, up to the loss of all its cohesion but never to its removal.
+            if (jointed) {
+                float hold = 1e30f;
+                for (int side = 0; side < 2; ++side) {
+                    int p = side == 0 ? a : b;
+                    if (((joints >> p) & 1u) != 0u) {
+                        float worn = max(history[p] - planeOnset[p], 0.0f);
+                        hold = min(hold, m.jointCohesion * exp(-worn / planeSoftening[p])
+                                             + m.jointFriction * max(-normalStress[p], 0.0f));
+                    }
+                }
+                if (fabs(stress) > hold) {
+                    float held = clamp(stress, -hold, hold);
+                    float moved = (stress - held) / ((opened > 0.0f ? m.shearRetention : 1.0f) * m.mu);
+                    slip += moved;
+                    stress = held;
+                    for (int side = 0; side < 2; ++side) {
+                        int p = side == 0 ? a : b;
+                        if (((joints >> p) & 1u) != 0u) {
+                            float limit = planeOnset[p]
+                                + min(5.0f * planeSoftening[p], 0.5f * (m.erosionStrain - planeOnset[p]));
+                            float worn = max(history[p], planeOnset[p]) + fabs(moved) * m.jointSlipDamage;
+                            history[p] = max(history[p], min(worn, limit));
+                        }
+                    }
+                }
+                state.jointSlip[pair] = slip;
+            }
             shearStress[pair] = stress;
+        }
+        if (joints != 0u) {
+            state.crackStrain = history;
         }
         float3x3 material = float3x3(float3(normalStress.x, shearStress.x, shearStress.z),
                                      float3(shearStress.x, normalStress.y, shearStress.y),
@@ -1312,7 +1421,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool hasSecond = u.secondCracks != 0 && framed && !turning && second.w != 0.0f;
         for (int c = 0; c < (hasSecond ? 4 : 3) && !torn; ++c) {
             float reached = c < 3 ? history[c] : state.secondHistory + onset;
-            if (reached < m.erosionStrain) {
+            // An open mortar joint is the gap itself, and its element stays to bear on it when
+            // it shuts again, as a wall rocking on the joint does; it goes only once the joint
+            // has opened, or slid, by half an element.
+            bool joint = c < 3 && ((joints >> c) & 1u) != 0u;
+            if (reached < (joint ? max(m.erosionStrain, 0.5f) : m.erosionStrain)) {
                 continue;
             }
             // Intact inclined bars across the crack bridge it.
@@ -1344,7 +1457,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                             break;  // the member's surface
                         }
                         uint neighbour = cellElement[other];
-                        if (!singleMaterial && materialIndex[neighbour] != own) {
+                        if (!singleMaterial && (materialIndex[neighbour] & uchar(15)) != own) {
                             break;  // another member: masonry is not held by its frame's bars
                         }
                         if (float(steel[neighbour].ratio[j]) > 0.0f
@@ -1376,8 +1489,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);
         float strength = m.compressiveStrength * compressionFactor * max(confinement.x, max(confinement.y, confinement.z));
         float bending = squeezed * max(1.0f - squeezed / strength, 0.0f);
-        capacity = max(max(tensionEnvelope(crack, tensionFactor, m) + steelCapacity, bending),
-                       0.02f * m.tensileStrength);
+        float tension = tensionEnvelope(crack, tensionFactor, m);
+        // An element with a mortar joint bends no more strongly than the joint holds.
+        for (int j = 0; j < 3; ++j) {
+            if (((joints >> j) & 1u) != 0u) {
+                tension = min(tension, tensionEnvelopeOver(max(history[j], planeOnset[j]), planeFactor[j],
+                                                           planeSoftening[j], m));
+            }
+        }
+        capacity = max(max(tension + steelCapacity, bending), 0.02f * m.tensileStrength);
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
     }
 

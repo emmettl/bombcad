@@ -431,10 +431,78 @@ Built-in materials:
 Concrete block stands for hollow dense aggregate-concrete blocks, about 55% solid, of 7.3 MPa,
 in general-purpose mortar. Its compressive strength is Eurocode 6's for the wall,
 f_k = 0.45 f_b^0.7 f_m^0.3 (about 3 MPa with f_b 7.3 and f_m 4 MPa), its modulus 1000 f_k, and
-its tensile strength and fracture energy those of the bond to the mortar; like masonry it has
-no joints or cores of its own, only their effect on the wall's density, stiffness and strength.
+its tensile strength and fracture energy those of the bond to the mortar. Its cores are not
+modelled, only their effect on the wall's density, stiffness and strength.
 In the infilled frame at 20 kg its panels are breached (about 1,200 elements removed) where
 brick panels only crack (14).
+
+### Masonry as units and mortar joints
+
+The strengths above are a wall's as a whole. Both materials also carry the units they are laid
+in (`StructureMaterial.units`), and where the solid elements are fine enough, no more than
+half a course high and a quarter of a unit long, the wall is meshed as units and joints
+instead:
+
+| | Unit, with one joint | Unit: f_t, G_f | Joint in tension: f_t, G_f | Joint in shear: cohesion, friction, G_II |
+|---|---|---|---|---|
+| Masonry (brick) | 225 × 75 mm | 2 MPa, 80 N/m | 0.25 MPa, 18 N/m | 0.35 MPa, 0.75, 125 N/m |
+| Concrete block | 450 × 225 mm | 0.9 MPa, 60 N/m | 0.2 MPa, 10 N/m | 0.28 MPa, 0.75, 100 N/m |
+
+So blockwork shows its joints on the layouts' 62.5 mm elements, and brickwork only on elements
+of 37.5 mm or less; coarser meshes, and shells, keep the wall's one strength.
+
+**Where the joints are.** Each masonry piece is laid from its own base in running bond: a bed
+joint at the foot of every course, and head joints every unit along the longer of the piece's
+horizontal sides, offset by half a unit in alternate courses. The units run through the
+wall's thickness. An element that a joint's plane passes through holds that joint; one byte
+per element says which of its three lattice planes are joints.
+
+**What a joint does.** An element that holds a joint cracks across the lattice axes from the
+start, like the lattice-plane crack model above but with a law of its own on the joint's
+plane:
+
+- *Across the joint*, the tension law is the bond's: its strength, and its fracture energy
+  spread over the element, so the energy to open a joint does not depend on the mesh. The
+  element's other planes, and every element without a joint, have the unit's.
+- *Along the joint*, the shear is held to c e^(−w) + μ σ: the cohesion c, lost as the joint is
+  worn, plus friction on the compression σ across it (Coulomb). An open joint with nothing
+  pressing on it carries no shear. What the joint cannot hold it slides by, permanently: the
+  slip is stored (three shear strains per element) and the shear is that of the strain less
+  the slip, so sliding dissipates.
+- *Wear.* Sliding wears the joint as opening does. Sliding by s counts as opening by
+  s (c / G_II) (G_I / f_t), so that the cohesion is spent over G_II of sliding as the bond is
+  over G_I of opening (the coupling of Lourenço and Rots's interface model, without its
+  compression cap or dilatancy). Sliding alone can take away all the cohesion but never
+  removes the element.
+- *Removal.* An opened joint is the gap itself: its element stays, to bear on the joint when
+  it shuts again as a wall rocking on it does, and goes only when the joint has opened or
+  slid by half an element. Away from the joint's plane the usual rule applies.
+- The strain-based sharing of an inclined crack between the planes is skipped in these
+  elements, since their strain is mostly the joint's opening and sliding and says nothing of
+  the stress in the unit beside it; inclined cracking there is left to the second crack,
+  which goes by the stress. Hourglass (bending) forces are capped by the joint's strength.
+
+Two versions failed first. Capping the shear worked out from the total strain, with no stored
+slip, is not dissipative when the pressure on the joint changes: shear put in while the joint
+is lightly pressed comes back at a higher cap once it is squeezed. A wall cracked by a push
+of 0.5 m/s and left alone went from 20 J of kinetic energy to millions and threw itself
+apart; with stored slip the same wall swings 44 mm, settles 12 mm out and comes to rest. And
+before the sharing was skipped, sliding along an open joint counted as cracking of the unit
+across the wall, and every opened joint lost its row of elements.
+
+**What it gives.** Pulled across its bed joints, blockwork parts at the bond, 0.2 MPa, within
+5%. Pulled along them it carries 0.26 MPa, between the bond and the units' strength: the head
+joints go first, then the crack either runs on through the units or steps along the bed
+joints, shearing them over the half unit of overlap. A bed joint slides at its cohesion, and
+at cohesion plus 0.75 of the pressure on it, within 10%. In the "Blockwork wall" layout (a
+2 m boundary wall between return walls, 5 kg at 6 m) the wall cracks along a bed joint at
+mid-height and at its foot, and in steps and up the head joints towards the returns, swings
+31 mm and is left standing 41 mm out with 85 elements gone; without joints
+(`StructureModel.unitJoints` off; `--no-units` in `blastbench`) the same wall swings 14 mm
+and loses nothing. With twice the charge the jointed wall falls where the unjointed one loses
+a few hundred elements and stands. Nothing here has been compared with a test of a wall.
+
+![A blockwork wall after a blast: cracked bed and head joints in amber and red](block-wall.png)
 
 In the built-in layouts, walls and slabs have 12 mm bars at 200 mm centres both ways in each
 face (565 mm²/m, centred 40 mm below the surface); the frame's slabs have 754 mm²/m and its
@@ -621,7 +689,13 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 8. **No spalling model as such.** Tensile failure under a reflected stress wave is captured
    only as far as the tension law and removal rule happen to capture it.
 9. **Crack spacing and aggregate size are inputs**, not predictions; so is the crushing length.
-10. **Masonry is treated as weak concrete**, with no joints, bond pattern or units.
+10. **Masonry's joints are meshed only where solid elements are fine enough**, in running
+    bond with units running through the wall; elsewhere, and in shells, it is a weak
+    concrete of one strength. A joint is as thick as an element and as stiff as the wall.
+    Friction on a joint acts separately along its two directions (a square, not a circle, of
+    limiting shear), sliding does not open the joint (no dilatancy), and the joint does not
+    crush before the wall does. The blocks' cores are not modelled. The joint properties are
+    typical values from the literature, written from memory, and no wall test checks them.
 
 ## Future work
 
@@ -642,7 +716,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete close to a charge, and a
   close-in test to check it.
 - **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
-- **Masonry with joints.**
+- **Masonry on coarse elements and shells**: strengths that differ across and along the bed
+  joints, standing for joints the mesh cannot show; and a test of a masonry wall under blast
+  to check either.
 
 ## Sources
 
@@ -650,6 +726,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   strength of masonry, f_k = K f_b^0.7 f_m^0.3 with K = 0.45 for hollow (group 2) aggregate-
   concrete units, and the short-term modulus 1000 f_k, used for the concrete block. Written
   from memory.
+
+- P. B. Lourenço and J. G. Rots, "Multisurface interface model for analysis of masonry
+  structures", *Journal of Engineering Mechanics* 123(7), 1997. The properties of brickwork's
+  joints and units, and the coupling of a joint's wear in tension and in shear. Written from
+  memory; see [Data wanted](data-wanted.md).
 
 - Z. P. Bažant and B. H. Oh, "Crack band theory for fracture of concrete", *Materials and
   Structures* 16, 1983. Scaling tension softening by fracture energy and band width.

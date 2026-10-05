@@ -35,7 +35,9 @@ fracture energy, as of mortar on concrete. They are given a material of their ow
 theirs with that strength and energy, so the crack-band scaling keeps the joint's energy right
 whatever the element size, and shear across it is the concrete model's interlock. Infill then
 comes away from its frame at the bond; pulled apart, a concrete element and a masonry one
-separate at 0.2 MPa instead of masonry's 0.3. The presets keep their pieces bonded; on the
+separate at 0.2 MPa instead of masonry's 0.3. Joints within masonry, between its units, are
+meshed where the elements are fine enough: see the
+[concrete model](concrete-model.md#masonry-as-units-and-mortar-joints). The presets keep their pieces bonded; on the
 infilled frame and the three-storey building the bond changes little, since their panels near
 the charge break through anyway (1,969 against 1,936 elements removed; 350 against 387 mm).
 
@@ -235,9 +237,10 @@ shock, and the drag and pressure-gradient push on loose debris.
 
 1. **One structure, bonded throughout unless joints are asked for.** A layout has a single
    deformable body, of up to eight materials (joints between them take some of those). Joints
-   between materials are an element thick and open at the bond's strength, but there are no
-   mortar joints within masonry, no bearings that can separate, and no joints between pieces
-   of the same material. Rigid blocks never respond.
+   between materials are an element thick and open at the bond's strength, and masonry's own
+   mortar joints are meshed on fine enough elements, but there are no bearings that can
+   separate and no joints between other pieces of the same material. Rigid blocks never
+   respond.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
    fixed coefficient, as cubes of their share of the elements around them. The air feels
    the reaction, so packed rubble slows the gas through it, but only through drag spread over
@@ -295,8 +298,9 @@ shock, and the drag and pressure-gradient push on loose debris.
   conservation fix, but measurement showed the gas is already conserved within 0.3% (see
   limitation 3), so it is now a matter of geometric accuracy, and a large change to the air
   solver for it.
-- **Joints within a material**: masonry as units and mortar joints, bearings that separate, and
-  pieces of the same material that are not bonded.
+- **Joints within a material**: bearings that separate, and pieces of the same material that
+  are not bonded. (Masonry's mortar joints are done, on solid elements fine enough to show
+  them.)
 - **Glass that fragments realistically**: its strength depends on the duration of the load and
   on surface flaws, and its pieces are sharp and small.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the

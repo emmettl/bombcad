@@ -33,7 +33,7 @@ public final class StructureSolver {
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
-    public static let stateStride = 180
+    public static let stateStride = 192
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -110,7 +110,10 @@ public final class StructureSolver {
     /// Per material, the most steel any of its elements holds along one direction (the largest
     /// lattice ratio plus any inclined bars), for the time step.
     private var densestSteel: [Float] = []
-    /// Index into `materials` of every element's material, one byte each.
+    /// Whether each material's masonry is meshed as units and mortar joints.
+    private let jointed: [Bool]
+    /// Index into `materials` of every element's material in the low four bits of one byte each;
+    /// bits 4 to 6 mark the mortar joints the element holds, across x, y and z.
     private let materialIndexBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
@@ -163,9 +166,13 @@ public final class StructureSolver {
             }
             return try device.makeComputePipelineState(function: function)
         }
-        // The element kernel is specialised for structures of a single material.
+        // The element kernel is specialised for structures of a single material without joints.
         let constants = MTLFunctionConstantValues()
-        var single = model.materials.count == 1
+        func showsJoints(_ material: StructureMaterial) -> Bool {
+            model.unitJoints && material.model == .concrete
+                && material.units?.isResolved(byElementsOf: model.elementSize) == true
+        }
+        var single = model.materials.count == 1 && !model.materials.contains(where: showsJoints)
         constants.setConstantValue(&single, type: .bool, index: 0)
         guard
             let elementFunction = try? library.makeFunction(
@@ -253,6 +260,10 @@ public final class StructureSolver {
                     material.name += " at a joint"
                     material.tensileStrength = min(material.tensileStrength, bond.x)
                     material.fractureEnergy = min(material.fractureEnergy, bond.y)
+                    if let units = material.units {
+                        material.units?.tensileStrength = min(units.tensileStrength, bond.x)
+                        material.units?.fractureEnergy = min(units.fractureEnergy, bond.y)
+                    }
                     materialList.append(material)
                     joint = materialList.count - 1
                     bonded[own] = joint
@@ -263,6 +274,18 @@ public final class StructureSolver {
         materials = materialList
         guard materials.count <= StructureModel.maxMaterials else {
             throw BlastError.tooManyMaterials(materials.count)
+        }
+        // Masonry fine enough to show its units: mark the elements its mortar joints pass through.
+        jointed = materials.map(showsJoints)
+        if jointed.contains(true) {
+            let (ex, ey) = (self.ex, self.ey)
+            for (n, index) in active.enumerated() {
+                let own = Int(elementMaterials[n])
+                guard jointed[own], let units = materials[own].units else { continue }
+                let cell = SIMD3(
+                    Float(Int(index) % ex), Float((Int(index) / ex) % ey), Float(Int(index) / (ex * ey)))
+                elementMaterials[n] |= model.jointPlanes(inElementAt: origin + cell * h, units: units) << 4
+            }
         }
 
         stateBuffer = try buffer(elements * Self.stateStride, "structure element state")
@@ -294,7 +317,8 @@ public final class StructureSolver {
         if hasSteel {
             let ratios = steelBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: elements)
             // Bars are ignored in elements whose material has no steel.
-            for (n, index) in active.enumerated() where materials[Int(elementMaterials[n])].steel != nil {
+            for (n, index) in active.enumerated() where materials[Int(elementMaterials[n] & 15)].steel != nil
+            {
                 let (i, j, k) = (Int(index) % ex, (Int(index) / ex) % ey, Int(index) / (ex * ey))
                 let low = origin + SIMD3(Float(i), Float(j), Float(k)) * h
                 var ratio = SIMD3<Float>.zero
@@ -323,7 +347,7 @@ public final class StructureSolver {
                     let share = bars.areaPerMetre * weight / band
                     if share > best.ratio { best = (share, axes.code) }
                 }
-                let own = Int(elementMaterials[n])
+                let own = Int(elementMaterials[n] & 15)
                 densest[own] = max(densest[own], ratio.max() + best.ratio)
                 if best.ratio > 0 {
                     let base = steelBuffer.contents().advanced(by: n * 16 + 12)
@@ -422,7 +446,7 @@ public final class StructureSolver {
             for n in 0..<elementCount {
                 let element = Int(instances[n])
                 let (i, j, k) = elementCoordinates(element)
-                let cornerMass = materials[Int(materialIndices[n])].density * h * h * h / 8
+                let cornerMass = materials[Int(materialIndices[n] & 15)].density * h * h * h / 8
                 for corner in 0..<8 {
                     let index = nodeIndex(i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
                     nodes[index].mass += cornerMass
@@ -720,7 +744,11 @@ public final class StructureSolver {
     ) {
         var uniforms = makeUniforms(fluid: fluid)
         uniforms.interfaceLinks = UInt32(interface?.count ?? 0)
-        var parameters = materials.map(makeParameters)
+        var parameters = zip(materials, jointed).map { material, jointed in
+            Self.parameters(
+                for: material, elementSize: model.elementSize, hourglassCoefficient: hourglassCoefficient,
+                jointed: jointed)
+        }
         guard elementCount > 0 else { return }
         // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
         // the largest allowed size (1,024 threads) let too few run at once on each GPU core: they
@@ -916,15 +944,17 @@ public final class StructureSolver {
         return material.crackSpacing / 2 / h
     }
 
-    /// A material's properties as the element kernel needs them, for this mesh.
-    private func makeParameters(for material: StructureMaterial) -> MaterialParameters {
-        Self.parameters(
-            for: material, elementSize: model.elementSize, hourglassCoefficient: hourglassCoefficient)
+    /// The mortar joints element (i, j, k) holds, as bits 0 to 2 for joints across x, y and z.
+    public func jointPlanes(_ i: Int, _ j: Int, _ k: Int) -> UInt8 {
+        guard let index = compactIndex(i, j, k) else { return 0 }
+        return materialIndexBuffer.contents().load(fromByteOffset: index, as: UInt8.self) >> 4
     }
 
-    /// A material's properties as the GPU needs them, for elements of size `h`.
+    /// A material's properties as the GPU needs them, for elements of size `h`; `jointed` when
+    /// its masonry is meshed as units and mortar joints.
     static func parameters(
-        for material: StructureMaterial, elementSize h: Float, hourglassCoefficient: Float = 1
+        for material: StructureMaterial, elementSize h: Float, hourglassCoefficient: Float = 1,
+        jointed: Bool = false
     ) -> MaterialParameters {
         var parameters = MaterialParameters(
             density: material.density,
@@ -941,7 +971,9 @@ public final class StructureSolver {
         // Strengths at blast strain rates; softening scaled to the element so that the energy
         // per unit area of crack or crush band is the material's, whatever the mesh.
         let fc = material.compressiveStrength * material.concreteRateFactor
-        let ft = material.tensileStrength * material.concreteRateFactor
+        // With its joints meshed, masonry away from them has its units' tensile strength.
+        let units = jointed ? material.units : nil
+        let ft = (units?.tensileStrength ?? material.tensileStrength) * material.concreteRateFactor
         let onset = ft / material.youngsModulus
         let peak = 2 * fc / material.youngsModulus
         let end = peak + 2 * material.crushingEnergy / (max(h, material.crushBand) * 0.8 * fc)
@@ -950,7 +982,23 @@ public final class StructureSolver {
         parameters.tensileStrength = ft
         parameters.crackOnset = onset
         let band = material.steel == nil ? h : max(h, material.crackSpacing)
-        parameters.crackSoftening = max(material.fractureEnergy / (band * ft) - onset / 2, onset / 2)
+        let fractureEnergy = units?.fractureEnergy ?? material.fractureEnergy
+        parameters.crackSoftening = max(fractureEnergy / (band * ft) - onset / 2, onset / 2)
+        if let units {
+            // A joint is one element's plane: its opening and sliding are smeared over the
+            // element, and its energies kept as a crack's is. Sliding by s wears the joint as
+            // opening by s (c / G_II) (G_I / f_t) does, so that its cohesion c is spent over
+            // G_II of sliding as its bond f_t is over G_I of opening (Lourenço and Rots).
+            let bond = units.bondStrength * material.concreteRateFactor
+            let bondOnset = bond / material.youngsModulus
+            parameters.jointStrength = bond / ft
+            parameters.jointSoftening = max(
+                units.bondFractureEnergy / (band * bond) - bondOnset / 2, bondOnset / 2)
+            parameters.jointCohesion = units.cohesion
+            parameters.jointFriction = units.friction
+            parameters.jointSlipDamage =
+                (h / band) * units.cohesion * units.bondFractureEnergy / (units.shearFractureEnergy * bond)
+        }
         // Aggregate interlock: v = 0.18 sqrt(fc) / (0.31 + 24 w / (a + 16)), in MPa and mm.
         parameters.crackBand = band
         parameters.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()

@@ -45,7 +45,8 @@ The layouts are open ground, a single building, a street canyon and a courtyard 
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building, an
 open-sided car park with a charge inside, an underpass, a column close to a charge, a
-two-storey house of concrete blockwork meshed with shells, and the internal-explosion test
+two-storey house of concrete blockwork meshed with shells, a blockwork boundary wall meshed
+block by block with its mortar joints, and the internal-explosion test
 (deformable). The close-in column wants the fine grid: on coarser air it
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
@@ -93,7 +94,7 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
   switched on, which also bring the gas pressure in a closed room within 8% of the US design
   manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 101, 101 and 108 mm with 4, 8 and 16 elements through the
+  model predicts peak deflections of 100, 101 and 108 mm with 4, 8 and 16 elements through the
   thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
   elements (4.4 million) it is 105 mm, so the peak has converged. The rebound
   after it is twice the measured one, and the result is sensitive to the load and to how the
