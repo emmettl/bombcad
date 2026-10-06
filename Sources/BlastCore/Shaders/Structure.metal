@@ -182,6 +182,7 @@ struct MaterialParameters {
     float jointFriction;
     float jointSlipDamage;
     float crackSofteningAlone;  // decay strain of a crack no bar crosses: one element's band
+    float dowelFactor;          // multiplier on the bars' dowel action
 };
 
 constant uint maxMaterials = 8;
@@ -1176,7 +1177,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     // Dowel action: each bar resists 1.3 d^2 sqrt(fc fy) of sliding (Rasmussen,
                     // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
                     float yield = m.steelStress[0];
-                    interlock += 1.65f * crossing * sqrt(m.compressiveStrength * yield);
+                    interlock += m.dowelFactor * 1.65f * crossing * sqrt(m.compressiveStrength * yield);
                     // Kinking: slid by s, a bar debonded over a length L either side of the crack
                     // is stretched to sqrt(1 + (s/L)^2) - 1, and its tension leans along the
                     // slide. Stretched past rupture by it, the bars there have broken.

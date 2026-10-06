@@ -19,6 +19,10 @@ swift run -c release blastbench beam
 ```
 
 ```bash
+swift run -c release blastbench shear --layers 24,36
+```
+
+```bash
 swift run -c release blastbench validate
 ```
 
@@ -35,7 +39,7 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm | Moderate for bending; nothing for shear |
+| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did | Moderate for bending; low for shear: one test, and coarse meshes far too strong |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -317,6 +321,82 @@ It shows that a beam with no stirrups yields and carries its plastic moment thro
 deflections in the model, with its concrete and bars holding together, on two meshes, with
 nothing fitted. It does not test strain rate, shear failure (the beam failed in flexure), or
 anything dynamic, and its failure deflection is not pinned down.
+
+## A beam failing in shear
+
+The third structural test, and the first in which the concrete, not the bars, gives way: a
+beam without stirrups that fails suddenly in diagonal tension, the hardest common case for a
+smeared-crack model.
+
+### The test
+
+Beam OA1 of F. J. Vecchio and W. Shim, "Experimental and analytical reexamination of classic
+concrete beam tests", *Journal of Structural Engineering* 130(3), 2004, their repeat of
+Bresler and Scordelis's beam of the same name (1963). The geometry, concrete strength and
+measured load against deflection are taken from P. Bernardi, R. Cerioni, E. Michelini and
+A. Sirico, "A non-linear procedure for the numerical analysis of crack development in beams
+failing in shear", *Frattura ed Integrità Strutturale* 35, 2016, 98–107, which is open access.
+
+| Property  | Value                                                                        |
+|-----------|------------------------------------------------------------------------------|
+| Beam      | 305 × 552 mm, 4,100 mm long                                                  |
+| Supports  | Simple, 3,660 mm apart                                                       |
+| Load      | A point load at mid-span                                                     |
+| Concrete  | 22.6 MPa                                                                     |
+| Bars      | Two M30 64 mm above the bottom, two M25 64 mm above them (2,400 mm²); no stirrups, no top bars |
+| Measured  | Diagonal-tension failure at about 332 kN and 9.2 mm, the load falling to 250 kN within 0.2 mm |
+
+The measured curve was read off the source's plot by hand. The bars' properties are not in it:
+a 440 MPa yield (from a secondary summary) and 200 GPa are assumed, and matter little, since
+the bars stay elastic to the measured failure load (about 315 MPa). The width of the bearing
+and loading plates, also not given, is taken as 100 mm.
+
+### The model
+
+`ShearBeamBenchmark.swift`: solid elements 12, 24 or 36 through the depth, each row of bars
+smeared through a band one element deep, bearings and a loading plate as lines of nodes a
+plate's width along the beam, the plate pushed down at 50 mm/s with light damping. Nothing is
+fitted. `blastbench shear` runs it; `--slice 92` models a 92 mm slice of the width, which bends
+and cracks the same way, for fine meshes.
+
+### Results
+
+| Case                          | Peak            | At      | Then                                 |
+|-------------------------------|-----------------|---------|--------------------------------------|
+| **Measured**                  | **332 kN**      | 9.2 mm  | Falls to 250 kN within 0.2 mm         |
+| 12 elements through           | 456 kN (137%)   | 10.4 mm | Falls to 120 kN by 11 mm             |
+| 24 elements through           | 367 kN (111%)   | 8.7 mm  | Falls to 46 kN by 10 mm              |
+| 36 elements through           | 372 kN (112%)   | 8.4 mm  | Falls                                |
+| 92 mm slice, 24 / 36 through  | 383 / 354 kN    | 8.9 / 8.2 mm |                                 |
+
+Load against mid-span deflection, in kN:
+
+| Deflection | Measured | 12 through | 24 through |
+|------------|----------|------------|------------|
+| 1 mm       | 93       | 97         | 90         |
+| 2 mm       | 118      | 158        | 136        |
+| 4 mm       | 195      | 238        | 215        |
+| 6 mm       | 259      | 315        | 285        |
+| 8 mm       | 307      | 388        | 349        |
+| 9 mm       | 330      | 416        | 196        |
+
+On 24 and 36 elements the beam fails as the test did: suddenly, in shear, with the bars well
+below yield (about 350 MPa at the peak), at a load converged about 11–12% above the
+measurement and a little earlier. It is 10–15% stiffer than the test after cracking. On 12
+elements (46 mm) the diagonal crack cannot form in a narrow enough band, and the beam carries
+37% more, nearly to the bars' yield. Neither the crack model nor dowel action explains the
+excess: cracks on the lattice planes give 526 kN on 12 elements and cracks fixed at first
+cracking 464 kN, and with no dowel action at all the beam carries the same 457 kN, since no
+bar but the bottom ones crosses the diagonal crack. The load rate does not matter either
+(457 kN at half the speed).
+
+### What this does and does not show
+
+It shows that the model can predict a brittle shear failure of a beam without stirrups, at a
+load 11–12% high on fine enough meshes, without anything fitted; and that on coarse meshes
+(about a twelfth of the depth) it overestimates such a member's shear strength by a third or
+more. It is one test, statically loaded, of one beam; the strength at blast rates, and members
+with stirrups, are not tested.
 
 ## Blast loads against empirical references
 
@@ -873,10 +953,9 @@ In rough order of value:
 1. Inclined cracking at joints, between the two crack models' errors (a crack that may turn
    until it opens); then the chamber's diagonal bars and stirrups (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
-2. A third structural test, of a different kind: a member that failed in shear, or a wall
-   loaded in the open air (see the
-   [concrete model's future work](concrete-model.md#future-work)). The beam above is a second
-   test in bending.
+2. A fourth structural test: a wall loaded in the open air, or a member with stirrups that
+   failed in shear (see the [concrete model's future work](concrete-model.md#future-work)).
+   The beams above test bending and, without stirrups, shear.
 3. The vented gas impulse of UFC 3-340-02 (Figures 2-153 to 2-164), which would need
    digitising, to check how fast the model's gas leaves a room like the chamber.
 4. Blast loads closer in than 0.75 m/kg^(1/3).

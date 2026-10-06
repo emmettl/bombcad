@@ -15,7 +15,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with three tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 7 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with four tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 7 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -47,14 +47,17 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    roof is about twice as stiff as the paper's model: 38 mm against 87 mm. The diagonal bars'
    size and the down-stand's steel are assumptions; see
    [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber).)
-2. **A third and fourth structural test**, chosen to differ from those so far: a slab with
-   steel in both faces, a member that failed in shear, and a wall under an open-air charge. The
+2. **A fourth and fifth structural test**, chosen to differ from those so far: a slab with
+   steel in both faces, a member with stirrups, and a wall under an open-air charge. The
    high-strength slabs of the same contest are the obvious next case, since the geometry and
    loading are already set up; their data would have to come from Thiagarajan et al. (2015).
    (Done: a beam bent slowly to failure, Janney et al. (1956) via Xu and Lu (2016), whose
    peak moment the model gives within 3% on two meshes, with nothing fitted; it found
    splitting cracks along the bars softened over too wide a band, now fixed. See
-   [Validation](validation.md#a-reinforced-beam-bent-to-failure).)
+   [Validation](validation.md#a-reinforced-beam-bent-to-failure). And Vecchio and Shim's beam
+   OA1 without stirrups, via Bernardi et al. (2016), which fails in diagonal tension as the
+   test did, 11–12% strong on fine meshes and 37% strong on coarse ones; see
+   [Validation](validation.md#a-beam-failing-in-shear).)
 
 ### Then the physics the evidence points to
 
@@ -63,7 +66,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    (Done: afterburning, limited by mixing and oxygen, and thermally perfect air, which together
    bring the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the
    open within 6% of Kingery–Bulmash.)
-4. **Shear in concrete.** A test of a member that failed in shear. (Done: cracks whose axes
+4. **Shear in concrete.** Why a coarse mesh overestimates a beam's shear strength by a third,
+   and a member with stirrups. (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)

@@ -665,8 +665,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Limitations
 
-1. **Validated against two tests, both in bending**: a one-way slab under a uniform blast
-   load, and a beam bent slowly to failure. On the slab the peak is 100, 101, 107 and 105 mm
+1. **Validated against three tests**: a one-way slab under a uniform blast load, a beam bent
+   slowly to failure, and a beam without stirrups failing in shear (see limitation 4). On the slab the peak is 100, 101, 107 and 105 mm
    as the elements through the thickness go from 4 to 8 to 16 to 32: converged at about
    105 mm, 3% below the measurement. On the beam the peak moment is 99% and 97% of the
    measured on 12 and 24 elements through the depth; six elements run 20% strong. Results for
@@ -683,7 +683,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    chosen on one sensitivity case of the slab, not measured. Shear failures remain the least
    trustworthy predictions the model makes.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
-   cross them, each from a published formula, not fitted. Dowel action is Rasmussen's for a bar
+   cross them, each from a published formula, not fitted. Against one beam without stirrups
+   that failed in diagonal tension (see [Validation](validation.md#a-beam-failing-in-shear)),
+   the model fails the same way, 11–12% strong on fine meshes but 37% strong with twelve
+   elements through the depth: shear strength needs a finer mesh than bending does. Dowel
+   action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
    cover first, so it is probably overestimated there. The kinking term may also count again
    tension that the element's own shear already turns: in shells it did, and was dropped (see

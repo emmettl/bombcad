@@ -96,7 +96,7 @@ static inline float barShear(float crossing, float slide, constant MaterialParam
     if (stretch - yield / m.steelModulus > m.steelStrain[m.steelPoints - 1]) {
         return 0.0f;
     }
-    return 1.65f * crossing * sqrt(m.compressiveStrength * yield);
+    return m.dowelFactor * 1.65f * crossing * sqrt(m.compressiveStrength * yield);
 }
 
 struct BeamElement {

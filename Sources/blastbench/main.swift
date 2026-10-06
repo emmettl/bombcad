@@ -14,6 +14,7 @@ import simd
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
+//   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
@@ -692,10 +693,12 @@ func runBeam() throws {
     for layers in meshes {
         // `--crack-spacing 25` sets the distance, in millimetres, a crack's energy is spread over.
         let spacing = option("crack-spacing").flatMap { Float($0) }
+        let dowel = option("dowel").flatMap { Float($0) }
         let result = try BeamBenchmark.run(
             device: device, elementsThroughDepth: layers, rate: rate, crackAxes: chosenCrackAxes()
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
+            if let dowel { material.dowelFactor = dowel }
         }
         results.append((layers, result))
         print(
@@ -717,6 +720,51 @@ func runBeam() throws {
         print(
             pad("\(millimetres) mm", 12) + pad(measured, 10)
                 + results.map { pad(format(Double($0.result.moment(at: deflection)) / 1000), 12) }.joined())
+    }
+}
+
+/// Vecchio and Shim's beam OA1, with no stirrups, pushed to its diagonal-tension failure.
+func runShearBeam() throws {
+    print("Beam OA1 of Vecchio and Shim (2004), no stirrups, failing in diagonal tension")
+    print(
+        "Measured: peak \(format(Double(ShearBeamBenchmark.measuredPeak) / 1000, 0)) kN at "
+            + "\(format(Double(ShearBeamBenchmark.measuredPeakDeflection) * 1000)) mm, then a sudden drop\n")
+    let meshes = (option("layers") ?? "12,24").split(separator: ",").compactMap { Int($0) }
+    let rate = option("rate").flatMap { Float($0) } ?? 0.05
+    var results: [(layers: Int, result: ShearBeamBenchmark.Result)] = []
+    print(
+        pad("layers", 8) + pad("elements", 10) + pad("peak", 10) + pad("vs test", 9) + pad("at", 9)
+            + pad("failed", 8) + pad("run time", 10))
+    for layers in meshes {
+        // `--dowel 0.5` scales the bars' dowel action.
+        let dowel = option("dowel").flatMap { Float($0) }
+        // `--slice 92` models a slice of the beam that many millimetres wide.
+        let slice = option("slice").flatMap { Float($0) }.map { $0 / 1000 }
+        let result = try ShearBeamBenchmark.run(
+            device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
+            crackAxes: chosenCrackAxes()
+        ) { material in
+            if let dowel { material.dowelFactor = dowel }
+        }
+        results.append((layers, result))
+        print(
+            pad("\(layers)", 8) + pad("\(result.elementCount)", 10)
+                + pad("\(format(Double(result.peak) / 1000, 0)) kN", 10)
+                + pad("\(format(Double(result.peak / ShearBeamBenchmark.measuredPeak) * 100, 0))%", 9)
+                + pad("\(format(Double(result.peakDeflection) * 1000)) mm", 9)
+                + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
+    }
+    print("\nMid-span load (kN) against deflection:")
+    print(
+        pad("deflection", 12) + pad("measured", 10) + results.map { pad("\($0.layers) layers", 12) }.joined())
+    for tenths in [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 140, 160] {
+        let deflection = Float(tenths) / 10000
+        let measured =
+            deflection <= ShearBeamBenchmark.measuredPeakDeflection
+            ? format(Double(ShearBeamBenchmark.measuredLoad(at: deflection)) / 1000, 0) : "-"
+        print(
+            pad("\(format(Double(tenths) / 10)) mm", 12) + pad(measured, 10)
+                + results.map { pad(format(Double($0.result.load(at: deflection)) / 1000, 0), 12) }.joined())
     }
 }
 
@@ -866,6 +914,7 @@ do {
     switch command {
     case "slab": try runSlab()
     case "beam": try runBeam()
+    case "shear": try runShearBeam()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
     case "throughput": try runThroughput()

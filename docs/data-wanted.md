@@ -107,6 +107,13 @@ Supplied by hand during development, and now in use:
   dynamic increase factors for bending in the far range used in the slab's sensitivity study
   (Table 4-1: 1.17 on the bars' yield, 1.19 on the concrete), confirmed. Its vented gas
   impulse charts (Figures 2-153 to 2-164) and its support-rotation limits are not yet used.
+- P. Bernardi, R. Cerioni, E. Michelini and A. Sirico, "A non-linear procedure for the
+  numerical analysis of crack development in beams failing in shear", *Frattura ed Integrità
+  Strutturale* 35 (2016), open access: the geometry, concrete strength and measured load
+  against deflection of Vecchio and Shim's beam OA1, in `ShearBeamBenchmark.swift`. Still
+  wanted: Vecchio and Shim's paper itself (*Journal of Structural Engineering* 130(3), 2004),
+  for the bars' measured properties, the bearing plates and the concrete's measured modulus,
+  which are assumed.
 - J. Xu and Y. Lu, "Numerical modelling for reinforced concrete response to blast load:
   understanding the demands on material models", ACI SP-306 (2016): the dimensions,
   materials and measured moment–deflection curve of one of Janney, Hognestad and McHenry's

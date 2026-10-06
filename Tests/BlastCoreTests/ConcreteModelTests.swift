@@ -855,3 +855,23 @@ struct BeamBenchmarkTests {
         #expect(fine.moment(at: 0.035) > 0.9 * measured, "at 35 mm: \(fine.moment(at: 0.035)) N m")
     }
 }
+
+/// Vecchio and Shim's beam OA1, with no stirrups, failing in diagonal tension.
+@Suite("Shear beam benchmark")
+struct ShearBeamBenchmarkTests {
+    @Test("A beam without stirrups fails suddenly in shear, near the measured load")
+    func diagonalTension() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        // A 92 mm slice of the beam, 24 elements deep: within 5% of the whole beam's answer.
+        let result = try ShearBeamBenchmark.run(device: device, elementsThroughDepth: 24, slice: 0.092)
+        let measured = ShearBeamBenchmark.measuredPeak
+        #expect(abs(result.peak - measured) / measured < 0.2, "peak \(result.peak) N against \(measured) N")
+        // Brittle: within 1.5 mm of the peak the load has fallen below half of it, before the
+        // bars have yielded (they would at about 470 kN).
+        let after = result.curve.filter {
+            $0.x > result.peakDeflection && $0.x < result.peakDeflection + 0.0015
+        }
+        #expect((after.map(\.y).min() ?? result.peak) < 0.5 * result.peak, "no sudden drop after the peak")
+        #expect(result.peak < 450e3)
+    }
+}

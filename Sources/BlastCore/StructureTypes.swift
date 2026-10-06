@@ -172,6 +172,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Fraction of a crack's inelastic opening that remains when the tension across it is
     /// released, because fragments and misfit stop the faces closing completely.
     public var crackResidual: Float = 0.1
+    /// Multiplier on the bars' dowel action across cracks (1, Rasmussen's strength for a bar
+    /// well embedded in concrete), for studying how much it matters.
+    public var dowelFactor: Float = 1
     /// Fixed multipliers on strength, such as the design dynamic increase factors of
     /// UFC 3-340-02. They apply on top of `rateDependent`, so normally use one or the other.
     public var concreteRateFactor: Float = 1
@@ -919,6 +922,7 @@ struct MaterialParameters {
     var jointFriction: Float = 0
     var jointSlipDamage: Float = 0
     var crackSofteningAlone: Float = 1
+    var dowelFactor: Float = 1
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1013,6 +1017,7 @@ extension StructureMaterial {
         bondSpreading = try value(.bondSpreading, bondSpreading)
         confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
+        dowelFactor = try value(.dowelFactor, dowelFactor)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)

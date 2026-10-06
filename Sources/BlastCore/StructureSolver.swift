@@ -1012,6 +1012,7 @@ public final class StructureSolver {
         parameters.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()
         parameters.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
         parameters.crackResidual = material.crackResidual
+        parameters.dowelFactor = material.dowelFactor
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.barReach = Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak

@@ -96,7 +96,7 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Eight-storey frame collapsing over 4 s, 31,000 shells and beams, 0.5 m air | 21× slower    |
 | Twelve-storey tower collapsing over 4 s, 95,000 shells and beams, 0.5 m air | 56× slower   |
 
-Three comparisons with the outside world, all in the [validation notes](docs/validation.md):
+Five comparisons with the outside world, all in the [validation notes](docs/validation.md):
 
 - **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 6% of
   the Kingery–Bulmash curves beyond 1.5 m/kg^(1/3), and within 5% everywhere checked on
@@ -115,6 +115,9 @@ Three comparisons with the outside world, all in the [validation notes](docs/val
 - **Beam bent to failure.** A reinforced beam with no stirrups, loaded slowly in four-point
   bending, carries 97–99% of its measured peak moment on two meshes and fails at 38–52 mm
   against 42 mm measured, with nothing fitted.
+- **Beam failing in shear.** A beam without stirrups fails suddenly in diagonal tension, as
+  the test beam did, at 11–12% above the measured load on fine meshes; on coarse ones (twelve
+  elements through the depth) it is a third too strong.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
   the peak pressures on the walls are 0.9 to 1.6 times those measured. With the structure as
   built, so far as the paper says, the roof is about twice as stiff as the paper's own model
