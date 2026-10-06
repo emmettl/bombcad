@@ -571,6 +571,17 @@ public final class StructureSolver {
     }
 
     /// Damage index of an element: 0 is sound, 1 is at the point of failure.
+    /// Concrete: the tensile strength's strain-rate factor, frozen when the element first
+    /// cracked (zero until then).
+    public func crackingFactor(_ i: Int, _ j: Int, _ k: Int) -> Float {
+        stateValue(i, j, k, offset: 108)
+    }
+
+    /// Running average of the element's effective strain rate (1/s).
+    public func strainRate(_ i: Int, _ j: Int, _ k: Int) -> Float {
+        stateValue(i, j, k, offset: 104)
+    }
+
     public func damage(_ i: Int, _ j: Int, _ k: Int) -> Float {
         stateValue(i, j, k, offset: 28)
     }
@@ -1014,6 +1025,7 @@ public final class StructureSolver {
         parameters.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
         parameters.crackResidual = material.crackResidual
         parameters.dowelFactor = material.dowelFactor
+        parameters.fractureRateExponent = material.fractureRateExponent
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.barReach = Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak

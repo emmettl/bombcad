@@ -184,6 +184,7 @@ struct MaterialParameters {
     float jointSlipDamage;
     float crackSofteningAlone;  // decay strain of a crack no bar crosses: one element's band
     float dowelFactor;          // multiplier on the bars' dowel action
+    float fractureRateExponent; // fracture energy grows as the tensile rate factor to this power
 };
 
 constant uint maxMaterials = 8;
@@ -316,11 +317,20 @@ constant uint nodeBuried = 32u;
 // thread timing, and two runs of a collapse would differ.
 // A bare element's concrete is gone and its bars carry on alone: it has no concrete stress,
 // takes no air load and lets the air through, but holds its nodes along its intact bars.
-enum ElementFlag { elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3, elementBare = 4 };
+// An element turning bare is marked so in the pass that decides it, and read as still whole by
+// every other element in that pass; the node pass then commits it, as failing ones are.
+enum ElementFlag {
+    elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3, elementBare = 4, elementBaring = 5
+};
 
 // An element whose bars count: still whole, failing this step, or bare.
 static inline bool carriesBars(uchar flag) {
-    return flag == elementActive || flag == elementFailing || flag == elementBare;
+    return flag == elementActive || flag == elementFailing || flag == elementBare || flag == elementBaring;
+}
+
+// Whole for this pass's readers: active, or failing or turning bare in this very pass.
+static inline bool wholeThisPass(uchar flag) {
+    return flag == elementActive || flag == elementFailing || flag == elementBaring;
 }
 
 // Time step of the current substep. When coupled, each fluid step is split into the fewest
@@ -385,8 +395,11 @@ static inline void symmetricEigen(float3x3 a, thread float3 &values, thread floa
 static inline float tensionEnvelopeOver(float history, float increase, float softening,
                                         constant MaterialParameters &m) {
     float onset = m.crackOnset * increase;
+    // The strength grows by `increase`; the fracture energy by increase^k, so the decay strain
+    // by increase^(k - 1).
+    float decay = softening * pow(increase, m.fractureRateExponent - 1.0f);
     return history <= onset ? m.youngsModulus * history
-                            : m.tensileStrength * increase * exp(-(history - onset) / softening);
+                            : m.tensileStrength * increase * exp(-(history - onset) / decay);
 }
 
 static inline float tensionEnvelope(float history, float increase, constant MaterialParameters &m) {
@@ -406,7 +419,7 @@ constant float secondCrackCosine = 0.8660254f;
 static inline float secondCrackOpening(float trial, float opened, float reached, float stiffness, float increase,
                                        constant MaterialParameters &m) {
     float strength = m.tensileStrength * increase;
-    float softening = m.crackSoftening + 0.5f * m.crackOnset;
+    float softening = (m.crackSoftening + 0.5f * m.crackOnset) * pow(increase, m.fractureRateExponent - 1.0f);
     auto envelope = [&](float e) { return strength * exp(-e / softening); };
     float drive = trial + stiffness * opened;  // the stress across it were it shut
     if (reached > 0.0f) {
@@ -1096,7 +1109,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                             uchar flag = flags[other];
                             uint neighbour = cellElement[other];
                             // Crushing is averaged within one material only.
-                            if ((flag == elementActive || flag == elementFailing)
+                            if (wholeThisPass(flag)
                                 && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
                                 sum += crushBefore[neighbour].xyz;
                                 count += 1.0f;
@@ -1522,7 +1535,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         if (bare) {
             eroded = !anySteel;
         } else if (eroded && anySteel && u.bareBars != 0) {
-            flags[element] = elementBare;
+            flags[element] = elementBaring;
             failureGate[0] = 1;
             eroded = false;
         }
@@ -1640,7 +1653,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             bool inside = all(neighbour >= 0) && all(neighbour < dims);
             uint neighbourFlag =
                 inside ? uint(flags[neighbour.x + dims.x * (neighbour.y + dims.y * neighbour.z)]) : 0u;
-            if (neighbourFlag == elementActive || neighbourFlag == elementFailing) {
+            if (wholeThisPass(uchar(neighbourFlag))) {
                 continue;
             }
             // The face's four corners, in order around its perimeter.
@@ -1766,7 +1779,7 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
             continue;
         }
         uchar flag = flags[cell.x + dims.x * (cell.y + dims.y * cell.z)];
-        if (flag == elementActive || flag == elementBare) {
+        if (flag == elementActive || flag == elementBare || flag == elementBaring) {
             return;
         }
         share += flag != elementEmpty ? 1u : 0u;
@@ -2058,6 +2071,8 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         int own = int(tid.x) + dims.x * (int(tid.y) + dims.y * int(tid.z));
         if (flags[own] == elementFailing) {
             flags[own] = elementEroded;
+        } else if (flags[own] == elementBaring) {
+            flags[own] = elementBare;
         }
     }
     float3 force = float3(0.0f);
@@ -2075,7 +2090,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         if (flag == elementActive) {
             force += float3(forces[cellElement[element]].force[a]);
             intact += 1;
-        } else if (flag == elementBare) {
+        } else if (flag == elementBare || flag == elementBaring) {
             force += float3(forces[cellElement[element]].force[a]);
             held += 1;
         }

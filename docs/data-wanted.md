@@ -50,7 +50,7 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Seven values in the code were written from memory and should be checked against the original.
+Eight values in the code were written from memory and should be checked against the original.
 
 - **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
   Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
@@ -84,6 +84,14 @@ Seven values in the code were written from memory and should be checked against 
   2010, section 6.1. Needed: the dowel capacity of a bar crossing a crack, used as
   1.3 d² √(f_c f_y) in the shear across cracks in `Structure.metal`, and the slip at which it
   is reached.
+
+- **Fracture energy at high strain rates.** M. Schuler, C. Mayrhofer and K. Thoma, "Spall
+  experiments for the measurement of the tensile strength and fracture energy of concrete at
+  high strain rates", *International Journal of Impact Engineering* 32 (2006); J. Weerheijm and
+  J. C. A. M. van Doormaal, "Tensile failure of concrete at high loading rates", same journal,
+  34 (2007). Needed: how the fracture energy grows with strain rate beside the tensile
+  strength, taken as about twice static where the strength is five times
+  (`fractureRateExponent` 0.5).
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.

@@ -175,6 +175,10 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Multiplier on the bars' dowel action across cracks (1, Rasmussen's strength for a bar
     /// well embedded in concrete), for studying how much it matters.
     public var dowelFactor: Float = 1
+    /// With `rateDependent`, the fracture energy grows as the tensile strength's rate factor to
+    /// this power: 1 scales the whole tension-softening curve with the strength, 0 keeps the
+    /// static fracture energy.
+    public var fractureRateExponent: Float = 0.5
     /// Fixed multipliers on strength, such as the design dynamic increase factors of
     /// UFC 3-340-02. They apply on top of `rateDependent`, so normally use one or the other.
     public var concreteRateFactor: Float = 1
@@ -942,6 +946,7 @@ struct MaterialParameters {
     var jointSlipDamage: Float = 0
     var crackSofteningAlone: Float = 1
     var dowelFactor: Float = 1
+    var fractureRateExponent: Float = 1
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1037,6 +1042,7 @@ extension StructureMaterial {
         confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
         dowelFactor = try value(.dowelFactor, dowelFactor)
+        fractureRateExponent = try value(.fractureRateExponent, fractureRateExponent)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)

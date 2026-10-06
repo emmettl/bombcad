@@ -125,7 +125,8 @@ public enum CloseInSlabTest {
     }
 
     public struct Result: Sendable {
-        /// Mid-span deflection of the bottom face at the centre (m, down) against time (s).
+        /// Mid-span deflection (m, down) against time (s): the median across the slab's width of
+        /// its mid-depth nodes at mid-span, which a spall or crater under the charge leaves out.
         public var history: [SIMD2<Float>]
         public var peak: Float
         /// Mean of the last fifth of the record.
@@ -148,7 +149,8 @@ public enum CloseInSlabTest {
     public static func run(
         device: MTLDevice, test: Test, cellSize: Float = 0.05, elementSize: Float = 0.025, duration: Double = 0.3,
         refinement: Int = 1, mappedCharge: Bool = true, afterburning: Bool = false, heldLengthwise: Bool = true,
-        adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil
+        adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
+        inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
         adjust(&scenario)
@@ -190,8 +192,13 @@ public enum CloseInSlabTest {
         while solver.time < duration {
             let result = solver.advance(steps: 16, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
-            history.append(SIMD2(Float(solver.time), -structure.displacement(ci, middleJ, 0).z))
+            var across = (0...structure.ey).compactMap { j in
+                structure.storedNode(ci, j, mid) != nil ? -structure.displacement(ci, j, mid).z : nil
+            }
+            across.sort()
+            history.append(SIMD2(Float(solver.time), across.isEmpty ? 0 : across[across.count / 2]))
             if solver.time < 0.005 { impulse = max(impulse, Float(-structure.momentum().z)) }
+            inspect?(structure, solver.time)
             if let progress, solver.time >= nextReport {
                 nextReport += 0.01
                 progress(

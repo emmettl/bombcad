@@ -87,13 +87,16 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
 5. **The concrete's tensile strain-rate law.** Saatci's heavy impacts are a quarter too stiff
    with Malvar and Ross's law; without it, or with the fib Model Code 2010's milder one, the
-   beam without stirrups breaks under the light drop. Which strengthening is the material's
+   beam without stirrups breaks under the light drop. And the close-in slabs' spall must
+   overcome 17–21 MPa with it, where spalling tests find 10–15 MPa. Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
    close-in slabs show and the model does not produce on any mesh. (Done: bars that outlive
    the concrete around them, as bare elements, so that a holed member hangs on its bars; see
-   [Removal](concrete-model.md#removal).)
+   [Removal](concrete-model.md#removal). And a fracture energy that grows more slowly with
+   strain rate than the strength, after which the reflected wave spalls the far face under a
+   close-in charge, over a tenth of the area the tests show.)
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done: compaction of the pores under very high confined pressure, after
    Holmquist, Johnson and Cook; unchecked against a close-in test.)

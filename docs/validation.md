@@ -603,31 +603,40 @@ the impulse it received, is 8.4–8.7 kN s at 1 m and 10.9–11.4 kN s at 0.5 m,
 5% between those grids: the load has converged. Afterburning changes it by under 3%. The gauges
 read 75–80% of the text's values, as reflected peaks do on these cells.
 
-**The slab.** Permanent mid-span deflection (mm), peak in brackets:
+**The slab.** Permanent mid-span deflection (mm), peak in brackets, read as the median across
+the slab's width of its mid-depth nodes at mid-span, which a spall or crater under the charge
+leaves out:
 
-| Test | Measured   | 6 through      | 8 through      | 12 through                      |
-|------|------------|----------------|----------------|---------------------------------|
-| P1   | 0          | 0 (11)         |                |                                 |
-| S1–S3 | cracks    | 0 (13)         |                |                                 |
-| P7   | 340        | 54 (140)       | 111 (208)      | 113 (158)                       |
-| S5   | punched through | 156 (239), whole | 501 (605), broken at mid-span by 90 ms, no hole | 83 (367), 958 elements lost, no hole |
-| P2   | 510, punched through, hanging | 167 (236), whole | broken at mid-span by 60 ms, fell |   |
+| Test  | Measured   | 6 through, 50 mm air | 8 through, 50 mm air | 6 through, 25 mm air refined by 2 |
+|-------|------------|----------------------|----------------------|-----------------------------------|
+| P1    | 0          | 4 (11)               |                      |                                   |
+| S1–S3 | cracks     | 5 (13)               |                      |                                   |
+| P7    | 340        | 51 (142)             | 103 (200)            | 91 (142)                          |
+| S5    | punched through | 156 (239), whole | broken at mid-span, fell | 173 (258), spalled under the charge, no hole |
+| P2    | 510, punched through, hanging | 159 (236), whole | broken at mid-span, fell | 173 (255), spalled under the charge, no hole |
 
 No light shot damages the slab, as in the tests. At 1 m the slab bends at mid-span, as the
 test's did, but goes a third as far, and neither face spalls (the test's spalled 3.4% and
-10.3%). At 0.5 m the model punches no hole under the charge on any mesh: the slab bends, more
-on finer meshes, and on 8 elements breaks at its mid-span hinge 30–90 ms in, its bars
-ruptured, where the tests' slabs were holed under the charge at once and hung on their bars.
-The spalled areas stay at 0–3% against 7–19%. With the bars taken to rupture at 10%, P2's
-mid-span hinge tore through at 35 ms on every mesh and both halves fell; and before bare bars
-(see the [concrete model](concrete-model.md#removal)), concrete removed took its smeared bars
-with it, so that a slab holed through would have fallen apart in any case.
+10.3%). At 0.5 m the model punches no hole under the charge on any mesh. On 8 elements through
+the slab its mid-span hinge breaks, the bars ruptured, and it falls; on 6 it holds. Only on air
+fine enough for the peak (110–119 MPa under the charge, against 124 MPa from the curves) does a
+spall form: the reflected wave breaks a layer off the far face under the charge, which flies
+off at about 28 m/s while the slab's middle slows to 9; but over 1% of each face, against 7–19%,
+and without a hole through. The tensile strength the spall must overcome is 17–21 MPa there
+(the Malvar–Ross factor of 6.5–8 at 50–100 per second, frozen as each element cracks), against
+the 10–15 MPa that spalling tests of such concrete find, from memory; and until the fracture
+energy was made to grow more slowly than the strength (see the
+[concrete model](concrete-model.md#strain-rate-effects)), the layer, held on by eight times the
+static fracture energy, never flew at all. With the bars taken to rupture at 10%, P2's mid-span
+hinge tore through on every mesh; and before bare bars (see the
+[concrete model](concrete-model.md#removal)), concrete removed took its smeared bars with it,
+so that a slab holed through would have fallen apart in any case.
 
 **What moves P7** (6 through; permanent, peak):
 
 | Change                                  | mm         |
 |-----------------------------------------|------------|
-| As above                                | 54 (140)   |
+| As above (before the deflection was read at mid-depth) | 54 (140) |
 | Without the strain-rate laws            | 120 (173)  |
 | The ends free to slide lengthwise       | 92 (155)   |
 | Both                                    | 128 (228)  |
@@ -645,8 +654,9 @@ It shows that the coupled model loads a slab close to a charge within about a te
 empirical impulse and leaves it undamaged where the tests did. It does not reproduce close-in
 damage: the slab is left a third as far down as the test's, spalls a fraction as much, is not
 punched through under the charge, and, broken, falls where the test's hung on its bars. These
-point at two things: the concrete's strain-rate law (as the impacts above), and the breach under
-the charge, crushing and spalling of the faces, which the model does not produce. The supports' lengthwise restraint and the charges' shapes
+point at two things: the concrete's tensile strain-rate law, too strong for the spall here as
+for the impacts above, and the breach under the charge, which needs the spall and the crushing
+above it to meet; and they need the air fine enough to resolve the peak under the charge. The supports' lengthwise restraint and the charges' shapes
 are assumptions that matter.
 
 ## Blast loads against empirical references

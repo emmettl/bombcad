@@ -370,6 +370,15 @@ The factor raises strength without changing stiffness. Two details matter:
 - The **tensile factor is frozen when an element first cracks**. Once a crack forms, strain
   gathers in it at a rate that depends on the element size and says nothing about the material.
 - The rate is the equivalent (von Mises) strain rate, √(2/3 ε̇:ε̇).
+- The **fracture energy grows less than the strength**: as the tensile factor to the power
+  `fractureRateExponent`, 0.5 by default, so that where the strength is five times its static
+  value the energy a crack takes to open is about twice, as spalling tests find (Schuler et
+  al., 2006; Weerheijm and van Doormaal, 2007; values recalled, see
+  [Data wanted](data-wanted.md)). Scaling it in full with the strength (1) caught the layer that
+  a close-in charge's reflected wave breaks off a slab's far face, which, cracked at eight times
+  its static strength, was held on by eight times the fracture energy and never flew; the
+  contest slab, the chamber and the beams struck by a falling weight move by under 1 mm either
+  way.
 - On Saatci's drop-weight impacts the **tensile law decides the result**: with it the beams
   with stirrups peak a quarter short of the measurements, and without it, or with the fib
   Model Code 2010's milder law, the beam without stirrups breaks under a drop it survived (see

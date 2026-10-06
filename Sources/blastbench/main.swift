@@ -792,6 +792,70 @@ func runCloseAir() throws {
     }
 }
 
+/// Prints once, at `time`, where along the span elements have failed or been left as bare bars,
+/// in 0.2 m bins, and the centre's deflection, with the bolt lines' nodes' slip lengthwise.
+func failureProbe(at time: Double) -> (StructureSolver, Double) -> Void {
+    var done = false
+    return { structure, now in
+        guard !done, now >= time else { return }
+        done = true
+        let h = structure.model.elementSize
+        var bins: [Int: (eroded: Int, bare: Int)] = [:]
+        for k in 0..<structure.ez {
+            for j in 0..<structure.ey {
+                for i in 0..<structure.ex {
+                    let flag = structure.flag(i, j, k)
+                    guard flag == .eroded || flag == .bare else { continue }
+                    let x = structure.origin.x + (Float(i) + 0.5) * h
+                    let bin = Int(x / 0.2)
+                    var entry = bins[bin] ?? (0, 0)
+                    if flag == .eroded { entry.eroded += 1 } else { entry.bare += 1 }
+                    bins[bin] = entry
+                }
+            }
+        }
+        print("  failed / bare elements along the span at \(format(now * 1000, 0)) ms:")
+        for bin in bins.keys.sorted() {
+            print("    x \(format(Double(bin) * 0.2, 1))-\(format(Double(bin + 1) * 0.2, 1)) m: \(bins[bin]!.eroded) / \(bins[bin]!.bare)")
+        }
+        let c = CloseInSlabTest.centre
+        let j = Int(((c.y - structure.origin.y) / h).rounded())
+        for bolt in [Float(1.4), 5.4] {
+            let i = Int(((bolt - structure.origin.x) / h).rounded())
+            let k = structure.ez / 2
+            print("    bolt line \(format(Double(bolt), 1)) m: node displaced \(structure.displacement(i, j, k))")
+        }
+    }
+}
+
+/// Prints, at a few times, the column of elements under the charge from the bottom face up: crack
+/// strain, damage, the frozen tensile rate factor, the strain rate and the element's state; and
+/// how fast the bottom face moves against the middle of the slab.
+func spallProbe() -> (StructureSolver, Double) -> Void {
+    var times = [0.0003, 0.0006, 0.001, 0.002, 0.005, 0.01, 0.02]
+    return { structure, time in
+        guard let next = times.first, time >= next else { return }
+        times.removeFirst()
+        let h = structure.model.elementSize
+        let c = CloseInSlabTest.centre
+        let i = Int(((c.x - structure.origin.x) / h).rounded())
+        let j = Int(((c.y - structure.origin.y) / h).rounded())
+        let top = (0...structure.ez).last { structure.storedNode(i, j, $0) != nil } ?? 0
+        print("  t = \(format(time * 1000, 2)) ms: k  crack  damage  factor  rate/s  state")
+        for k in 0..<top {
+            let flag = structure.flag(i, j, k)
+            print(
+                "      " + pad("\(k)", 3) + pad(format(Double(structure.crackStrain(i, j, k)), 3), 7)
+                    + pad(format(Double(structure.damage(i, j, k)), 2), 8)
+                    + pad(format(Double(structure.crackingFactor(i, j, k)), 2), 8)
+                    + pad(format(Double(structure.strainRate(i, j, k)), 0), 8) + "  \(flag)")
+        }
+        let bottom = structure.node(i, j, 0).velocity.z
+        let middle = structure.node(i, j, top / 2).velocity.z
+        print("      bottom face \(format(Double(bottom), 1)) m/s, mid-depth \(format(Double(middle), 1)) m/s")
+    }
+}
+
 /// Chiquito et al.'s full-scale slabs under charges hung 0.5 and 1 m above them.
 func runCloseIn() throws {
     let names = option("tests").map { $0.split(separator: ",").map(String.init) }
@@ -818,12 +882,16 @@ func runCloseIn() throws {
                     scenario.structure?.material.steel?.ruptureStrain = rupture
                 }
                 if flag("no-bare") { scenario.structure?.bareBars = false }
+                if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
+                    scenario.structure?.material.fractureRateExponent = exponent
+                }
             },
             progress: flag("progress")
                 ? { line in
                     print("  " + line)
                     fflush(stdout)
-                } : nil)
+                } : nil,
+            inspect: flag("spall") ? spallProbe() : flag("where") ? failureProbe(at: duration * 0.99) : nil)
         print("\(test.name): \(format(Double(test.charge), 2)) kg TNT at \(format(Double(test.standoff), 1)) m; \(test.remark)")
         print("                      measured        model")
         print(
