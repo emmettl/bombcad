@@ -511,7 +511,13 @@ But the beam without stirrups is broken by the light drop too, which the test be
 with diagonal cracks up to 0.5 mm. It splits along its length just above the bottom bars, and
 near the top ones (446 of its 697 failed elements on 16 through lie in the one layer above
 the bottom bars), on 12, 16 and 24 elements alike: the diagonal crack turning along the bars,
-the way such a beam fails in shear, but under a drop it withstood.
+the way such a beam fails in shear, but under a drop it withstood. It happens in the impact
+itself (120 elements gone at 2.4 ms, 650 by 10 ms), not in the swinging after it. The model
+smears the two bottom bars through a band one element deep, about a fifth steel: a stiff,
+heavy layer along the bottom, at whose edge the impact's horizontal shear gathers, and which,
+with no stirrups, nothing crosses. Bars as their own elements (see the
+[concrete model's future work](concrete-model.md#future-work)) would spread it as the two real
+bars do.
 
 **The tensile strain-rate law decides it.** Turning the laws off one at a time on SS2b-1 (16
 through) shows that the concrete's tensile law is the one that matters. Under Malvar and Ross's

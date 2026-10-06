@@ -353,10 +353,9 @@ peak at 154 mm (solids 121 mm); with static strengths the shells fail (the solid
 143 mm). The shells rebound about as
 little as the specimen did, where the solid elements rebound twice as far.
 
-**The presets, against the solid elements.** These, and the tall layouts below, were run with
-Malvar and Ross's tensile strain-rate law, the default before the fib Model Code 2010's (see the
-[concrete model](concrete-model.md#strain-rate-effects)); collapse is chaotic, and they have not
-been repeated.
+**The presets, against the solid elements.** These were run with Malvar and Ross's tensile
+strain-rate law, the default before the fib Model Code 2010's (see the
+[concrete model](concrete-model.md#strain-rate-effects)), and have not been repeated.
 
 | Case | Shells and beams | Solid elements |
 |---|---|---|
@@ -367,12 +366,17 @@ been repeated.
 
 The two tall layouts are meshed with shells and beams only, since solid elements would be far
 too many. Run for 4 s on 0.5 m air, with dowel action, punching and the beams' sectional shear
-check (which, with their 0.5% of ties as stirrups, barely binds in these columns):
+check (which, with their 0.5% of ties as stirrups, barely binds in these columns), with the
+Model Code's tensile strain-rate law:
 
 | Layout | 500 kg | 1,000 kg | 2,000 kg | 4,000 kg (the layouts' charge) |
 |---|---|---|---|---|
-| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.9 m and stands; 9 elements removed | The first floor punches off its columns and drops; the rest stands | The same | The two lowest floors punch through and fall; the rest stands on bent columns (the version before beams' sectional check brought it all down: the outcome is chaotic) |
-| Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses its front column; the core and floors bridge it | The same, the lowest floor sagging | The lowest floor drops at the front; the rest stands | The floors punch off their columns and pancake; the core goes over; the columns are left standing bare |
+| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.6 m and stands; 9 elements removed | The first floor punches off its columns and drops; the rest stands | The same | Every floor punches off its columns and pancakes; the columns are left standing bare |
+| Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses its front column; the core and floors bridge it | The lowest floor drops at the front; the rest stands | The same | The floors punch off their columns and pancake; the core breaks and goes over; the columns are left standing bare |
+
+Under Malvar and Ross's law the frame at 4,000 kg lost only its two lowest floors, and at
+500 kg swayed 0.9 m; the tower at 1,000 kg only sagged. The outcome is chaotic: before the
+beams' sectional check, the frame came down entirely at 4,000 kg under that law too.
 
 Before dowel action and punching, the eight-storey frame stood at 250 kg and fell at 500 kg,
 and the tower fell at 500 kg: the blasted columns, as beams, sheared through, and slabs slid
