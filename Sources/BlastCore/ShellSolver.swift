@@ -207,8 +207,8 @@ public final class ShellSolver {
     private let barBuffer: MTLBuffer
     private let forceBuffer: MTLBuffer
     private let neighbourBuffer: MTLBuffer
-    /// Punching at column heads (see `PunchingBuffers`).
-    private let punching: PunchingBuffers
+    /// Punching at column heads and shear failure of sections (see `MemberShearBuffers`).
+    private let punching: MemberShearBuffers
     /// Each bar layer's plastic strain per element, written in alternate substeps to one buffer
     /// while the other, from the substep before, is read, so that rupture can be judged over a
     /// debonded length.
@@ -316,7 +316,8 @@ public final class ShellSolver {
         neighbourBuffer = try buffer(elements * 16, "shell neighbours")
         let neighbours = neighbourBuffer.contents().bindMemory(to: SIMD4<Int32>.self, capacity: elements)
         for (e, element) in mesh.elements.enumerated() { neighbours[e] = element.neighbours }
-        punching = try PunchingBuffers(device: device, mesh: mesh)
+        punching = try MemberShearBuffers(
+            device: device, mesh: mesh, materials: materials, shells: model.shellSectionShear)
         barPlasticBuffers = [
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, even"),
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, odd"),
@@ -442,7 +443,10 @@ public final class ShellSolver {
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
         memset(beamFlagBuffer.contents(), Int32(ElementFlag.active.rawValue), beamFlagBuffer.length)
-        for buffer in [beamFibreBuffer, beamBarBuffer, beamForceBuffer, beamDisplayBuffer] {
+        punching.reset()
+        for buffer in [
+            beamFibreBuffer, beamBarBuffer, beamForceBuffer, beamDisplayBuffer, punching.beamSheared,
+        ] {
             memset(buffer.contents(), 0, buffer.length)
         }
         for buffer in [
@@ -532,7 +536,23 @@ public final class ShellSolver {
 
     /// Whether an element beside a column head has punched through.
     public func isPunched(_ element: Int) -> Bool {
-        punching.punched.contents().load(fromByteOffset: element, as: UInt8.self) != 0
+        punching.punched.contents().load(fromByteOffset: element, as: UInt8.self) & 1 != 0
+    }
+
+    /// Whether a shell's section has failed in shear, across its first or second axis.
+    public func hasShearFailed(_ element: Int) -> Bool {
+        punching.punched.contents().load(fromByteOffset: element, as: UInt8.self) & 6 != 0
+    }
+
+    /// Turns the check of each section's shear off (see `MemberShearBuffers`), leaving shear to
+    /// the layers' and fibres' interlock and dowel action alone.
+    public func disableSectionShear() {
+        punching.disableSectionShear()
+    }
+
+    /// Whether a beam's section has failed in shear.
+    public func beamHasShearFailed(_ beam: Int) -> Bool {
+        punching.beamSheared.contents().load(fromByteOffset: beam, as: UInt8.self) != 0
     }
 
     public func flag(_ element: Int) -> ElementFlag {
@@ -785,6 +805,7 @@ public final class ShellSolver {
             encoder.setBuffer(punching.ringMember, offset: 0, index: 27)
             encoder.setBuffer(punching.shear[substep % 2], offset: 0, index: 28)
             encoder.setBuffer(punching.shear[1 - substep % 2], offset: 0, index: 29)
+            encoder.setBuffer(punching.section, offset: 0, index: 30)
             if elementCount > 0 {
                 // Four threads per element, one per in-plane point.
                 encoder.dispatchThreads(
@@ -811,6 +832,8 @@ public final class ShellSolver {
                 encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 15)
                 encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 16)
                 encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 17)
+                encoder.setBuffer(punching.beamSection, offset: 0, index: 18)
+                encoder.setBuffer(punching.beamSheared, offset: 0, index: 19)
                 encoder.dispatchThreads(
                     MTLSize(width: beamCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
@@ -976,19 +999,50 @@ public final class ShellSolver {
     }
 }
 
-/// The GPU's view of punching at column heads: each element's punching strength (zero away from
-/// a column head) and whether it has punched, one byte each; each element's ring around a column
-/// head (or -1) and the rings' members; and each element's mean shear through its thickness,
-/// written in alternate substeps, so that a ring punches on the average over its members.
-struct PunchingBuffers {
+/// The GPU's view of members failing in shear. Punching at column heads: each element's punching
+/// strength (zero away from a column head) and its state as a member, one byte each (bit 0
+/// punched, bits 1 and 2 its section failed in shear across its first and second axes); each
+/// element's ring around a column head (or -1) and the rings' members; and each element's mean
+/// shear through its thickness, written in alternate substeps, so that a ring punches on the
+/// average over its members. Sections: for each shell, across its two axes, and for each beam,
+/// across its two sides, d_v over the depth and the size factor of the simplified modified
+/// compression field theory (zero for other materials); and whether each beam's section has
+/// failed, one byte each.
+struct MemberShearBuffers {
     let strength: MTLBuffer
     let punched: MTLBuffer
     let ringOfElement: MTLBuffer
     let ringStart: MTLBuffer
     let ringMember: MTLBuffer
     let shear: [MTLBuffer]
+    let section: MTLBuffer
+    let beamSection: MTLBuffer
+    let beamSheared: MTLBuffer
 
-    init(device: MTLDevice, mesh: ShellMesh) throws {
+    /// d_v over the depth, and the size factor, for a section of depth `depth` whose outermost
+    /// bars lie at `bars` (from -1 to 1 across it, or nil for none), of `material`, with a
+    /// ratio `stirrups` of stirrups. d is to the outermost bars (half the depth beyond the
+    /// middle by their position), d_v = max(0.9 d, 0.72 h); without the minimum of stirrups,
+    /// 0.06 sqrt(fc) / fy, the size factor is 1300 / (1000 + s_ze), s_ze = 35 d_v / (15 + a_g)
+    /// in mm (at least 0.85 d_v), a_g the aggregate size (none above 70 MPa).
+    static func sectionFactors(depth: Float, bars: Float?, material: StructureMaterial, stirrups: Float)
+        -> SIMD2<Float>
+    {
+        let d = 0.5 * depth * (1 + (bars ?? 0.6))
+        let dv = max(0.9 * d, 0.72 * depth)
+        let fc = material.compressiveStrength / 1e6
+        let fy = (material.steel?.yieldStress ?? 0) / 1e6
+        let enough = fy > 0 && stirrups * fy >= 0.06 * fc.squareRoot()
+        var size: Float = 1
+        if !enough {
+            let aggregate = fc > 70 ? 0 : material.aggregateSize * 1000
+            let spacing = max(35 * dv * 1000 / (15 + aggregate), 0.85 * dv * 1000)
+            size = 1300 / (1000 + spacing)
+        }
+        return SIMD2(dv / depth, size)
+    }
+
+    init(device: MTLDevice, mesh: ShellMesh, materials: [StructureMaterial], shells: Bool) throws {
         let elements = mesh.elements.count
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -1024,5 +1078,61 @@ struct PunchingBuffers {
             try buffer(elements * 4, "shell ring shear, even"),
             try buffer(elements * 4, "shell ring shear, odd"),
         ]
+        // Two vectors per element: its section's factors, then the shear it carries over its
+        // strength across each axis, averaged over time (see `Shell.metal`).
+        var sections = [SIMD4<Float>](repeating: .zero, count: 2 * elements)
+        for (e, element) in mesh.elements.enumerated() {
+            let material = materials[element.material]
+            guard shells, material.model == .concrete, !mesh.punchingZone[e] else { continue }
+            var factors = SIMD4<Float>.zero
+            for j in 0..<2 {
+                let outermost = element.bars.filter { $0[1 + j] > 0 }.map { abs($0.x) }.max()
+                let f = Self.sectionFactors(
+                    depth: element.thickness, bars: outermost, material: material, stirrups: 0)
+                factors[2 * j] = f.x
+                factors[2 * j + 1] = f.y
+            }
+            sections[2 * e] = factors
+        }
+        section = try buffer(2 * elements * 16, "shell sections")
+        if !sections.isEmpty {
+            section.contents().copyMemory(from: sections, byteCount: sections.count * 16)
+        }
+        let beams = mesh.beams.count
+        var beamSections = [SIMD4<Float>](repeating: .zero, count: 2 * beams)
+        for (b, beam) in mesh.beams.enumerated() {
+            let material = materials[beam.material]
+            guard material.model == .concrete else { continue }
+            var factors = SIMD4<Float>.zero
+            for j in 0..<2 {
+                let outermost = beam.bars.map { abs($0[j]) }.max()
+                let f = Self.sectionFactors(
+                    depth: beam.section[j], bars: outermost, material: material, stirrups: beam.tieRatio)
+                factors[2 * j] = f.x
+                factors[2 * j + 1] = f.y
+            }
+            beamSections[2 * b] = factors
+        }
+        beamSection = try buffer(2 * beams * 16, "beam sections")
+        if !beamSections.isEmpty {
+            beamSection.contents().copyMemory(from: beamSections, byteCount: beamSections.count * 16)
+        }
+        beamSheared = try buffer(beams, "beam sheared")
+    }
+
+    /// Clears the time-averaged shear of every section, for a restart.
+    func reset() {
+        for buffer in [section, beamSection] {
+            let vectors = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: buffer.length / 16)
+            for n in stride(from: 1, to: buffer.length / 16, by: 2) { vectors[n] = .zero }
+        }
+    }
+
+    /// Turns the sectional shear check off: shells and beams then carry shear only through their
+    /// layers' and fibres' interlock and dowel action.
+    func disableSectionShear() {
+        for buffer in [section, beamSection] {
+            memset(buffer.contents(), 0, buffer.length)
+        }
     }
 }

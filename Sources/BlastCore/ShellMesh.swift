@@ -55,6 +55,9 @@ struct ShellMesh {
     var punching: [Float] = []
     /// The ring of elements around each column head, which punches as one.
     var punchingRings: [[Int]] = []
+    /// Elements of a slab within two effective depths of a column's face, where the shear is
+    /// two-way and punching, not the one-way strength of a section, decides it.
+    var punchingZone: [Bool] = []
     /// Breakpoints along each axis.
     var grid: [[Float]] = [[], [], []]
 
@@ -367,6 +370,19 @@ struct ShellMesh {
             elements: elements, heads: punchingHeads, ties: ties, materials: materials)
         punching = strengths.strengths
         punchingRings = strengths.rings
+        punchingZone = [Bool](repeating: false, count: elements.count)
+        for head in punchingHeads {
+            let k = head.axis
+            let level = positions[Int(head.master)][k]
+            let centre = positions[Int(head.master)]
+            for (index, element) in elements.enumerated() where element.axis == k {
+                let middle = (0..<4).reduce(SIMD3<Float>.zero) { $0 + positions[Int(element.nodes[$1])] } / 4
+                guard abs(middle[k] - level) < tolerance else { continue }
+                let reach = 0.5 * head.box.size + SIMD3(repeating: 2 * 0.8 * element.thickness)
+                let inside = (0..<3).allSatisfy { $0 == k || abs(middle[$0] - centre[$0]) <= reach[$0] }
+                if inside { punchingZone[index] = true }
+            }
+        }
         for (key, index) in claimed {
             let offsets: [SIMD4<Int32>] = [
                 SIMD4(0, 0, -1, 0), SIMD4(0, 0, 1, 0), SIMD4(0, 0, 0, -1), SIMD4(0, 0, 0, 1),

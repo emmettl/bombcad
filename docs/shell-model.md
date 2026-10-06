@@ -141,6 +141,54 @@ as the ring tilts, until they have slid by the slip limit and the ring is remove
 ring is drawn at 90% damage. 0.18 is Eurocode 2's characteristic coefficient, so the strength
 is a little below the mean of tests.
 
+**Shear across a section.** A shell or a beam is a member's whole depth in one element, and
+its layers or fibres alone cannot fail in diagonal tension: built from beams, a beam without
+stirrups that broke in shear at 332 kN (Vecchio and Shim's OA1; see
+[Validation](validation.md#a-beam-failing-in-shear)) carried 470 kN, its bending strength, and
+nothing failed. So each beam, across each side of its section, checks its shear against the
+section's strength by the simplified modified compression field theory (Bentz, Vecchio and
+Collins, 2006; the general method of CSA A23.3); shells can do the same across each of their
+axes, but by default do not (below).
+
+- V = (β √f<sub>c</sub> f<sub>a</sub> + ρ<sub>v</sub> f<sub>y</sub> cot θ) b d<sub>v</sub>, with
+  β = 0.4 / (1 + 1500 ε<sub>x</sub>) and θ = 29° + 7000 ε<sub>x</sub>, √f<sub>c</sub> in MPa at
+  most 8, the concrete's part raised with strain rate as its tensile strength is.
+- Without the minimum of stirrups (ρ<sub>v</sub> f<sub>y</sub> ≥ 0.06 √f<sub>c</sub>) β is also
+  multiplied by 1300 / (1000 + s<sub>ze</sub>), s<sub>ze</sub> = 35 d<sub>v</sub> / (15 +
+  a<sub>g</sub>) mm, at least 0.85 d<sub>v</sub>: larger members are weaker in shear for their
+  size. d<sub>v</sub> = max(0.9 d, 0.72 h), d to the outermost bars; beams' stirrups are their ties.
+- ε<sub>x</sub>, the longitudinal strain at mid-depth, is the method's own, from the section's
+  forces: (|M| / d<sub>v</sub> + |V| + N / 2) / (2 E<sub>s</sub> A<sub>s</sub>), A<sub>s</sub> the
+  bars on the tension side (all of them where that side has none), between −0.0002 and 0.003.
+  The element's own strain at mid-depth was tried first: where a crack gathers into one
+  element, at a hinge, it is many times the average over a crack spacing that the method is
+  built on, and a strip that yielded in bending at once lost its shear strength.
+- f<sub>a</sub> = 3.5 − 2.5 M / (V d), between 1 and 2.5, the shear-span factor of earlier
+  editions of ACI 318 (quoted from memory): within about an effective depth of a support or a
+  point load the load arches straight to it and no diagonal crack forms.
+- The shear compared is the section's, averaged over four times the time a shear wave takes to
+  cross its depth, so that a passing stress wave does not count as a diagonal crack; pushed
+  suddenly at 0.12 m/s, a strip in bending carries a passing shear of 0.6 MPa, near its whole
+  strength. Without the average, the beam above failed on momentary spikes.
+- Slab elements within two effective depths of a column's face are left to punching.
+
+Once a section's shear passes its strength, it has failed that way for good: its concrete
+carries no shear across it, a beam's stirrups their part, ρ<sub>v</sub> f<sub>y</sub> cot θ
+(θ for a strain of 0.001), and nothing else, and it is removed once it has slid by the slip
+limit. The dowel action and interlock of the layers and fibres apply only until then. A failed
+section is drawn at 90% damage. On OA1, built from beams of 100 and 50 mm, the check gives 328
+and 343 kN (99% and 103%), and the load falls away within 3 mm as the test's did, at about
+6 mm of deflection against 9 mm measured.
+
+**Not in shells by default.** `StructureModel.shellSectionShear` turns the check on in shells.
+A 1 m strip of shells with OA1's bars per metre then fails at 298 and 319 kN (90% and 96%).
+But under the contest slab's blast load the check broke the slab's sections at 6 ms, two
+effective depths in from its supports, where hinges form first as a suddenly loaded slab
+responds and carry about 3 MPa of shear, against about 1.5 MPa by the method even raised for
+strain rate; the slab survived the test, and the solid elements carry it. The method is a
+static one. Until it is checked against a member that failed in shear under a blast, shells
+keep their layers' interlock and dowel action alone.
+
 **Bars** follow the cyclic steel law and strain-rate factors of the solid elements. In shells
 they rupture when their plastic strain, averaged along the bars over the debonded length (from
 the elements beside them in the previous step), passes the rupture strain; judged at a single
@@ -307,11 +355,12 @@ little as the specimen did, where the solid elements rebound twice as far.
 | Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Stands: 8 mm, nothing removed |
 
 The two tall layouts are meshed with shells and beams only, since solid elements would be far
-too many. Run for 4 s on 0.5 m air, with dowel action and punching:
+too many. Run for 4 s on 0.5 m air, with dowel action, punching and the beams' sectional shear
+check (which, with their 0.5% of ties as stirrups, barely binds in these columns):
 
 | Layout | 500 kg | 1,000 kg | 2,000 kg | 4,000 kg (the layouts' charge) |
 |---|---|---|---|---|
-| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.9 m and stands; 9 elements removed | The first floor punches off its columns and drops; the rest stands | The same | The floors punch through one after another and fall; the columns, stripped, splay outwards |
+| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.9 m and stands; 9 elements removed | The first floor punches off its columns and drops; the rest stands | The same | The two lowest floors punch through and fall; the rest stands on bent columns (the version before beams' sectional check brought it all down: the outcome is chaotic) |
 | Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses its front column; the core and floors bridge it | The same, the lowest floor sagging | The lowest floor drops at the front; the rest stands | The floors punch off their columns and pancake; the core goes over; the columns are left standing bare |
 
 Before dowel action and punching, the eight-storey frame stood at 250 kg and fell at 500 kg,
@@ -342,11 +391,12 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
 3. **Plane stress.** There is no stress through a shell's thickness: no confinement, no spall or
    scabbing, no punching through the thickness. Close to a charge, where those matter, the
    solid elements are the better model.
-4. **Direct shear is a simple slip rule**, with a bar-kinking limit that has not been compared
-   with a test, and **dowel action is Rasmussen's** for a bar well embedded in concrete. Bars
-   near a face, as a column's and a slab's are, split their cover before they reach it, so
-   dowel action, and with it the shear strength of cracked columns, is probably overestimated;
-   the solid elements share this. **Punching follows Eurocode 2's strength**, checked on the average shear around
+4. **Shear across a section follows a design method** in beams, the simplified modified
+   compression field theory, compared with one static test (within 3%). Shells do not use it by
+   default, since under a blast it broke the slab test's shells where the slab held, so a wall
+   or slab built from shells can still be too strong in diagonal tension; in-plane shear of a
+   wall is not checked this way at all. **Direct shear is a simple slip rule**, with a
+   bar-kinking limit that has not been compared with a test. **Punching follows Eurocode 2's strength**, checked on the average shear around
    a column head, with no allowance for an eccentric load (an edge or corner column, or a
    blast from one side) and the tension face taken as the top. What holds a slab after it has
    punched, its bottom bars, recovers about the punching load by 50 mm of drop in the one

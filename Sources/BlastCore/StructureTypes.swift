@@ -477,6 +477,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether masonry is meshed as units and mortar joints where its material gives them and
     /// the solid elements are small enough (see `MasonryUnits`).
     public var unitJoints = true
+    /// Whether shells check each section's shear against the simplified modified compression
+    /// field theory, as beams always do. Off by default: under a blast the slab test's shells
+    /// carried shears near their supports that the method, which is static, says they cannot.
+    public var shellSectionShear = false
 
     /// The axes concrete cracks across (see `CrackAxes`).
     public var crackAxes: CrackAxes = .turningUntilOpen
@@ -1051,5 +1055,6 @@ extension StructureModel {
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
+        shellSectionShear = try container.decodeIfPresent(Bool.self, forKey: .shellSectionShear) ?? false
     }
 }

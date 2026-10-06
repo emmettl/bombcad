@@ -99,6 +99,48 @@ static inline float barShear(float crossing, float slide, constant MaterialParam
     return m.dowelFactor * 1.65f * crossing * sqrt(m.compressiveStrength * yield);
 }
 
+// Shear strength of a concrete member's section, as a mean stress over its whole depth, by the
+// simplified modified compression field theory (Bentz, Vecchio and Collins, 2006; the general
+// method of CSA A23.3): V = (beta sqrt(fc) + rho_v fy cot theta) b d_v, where
+// beta = 0.4 / (1 + 1500 e_x) times the size factor 1300 / (1000 + s_ze) for a member without
+// enough stirrups (worked out with d_v when the mesh is made, `sizeFactor`), and
+// theta = 29 + 7000 e_x degrees. e_x is the longitudinal strain at mid-depth, taken from the
+// element itself. `depthRatio` is d_v over the depth; `stirrups` the stirrups' ratio. The
+// concrete's part rises with strain rate as its tensile strength does (`rate`). The second
+// value is the stirrups' part alone, which is what is left once the section has failed.
+// The method's longitudinal strain at mid-depth, from the section's forces: e_x = (|M| / d_v + |V|
+// + N / 2) / (2 Es As), As being the bars on the tension side. The element's own strain at
+// mid-depth would not do: where a crack has gathered into one element, as at a hinge, it is far
+// larger than the average over a crack spacing that the method is built on, and a section that
+// yielded in bending would at once lose its shear strength.
+static inline float sectionStrain(float moment, float shear, float normal, float dv, float tensionBars,
+                                  constant MaterialParameters &m) {
+    if (tensionBars <= 0.0f || m.steelPoints == 0) {
+        return 3e-3f;
+    }
+    return (fabs(moment) / max(dv, 1e-6f) + fabs(shear) + 0.5f * normal) / (2.0f * m.steelModulus * tensionBars);
+}
+
+// Near a support or a point load, within about an effective depth, the load goes straight to
+// it by arching and no diagonal crack forms between: the concrete's part is raised by the
+// shear-span factor of earlier editions of ACI 318, 3.5 - 2.5 M / (V d), between 1 and 2.5.
+// Without it, the sudden shear at the supports of a slab struck by a blast, which is direct
+// shear and not diagonal tension, broke them at once.
+static inline float shearSpanFactor(float moment, float shear, float d) {
+    float span = fabs(moment) / max(fabs(shear) * d, 1e-6f);
+    return clamp(3.5f - 2.5f * span, 1.0f, 2.5f);
+}
+
+static inline float2 sectionShearStrength(float strain, float depthRatio, float sizeFactor, float stirrups, float rate,
+                                          constant MaterialParameters &m) {
+    float ex = clamp(strain, -0.2e-3f, 3e-3f);
+    float beta = 0.4f / (1.0f + 1500.0f * ex) * sizeFactor;
+    float root = min(sqrt(m.compressiveStrength / 1e6f), 8.0f) * 1e6f;
+    float theta = (29.0f + 7000.0f * ex) * M_PI_F / 180.0f;
+    float steel = m.steelPoints > 0 ? stirrups * m.steelStress[0] / tan(theta) : 0.0f;
+    return float2(beta * root * rate + steel, steel) * depthRatio;
+}
+
 struct BeamElement {
     uint node[2];
     uint axis;  // along the beam; the section's sides are along the next two axes, in order
@@ -264,7 +306,7 @@ struct LayerOutcome {
 static inline float3 shellConcrete(float3 strain, float2 transverse, float instantaneous, float dt,
                                    thread ShellLayer &state, constant MaterialParameters &m,
                                    constant ShellUniforms &u, bool reinforced, float2 crossing, float2 lengths,
-                                   bool punched, thread float2 &shear, thread LayerOutcome &outcome) {
+                                   bool punched, uint sheared, thread float2 &shear, thread LayerOutcome &outcome) {
     state.rate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.rate);
     float2 history = state.crack;
     float worst = max(history.x, history.y);
@@ -362,7 +404,11 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
         float stress = u.shearFactor * m.mu * transverse[j];
         float across = history[j] - onset;
         float slide = fabs(transverse[j]) * lengths[j] / max(debonded, lengths[j]);
-        if (punched) {
+        if (((sheared >> j) & 1u) != 0u) {
+            // The section has failed in shear this way: the concrete carries none, and a shell
+            // has no stirrups.
+            stress = 0.0f;
+        } else if (punched) {
             // Punched through at a column head: the concrete's cone has sheared off, and only
             // the bars crossing it hold the slab.
             float limit = barShear(crossing[j], slide, m);
@@ -537,6 +583,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           const device uint *ringMember [[buffer(27)]],
                           device float *ringShearOut [[buffer(28)]],
                           const device float *ringShearBefore [[buffer(29)]],
+                          device float4 *section [[buffer(30)]],
                           uint lane [[thread_position_in_grid]]) {
     // Four threads per element, one for each of its in-plane points, in adjacent lanes (a quad);
     // their shares of the forces are summed across the quad at the end.
@@ -607,6 +654,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
     bool remove = false;
     bool punching = false;
     float meanShear = 0.0f;
+    float2 shearRatio = float2(0.0f);  // mean shear through the thickness over the section's strength
     float worstDisplay = 0.0f;
     // Each bar layer's plastic strain, averaged over the element, for its neighbours' rupture.
     float barMean[8] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -645,11 +693,17 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float3 p2 = float3(0.0f);
         float3 q2 = float3(0.0f);
         float2 shearSum = float2(0.0f);
+        float2 normalSum = float2(0.0f);  // the section's normal force and moment across each axis,
+        float2 momentSum = float2(0.0f);  // times the element's area weight
         // Intact bars per unit area of concrete along each axis, for the shear they carry
         // across cracks. Once punched, only the bars in the bottom face (away from the top, the
         // face a slab hogs towards over its column) count: the top bars are pushed up against
         // their cover and rip it off, while the bottom bars run on over the column and hold.
-        bool punchedThrough = punched[e] != 0;
+        // The element's state as a member: bit 0, punched at a column head; bits 1 and 2, its
+        // section failed in shear across the first and second axes.
+        uint memberState = punched[e];
+        bool punchedThrough = (memberState & 1u) != 0u;
+        uint sheared = (memberState >> 1) & 3u;
         float2 crossing = float2(0.0f);
         for (uint s = 0; s < el.barCount && s < u.barSlots; ++s) {
             float4 layout = barLayout[e * u.barSlots + s];
@@ -688,7 +742,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             float3 stress = m.materialModel == 0
                 ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
                 : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, crossing,
-                                float2(a, b), punchedThrough, shear, outcome);
+                                float2(a, b), punchedThrough, sheared, shear, outcome);
             storeLayer(layers[slot], state);
             rateSum += state.rate;
             worstDisplay = max(worstDisplay, state.display);
@@ -705,6 +759,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             p2 += layerWeight * r2;
             q2 += layerWeight * zeta * r2;
             shearSum += layerWeight * shear;
+            normalSum += layerWeight * stress.xy;
+            momentSum += layerWeight * 0.5f * t * zeta * stress.xy;
         }
 
         // Bar layers, at their own depths, both ways.
@@ -760,6 +816,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 barMean[s * 2 + j] += 0.25f * spread.x;
                 barsIntact[j] = 1.0f;
                 float3 r = (areaWeight * area * stress / root) * f;
+                normalSum[j] += areaWeight * area * stress;
+                momentSum[j] += areaWeight * area * stress * 0.5f * t * zeta;
                 if (j == 0) {
                     p1 += r;
                     q1 += zeta * r;
@@ -790,8 +848,42 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             float average = sum / float(max(last - first, 1u));
             punching = average > punchStrength[e] * tensionIncrease(rateSum / float(n), m);
         }
+        // One-way shear: the mean shear through the thickness across each axis against the
+        // section's strength there, with the strain at mid-depth along that axis.
+        float4 member = section[2 * e];
+        if (member.x > 0.0f && m.materialModel != 0) {
+            float rate = tensionIncrease(rateSum / float(n), m);
+            for (uint j = 0; j < 2; ++j) {
+                // Per unit width: the moment, shear and normal force, and the bars on the side the
+                // moment puts in tension (the side whose position has the moment's sign).
+                float moment = momentSum[j] / areaWeight;
+                float tensionBars = 0.0f;
+                float allBars = 0.0f;
+                for (uint s = 0; s < el.barCount && s < u.barSlots; ++s) {
+                    float4 layout = barLayout[e * u.barSlots + s];
+                    allBars += layout[1 + j];
+                    if (layout.x * moment >= 0.0f) {
+                        tensionBars += layout[1 + j];
+                    }
+                }
+                // Where the moment is small, as at a simple support, its sign says little and the
+                // strain is the shear's: all the bars count.
+                tensionBars = tensionBars > 0.0f ? tensionBars : allBars;
+                float dv = member[2 * j] * t;
+                float strain = sectionStrain(moment, shearSum[j] / areaWeight, normalSum[j] / areaWeight, dv,
+                                             tensionBars, m);
+                float arching = shearSpanFactor(moment, shearSum[j] / areaWeight, dv / 0.9f);
+                float strength =
+                    sectionShearStrength(strain, member[2 * j], member[2 * j + 1], 0.0f, rate * arching, m).x;
+                shearRatio[j] = fabs(shearSum[j]) / (areaWeight * t) / max(strength, 1.0f);
+            }
+        }
         if (punchedThrough) {
             slidEverywhere = float2(1.0f);
+            worstDisplay = max(worstDisplay, 0.9f);
+        }
+        if (sheared != 0u) {
+            slidEverywhere = max(slidEverywhere, float2(float(sheared & 1u), float((sheared >> 1) & 1u)));
             worstDisplay = max(worstDisplay, 0.9f);
         }
         // Concrete cracked through its thickness fails in direct shear once it has slipped
@@ -855,6 +947,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
     remove = quad_max(remove ? 1.0f : 0.0f) > 0.0f;
     punching = quad_max(punching ? 1.0f : 0.0f) > 0.0f;
     meanShear = 0.25f * quad_sum(meanShear);
+    shearRatio = 0.25f * quad_sum(shearRatio);
     worstDisplay = quad_max(worstDisplay);
     for (uint s = 0; s < 8; ++s) {
         barMean[s] = quad_sum(barMean[s]);
@@ -873,8 +966,22 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         }
     }
     display[e] = worstDisplay;
-    if (punching) {
-        punched[e] = 1;
+    {
+        // The section fails when its shear, averaged over the time a shear wave takes to cross
+        // its depth and back twice, passes its strength: a section fails as a diagonal crack
+        // forms through it, not as a stress wave passes (pushed suddenly at 0.12 m/s, a strip in
+        // bending carries a passing shear of 0.6 MPa, near its whole strength).
+        float window = 4.0f * t / sqrt(m.mu / m.density);
+        float4 averaged = section[2 * e + 1];
+        averaged.xy += clamp(dt / window, 0.0f, 1.0f) * (shearRatio - averaged.xy);
+        if (section[2 * e].x > 0.0f) {
+            section[2 * e + 1] = averaged;
+        }
+        uint state = punched[e];
+        uint next = state | (punching ? 1u : 0u) | (averaged.x > 1.0f ? 2u : 0u) | (averaged.y > 1.0f ? 4u : 0u);
+        if (next != state) {
+            punched[e] = uchar(next);
+        }
     }
     ringShearOut[e] = remove ? 0.0f : meanShear;
     ShellForces out;
@@ -1059,8 +1166,8 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
 // principal tension of the axial stress with the shear.
 static inline float beamConcrete(float axial, float2 shear, float instantaneous, float dt, float confinement,
                                  bool reinforced, thread ShellLayer &state, constant MaterialParameters &m,
-                                 constant ShellUniforms &u, float crossing, float slide, thread float2 &shearStress,
-                                 thread LayerOutcome &outcome) {
+                                 constant ShellUniforms &u, float crossing, float slide, float2 cap,
+                                 thread float2 &shearStress, thread LayerOutcome &outcome) {
     state.rate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.rate);
     float history = state.crack.x;
     float tensionFactor = state.crackingFactor;
@@ -1112,6 +1219,8 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
             shearStress *= min(carried, limit) / length(shearStress);
         }
     }
+    // Once the section has failed in shear, only its stirrups carry shear across it.
+    shearStress = clamp(shearStress, -cap, cap);
     outcome.torn = float2(history >= m.erosionStrain ? 1.0f : 0.0f, 0.0f);
     outcome.slid = float2(history > onset ? 1.0f : 0.0f, 0.0f);
     outcome.destroyed = pulverised || history >= m.erosionStrain;
@@ -1165,6 +1274,8 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
                          const device int *patchOfTile [[buffer(15)]],
                          const device Cell *fineAir [[buffer(16)]],
                          const device uchar *fineAirMask [[buffer(17)]],
+                         device float4 *section [[buffer(18)]],
+                         device uchar *sheared [[buffer(19)]],
                          uint e [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1246,6 +1357,21 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     }
     float2 meanShear = float2(hm[i2] + delta2[k] + dot(hm, delta2), hm[i3] + delta3[k] + dot(hm, delta3));
     float slide = length(meanShear) * L / max(debondedLength(m, u), L);
+    // The section's shear strength across each side, with its ties as stirrups and the strain
+    // along the beam's axis as the strain at mid-depth; and, once it has failed, what is left.
+    float4 member = section[2 * e];
+    bool concrete = m.materialModel != 0 && member.x > 0.0f;
+    uint failedShear = concrete ? uint(sheared[e]) : 0u;
+    float2 cap = float2(1e30f);
+    for (uint j = 0; j < 2; ++j) {
+        if (((failedShear >> j) & 1u) != 0u) {
+            // With the stirrups at an angle for a moderate strain, 0.001 (36 degrees).
+            cap[j] = sectionShearStrength(1e-3f, member[2 * j], member[2 * j + 1], beam.tieRatio, 1.0f, m).y;
+        }
+    }
+    float2 sectionShear = float2(0.0f);
+    float sectionNormal = 0.0f;
+    float2 sectionMoment = float2(0.0f);  // about the axes that shear across each side bends
     for (uint a = 0; a < beamFibres; ++a) {
         for (uint b = 0; b < beamFibres; ++b) {
             float eta = beamFibrePoints[a];
@@ -1264,7 +1390,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             float stress = m.materialModel == 0
                 ? beamVonMises(axial, shear, state, m, u, shearStress, outcome)
                 : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
-                               state, m, u, crossing, slide, shearStress, outcome);
+                               state, m, u, crossing, slide, cap, shearStress, outcome);
             storeLayer(fibres[slot], state);
             rateSum += state.rate;
             worst = max(worst, state.display);
@@ -1279,6 +1405,48 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             q3 += weight * zeta * t;
             g2 += weight * shearStress.x * f1;
             g3 += weight * shearStress.y * f1;
+            sectionShear += weight * shearStress;
+            sectionNormal += weight * stress;
+            sectionMoment += weight * stress * float2(0.5f * beam.width * eta, 0.5f * beam.depth * zeta);
+        }
+    }
+    uint nextShear = failedShear;
+    if (concrete) {
+        float rate = tensionIncrease(rateSum / float(beamFibres * beamFibres), m);
+        // Averaged over the time a shear wave takes to cross the section and back twice, as in
+        // the shells.
+        float4 averaged = section[2 * e + 1];
+        for (uint j = 0; j < 2; ++j) {
+            float moment = sectionMoment[j] / L;
+            float tensionBars = 0.0f;
+            float allBars = 0.0f;
+            for (uint c = 0; c < beam.barCount && c < maxBeamBars; ++c) {
+                float4 layout = barLayout[e * maxBeamBars + c];
+                allBars += layout.z;
+                if (layout[j] * moment >= 0.0f) {
+                    tensionBars += layout.z;
+                }
+            }
+            tensionBars = tensionBars > 0.0f ? tensionBars : allBars;
+            float side = j == 0 ? beam.width : beam.depth;
+            float strain = sectionStrain(moment, sectionShear[j] / L, sectionNormal / L, member[2 * j] * side,
+                                         tensionBars, m);
+            float arching = shearSpanFactor(moment, sectionShear[j] / L, member[2 * j] * side / 0.9f);
+            float strength =
+                sectionShearStrength(strain, member[2 * j], member[2 * j + 1], beam.tieRatio, rate * arching, m).x;
+            float window = 4.0f * (j == 0 ? beam.width : beam.depth) / sqrt(m.mu / m.density);
+            float ratio = fabs(sectionShear[j]) / (area * L) / max(strength, 1.0f);
+            averaged[j] += clamp(dt / window, 0.0f, 1.0f) * (ratio - averaged[j]);
+            if (averaged[j] > 1.0f) {
+                nextShear |= 1u << j;
+            }
+        }
+        section[2 * e + 1] = averaged;
+        if (nextShear != failedShear) {
+            sheared[e] = uchar(nextShear);
+        }
+        if (failedShear != 0u) {
+            worst = max(worst, 0.9f);
         }
     }
     // Bars along the beam.
@@ -1300,6 +1468,8 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
                 continue;
             }
             barsIntact = true;
+            sectionNormal += barArea * L * stress;
+            sectionMoment += barArea * L * stress * float2(0.5f * beam.width * eta, 0.5f * beam.depth * zeta);
             float3 t = (barArea * L * stress / root) * (e1 + h);
             p += t;
             q2 += eta * t;
@@ -1310,7 +1480,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     bool crushedFlat = length(e1 + hm) < 0.5f;
     // Direct shear: the section cracked through and slipped across the crack by the slip limit.
     float2 shearStrain = float2(hm[i2] + delta2[k] + dot(hm, delta2), hm[i3] + delta3[k] + dot(hm, delta3));
-    bool slid = slidAll && length(shearStrain) * L >= slipLimit(barsIntact, m, u);
+    bool slid = (slidAll || failedShear != 0u) && length(shearStrain) * L >= slipLimit(barsIntact, m, u);
     bool remove = failed || (tornAll && !barsIntact) || slid || (removeAll && !barsIntact) || openAll || crushedFlat;
 
     // Air pressure on the four sides.

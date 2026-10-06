@@ -104,6 +104,8 @@ struct PunchingTests {
                 depth: 0.0125)
         }
         let solver = try ShellSolver(device: device, model: model)
+        // The layers' dowel action alone: a single element's section would fail first.
+        solver.disableSectionShear()
         solver.gravity = 0
         solver.groundContact = false
         let fixed = solver.nodes { $0.x < 1e-4 }
@@ -144,5 +146,93 @@ struct PunchingTests {
         #expect(
             abs(gain - dowel) / dowel < 0.1, "gain \(gain) Pa (\(plain) to \(reinforced)) against \(dowel) Pa"
         )
+    }
+}
+
+/// Members of shells and beams failing in shear across their section.
+@Suite("Sectional shear")
+struct SectionalShearTests {
+    let device: MTLDevice
+
+    init() throws {
+        device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+    }
+
+    /// Vecchio and Shim's beam OA1 meshed with shells and beams of `size`, pushed down at
+    /// mid-span: the peak load, scaled to the beam's 305 mm width, and the least load within
+    /// 3 mm of deflection after it. `slab` meshes it as a strip 1 m wide with the same bars per
+    /// metre, so that it is a plate in one-way shear rather than a beam.
+    private func oa1(size: Float, slab: Bool) throws -> (peak: Float, after: Float) {
+        var model: StructureModel
+        var width: Float = ShearBeamBenchmark.width
+        if slab {
+            width = 1
+            let strip = Box(min: SIMD3(0, 0, 1), max: SIMD3(4.1, 1, 1 + ShearBeamBenchmark.depth))
+            model = StructureModel(
+                solids: [strip], material: ShearBeamBenchmark.material, elementSize: size, fixedBase: false)
+            for row in ShearBeamBenchmark.bars {
+                var band = strip
+                band.min.z = 1 + row.height - 0.01
+                band.max.z = band.min.z + 0.02
+                model.reinforcement.append(
+                    ReinforcementLayer(
+                        region: band, ratio: SIMD3(row.area / ShearBeamBenchmark.width / 0.02, 0, 0)))
+            }
+        } else {
+            model = ShearBeamBenchmark.model(elementsThroughDepth: 12)
+            model.elementSize = size
+        }
+        model.elementKind = .shell
+        model.shellSectionShear = true
+        let solver = try ShellSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.damping = 100
+        let base = solver.referencePositions[0]
+        func line(_ x: Float) -> [Int] {
+            let n = solver.nearestNode(to: SIMD3(x, base.y, base.z))
+            let at = solver.referencePositions[n].x
+            return solver.nodes { abs($0.x - at) < 1e-4 }
+        }
+        let left = line(0.22)
+        let right = line(3.88)
+        let middle = line(2.05)
+        solver.mutateNodes { nodes in
+            for n in left { nodes[n].restrain(x: true, y: true, z: true) }
+            for n in right { nodes[n].restrain(y: true, z: true) }
+            for n in middle {
+                nodes[n].isPrescribed = true
+                nodes[n].velocity = SIMD3(0, 0, -0.05)
+            }
+        }
+        var history: [SIMD2<Float>] = []
+        let steps = max(1, Int(0.0002 / solver.criticalTimeStep))
+        while solver.time < 0.3 {
+            solver.advance(steps: steps)
+            let reaction = -(left + right).reduce(Float(0)) { $0 + solver.nodalForce($1).z }
+            history.append(
+                SIMD2(-solver.node(middle[0]).displacement.z, reaction * ShearBeamBenchmark.width / width))
+        }
+        // The reaction rings as a section lets go; average it over 2 ms (10 samples).
+        let smooth = history.indices.map { n -> SIMD2<Float> in
+            let window = history[max(0, n - 5)..<min(history.count, n + 5)]
+            return SIMD2(history[n].x, window.map(\.y).reduce(0, +) / Float(window.count))
+        }
+        let top = smooth.max { $0.y < $1.y } ?? .zero
+        let after = smooth.filter { $0.x > top.x && $0.x < top.x + 0.003 }.map(\.y).min() ?? top.y
+        return (top.y, after)
+    }
+
+    @Test("A beam without stirrups, as beams or as a strip of shells, fails in shear near the measured load")
+    func beamWithoutStirrups() throws {
+        // Without the sectional check, beams carried the beam to its bending strength, 470 kN.
+        let measured = ShearBeamBenchmark.measuredPeak
+        for slab in [false, true] {
+            let result = try oa1(size: 0.1, slab: slab)
+            #expect(
+                abs(result.peak - measured) / measured < 0.15,
+                "\(slab ? "shells" : "beams"): \(result.peak) N")
+            #expect(result.after < 0.3 * result.peak, "\(slab ? "shells" : "beams"): no sudden drop")
+        }
     }
 }

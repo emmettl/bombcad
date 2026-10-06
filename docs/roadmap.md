@@ -68,8 +68,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those
    by under 1% in the open and up to 6% in the densest rooms, at 3.6 times the cost; see the
    [air-blast model](air-blast-model.md#dissociating-air).)
-4. **Shear in concrete.** Why a coarse mesh overestimates a beam's shear strength by a third,
-   and a member with stirrups. (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+4. **Shear in concrete.** A member with stirrups; a member that failed in shear under a blast,
+   to judge a sectional check for shells; and solid elements that fail in shear on coarse
+   meshes. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)

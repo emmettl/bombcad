@@ -390,12 +390,21 @@ cracking 464 kN, and with no dowel action at all the beam carries the same 457 k
 bar but the bottom ones crosses the diagonal crack. The load rate does not matter either
 (457 kN at half the speed).
 
+**With shells and beams.** Built from beam elements, the beam carried 470 kN, its bending
+strength, and did not fail. Beams now check each section's shear against the simplified
+modified compression field theory (see the [shell model](shell-model.md#materials)): the
+beam then fails suddenly at 328 and 343 kN with beams of 100 and 50 mm (99% and 103%). Shells
+can do the same (298 and 319 kN for a 1 m strip with the same bars per metre), but by default
+do not, since under the contest slab's blast the check broke the slab where it held.
+
 ### What this does and does not show
 
 It shows that the model can predict a brittle shear failure of a beam without stirrups, at a
 load 11–12% high on fine enough meshes, without anything fitted; and that on coarse meshes
 (about a twelfth of the depth) it overestimates such a member's shear strength by a third or
-more. It is one test, statically loaded, of one beam; the strength at blast rates, and members
+more. Solid elements need about 24 through a member's depth to fail it in shear where 8 are
+enough for bending. Beams, checked by sections, get within 3% at both sizes tried.
+It is one test, statically loaded, of one beam; the strength at blast rates, and members
 with stirrups, are not tested.
 
 ## Blast loads against empirical references

@@ -686,7 +686,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    cross them, each from a published formula, not fitted. Against one beam without stirrups
    that failed in diagonal tension (see [Validation](validation.md#a-beam-failing-in-shear)),
    the model fails the same way, 11–12% strong on fine meshes but 37% strong with twelve
-   elements through the depth: shear strength needs a finer mesh than bending does. Dowel
+   elements through the depth: shear strength needs a finer mesh than bending does, about 24
+   elements through a member's depth. On coarser meshes the diagonal crack cannot cut through
+   the compression zone, and the load arches to the supports over the bars until they yield;
+   neither interlock nor dowel action accounts for it. Beams check each section's shear
+   instead (see the [shell model](shell-model.md#materials)). Dowel
    action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
    cover first, so it is probably overestimated there. The kinking term may also count again

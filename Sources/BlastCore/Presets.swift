@@ -420,8 +420,9 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             // of the long face; what it breaks there decides whether the floors above can
             // bridge the gap or come down onto those below. At 500 kg it sways 0.9 m and stands;
             // at 1,000 and 2,000 kg the first floor punches off its columns and drops, and the
-            // rest stands; at 4,000 kg, a truck bomb, the floors punch through one after another
-            // and the frame comes down.
+            // rest stands; at 4,000 kg, a truck bomb, the lower floors punch through and fall, and
+            // whether the rest follow changes with small differences: one version of the model
+            // brought the whole frame down, the next left six floors standing.
             let column: Float = 0.45
             let storey: Float = 3.5
             let xs: [Float] = [16, 22, 28, 34]
