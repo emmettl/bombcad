@@ -90,9 +90,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    beam without stirrups breaks under the light drop. Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
-6. **Close-in damage**: spalling of the faces, a breach under the charge that converges with
-   the mesh, and bars that outlive the concrete around them (discrete bars), so that a holed
-   slab hangs as the close-in tests' did.
+6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
+   close-in slabs show and the model does not produce on any mesh. (Done: bars that outlive
+   the concrete around them, as bare elements, so that a holed member hangs on its bars; see
+   [Removal](concrete-model.md#removal).)
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done: compaction of the pores under very high confined pressure, after
    Holmquist, Johnson and Cook; unchecked against a close-in test.)

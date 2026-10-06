@@ -411,6 +411,16 @@ rule the [shell elements](shell-model.md) already followed, judging a crack over
 layers at once. Before it, the core of an 0.8 m wall cracked at a hinge was removed at a 5 mm
 opening, and the hinge fell apart.
 
+**Bare bars.** An element whose concrete meets one of these rules while some of its own bars
+are intact is not removed but left as those bars (`StructureModel.bareBars`, on by default):
+it has no concrete stress and no bulk viscosity, its faces take no air pressure and let the air
+through, and its hourglass forces are capped at the bars' strength; but its bars go on carrying
+force between its nodes, which stay attached, until every one of them has ruptured, when it is
+removed. So concrete crushed or blown out round a mat leaves the mat across the hole, and a
+member broken through hangs on its bars instead of falling apart where its concrete went. The
+nodes keep the concrete's mass, which is not shed as debris. Bare elements are counted as
+removed, and not drawn.
+
 The crack strain used to be capped at 0.5, and any element stretched past 100% removed. On
 elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on
 3 mm elements, which made the finest meshes of the validation slab shed their cover and

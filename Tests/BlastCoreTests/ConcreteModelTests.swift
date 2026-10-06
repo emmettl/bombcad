@@ -958,3 +958,69 @@ struct CloseInSlabTests {
         #expect(!result.perforated)
     }
 }
+
+/// Concrete removed round intact bars leaves the bars.
+@Suite("Bare bars")
+struct BareBarTests {
+    /// A reinforced column pulled apart until a crack is far past removal: the force the bars
+    /// still carry across it at the end, and how many elements were left as bare bars.
+    private func pull(bareBars: Bool) throws -> (force: Float, bare: Int) {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let h: Float = 0.05
+        let column = Box(min: SIMD3(0, 0, 1), max: SIMD3(h, h, 1 + 10 * h))
+        var steel = SteelProperties(yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.2, ruptureStrain: 3)
+        steel.youngsModulus = 200e9
+        var model = StructureModel(
+            solids: [column], material: .concrete(name: "C30", compressiveStrength: 30e6, steel: steel),
+            elementSize: h, fixedBase: false)
+        // Fewer bars in the middle element, so that the stretch gathers there.
+        var below = column
+        below.max.z = 1 + 5 * h
+        var middle = column
+        middle.min.z = below.max.z
+        middle.max.z = middle.min.z + h
+        var above = column
+        above.min.z = middle.max.z
+        model.reinforcement = [
+            ReinforcementLayer(region: below, ratio: SIMD3(0, 0, 0.02)),
+            ReinforcementLayer(region: middle, ratio: SIMD3(0, 0, 0.015)),
+            ReinforcementLayer(region: above, ratio: SIMD3(0, 0, 0.02)),
+        ]
+        model.bareBars = bareBars
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.mutateNodes { nodes in
+            for j in 0...1 {
+                for i in 0...1 {
+                    nodes[solver.nodeIndex(i, j, 0)].isFixed = true
+                    let top = solver.nodeIndex(i, j, solver.ez)
+                    nodes[top].isPrescribed = true
+                    nodes[top].velocity = SIMD3(0, 0, 1)
+                }
+            }
+        }
+        // 60 mm of stretch, past the 100% at which an element is removed whatever crosses it.
+        while solver.time < 0.06 {
+            solver.advance(steps: 100)
+        }
+        var force: Float = 0
+        for j in 0...1 {
+            for i in 0...1 { force += solver.nodalForce(i, j, 0).z }
+        }
+        let bare = (0..<solver.ez).filter { solver.flag(0, 0, $0) == .bare }.count
+        return (abs(force), bare)
+    }
+
+    @Test("A crack far past removal leaves the bars across it carrying")
+    func barsSurvive() throws {
+        let kept = try pull(bareBars: true)
+        // The middle bars, stretched past their ultimate: 0.015 x 600 MPa over 50 x 50 mm, 22.5 kN.
+        #expect(kept.bare >= 1)
+        #expect(kept.force > 15e3 && kept.force < 30e3, "\(kept.force) N")
+        let lost = try pull(bareBars: false)
+        #expect(lost.bare == 0)
+        // Without them the column parts: what is left is the lower half ringing.
+        #expect(lost.force < 0.15 * kept.force, "\(lost.force) N against \(kept.force) N kept")
+    }
+}

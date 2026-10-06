@@ -568,7 +568,9 @@ open access. Only the slabs without added protection are used.
 | P2    | 13.05 kg | 0.5 m  | Punched through under the charge, the bars left across the hole; 510 mm down; spalled 8.2% and 18.6% |
 | S5    | 15 kg    | 0.5 m  | Punched through; 7% damaged                                     |
 
-Assumed: the height is to the charge's centre (the charges were spheres and rounded cubes);
+Assumed: the bars rupture at 15% (B500 must stretch 7.5% at its peak stress and breaks well
+after it; at 10% P2's mid-span bars broke on every mesh); the height is to the charge's centre
+(the charges were spheres and rounded cubes);
 the clamps are hinges that hold the slab down, and lengthwise at mid-depth, on the bolt lines,
 its ends resting on the blocks behind them; the gauges' blocks are 0.55 m long, read off a
 figure. The concrete's strength is the class's minimum, as the papers give it.
@@ -608,17 +610,18 @@ read 75–80% of the text's values, as reflected peaks do on these cells.
 | P1   | 0          | 0 (11)         |                |                                 |
 | S1–S3 | cracks    | 0 (13)         |                |                                 |
 | P7   | 340        | 54 (140)       | 111 (208)      | 113 (158)                       |
-| S5   | punched through | 156 (239), whole | broken through, fell | 364 (414), 1,621 elements failed, no hole |
-| P2   | 510, punched through, hanging | broken at mid-span, fell | broken, fell |       |
+| S5   | punched through | 156 (239), whole | 501 (605), broken at mid-span by 90 ms, no hole | 83 (367), 958 elements lost, no hole |
+| P2   | 510, punched through, hanging | 167 (236), whole | broken at mid-span by 60 ms, fell |   |
 
 No light shot damages the slab, as in the tests. At 1 m the slab bends at mid-span, as the
 test's did, but goes a third as far, and neither face spalls (the test's spalled 3.4% and
-10.3%). At 0.5 m the model does not punch a hole under the charge: on 6 elements P2 bends until
-its mid-span hinge tears through, at 35 ms and 280 mm, and both halves fall; S5, with heavier
-bars, holds. On finer meshes S5 fails too, but not consistently, and the spalled areas stay at
-1–3% against 7–19%. The tests' slabs hung on bars that spanned the hole; the model's lose
-their bars with the concrete around them (they are smeared through the elements), so a slab
-broken through falls apart.
+10.3%). At 0.5 m the model punches no hole under the charge on any mesh: the slab bends, more
+on finer meshes, and on 8 elements breaks at its mid-span hinge 30–90 ms in, its bars
+ruptured, where the tests' slabs were holed under the charge at once and hung on their bars.
+The spalled areas stay at 0–3% against 7–19%. With the bars taken to rupture at 10%, P2's
+mid-span hinge tore through at 35 ms on every mesh and both halves fell; and before bare bars
+(see the [concrete model](concrete-model.md#removal)), concrete removed took its smeared bars
+with it, so that a slab holed through would have fallen apart in any case.
 
 **What moves P7** (6 through; permanent, peak):
 
@@ -642,8 +645,8 @@ It shows that the coupled model loads a slab close to a charge within about a te
 empirical impulse and leaves it undamaged where the tests did. It does not reproduce close-in
 damage: the slab is left a third as far down as the test's, spalls a fraction as much, is not
 punched through under the charge, and, broken, falls where the test's hung on its bars. These
-point at three things: the concrete's strain-rate law (as the impacts above), spalling of the
-faces, and bars that outlive the concrete around them. The supports' lengthwise restraint and the charges' shapes
+point at two things: the concrete's strain-rate law (as the impacts above), and the breach under
+the charge, crushing and spalling of the faces, which the model does not produce. The supports' lengthwise restraint and the charges' shapes
 are assumptions that matter.
 
 ## Blast loads against empirical references

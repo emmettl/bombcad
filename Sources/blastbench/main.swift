@@ -814,6 +814,10 @@ func runCloseIn() throws {
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
                 if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
+                if let rupture = option("rupture").flatMap({ Float($0) }) {
+                    scenario.structure?.material.steel?.ruptureStrain = rupture
+                }
+                if flag("no-bare") { scenario.structure?.bareBars = false }
             },
             progress: flag("progress")
                 ? { line in

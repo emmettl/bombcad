@@ -71,6 +71,7 @@ struct StructureUniforms {
     uint fluidBlocksY;
     uint secondCracks;  // 1: concrete with fixed crack axes may open a second crack
     uint barAxes;       // bits 0 to 2: the body has bars along x, y, z somewhere
+    uint bareBars;      // 1: concrete removed while its bars are intact leaves them (elementBare)
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -313,7 +314,14 @@ constant uint nodeBuried = 32u;
 // intact for the rest of that pass, and becomes eroded in the node pass that follows. Without
 // the intermediate mark, whether a neighbour saw the failure in the same pass would depend on
 // thread timing, and two runs of a collapse would differ.
-enum ElementFlag { elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3 };
+// A bare element's concrete is gone and its bars carry on alone: it has no concrete stress,
+// takes no air load and lets the air through, but holds its nodes along its intact bars.
+enum ElementFlag { elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3, elementBare = 4 };
+
+// An element whose bars count: still whole, failing this step, or bare.
+static inline bool carriesBars(uchar flag) {
+    return flag == elementActive || flag == elementFailing || flag == elementBare;
+}
 
 // Time step of the current substep. When coupled, each fluid step is split into the fewest
 // equal substeps that respect the structural stability limit; surplus dispatches do nothing.
@@ -732,9 +740,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // order of `elementList`; `element` is the lattice cell, which flags and neighbours use.
     uint compact = threadIndex;
     uint element = elementList[compact];
-    if (flags[element] != elementActive) {
+    uchar ownFlag = flags[element];
+    if (ownFlag != elementActive && ownFlag != elementBare) {
         return;
     }
+    bool bare = ownFlag == elementBare;
     uint3 tid = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
     // The material's index is in the low four bits; bits 4 to 6 mark the mortar joints the
     // element holds, across x, y and z (masonry meshed as units).
@@ -1317,6 +1327,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
         }
 
+        // Bare: the concrete is gone, and only the bars below carry.
+        if (bare) {
+            material = float3x3(0.0f);
+        }
+
         // Smeared reinforcement: bars along the lattice axes, strained with the element. They
         // follow the measured curve while loaded one way, and the cyclic law once reversed.
         float3 ratio = float3(steel[compact].ratio);
@@ -1353,10 +1368,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
                     uchar flag = flags[other];
                     uint compactOther = cellElement[other];
-                    float neighbour = (flag == elementActive || flag == elementFailing)
-                        ? plasticBefore[compactOther][j] : 0.0f;
+                    float neighbour = carriesBars(flag) ? plasticBefore[compactOther][j] : 0.0f;
                     float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
-                    if ((flag == elementActive || flag == elementFailing) && steel[compactOther].ratio[j] > 0.0f
+                    if (carriesBars(flag) && steel[compactOther].ratio[j] > 0.0f
                         && fabs(neighbour) < 1e8f) {
                         sum += weight * neighbour;
                         weights += weight;
@@ -1405,7 +1419,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     uchar flag = flags[other];
                     uint compactOther = cellElement[other];
                     float weight = clamp(reach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
-                    if ((flag == elementActive || flag == elementFailing) && steel[compactOther].inclinedAxes == inclinedAxes
+                    if (carriesBars(flag) && steel[compactOther].inclinedAxes == inclinedAxes
                         && float(steel[compactOther].inclined) > 0.0f && fabs(plasticBefore[compactOther].w) < 1e8f) {
                         sum += weight * plasticBefore[compactOther].w;
                         weights += weight;
@@ -1472,7 +1486,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         }
                         int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
                         uchar flag = flags[other];
-                        if (flag != elementActive && flag != elementFailing) {
+                        if (!carriesBars(flag)) {
                             break;  // the member's surface
                         }
                         uint neighbour = cellElement[other];
@@ -1503,6 +1517,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // Whatever bridges it, an element stretched to three times the removal width (or by
         // 100%, on large elements) is gone. Bars bridging a single crack rupture before that.
         eroded = eroded || torn || pulverised || crack > max(1.0f, 3.0f * m.erosionStrain);
+        // Concrete removed while some of its bars are intact leaves them: the element carries on
+        // as those bars alone, from the next step, until they too have ruptured.
+        if (bare) {
+            eroded = !anySteel;
+        } else if (eroded && anySteel && u.bareBars != 0) {
+            flags[element] = elementBare;
+            failureGate[0] = 1;
+            eroded = false;
+        }
         // Squeezed concrete also resists the hourglass modes: a block at mean compressive stress s
         // and strength f can carry a bending moment in proportion to s (1 - s / f).
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);
@@ -1518,6 +1541,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         capacity = max(max(tension + steelCapacity, bending), 0.02f * m.tensileStrength);
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
+        if (bare) {
+            capacity = max(steelCapacity, 1.0f);
+            state.display = 1.0f;
+        }
     }
 
     ElementForces out;
@@ -1543,7 +1570,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
     // Bulk viscosity damps the ringing behind stress waves; it acts in compression only.
     float viscous = 0.0f;
-    if (trace < 0.0f) {
+    if (trace < 0.0f && !bare) {
         viscous = m.density * u.h * (u.bulkQuadratic * u.h * trace * trace - u.bulkLinear * m.soundSpeed * trace);
     }
     float3x3 forceStress = float3x3(float3(sxx - viscous, sxy, szx), float3(sxy, syy - viscous, syz),
@@ -1597,8 +1624,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     }
 
     // Pressure on faces that border the air or a failed element, on the deformed geometry: the
-    // blast from the air solver, and any prescribed pressure history.
-    if (u.coupled != 0 || u.loadCount != 0) {
+    // blast from the air solver, and any prescribed pressure history. Bare bars catch none.
+    if ((u.coupled != 0 || u.loadCount != 0) && !bare) {
         float applied = tablePressure(loadTable, u.loadCount, u.loadTime);
         float3 centre = float3(0.0f);
         for (uint a = 0; a < 8; ++a) {
@@ -1739,7 +1766,7 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
             continue;
         }
         uchar flag = flags[cell.x + dims.x * (cell.y + dims.y * cell.z)];
-        if (flag == elementActive) {
+        if (flag == elementActive || flag == elementBare) {
             return;
         }
         share += flag != elementEmpty ? 1u : 0u;
@@ -2035,6 +2062,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     float3 force = float3(0.0f);
     uint intact = 0;
+    uint held = 0;  // bare elements: they hold the node but leave it exposed
     uint share = 0;
     for (uint a = 0; a < 8; ++a) {
         // This node is corner `a` of the element offset by -a.
@@ -2047,6 +2075,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         if (flag == elementActive) {
             force += float3(forces[cellElement[element]].force[a]);
             intact += 1;
+        } else if (flag == elementBare) {
+            force += float3(forces[cellElement[element]].force[a]);
+            held += 1;
         }
         share += flag != elementEmpty ? 1u : 0u;
     }
@@ -2065,7 +2096,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                 + cross(linkMoment, float3(link.arms[entry.y])) * link.inverseSecondMoment;
         }
     }
-    bool attached = intact > 0;
+    bool attached = intact + held > 0;
     // A node inside intact solid cannot meet a node of another piece without one of the
     // surface nodes in front of it meeting that node first, so contact leaves it out.
     node.flags = intact == 8 ? (node.flags | nodeBuried) : (node.flags & ~nodeBuried);

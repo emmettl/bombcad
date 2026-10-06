@@ -487,6 +487,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether concrete whose crack axes are fixed opens a second crack where the tension turns
     /// more than 30 degrees away from them, instead of carrying it across the first by shear.
     public var secondCracks = true
+    /// Whether concrete that has crushed or opened past removal while its bars are intact stays
+    /// as those bars alone (see `ElementFlag.bare`), so that a holed member hangs on its bars,
+    /// instead of taking its smeared bars with it.
+    public var bareBars = true
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -791,6 +795,9 @@ public enum ElementFlag: UInt8, Sendable {
     case empty = 0
     case active = 1
     case eroded = 2
+    /// Concrete gone, its bars still carrying: no concrete stress and no air load, but it holds
+    /// its nodes together along its intact bars until they rupture.
+    case bare = 4
 }
 
 public struct StructureSummary: Sendable, Hashable {
@@ -884,6 +891,7 @@ struct StructureUniforms {
     var fluidBlocksY: UInt32 = 0
     var secondCracks: UInt32 = 0
     var barAxes: UInt32 = 7
+    var bareBars: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1058,6 +1066,7 @@ extension StructureModel {
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
         crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
+        bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)

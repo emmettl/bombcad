@@ -81,7 +81,7 @@ public enum CloseInSlabTest {
     /// C25/30 at the 25 MPa the papers give, 2,300 kg/m³ and 20 mm aggregate, strengthening with
     /// strain rate; B500 bars, 500 MPa at yield and 575 at ultimate.
     public static func material() -> StructureMaterial {
-        let steel = SteelProperties(yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.1)
+        let steel = SteelProperties(yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.15)
         var material = StructureMaterial.concrete(
             name: "C25/30", compressiveStrength: 25e6, density: 2300, steel: steel)
         material.aggregateSize = 0.02

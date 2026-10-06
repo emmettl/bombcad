@@ -592,7 +592,7 @@ public final class StructureSolver {
         var total = SIMD3<Float>.zero
         for corner in 0..<8 {
             let (a, b, c) = (i - (corner & 1), j - ((corner >> 1) & 1), k - ((corner >> 2) & 1))
-            guard a >= 0, b >= 0, c >= 0, a < ex, b < ey, c < ez, flag(a, b, c) == .active,
+            guard a >= 0, b >= 0, c >= 0, a < ex, b < ey, c < ez, flag(a, b, c) == .active || flag(a, b, c) == .bare,
                 let index = compactIndex(a, b, c)
             else { continue }
             let base = forceBuffer.contents().advanced(by: index * Self.forceStride + corner * 12)
@@ -902,6 +902,7 @@ public final class StructureSolver {
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
         uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
+        uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.barAxes = barAxes
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
