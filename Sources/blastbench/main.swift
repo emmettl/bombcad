@@ -70,6 +70,18 @@ func chosenScenario() -> Scenario {
     }
     // `--no-second-crack` carries tension that turns away from fixed crack axes across them.
     if flag("no-second-crack") { scenario.structure?.secondCracks = false }
+    // `--dowel 0.3` scales the bars' dowel action in every material of the structure.
+    if let dowel = option("dowel").flatMap({ Float($0) }), var structure = scenario.structure {
+        structure.material.dowelFactor = dowel
+        structure.solidMaterial = structure.solidMaterial.map {
+            $0.map {
+                var m = $0
+                m.dowelFactor = dowel
+                return m
+            }
+        }
+        scenario.structure = structure
+    }
     // `--no-units` gives masonry its wall's strength throughout, without units and joints.
     if flag("no-units") { scenario.structure?.unitJoints = false }
     // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
@@ -244,6 +256,7 @@ func runChamber() throws {
         print("Residual crack opening \(format(Double(residual) * 100, 0))%")
     }
     if flag("no-second-crack") { scenario.structure?.secondCracks = false }
+    if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
     let result = try ChamberTest.run(
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: flag("afterburn"),
@@ -754,6 +767,11 @@ func runShearBeam() throws {
             crackAxes: chosenCrackAxes()
         ) { material in
             if let dowel { material.dowelFactor = dowel }
+            // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
+            if let spacing = option("crack-spacing").flatMap({ Float($0) }) {
+                material.crackSpacing = spacing / 1000
+            }
+            if let size = option("aggregate").flatMap({ Float($0) }) { material.aggregateSize = size / 1000 }
         }
         results.append((layers, result))
         print(
