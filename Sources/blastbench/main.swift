@@ -15,6 +15,7 @@ import simd
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1]
+//   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
@@ -745,6 +746,52 @@ func runBeam() throws {
     }
 }
 
+/// Saatci's beams struck by a falling weight (first impacts), against the measured peak and
+/// residual mid-span displacements.
+func runImpact() throws {
+    print("Saatci's beams (2007), struck at mid-span by a weight falling at 8 m/s; first impacts\n")
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let layers = option("layers").flatMap { Int($0) } ?? 16
+    let duration = option("time").flatMap { Double($0) } ?? 0.2
+    print(
+        pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("model", 18) + pad("reaction", 18)
+            + pad("failed", 8) + pad("run time", 10))
+    if let size = option("beams").flatMap({ Float($0) }) {
+        print(pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("beams", 18) + pad("reaction", 18) + pad("sheared", 9) + pad("removed", 9))
+        for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
+            let result = try ImpactBenchmark.runBeams(
+                device: device, test: test, size: size, duration: duration, sectionShear: !flag("no-section-shear"))
+            let measured =
+                test.peak.map { "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm" }
+                ?? "failed"
+            print(
+                pad(test.name, 8) + pad("\(Int(test.weight)) kg", 8) + pad(measured, 18)
+                    + pad("\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 18)
+                    + pad("\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN", 18)
+                    + pad("\(result.sheared)", 9) + pad("\(result.removed)", 9))
+        }
+        return
+    }
+    for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
+        let result = try ImpactBenchmark.run(
+            device: device, test: test, elementsThroughDepth: layers, duration: duration
+        ) { model in
+            if flag("no-rate") { model.material.rateDependent = false }
+        }
+        let measured =
+            test.peak.map { "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm" }
+            ?? "failed"
+        print(
+            pad(test.name, 8) + pad("\(Int(test.weight)) kg", 8) + pad(measured, 18)
+                + pad("\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 18)
+                + pad("\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN", 18)
+                + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
+    }
+    print(
+        "\nPeak / residual mid-span displacement, the residual the mean over the last 30 ms; largest"
+            + " support reaction, measured / model.")
+}
+
 /// Vecchio and Shim's beam OA1, with no stirrups, pushed to its diagonal-tension failure.
 func runShearBeam() throws {
     print("Beam OA1 of Vecchio and Shim (2004), no stirrups, failing in diagonal tension")
@@ -942,6 +989,7 @@ do {
     case "slab": try runSlab()
     case "beam": try runBeam()
     case "shear": try runShearBeam()
+    case "impact": try runImpact()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
     case "throughput": try runThroughput()

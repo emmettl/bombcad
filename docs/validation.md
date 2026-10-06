@@ -23,6 +23,10 @@ swift run -c release blastbench shear --layers 24,36
 ```
 
 ```bash
+swift run -c release blastbench impact --layers 16
+```
+
+```bash
 swift run -c release blastbench validate
 ```
 
@@ -39,7 +43,7 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did | Moderate for bending; low for shear: one test, and coarse meshes far too strong |
+| Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: light drops within 10%, heavy ones about 25% short, the beam without stirrups broken by the heavy drop as in the test | Moderate for bending; low for shear: one test, and coarse meshes far too strong; low for impact, where the concrete's strain-rate law decides it |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -406,6 +410,123 @@ more. Solid elements need about 24 through a member's depth to fail it in shear 
 enough for bending. Beams, checked by sections, get within 3% at both sizes tried.
 It is one test, statically loaded, of one beam; the strength at blast rates, and members
 with stirrups, are not tested.
+
+## Beams struck by a falling weight
+
+The fourth structural test, and the first loaded by an impact: eight beams differing only in
+their stirrups, each struck at mid-span by a weight falling 3.26 m. It tests the response
+over milliseconds, where the beam's own inertia carries much of the load, and whether a beam
+that needs its stirrups to survive breaks without them.
+
+### The test
+
+S. Saatci, *Behaviour and modelling of reinforced concrete structures subjected to impact
+loads*, PhD thesis, University of Toronto, 2007, open access (published with F. J. Vecchio in
+the *ACI Structural Journal* 106(5), 2009). Only the first impact on each beam is used: later
+ones struck a beam already damaged.
+
+| Property  | Value                                                                        |
+|-----------|------------------------------------------------------------------------------|
+| Beams     | 250 × 410 mm, 4,880 mm long                                                  |
+| Supports  | 3,000 mm apart: rollers below, and hinges above held down by pre-tensioned bars, so the beam can rotate and slide but not lift |
+| Bars      | Two No. 30 (700 mm² each) top and bottom, 38 mm cover; 464 MPa yield, 630 MPa ultimate |
+| Stirrups  | Closed D-6 wire (38.7 mm², 605 MPa): none (SS0), at 300 mm (SS1), 200 mm (SS2) or 100 mm (SS3) |
+| Concrete  | 44.7–50.1 MPa at the time of the tests; 10 mm aggregate                      |
+| Impact    | 211 kg (a-series) or 600 kg (b-series) at 8.0 m/s, onto a 50 mm steel plate 300 mm square |
+
+| Test   | Weight | Measured peak / residual | Largest reaction at a support | Observed                    |
+|--------|--------|--------------------------|-------------------------------|-----------------------------|
+| SS0a-1 | 211 kg | 9.3 / 1.6 mm             | 305 kN                        | Diagonal cracks up to 0.5 mm |
+| SS1a-1 | 211 kg | 12.1 / 0.9 mm            | 356 kN                        |                             |
+| SS2a-1 | 211 kg | 10.0 / 0.5 mm            | 327 kN                        |                             |
+| SS0b-1 | 600 kg | Failed                   | 399 kN                        | A shear plug punched through under the plate |
+| SS1b-1 | 600 kg | 39.5 / 17.7 mm           | 625 kN                        |                             |
+| SS2b-1 | 600 kg | 37.9 / 18.5 mm           | 592 kN                        |                             |
+| SS3b-1 | 600 kg | 35.3 / 17.7 mm           | 682 kN                        |                             |
+
+The thesis gives everything the model needs except the bearing plates' length, taken as
+100 mm. Its own static analyses put the beams' strengths at 120 kN (SS0, shear), 159 kN (SS1,
+shear) and 178–184 kN (SS2, SS3, bending), as reactions: every impact loaded the beams to two
+to four times their static strength.
+
+### The model
+
+`ImpactBenchmark.swift`: solid elements 12, 16 or 24 through the depth, the plate as steel
+elements, each pair of bars smeared through a band one element deep and the stirrups smeared
+through the beam. The weight is added to the plate's top nodes, which start down at the speed
+that conserves momentum with them (7.5–7.7 m/s for 211 kg, depending on how much of the
+plate they carry); it stays attached, so it cannot bounce off as
+the real one did. The bearings are 100 mm of the bottom face, which may lift off, and 100 mm of
+the top face, which may fall away but not rise: hung from its bottom face by a two-way
+restraint, the concrete under the supports tore away on the rebound. Gravity is on and the
+strain-rate laws are used; nothing is fitted. The residual is the mean of the last 30 ms of a
+200 ms record, during which the beam (with the weight on it) is still swinging by several
+millimetres; the reaction is averaged over 0.5 ms, about what the load cells, read 2,400 times
+a second, would see.
+
+`blastbench impact` runs it; `--beams 0.1` meshes the beam with beam elements of that size
+instead, the stirrups as their ties.
+
+### Results
+
+Peak / residual mid-span displacement in mm, and elements failed:
+
+| Test   | Measured     | 12 through        | 16 through         | 24 through         | 16, no rate laws     |
+|--------|--------------|-------------------|--------------------|--------------------|----------------------|
+| SS0a-1 | 9.3 / 1.6    | 11.1 / 1.4        | 10.2 / 0.7         | 9.3 / 0.5          | 35.0 / 10.1, broken  |
+| SS1a-1 | 12.1 / 0.9   | 10.9 / 1.5        | 9.7 / 0.4          | 9.5 / 0.4          | 13.1 / 1.5           |
+| SS2a-1 | 10.0 / 0.5   | 10.7 / 1.6        | 9.5 / 0.4          | 9.4 / 0.4          | 12.3 / 1.6           |
+| SS0b-1 | Failed       | Broken (464)      | Broken (1,215)     | Broken (3,231)     | Broken (3,318)       |
+| SS1b-1 | 39.5 / 17.7  | 34.2 / 11.8       | 28.7 / 2.9         | 29.2 / 6.2         | 42.9 / 10.9 (140)    |
+| SS2b-1 | 37.9 / 18.5  | 32.9 / 11.4       | 27.9 / 5.6         | 28.5 / 6.1         | 38.8 / 10.1          |
+| SS3b-1 | 35.3 / 17.7  | 31.1 / 10.0       | 26.8 / 7.2         | 27.1 / 5.6         | 35.2 / 12.6          |
+
+The light drops are within 10% on the finer meshes, and no element fails. The beam without
+stirrups survives the light drop and is broken by the heavy one along diagonal cracks running
+from the plate towards the supports, as the test beam was. The beams with stirrups survive the
+heavy drop, but their peaks are about a quarter short of the measurements on the two finer
+meshes, which agree with each other, and their residuals a third or less of the measured ones.
+The largest reactions at a support are 635–725 kN under the heavy drops the beams survive,
+against 592–682 kN measured, but 570–640 kN under the light ones, against 305–356 kN.
+
+**The strain-rate laws decide it.** Without them the heavy drops' peaks come within 10% of
+the measurements (35.2–42.9 mm), but the beam without stirrups is broken by the light drop,
+which it survived. Turning the laws off one at a time on SS2b-1 (16 through) shows that the
+concrete's tensile law (Malvar and Ross, 1998) is the one that matters: without it the peak is
+44 mm, without the compressive or the steel law 28–32 mm. The bars' strain rates reached
+7.3 per second in the tests, where Malvar and Ross's law raises the tensile strength 2.7 times,
+and the factor, frozen when each element cracks, also raises aggregate interlock across the
+crack. The fib Model Code 2010's tensile law, much milder above 1 per second (1.3 at 5 per
+second), gave peaks of 30.6–36.6 mm for the heavy drops, but broke SS0a-1 and lost 140
+elements in SS1b-1. Three other changes made no difference: taking the tensile rate from the
+largest principal stretching rather than the effective rate, keeping the fracture energy fixed
+as the strength rises, and leaving interlock without the factor (which broke SS0a-1). None of
+these is in the model.
+
+**With beam elements.** Without the sectional shear check, beam elements give 12.7 mm for all
+the light drops and about 38 mm for the heavy ones (36.7 / 17.2 mm for SS2b-1 with 50 mm
+beams, against 37.9 / 18.5 mm), close to the measurements, but cannot tell the beam without
+stirrups from the others: SS0b-1 survives. With the check, every beam fails within half a
+millisecond under every drop: the impact's shear passes the beams beside the plate at two to
+four times their static strength, and the check, averaged over 0.66 ms (four crossings of the
+depth by a shear wave), takes it for a failure of the section. Averaging over four times as
+long still broke all the heavy drops, the beams with stirrups too; ten times as long broke
+none, SS0b-1 included. The static strengths of SS0 and SS1 differ by 30%, while the demand
+is two to four times either: a check of each section's shear strength cannot tell which beam
+the stirrups save, which is a matter of whether they hold a shear plug in.
+
+### What this does and does not show
+
+It shows that solid elements predict the response to an impact well where the beam stays
+nearly elastic, and that the stirrups decide whether a beam survives a heavy blow as they did
+in the tests, with nothing fitted. It also shows that the heavy drops' peaks depend most on
+the concrete's tensile strain-rate law, which is uncertain at these rates: with the law in
+use the beams are a quarter too stiff, and without it, or with a milder one, the beam without
+stirrups is too weak. One beam geometry, one drop height, and only first impacts.
+
+Beam elements with the sectional shear check are not usable under impacts: the check is
+static and breaks every beam. They are usable without it, for bending, where they come within
+a few per cent of the heavy drops.
 
 ## Blast loads against empirical references
 
@@ -962,10 +1083,13 @@ In rough order of value:
 1. Inclined cracking at joints, between the two crack models' errors (a crack that may turn
    until it opens); then the chamber's diagonal bars and stirrups (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
-2. A fourth structural test: a wall loaded in the open air, or a member with stirrups that
-   failed in shear (see the [concrete model's future work](concrete-model.md#future-work)).
-   The beams above test bending and, without stirrups, shear.
-3. The vented gas impulse of UFC 3-340-02 (Figures 2-153 to 2-164), which would need
+2. A fifth structural test: a wall loaded in the open air, or a member with stirrups that
+   failed in shear statically (see the [concrete model's future work](concrete-model.md#future-work)).
+   The beams above test bending, shear without stirrups, and impact.
+3. The concrete's tensile strain-rate law at 1 to 10 per second, which decides the heavy
+   impacts above: tests that separate the material's strengthening from the specimen's
+   inertia, or a second impact programme to test a change against.
+4. The vented gas impulse of UFC 3-340-02 (Figures 2-153 to 2-164), which would need
    digitising, to check how fast the model's gas leaves a room like the chamber.
-4. Blast loads closer in than 0.75 m/kg^(1/3).
-5. Any test of collapse or debris.
+5. Blast loads closer in than 0.75 m/kg^(1/3).
+6. Any test of collapse or debris.

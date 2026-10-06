@@ -189,6 +189,14 @@ strain rate; the slab survived the test, and the solid elements carry it. The me
 static one. Until it is checked against a member that failed in shear under a blast, shells
 keep their layers' interlock and dowel action alone.
 
+**Not under impacts.** On Saatci's beams struck by a falling weight (see
+[Validation](validation.md#beams-struck-by-a-falling-weight)), the check failed the beams
+beside the impact within half a millisecond under every drop, beams with stirrups and light
+drops included, which in the tests left only cracks. Without it, beams come within a few per
+cent of the heavy drops' peaks. Averaging over longer either breaks the beams with stirrups
+too or spares the one without; a check of each section's strength cannot tell which beam the
+stirrups save. `ShellSolver.disableSectionShear()` turns it off.
+
 **Bars** follow the cyclic steel law and strain-rate factors of the solid elements. In shells
 they rupture when their plastic strain, averaged along the bars over the debonded length (from
 the elements beside them in the previous step), passes the rupture strain; judged at a single

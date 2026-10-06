@@ -124,6 +124,11 @@ Supplied by hand during development, and now in use:
   the bars' measured curve (yield 72 ksi); and its own models' peaks, about 100 mm and 113 mm
   against the measured 108 mm. The slab's high-strength companion and the contest's records
   are still wanted (above).
+- S. Saatci, *Behaviour and modelling of reinforced concrete structures subjected to impact
+  loads*, PhD thesis, University of Toronto (2007), open access from the university's
+  repository: the beams, materials, drop weights and measured first impacts of eight beams, in
+  `ImpactBenchmark.swift`. Its digital records (displacement, reaction and impact force against
+  time), once on the VecTor website, are still wanted, to compare histories rather than peaks.
 - H. Shang et al., "Experimental Study on the Damage Mechanism of Reinforced Concrete Shear
   Walls Under Internal Explosion", *Applied Sciences* 16, 48 (2026): the chamber test, in
   `ChamberTest.swift`.

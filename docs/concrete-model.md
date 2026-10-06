@@ -370,6 +370,10 @@ The factor raises strength without changing stiffness. Two details matter:
 - The **tensile factor is frozen when an element first cracks**. Once a crack forms, strain
   gathers in it at a rate that depends on the element size and says nothing about the material.
 - The rate is the equivalent (von Mises) strain rate, √(2/3 ε̇:ε̇).
+- On Saatci's drop-weight impacts the **tensile law decides the result**: with it the beams
+  with stirrups peak a quarter short of the measurements, and without it, or with the fib
+  Model Code 2010's milder law, the beam without stirrups breaks under a drop it survived (see
+  [Validation](validation.md#beams-struck-by-a-falling-weight)). Malvar and Ross's law stays.
 
 Until the fix described in step 14 below, the compressive law above 30 per second omitted the
 normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
@@ -735,6 +739,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Future work
 
+- **The tensile strain-rate law** between 1 and 10 per second, where Malvar and Ross's law
+  makes impacted beams too stiff and milder laws make a beam without stirrups too weak.
 - **More validation**: a slab with steel in both faces, a wall loaded by the air solver rather
   than a prescribed pressure, a member that failed in shear, and a close-in test with spall.
   Candidates include the high-strength slabs of the same contest (Thiagarajan et al., 2015) and

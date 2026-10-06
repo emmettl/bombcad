@@ -875,3 +875,46 @@ struct ShearBeamBenchmarkTests {
         #expect(result.peak < 450e3)
     }
 }
+
+/// Saatci's beams struck at mid-span by a falling weight.
+@Suite("Impact benchmark")
+struct ImpactBenchmarkTests {
+    let device: MTLDevice
+
+    init() throws {
+        device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+    }
+
+    private func test(_ name: String) throws -> ImpactBenchmark.Test {
+        try #require(ImpactBenchmark.tests.first { $0.name == name })
+    }
+
+    @Test("Solid elements: the light drop's peak, the heavy drop's survival, and the beam without stirrups broken")
+    func solids() throws {
+        // Twelve elements through the depth; 16 and 24 give much the same (docs/validation.md).
+        let light = try ImpactBenchmark.run(device: device, test: test("SS0a-1"), elementsThroughDepth: 12)
+        let measured = try #require(try test("SS0a-1").peak)
+        #expect(abs(light.peak - measured) / measured < 0.25, "SS0a-1: \(light.peak) m")
+        #expect(light.summary.erodedElements == 0)
+        // With stirrups the heavy drop is survived; the model's peak is short of the test's by up
+        // to a quarter, with the concrete's tensile strength raised by the strain rate.
+        let heavy = try ImpactBenchmark.run(device: device, test: test("SS2b-1"), elementsThroughDepth: 12)
+        let heavyMeasured = try #require(try test("SS2b-1").peak)
+        #expect(heavy.peak > 0.65 * heavyMeasured && heavy.peak < 1.1 * heavyMeasured, "SS2b-1: \(heavy.peak) m")
+        #expect(heavy.summary.erodedElements == 0)
+        // Without stirrups, it breaks along diagonal cracks.
+        let broken = try ImpactBenchmark.run(device: device, test: test("SS0b-1"), elementsThroughDepth: 12)
+        #expect(broken.summary.erodedElements > 100, "SS0b-1: \(broken.summary.erodedElements) elements failed")
+    }
+
+    @Test("Beam elements, without the sectional shear check, give the measured peaks")
+    func beams() throws {
+        // The light drops all give 12.7 mm, against 9.3 to 12.1 mm measured; the heavy ones about
+        // 38 mm, against 35.3 to 39.5 mm.
+        for (name, tolerance) in [("SS0a-1", Float(0.4)), ("SS2b-1", 0.1)] {
+            let result = try ImpactBenchmark.runBeams(device: device, test: test(name), sectionShear: false)
+            let measured = try #require(try test(name).peak)
+            #expect(abs(result.peak - measured) / measured < tolerance, "\(name): \(result.peak) m")
+        }
+    }
+}

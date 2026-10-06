@@ -2105,6 +2105,10 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         displacement.z = 0.0f;
         velocity.z = max(velocity.z, 0.0f);
     }
+    if ((node.flags & 128u) != 0 && displacement.z > 0.0f) {
+        displacement.z = 0.0f;  // held down from above: free to fall, not to rise
+        velocity.z = min(velocity.z, 0.0f);
+    }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
     if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f) {
         // Debris landing on the ground: stop the fall and shed horizontal speed.

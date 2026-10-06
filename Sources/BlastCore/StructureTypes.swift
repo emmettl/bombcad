@@ -733,7 +733,7 @@ public struct StructureNode: Sendable {
     /// Bits 0-2 hold the node still along x, y, z; bit 3 keeps its velocity as set; bit 4
     /// lets it rise but not fall below where it started. Bit 5 is set by the solver when all
     /// eight elements around the node are intact, which leaves it out of contact. Bit 6 keeps
-    /// its vertical velocity as set.
+    /// its vertical velocity as set. Bit 7 lets it fall but not rise above where it started.
     public var flags: UInt32 = 0
 
     public init() {}
@@ -764,6 +764,13 @@ public struct StructureNode: Sendable {
     public var restsOnSupport: Bool {
         get { flags & 16 != 0 }
         set { flags = newValue ? flags | 16 : flags & ~16 }
+    }
+
+    /// Held down by a support above it: the node cannot rise above its starting height, and
+    /// falls away freely.
+    public var isHeldDown: Bool {
+        get { flags & 128 != 0 }
+        set { flags = newValue ? flags | 128 : flags & ~128 }
     }
 
     /// Moves at its current velocity regardless of the forces on it.

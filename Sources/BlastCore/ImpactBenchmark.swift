@@ -1,0 +1,290 @@
+import Foundation
+import Metal
+import simd
+
+/// Reinforced concrete beams struck at mid-span by a falling weight: S. Saatci, "Behaviour and
+/// modelling of reinforced concrete structures subjected to impact loads", PhD thesis,
+/// University of Toronto, 2007 (published with F. J. Vecchio in the ACI Structural Journal,
+/// 2009). Eight beams in four pairs, differing only in their stirrups, each struck first with a
+/// 211 kg or a 600 kg weight falling 3.26 m (8.0 m/s); the first impact on each is used here,
+/// on an undamaged beam.
+public enum ImpactBenchmark {
+    /// 250 mm wide, 410 mm deep and 4,880 mm long, on supports 3,000 mm apart that hold it
+    /// down as well as up but let it rotate and slide. Two No. 30 bars in the bottom and two in
+    /// the top, centred 53 mm in (38 mm cover); closed D-6 stirrups.
+    public static let width: Float = 0.25
+    public static let depth: Float = 0.41
+    public static let length: Float = 4.88
+    public static let span: Float = 3.0
+    public static let barArea: Float = 2 * 700e-6
+    public static let barDepth: Float = 0.053
+    /// The 50 mm steel plate, 300 mm square, that the weight struck (here 250 mm across, the
+    /// beam's width).
+    public static let plate = SIMD2<Float>(0.3, 0.05)
+    public static let impactSpeed: Float = 8.0
+    public static let bearingLength: Float = 0.1
+
+    public struct Test: Sendable {
+        public var name: String
+        /// Stirrup spacing in metres, or nil for none.
+        public var stirrupSpacing: Float?
+        public var weight: Float
+        /// Concrete strength at the time of the tests (cylinders tested in December 2005).
+        public var concreteStrength: Float
+        /// Measured peak and residual mid-span displacements, in metres; nil where the beam failed.
+        public var peak: Float?
+        public var residual: Float?
+        /// Largest reaction recorded at a support (N), Table 5.4.
+        public var reaction: Float
+        public var remark: String
+    }
+
+    /// The first impacts (Table 6.3 of the thesis), and SS0b-1, which failed.
+    public static let tests: [Test] = [
+        Test(
+            name: "SS0a-1", stirrupSpacing: nil, weight: 211, concreteStrength: 50.1e6, peak: 0.0093,
+            residual: 0.0016, reaction: 305e3,
+            remark: "diagonal cracks up to 0.5 mm"),
+        Test(
+            name: "SS1a-1", stirrupSpacing: 0.3, weight: 211, concreteStrength: 44.7e6, peak: 0.0121,
+            residual: 0.0009, reaction: 356e3,
+            remark: ""),
+        Test(
+            name: "SS2a-1", stirrupSpacing: 0.2, weight: 211, concreteStrength: 47.0e6, peak: 0.0100,
+            residual: 0.0005, reaction: 327e3,
+            remark: ""),
+        Test(
+            name: "SS0b-1", stirrupSpacing: nil, weight: 600, concreteStrength: 50.1e6, peak: nil, residual: nil,
+            reaction: 399e3,
+            remark: "punched through: a shear plug, the bars exposed and bent"),
+        Test(
+            name: "SS1b-1", stirrupSpacing: 0.3, weight: 600, concreteStrength: 44.7e6, peak: 0.0395,
+            residual: 0.0177, reaction: 625e3,
+            remark: ""),
+        Test(
+            name: "SS2b-1", stirrupSpacing: 0.2, weight: 600, concreteStrength: 47.0e6, peak: 0.0379,
+            residual: 0.0185, reaction: 592e3,
+            remark: ""),
+        Test(
+            name: "SS3b-1", stirrupSpacing: 0.1, weight: 600, concreteStrength: 46.7e6, peak: 0.0353,
+            residual: 0.0177, reaction: 682e3,
+            remark: ""),
+    ]
+
+    /// Concrete of the measured strength, 3.2 MPa in tension (measured after the tests: 3.1 to
+    /// 3.4 MPa) and 10 mm aggregate, strengthening with strain rate; No. 30 bars yielding at 464
+    /// MPa, 630 MPa at ultimate, 195 GPa. The D-6 stirrups (605 MPa) are taken with the bars'
+    /// curve.
+    public static func material(_ test: Test) -> StructureMaterial {
+        var steel = SteelProperties(yieldStress: 464e6, ultimateStress: 630e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        steel.youngsModulus = 195e9
+        var material = StructureMaterial.concrete(
+            name: "Saatci beam", compressiveStrength: test.concreteStrength, density: 2437, steel: steel)
+        material.tensileStrength = 3.2e6
+        material.aggregateSize = 0.010
+        material.rateDependent = true
+        return material
+    }
+
+    /// The beam meshed with solid elements, `elementsThroughDepth` of them, with the steel plate on
+    /// top at mid-span.
+    public static func model(_ test: Test, elementsThroughDepth: Int) -> StructureModel {
+        let h = depth / Float(elementsThroughDepth)
+        let base = (1 / h).rounded() * h
+        let beam = Box(min: SIMD3(0, 0, base), max: SIMD3(length, width, base + depth))
+        let middle = length / 2
+        let plateBox = Box(
+            min: SIMD3(middle - plate.x / 2, 0, base + depth), max: SIMD3(middle + plate.x / 2, width, base + depth + plate.y))
+        var model = StructureModel(
+            solids: [beam, plateBox], material: material(test), elementSize: h, fixedBase: false)
+        model.setMaterial(.structuralSteel, of: 1)
+        var bands: [ReinforcementLayer] = []
+        for centre in [base + barDepth, base + depth - barDepth] {
+            var band = beam
+            band.min.z = centre - h / 2
+            band.max.z = centre + h / 2
+            bands.append(ReinforcementLayer(region: band, ratio: SIMD3(barArea / (width * h), 0, 0)))
+        }
+        if let spacing = test.stirrupSpacing {
+            // Two legs of 38.71 mm² each way, smeared through the section.
+            let legs: Float = 2 * 38.71e-6
+            bands.append(ReinforcementLayer(region: beam, ratio: SIMD3(0, legs / (depth * spacing), legs / (width * spacing))))
+        }
+        model.reinforcement = bands
+        return model
+    }
+
+    public struct Result: Sendable {
+        /// Mid-span displacement of the bottom face (m, downwards) against time (s).
+        public var history: [SIMD2<Float>]
+        public var peak: Float
+        public var residual: Float
+        /// Largest reaction at either support (N), averaged over 0.5 ms as the load cells, read
+        /// 2,400 times a second, would see it.
+        public var peakReaction: Float
+        public var summary: StructureSummary
+        public var elementCount: Int
+        public var wallSeconds: Double
+    }
+
+    /// Strikes the beam: the weight's mass is added to the plate's top nodes, which start down
+    /// with its momentum at 8.0 m/s shared with their own mass; it cannot bounce off. Gravity is on. Runs for `duration`; the residual is the
+    /// mean over its last 30 ms.
+    public static func run(
+        device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
+        adjust: (inout StructureModel) -> Void = { _ in }
+    ) throws -> Result {
+        var model = model(test, elementsThroughDepth: elementsThroughDepth)
+        adjust(&model)
+        let solver = try StructureSolver(device: device, model: model)
+        solver.groundContact = false
+        let h = model.elementSize
+        let middle = Int((length / 2 / h).rounded())
+        let beamTop = Int((depth / h).rounded())
+        // The plate is as many elements thick as its 50 mm rounds to.
+        let top = (0...solver.ez).last { solver.storedNode(middle, 0, $0) != nil } ?? solver.ez
+        let reach = Int((plate.x / 2 / h).rounded())
+        let supports = [(length - span) / 2, (length + span) / 2].map { Int(($0 / h).rounded()) }
+        // Rollers below and hinges above, the hinges held down by bars, bear on the beam through
+        // steel plates, taken as 100 mm long: through one line of nodes the reaction would crush
+        // the concrete. The beam is pushed up from below and held down from above, so that it
+        // never hangs from its bottom face.
+        let bearing = max(Int((bearingLength / 2 / h).rounded()), 0)
+        let bearingNodes = supports.map { (($0 - bearing)...($0 + bearing)) }
+        var struck: [Int] = []
+        for i in (middle - reach)...(middle + reach) {
+            for j in 0...solver.ey {
+                if let n = solver.storedNode(i, j, top) { struck.append(n) }
+            }
+        }
+        solver.mutateNodes { nodes in
+            // The weight's momentum, shared with the plate's top nodes it strikes.
+            let carried = struck.reduce(Float(0)) { $0 + nodes[$1].mass }
+            let speed = test.weight * impactSpeed / (test.weight + carried)
+            for n in struck {
+                nodes[n].mass += test.weight / Float(struck.count)
+                nodes[n].velocity = SIMD3(0, 0, -speed)
+            }
+            for range in bearingNodes {
+                for i in range {
+                    for j in 0...solver.ey {
+                        if let n = solver.storedNode(i, j, 0) {
+                            nodes[n].restsOnSupport = true
+                            nodes[n].restrain(y: j == 0)
+                        }
+                        if let n = solver.storedNode(i, j, beamTop) { nodes[n].isHeldDown = true }
+                    }
+                }
+            }
+            if let n = solver.storedNode(supports[0], 0, 0) { nodes[n].restrain(x: true) }
+        }
+        let start = ContinuousClock.now
+        var history: [SIMD2<Float>] = []
+        var reactions: [SIMD2<Float>] = []
+        let stepsPerSample = max(1, Int(0.0001 / solver.criticalTimeStep))
+        while solver.time < duration {
+            solver.advance(steps: stepsPerSample)
+            history.append(SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, 0).z))
+            var reaction = SIMD2<Float>.zero
+            for (side, range) in bearingNodes.enumerated() {
+                for i in range {
+                    // Only the nodes sitting on their stops bear on the supports.
+                    for j in 0...solver.ey {
+                        if solver.storedNode(i, j, 0) != nil, solver.displacement(i, j, 0).z == 0 {
+                            reaction[side] += solver.nodalForce(i, j, 0).z
+                        }
+                        if solver.storedNode(i, j, beamTop) != nil, solver.displacement(i, j, beamTop).z == 0 {
+                            reaction[side] += solver.nodalForce(i, j, beamTop).z
+                        }
+                    }
+                }
+            }
+            reactions.append(reaction)
+        }
+        let elapsed = ContinuousClock.now - start
+        let window = max(1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
+        var peakReaction: Float = 0
+        if reactions.count >= window {
+            for end in window...reactions.count {
+                let mean = reactions[(end - window)..<end].reduce(.zero, +) / Float(window)
+                peakReaction = max(peakReaction, abs(mean).max())
+            }
+        }
+        let tail = history.filter { Double($0.x) >= duration - 0.03 }
+        return Result(
+            history: history, peak: history.map(\.y).max() ?? 0,
+            residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)), peakReaction: peakReaction,
+            summary: solver.summary(), elementCount: solver.elementCount,
+            wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
+    }
+
+    public struct BeamResult: Sendable {
+        public var peak: Float
+        public var residual: Float
+        public var peakReaction: Float
+        /// Beams whose section failed in shear, and beams removed.
+        public var sheared: Int
+        public var removed: Int
+        public var wallSeconds: Double
+    }
+
+    /// The same beam meshed with beam elements of `size`, stirrups as their tie ratio, struck
+    /// through the nodes under the plate; supported at the nodes over each bearing, on the
+    /// beam's axis. With the sectional shear check (`sectionShear`), the sections beside the
+    /// plate fail in the first half millisecond under every drop: see docs/validation.md.
+    public static func runBeams(
+        device: MTLDevice, test: Test, size: Float = 0.1, duration: Double = 0.2, sectionShear: Bool = true
+    ) throws -> BeamResult {
+        var model = model(test, elementsThroughDepth: 12)
+        model.solids.removeLast()
+        model.solidMaterial = []
+        model.elementSize = size
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        if !sectionShear { solver.disableSectionShear() }
+        let axis = solver.referencePositions[solver.nearestNode(to: SIMD3(length / 2, width / 2, 0))]
+        func nodes(within half: Float, of x: Float) -> [Int] {
+            let at = solver.referencePositions[solver.nearestNode(to: SIMD3(x, axis.y, axis.z))].x
+            return solver.nodes { abs($0.x - at) <= half + 1e-4 && abs($0.z - axis.z) < 1e-4 }
+        }
+        let struck = nodes(within: plate.x / 2, of: length / 2)
+        let supports = [(length - span) / 2, (length + span) / 2].map { nodes(within: 0, of: $0) }
+        let middle = solver.nearestNode(to: SIMD3(length / 2, axis.y, axis.z))
+        solver.mutateNodes { nodes in
+            let carried = struck.reduce(Float(0)) { $0 + nodes[$1].mass }
+            let speed = test.weight * impactSpeed / (test.weight + carried)
+            for n in struck {
+                nodes[n].mass += test.weight / Float(struck.count)
+                nodes[n].velocity = SIMD3(0, 0, -speed)
+            }
+            for (side, support) in supports.enumerated() {
+                for n in support { nodes[n].restrain(x: side == 0, y: true, z: true) }
+            }
+        }
+        let start = ContinuousClock.now
+        var history: [SIMD2<Float>] = []
+        var reactions: [SIMD2<Float>] = []
+        let stepsPerSample = max(1, Int(0.0001 / solver.criticalTimeStep))
+        while solver.time < duration {
+            solver.advance(steps: stepsPerSample)
+            history.append(SIMD2(Float(solver.time), -solver.node(middle).displacement.z))
+            reactions.append(SIMD2(supports.map { $0.reduce(Float(0)) { $0 + solver.nodalForce($1).z } }))
+        }
+        let elapsed = ContinuousClock.now - start
+        let window = max(1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
+        var peakReaction: Float = 0
+        if reactions.count >= window {
+            for end in window...reactions.count {
+                peakReaction = max(peakReaction, abs(reactions[(end - window)..<end].reduce(.zero, +) / Float(window)).max())
+            }
+        }
+        let tail = history.filter { Double($0.x) >= duration - 0.03 }
+        return BeamResult(
+            peak: history.map(\.y).max() ?? 0, residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)),
+            peakReaction: peakReaction,
+            sheared: (0..<solver.beamCount).filter { solver.beamHasShearFailed($0) }.count,
+            removed: (0..<solver.beamCount).filter { solver.beamFlag($0) != .active }.count,
+            wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
+    }
+}
