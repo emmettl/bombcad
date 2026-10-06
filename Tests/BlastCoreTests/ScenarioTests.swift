@@ -217,6 +217,31 @@ struct BlastValidationTests {
         )
     }
 
+    @Test("Close in, a burst in the air reflects off the ground with Kingery-Bulmash's impulse")
+    func closeInReflection() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        // 1 kg at 0.5 m/kg^(1/3) above rigid ground: the surface-burst curves at the mass over 1.8.
+        let height: Float = 0.5
+        var scenario = Scenario(
+            name: "Close-in reflection", domainSize: SIMD3(1.5, 1.5, 1.4), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(0.75, 0.75, height)),
+            gauges: [Gauge("ground", at: SIMD3(0.75, 0.75, 0.005))])
+        scenario.reflectiveFaces = .ground
+        var configuration = SolverConfiguration()
+        configuration.refinement = 2
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.02, configuration: configuration)
+        solver.advance(until: Double(height) / 340 + 0.004)
+        let samples = try #require(solver.gaugeHistories.first)
+        var impulse = 0.0
+        for (a, b) in zip(samples, samples.dropFirst()) {
+            impulse += (b.time - a.time) * Double(max(0.5 * (a.pressure + b.pressure) - scenario.atmosphere.pressure, 0))
+        }
+        let mass = 1.0 / 1.8
+        let reference = try #require(KingeryBulmash.point(at: Double(height) / cbrt(mass))).reflectedImpulse(mass: mass)
+        #expect(abs(impulse - reference) / reference < 0.1, "impulse \(impulse) Pa s against \(reference) Pa s")
+    }
+
     @Test("The Kingery-Bulmash polynomials reproduce Swisdak's tables and the IATG examples")
     func kingeryBulmashCurves() throws {
         // Rows of Swisdak's Table 3: Z, arrival (ms), incident and reflected pressure (kPa),

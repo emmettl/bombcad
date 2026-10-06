@@ -105,7 +105,9 @@ public enum CloseInSlabTest {
             Box(min: SIMD3(c.x - 0.275, c.y + 0.83, 0), max: SIMD3(c.x + 0.275, c.y + 2.4, slab.max.z)),
             Box(min: SIMD3(c.x - 0.275, c.y - 2.4, 0), max: SIMD3(c.x + 0.275, c.y - 0.83, slab.max.z)),
         ]
-        let lift: Float = 0.025
+        // Gauges sit in the air cell against the surface (cells up to 50 mm), where the gas is
+        // brought to rest: a cell further out misses the momentum it still carries towards it.
+        let lift: Float = 0.01
         let gauges = [
             Gauge("G1, 1 m", at: SIMD3(c.x, c.y + 1, slab.max.z + lift)),
             Gauge("G2, 1 m", at: SIMD3(c.x, c.y - 1, slab.max.z + lift)),

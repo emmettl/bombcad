@@ -31,6 +31,10 @@ swift run -c release blastbench closein
 ```
 
 ```bash
+swift run -c release blastbench closeair --dx 0.01
+```
+
+```bash
 swift run -c release blastbench validate
 ```
 
@@ -48,7 +52,7 @@ swift run -c release blastbench chamber
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: light drops within 10%, heavy ones about 25% short, the beam without stirrups broken by the heavy drop as in the test | Moderate for bending; low for shear: one test, and coarse meshes far too strong; low for impact, where the concrete's strain-rate law decides it |
-| Close-in charges     | Full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 75–90% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Low: the slab is too strong and spalls too little close in; the load is a fifth short |
+| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -590,12 +594,12 @@ they are used with the charge's mass divided by 1.8.
 | In the open, as far as the 1 m gauge | 0.68 MPa (K–B)              | 0.48 MPa    | 0.58 MPa    |
 | Impulse under the charge           | 961 Pa s (K–B, reflected)     | 819 Pa s    | 886 Pa s    |
 
-Under the 13 kg charges the impulse under the charge is 75–85% of Kingery and Bulmash's
-(3.4 kPa s against 4.4 at 1 m, 9.8 against 13.1 at 0.5 m), and the slab's momentum after
-5 ms, about the impulse it received, is 8.4–8.7 kN s at 1 m, on 50 or 25 mm cells alike, where
-the curves, integrated over the slab, give 11.6–15.9 kN s. Afterburning, which restores the
-incident impulse further out, changes it by under 3%: so close in, the products have not
-burnt. The gauges read 75–80% of the text's values, as reflected peaks do on these cells.
+Under the 13 kg charges the impulse under the charge is 78% of Kingery and Bulmash's on 50 mm
+cells and 84–95% on 25 mm cells or 50 mm refined by 2 (3.7 kPa s against 4.4 at 1 m, 12.4
+against 13.1 at 0.5 m), as [close in](#close-in) above. The slab's momentum after 5 ms, about
+the impulse it received, is 8.4–8.7 kN s at 1 m and 10.9–11.4 kN s at 0.5 m, changing by under
+5% between those grids: the load has converged. Afterburning changes it by under 3%. The gauges
+read 75–80% of the text's values, as reflected peaks do on these cells.
 
 **The slab.** Permanent mid-span deflection (mm), peak in brackets:
 
@@ -624,24 +628,22 @@ broken through falls apart.
 | Without the strain-rate laws            | 120 (173)  |
 | The ends free to slide lengthwise       | 92 (155)   |
 | Both                                    | 128 (228)  |
-| The charge 1.5 times heavier (the load the curves give) | 147 (214) |
+| The charge 1.5 times heavier            | 147 (214)  |
 
 A rigid-plastic estimate (two halves turning about the supports, a hinge of 54 kN m) with the
 model's own impulse reaches about 260 mm, near the 228 mm the model gives without rate laws or
-end restraint; the measured 340 mm needs the curves' impulse. So the shortfall is the sum of
-three: a load a fifth short so close in, a slab stiffened by the rate laws and by arching
-against held ends, and its spring back from the peak, too large here as in the other slab and
-the chamber.
+end restraint. With the load within about a tenth, the shortfall is the slab's: stiffened by
+the rate laws and by arching against held ends, and springing back from its peak too far, here
+as in the other slab and the chamber.
 
 ### What this does and does not show
 
-It shows that the coupled model loads a slab close to a charge within about a fifth of the
+It shows that the coupled model loads a slab close to a charge within about a tenth of the
 empirical impulse and leaves it undamaged where the tests did. It does not reproduce close-in
 damage: the slab is left a third as far down as the test's, spalls a fraction as much, is not
 punched through under the charge, and, broken, falls where the test's hung on its bars. These
-point at four things: the detonation products close in (the charge model's impulse), the
-concrete's strain-rate law (as the impacts above), spalling of the faces, and bars that
-outlive the concrete around them. The supports' lengthwise restraint and the charges' shapes
+point at three things: the concrete's strain-rate law (as the impacts above), spalling of the
+faces, and bars that outlive the concrete around them. The supports' lengthwise restraint and the charges' shapes
 are assumptions that matter.
 
 ## Blast loads against empirical references
@@ -772,6 +774,29 @@ as 0.25 m cells refined by 2.
 The charge is laid on the fine cells (see the
 [air-blast model](air-blast-model.md#refining-near-the-shock)); laid on the coarse ones, its
 blocky sphere ran the peaks close to the charge up to 30% above those of the finer grid.
+
+### Close in
+
+Below 0.75 m/kg^(1/3) the curves come from few tests and their incident impulse does not even
+fall steadily with distance; their reflected values are the better check, and are what loads a
+structure. `blastbench closeair` bursts 1 kg in the air at each scaled distance above rigid
+ground and records the reflection square on below it, against the surface-burst curves at the
+mass divided by 1.8, which stands for a burst in the air:
+
+| Z (free air) | Reference peak | 40 mm | 20 mm | 10 mm | Reference impulse | 40 mm | 20 mm | 10 mm |
+|--------------|----------------|-------|-------|-------|-------------------|-------|-------|-------|
+| 0.3          | 70.0 MPa       | 25%   | 45%   | 78%   | 3,168 Pa s        | 65%   | 79%   | 93%   |
+| 0.5          | 26.6 MPa       | 30%   | 62%   | 83%   | 1,459 Pa s        | 75%   | 86%   | 98%   |
+| 0.75         | 10.4 MPa       | 40%   | 66%   | 98%   | 824 Pa s          | 83%   | 93%   | 106%  |
+| 1            | 4.7 MPa        | 49%   | 72%   | 91%   | 561 Pa s          | 89%   | 94%   | 92%   |
+
+The impulse converges to the curves' within 8% as the cells shrink, from 0.3 m/kg^(1/3) out,
+with the charge started as a ball of hot air: the detonation products' own equation of state
+(JWL), which differs from air's only while they are dense, is not needed for the load. Cells of
+about a hundredth of the charge's cube root are needed close in; refined by 2, cells twice
+that size give the same answers to within 1%. The gauge must be in the cell against the
+surface: close in, much of the load arrives as momentum, which becomes pressure only where the
+gas is brought to rest, so that two cells out the record is a third of the surface's.
 
 ### Afterburning
 
@@ -1199,7 +1224,7 @@ In rough order of value:
 1. Inclined cracking at joints, between the two crack models' errors (a crack that may turn
    until it opens); then the chamber's diagonal bars and stirrups (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
-2. A fifth structural test: a wall loaded in the open air, or a member with stirrups that
+2. A sixth structural test: a wall loaded in the open air, or a member with stirrups that
    failed in shear statically (see the [concrete model's future work](concrete-model.md#future-work)).
    The beams above test bending, shear without stirrups, and impact.
 3. The concrete's tensile strain-rate law at 1 to 10 per second, which decides the heavy
@@ -1207,6 +1232,6 @@ In rough order of value:
    inertia, or a second impact programme to test a change against.
 4. The vented gas impulse of UFC 3-340-02 (Figures 2-153 to 2-164), which would need
    digitising, to check how fast the model's gas leaves a room like the chamber.
-5. Close-in loads and damage: the impulse a fifth short at 0.26–0.52 m/kg^(1/3) and slabs
-   that barely spall (see [above](#slabs-under-close-in-charges)).
+5. Close-in damage: slabs that barely spall and are not holed (see
+   [above](#slabs-under-close-in-charges)).
 6. Any test of collapse or debris.

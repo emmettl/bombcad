@@ -62,7 +62,7 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    on the concrete's tensile strain-rate law, the beam without stirrups broken only by the
    heavy drop as in the tests; beams' sectional shear check fails every beam under impact; see
    [Validation](validation.md#beams-struck-by-a-falling-weight). And Chiquito et al.'s
-   full-scale slabs under 2–15 kg at 0.5 and 1 m (2023): the load within about a fifth of the
+   full-scale slabs under 2–15 kg at 0.5 and 1 m (2023): the load within about a tenth of the
    empirical impulse, but the slab a third as far down as measured, barely spalled, not punched
    through under the charge, and falling apart once broken where the tests' hung on their bars;
    see [Validation](validation.md#slabs-under-close-in-charges).)
@@ -70,9 +70,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 ### Then the physics the evidence points to
 
 3. **Charge model.** Close-in peaks are under-resolved: a mapped one-dimensional solution
-   would help there; and the products' own composition for the hottest gas. Close-in impulse
-   is a fifth short of Kingery–Bulmash at 0.26–0.52 m/kg^(1/3), on any grid and with
-   afterburning: the detonation products' own equation of state (JWL) is the next step. (Done:
+   would help there; and the products' own composition for the hottest gas. (Close in, the
+   reflected impulse converges to within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on cells of
+   a hundredth of the charge's cube root, or twice that refined, so the products' own equation
+   of state is not needed for the load; see [Validation](validation.md#close-in).) (Done:
    afterburning, limited by mixing and oxygen, and thermally perfect air, which together bring
    the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the open
    within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those

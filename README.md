@@ -123,7 +123,8 @@ Seven comparisons with the outside world, all in the [validation notes](docs/val
   (decided by the concrete's tensile strain-rate law), and the beam without stirrups survives
   the light drop and is broken by the heavy one, as in the tests.
 - **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
-  them: the impulse under the charge is 75–90% of the empirical curves', and light charges
+  them: the impulse under the charge is 86–95% of the empirical curves' on fine cells (and
+  within 8% from 0.3 m/kg^(1/3) on a rigid surface), and light charges
   leave the slab undamaged as in the tests, but the heavy ones leave it a third as far down,
   barely spalled and not punched through, where the tests' slabs spalled and were holed.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
