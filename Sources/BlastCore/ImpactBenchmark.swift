@@ -86,29 +86,63 @@ public enum ImpactBenchmark {
         return material
     }
 
+    /// A beam struck at mid-span: its section, span, bars, stirrups, the steel plate the weight
+    /// strikes and the bearings, all in metres.
+    public struct Specimen: Sendable {
+        public var width: Float
+        public var depth: Float
+        public var length: Float
+        /// Between the supports' centres, which are central on the beam.
+        public var span: Float
+        /// Bars along the beam: total area (m²) and the height of their centre above the bottom.
+        public var bars: [(area: Float, height: Float)]
+        /// Closed stirrups: the area of their two legs together, and their spacing.
+        public var stirrups: (legs: Float, spacing: Float)?
+        /// The plate struck: its length along the beam and its thickness (it spans the width).
+        public var plate: SIMD2<Float>
+        public var bearingLength: Float
+        public var material: StructureMaterial
+    }
+
+    public static func specimen(_ test: Test) -> Specimen {
+        Specimen(
+            width: width, depth: depth, length: length, span: span,
+            bars: [(barArea, barDepth), (barArea, depth - barDepth)],
+            stirrups: test.stirrupSpacing.map { (2 * 38.71e-6, $0) }, plate: plate, bearingLength: bearingLength,
+            material: material(test))
+    }
+
     /// The beam meshed with solid elements, `elementsThroughDepth` of them, with the steel plate on
     /// top at mid-span.
     public static func model(_ test: Test, elementsThroughDepth: Int) -> StructureModel {
-        let h = depth / Float(elementsThroughDepth)
+        model(specimen(test), elementsThroughDepth: elementsThroughDepth)
+    }
+
+    public static func model(_ specimen: Specimen, elementsThroughDepth: Int) -> StructureModel {
+        let s = specimen
+        let h = s.depth / Float(elementsThroughDepth)
         let base = (1 / h).rounded() * h
-        let beam = Box(min: SIMD3(0, 0, base), max: SIMD3(length, width, base + depth))
-        let middle = length / 2
+        let beam = Box(min: SIMD3(0, 0, base), max: SIMD3(s.length, s.width, base + s.depth))
+        let middle = s.length / 2
         let plateBox = Box(
-            min: SIMD3(middle - plate.x / 2, 0, base + depth), max: SIMD3(middle + plate.x / 2, width, base + depth + plate.y))
+            min: SIMD3(middle - s.plate.x / 2, 0, base + s.depth),
+            max: SIMD3(middle + s.plate.x / 2, s.width, base + s.depth + s.plate.y))
         var model = StructureModel(
-            solids: [beam, plateBox], material: material(test), elementSize: h, fixedBase: false)
+            solids: [beam, plateBox], material: s.material, elementSize: h, fixedBase: false)
         model.setMaterial(.structuralSteel, of: 1)
         var bands: [ReinforcementLayer] = []
-        for centre in [base + barDepth, base + depth - barDepth] {
+        for bar in s.bars {
             var band = beam
-            band.min.z = centre - h / 2
-            band.max.z = centre + h / 2
-            bands.append(ReinforcementLayer(region: band, ratio: SIMD3(barArea / (width * h), 0, 0)))
+            band.min.z = base + bar.height - h / 2
+            band.max.z = base + bar.height + h / 2
+            bands.append(ReinforcementLayer(region: band, ratio: SIMD3(bar.area / (s.width * h), 0, 0)))
         }
-        if let spacing = test.stirrupSpacing {
-            // Two legs of 38.71 mm² each way, smeared through the section.
-            let legs: Float = 2 * 38.71e-6
-            bands.append(ReinforcementLayer(region: beam, ratio: SIMD3(0, legs / (depth * spacing), legs / (width * spacing))))
+        if let stirrups = s.stirrups {
+            // Two legs each way, smeared through the section.
+            bands.append(
+                ReinforcementLayer(
+                    region: beam,
+                    ratio: SIMD3(0, stirrups.legs / (s.depth * stirrups.spacing), stirrups.legs / (s.width * stirrups.spacing))))
         }
         model.reinforcement = bands
         return model
@@ -128,13 +162,30 @@ public enum ImpactBenchmark {
     }
 
     /// Strikes the beam: the weight's mass is added to the plate's top nodes, which start down
-    /// with its momentum at 8.0 m/s shared with their own mass; it cannot bounce off. Gravity is on. Runs for `duration`; the residual is the
-    /// mean over its last 30 ms.
+    /// with its momentum at 8.0 m/s shared with their own mass, and leaves them once they turn
+    /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
         adjust: (inout StructureModel) -> Void = { _ in }
     ) throws -> Result {
-        var model = model(test, elementsThroughDepth: elementsThroughDepth)
+        try run(
+            device: device, specimen: specimen(test), weight: test.weight, speed: impactSpeed,
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust)
+    }
+
+    /// Strikes `specimen` at mid-span with `weight` kilograms at `speed` metres per second, as
+    /// `run(device:test:)` does. With `bounce`, the weight leaves the plate once the plate stops
+    /// going down, as a real one does; without it, it stays on.
+    public static func run(
+        device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float, elementsThroughDepth: Int = 16,
+        duration: Double = 0.2, bounce: Bool = true, adjust: (inout StructureModel) -> Void = { _ in }
+    ) throws -> Result {
+        let length = specimen.length
+        let depth = specimen.depth
+        let span = specimen.span
+        let plate = specimen.plate
+        let bearingLength = specimen.bearingLength
+        var model = model(specimen, elementsThroughDepth: elementsThroughDepth)
         adjust(&model)
         let solver = try StructureSolver(device: device, model: model)
         solver.groundContact = false
@@ -160,9 +211,9 @@ public enum ImpactBenchmark {
         solver.mutateNodes { nodes in
             // The weight's momentum, shared with the plate's top nodes it strikes.
             let carried = struck.reduce(Float(0)) { $0 + nodes[$1].mass }
-            let speed = test.weight * impactSpeed / (test.weight + carried)
+            let speed = weight * impact / (weight + carried)
             for n in struck {
-                nodes[n].mass += test.weight / Float(struck.count)
+                nodes[n].mass += weight / Float(struck.count)
                 nodes[n].velocity = SIMD3(0, 0, -speed)
             }
             for range in bearingNodes {
@@ -182,9 +233,22 @@ public enum ImpactBenchmark {
         var history: [SIMD2<Float>] = []
         var reactions: [SIMD2<Float>] = []
         let stepsPerSample = max(1, Int(0.0001 / solver.criticalTimeStep))
+        var attached = true
         while solver.time < duration {
             solver.advance(steps: stepsPerSample)
             history.append(SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, 0).z))
+            if attached && bounce {
+                // The weight rides the plate down and leaves it once the plate turns back up:
+                // its mass comes off, carrying away its share of the plate's (by then nearly
+                // nil) momentum.
+                solver.mutateNodes { nodes in
+                    let rising = struck.reduce(Float(0)) { $0 + nodes[$1].velocity.z } / Float(struck.count)
+                    if rising > 0 {
+                        for n in struck { nodes[n].mass -= weight / Float(struck.count) }
+                        attached = false
+                    }
+                }
+            }
             var reaction = SIMD2<Float>.zero
             for (side, range) in bearingNodes.enumerated() {
                 for i in range {
@@ -286,5 +350,64 @@ public enum ImpactBenchmark {
             sheared: (0..<solver.beamCount).filter { solver.beamHasShearFailed($0) }.count,
             removed: (0..<solver.beamCount).filter { solver.beamFlag($0) != .active }.count,
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
+    }
+
+    /// Beams without stirrups struck once each, at increasing speeds, until they broke in shear:
+    /// T. Ando, N. Kishi, H. Mikami and K. G. Matsuoka, "Weight falling impact tests on
+    /// shear-failure type RC beams without stirrups", *Structures under Shock and Impact VI*, WIT
+    /// Press, 2000 (open access). 150 × 250 mm beams, two bottom bars 40 mm up (D19 in series A,
+    /// D13 in B), clamped top and bottom 200 mm in from each end, struck at mid-span by 300 kg.
+    /// Assumed: the weight's face as a 100 mm steel plate, the clamps 50 mm long, 2,350 kg/m³ and
+    /// 20 mm aggregate. 33 MPa concrete, 393 MPa bars.
+    public struct ShearTest: Sendable {
+        public var name: String
+        /// Rebar series: true for A (2 D19, 1.82%), false for B (2 D13, 0.80%).
+        public var heavyBars: Bool
+        /// Shear span over effective depth (span = 2 a, d = 208 mm).
+        public var shearSpanRatio: Float
+        public var speed: Float
+        /// What the paper reports: whether the beam broke apart in shear, and its residual
+        /// mid-span displacement where given.
+        public var broken: Bool
+        public var residual: Float?
+        public var remark: String
+    }
+
+    public static let shearTests: [ShearTest] = [
+        ShearTest(name: "A36-1", heavyBars: true, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
+                  remark: "flexural cracks only"),
+        ShearTest(name: "A36-3", heavyBars: true, shearSpanRatio: 3.6, speed: 3, broken: false, residual: nil,
+                  remark: "a severe diagonal crack from the load to the support"),
+        ShearTest(name: "A36-5", heavyBars: true, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
+                  remark: "split into three by diagonal cracks"),
+        ShearTest(name: "B36-1", heavyBars: false, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
+                  remark: "flexural cracks only"),
+        ShearTest(name: "B36-4", heavyBars: false, shearSpanRatio: 3.6, speed: 4, broken: false, residual: 0.0226,
+                  remark: "bent, flexure cracks only"),
+        ShearTest(name: "B36-5", heavyBars: false, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
+                  remark: "broken by a wide diagonal crack"),
+    ]
+
+    public static func specimen(_ test: ShearTest) -> Specimen {
+        let span = 2 * test.shearSpanRatio * 0.208
+        var steel = SteelProperties(yieldStress: 393e6, ultimateStress: 560e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        steel.youngsModulus = 200e9
+        var material = StructureMaterial.concrete(
+            name: "Ando beam", compressiveStrength: 33e6, density: 2350, steel: steel)
+        material.aggregateSize = 0.02
+        material.rateDependent = true
+        return Specimen(
+            width: 0.15, depth: 0.25, length: span + 0.4, span: span,
+            bars: [(test.heavyBars ? 2 * 286.5e-6 : 2 * 126.7e-6, 0.04)], stirrups: nil,
+            plate: SIMD2(0.1, 0.04), bearingLength: 0.05, material: material)
+    }
+
+    public static func run(
+        device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
+        adjust: (inout StructureModel) -> Void = { _ in }
+    ) throws -> Result {
+        try run(
+            device: device, specimen: specimen(test), weight: 300, speed: test.speed,
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust)
     }
 }

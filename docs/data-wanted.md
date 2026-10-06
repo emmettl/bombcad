@@ -59,10 +59,15 @@ titles; the authors, journals and years should be enough to find each one.
   interlock doubled it survives (see
   [Validation](validation.md#beams-struck-by-a-falling-weight)).
 - **Use:** the rate law for interlock, in place of borrowing the tensile one.
+- **Partly answered:** Ando et al. (2000; see Obtained) struck beams without stirrups at
+  increasing speeds; the model breaks them at the speed the tests did with interlock as it is,
+  so SS0a-1 is the exception. The rest of their 27 tests (other shear spans and bar ratios)
+  are in figures, and the full set, in their Japanese paper (*Structural Engineering* 46A,
+  2000, Muroran Institute of Technology's repository), would test it further.
 
 ## 3. Formulae quoted from memory
 
-Nine values in the code were written from memory and should be checked against the original.
+Ten values in the code were written from memory and should be checked against the original.
 
 - **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
   Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
@@ -108,6 +113,10 @@ Nine values in the code were written from memory and should be checked against t
 - **The fib Model Code 2010's tensile rate law** (section 5.1.11.1), now the default: taken as
   (ε̇ / 10⁻⁶)^0.018 to 10 per second and 0.0062 (ε̇ / 10⁻⁶)^(1/3) above, for every strength.
   Needed: the law as printed, and whether the code gives one for fracture energy.
+
+- **Crack dilatancy.** J. C. Walraven, "Fundamental analysis of aggregate interlock",
+  *Journal of the Structural Division, ASCE* 107 (1981), or his thesis (Delft, 1980). Needed:
+  how far a crack opens as it slides, taken as half the slip (`crackDilatancy` 0.5).
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.
@@ -155,6 +164,9 @@ Supplied by hand during development, and now in use:
   al., "Numerical study and experimental tests on full-scale RC slabs under close-in
   explosions", *Engineering Structures* 231, 111774 (2021), for the concrete's measured
   strength, the anchorage and the charges' shapes, which are assumed.
+- T. Ando, N. Kishi, H. Mikami and K. G. Matsuoka, "Weight falling impact tests on
+  shear-failure type RC beams without stirrups", *Structures under Shock and Impact VI*, WIT
+  Press (2000), open access: six of its single impacts, in `ImpactBenchmark.shearTests`.
 - S. Saatci, *Behaviour and modelling of reinforced concrete structures subjected to impact
   loads*, PhD thesis, University of Toronto (2007), open access from the university's
   repository: the beams, materials, drop weights and measured first impacts of eight beams, in

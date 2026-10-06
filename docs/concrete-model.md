@@ -291,6 +291,19 @@ wider-open of the two planes) add two terms to the cap:
   ρ σ s / √(L² + s²), resists it, with σ from the bar's own curve. When the stretch passes
   rupture, the bars across that plane break for good.
 
+**Sliding for good, and riding up.** What the cap cannot hold, the crack slides by, for good
+(`StructureModel.crackSlip`, on by default), as a masonry joint does: the shear follows the
+strain less the slip stored so far, once the crack's axes have stopped turning. And a crack
+that has slid cannot close: its faces ride up on each other's aggregate, so it keeps at least
+`crackDilatancy` (0.5 by default) times its slip open, never more than the plane's current
+strain or nine tenths of its largest opening. Before both, a crack was a nonlinear spring that
+returned all the work of sliding, and beams struck hard enough to crack diagonally sprang
+back past where they started: Ando's beam struck at 3 m/s peaked at 17 mm and was left 1 mm
+down, where the test's peaked at 13.5 mm and was left 9.5 mm (see
+[Validation](validation.md#beams-struck-by-a-falling-weight)). Walraven's interlock tests put
+the opening forced by sliding at about half the slip and more for small openings (recalled;
+see [Data wanted](data-wanted.md)).
+
 Without them a section cracked through its depth could pass shear only by interlock, which
 fades as the crack opens, so supports slid apart however much steel crossed them. A full-scale
 internal explosion (see [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber))
@@ -385,7 +398,7 @@ The factor raises strength without changing stiffness. Two details matter:
   7 per second for 47 MPa concrete, 9 times at 100 per second for 25 MPa), left the beams with
   stirrups a quarter too stiff on every mesh and the close-in slabs' spall needing 17–21 MPa,
   where spalling tests find 10–15. The fib Model Code 2010's (1.3 times at 5 per second, 2.9 at
-  100) brings the beams within −8% to +16%, the contest slab from 93% to 97% of its peak and
+  100) brings the beams within −5% to +15%, the contest slab from 93% to 97% of its peak and
   the close-in slab further down; but under it a beam without stirrups breaks, splitting along
   its bars, under a drop the test beam survived (see
   [Validation](validation.md#beams-struck-by-a-falling-weight)). The Model Code's is the
@@ -688,6 +701,18 @@ matter.
    layouts and the chamber within a millimetre, but with static strengths the slab no longer
    fails: it peaks at 143 mm (133%), where it had broken apart at 197 mm.
 
+25. **Cracks that slide for good and ride up when they do** (see Shear across cracks). Struck
+   at rising speeds, beams without stirrups (Ando et al., 2000) had sprung back to a tenth of
+   their peak deflection where the test beams kept 70–85% of it; Janney's beam, bent slowly
+   to 30 mm and unloaded, kept 18 mm, as its cracked stiffness predicts, so the fault lay in
+   cracks that slide, not in bending. Stored slip alone took Ando's beam at 3 m/s from 1.4 to
+   5 mm left; with dilatancy, 8.6 mm on 16 elements and 11.2 mm on 24, against 9.5 mm. A
+   larger residual opening for every crack (0.6) did as well on these beams but has no
+   support: Cornelissen, Hordijk and Reinhardt's tension tests found a crack 0.1 mm open
+   reclosing to within about 7%. Saatci's beams are left 12–14 mm down against 18 mm (7 mm
+   before), the chamber's roof 15 mm up against 7 mm; the contest slab, Janney's beam and
+   Vecchio and Shim's OA1, which bend or fail as their cracks first slide, are unchanged.
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -734,7 +759,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
    not a lack of damping. Cracked concrete still unloads and reloads along one line, so small
    cycles dissipate nothing in the concrete; only the bars have hysteresis. A larger residual
-   crack opening does not cure it, in the slab or in the chamber (step 22). In the chamber the
+   crack opening does not cure it, in the slab or in the chamber (step 22). Cracks that slid
+   used to spring back too, which made beams struck hard rebound past their start; they now
+   slide for good and ride up (step 25), which fixed the beams but not the slab, whose hinge
+   bends rather than slides. In the chamber the
    roof is pulled back by arching thrust in its restrained edge, which closes every hinge (see
    [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 6. **Confined strength is capped** at about five times the unconfined strength; above it only

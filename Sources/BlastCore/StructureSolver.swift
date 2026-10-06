@@ -914,6 +914,7 @@ public final class StructureSolver {
         uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
+        uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
@@ -1027,6 +1028,7 @@ public final class StructureSolver {
         parameters.dowelFactor = material.dowelFactor
         parameters.fractureRateExponent = material.fractureRateExponent
         parameters.tensionRateLaw = material.tensionRateLaw == .modelCode2010 ? 1 : 0
+        parameters.crackDilatancy = material.crackDilatancy
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.barReach = Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak

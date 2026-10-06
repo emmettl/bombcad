@@ -72,6 +72,7 @@ struct StructureUniforms {
     uint secondCracks;  // 1: concrete with fixed crack axes may open a second crack
     uint barAxes;       // bits 0 to 2: the body has bars along x, y, z somewhere
     uint bareBars;      // 1: concrete removed while its bars are intact leaves them (elementBare)
+    uint crackSlip;     // 1: shear past a crack's interlock slides it for good (stored in jointSlip)
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -186,6 +187,7 @@ struct MaterialParameters {
     float dowelFactor;          // multiplier on the bars' dowel action
     float fractureRateExponent; // fracture energy grows as the tensile rate factor to this power
     uint tensionRateLaw;        // 0: Malvar and Ross (1998); 1: fib Model Code 2010
+    float crackDilatancy;       // a crack slid by s cannot close below this times s
 };
 
 constant uint maxMaterials = 8;
@@ -1080,6 +1082,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             settledResidualOver(stored.x, history.x, uniaxial.x, planeFactor.x, planeSoftening.x, m),
             settledResidualOver(stored.y, history.y, uniaxial.y, planeFactor.y, planeSoftening.y, m),
             settledResidualOver(stored.z, history.z, uniaxial.z, planeFactor.z, planeSoftening.z, m));
+        // A crack that has slid cannot close: its faces ride up on each other's aggregate
+        // (dilatancy), so it keeps at least `crackDilatancy` times its slip open, as of the last
+        // step. Like the residual above, this never rises past the plane's own strain.
+        if (u.crackSlip != 0 && !turning && joints == 0u && m.crackDilatancy > 0.0f) {
+            float3 slid = abs(float3(state.jointSlip));  // xy, yz, zx
+            float3 across = float3(length(float2(slid.x, slid.z)), length(float2(slid.x, slid.y)),
+                                   length(float2(slid.y, slid.z)));
+            for (int j = 0; j < 3; ++j) {
+                if (history[j] > planeOnset[j]) {
+                    // Below the largest opening reached, which the reloading line runs up to.
+                    float held = min(m.crackDilatancy * across[j], min(uniaxial[j], 0.9f * history[j]));
+                    residual[j] = max(residual[j], held);
+                }
+            }
+        }
         state.crackResidual = residual;
         float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
         float3 crush = max(float3(state.crushStrain), squeeze);
@@ -1175,10 +1192,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             int a = pair;
             int b = (pair + 1) % 3;
             float engineering = 2.0f * strain[b][a];
-            // Along a mortar joint the shear is that of the strain less what has slid.
+            // Along a mortar joint the shear is that of the strain less what has slid; so, with
+            // `crackSlip`, across a crack whose axes have stopped turning.
             bool jointed = (((joints >> a) | (joints >> b)) & 1u) != 0u;
-            float slip = jointed ? state.jointSlip[pair] : 0.0f;
-            float stress = jointed ? m.mu * (engineering - slip) : m.mu * engineering;
+            bool slides = jointed || (u.crackSlip != 0 && !turning);
+            float slip = slides ? state.jointSlip[pair] : 0.0f;
+            float stress = m.mu * (engineering - slip);
             float3 opening = history - planeOnset;
             float opened = max(opening[a], opening[b]);
             if (opened > 0.0f) {
@@ -1225,7 +1244,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
                     }
                 }
-                stress = clamp(m.shearRetention * stress, -interlock, interlock);
+                float trial = m.shearRetention * stress;
+                stress = clamp(trial, -interlock, interlock);
+                // A crack slid past what interlock and dowels hold has slid for good: the faces
+                // ride over, grind and jam, and do not spring back. Without this the crack was a
+                // nonlinear spring that returned all the work of sliding, and a beam hinged on a
+                // diagonal crack sprang back past where it started.
+                if (slides && !jointed && trial != stress) {
+                    slip += (trial - stress) / (m.shearRetention * m.mu);
+                }
             }
             // A mortar joint slides by Coulomb friction: along it the shear is held to the
             // joint's cohesion, which is lost with its bond as it opens or slides, plus friction
@@ -1259,7 +1286,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         }
                     }
                 }
+            }
+            if (slides) {
                 state.jointSlip[pair] = slip;
+            } else if (u.crackSlip != 0) {
+                state.jointSlip[pair] = 0.0f;  // turning axes: no slip in axes that move
             }
             shearStress[pair] = stress;
         }

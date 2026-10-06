@@ -181,6 +181,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     public var fractureRateExponent: Float = 0.5
     /// With `rateDependent`, the law that raises the tensile strength with strain rate.
     public var tensionRateLaw: TensionRateLaw = .modelCode2010
+    /// A crack that has slid (see `StructureModel.crackSlip`) keeps at least this times its slip
+    /// open: its faces ride up on the aggregate and cannot close (dilatancy).
+    public var crackDilatancy: Float = 0.5
     /// Fixed multipliers on strength, such as the design dynamic increase factors of
     /// UFC 3-340-02. They apply on top of `rateDependent`, so normally use one or the other.
     public var concreteRateFactor: Float = 1
@@ -497,6 +500,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// as those bars alone (see `ElementFlag.bare`), so that a holed member hangs on its bars,
     /// instead of taking its smeared bars with it.
     public var bareBars = true
+    /// Whether shear that a crack's interlock and dowels cannot hold slides it for good, as a
+    /// masonry joint slides, instead of springing back when the load comes off.
+    public var crackSlip = true
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -908,6 +914,7 @@ struct StructureUniforms {
     var secondCracks: UInt32 = 0
     var barAxes: UInt32 = 7
     var bareBars: UInt32 = 0
+    var crackSlip: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -960,6 +967,7 @@ struct MaterialParameters {
     var dowelFactor: Float = 1
     var fractureRateExponent: Float = 1
     var tensionRateLaw: UInt32 = 0
+    var crackDilatancy: Float = 0
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1057,6 +1065,7 @@ extension StructureMaterial {
         dowelFactor = try value(.dowelFactor, dowelFactor)
         fractureRateExponent = try value(.fractureRateExponent, fractureRateExponent)
         tensionRateLaw = try value(.tensionRateLaw, tensionRateLaw)
+        crackDilatancy = try value(.crackDilatancy, crackDilatancy)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)
@@ -1087,6 +1096,7 @@ extension StructureModel {
         crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
+        crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)

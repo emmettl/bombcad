@@ -915,6 +915,31 @@ struct ImpactBenchmarkTests {
         #expect(broken.summary.erodedElements > 100, "SS0b-1: \(broken.summary.erodedElements) elements failed")
     }
 
+    @Test("Ando's beam without stirrups bends at 4 m/s and breaks in shear at 5 m/s, as the tests did")
+    func shearThreshold() throws {
+        func test(_ name: String) throws -> ImpactBenchmark.ShearTest {
+            try #require(ImpactBenchmark.shearTests.first { $0.name == name })
+        }
+        // 24 elements through the depth: on 16 the beam struck at 5 m/s bends badly but holds.
+        let bent = try ImpactBenchmark.run(device: device, test: test("B36-4"), elementsThroughDepth: 24)
+        // 22.6 mm left in the test.
+        #expect(bent.residual > 0.015 && bent.residual < 0.04, "B36-4: \(bent.residual) m left")
+        let broken = try ImpactBenchmark.run(device: device, test: test("B36-5"), elementsThroughDepth: 24)
+        #expect(broken.residual > 0.06, "B36-5: \(broken.residual) m left")
+        let light = try ImpactBenchmark.run(device: device, test: test("B36-1"))
+        #expect(light.summary.erodedElements == 0)
+    }
+
+    @Test("A beam cracked diagonally by a blow keeps its deflection, as the test beam did")
+    func diagonalCracksStay() throws {
+        let test = try #require(ImpactBenchmark.shearTests.first { $0.name == "A36-3" })
+        let result = try ImpactBenchmark.run(device: device, test: test)
+        // 13.5 mm peak and 9.5 mm left in the test. Before cracks slid for good and rode up on
+        // their aggregate, the model peaked at 17 mm and sprang back to 1.4 mm.
+        #expect(result.peak > 0.01 && result.peak < 0.02, "peak \(result.peak) m")
+        #expect(result.residual > 0.006, "\(result.residual) m left")
+    }
+
     @Test("Beam elements, without the sectional shear check, give the measured peaks")
     func beams() throws {
         // The light drops all give 12.7 mm, against 9.3 to 12.1 mm measured; the heavy ones about

@@ -119,9 +119,10 @@ Seven comparisons with the outside world, all in the [validation notes](docs/val
   the test beam did, at 11–12% above the measured load on fine meshes; on coarse ones (twelve
   elements through the depth) it is a third too strong.
 - **Beams struck by a falling weight.** Seven drop-weight impacts on beams that differ only in
-  their stirrups: with stirrups, the peaks are within 10% under the light drops and −8% to +16%
+  their stirrups: with stirrups, the peaks are within 15% under the light drops and −5% to +15%
   under the heavy ones, and the beam without stirrups is broken by the heavy drop, as in the
-  test, but also by the light one, which it survived.
+  test, but also by the light one, which it survived. Ando et al.'s beams without stirrups,
+  struck at rising speeds, break at the speed the tests did.
 - **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
   them: the impulse under the charge is 86–95% of the empirical curves' on fine cells (and
   within 8% from 0.3 m/kg^(1/3) on a rigid surface), and light charges

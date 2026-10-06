@@ -80,6 +80,9 @@ public enum BeamBenchmark {
         public var summary: StructureSummary
         public var elementCount: Int
         public var wallSeconds: Double
+        /// With `unload`: the central deflection left once the plates have been drawn back until
+        /// they no longer push, and the beam has settled.
+        public var residual: Float?
 
         /// Predicted moment at central deflection `deflection`, interpolated.
         public func moment(at deflection: Float) -> Float {
@@ -100,10 +103,12 @@ public enum BeamBenchmark {
     /// 16 ms period, and damped, so that the response is static.
     public static func run(
         device: MTLDevice, elementsThroughDepth: Int = 12, deflection: Float = 0.06, rate: Float = 0.1,
+        unload: Bool = false, crackSlip: Bool = true,
         crackAxes: CrackAxes = .turningUntilOpen, adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth)
         model.crackAxes = crackAxes
+        model.crackSlip = crackSlip
         adjust(&model.material)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
@@ -149,6 +154,38 @@ public enum BeamBenchmark {
             curve.append(SIMD2(centre, 0.5 * reaction * shearSpan))
             if !centre.isFinite { break }
         }
+        var residual: Float?
+        if unload {
+            // Draw the plates back up at the same rate until they no longer push, then let them go
+            // and the beam settle.
+            var plateNodes: [Int] = []
+            for j in 0...solver.ey {
+                for centre in loads {
+                    for i in (centre - plate)...(centre + plate) { plateNodes.append(solver.nodeIndex(i, j, solver.ez)) }
+                }
+            }
+            solver.mutateNodes { nodes in
+                for n in plateNodes { nodes[n].velocity = SIMD3(0, 0, rate) }
+            }
+            let limit = solver.time + Double(deflection / rate)
+            while solver.time < limit {
+                solver.advance(steps: stepsPerSample)
+                var reaction: Float = 0
+                for j in 0...solver.ey {
+                    for i in supports { reaction -= solver.nodalForce(i, j, 0).z }
+                }
+                if reaction <= 0 { break }
+            }
+            solver.mutateNodes { nodes in
+                for n in plateNodes {
+                    nodes[n].isPushedVertically = false
+                    nodes[n].velocity = .zero
+                }
+            }
+            let settle = solver.time + 0.1
+            while solver.time < settle { solver.advance(steps: stepsPerSample) }
+            residual = -solver.displacement(middle, solver.ey / 2, 0).z
+        }
         let elapsed = ContinuousClock.now - start
         let peak = curve.map(\.y).max() ?? 0
         let top = curve.firstIndex { $0.y == peak } ?? 0
@@ -157,6 +194,7 @@ public enum BeamBenchmark {
             curve: curve, peakMoment: peak,
             failureDeflection: failed?.x,
             summary: solver.summary(), elementCount: solver.elementCount,
-            wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
+            wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18,
+            residual: residual)
     }
 }

@@ -125,12 +125,16 @@ func chosenAirModel() -> AirModel? {
 /// `--tension-law mc2010` and `--fracture-rate 0.5`: the tensile strain-rate law and how the
 /// fracture energy follows it, for any command that builds concrete.
 func applyRateOptions(_ material: inout StructureMaterial) {
+    if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
+    if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
     if option("tension-law") == "mc2010" { material.tensionRateLaw = .modelCode2010 }
     if option("tension-law") == "malvar" { material.tensionRateLaw = .malvarRoss }
     if let exponent = option("fracture-rate").flatMap({ Float($0) }) { material.fractureRateExponent = exponent }
 }
 
 func applyRateOptions(_ model: inout StructureModel) {
+    // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
+    if flag("no-crack-slip") { model.crackSlip = false }
     applyRateOptions(&model.material)
     model.solidMaterial = model.solidMaterial.map {
         $0.map {
@@ -747,12 +751,17 @@ func runBeam() throws {
         let spacing = option("crack-spacing").flatMap { Float($0) }
         let dowel = option("dowel").flatMap { Float($0) }
         let result = try BeamBenchmark.run(
-            device: device, elementsThroughDepth: layers, rate: rate, crackAxes: chosenCrackAxes()
+            device: device, elementsThroughDepth: layers,
+            deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
+            unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes()
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
         }
         results.append((layers, result))
+        if let residual = result.residual {
+            print("  unloaded from \(format(Double(result.curve.last?.x ?? 0) * 1000, 1)) mm: \(format(Double(residual) * 1000, 1)) mm left")
+        }
         print(
             pad("\(layers)", 8) + pad("\(result.elementCount)", 10)
                 + pad("\(format(Double(result.peakMoment) / 1000)) kN m", 12)
@@ -949,6 +958,31 @@ func runImpact() throws {
     print(
         pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("model", 18) + pad("reaction", 18)
             + pad("failed", 8) + pad("run time", 10))
+    if flag("ando") {
+        // Ando et al. (2000): beams without stirrups, struck once each by 300 kg.
+        print(pad("test", 8) + pad("speed", 8) + pad("measured", 22) + pad("model", 20) + pad("failed", 8) + "  remark")
+        for test in ImpactBenchmark.shearTests where names?.contains(test.name) ?? true {
+            let result = try ImpactBenchmark.run(
+                device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.15)
+            ) { model in
+                if flag("no-rate") { model.material.rateDependent = false }
+                applyRateOptions(&model)
+            }
+            let measured = test.broken ? "broken" : test.residual.map { "whole, \(format(Double($0) * 1000)) mm left" } ?? "whole"
+            print(
+                pad(test.name, 8) + pad("\(format(Double(test.speed), 0)) m/s", 8) + pad(measured, 22)
+                    + pad("\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 20)
+                    + pad("\(result.summary.erodedElements)", 8) + "  " + test.remark)
+            if flag("history") {
+                // Mid-span displacement every 5 ms, in mm.
+                let samples = stride(from: 0.0, through: min(duration, 0.15), by: 0.005).map { t in
+                    result.history.first { Double($0.x) >= t }.map { format(Double($0.y) * 1000, 1) } ?? "-"
+                }
+                print("    " + samples.joined(separator: " "))
+            }
+        }
+        return
+    }
     if let size = option("beams").flatMap({ Float($0) }) {
         print(pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("beams", 18) + pad("reaction", 18) + pad("sheared", 9) + pad("removed", 9))
         for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {

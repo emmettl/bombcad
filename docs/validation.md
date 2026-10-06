@@ -51,9 +51,9 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 104–112 mm (96–103%) on 4 to 16 elements through, shells 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 10% under light drops and −8% to +16% under heavy ones, the beam without stirrups broken by the heavy drop as in the test but by the light one too | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the concrete's strain-rate law decides it |
+| Structural response  | One slab test: solid elements 104–112 mm (96–103%) on 4 to 16 elements through, shells 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 15% under light drops and −5% to +15% under heavy ones, the beam without stirrups broken by the heavy drop as in the test but by the light one too; six on beams without stirrups at rising speeds, broken at the speed the tests were | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the concrete's strain-rate law decides it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -472,13 +472,13 @@ to four times their static strength.
 elements, each pair of bars smeared through a band one element deep and the stirrups smeared
 through the beam. The weight is added to the plate's top nodes, which start down at the speed
 that conserves momentum with them (7.5–7.7 m/s for 211 kg, depending on how much of the
-plate they carry); it stays attached, so it cannot bounce off as
-the real one did. The bearings are 100 mm of the bottom face, which may lift off, and 100 mm of
+plate they carry); it leaves the plate once the plate turns back up, as the real one bounced
+off (until it did, the 300 kg of Ando's tests below pulled the concrete under the plate off on
+the rebound). The bearings are 100 mm of the bottom face, which may lift off, and 100 mm of
 the top face, which may fall away but not rise: hung from its bottom face by a two-way
 restraint, the concrete under the supports tore away on the rebound. Gravity is on and the
 strain-rate laws are used; nothing is fitted. The residual is the mean of the last 30 ms of a
-200 ms record, during which the beam (with the weight on it) is still swinging by several
-millimetres; the reaction is averaged over 0.5 ms, about what the load cells, read 2,400 times
+200 ms record, during which the beam is still swinging by a few millimetres; the reaction is averaged over 0.5 ms, about what the load cells, read 2,400 times
 a second, would see.
 
 `blastbench impact` runs it; `--beams 0.1` meshes the beam with beam elements of that size
@@ -491,19 +491,23 @@ strain-rate law (the fib Model Code 2010's) and, for comparison, Malvar and Ross
 
 | Test   | Measured     | 16 through        | 24 through          | 16, Malvar–Ross    | 24, Malvar–Ross    |
 |--------|--------------|-------------------|---------------------|--------------------|--------------------|
-| SS0a-1 | 9.3 / 1.6    | 21.5 / 2.9, broken (697) | 30.7 / 5.8, broken (2,867) | 10.2 / 0.7   | 9.3 / 0.5          |
-| SS1a-1 | 12.1 / 0.9   | 12.1 / 1.7        | 12.1 / 1.7          | 9.7 / 0.4          | 9.5 / 0.4          |
-| SS2a-1 | 10.0 / 0.5   | 11.2 / 1.5        | 11.2 / 1.7          | 9.5 / 0.4          | 9.4 / 0.4          |
-| SS0b-1 | Failed       | Broken (3,272)    | Broken (6,677)      | Broken (1,215)     | Broken (3,231)     |
-| SS1b-1 | 39.5 / 17.7  | 37.4 / 6.7        | 45.7 / 11.2         | 28.7 / 2.9         | 29.2 / 6.2         |
-| SS2b-1 | 37.9 / 18.5  | 34.3 / 5.1        | 38.1 / 6.4          | 27.9 / 5.6         | 28.5 / 6.1         |
-| SS3b-1 | 35.3 / 17.7  | 30.2 / 7.0        | 32.6 / 9.9          | 26.8 / 7.2         | 27.1 / 5.6         |
+| SS0a-1 | 9.3 / 1.6    | 22.4 / 8.2, broken (793) | 31.5 / 16.4, broken (3,005) | 10.2 / 0.7 | 9.3 / 0.5        |
+| SS1a-1 | 12.1 / 0.9   | 13.1 / 1.1        | 13.7 / 2.5          | 9.7 / 0.4          | 9.5 / 0.4          |
+| SS2a-1 | 10.0 / 0.5   | 12.1 / 1.1        | 12.3 / 1.4          | 9.5 / 0.4          | 9.4 / 0.4          |
+| SS0b-1 | Failed       | Broken (2,919)    | Broken (6,803)      | Broken (1,215)     | Broken (3,231)     |
+| SS1b-1 | 39.5 / 17.7  | 37.6 / 12.6       | 45.6 / 30.1         | 28.7 / 2.9         | 29.2 / 6.2         |
+| SS2b-1 | 37.9 / 18.5  | 35.7 / 14.3       | 40.2 / 25.5         | 27.9 / 5.6         | 28.5 / 6.1         |
+| SS3b-1 | 35.3 / 17.7  | 31.5 / 11.6       | 33.5 / 14.2         | 26.8 / 7.2         | 27.1 / 5.6         |
 
-With the default law the beams with stirrups come within 10% of the measured peaks under the
-light drops and within −8% to +16% under the heavy ones on 24 elements, and survive both; the
+(The Malvar–Ross columns predate cracks that slide for good and the weight's bounce, which
+leave the peaks within a few per cent and raise the residuals.)
+
+With the default law the beams with stirrups come within 15% of the measured peaks under the
+light drops and within −5% to +15% under the heavy ones on 24 elements, and survive both; the
 beam without stirrups is broken by the heavy drop along diagonal cracks running from the plate
-towards the supports, as the test beam was. Their residuals are a third to two thirds of the
-measured ones. The largest reactions at a support are 350–650 kN under the heavy drops the
+towards the supports, as the test beam was. Their residuals are 14–30 mm on 24 elements against 18 mm measured (6–7 mm before cracks slid
+for good and rode up on their aggregate; see the
+[concrete model](concrete-model.md#shear-across-cracks)). The largest reactions at a support are 350–650 kN under the heavy drops the
 beams survive, against 592–682 kN measured, and 400–450 kN under the light ones, against
 305–356 kN.
 
@@ -519,6 +523,40 @@ shear across the cracks: with aggregate interlock doubled, about what Malvar and
 gave it at these rates, SS0a-1 survives (26 elements removed, 14 mm) while SS0b-1 still breaks
 and SS2b-1 barely moves. How much aggregate interlock strengthens with strain rate, which the
 model takes to be as much as the tensile strength, is the open question.
+
+**Beams without stirrups at increasing speeds.** T. Ando, N. Kishi, H. Mikami and K. G.
+Matsuoka, "Weight falling impact tests on shear-failure type RC beams without stirrups",
+*Structures under Shock and Impact VI*, WIT Press, 2000 (open access), struck 27 beams of
+150 × 250 mm without stirrups once each with 300 kg, at 1 m/s and then from 2 or 3 m/s up in
+steps of 1 m/s until they broke: two bottom bars 40 mm up (2 D19 in series A, 2 D13 in B), 33
+MPa concrete, 393 MPa bars, clamped top and bottom 200 mm in from each end. The text reports
+two series at a shear span of 3.6 depths (1.5 m span); `blastbench impact --ando` runs them
+(assumed: the weight's face as a 100 mm steel plate, 50 mm clamps, 20 mm aggregate). The weight
+leaves the plate once the plate turns back up, as a real one does; left on, it pulled the
+concrete under the plate off on the rebound.
+
+| Test | Speed  | Measured (peak / residual, read off the histories) | 16 through | 24 through | 16, Malvar–Ross, before slip |
+|------|--------|-------------------------------|-------------------|--------------------|-------------------|
+| A36  | 1 m/s  | 1.5 / 0, flexural cracks only  | 2.1 / −0.4, whole | 2.4 / −1.5, whole  | 1.9 / −0.2, whole |
+| A36  | 3 m/s  | 13.5 / 9.5, a severe diagonal crack | 15.3 / 8.6 (280) | 21.4 / 11.2 (983) | 7.4 / −0.1, whole |
+| A36  | 5 m/s  | 66 / 53, split into three     | 79 / 59, broken (1,979) | 126 / 70, broken (4,620) | 32 / 10 (708) |
+| B36  | 1 m/s  | 2.7 / 0, flexural cracks only  | 2.6 / −0.5, whole | 3.0 / −2.5, whole  | 2.3 / −0.2, whole |
+| B36  | 4 m/s  | 26 / 22.6, bent                | 35 / 26 (236)     | 42 / 28 (1,273)    | 18 / 4.6 (9)      |
+| B36  | 5 m/s  | 105 / 88, broken by a diagonal crack | 57 / 46 (636) | 128 / 88, broken (3,417) | 26 / 18 (205) |
+
+(Peak / residual mid-span displacement in mm; elements removed or left as bare bars in
+brackets.) With the default law these beams break where the tests did, at 5 m/s and not
+before (on 16 elements B36 bends badly at 5 m/s but holds), and are left down by about what the
+tests were; under Malvar and Ross's law neither breaks at 5 m/s, and B36 at 4 m/s is left a
+fifth as far down. The test beams kept 70–85% of their peak deflection; until cracks were made
+to slide for good and ride up on their aggregate, the model's sprang back to a tenth of it,
+A36 at 3 m/s rebounding past where it started. Janney's beam, bent slowly to 30 mm and
+unloaded (`blastbench beam --to 30 --unload`), keeps 18 mm, as its cracked stiffness predicts:
+the fault was in cracks that slide, not in bending. The paper
+also finds the largest reaction about equal to the static shear capacity, as if the shear
+across cracks gained little with rate. So for beams without stirrups the default law, and
+interlock rising with it, hold; SS0a-1, broken under a drop its test beam survived, is the
+exception.
 
 **The tensile strain-rate law decides it.** Turning the laws off one at a time on SS2b-1 (16
 through) shows that the concrete's tensile law is the one that matters. Under Malvar and Ross's
@@ -634,9 +672,12 @@ leaves out:
 |-------|------------|----------------------|----------------------|-----------------------------------|
 | P1    | 0          | 4 (11)               |                      |                                   |
 | S1–S3 | cracks     | 5 (13)               |                      |                                   |
-| P7    | 340        | 91 (156)             | 79 (206)             | 128 (164)                         |
-| S5    | punched through | 185 (258), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
-| P2    | 510, punched through, hanging | 181 (254), whole | broken at mid-span, fell | 195 (278), spalled 1.9% under the charge, no hole |
+| P7    | 340        | 100 (156)            | 79 (206)             | 128 (164)                         |
+| S5    | punched through | 193 (251), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
+| P2    | 510, punched through, hanging | 198 (249), whole | broken at mid-span, fell | 195 (278), spalled 1.9% under the charge, no hole |
+
+(The 8-element and fine-air columns predate cracks that slide for good, which moved the 6-element
+column by 7–17 mm.)
 
 With Malvar and Ross's tensile law instead, P7 was left 51, 103 and 91 mm down on the three
 grids, and P2 and S5 156–173 mm, spalling 1% of the far face on the fine air.
@@ -1013,6 +1054,10 @@ scales the charges, `--pressures` fills the closed chamber with a steady overpre
 (below), and `--progress` reports every 10 ms of a long run.
 
 ### Results
+
+Since these runs, cracks slide for good and ride up when they do (see the
+[concrete model](concrete-model.md#shear-across-cracks)): the roof's edge is left 15 mm up,
+where the runs below leave it 7 mm, with its peak unchanged at 38 mm.
 
 **Pressures.** At gauges placed near the sensors the model gives 4.2 and 6.8 MPa on the side
 walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positions are
