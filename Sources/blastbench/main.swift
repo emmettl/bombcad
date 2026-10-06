@@ -94,6 +94,15 @@ func chosenCrackAxes() -> CrackAxes {
     }
 }
 
+/// The air model `--air thermal` or `--air dissociating` asks for, or nil for the default.
+func chosenAirModel() -> AirModel? {
+    switch option("air") {
+    case "thermal": .thermallyPerfect
+    case "dissociating": .dissociating
+    default: nil
+    }
+}
+
 func pad(_ text: String, _ width: Int) -> String {
     text.count >= width ? text : String(repeating: " ", count: width - text.count) + text
 }
@@ -239,7 +248,7 @@ func runChamber() throws {
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: flag("afterburn"),
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
-        airModel: option("air") == "thermal" ? .thermallyPerfect : .idealGas,
+        airModel: chosenAirModel() ?? .idealGas,
         refinement: option("refine").flatMap { Int($0) } ?? 1,
         contact: flag("no-contact") ? .off : nil,
         // `--progress` reports every 10 ms of a long run.
@@ -295,8 +304,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configureRefinement(&configuration)
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
-    if option("air") == "thermal" {
-        solver.configuration.airModel = .thermallyPerfect
+    if let air = chosenAirModel() {
+        solver.configuration.airModel = air
         try solver.load(scenario)
     }
     if flag("mapped") {
@@ -322,7 +331,7 @@ func runGasPressure() throws {
     print(
         "Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (\(format(settle * 1000, 0)) ms)"
             + (flag("afterburn") ? ", with afterburning" : "")
-            + (option("air") == "thermal" ? ", thermally perfect air" : ""))
+            + (chosenAirModel().map { ", \($0) air" } ?? ""))
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
             + pad("UFC 2-152", 12)
@@ -387,7 +396,7 @@ func runValidation() throws {
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
         if flag("afterburn") { solver.configuration.afterburning = true }
-        if option("air") == "thermal" { solver.configuration.airModel = .thermallyPerfect }
+        if let air = chosenAirModel() { solver.configuration.airModel = air }
         if flag("mapped") { solver.configuration.mappedCharge = true }
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000

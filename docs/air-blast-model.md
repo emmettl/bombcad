@@ -132,12 +132,39 @@ heat raises the pressure less than in cold air. `SolverConfiguration.airModel =
   sides' speeds.
 - Below about 500 K it is the ideal gas within 0.1%, so tests in units where the gas is cold
   (the shock tube, the point blast) are unchanged. Dissociation, above about 2500 K, is left
-  out.
+  out of it; `.dissociating` (below) adds it.
 
 It costs about a quarter more. Together with afterburning (the app's "Afterburning and hot air"
 switch) it brings the closed-room gas pressure within 8% of UFC 3-340-02's at every charge
 density tested, with nothing fitted to it, and keeps the incident impulse in the open within
 6% of Kingery–Bulmash (see [Validation](validation.md#afterburning)).
+
+### Dissociating air
+
+`SolverConfiguration.airModel = .dissociating` (`--air dissociating` in `blastbench`) is
+thermally perfect air whose N2 and O2 also split into atoms once hot, in equilibrium, as
+Lighthill's ideal dissociating gas:
+
+- For each species, the fraction α of its molecules dissociated satisfies
+  α² / (1 − α) = (ρ<sub>d</sub> / ρ<sub>s</sub>) exp(−θ<sub>d</sub> / T), ρ<sub>s</sub> being
+  the species' own density: θ<sub>d</sub> = 113,000 K and ρ<sub>d</sub> = 130 g/cm³ for N2,
+  59,500 K and 150 g/cm³ for O2 (Vincenti and Kruger, written from memory). At atmospheric
+  pressure O2 is then 41% split at 3500 K and 79% at 4000 K, and N2 51% at 7000 K.
+- Atoms carry 3/2 R T each, the molecules split take up the bond's energy, R θ<sub>d</sub> per
+  kilogram of molecules, and the pressure is ρ T Σ y R (1 + α) over the species' mass
+  fractions y (0.767 and 0.233).
+- The temperature is found from the energy, or from the pressure, by Newton's method from the
+  temperature of air that does not dissociate, which lies above it. The speed of sound uses
+  the frozen ratio of specific heats, at the composition as it stands.
+
+It changes little that has been checked. Every incident and reflected peak, impulse and
+arrival time of the Kingery–Bulmash comparison, from 0.75 m/kg^(1/3) out, with afterburning,
+moves by under 1%; closed rooms' gas pressure, 98–108% of UFC 3-340-02 with thermally perfect
+air, becomes 92–107%, the densest rooms coming down by about 6% (their gas is the hottest).
+It costs 3.6 times as long as thermally perfect air. It is therefore an option, not part of
+the app's "Afterburning and hot air" switch. Where it would matter, within a charge diameter
+or two, the products, still treated as air, and the cells, which resolve no detail of the
+fireball, matter more.
 
 ## Skipping still air
 
@@ -287,8 +314,8 @@ UFC 3-340-02, lowest for light charges.
    it under-predicts incident impulse by 13% to 22% at all ranges tested, and a closed room's
    gas pressure is half the design value for light charges. With afterburning and hot air the
    incident impulse is within 6% beyond 1 m/kg^(1/3) and rooms within 8%, but the burning time
-   is fitted, mixing is numerical, the products are treated as air, and dissociation is left
-   out.
+   is fitted, mixing is numerical, the products are treated as air, and dissociation is an
+   option that changes little.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, but only one finer
@@ -315,7 +342,8 @@ UFC 3-340-02, lowest for light charges.
 
 ## Future work
 
-- **Dissociation**, and the products' own composition, for the gas very close to a charge.
+- **The products' own composition** for the gas very close to a charge. (Dissociation of the
+  air is done, as an option; it changes the checked loads by under 1%.)
 - **Better source.** Two options, in order of effort: start from a one-dimensional, finely
   resolved spherical solution and map it onto the grid once the shock has grown to several
   cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of

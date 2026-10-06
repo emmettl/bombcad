@@ -62,10 +62,12 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 ### Then the physics the evidence points to
 
 3. **Charge model.** Close-in peaks are under-resolved: a mapped one-dimensional solution
-   would help there; and dissociation and the products' own composition for the hottest gas.
-   (Done: afterburning, limited by mixing and oxygen, and thermally perfect air, which together
-   bring the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the
-   open within 6% of Kingery–Bulmash.)
+   would help there; and the products' own composition for the hottest gas. (Done:
+   afterburning, limited by mixing and oxygen, and thermally perfect air, which together bring
+   the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the open
+   within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those
+   by under 1% in the open and up to 6% in the densest rooms, at 3.6 times the cost; see the
+   [air-blast model](air-blast-model.md#dissociating-air).)
 4. **Shear in concrete.** Why a coarse mesh overestimates a beam's shear strength by a third,
    and a member with stirrups. (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were

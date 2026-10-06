@@ -247,6 +247,9 @@ public enum AirModel: UInt32, Sendable, Codable, CaseIterable {
     /// Air whose N2 and O2 store energy in vibration once hot, so that its gamma falls from 1.4
     /// towards 1.29 near 3000 K; dissociation is not included.
     case thermallyPerfect = 1
+    /// Thermally perfect air whose N2 and O2 also dissociate into atoms in equilibrium, as
+    /// Lighthill's ideal dissociating gas: O2 from about 2500 K, N2 from about 4500 K.
+    case dissociating = 2
 
     static let gasConstant: Float = 287.05
 
@@ -256,10 +259,65 @@ public enum AirModel: UInt32, Sendable, Codable, CaseIterable {
             * (0.79 * 3390 / (exp(min(3390 / t, 80)) - 1) + 0.21 * 2270 / (exp(min(2270 / t, 80)) - 1))
     }
 
+    /// N2 then O2: mass fraction, gas constant, dissociation temperature, characteristic
+    /// density and vibrational temperature (see `Solver.metal`).
+    static let species: [(share: Double, r: Double, theta: Double, density: Double, vibration: Double)] = [
+        (0.767, 296.8, 113_000, 1.3e5, 3390), (0.233, 259.8, 59_500, 1.5e5, 2270),
+    ]
+
+    /// The fraction of each species' molecules, N2 then O2, dissociated in air at `density` and
+    /// `temperature`, by Lighthill's alpha^2 / (1 - alpha) = (rho_d / rho_s) exp(-theta_d / T).
+    public static func dissociatedFractions(density: Float, temperature: Float) -> [Float] {
+        species.map { s in
+            let exponent = s.theta / Double(max(temperature, 1e-12))
+            guard exponent < 80 else { return 0 }
+            let k = s.density / max(s.share * Double(density), 1e-12) * exp(-exponent)
+            return Float(2 / (1 + (1 + 4 / k).squareRoot()))
+        }
+    }
+
+    /// Dissociating air at `density` and `temperature`: energy per kilogram and p / (rho T).
+    static func dissociating(density: Float, temperature: Float) -> (energy: Double, gasConstant: Double) {
+        let t = Double(max(temperature, 1e-12))
+        let alphas = dissociatedFractions(density: density, temperature: temperature).map(Double.init)
+        var energy = 0.0
+        var gasConstant = 0.0
+        for (s, alpha) in zip(species, alphas) {
+            let molecules = s.r * (2.5 * t + s.vibration / (exp(min(s.vibration / t, 80)) - 1))
+            let atoms = s.r * (3 * t + s.theta)
+            energy += s.share * ((1 - alpha) * molecules + alpha * atoms)
+            gasConstant += s.share * s.r * (1 + alpha)
+        }
+        return (energy, gasConstant)
+    }
+
+    /// Temperature of air at `density` and `pressure`.
+    public func temperature(density: Float, pressure: Float) -> Float {
+        switch self {
+        case .idealGas, .thermallyPerfect: return pressure / (density * Self.gasConstant)
+        case .dissociating:
+            // Bisection between no dissociation and full: p = rho R(T) T rises with T.
+            var low = Double(pressure) / (Double(density) * 2 * 287.2)
+            var high = Double(pressure) / (Double(density) * 287.2)
+            for _ in 0..<60 {
+                let middle = 0.5 * (low + high)
+                let p =
+                    Double(density)
+                    * Self.dissociating(density: density, temperature: Float(middle)).gasConstant
+                    * middle
+                if p > Double(pressure) { high = middle } else { low = middle }
+            }
+            return Float(0.5 * (low + high))
+        }
+    }
+
     /// Internal energy per volume of air at `density` and `pressure`.
     public func internalEnergy(density: Float, pressure: Float, gamma: Float) -> Float {
         switch self {
         case .idealGas: return pressure / (gamma - 1)
+        case .dissociating:
+            let t = temperature(density: density, pressure: pressure)
+            return Float(Double(density) * Self.dissociating(density: density, temperature: t).energy)
         case .thermallyPerfect:
             let t = pressure / (density * Self.gasConstant)
             return density * (2.5 * Self.gasConstant * t + Self.vibrationalEnergy(temperature: t))
@@ -270,6 +328,22 @@ public enum AirModel: UInt32, Sendable, Codable, CaseIterable {
     public func pressure(density: Float, internalEnergy: Float, gamma: Float) -> Float {
         switch self {
         case .idealGas: return (gamma - 1) * internalEnergy
+        case .dissociating:
+            // Bisection on the temperature: the energy rises with it.
+            let e = Double(internalEnergy / density)
+            var low = 0.0
+            var high = max(e / (2.5 * 287.2), 1e-12)
+            for _ in 0..<60 {
+                let middle = 0.5 * (low + high)
+                if Self.dissociating(density: density, temperature: Float(middle)).energy > e {
+                    high = middle
+                } else {
+                    low = middle
+                }
+            }
+            let t = Float(0.5 * (low + high))
+            return Float(
+                Double(density) * Self.dissociating(density: density, temperature: t).gasConstant * Double(t))
         case .thermallyPerfect:
             let e = internalEnergy / density
             var t = max(e, 0) / (2.5 * Self.gasConstant)

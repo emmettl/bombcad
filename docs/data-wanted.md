@@ -74,8 +74,10 @@ Seven values in the code were written from memory and should be checked against 
   in `compactionPressure` in `Structure.metal`. A close-in or contact-charge test on a concrete
   slab would then check it.
 - **Vibrational temperatures of N2 and O2** (3390 K and 2270 K), used for hot air in
-  `Solver.metal`; any text on statistical thermodynamics, or the NIST-JANAF tables, which
-  would also give air's dissociation for a fuller model.
+  `Solver.metal`, and **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and
+  59,500 K, ρ<sub>d</sub> 130 and 150 g/cm³, from Vincenti and Kruger's *Introduction to
+  Physical Gas Dynamics*), used for dissociating air; any text on statistical thermodynamics,
+  or the NIST-JANAF tables, to check them.
 
 - **Dowel strength.** B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and
   dowels embedded in concrete", *Bygningsstatiske Meddelelser* 34 (1963), or fib Model Code

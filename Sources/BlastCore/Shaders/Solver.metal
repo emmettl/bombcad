@@ -104,11 +104,88 @@ struct StepControl {
 // in proportion 0.79 to 0.21 by moles, on top of translation and rotation (5/2 R). So its
 // internal energy per kilogram is e(T) = 5/2 R T + e_vib(T), its pressure is rho R T, and its
 // ratio of specific heats falls from 1.4 at room temperature towards 1.29 near 3000 K.
-// Dissociation, which sets in above about 2500 K, is not included. Below about 500 K the two
-// agree to better than 0.1%; the shock-tube and point-blast tests, in units where T is tiny,
-// are unchanged.
-enum AirModel { airIdeal = 0, airThermallyPerfect = 1 };
+// Dissociation, which sets in above about 2500 K, is included only in dissociating air
+// (below). Below about 500 K they agree to better than 0.1%; the shock-tube and point-blast
+// tests, in units where T is tiny, are unchanged.
+enum AirModel { airIdeal = 0, airThermallyPerfect = 1, airDissociating = 2 };
 constant float airGasConstant = 287.05f;
+
+// Dissociating air: thermally perfect air whose N2 and O2 also split into atoms once hot, in
+// equilibrium, as Lighthill's ideal dissociating gas. For each, a mass fraction alpha of the
+// molecules has dissociated where alpha^2 / (1 - alpha) = (rho_d / rho_s) exp(-theta_d / T), rho_s
+// being the species' own density; its atoms carry 3/2 R T each and the bond's energy R theta_d
+// per mass of molecules, and its pressure rises by (1 + alpha). N2 then O2: mass fractions,
+// gas constants, dissociation temperatures and characteristic densities (Vincenti and Kruger),
+// and vibrational temperatures.
+constant float dissociatingShare[2] = {0.767f, 0.233f};
+constant float dissociatingGasConstant[2] = {296.8f, 259.8f};
+constant float dissociationTemperature[2] = {113000.0f, 59500.0f};
+constant float dissociationDensity[2] = {1.3e5f, 1.5e5f};
+constant float dissociatingVibration[2] = {3390.0f, 2270.0f};
+
+// Dissociating air at a density and temperature: internal energy per kilogram and its
+// derivative in temperature with the composition in equilibrium; the mixture's gas constant as
+// it stands, p / (rho T), and its derivative; and the heat capacity at fixed composition.
+struct DissociatingAir {
+    float energy;
+    float energySlope;
+    float gasConstant;
+    float gasConstantSlope;
+    float frozenHeat;
+};
+
+static inline DissociatingAir dissociatingAir(float rho, float t) {
+    // No floor of a kelvin or so: tests run in units where the gas is at a few millikelvin.
+    t = max(t, 1e-12f);
+    DissociatingAir air = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    for (int n = 0; n < 2; ++n) {
+        float y = dissociatingShare[n];
+        float r = dissociatingGasConstant[n];
+        float theta = dissociationTemperature[n];
+        float exponent = theta / t;
+        float k = exponent > 80.0f ? 0.0f : dissociationDensity[n] / max(y * rho, 1e-12f) * exp(-exponent);
+        float alpha = k > 0.0f ? 2.0f / (1.0f + sqrt(1.0f + 4.0f / k)) : 0.0f;
+        // alpha^2 = k (1 - alpha), so d alpha / dk = (1 - alpha) / (2 alpha + k); dk/dT = k theta / T^2.
+        float slope = k > 0.0f ? (1.0f - alpha) / (2.0f * alpha + k) * k * exponent / t : 0.0f;
+        float x = min(dissociatingVibration[n] / t, 80.0f);
+        float ex = exp(x);
+        float below = 1.0f / (ex - 1.0f);
+        float molecules = r * (2.5f * t + dissociatingVibration[n] * below);
+        float atoms = r * (3.0f * t + theta);
+        float frozen = (1.0f - alpha) * r * (2.5f + x * x * ex * below * below) + alpha * 3.0f * r;
+        air.energy += y * ((1.0f - alpha) * molecules + alpha * atoms);
+        air.energySlope += y * (frozen + slope * (atoms - molecules));
+        air.gasConstant += y * r * (1.0f + alpha);
+        air.gasConstantSlope += y * r * slope;
+        air.frozenHeat += y * frozen;
+    }
+    return air;
+}
+
+// Temperature of dissociating air of density `rho` and internal energy `e` per kilogram, by
+// Newton's method from `start`, the temperature of air that does not dissociate, which lies
+// above it: dissociation only takes up energy.
+static inline float dissociatingTemperature(float rho, float e, float start) {
+    float t = max(start, 1e-12f);
+    for (int n = 0; n < 6; ++n) {
+        DissociatingAir air = dissociatingAir(rho, t);
+        t = max(t - (air.energy - e) / max(air.energySlope, 1e-12f), 0.5f * t);
+    }
+    return t;
+}
+
+// Temperature of dissociating air of density `rho` at pressure `p`, from above likewise: the
+// temperature at which undissociated air would have that pressure.
+static inline float dissociatingTemperatureAt(float rho, float p) {
+    rho = max(rho, 1e-12f);
+    float t = max(p / (rho * dissociatingAir(rho, 1.0f).gasConstant), 1e-12f);
+    for (int n = 0; n < 6; ++n) {
+        DissociatingAir air = dissociatingAir(rho, t);
+        float gap = rho * air.gasConstant * t - p;
+        t = max(t - gap / (rho * (air.gasConstant + t * air.gasConstantSlope)), 0.5f * t);
+    }
+    return t;
+}
 
 // Vibrational energy per kilogram (x) and its heat capacity (y) at `temperature`.
 static inline float2 vibration(float temperature) {
@@ -142,15 +219,29 @@ static inline float gasPressure(float rho, float internalEnergy, uint model, flo
     if (model == airIdeal) {
         return (gamma - 1.0f) * internalEnergy;
     }
-    return rho * airGasConstant * airTemperature(internalEnergy / rho);
+    float e = internalEnergy / rho;
+    float t = airTemperature(e);
+    if (model == airDissociating) {
+        t = dissociatingTemperature(rho, e, t);
+        return rho * dissociatingAir(rho, t).gasConstant * t;
+    }
+    return rho * airGasConstant * t;
 }
 
 // Pressure (x) and ratio of specific heats (y), from density and internal energy per volume.
+// For dissociating air the ratio is the frozen one, at the composition as it stands: sound
+// travels too fast for the gas to dissociate or recombine as it passes.
 static inline float2 gasState(float rho, float internalEnergy, uint model, float gamma) {
     if (model == airIdeal) {
         return float2((gamma - 1.0f) * internalEnergy, gamma);
     }
-    float t = airTemperature(internalEnergy / rho);
+    float e = internalEnergy / rho;
+    float t = airTemperature(e);
+    if (model == airDissociating) {
+        t = dissociatingTemperature(rho, e, t);
+        DissociatingAir air = dissociatingAir(rho, t);
+        return float2(rho * air.gasConstant * t, 1.0f + air.gasConstant / air.frozenHeat);
+    }
     return float2(rho * airGasConstant * t, 1.0f + airGasConstant / (2.5f * airGasConstant + vibration(t).y));
 }
 
@@ -158,6 +249,9 @@ static inline float2 gasState(float rho, float internalEnergy, uint model, float
 static inline float gasEnergy(float rho, float pressure, uint model, float gamma) {
     if (model == airIdeal) {
         return pressure / (gamma - 1.0f);
+    }
+    if (model == airDissociating) {
+        return rho * dissociatingAir(rho, dissociatingTemperatureAt(rho, pressure)).energy;
     }
     float t = pressure / (rho * airGasConstant);
     return rho * (2.5f * airGasConstant * t + vibration(t).x);
@@ -167,6 +261,10 @@ static inline float gasEnergy(float rho, float pressure, uint model, float gamma
 static inline float gasGamma(float rho, float pressure, uint model, float gamma) {
     if (model == airIdeal) {
         return gamma;
+    }
+    if (model == airDissociating) {
+        DissociatingAir air = dissociatingAir(rho, dissociatingTemperatureAt(rho, pressure));
+        return 1.0f + air.gasConstant / air.frozenHeat;
     }
     float t = pressure / (rho * airGasConstant);
     return 1.0f + airGasConstant / (2.5f * airGasConstant + vibration(t).y);
