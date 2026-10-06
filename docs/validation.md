@@ -512,12 +512,13 @@ with diagonal cracks up to 0.5 mm. It splits along its length just above the bot
 near the top ones (446 of its 697 failed elements on 16 through lie in the one layer above
 the bottom bars), on 12, 16 and 24 elements alike: the diagonal crack turning along the bars,
 the way such a beam fails in shear, but under a drop it withstood. It happens in the impact
-itself (120 elements gone at 2.4 ms, 650 by 10 ms), not in the swinging after it. The model
-smears the two bottom bars through a band one element deep, about a fifth steel: a stiff,
-heavy layer along the bottom, at whose edge the impact's horizontal shear gathers, and which,
-with no stirrups, nothing crosses. Bars as their own elements (see the
-[concrete model's future work](concrete-model.md#future-work)) would spread it as the two real
-bars do.
+itself (120 elements gone at 2.4 ms, 650 by 10 ms), not in the swinging after it. It is not
+the bars' being smeared through a band one element deep: spread through 100 or 130 mm, as
+Eurocode 2's effective tension area would have them, the beam breaks all the same. It is the
+shear across the cracks: with aggregate interlock doubled, about what Malvar and Ross's factor
+gave it at these rates, SS0a-1 survives (26 elements removed, 14 mm) while SS0b-1 still breaks
+and SS2b-1 barely moves. How much aggregate interlock strengthens with strain rate, which the
+model takes to be as much as the tensile strength, is the open question.
 
 **The tensile strain-rate law decides it.** Turning the laws off one at a time on SS2b-1 (16
 through) shows that the concrete's tensile law is the one that matters. Under Malvar and Ross's

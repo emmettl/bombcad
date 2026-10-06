@@ -48,6 +48,18 @@ titles; the authors, journals and years should be enough to find each one.
   paper says only that diagonal bars were "arranged along the chamfered surfaces". The model
   leaves them out, and the joints decide whether its roof holds.
 
+## 2a. Shear across cracks at high rates
+
+- **Where:** any test of shear across a crack (push-off specimens) loaded quickly, or a
+  programme of beams without stirrups struck at several drop heights, so that the one at which
+  they first break in shear is known.
+- **Needed:** how aggregate interlock grows with loading rate. The model raises it with the
+  tensile strength's rate factor; under the fib Model Code's tensile law that is about 1.3 at
+  Saatci's rates, and the beam without stirrups, SS0a-1, breaks under a drop it survived; with
+  interlock doubled it survives (see
+  [Validation](validation.md#beams-struck-by-a-falling-weight)).
+- **Use:** the rate law for interlock, in place of borrowing the tensile one.
+
 ## 3. Formulae quoted from memory
 
 Nine values in the code were written from memory and should be checked against the original.
