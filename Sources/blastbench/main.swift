@@ -85,6 +85,10 @@ func chosenScenario() -> Scenario {
         }
         scenario.structure = structure
     }
+    if var structure = scenario.structure {
+        applyRateOptions(&structure)
+        scenario.structure = structure
+    }
     // `--no-units` gives masonry its wall's strength throughout, without units and joints.
     if flag("no-units") { scenario.structure?.unitJoints = false }
     // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
@@ -115,6 +119,25 @@ func chosenAirModel() -> AirModel? {
     case "thermal": .thermallyPerfect
     case "dissociating": .dissociating
     default: nil
+    }
+}
+
+/// `--tension-law mc2010` and `--fracture-rate 0.5`: the tensile strain-rate law and how the
+/// fracture energy follows it, for any command that builds concrete.
+func applyRateOptions(_ material: inout StructureMaterial) {
+    if option("tension-law") == "mc2010" { material.tensionRateLaw = .modelCode2010 }
+    if option("tension-law") == "malvar" { material.tensionRateLaw = .malvarRoss }
+    if let exponent = option("fracture-rate").flatMap({ Float($0) }) { material.fractureRateExponent = exponent }
+}
+
+func applyRateOptions(_ model: inout StructureModel) {
+    applyRateOptions(&model.material)
+    model.solidMaterial = model.solidMaterial.map {
+        $0.map {
+            var m = $0
+            applyRateOptions(&m)
+            return m
+        }
     }
 }
 
@@ -260,6 +283,10 @@ func runChamber() throws {
     }
     if flag("no-second-crack") { scenario.structure?.secondCracks = false }
     if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
+    if var structure = scenario.structure {
+        applyRateOptions(&structure)
+        scenario.structure = structure
+    }
     let result = try ChamberTest.run(
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: flag("afterburn"),
@@ -882,8 +909,9 @@ func runCloseIn() throws {
                     scenario.structure?.material.steel?.ruptureStrain = rupture
                 }
                 if flag("no-bare") { scenario.structure?.bareBars = false }
-                if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
-                    scenario.structure?.material.fractureRateExponent = exponent
+                if var structure = scenario.structure {
+                    applyRateOptions(&structure)
+                    scenario.structure = structure
                 }
             },
             progress: flag("progress")
@@ -942,6 +970,7 @@ func runImpact() throws {
             device: device, test: test, elementsThroughDepth: layers, duration: duration
         ) { model in
             if flag("no-rate") { model.material.rateDependent = false }
+            applyRateOptions(&model)
         }
         let measured =
             test.peak.map { "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm" }
@@ -1058,7 +1087,7 @@ func runSlab() throws {
             flag("held-bearings") ? .bearings(width: 0.0254, holdDown: true) : .lines
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
-            crackAxes: chosenCrackAxes())
+            crackAxes: chosenCrackAxes(), adjust: { applyRateOptions(&$0) })
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""

@@ -1026,6 +1026,7 @@ public final class StructureSolver {
         parameters.crackResidual = material.crackResidual
         parameters.dowelFactor = material.dowelFactor
         parameters.fractureRateExponent = material.fractureRateExponent
+        parameters.tensionRateLaw = material.tensionRateLaw == .modelCode2010 ? 1 : 0
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.barReach = Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak

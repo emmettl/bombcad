@@ -179,6 +179,8 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// this power: 1 scales the whole tension-softening curve with the strength, 0 keeps the
     /// static fracture energy.
     public var fractureRateExponent: Float = 0.5
+    /// With `rateDependent`, the law that raises the tensile strength with strain rate.
+    public var tensionRateLaw: TensionRateLaw = .modelCode2010
     /// Fixed multipliers on strength, such as the design dynamic increase factors of
     /// UFC 3-340-02. They apply on top of `rateDependent`, so normally use one or the other.
     public var concreteRateFactor: Float = 1
@@ -795,6 +797,16 @@ public struct StructureNode: Sendable {
     }
 }
 
+/// How concrete's tensile strength rises with strain rate ε̇ (1/s).
+public enum TensionRateLaw: String, Codable, Sendable, CaseIterable {
+    /// L. J. Malvar and C. A. Ross (1998): (ε̇ / 10⁻⁶)^δ to 1 per second, δ = 1 / (1 + 8 f_c / 10
+    /// MPa), then steeper as the cube root; steeper for weaker concrete.
+    case malvarRoss
+    /// fib Model Code 2010: (ε̇ / 10⁻⁶)^0.018 to 10 per second, then 0.0062 (ε̇ / 10⁻⁶)^(1/3),
+    /// the same for every strength.
+    case modelCode2010
+}
+
 public enum ElementFlag: UInt8, Sendable {
     case empty = 0
     case active = 1
@@ -947,6 +959,7 @@ struct MaterialParameters {
     var crackSofteningAlone: Float = 1
     var dowelFactor: Float = 1
     var fractureRateExponent: Float = 1
+    var tensionRateLaw: UInt32 = 0
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1043,6 +1056,7 @@ extension StructureMaterial {
         crackResidual = try value(.crackResidual, crackResidual)
         dowelFactor = try value(.dowelFactor, dowelFactor)
         fractureRateExponent = try value(.fractureRateExponent, fractureRateExponent)
+        tensionRateLaw = try value(.tensionRateLaw, tensionRateLaw)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)

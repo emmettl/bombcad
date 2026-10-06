@@ -185,6 +185,7 @@ struct MaterialParameters {
     float crackSofteningAlone;  // decay strain of a crack no bar crosses: one element's band
     float dowelFactor;          // multiplier on the bars' dowel action
     float fractureRateExponent; // fracture energy grows as the tensile rate factor to this power
+    uint tensionRateLaw;        // 0: Malvar and Ross (1998); 1: fib Model Code 2010
 };
 
 constant uint maxMaterials = 8;
@@ -661,6 +662,13 @@ static inline float compressionIncrease(float rate, constant MaterialParameters 
 static inline float tensionIncrease(float rate, constant MaterialParameters &m) {
     if (m.concreteRateTension <= 0.0f) {
         return 1.0f;
+    }
+    if (m.tensionRateLaw == 1u) {
+        // fib Model Code 2010 (5.1.11.1): the same for every strength, gentler past 10 per second.
+        if (rate <= 10.0f) {
+            return pow(max(rate, 1e-6f) / 1e-6f, 0.018f);
+        }
+        return 0.0062f * pow(rate / 1e-6f, 1.0f / 3.0f);
     }
     if (rate <= 1.0f) {
         return pow(max(rate, 1e-6f) / 1e-6f, m.concreteRateTension);

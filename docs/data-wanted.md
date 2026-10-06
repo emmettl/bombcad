@@ -50,7 +50,7 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Eight values in the code were written from memory and should be checked against the original.
+Nine values in the code were written from memory and should be checked against the original.
 
 - **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
   Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
@@ -92,6 +92,10 @@ Eight values in the code were written from memory and should be checked against 
   34 (2007). Needed: how the fracture energy grows with strain rate beside the tensile
   strength, taken as about twice static where the strength is five times
   (`fractureRateExponent` 0.5).
+
+- **The fib Model Code 2010's tensile rate law** (section 5.1.11.1), now the default: taken as
+  (ε̇ / 10⁻⁶)^0.018 to 10 per second and 0.0062 (ε̇ / 10⁻⁶)^(1/3) above, for every strength.
+  Needed: the law as printed, and whether the code gives one for fracture energy.
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.

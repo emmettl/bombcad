@@ -361,7 +361,8 @@ that depends on a running average (50 steps) of the element's effective strain r
 | Material and mode    | Factor                                                      | Source                    |
 |----------------------|-------------------------------------------------------------|---------------------------|
 | Concrete compression | (ε̇ / 30×10⁻⁶)^(1.026 α), α = 1 / (5 + 9 f_c / 10 MPa), below 30 /s; cube-root law above | CEB-FIP Model Code 1990 |
-| Concrete tension     | (ε̇ / 10⁻⁶)^δ, δ = 1 / (1 + 8 f_c / 10 MPa), below 1 /s; cube-root law above | Malvar and Ross, 1998 |
+| Concrete tension     | (ε̇ / 10⁻⁶)^0.018 below 10 /s; 0.0062 (ε̇ / 10⁻⁶)^(1/3) above | fib Model Code 2010 (default) |
+| Concrete tension, as an option | (ε̇ / 10⁻⁶)^δ, δ = 1 / (1 + 8 f_c / 10 MPa), below 1 /s; cube-root law above | Malvar and Ross, 1998 |
 | Steel yield          | (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa             | Malvar and Crawford, 1998 |
 | Steel ultimate       | (ε̇ / 10⁻⁴)^α, α = 0.019 − 0.009 f_y / 414 MPa             | Malvar and Crawford, 1998 |
 
@@ -379,10 +380,16 @@ The factor raises strength without changing stiffness. Two details matter:
   its static strength, was held on by eight times the fracture energy and never flew; the
   contest slab, the chamber and the beams struck by a falling weight move by under 1 mm either
   way.
-- On Saatci's drop-weight impacts the **tensile law decides the result**: with it the beams
-  with stirrups peak a quarter short of the measurements, and without it, or with the fib
-  Model Code 2010's milder law, the beam without stirrups breaks under a drop it survived (see
-  [Validation](validation.md#beams-struck-by-a-falling-weight)). Malvar and Ross's law stays.
+- The **tensile law** (`tensionRateLaw`) decides Saatci's drop-weight impacts. Malvar and
+  Ross's law, steeper above 1 per second and the steeper the weaker the concrete (2.7 times at
+  7 per second for 47 MPa concrete, 9 times at 100 per second for 25 MPa), left the beams with
+  stirrups a quarter too stiff on every mesh and the close-in slabs' spall needing 17–21 MPa,
+  where spalling tests find 10–15. The fib Model Code 2010's (1.3 times at 5 per second, 2.9 at
+  100) brings the beams within −8% to +16%, the contest slab from 93% to 97% of its peak and
+  the close-in slab further down; but under it a beam without stirrups breaks, splitting along
+  its bars, under a drop the test beam survived (see
+  [Validation](validation.md#beams-struck-by-a-falling-weight)). The Model Code's is the
+  default; it errs, there, towards damage.
 
 Until the fix described in step 14 below, the compressive law above 30 per second omitted the
 normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
@@ -758,8 +765,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Future work
 
-- **The tensile strain-rate law** between 1 and 10 per second, where Malvar and Ross's law
-  makes impacted beams too stiff and milder laws make a beam without stirrups too weak.
+- **The tensile strain-rate law** between 1 and 100 per second, where Malvar and Ross's law
+  makes impacted beams too stiff and the Model Code's, now the default, makes a beam without
+  stirrups too weak in shear; and whether aggregate interlock should rise with the tensile
+  strength's factor, as it does, which is what carries that beam's shear.
 - **More validation**: a slab with steel in both faces, a wall loaded by the air solver rather
   than a prescribed pressure, a member that failed in shear, and a close-in test with spall.
   Candidates include the high-strength slabs of the same contest (Thiagarajan et al., 2015) and
@@ -807,6 +816,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   written from memory and has not been checked against a copy.
 - J. B. Mander, M. J. N. Priestley and R. Park, "Theoretical stress-strain model for confined
   concrete", *Journal of Structural Engineering* 114(8), 1988. Strain at peak under confinement.
+- fib, *fib Model Code for Concrete Structures 2010*, Ernst & Sohn, 2013, section 5.1.11.1:
+  the tensile strength's increase with strain rate, used by default. Written from memory.
 - L. J. Malvar and C. A. Ross, "Review of strain rate effects for concrete in tension",
   *ACI Materials Journal* 95(6), 1998.
 - L. J. Malvar and J. E. Crawford, "Dynamic increase factors for steel reinforcing bars",

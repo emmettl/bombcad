@@ -353,7 +353,10 @@ peak at 154 mm (solids 121 mm); with static strengths the shells fail (the solid
 143 mm). The shells rebound about as
 little as the specimen did, where the solid elements rebound twice as far.
 
-**The presets, against the solid elements.**
+**The presets, against the solid elements.** These, and the tall layouts below, were run with
+Malvar and Ross's tensile strain-rate law, the default before the fib Model Code 2010's (see the
+[concrete model](concrete-model.md#strain-rate-effects)); collapse is chaotic, and they have not
+been repeated.
 
 | Case | Shells and beams | Solid elements |
 |---|---|---|
