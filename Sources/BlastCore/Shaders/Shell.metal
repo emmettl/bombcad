@@ -68,14 +68,35 @@ struct ShellUniforms {
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
 // the removal width where no intact bars cross the plane; where they do, the slip at which the
 // bars, kinking across the crack over their debonded length, reach their rupture strain.
+static inline float debondedLength(constant MaterialParameters &m, constant ShellUniforms &u) {
+    // The crack spacing (twice `barReach` elements), or the crack band where rupture is judged
+    // locally.
+    return m.barReach > 0.0f ? 2.0f * m.barReach * u.elementSize : m.crackBand;
+}
+
 static inline float slipLimit(bool bars, constant MaterialParameters &m, constant ShellUniforms &u) {
     if (bars && m.steelPoints > 0) {
-        // The debonded length is the crack spacing (twice `barReach` elements), or the crack
-        // band where rupture is judged locally.
-        float debonded = m.barReach > 0.0f ? 2.0f * m.barReach * u.elementSize : m.crackBand;
-        return sqrt(2.0f * m.steelStrain[m.steelPoints - 1]) * debonded;
+        return sqrt(2.0f * m.steelStrain[m.steelPoints - 1]) * debondedLength(m, u);
     }
     return m.erosionStrain * u.elementSize;
+}
+
+// Shear stress that bars crossing a crack carry as it slides: dowel action, 1.65 rho
+// sqrt(fc fy) for a ratio rho of bars across the crack (Rasmussen, 1963), as in the solid
+// elements, until the bars have kinked past rupture across it (`slide` is the slide over the
+// debonded length), when the element is also removed. Kinking itself, the bars' tension
+// leaning along the slide, needs no term of its own here: a shell that slides across a crack
+// tilts (or, in its plane, shears) as a whole, and its bar layers' tension turns with it.
+static inline float barShear(float crossing, float slide, constant MaterialParameters &m) {
+    if (crossing <= 0.0f || m.steelPoints == 0) {
+        return 0.0f;
+    }
+    float yield = m.steelStress[0];
+    float stretch = sqrt(1.0f + slide * slide) - 1.0f;
+    if (stretch - yield / m.steelModulus > m.steelStrain[m.steelPoints - 1]) {
+        return 0.0f;
+    }
+    return 1.65f * crossing * sqrt(m.compressiveStrength * yield);
 }
 
 struct BeamElement {
@@ -242,8 +263,8 @@ struct LayerOutcome {
 // across a cracked plane is carried by aggregate interlock, as in-plane shear is.
 static inline float3 shellConcrete(float3 strain, float2 transverse, float instantaneous, float dt,
                                    thread ShellLayer &state, constant MaterialParameters &m,
-                                   constant ShellUniforms &u, bool reinforced, thread float2 &shear,
-                                   thread LayerOutcome &outcome) {
+                                   constant ShellUniforms &u, bool reinforced, float2 crossing, float2 lengths,
+                                   bool punched, thread float2 &shear, thread LayerOutcome &outcome) {
     state.rate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.rate);
     float2 history = state.crack;
     float worst = max(history.x, history.y);
@@ -328,15 +349,28 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     float width = max(opened, 0.0f) * m.crackBand;
     float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
     float inPlane = m.mu * 2.0f * strain.z;
+    // Bars across a crack add dowel action to the interlock: those along the axis the crack
+    // lies across, sliding by the shear strain over the element's length.
+    float debonded = debondedLength(m, u);
     if (opened > 0.0f) {
-        inPlane = clamp(m.shearRetention * inPlane, -interlock, interlock);
+        int across = history.x >= history.y ? 0 : 1;
+        float slide = fabs(2.0f * strain.z) * lengths[across] / max(debonded, lengths[across]);
+        float limit = interlock + barShear(crossing[across], slide, m);
+        inPlane = clamp(m.shearRetention * inPlane, -limit, limit);
     }
     for (int j = 0; j < 2; ++j) {
         float stress = u.shearFactor * m.mu * transverse[j];
         float across = history[j] - onset;
-        if (across > 0.0f) {
+        float slide = fabs(transverse[j]) * lengths[j] / max(debonded, lengths[j]);
+        if (punched) {
+            // Punched through at a column head: the concrete's cone has sheared off, and only
+            // the bars crossing it hold the slab.
+            float limit = barShear(crossing[j], slide, m);
+            stress = clamp(m.shearRetention * stress, -limit, limit);
+        } else if (across > 0.0f) {
             float w = across * m.crackBand;
-            float limit = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * w);
+            float limit = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * w)
+                + barShear(crossing[j], slide, m);
             stress = clamp(m.shearRetention * stress, -limit, limit);
         }
         shear[j] = stress;
@@ -496,6 +530,13 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           const device int *patchOfTile [[buffer(20)]],
                           const device Cell *fineAir [[buffer(21)]],
                           const device uchar *fineAirMask [[buffer(22)]],
+                          const device float *punchStrength [[buffer(23)]],
+                          device uchar *punched [[buffer(24)]],
+                          const device int *ringOfElement [[buffer(25)]],
+                          const device uint *ringStart [[buffer(26)]],
+                          const device uint *ringMember [[buffer(27)]],
+                          device float *ringShearOut [[buffer(28)]],
+                          const device float *ringShearBefore [[buffer(29)]],
                           uint lane [[thread_position_in_grid]]) {
     // Four threads per element, one for each of its in-plane points, in adjacent lanes (a quad);
     // their shares of the forces are summed across the quad at the end.
@@ -564,6 +605,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
     uint n = u.layers;
     float areaWeight = 0.25f * a * b;
     bool remove = false;
+    bool punching = false;
+    float meanShear = 0.0f;
     float worstDisplay = 0.0f;
     // Each bar layer's plastic strain, averaged over the element, for its neighbours' rupture.
     float barMean[8] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -602,6 +645,23 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float3 p2 = float3(0.0f);
         float3 q2 = float3(0.0f);
         float2 shearSum = float2(0.0f);
+        // Intact bars per unit area of concrete along each axis, for the shear they carry
+        // across cracks. Once punched, only the bars in the bottom face (away from the top, the
+        // face a slab hogs towards over its column) count: the top bars are pushed up against
+        // their cover and rip it off, while the bottom bars run on over the column and hold.
+        bool punchedThrough = punched[e] != 0;
+        float2 crossing = float2(0.0f);
+        for (uint s = 0; s < el.barCount && s < u.barSlots; ++s) {
+            float4 layout = barLayout[e * u.barSlots + s];
+            if (punchedThrough && layout.x > 0.0f) {
+                continue;
+            }
+            for (uint j = 0; j < 2; ++j) {
+                if (layout[1 + j] > 0.0f && fabs(bars[((e * 4 + g) * u.barSlots + s) * 2 + j].plastic) < 1e8f) {
+                    crossing[j] += layout[1 + j] / t;
+                }
+            }
+        }
         float2 tornEverywhere = float2(1.0f);
         float2 slidEverywhere = float2(1.0f);
         bool destroyedEverywhere = true;
@@ -627,7 +687,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             LayerOutcome outcome;
             float3 stress = m.materialModel == 0
                 ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
-                : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, shear, outcome);
+                : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, crossing,
+                                float2(a, b), punchedThrough, shear, outcome);
             storeLayer(layers[slot], state);
             rateSum += state.rate;
             worstDisplay = max(worstDisplay, state.display);
@@ -652,6 +713,10 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         for (uint s = 0; s < el.barCount && s < u.barSlots; ++s) {
             float4 layout = barLayout[e * u.barSlots + s];
             float zeta = layout.x;
+            // Punched, the top bars have ripped out of their cover and hold nothing.
+            if (punchedThrough && zeta > 0.0f) {
+                continue;
+            }
             for (uint j = 0; j < 2; ++j) {
                 float area = layout[1 + j];
                 if (area <= 0.0f) {
@@ -709,6 +774,26 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         // with no bars left at all, and any crack past the hard limit.
         bool torn = (tornEverywhere.x > 0.0f && barsIntact.x == 0.0f) || (tornEverywhere.y > 0.0f && barsIntact.y == 0.0f);
         bool bare = !anyBars || (barsIntact.x + barsIntact.y == 0.0f);
+        // Punching: the ring of elements around a column head punches through together when
+        // their mean shear through the thickness, averaged around the ring (as of the previous
+        // substep), passes the connection's punching strength, raised with strain rate as
+        // tension is. From then on they are held only by their bars (above).
+        meanShear = length(shearSum) / (areaWeight * t);
+        int ring = ringOfElement[e];
+        if (ring >= 0 && !punchedThrough && m.materialModel != 0) {
+            float sum = 0.0f;
+            uint first = ringStart[ring];
+            uint last = ringStart[ring + 1];
+            for (uint r = first; r < last; ++r) {
+                sum += ringShearBefore[ringMember[r]];
+            }
+            float average = sum / float(max(last - first, 1u));
+            punching = average > punchStrength[e] * tensionIncrease(rateSum / float(n), m);
+        }
+        if (punchedThrough) {
+            slidEverywhere = float2(1.0f);
+            worstDisplay = max(worstDisplay, 0.9f);
+        }
         // Concrete cracked through its thickness fails in direct shear once it has slipped
         // through the thickness, over the element's own length, by the slip limit.
         float2 slip = abs(transverse) * float2(a, b);
@@ -768,6 +853,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         directorForce[c] = quad_sum(directorForce[c]);
     }
     remove = quad_max(remove ? 1.0f : 0.0f) > 0.0f;
+    punching = quad_max(punching ? 1.0f : 0.0f) > 0.0f;
+    meanShear = 0.25f * quad_sum(meanShear);
     worstDisplay = quad_max(worstDisplay);
     for (uint s = 0; s < 8; ++s) {
         barMean[s] = quad_sum(barMean[s]);
@@ -786,6 +873,10 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         }
     }
     display[e] = worstDisplay;
+    if (punching) {
+        punched[e] = 1;
+    }
+    ringShearOut[e] = remove ? 0.0f : meanShear;
     ShellForces out;
     if (remove) {
         flags[e] = elementFailing;
@@ -968,7 +1059,8 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
 // principal tension of the axial stress with the shear.
 static inline float beamConcrete(float axial, float2 shear, float instantaneous, float dt, float confinement,
                                  bool reinforced, thread ShellLayer &state, constant MaterialParameters &m,
-                                 constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
+                                 constant ShellUniforms &u, float crossing, float slide, thread float2 &shearStress,
+                                 thread LayerOutcome &outcome) {
     state.rate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.rate);
     float history = state.crack.x;
     float tensionFactor = state.crackingFactor;
@@ -1012,7 +1104,9 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
     float opened = history - onset;
     if (opened > 0.0f) {
         float width = opened * m.crackBand;
-        float limit = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+        // The bars along the beam cross the crack and add their dowel action (see the shells).
+        float limit = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width)
+            + barShear(crossing, slide, m);
         float carried = m.shearRetention * length(shearStress);
         if (carried > 0.0f) {
             shearStress *= min(carried, limit) / length(shearStress);
@@ -1142,6 +1236,16 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     bool failed = false;
     float worst = 0.0f;
     float rateSum = 0.0f;
+    // Intact bars along the beam per unit area of its section, for the shear they carry across
+    // cracks, and how far a crack has slid over their debonded length.
+    float crossing = 0.0f;
+    for (uint c = 0; c < beam.barCount && c < maxBeamBars; ++c) {
+        if (fabs(bars[e * maxBeamBars + c].plastic) < 1e8f) {
+            crossing += barLayout[e * maxBeamBars + c].z / area;
+        }
+    }
+    float2 meanShear = float2(hm[i2] + delta2[k] + dot(hm, delta2), hm[i3] + delta3[k] + dot(hm, delta3));
+    float slide = length(meanShear) * L / max(debondedLength(m, u), L);
     for (uint a = 0; a < beamFibres; ++a) {
         for (uint b = 0; b < beamFibres; ++b) {
             float eta = beamFibrePoints[a];
@@ -1160,7 +1264,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             float stress = m.materialModel == 0
                 ? beamVonMises(axial, shear, state, m, u, shearStress, outcome)
                 : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
-                               state, m, u, shearStress, outcome);
+                               state, m, u, crossing, slide, shearStress, outcome);
             storeLayer(fibres[slot], state);
             rateSum += state.rate;
             worst = max(worst, state.display);

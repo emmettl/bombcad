@@ -284,10 +284,10 @@ Taller buildings, meshed as shells and beams of 0.25 m on 0.5 m air
 
 | Layout | Elements | Air | 4 s simulated in |
 |---|---|---|---|
-| Eight-storey frame, 28 m, 500 kg | 31,344 | 0.7 million cells | 75 s (19× slower than real time) |
-| Twelve-storey tower with a core, 42 m, 500 kg | 94,532 | 1.0 million cells | 191 s (48×) |
+| Eight-storey frame, 28 m, 4,000 kg | 31,344 | 0.7 million cells | 84 s (21× slower than real time) |
+| Twelve-storey tower with a core, 42 m, 4,000 kg | 94,532 | 1.0 million cells | 226 s (56×) |
 
-The air is frozen after 0.8 to 1.1 s; the rest is the structure alone, falling.
+The air is frozen after 1.2 to 1.3 s; the rest is the structure alone, falling.
 
 ## The slab benchmark
 

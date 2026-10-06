@@ -98,7 +98,8 @@ with the stress through the thickness zero:
   E, and a diagonal crack through the thickness from the principal tension of each axis's
   normal stress with the transverse shear across it;
 - shear across a cracked plane, in the plane and through the thickness, is carried by aggregate
-  interlock;
+  interlock, and by the dowel action of the intact bars that cross it, 1.65 ρ √(f<sub>c</sub>
+  f<sub>y</sub>) for a ratio ρ of bars across the crack (Rasmussen), as in the solid elements;
 - there is no confinement, since a plate in plane stress is free through its thickness.
 
 The planes are the element's own axes, as the solids' lattice planes were, and there is no
@@ -112,7 +113,33 @@ the same way.
 
 A beam's fibres crack across the beam, from their axial strain or the principal tension of axial
 stress with shear, and are confined by the column's ties: half the tie ratio times the bars'
-yield stress, as lateral pressure.
+yield stress, as lateral pressure. Shear across a cracked fibre is carried by interlock and by
+the dowel action of the bars along the beam.
+
+The solid elements' bars also resist sliding by kinking: their tension, leaning along the
+slide, given as a term of its own. Shells and beams need none. A shell that slides across a
+crack tilts (or, in its plane, shears) as a whole, so its bar layers' tension already turns
+with it; adding the term as well counted it twice, and after a slab punched its bars hung it
+back up to more than it had carried before punching. The bars' rupture by kinking is kept:
+dowel action ends, and the element is removed, once a crack has slid by the slip limit below.
+
+**Punching.** Where a slab meets a column, the ring of slab elements touching the column's
+footprint punches as one. Each step the mean shear through their thickness, averaged around
+the ring, is compared with the connection's punching strength from Eurocode 2 (EN 1992-1-1,
+6.4.4): v = 0.18 k (100 ρ f<sub>c</sub>)<sup>1/3</sup> MPa, at least 0.035 k<sup>1.5</sup>
+f<sub>c</sub><sup>1/2</sup>, with k = 1 + √(200 / d) (d in mm) at most 2, on the control
+perimeter u<sub>1</sub> = 2 (c<sub>1</sub> + c<sub>2</sub>) + 4π d two effective depths from
+the column's face. The ring carries the same force through a perimeter through its elements'
+centres, 2 (c<sub>1</sub> + c<sub>2</sub>) + 4 s for elements of side s, and the whole
+thickness t, so it punches at a mean shear of v u<sub>1</sub> d / (u t), raised with strain rate
+as the tensile strength is. The tension face is taken as the top, towards which a slab hogs
+over its column; d is to its outermost bars and ρ the geometric mean of its bars each way, at
+most 2%. Once punched, the ring's elements lose the concrete's share of their shear through
+the thickness, and their top bars, pushed up against their cover, rip out and carry nothing;
+the bottom bars, running on over the column, hold the slab by dowel action and by hanging it
+as the ring tilts, until they have slid by the slip limit and the ring is removed. A punched
+ring is drawn at 90% damage. 0.18 is Eurocode 2's characteristic coefficient, so the strength
+is a little below the mean of tests.
 
 **Bars** follow the cyclic steel law and strain-rate factors of the solid elements. In shells
 they rupture when their plastic strain, averaged along the bars over the debonded length (from
@@ -241,6 +268,8 @@ less stiffly, bend more.
 | The same beam meshed with beams | 1–2% above section analysis on 50 and 25 mm elements |
 | Two-storey frame under its own weight | Stands, sagging a few millimetres, nothing removed |
 | Two plates thrown together | Turn back at one element apart; momentum conserved |
+| One shell cracked through its thickness and slid across the crack, with and without 1% of bars | The bars add 2.00 MPa, against 2.02 MPa from Rasmussen's dowel formula |
+| 2.4 m square slab, 200 mm thick, on a 300 mm column, under rising pressure, on 100 and 75 mm elements | Punches at 547 and 535 kN, against 575 kN from Eurocode 2, with nothing removed before; the bottom bars then hang it up to about the same load again by some 50 mm of drop, before rupturing, and the ring comes away |
 | Block of solid elements thrown at a shell plate | Bounces off; momentum conserved within 10⁻⁶; passes through without contact |
 | The block dropped onto a shell slab | Comes to rest on it |
 | Free shell wall closing a shock tube | Gains the air's impulse within 2% |
@@ -278,17 +307,20 @@ little as the specimen did, where the solid elements rebound twice as far.
 | Two-storey frame, 250 kg, over 3 s | Blasted column destroyed; both floors sag towards it, then collapse fully with the columns by 3 s | Stands: 8 mm, nothing removed |
 
 The two tall layouts are meshed with shells and beams only, since solid elements would be far
-too many, so they share the shells' readiness to collapse. Run for 4 s on 0.5 m air:
+too many. Run for 4 s on 0.5 m air, with dowel action and punching:
 
-| Layout | 250 kg | 350 kg | 500 kg | 1,000 kg |
+| Layout | 500 kg | 1,000 kg | 2,000 kg | 4,000 kg (the layouts' charge) |
 |---|---|---|---|---|
-| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 120 mm and stands | Loses the front column; the floors above bridge it | The floors tear from their columns one after another, from 1 to 3 s, and fall onto the ground floor; most columns are left standing bare | Most ground-floor columns snap in 0.5 s; collapses |
-| Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses the front column; the core and floors bridge it | | The front bays of every floor fold down about the core's face by 1.5 s; the rest follows by 4 s | Collapses |
+| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.9 m and stands; 9 elements removed | The first floor punches off its columns and drops; the rest stands | The same | The floors punch through one after another and fall; the columns, stripped, splay outwards |
+| Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses its front column; the core and floors bridge it | The same, the lowest floor sagging | The lowest floor drops at the front; the rest stands | The floors punch off their columns and pancake; the core goes over; the columns are left standing bare |
 
-The way they fall, the slabs sliding off columns that stay up, is the slip rule at the column
-heads (limitation 4) at work: flat slabs without steel through the columns do fail like that,
-but the rule has not been compared with a test, and with solid elements, which have dowel
-action and kinking, the two-storey frame stands at charges that bring its shells down.
+Before dowel action and punching, the eight-storey frame stood at 250 kg and fell at 500 kg,
+and the tower fell at 500 kg: the blasted columns, as beams, sheared through, and slabs slid
+off their columns by the general slip rule. With the bars' dowel action the columns survive
+what broke them, and a collapse now starts with punching. Dowel action is Rasmussen's
+strength for a bar with plenty of concrete around it; a column's bars, 40 mm from its face,
+would split their cover first, so the columns are probably too strong in shear now (see
+limitation 4), and so are the solid elements'.
 
 None of these has been compared with a test. The solid elements' column was measured after
 their bars were made to resist sliding across cracks and to hold cracked sections together
@@ -296,9 +328,9 @@ their bars were made to resist sliding across cracks and to hold cracked section
 with the stress until they open (see [Cracking](concrete-model.md#cracking)); before the
 first, the solid building's front wall was pushed in 675 mm at 500 kg and part of the frame's
 first floor fell at 250 kg, and with cracks on the lattice planes the front wall was pushed in
-225 mm and the three-storey building lost 1,505 elements. The shells have no dowel action or kinking yet, so the two models now differ most
-where a section cracks through and slides: the frame shows how far apart two reasonable
-models of a collapse can end up.
+225 mm and the three-storey building lost 1,505 elements. Until shells and beams were given
+the bars' dowel action and slab–column joints a punching check, the shell frame fell at
+250 kg, where the solid elements stood at 1,000 kg; now it stands at 250 kg too (below).
 
 ## Limitations
 
@@ -310,8 +342,16 @@ models of a collapse can end up.
 3. **Plane stress.** There is no stress through a shell's thickness: no confinement, no spall or
    scabbing, no punching through the thickness. Close to a charge, where those matter, the
    solid elements are the better model.
-4. **Direct shear and punching are a simple slip rule**, with a bar-kinking limit that has not
-   been compared with a test. The column heads are rigid patches the size of the column.
+4. **Direct shear is a simple slip rule**, with a bar-kinking limit that has not been compared
+   with a test, and **dowel action is Rasmussen's** for a bar well embedded in concrete. Bars
+   near a face, as a column's and a slab's are, split their cover before they reach it, so
+   dowel action, and with it the shear strength of cracked columns, is probably overestimated;
+   the solid elements share this. **Punching follows Eurocode 2's strength**, checked on the average shear around
+   a column head, with no allowance for an eccentric load (an edge or corner column, or a
+   blast from one side) and the tension face taken as the top. What holds a slab after it has
+   punched, its bottom bars, recovers about the punching load by 50 mm of drop in the one
+   check made, which may be high; no punching test, before or after punching, has been run.
+   The column heads are rigid patches the size of the column.
 5. **More flexible than measured** on the one test: 15% over the measured peak, against 4% for
    the solid elements.
 6. **Debris is crude.** Contact spheres are as large as the elements, 250 mm by default, and the
@@ -327,7 +367,7 @@ models of a collapse can end up.
 
 - **Contact that knows the shells' thickness**, within the shells and between shells and solid
   elements.
-- **A punching model** for slab–column joints in place of the slip rule.
+- **Punching against a test**, before and after punching, and with an eccentric load.
 
 ## Sources
 

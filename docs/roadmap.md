@@ -76,18 +76,24 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 ### Then scale and scope
 
-7. **Contact that knows the shells' thickness.** (Done: shells and solids together, tied
+7. **Shells and beams that hold together like the solids.** (Done: the bars' dowel action in
+   shells and beams, and punching at slab–column joints on Eurocode 2's strength, after which
+   the slab hangs on its bottom bars; the shell frame now stands where the solid one does at
+   250 kg, and the tall layouts need 4,000 kg to come down. Dowel action, Rasmussen's for a
+   well-embedded bar, is probably too strong for bars near a face; see the
+   [shell model](shell-model.md#limitations).)
+8. **Contact that knows the shells' thickness.** (Done: shells and solids together, tied
    through the thickness, three times faster than all solid elements on the single-storey
    building with only its front wall solid, and in contact with each other once anything has
    failed; see the [shell model](shell-model.md#shells-and-solids-together).)
-8. **Joints within materials**: bearings that separate; masonry's joints on coarse elements
+9. **Joints within materials**: bearings that separate; masonry's joints on coarse elements
    and in shells, as strengths that differ across and along the bed joints. (Done: several
    materials in one body; joints between materials that open at the bond of mortar to
    concrete; structural steel and annealed glass, the glass as shells in panes; and masonry
    as units and mortar joints in running bond, which open at the bond and slide by friction,
    on solid elements no more than half a course high: see the
    [concrete model](concrete-model.md#masonry-as-units-and-mortar-joints).)
-9. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
+10. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
    blocks of 4 × 4 × 4 cells that follow the shock, conservative across its edge, with its own
    outline of blocks and structure, loading a deformable structure from the fine cells beside
    its faces, and carrying afterburning's fuel and oxygen; refined by 2, a grid gives the peaks of one twice as

@@ -683,7 +683,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    chosen on one sensitivity case of the slab, not measured. Shear failures remain the least
    trustworthy predictions the model makes.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
-   cross them, each from a published formula, not fitted. Earlier versions of the slab sat
+   cross them, each from a published formula, not fitted. Dowel action is Rasmussen's for a bar
+   well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
+   cover first, so it is probably overestimated there. The kinking term may also count again
+   tension that the element's own shear already turns: in shells it did, and was dropped (see
+   the [shell model](shell-model.md#materials)); in the solid elements this has not been
+   checked. Earlier versions of the slab sat
    near a shear failure; since the errors of step 14 were fixed it does not. The chamber test
    depends on these terms, but no test of a member that failed in shear has been run.
 5. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm

@@ -22,7 +22,7 @@ It is a study of the numerics and the performance, not a design tool.
 
 ![A two-storey frame's glass façade breaking up 100 ms after 20 kg in the street](docs/glass-facade.png)
 
-![A twelve-storey tower 1.5 s after losing its front columns: the front bays of every floor fold down](docs/twelve-storey.png)
+![A twelve-storey tower 2 s after 4 tonnes beside it: its floors punching off their columns](docs/twelve-storey.png)
 
 ## Download
 
@@ -93,8 +93,8 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | The building with its front wall solid, the rest shells     | 24× slower                   |
 | Three-storey frame with masonry cladding, 160,000 elements  | 60× slower                   |
 | Two-storey frame collapsing over 3 s                        | 11× slower                   |
-| Eight-storey frame collapsing over 4 s, 31,000 shells and beams, 0.5 m air | 19× slower    |
-| Twelve-storey tower collapsing over 4 s, 95,000 shells and beams, 0.5 m air | 48× slower   |
+| Eight-storey frame collapsing over 4 s, 31,000 shells and beams, 0.5 m air | 21× slower    |
+| Twelve-storey tower collapsing over 4 s, 95,000 shells and beams, 0.5 m air | 56× slower   |
 
 Three comparisons with the outside world, all in the [validation notes](docs/validation.md):
 

@@ -418,9 +418,10 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             // 250 mm flat slabs and 450 mm columns with 2.5% of steel, meshed as shells and
             // beams of 0.25 m. The charge stands 3 m from a ground-floor column in the middle
             // of the long face; what it breaks there decides whether the floors above can
-            // bridge the gap or come down onto those below. At 250 kg the frame sways and
-            // stands; at 350 kg it loses that column and the floors above bridge it; at 500 kg
-            // the floors tear from their columns one after another and fall, over 2 to 3 s.
+            // bridge the gap or come down onto those below. At 500 kg it sways 0.9 m and stands;
+            // at 1,000 and 2,000 kg the first floor punches off its columns and drops, and the
+            // rest stands; at 4,000 kg, a truck bomb, the floors punch through one after another
+            // and the frame comes down.
             let column: Float = 0.45
             let storey: Float = 3.5
             let xs: [Float] = [16, 22, 28, 34]
@@ -451,7 +452,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             structure.autoReinforce()
             return Scenario(
                 name: title, domainSize: SIMD3(56, 44, 36), boxes: [],
-                charge: Charge(mass: 500, position: SIMD3(22.2, 11, 1)),
+                charge: Charge(mass: 4000, position: SIMD3(22.2, 11, 1)),
                 gauges: [
                     Gauge("Front column", at: SIMD3(22.2, 13.9, 1.5)),
                     Gauge("Under first floor", at: SIMD3(25, 17, 3)),
@@ -464,7 +465,9 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             // and stair shafts, with a doorway on each floor) in the middle of a 20 m square
             // floor plate, 250 mm flat slabs on twelve perimeter columns of 500 mm with 2.5% of
             // steel, meshed as shells and beams of 0.25 m. The charge stands 3 m from the
-            // middle column of the front face.
+            // middle column of the front face. Up to 2,000 kg the tower loses its front columns
+            // and its lowest floor, and the core and floors above bridge them; at 4,000 kg the
+            // floors punch off their columns and the core goes over.
             let column: Float = 0.5
             let storey: Float = 3.5
             let (x0, x1): (Float, Float) = (18, 38)
@@ -506,7 +509,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             }
             return Scenario(
                 name: title, domainSize: SIMD3(56, 48, 52), boxes: [],
-                charge: Charge(mass: 500, position: SIMD3(x0 + 20.0 / 3 + 0.25, y0 - 3, 1)),
+                charge: Charge(mass: 4000, position: SIMD3(x0 + 20.0 / 3 + 0.25, y0 - 3, 1)),
                 gauges: [
                     Gauge("Front column", at: SIMD3(x0 + 20.0 / 3 + 0.25, y0 - 0.1, 1.5)),
                     Gauge("Core, front", at: SIMD3(28, d0 - 0.1, 1.5)),

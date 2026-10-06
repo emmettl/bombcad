@@ -276,8 +276,8 @@ shock, and the drag and pressure-gradient push on loose debris.
    other; since bars resist sliding across cracks it stands at its old 250 kg charge, and
    since cracks turn with the stress until they open it stands at 1,000 kg too (90 mm; 98 mm
    with a second crack), so the preset now uses 2,000 kg, at which it falls. The eight- and
-   twelve-storey layouts, meshed with shells and beams, fall at 500 kg (see the
-   [shell model](shell-model.md#validation)). No outcome has been compared with anything.
+   twelve-storey layouts, meshed with shells and beams, fall at 4,000 kg, their floors
+   punching off their columns (see the [shell model](shell-model.md#validation)). No outcome has been compared with anything.
 
    Repeatability took three fixes for races between GPU threads. An element failing in a pass
    was seen by some of its neighbours in that pass and not others; a failing element is now

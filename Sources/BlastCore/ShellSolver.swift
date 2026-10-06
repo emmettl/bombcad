@@ -207,6 +207,8 @@ public final class ShellSolver {
     private let barBuffer: MTLBuffer
     private let forceBuffer: MTLBuffer
     private let neighbourBuffer: MTLBuffer
+    /// Punching at column heads (see `PunchingBuffers`).
+    private let punching: PunchingBuffers
     /// Each bar layer's plastic strain per element, written in alternate substeps to one buffer
     /// while the other, from the substep before, is read, so that rupture can be judged over a
     /// debonded length.
@@ -314,6 +316,7 @@ public final class ShellSolver {
         neighbourBuffer = try buffer(elements * 16, "shell neighbours")
         let neighbours = neighbourBuffer.contents().bindMemory(to: SIMD4<Int32>.self, capacity: elements)
         for (e, element) in mesh.elements.enumerated() { neighbours[e] = element.neighbours }
+        punching = try PunchingBuffers(device: device, mesh: mesh)
         barPlasticBuffers = [
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, even"),
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, odd"),
@@ -442,8 +445,10 @@ public final class ShellSolver {
         for buffer in [beamFibreBuffer, beamBarBuffer, beamForceBuffer, beamDisplayBuffer] {
             memset(buffer.contents(), 0, buffer.length)
         }
-        for buffer in [layerBuffer, barBuffer, forceBuffer, displayBuffer, contactForceBuffer]
-            + barPlasticBuffers
+        for buffer in [
+            layerBuffer, barBuffer, forceBuffer, displayBuffer, contactForceBuffer, punching.punched,
+        ]
+            + barPlasticBuffers + punching.shear
         {
             memset(buffer.contents(), 0, buffer.length)
         }
@@ -524,6 +529,11 @@ public final class ShellSolver {
     }
 
     public func position(_ index: Int) -> SIMD3<Float> { mesh.positions[index] + node(index).displacement }
+
+    /// Whether an element beside a column head has punched through.
+    public func isPunched(_ element: Int) -> Bool {
+        punching.punched.contents().load(fromByteOffset: element, as: UInt8.self) != 0
+    }
 
     public func flag(_ element: Int) -> ElementFlag {
         ElementFlag(rawValue: flagBuffer.contents().load(fromByteOffset: element, as: UInt8.self)) ?? .eroded
@@ -768,6 +778,13 @@ public final class ShellSolver {
             encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 20)
             encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 21)
             encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 22)
+            encoder.setBuffer(punching.strength, offset: 0, index: 23)
+            encoder.setBuffer(punching.punched, offset: 0, index: 24)
+            encoder.setBuffer(punching.ringOfElement, offset: 0, index: 25)
+            encoder.setBuffer(punching.ringStart, offset: 0, index: 26)
+            encoder.setBuffer(punching.ringMember, offset: 0, index: 27)
+            encoder.setBuffer(punching.shear[substep % 2], offset: 0, index: 28)
+            encoder.setBuffer(punching.shear[1 - substep % 2], offset: 0, index: 29)
             if elementCount > 0 {
                 // Four threads per element, one per in-plane point.
                 encoder.dispatchThreads(
@@ -956,5 +973,56 @@ public final class ShellSolver {
             uniforms.fixedStep = criticalTimeStep
         }
         return uniforms
+    }
+}
+
+/// The GPU's view of punching at column heads: each element's punching strength (zero away from
+/// a column head) and whether it has punched, one byte each; each element's ring around a column
+/// head (or -1) and the rings' members; and each element's mean shear through its thickness,
+/// written in alternate substeps, so that a ring punches on the average over its members.
+struct PunchingBuffers {
+    let strength: MTLBuffer
+    let punched: MTLBuffer
+    let ringOfElement: MTLBuffer
+    let ringStart: MTLBuffer
+    let ringMember: MTLBuffer
+    let shear: [MTLBuffer]
+
+    init(device: MTLDevice, mesh: ShellMesh) throws {
+        let elements = mesh.elements.count
+        func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
+            guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
+                throw BlastError.allocationFailed("\(label) (\(length) bytes)")
+            }
+            buffer.label = label
+            return buffer
+        }
+        strength = try buffer(elements * 4, "shell punching strengths")
+        if !mesh.punching.isEmpty {
+            strength.contents().copyMemory(from: mesh.punching, byteCount: mesh.punching.count * 4)
+        }
+        punched = try buffer(elements, "shell punched")
+        var ringOf = [Int32](repeating: -1, count: elements)
+        var starts: [UInt32] = [0]
+        var members: [UInt32] = []
+        for (r, ring) in mesh.punchingRings.enumerated() {
+            for e in ring { ringOf[e] = Int32(r) }
+            members += ring.map { UInt32($0) }
+            starts.append(UInt32(members.count))
+        }
+        ringOfElement = try buffer(elements * 4, "shell punching ring of element")
+        if !ringOf.isEmpty {
+            ringOfElement.contents().copyMemory(from: ringOf, byteCount: ringOf.count * 4)
+        }
+        ringStart = try buffer(starts.count * 4, "shell punching ring starts")
+        ringStart.contents().copyMemory(from: starts, byteCount: starts.count * 4)
+        ringMember = try buffer(members.count * 4, "shell punching ring members")
+        if !members.isEmpty {
+            ringMember.contents().copyMemory(from: members, byteCount: members.count * 4)
+        }
+        shear = [
+            try buffer(elements * 4, "shell ring shear, even"),
+            try buffer(elements * 4, "shell ring shear, odd"),
+        ]
     }
 }

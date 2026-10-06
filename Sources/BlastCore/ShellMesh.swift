@@ -50,6 +50,11 @@ struct ShellMesh {
     /// column's node where it meets the slab, so that the column bears on the slab over its whole
     /// section instead of at one point.
     var ties: [(slave: UInt32, master: UInt32)] = []
+    /// For each element beside a column head, the mean shear stress through its thickness at
+    /// which the connection punches (see `punchingStrength`); zero for the rest.
+    var punching: [Float] = []
+    /// The ring of elements around each column head, which punches as one.
+    var punchingRings: [[Int]] = []
     /// Breakpoints along each axis.
     var grid: [[Float]] = [[], [], []]
 
@@ -327,6 +332,7 @@ struct ShellMesh {
         // Column heads: where a column meets a slab, the slab's nodes within the column's footprint
         // are tied to the column's node there.
         var tied = Set<UInt32>()
+        var heads: [(master: UInt32, column: Column)] = []
         let masters = Set(beams.flatMap { [$0.nodes.x, $0.nodes.y] })
         for column in columns {
             let k = column.axis
@@ -342,6 +348,7 @@ struct ShellMesh {
                         $0.axis == k && abs(grid[k][nearest($0.mid, k)] - level) < tolerance
                     })
                 else { continue }
+                heads.append((master, column))
                 let centre = positions[Int(master)]
                 for (n, position) in positions.enumerated() {
                     let node = UInt32(n)
@@ -355,6 +362,11 @@ struct ShellMesh {
                 }
             }
         }
+        let punchingHeads = heads.map { (master: $0.master, axis: $0.column.axis, box: $0.column.box) }
+        let strengths = Self.punchingStrengths(
+            elements: elements, heads: punchingHeads, ties: ties, materials: materials)
+        punching = strengths.strengths
+        punchingRings = strengths.rings
         for (key, index) in claimed {
             let offsets: [SIMD4<Int32>] = [
                 SIMD4(0, 0, -1, 0), SIMD4(0, 0, 1, 0), SIMD4(0, 0, 0, -1), SIMD4(0, 0, 0, 1),
@@ -363,6 +375,65 @@ struct ShellMesh {
                 elements[index].neighbours[side] = Int32(claimed[key &+ offset] ?? -1)
             }
         }
+    }
+
+    /// The punching strength of the slab elements around each column head, as the mean shear
+    /// stress through their thickness at which the connection punches, and the ring of elements
+    /// around each head.
+    ///
+    /// Eurocode 2 (EN 1992-1-1, 6.4.4) gives the punching strength of a slab without shear
+    /// reinforcement as v = 0.18 k (100 rho f_c)^(1/3) MPa, at least 0.035 k^1.5 f_c^0.5, with
+    /// k = 1 + sqrt(200 / d) (d in mm) no more than 2, on a control perimeter u1 two effective
+    /// depths d from the column's face: u1 = 2 (c1 + c2) + 4 pi d. The ring of elements touching
+    /// the column's footprint carries the same force through a perimeter u through their
+    /// centres, 2 (c1 + c2) + 4 s for elements of side s, and the slab's whole thickness t, so
+    /// they punch at a mean shear of v u1 d / (u t). The tension face is taken as the top (the
+    /// face towards +axis), where a slab hogs over its column; d is to its outermost bars and rho
+    /// the geometric mean of its bars each way, at most 2%. This is a characteristic strength,
+    /// below the mean of tests.
+    static func punchingStrengths(
+        elements: [Element], heads: [(master: UInt32, axis: Int, box: Box)],
+        ties: [(slave: UInt32, master: UInt32)], materials: [StructureMaterial]
+    ) -> (strengths: [Float], rings: [[Int]]) {
+        var strengths = [Float](repeating: 0, count: elements.count)
+        var rings: [[Int]] = []
+        var claimed = Set<Int>()
+        for head in heads {
+            var ring: [Int] = []
+            var footprint = Set(ties.filter { $0.master == head.master }.map(\.slave))
+            footprint.insert(head.master)
+            let first = (head.axis + 1) % 3
+            let second = (head.axis + 2) % 3
+            let c1 = head.box.size[first]
+            let c2 = head.box.size[second]
+            for (index, element) in elements.enumerated() where element.axis == head.axis {
+                let inside = (0..<4).filter { footprint.contains(element.nodes[$0]) }.count
+                let material = materials[element.material]
+                guard inside > 0, inside < 4, material.model == .concrete else { continue }
+                let t = element.thickness
+                let top = element.bars.filter { $0.x > 0 }
+                let face = top.isEmpty ? element.bars.map { SIMD3(-$0.x, $0.y, $0.z) } : top
+                let outermost = face.map(\.x).max() ?? 0.6
+                let d = 0.5 * t * (1 + outermost)
+                let areas = face.reduce(SIMD2<Float>.zero) { $0 + SIMD2($1.y, $1.z) }
+                let ratio = min((areas.x * areas.y).squareRoot() / d, 0.02)
+                let fc = material.compressiveStrength / 1e6
+                let k = min(1 + (0.2 / d).squareRoot(), 2)
+                let v =
+                    max(0.18 * k * pow(100 * ratio * fc, 1 / 3), 0.035 * pow(k, 1.5) * fc.squareRoot()) * 1e6
+                let s = 0.5 * (element.size.x + element.size.y)
+                let u1 = 2 * (c1 + c2) + 4 * Float.pi * d
+                let perimeter = 2 * (c1 + c2) + 4 * s
+                let strength = v * u1 * d / (perimeter * t)
+                // An element in two rings (columns closer than two elements) stays in the first.
+                guard !claimed.contains(index) else { continue }
+                claimed.insert(index)
+                strengths[index] = strength
+                ring.append(index)
+            }
+            if !ring.isEmpty { rings.append(ring) }
+        }
+        return (strengths, rings)
     }
 
     /// Each node's volume as loose debris: its share of the elements it belongs to.
