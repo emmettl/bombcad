@@ -96,7 +96,7 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Eight-storey frame collapsing over 4 s, 31,000 shells and beams, 0.5 m air | 21× slower    |
 | Twelve-storey tower collapsing over 4 s, 95,000 shells and beams, 0.5 m air | 56× slower   |
 
-Six comparisons with the outside world, all in the [validation notes](docs/validation.md):
+Seven comparisons with the outside world, all in the [validation notes](docs/validation.md):
 
 - **Blast loads.** On air cells of 0.25 m or finer, the impulse on a rigid wall is within 6% of
   the Kingery–Bulmash curves beyond 1.5 m/kg^(1/3), and within 5% everywhere checked on
@@ -122,6 +122,10 @@ Six comparisons with the outside world, all in the [validation notes](docs/valid
   their stirrups: the light drops' peaks are within 10%, the heavy ones' about a quarter short
   (decided by the concrete's tensile strain-rate law), and the beam without stirrups survives
   the light drop and is broken by the heavy one, as in the tests.
+- **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
+  them: the impulse under the charge is 75–90% of the empirical curves', and light charges
+  leave the slab undamaged as in the tests, but the heavy ones leave it a third as far down,
+  barely spalled and not punched through, where the tests' slabs spalled and were holed.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
   the peak pressures on the walls are 0.9 to 1.6 times those measured. With the structure as
   built, so far as the paper says, the roof is about twice as stiff as the paper's own model

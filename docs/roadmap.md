@@ -15,7 +15,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight peak within 10% under light drops and a quarter short under heavy ones; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 7 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight peak within 10% under light drops and a quarter short under heavy ones; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 7 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -61,12 +61,18 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    beams with and without stirrups (2007): light drops within 10%, heavy ones a quarter short
    on the concrete's tensile strain-rate law, the beam without stirrups broken only by the
    heavy drop as in the tests; beams' sectional shear check fails every beam under impact; see
-   [Validation](validation.md#beams-struck-by-a-falling-weight).)
+   [Validation](validation.md#beams-struck-by-a-falling-weight). And Chiquito et al.'s
+   full-scale slabs under 2–15 kg at 0.5 and 1 m (2023): the load within about a fifth of the
+   empirical impulse, but the slab a third as far down as measured, barely spalled, not punched
+   through under the charge, and falling apart once broken where the tests' hung on their bars;
+   see [Validation](validation.md#slabs-under-close-in-charges).)
 
 ### Then the physics the evidence points to
 
 3. **Charge model.** Close-in peaks are under-resolved: a mapped one-dimensional solution
-   would help there; and the products' own composition for the hottest gas. (Done:
+   would help there; and the products' own composition for the hottest gas. Close-in impulse
+   is a fifth short of Kingery–Bulmash at 0.26–0.52 m/kg^(1/3), on any grid and with
+   afterburning: the detonation products' own equation of state (JWL) is the next step. (Done:
    afterburning, limited by mixing and oxygen, and thermally perfect air, which together bring
    the closed-room gas pressure within 8% of UFC 3-340-02 and the incident impulse in the open
    within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those
@@ -83,33 +89,36 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    beam without stirrups breaks under the light drop. Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
-6. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
+6. **Close-in damage**: spalling of the faces, a breach under the charge that converges with
+   the mesh, and bars that outlive the concrete around them (discrete bars), so that a holed
+   slab hangs as the close-in tests' did.
+7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done: compaction of the pores under very high confined pressure, after
    Holmquist, Johnson and Cook; unchecked against a close-in test.)
-7. **Cut cells** between moving solids and the air. Moving walls already push the air (a
+8. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.
 
 ### Then scale and scope
 
-7. **Shells and beams that hold together like the solids.** (Done: the bars' dowel action in
+9. **Shells and beams that hold together like the solids.** (Done: the bars' dowel action in
    shells and beams, and punching at slab–column joints on Eurocode 2's strength, after which
    the slab hangs on its bottom bars; the shell frame now stands where the solid one does at
    250 kg, and the tall layouts need 4,000 kg to come down. Dowel action, Rasmussen's for a
    well-embedded bar, is probably too strong for bars near a face; see the
    [shell model](shell-model.md#limitations).)
-8. **Contact that knows the shells' thickness.** (Done: shells and solids together, tied
+10. **Contact that knows the shells' thickness.** (Done: shells and solids together, tied
    through the thickness, three times faster than all solid elements on the single-storey
    building with only its front wall solid, and in contact with each other once anything has
    failed; see the [shell model](shell-model.md#shells-and-solids-together).)
-9. **Joints within materials**: bearings that separate; masonry's joints on coarse elements
+11. **Joints within materials**: bearings that separate; masonry's joints on coarse elements
    and in shells, as strengths that differ across and along the bed joints. (Done: several
    materials in one body; joints between materials that open at the bond of mortar to
    concrete; structural steel and annealed glass, the glass as shells in panes; and masonry
    as units and mortar joints in running bond, which open at the bond and slide by friction,
    on solid elements no more than half a course high: see the
    [concrete model](concrete-model.md#masonry-as-units-and-mortar-joints).)
-10. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
+12. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
    blocks of 4 × 4 × 4 cells that follow the shock, conservative across its edge, with its own
    outline of blocks and structure, loading a deformable structure from the fine cells beside
    its faces, and carrying afterburning's fuel and oxygen; refined by 2, a grid gives the peaks of one twice as

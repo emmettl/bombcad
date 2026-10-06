@@ -27,6 +27,10 @@ swift run -c release blastbench impact --layers 16
 ```
 
 ```bash
+swift run -c release blastbench closein
+```
+
+```bash
 swift run -c release blastbench validate
 ```
 
@@ -44,6 +48,7 @@ swift run -c release blastbench chamber
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements converge to 105 mm (98%), shells to 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: light drops within 10%, heavy ones about 25% short, the beam without stirrups broken by the heavy drop as in the test | Moderate for bending; low for shear: one test, and coarse meshes far too strong; low for impact, where the concrete's strain-rate law decides it |
+| Close-in charges     | Full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 75–90% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Low: the slab is too strong and spalls too little close in; the load is a fifth short |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 7 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -527,6 +532,117 @@ stirrups is too weak. One beam geometry, one drop height, and only first impacts
 Beam elements with the sectional shear check are not usable under impacts: the check is
 static and breaks every beam. They are usable without it, for bending, where they come within
 a few per cent of the heavy drops.
+
+## Slabs under close-in charges
+
+The fifth structural test, and the first in the open air with the air solver loading the
+structure: full-scale slabs under charges hung 0.5 m and 1 m above them, where the concrete
+spalls and is punched through.
+
+### The test
+
+M. Chiquito, L. M. López, R. Castedo, A. P. Santos and A. Pérez-Caldentey, "Full-scale field
+tests on concrete slabs subjected to close-in blast loads", *Buildings* 13, 2068 (2023), with
+the second campaign's damage on each face from S. Martínez-Almajano et al., *International
+Journal of Computational Methods and Experimental Measurements* 9(3), 201–212 (2021). Both are
+open access. Only the slabs without added protection are used.
+
+| Property  | Value                                                                        |
+|-----------|------------------------------------------------------------------------------|
+| Slabs     | 4.40 × 1.46 × 0.15 m, C25/30 (25 MPa, 20 mm aggregate), 2,300 kg/m³          |
+| Bars      | B500; first campaign (S) 12 mm at 150 mm both faces both ways; second (P) 10 mm at 300 mm towards the charge, 12 mm at 150 mm away from it; about 30 mm cover |
+| Supports  | Laid across concrete blocks 0.9 m high, clamped by steel bars bolted through the slab 0.2 m from each end, 4.00 m apart |
+| Charges   | PG2 (S) or dynamite (P), given as TNT equivalents, hung above the slab's centre |
+| Gauges    | Flush in the tops of blocks beside the slab, level with its top face, 1 m and 2 m from its centre |
+
+| Test  | Charge   | Height | Measured                                                       |
+|-------|----------|--------|----------------------------------------------------------------|
+| S1–S3 | 2 kg     | 1 m    | Minor cracks; 2.5 MPa at 1 m and 0.5 MPa at 2 m (text), peaks of 3.3–3.6 and 0.47–0.58 MPa (its Figure 9) |
+| P1    | 1.74 kg  | 1 m    | Minor cracks; 2.01 MPa at 1 m                                   |
+| P7    | 13.05 kg | 1 m    | Bent at mid-span, left 340 mm down; spalled 3.4% of the top face, 10.3% of the bottom |
+| S4    | 15 kg    | 1 m    | Bent; 3% of the face damaged                                    |
+| P2    | 13.05 kg | 0.5 m  | Punched through under the charge, the bars left across the hole; 510 mm down; spalled 8.2% and 18.6% |
+| S5    | 15 kg    | 0.5 m  | Punched through; 7% damaged                                     |
+
+Assumed: the height is to the charge's centre (the charges were spheres and rounded cubes);
+the clamps are hinges that hold the slab down, and lengthwise at mid-depth, on the bolt lines,
+its ends resting on the blocks behind them; the gauges' blocks are 0.55 m long, read off a
+figure. The concrete's strength is the class's minimum, as the papers give it.
+
+### The model
+
+`CloseInSlabTest.swift`: air cells of 50 mm over the whole set-up (6.8 × 6.45 × 3 m, the
+ground reflecting), the blocks rigid, the charge started from the one-dimensional solution
+(see the [air-blast model](air-blast-model.md)), and the slab of solid elements 6, 8 or 12
+through its thickness, its two mats smeared through bands, run for 300 ms with gravity. The
+spalled area is the fraction of each face whose surface element has been removed or cracked
+open past the width at which an unreinforced one would be. `blastbench closein` runs it.
+
+### Results
+
+**The load.** Kingery and Bulmash's curves are for a surface burst; for a burst in the air
+they are used with the charge's mass divided by 1.8.
+
+| Quantity, 2 kg at 1 m              | Reference                     | 50 mm cells | 25 mm cells |
+|------------------------------------|-------------------------------|-------------|-------------|
+| Gauge 1 m from the centre          | 2.5 MPa (text), 3.3–3.6 (figure) | 1.48 MPa | 1.98 MPa    |
+| Gauge 2 m from the centre          | 0.5 MPa, 0.47–0.58            | 0.36 MPa    | 0.41 MPa    |
+| In the open, as far as the 1 m gauge | 0.68 MPa (K–B)              | 0.48 MPa    | 0.58 MPa    |
+| Impulse under the charge           | 961 Pa s (K–B, reflected)     | 819 Pa s    | 886 Pa s    |
+
+Under the 13 kg charges the impulse under the charge is 75–85% of Kingery and Bulmash's
+(3.4 kPa s against 4.4 at 1 m, 9.8 against 13.1 at 0.5 m), and the slab's momentum after
+5 ms, about the impulse it received, is 8.4–8.7 kN s at 1 m, on 50 or 25 mm cells alike, where
+the curves, integrated over the slab, give 11.6–15.9 kN s. Afterburning, which restores the
+incident impulse further out, changes it by under 3%: so close in, the products have not
+burnt. The gauges read 75–80% of the text's values, as reflected peaks do on these cells.
+
+**The slab.** Permanent mid-span deflection (mm), peak in brackets:
+
+| Test | Measured   | 6 through      | 8 through      | 12 through                      |
+|------|------------|----------------|----------------|---------------------------------|
+| P1   | 0          | 0 (11)         |                |                                 |
+| S1–S3 | cracks    | 0 (13)         |                |                                 |
+| P7   | 340        | 54 (140)       | 111 (208)      | 113 (158)                       |
+| S5   | punched through | 156 (239), whole | broken through, fell | 364 (414), 1,621 elements failed, no hole |
+| P2   | 510, punched through, hanging | broken at mid-span, fell | broken, fell |       |
+
+No light shot damages the slab, as in the tests. At 1 m the slab bends at mid-span, as the
+test's did, but goes a third as far, and neither face spalls (the test's spalled 3.4% and
+10.3%). At 0.5 m the model does not punch a hole under the charge: on 6 elements P2 bends until
+its mid-span hinge tears through, at 35 ms and 280 mm, and both halves fall; S5, with heavier
+bars, holds. On finer meshes S5 fails too, but not consistently, and the spalled areas stay at
+1–3% against 7–19%. The tests' slabs hung on bars that spanned the hole; the model's lose
+their bars with the concrete around them (they are smeared through the elements), so a slab
+broken through falls apart.
+
+**What moves P7** (6 through; permanent, peak):
+
+| Change                                  | mm         |
+|-----------------------------------------|------------|
+| As above                                | 54 (140)   |
+| Without the strain-rate laws            | 120 (173)  |
+| The ends free to slide lengthwise       | 92 (155)   |
+| Both                                    | 128 (228)  |
+| The charge 1.5 times heavier (the load the curves give) | 147 (214) |
+
+A rigid-plastic estimate (two halves turning about the supports, a hinge of 54 kN m) with the
+model's own impulse reaches about 260 mm, near the 228 mm the model gives without rate laws or
+end restraint; the measured 340 mm needs the curves' impulse. So the shortfall is the sum of
+three: a load a fifth short so close in, a slab stiffened by the rate laws and by arching
+against held ends, and its spring back from the peak, too large here as in the other slab and
+the chamber.
+
+### What this does and does not show
+
+It shows that the coupled model loads a slab close to a charge within about a fifth of the
+empirical impulse and leaves it undamaged where the tests did. It does not reproduce close-in
+damage: the slab is left a third as far down as the test's, spalls a fraction as much, is not
+punched through under the charge, and, broken, falls where the test's hung on its bars. These
+point at four things: the detonation products close in (the charge model's impulse), the
+concrete's strain-rate law (as the impacts above), spalling of the faces, and bars that
+outlive the concrete around them. The supports' lengthwise restraint and the charges' shapes
+are assumptions that matter.
 
 ## Blast loads against empirical references
 
@@ -1091,5 +1207,6 @@ In rough order of value:
    inertia, or a second impact programme to test a change against.
 4. The vented gas impulse of UFC 3-340-02 (Figures 2-153 to 2-164), which would need
    digitising, to check how fast the model's gas leaves a room like the chamber.
-5. Blast loads closer in than 0.75 m/kg^(1/3).
+5. Close-in loads and damage: the impulse a fifth short at 0.26–0.52 m/kg^(1/3) and slabs
+   that barely spall (see [above](#slabs-under-close-in-charges)).
 6. Any test of collapse or debris.

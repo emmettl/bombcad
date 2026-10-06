@@ -124,6 +124,13 @@ Supplied by hand during development, and now in use:
   the bars' measured curve (yield 72 ksi); and its own models' peaks, about 100 mm and 113 mm
   against the measured 108 mm. The slab's high-strength companion and the contest's records
   are still wanted (above).
+- M. Chiquito et al., "Full-scale field tests on concrete slabs subjected to close-in blast
+  loads", *Buildings* 13, 2068 (2023), and S. Martínez-Almajano et al., *International Journal
+  of Computational Methods and Experimental Measurements* 9(3), 201–212 (2021), both open
+  access: six full-scale slab tests, in `CloseInSlabTest.swift`. Still wanted: R. Castedo et
+  al., "Numerical study and experimental tests on full-scale RC slabs under close-in
+  explosions", *Engineering Structures* 231, 111774 (2021), for the concrete's measured
+  strength, the anchorage and the charges' shapes, which are assumed.
 - S. Saatci, *Behaviour and modelling of reinforced concrete structures subjected to impact
   loads*, PhD thesis, University of Toronto (2007), open access from the university's
   repository: the beams, materials, drop weights and measured first impacts of eight beams, in

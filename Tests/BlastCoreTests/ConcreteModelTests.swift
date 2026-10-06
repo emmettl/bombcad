@@ -918,3 +918,43 @@ struct ImpactBenchmarkTests {
         }
     }
 }
+
+/// Chiquito et al.'s full-scale slabs under charges hung above them.
+@Suite("Close-in slab test")
+struct CloseInSlabTests {
+    let device: MTLDevice
+
+    init() throws {
+        device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+    }
+
+    private func test(_ name: String) throws -> CloseInSlabTest.Test {
+        try #require(CloseInSlabTest.tests.first { $0.name == name })
+    }
+
+    @Test("The calibration shot: pressures beside the slab and the impulse on it, and no damage")
+    func calibration() throws {
+        let result = try CloseInSlabTest.run(device: device, test: test("S1-S3"), duration: 0.01)
+        let peaks = Dictionary(uniqueKeysWithValues: result.gaugePeaks.map { ($0.name, $0.pressure) })
+        // The paper's text gives 2.5 and 0.5 MPa; 5 cm cells under-resolve reflected peaks
+        // (1.5 and 0.36 MPa here, 2.0 and 0.41 on 2.5 cm cells).
+        let near = try #require(peaks["G1, 1 m"])
+        let far = try #require(peaks["G3, 2 m"])
+        #expect(near > 0.5 * 2.5e6 && near < 3.6e6, "G1: \(near) Pa")
+        #expect(far > 0.6 * 0.5e6 && far < 0.58e6, "G3: \(far) Pa")
+        // Square under the charge, the reflected impulse is within a quarter of Kingery and
+        // Bulmash's for a free-air burst (961 Pa s).
+        let centre = try #require(result.gaugeImpulses.last)
+        #expect(abs(centre - 961) / 961 < 0.25, "centre: \(centre) Pa s")
+        #expect(result.summary.erodedElements == 0)
+    }
+
+    @Test("13 kg at 1 m bends the slab well past yield without breaching it")
+    func bending() throws {
+        let result = try CloseInSlabTest.run(device: device, test: test("P7"), duration: 0.1)
+        // The test slab was left 340 mm down; the model's peak is 140 mm on this mesh, 208 mm on
+        // a finer one (docs/validation.md).
+        #expect(result.peak > 0.1, "peak \(result.peak) m")
+        #expect(!result.perforated)
+    }
+}

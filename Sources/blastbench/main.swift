@@ -16,6 +16,7 @@ import simd
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
+//   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
@@ -746,6 +747,53 @@ func runBeam() throws {
     }
 }
 
+/// Chiquito et al.'s full-scale slabs under charges hung 0.5 and 1 m above them.
+func runCloseIn() throws {
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.05
+    let elementSize = option("h").flatMap { Float($0) } ?? 0.025
+    let duration = option("time").flatMap { Double($0) } ?? 0.3
+    let refinement = option("refine").flatMap { Int($0) } ?? 1
+    print("Full-scale slabs under close-in charges (Chiquito et al., 2023)")
+    print(
+        "Air cells \(format(Double(cellSize), 3)) m\(refinement > 1 ? ", refined by \(refinement)" : ""), "
+            + "elements \(format(Double(elementSize), 3)) m, \(format(duration * 1000, 0)) ms\n")
+    func percent(_ value: Float?) -> String { value.map { "\(format(Double($0) * 100, 1))%" } ?? "-" }
+    func mm(_ value: Float?) -> String { value.map { "\(format(Double($0) * 1000, 0))" } ?? "-" }
+    for test in CloseInSlabTest.tests where names?.contains(test.name) ?? true {
+        let result = try CloseInSlabTest.run(
+            device: device, test: test, cellSize: cellSize, elementSize: elementSize, duration: duration,
+            refinement: refinement, mappedCharge: !flag("no-map"), afterburning: flag("afterburn"),
+            heldLengthwise: !flag("sliding"),
+            adjust: { scenario in
+                if flag("no-rate") { scenario.structure?.material.rateDependent = false }
+                if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
+                if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
+            },
+            progress: flag("progress")
+                ? { line in
+                    print("  " + line)
+                    fflush(stdout)
+                } : nil)
+        print("\(test.name): \(format(Double(test.charge), 2)) kg TNT at \(format(Double(test.standoff), 1)) m; \(test.remark)")
+        print("                      measured        model")
+        print(
+            "  permanent (mm)      " + pad(mm(test.deflection), 15) + "  \(mm(result.permanent)) (peak \(mm(result.peak)))")
+        print("  spalled, top        " + pad(percent(test.damagedTop), 15) + "  \(percent(result.damagedTop))")
+        print("  spalled, bottom     " + pad(percent(test.damagedBottom), 15) + "  \(percent(result.damagedBottom))")
+        print("  perforated          " + pad(test.perforated ? "yes" : "no", 15) + "  \(result.perforated ? "yes" : "no")")
+        let measured = [test.nearGauge, test.nearGauge, test.farGauge, test.farGauge, nil, nil]
+        for ((name, pressure), range) in zip(result.gaugePeaks, measured) {
+            let text = range.map { $0.lowerBound == $0.upperBound
+                ? format(Double($0.lowerBound) / 1e6, 2) : "\(format(Double($0.lowerBound) / 1e6, 2))-\(format(Double($0.upperBound) / 1e6, 2))" } ?? "-"
+            print("  \(pad(name + " (MPa)", 18))  " + pad(text, 15) + "  \(format(Double(pressure) / 1e6, 2))")
+        }
+        print("  impulse at the slab's centre: \(format(Double(result.gaugeImpulses.last ?? 0), 0)) Pa s")
+        print("  slab's momentum at 5 ms: \(format(Double(result.impulse), 0)) N s")
+        print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
+    }
+}
+
 /// Saatci's beams struck by a falling weight (first impacts), against the measured peak and
 /// residual mid-span displacements.
 func runImpact() throws {
@@ -990,6 +1038,7 @@ do {
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "impact": try runImpact()
+    case "closein": try runCloseIn()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
     case "throughput": try runThroughput()
