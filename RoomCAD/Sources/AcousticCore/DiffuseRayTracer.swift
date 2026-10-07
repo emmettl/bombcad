@@ -43,7 +43,12 @@ struct DiffuseRayTracer {
 
     /// Scattered energy per receiver, per octave band, per bin. Empty bins are zero. Returns early with
     /// what has been traced if `stop` returns true.
-    func trace(receivers: [SIMD3<Double>], duration: Double, stop: () -> Bool = { false }) -> [[[Double]]] {
+    /// Rays are traced in this many chunks, in parallel.
+    static let chunks = 16
+
+    func trace(
+        receivers: [SIMD3<Double>], duration: Double, stop: @Sendable () -> Bool = { false }
+    ) -> [[[Double]]] {
         let bands = OctaveBands.count
         let bins = Int((duration / Self.binWidth).rounded(.up))
         var energy = Array(
@@ -65,90 +70,113 @@ struct DiffuseRayTracer {
         var random = SplitMix(seed: seed)
         let rotation = randomRotation(&random)
         let golden = Double.pi * (3 - 5.0.squareRoot())
-        var weights = [Double](repeating: 0, count: bands)
+        let chunks = Self.chunks
 
-        for ray in 0..<rayCount {
-            if ray % 256 == 0, stop() { break }
-            // Evenly spread directions (a spherical Fibonacci lattice), randomly rotated.
-            let z = 1 - 2 * (Double(ray) + 0.5) / Double(rayCount)
-            let ring = (1 - z * z).squareRoot()
-            var direction =
-                rotation * SIMD3(ring * cos(golden * Double(ray)), ring * sin(golden * Double(ray)), z)
-            var position = source
-            var travelled = 0.0
-            var scattered = false
-            for b in 0..<bands { weights[b] = 1 / Double(rayCount) }
+        // A fixed number of chunks, each with its own random stream, merged in order: the result does not
+        // depend on how many cores share the work.
+        func traceChunk(_ chunk: Int) -> [[[Double]]] {
+            var energy = Array(
+                repeating: Array(repeating: [Double](repeating: 0, count: bins), count: bands),
+                count: receivers.count)
+            var random = SplitMix(seed: seed &+ UInt64(chunk + 1) &* 0x9E37_79B9_7F4A_7C15)
+            var weights = [Double](repeating: 0, count: bands)
+            let range = (chunk * rayCount / chunks)..<((chunk + 1) * rayCount / chunks)
+            for ray in range {
+                if ray % 256 == 0, stop() { break }
+                // Evenly spread directions (a spherical Fibonacci lattice), randomly rotated.
+                let z = 1 - 2 * (Double(ray) + 0.5) / Double(rayCount)
+                let ring = (1 - z * z).squareRoot()
+                var direction =
+                    rotation * SIMD3(ring * cos(golden * Double(ray)), ring * sin(golden * Double(ray)), z)
+                var position = source
+                var travelled = 0.0
+                var scattered = false
+                for b in 0..<bands { weights[b] = 1 / Double(rayCount) }
 
-            while travelled < reach {
-                // The nearest wall along the ray.
-                var hit = Double.infinity
-                var axis = 0
-                for a in 0..<3 where direction[a] != 0 {
-                    let wall = direction[a] > 0 ? room.size[a] : 0
-                    let t = (wall - position[a]) / direction[a]
-                    if t < hit {
-                        hit = max(0, t)
-                        axis = a
-                    }
-                }
-                let segment = min(hit, reach - travelled)
-                if scattered {
-                    for (r, receiver) in receivers.enumerated() {
-                        // Chord of the segment through the receiver's sphere.
-                        let offset = position - receiver
-                        let b = simd_dot(offset, direction)
-                        let disc = b * b - (simd_length_squared(offset) - radius * radius)
-                        guard disc > 0 else { continue }
-                        let root = disc.squareRoot()
-                        let enter = max(0, -b - root)
-                        let leave = min(segment, -b + root)
-                        guard leave > enter else { continue }
-                        let distance = travelled + (enter + leave) / 2
-                        let bin = Int(distance / c / Self.binWidth)
-                        guard bin < bins else { continue }
-                        let scale = 4 * Double.pi * (leave - enter) / volumes[r]
-                        for band in 0..<bands {
-                            energy[r][band][bin] += weights[band] * scale * exp(-air[band] * distance)
+                while travelled < reach {
+                    // The nearest wall along the ray.
+                    var hit = Double.infinity
+                    var axis = 0
+                    for a in 0..<3 where direction[a] != 0 {
+                        let wall = direction[a] > 0 ? room.size[a] : 0
+                        let t = (wall - position[a]) / direction[a]
+                        if t < hit {
+                            hit = max(0, t)
+                            axis = a
                         }
                     }
-                }
-                travelled += segment
-                guard segment == hit else { break }
-                position += direction * hit
-                // Keep exactly on the wall so the next step starts inside the room.
-                position[axis] = direction[axis] > 0 ? room.size[axis] : 0
-
-                let surface = 2 * axis + (direction[axis] > 0 ? 1 : 0)
-                let material = materials[surface]
-                var mean = 0.0
-                for b in 0..<bands {
-                    weights[b] *= 1 - material.absorption[b]
-                    mean += material.scattering[b]
-                }
-                mean /= Double(bands)
-                let diffuse: Bool
-                if mean <= 0 {
-                    diffuse = false
-                } else if mean >= 1 {
-                    diffuse = true
-                } else {
-                    let p = min(max(mean, 0.05), 0.95)
-                    diffuse = random.nextUnit() < p
-                    for b in 0..<bands {
-                        weights[b] *=
-                            diffuse ? material.scattering[b] / p : (1 - material.scattering[b]) / (1 - p)
+                    let segment = min(hit, reach - travelled)
+                    if scattered {
+                        for (r, receiver) in receivers.enumerated() {
+                            // Chord of the segment through the receiver's sphere.
+                            let offset = position - receiver
+                            let b = simd_dot(offset, direction)
+                            let disc = b * b - (simd_length_squared(offset) - radius * radius)
+                            guard disc > 0 else { continue }
+                            let root = disc.squareRoot()
+                            let enter = max(0, -b - root)
+                            let leave = min(segment, -b + root)
+                            guard leave > enter else { continue }
+                            let distance = travelled + (enter + leave) / 2
+                            let bin = Int(distance / c / Self.binWidth)
+                            guard bin < bins else { continue }
+                            let scale = 4 * Double.pi * (leave - enter) / volumes[r]
+                            for band in 0..<bands {
+                                energy[r][band][bin] += weights[band] * scale * exp(-air[band] * distance)
+                            }
+                        }
                     }
+                    travelled += segment
+                    guard segment == hit else { break }
+                    position += direction * hit
+                    // Keep exactly on the wall so the next step starts inside the room.
+                    position[axis] = direction[axis] > 0 ? room.size[axis] : 0
+
+                    let surface = 2 * axis + (direction[axis] > 0 ? 1 : 0)
+                    let material = materials[surface]
+                    var mean = 0.0
+                    for b in 0..<bands {
+                        weights[b] *= 1 - material.absorption[b]
+                        mean += material.scattering[b]
+                    }
+                    mean /= Double(bands)
+                    let diffuse: Bool
+                    if mean <= 0 {
+                        diffuse = false
+                    } else if mean >= 1 {
+                        diffuse = true
+                    } else {
+                        let p = min(max(mean, 0.05), 0.95)
+                        diffuse = random.nextUnit() < p
+                        for b in 0..<bands {
+                            weights[b] *=
+                                diffuse ? material.scattering[b] / p : (1 - material.scattering[b]) / (1 - p)
+                        }
+                    }
+                    var normal = SIMD3<Double>(0, 0, 0)
+                    normal[axis] = direction[axis] > 0 ? -1 : 1
+                    if diffuse {
+                        scattered = true
+                        direction = lambert(around: normal, &random)
+                    } else {
+                        direction[axis] = -direction[axis]
+                    }
+                    // Stop once the ray can no longer matter, about 150 dB down.
+                    if (weights.max() ?? 0) * Double(rayCount) < 1e-15 { break }
                 }
-                var normal = SIMD3<Double>(0, 0, 0)
-                normal[axis] = direction[axis] > 0 ? -1 : 1
-                if diffuse {
-                    scattered = true
-                    direction = lambert(around: normal, &random)
-                } else {
-                    direction[axis] = -direction[axis]
+            }
+            return energy
+        }
+
+        let results = ChunkResults<[[[Double]]]>(count: chunks)
+        DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
+            results.store(traceChunk(chunk), at: chunk)
+        }
+        for part in results.values {
+            for r in part.indices {
+                for b in part[r].indices {
+                    for i in part[r][b].indices { energy[r][b][i] += part[r][b][i] }
                 }
-                // Stop once the ray can no longer matter, about 150 dB down.
-                if (weights.max() ?? 0) * Double(rayCount) < 1e-15 { break }
             }
         }
         return energy
@@ -217,4 +245,19 @@ struct SplitMix {
     mutating func nextUnit() -> Double {
         Double(next() >> 11) / Double(1 << 53)
     }
+}
+
+/// Results written by parallel workers, one slot each.
+final class ChunkResults<Value>: @unchecked Sendable {
+    private var slots: [Value?]
+    private let lock = NSLock()
+
+    init(count: Int) { slots = Array(repeating: nil, count: count) }
+
+    func store(_ value: Value, at index: Int) {
+        lock.withLock { slots[index] = value }
+    }
+
+    /// The stored values in slot order.
+    var values: [Value] { lock.withLock { slots.compactMap { $0 } } }
 }

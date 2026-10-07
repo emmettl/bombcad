@@ -156,7 +156,7 @@ struct AuditionPlayerTests {
         #expect(player.dryOverview?.duration == clip.duration)
         #expect(player.wetOverview == nil)
 
-        let result = try RoomResponseGenerator.generate(RoomCADTests.settings)
+        let result = try await RoomResponseGenerator.generate(RoomCADTests.settings)
         player.prepare(result)
         // A second request for the same room joins the first.
         player.prepare(result, thenPlay: false)
@@ -185,7 +185,7 @@ struct AuditionPlayerTests {
     @Test("Choosing another clip resets the playhead and shows that clip")
     func choosingClips() async throws {
         let player = AuditionPlayer()
-        let result = try RoomResponseGenerator.generate(RoomCADTests.settings)
+        let result = try await RoomResponseGenerator.generate(RoomCADTests.settings)
         try player.prepareImmediately(result)
         player.seek(to: 2)
         let other = try #require(player.clips.first { $0.id == "noise-burst" })

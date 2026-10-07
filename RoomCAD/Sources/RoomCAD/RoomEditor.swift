@@ -29,7 +29,9 @@ final class RoomEditor {
         }
         isGenerating = true
         generatingSettings = settings
-        let work = Task.detached(priority: .userInitiated) { try RoomResponseGenerator.generate(settings) }
+        let work = Task.detached(priority: .userInitiated) {
+            try await RoomResponseGenerator.generate(settings)
+        }
         self.work = work
         delivery = Task {
             defer {

@@ -35,27 +35,46 @@ struct BandRenderer {
         bands = Array(repeating: Array(repeating: 0, count: length), count: OctaveBands.count)
     }
 
+    /// Phase steps of the sinc and window between kernel taps, as (cos, sin).
+    private static let sincStep = (cos(Double.pi * 2 * cutoffFraction), sin(Double.pi * 2 * cutoffFraction))
+    private static let windowStep = (
+        cos(Double.pi / Double(kernelHalfWidth)), sin(Double.pi / Double(kernelHalfWidth))
+    )
+
     /// Adds an arrival `delay` seconds after emission with the given gain in each band.
     mutating func add(delay: Double, gains: [Double]) {
         let position = delay * sampleRate
         let base = Int(position.rounded(.down))
         let k = Self.kernelHalfWidth
         let bandwidth = 2 * Self.cutoffFraction
+        // Successive taps advance both cosines by a fixed angle, so rotate rather than call sin and cos
+        // for each tap: four calls per arrival instead of 128.
+        let x0 = Double(base - k + 1) - position
+        var sincPhase = (cos(Double.pi * bandwidth * x0), sin(Double.pi * bandwidth * x0))
+        var windowPhase = (cos(Double.pi * x0 / Double(k)), sin(Double.pi * x0 / Double(k)))
+        let (sc, ss) = Self.sincStep
+        let (wc, ws) = Self.windowStep
         for i in 0..<(2 * k) {
-            let x = Double(base - k + 1 + i) - position
+            let x = x0 + Double(i)
             let arg = Double.pi * bandwidth * x
-            let sinc = abs(arg) < 1e-12 ? 1 : sin(arg) / arg
-            let window = abs(x) < Double(k) ? 0.5 + 0.5 * cos(Double.pi * x / Double(k)) : 0
+            let sinc = abs(arg) < 1e-12 ? 1 : sincPhase.1 / arg
+            let window = abs(x) < Double(k) ? 0.5 + 0.5 * windowPhase.0 : 0
             kernel[i] = bandwidth * sinc * window
+            sincPhase = (sincPhase.0 * sc - sincPhase.1 * ss, sincPhase.1 * sc + sincPhase.0 * ss)
+            windowPhase = (windowPhase.0 * wc - windowPhase.1 * ws, windowPhase.1 * wc + windowPhase.0 * ws)
         }
         let length = fftLength
-        for b in 0..<gains.count where gains[b] != 0 {
-            let g = gains[b]
-            bands[b].withUnsafeMutableBufferPointer { signal in
-                for i in 0..<(2 * k) {
-                    // Negative indices wrap into the discarded margin.
-                    let index = (base - k + 1 + i + length) % length
-                    signal[index] += g * kernel[i]
+        let first = base - k + 1
+        kernel.withUnsafeBufferPointer { kernel in
+            for b in 0..<gains.count where gains[b] != 0 {
+                let g = gains[b]
+                bands[b].withUnsafeMutableBufferPointer { signal in
+                    if first >= 0 && first + 2 * k <= length {
+                        for i in 0..<(2 * k) { signal[first + i] += g * kernel[i] }
+                    } else {
+                        // Negative indices wrap into the discarded margin.
+                        for i in 0..<(2 * k) { signal[(first + i + length) % length] += g * kernel[i] }
+                    }
                 }
             }
         }

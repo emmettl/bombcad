@@ -1,5 +1,6 @@
 import Foundation
 import ImpulseResponseKit
+import Synchronization
 import simd
 
 /// A point in the room with a stable identity.
@@ -168,9 +169,11 @@ public struct RoomResponse: Sendable {
     public var settings: RoomResponseSettings
     public var diagnostics: RoomResponseDiagnostics
 
-    public static let generatorName = "RoomCAD hybrid model 2"
+    public static let generatorName = "RoomCAD hybrid model 3"
     /// Generators whose saved responses can still be read; only the current one is up to date.
-    public static let readableGenerators: Set<String> = ["RoomCAD image-source model 1", generatorName]
+    public static let readableGenerators: Set<String> = [
+        "RoomCAD image-source model 1", "RoomCAD hybrid model 2", generatorName,
+    ]
 
     public static let assumptions = [
         "Rectangular room. Specular reflections by the image-source method; energy scattered at least once by "
@@ -240,52 +243,97 @@ public enum RoomResponseGenerator {
     /// Generates one channel per receiver: the room's response to an impulse emitted by the source at
     /// frame 0, as pressure relative to the free-field pressure 1 m from the source.
     ///
-    /// Throws `CancellationError` if the calling task is cancelled.
-    public static func generate(_ settings: RoomResponseSettings) throws -> RoomResponse {
+    /// The work runs on several cores. Throws `CancellationError` if the calling task is cancelled.
+    public static func generate(_ settings: RoomResponseSettings) async throws -> RoomResponse {
+        let flag = CancellationFlag()
+        return try await withTaskCancellationHandler {
+            try generate(settings, cancellation: flag)
+        } onCancel: {
+            flag.cancel()
+        }
+    }
+
+    /// The diffuse tail's seed for one receiver, from its identity, so its channel does not change when
+    /// other receivers are added, removed or reordered.
+    static func tailSeed(_ seed: UInt64, receiver: UUID) -> UInt64 {
+        var mix = SplitMix(seed: seed)
+        var value = mix.next()
+        withUnsafeBytes(of: receiver.uuid) { bytes in
+            for byte in bytes {
+                mix = SplitMix(seed: value ^ UInt64(byte))
+                value = mix.next()
+            }
+        }
+        return value
+    }
+
+    /// Generates synchronously; `cancellation`, or cancelling the calling task, stops it.
+    public static func generate(
+        _ settings: RoomResponseSettings, cancellation: CancellationFlag = CancellationFlag()
+    ) throws -> RoomResponse {
         try settings.validate()
         let start = Date()
+        // Worker threads cannot see the task, so the calling thread passes its cancellation on.
+        let cancelled: @Sendable () -> Bool = {
+            if Task.isCancelled { cancellation.cancel() }
+            return cancellation.isCancelled
+        }
+        func check() throws { if cancelled() { throw CancellationError() } }
         let model = ImageSourceModel(
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption)
         let frames = Int((settings.duration * Double(settings.sampleRate)).rounded(.up))
         let includeDirect = settings.content == .complete
-        var channels: [[Float]] = []
-        var arrivals: [Int] = []
-        var orderLimitedAfter: [Double?] = []
-        var scatteredFraction: [Double] = []
-        let cancelled = { Task.isCancelled }
         let tracer = DiffuseRayTracer(
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
         let diffuse = tracer.trace(
             receivers: settings.receivers.map(\.position), duration: settings.duration, stop: cancelled)
-        try Task.checkCancellation()
+        try check()
         // The bands whose energy the scattered fraction reports, 500 Hz to 4 kHz.
         let reported = 3...6
-        for (index, receiver) in settings.receivers.enumerated() {
+
+        // Receivers are independent, so each renders on its own core.
+        struct Channel {
+            var samples: [Float]
+            var arrivals: Int
+            var orderLimitedAfter: Double?
+            var scatteredFraction: Double
+        }
+        let results = ChunkResults<Channel>(count: settings.receivers.count)
+        DispatchQueue.concurrentPerform(iterations: settings.receivers.count) { index in
+            guard !cancelled() else { return }
             var renderer = BandRenderer(
                 sampleRate: settings.sampleRate, frames: frames,
                 lowFrequencyCutoff: settings.lowFrequencyCutoff)
             var specularEnergy = 0.0
             let summary = model.forEachArrival(
-                at: receiver.position, duration: settings.duration,
+                at: settings.receivers[index].position, duration: settings.duration,
                 maximumOrder: settings.maximumReflectionOrder, includeDirect: includeDirect, stop: cancelled
             ) { delay, _, gains in
                 renderer.add(delay: delay, gains: gains)
                 for b in reported { specularEnergy += gains[b] * gains[b] }
             }
-            try Task.checkCancellation()
+            guard !cancelled() else { return }
             let diffuseEnergy = DiffuseTail.render(
                 diffuse[index], into: &renderer, roomVolume: settings.room.volume,
                 soundSpeed: settings.atmosphere.soundSpeed,
-                seed: settings.randomSeed &+ UInt64(index) &* 0x9E37,
+                seed: Self.tailSeed(settings.randomSeed, receiver: settings.receivers[index].id),
                 bands: reported)
-            channels.append(renderer.render())
-            arrivals.append(summary.arrivals)
-            orderLimitedAfter.append(summary.orderLimitedAfter)
             let total = specularEnergy + diffuseEnergy
-            scatteredFraction.append(total > 0 ? diffuseEnergy / total : 0)
+            results.store(
+                Channel(
+                    samples: renderer.render(), arrivals: summary.arrivals,
+                    orderLimitedAfter: summary.orderLimitedAfter,
+                    scatteredFraction: total > 0 ? diffuseEnergy / total : 0),
+                at: index)
         }
+        try check()
+        let rendered = results.values
+        let channels = rendered.map(\.samples)
+        let arrivals = rendered.map(\.arrivals)
+        let orderLimitedAfter = rendered.map(\.orderLimitedAfter)
+        let scatteredFraction = rendered.map(\.scatteredFraction)
 
         let c = settings.atmosphere.soundSpeed
         let sabine = settings.room.sabineReverberationTime(
@@ -327,4 +375,15 @@ public enum RoomResponseGenerator {
             response: try ImpulseResponse(channels: channels, metadata: metadata), settings: settings,
             diagnostics: diagnostics)
     }
+}
+
+/// A cancellation request that worker threads can see.
+public final class CancellationFlag: Sendable {
+    private let state = Atomic<Bool>(false)
+
+    public init() {}
+
+    public func cancel() { state.store(true, ordering: .relaxed) }
+
+    public var isCancelled: Bool { state.load(ordering: .relaxed) }
 }

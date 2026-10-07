@@ -43,9 +43,16 @@ response duration. Each list also records the lowest reflection order from each 
 the loop also stops once nothing further along is within the order limit. The first image skipped this
 way is the nearest omitted one. Without this, a capped order in a small room over a long duration
 still visited every image within reach: 5.2 s instead of 0.08 s for the tiled bathroom's 2.3 million
-arrivals. A test compares the arrivals and the earliest omission with brute-force enumeration. Arrivals are streamed to the renderer rather than stored. A 1.5 s response of an
-8 × 6 × 3 m room has about four million arrivals per receiver. On the development Mac it takes about
-3 s per receiver.
+arrivals. A test compares the arrivals and the earliest omission with brute-force enumeration. Arrivals are streamed to the renderer rather than stored. A 1.5 s response of an 8 × 6 × 3 m room has
+about four million arrivals per receiver.
+
+Each arrival's 64-tap kernel is computed by rotating its sine and cosine phases from tap to tap,
+which needs four transcendental calls per arrival instead of 128. Receivers render in parallel, one
+per core. Rays are traced in 16 fixed chunks with their own random streams, merged in order, so a
+response is identical on any Mac. Each receiver's diffuse tail is seeded from its identity, so its
+channel does not change when other receivers are added, removed or reordered. Cancellation reaches
+every worker through a shared flag. Together these made the presets about four times faster: the
+living room takes 0.9 s, the tiled bathroom 1.0 s and the stone church 1.25 s.
 
 Two limits bound the work, and both are explicit settings:
 
@@ -160,6 +167,8 @@ half-cosine taper to the end of every channel.
   variation, much like that between nearby points in a real room.
 - Materials and settings saved before scattering existed decode with s = 0 and the default ray count
   and seed.
+- Responses are identical whether generated synchronously or asynchronously. A receiver rendered
+  alone matches the same receiver among others, and a cancelled generation stops at once.
 - The high-pass removes the low-frequency offset without changing the audible bands.
 - WAV and metadata round trip, including unknown chunks and extensible files; integer PCM,
   non-finite samples and truncated files are rejected.
@@ -254,7 +263,7 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 - **Materials.** Presets give published random-incidence absorption from 125 Hz, extended to 63 Hz
   and, where missing, to 8 kHz (see [the app's presets](roomcad-app.md#material-presets)). The bench's
   α = 0.2 is illustrative.
-- **Performance.** Generation runs on the CPU, on one thread per response.
+- **Performance.** Generation runs on the CPU's cores, but not on the GPU.
 
 ## Future work
 
@@ -265,7 +274,7 @@ The roadmap orders the work as follows:
 - a crossover to the low-frequency wave solver (the rest of M4);
 - a low-frequency wave solver (M3).
 
-Receivers could be generated in parallel, and the ray tracer could run on the GPU.
+The ray tracer and image sources could run on the GPU.
 
 ## Sources
 

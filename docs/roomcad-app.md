@@ -118,18 +118,20 @@ energy beyond it.
 Loading asks for confirmation, because it replaces the size, surfaces, positions, duration and order.
 Sample rate, air, low cut, rays, seed, content and the points' identities and names are kept.
 
-Measured on the development Mac (T30 at 1 kHz, from the left listener):
+Measured on the development Mac (T30 at 1 kHz, from the left listener). Generation times for the
+other presets were measured before the speed-ups, which made the three remeasured here about four
+times faster:
 
 | Preset | Duration | Eyring at 1 kHz | T30 at 1 kHz | Generation |
 |---|---|---|---|---|
-| Living room | 1.9 s | 0.34 s | 0.38 s | 3.7 s |
+| Living room | 1.9 s | 0.34 s | 0.38 s | 0.9 s |
 | Office | 0.8 s | 0.33 s | 0.49 s | 1.4 s |
 | Classroom | 1.3 s | 0.54 s | 0.69 s | 2.2 s |
-| Tiled bathroom | 7.9 s | 2.63 s | 2.98 s | about 5 s |
+| Tiled bathroom | 7.9 s | 2.63 s | 2.98 s | 1.0 s |
 | Vocal booth | 0.5 s | 0.02 s | 0.03 s | 1.0 s |
 | Concrete hall | 8.0 s | 7.75 s | 7.87 s | 4.4 s |
 | Chamber music hall | 1.8 s | 1.13 s | 1.16 s | 0.4 s |
-| Stone church | 8.0 s | 7.08 s | 7.44 s | 4.3 s |
+| Stone church | 8.0 s | 7.08 s | 7.44 s | 1.25 s |
 
 ## Material presets
 
@@ -249,4 +251,4 @@ offscreen.
 - Most material presets have no published scattering, so most room presets' scattering is
   illustrative.
 - Only rectangular rooms are supported, and there is no 3D view.
-- Generation blocks one core per document and is not shared between windows.
+- Generation uses several cores per document, and documents generating at once share them.

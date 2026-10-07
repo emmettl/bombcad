@@ -143,3 +143,38 @@ struct ScatteringTests {
         #expect(throws: AcousticError.self) { try rays.validate() }
     }
 }
+
+@Suite("Parallel generation")
+struct ParallelGenerationTests {
+    @Test("Responses are identical however the work is shared, and cancelling stops every worker")
+    func deterministicAndCancellable() async throws {
+        let settings = RoomResponseSettings(
+            room: ShoeboxRoom(size: [5, 4, 3], material: .uniform(0.3, scattering: 0.4, name: "Test")),
+            source: RoomPoint(name: "S", position: [1.3, 1.1, 1.2]),
+            receivers: [
+                RoomPoint(name: "A", position: [3.7, 2.9, 1.6]),
+                RoomPoint(name: "B", position: [3.5, 1.2, 1.4]),
+                RoomPoint(name: "C", position: [2.0, 3.1, 2.2]),
+            ], airAbsorption: false, duration: 0.15, maximumReflectionOrder: 40, diffuseRays: 8_000)
+        // The synchronous and asynchronous forms.
+        let first = try RoomResponseGenerator.generate(settings, cancellation: CancellationFlag())
+        let second = try await RoomResponseGenerator.generate(settings)
+        #expect(first.response.channels == second.response.channels)
+        // Each receiver alone gives the same channel as in company.
+        var alone = settings
+        alone.receivers = [settings.receivers[1]]
+        let single = try RoomResponseGenerator.generate(alone, cancellation: CancellationFlag())
+        #expect(single.response.channels[0] == first.response.channels[1])
+
+        var long = settings
+        long.duration = 2
+        long.maximumReflectionOrder = 150
+        let flag = CancellationFlag()
+        flag.cancel()
+        let start = Date()
+        #expect(throws: CancellationError.self) {
+            try RoomResponseGenerator.generate(long, cancellation: flag)
+        }
+        #expect(Date().timeIntervalSince(start) < 2)
+    }
+}
