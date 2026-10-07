@@ -13,6 +13,7 @@ struct BombCADApp: App {
         }
         .defaultSize(width: 1440, height: 920)
         .commands {
+            HelpCommands()
             // Undo works on whole layout edits rather than on keystrokes in a field.
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo Edit") { model.undo() }
@@ -31,6 +32,11 @@ struct BombCADApp: App {
                     .keyboardShortcut("0")
             }
         }
+        Window("BombCAD Help", id: "help") {
+            HelpView()
+        }
+        .defaultSize(width: 780, height: 620)
+        .windowResizability(.contentMinSize)
     }
 }
 

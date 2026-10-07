@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: SimulationModel
+    @Environment(\.openWindow) private var openWindow
     @State private var isOpening = false
     @State private var isSaving = false
     @State private var fileError: String?
@@ -62,6 +63,8 @@ struct ContentView: View {
                 .help("Run or pause the simulation (Space)")
                 Button("Reset", systemImage: "arrow.counterclockwise") { model.reset() }
                     .help("Return to the moment before detonation (⌘R)")
+                Button("Help", systemImage: "questionmark.circle") { openWindow(id: "help") }
+                    .help("Open BombCAD Help")
             }
         }
         .onChange(of: model.settings) { model.settingsChanged() }
