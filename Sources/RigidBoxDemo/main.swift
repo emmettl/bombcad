@@ -7,6 +7,22 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--grazing-geometry") {
+        let results = try ExperimentalRigidBoxGrazingStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-grazing-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "\(r.contactDuration) s graze: impulse \(r.linearImpulse), expected \(r.expectedLinearImpulse), evaluations \(r.evaluations)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--motion-geometry") {
         let results = try ExperimentalRigidBoxMotionStudy.run()
         let output = URL(

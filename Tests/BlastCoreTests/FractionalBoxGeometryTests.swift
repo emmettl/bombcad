@@ -5,6 +5,30 @@ import simd
 
 @Suite("Fractional rigid-box geometry")
 struct FractionalBoxGeometryTests {
+    @Test(
+        "A brief corner graze carries pressure impulse despite zero endpoint volume change",
+        arguments: [0.001, 0.0001, 0.00001])
+    func grazingImpulse(gap: Double) throws {
+        let duration = 0.4
+        let pressure = 101325.0
+        let body = try RigidBoxBody(
+            mass: 1, size: SIMD3(repeating: 0.2),
+            position: SIMD3(-0.3, 0.1 + gap, 0.5))
+        let tolerance = max(1e-12, pressure * 0.2 * gap * gap / 2 * 1e-5)
+        let r = try AdaptiveBoxCellSweep.integrate(
+            body: body, velocity: SIMD3(1, -1, 0), spin: .zero,
+            lower: .zero, cellSize: 1, duration: duration, pressure: pressure, volumeTolerance: 1e-14,
+            impulseTolerance: tolerance, angularTolerance: tolerance)
+        let expected = SIMD3<Double>(repeating: -pressure * 0.2 * gap * gap / 2)
+        #expect(abs(r.volumeChange) < 1e-14)
+        #expect(abs(r.sweptVolume) < 1e-12)
+        #expect(abs(r.linearImpulse.x - expected.x) < 2 * tolerance)
+        #expect(abs(r.linearImpulse.y - expected.y) < 2 * tolerance)
+        #expect(abs(r.linearImpulse.z) < 1e-12)
+        #expect(simd_length(r.angularImpulse) < 2 * tolerance)
+        #expect(r.impulseErrorEstimate <= tolerance && r.angularErrorEstimate <= tolerance)
+        #expect(abs(r.gasWork + r.bodyWork) < 1e-8)
+    }
     @Test("Adaptive rotated sweeps meet volume tolerance and fail at a refinement limit")
     func adaptiveSweep() throws {
         let body = try RigidBoxBody(

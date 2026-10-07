@@ -278,6 +278,10 @@ recording the integration method and actual temporal evaluation count in each re
 Rotated translation and rotation use an adaptive reference checked against endpoint volume
 changes and coarse/fine quadrature. The 48-case report includes volume tolerances and error
 indicators. This reference does not certify force impulses or detect every brief grazing event.
+`--grazing-geometry` writes `.build/rigid-box-grazing-geometry.json`, comparing analytical
+cell-pressure impulses for 1 ms, 100 µs and 10 µs corner encounters against midpoint and
+adaptive sampling. Adaptive refinement now also checks force/torque quadrature and uses
+separation bounds to investigate intervals whose samples could miss a complete encounter.
 
 ## Headline results
 

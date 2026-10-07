@@ -428,6 +428,31 @@ force-impulse accuracy. Those stress cases and consistent space-time force/trans
 remain necessary before coupling fractional gas volumes into the solver. Small-volume
 stabilization and the blast-convergence study also remain open.
 
+Grazing-contact and force-impulse checks are now implemented. Adaptive refinement compares
+linear and angular impulse estimates as well as volume. An endpoint-inclusive force estimate
+checks jumps that Gaussian nodes can sample on only one side. When temporal samples appear
+empty, separating-axis projections of the midpoint box are inflated by maximum corner travel;
+the interval is refined unless those projections prove separation over the whole interval.
+This also investigates short contact tails at occupied endpoints, rather than assuming that
+small endpoint volume implies small pressure impulse. Roundoff-sized clipped volumes are not
+used as evidence that a whole interval has been sampled adequately.
+
+`--grazing-geometry` compares 1 ms, 100 µs and 10 µs corner encounters over a 0.4 s sweep.
+Each selected cell has zero endpoint volume change, but nonzero pressure impulse. At
+101325 Pa, analytical x and y impulses are −0.0101325, −0.000101325 and −0.00000101325 N s,
+respectively. All three adaptive results agree within the requested impulse tolerances, with
+zero analytical angular impulse and balanced gas/body work. A uniform 128-sample midpoint
+integration misses all three encounters entirely. These are cell-pressure contributions,
+not net loads on a complete box in uniform ambient pressure.
+
+Thirteen tests pass, including these three analytical grazing cases and the previous motion
+checks. The grazing references require 1161–1197 geometry evaluations: useful for checking
+correctness, not a production throughput result. Coarse/fine and endpoint estimates remain
+numerical indicators rather than rigorous general force-error bounds; geometry tolerance,
+refinement limits and more complex near-contact motion remain relevant. The next step is a
+standalone conservative fractional gas-transport reference using the checked volume/work
+budgets, followed by small-volume stabilization before solver integration.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
