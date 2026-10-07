@@ -943,8 +943,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
-- **Bond slip**, so that bond governs crack spacing instead of its being assumed, and a bar's
-  stress as well as its rupture is spread over its debonded length.
+- **Bond slip, by default.** It is an option (see
+  [bars that slip](#bars-that-slip-an-option)): it gives the Model Code's crack spacing on any
+  mesh, but leaves the shear beam OA1 42–47% strong and the slab 18% stiff. It needs a direct
+  test of interlock across one crack and the test slab's crack pattern before it can be the
+  default; and inclined bars, shells and beams that slip too.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete close to a charge, and a
   close-in test to check it.
