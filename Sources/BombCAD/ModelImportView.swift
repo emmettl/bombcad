@@ -14,15 +14,29 @@ struct ModelImportView: View {
     @State private var deformable = false
     @State private var fixedBase = true
     @State private var material = StructureMaterial.reinforcedConcrete
-    @State private var preview: ImportedMesh.Preview?
-    @State private var transformedMesh: ImportedMesh?
     @State private var error: String?
-    @State private var busy = false
     @State private var acknowledged = false
-    @State private var generation = 0
     @State private var resolution = Resolution.medium
-    @State private var previewTask: Task<Void, Never>?
+    @State private var domainSize = SIMD3<Float>(64, 64, 32)
+    @State private var sourceBounds: Box?
+    @State private var initialized = false
+    @State private var previewModel: ImportPreviewModel
+    init(mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel) {
+        self.mesh = mesh
+        self.filename = filename
+        self.existing = existing
+        self._model = Bindable(wrappedValue: model)
+        self._previewModel = State(initialValue: ImportPreviewModel(source: mesh))
+    }
+    private var preview: ImportedMesh.Preview? { previewModel.preview }
+    private var busy: Bool { previewModel.isPreparing }
+    private var currentRequest: ImportPreviewRequest {
+        ImportPreviewRequest(
+            scale: scale, yUp: yUp, corner: SIMD3<Float>(corner), cellSize: h, domain: domainSize)
+    }
+    private var isPreviewCurrent: Bool { previewModel.isCurrent && previewModel.request == currentRequest }
     private var h: Float { resolution.cellSize }
+    private var applyTitle: String { existing == nil ? "Import" : "Apply" }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("\(existing == nil ? "Import" : "Update") \(filename)").font(.title2)
@@ -44,10 +58,26 @@ struct ModelImportView: View {
                             TextField(
                                 "Corner \(["X", "Y", "Z"][axis]) (m)",
                                 value: Binding(get: { corner[axis] }, set: { corner[axis] = $0 }),
-                                format: .number)
+                                format: .number.precision(.fractionLength(0...4)))
                         }
                         Text("The model’s lowest corner is placed here. Simulation Z points upward.").font(
                             .caption)
+                        HStack {
+                            Button("Centre horizontally") { place(.center) }
+                            Button("Place on ground") { place(.ground) }
+                            Button("Expand domain to fit") { place(.expand) }
+                        }.controlSize(.small)
+                        Text(
+                            "Domain: \(domainSize.x, format:.number.precision(.fractionLength(0...4))) × \(domainSize.y, format:.number.precision(.fractionLength(0...4))) × \(domainSize.z, format:.number.precision(.fractionLength(0...4))) m"
+                        ).font(.caption)
+                        if domainSize != model.settings.scenario.domainSize {
+                            Text(
+                                "Domain expansion is pending until \(applyTitle); existing geometry stays inside the domain."
+                            ).font(.caption).foregroundStyle(.orange)
+                            Button("Undo domain expansion") {
+                                domainSize = model.settings.scenario.domainSize
+                            }
+                        }
                     }
                     Section("Behavior") {
                         Toggle("Deformable solid", isOn: $deformable).disabled(
@@ -88,27 +118,52 @@ struct ModelImportView: View {
                         Text(
                             "Applying uses this air grid for the layout. Source meshes are retained and regenerated on grid changes. Finer grids cost more memory and simulation time."
                         ).font(.caption)
-                        Text("Air cells: \(h, format:.number) m · \(mesh.triangles.count) triangles")
-                        Button(busy ? "Preparing…" : "Prepare preview", action: prepare).disabled(busy)
+                        Text(
+                            "Air cells: \(h, format:.number.precision(.fractionLength(0...4))) m · \(mesh.triangles.count) triangles"
+                        )
+                        if busy {
+                            ProgressView("Updating preview…")
+                        } else if isPreviewCurrent {
+                            Label("Preview up to date", systemImage: "checkmark.circle").foregroundStyle(
+                                .secondary)
+                        }
+                        Text(
+                            "Preview updates automatically after a brief pause. \(applyTitle) changes the simulation."
+                        ).font(.caption).foregroundStyle(.secondary)
                         if !canApply {
                             Text(
                                 "This source is detached or the structure has local edits. The preview samples the retained source; local geometry edits are not shown or overwritten. Applying is disabled."
                             ).foregroundStyle(.orange)
                         }
-                        if let error { Text(error).foregroundStyle(.red) }
+                        if let message = error ?? previewModel.error {
+                            Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                            if previewModel.error != nil {
+                                Button("Retry preview") { schedulePreview(immediately: true) }
+                            }
+                        }
                         if let preview {
                             Text("\(preview.occupiedCells) occupied cells · \(preview.boxes.count) regions")
                             Text(
-                                "Dimensions: \(preview.bounds.size.x, format:.number) × \(preview.bounds.size.y, format:.number) × \(preview.bounds.size.z, format:.number) m"
+                                "Dimensions: \(preview.bounds.size.x, format:.number.precision(.fractionLength(0...4))) × \(preview.bounds.size.y, format:.number.precision(.fractionLength(0...4))) × \(preview.bounds.size.z, format:.number.precision(.fractionLength(0...4))) m"
                             )
-                            if let transformedMesh {
-                                ImportComparisonView(mesh: transformedMesh, preview: preview)
+                            if !isPreviewCurrent {
+                                Text(
+                                    "Showing the previous preview; it does not represent your latest settings."
+                                ).font(.caption).foregroundStyle(.orange)
+                            }
+                            if let transformedMesh = previewModel.transformedMesh {
+                                ImportComparisonView(
+                                    mesh: transformedMesh, preview: preview, canRefine: resolution != .fine,
+                                    refine: { previewFiner() }
+                                )
+                                .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
                             }
                             ForEach(preview.warnings, id: \.self) { warning in
                                 Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(
                                     .orange)
                             }
-                            Toggle("I have reviewed the resolution warnings", isOn: $acknowledged)
+                            Toggle("I have reviewed the resolution warnings", isOn: $acknowledged).disabled(
+                                !isPreviewCurrent)
                         }
                     }
                 }.formStyle(.grouped)
@@ -116,16 +171,18 @@ struct ModelImportView: View {
             HStack {
                 Button("Cancel") { dismiss() }
                 Spacer()
-                Button(existing == nil ? "Import" : "Apply") { commit() }.disabled(
-                    preview == nil || preview?.occupiedCells == 0 || !acknowledged || busy || !canApply
+                Button(applyTitle) { commit() }.disabled(
+                    !isPreviewCurrent || preview?.occupiedCells == 0 || !acknowledged || busy || !canApply
                 )
                 .keyboardShortcut(.defaultAction)
             }
         }.padding(20).frame(width: 760, height: 820)
-            .onChange(of: scale) { invalidate() }
-            .onChange(of: yUp) { invalidate() }
-            .onChange(of: corner) { invalidate() }
+            .onChange(of: scale) { schedulePreview() }
+            .onChange(of: yUp) { schedulePreview() }
+            .onChange(of: corner) { schedulePreview() }
             .onAppear {
+                sourceBounds = mesh.bounds
+                domainSize = model.settings.scenario.domainSize
                 resolution = model.settings.resolution
                 if let existing {
                     scale = existing.scale
@@ -137,64 +194,65 @@ struct ModelImportView: View {
                         fixedBase = body.fixedBase
                     }
                 }
+                initialized = true
+                schedulePreview()
             }
-            .onChange(of: resolution) { invalidate() }
-            .onDisappear { previewTask?.cancel() }
+            .onChange(of: resolution) { schedulePreview() }
+            .onChange(of: domainSize) { schedulePreview() }
+            .onDisappear { previewModel.cancel() }
     }
-    private func invalidate() {
-        generation += 1
-        previewTask?.cancel()
-        busy = false
-        preview = nil
-        transformedMesh = nil
+    private func schedulePreview(immediately: Bool = false) {
+        guard initialized else { return }
         acknowledged = false
         error = nil
+        previewModel.update(currentRequest, delay: immediately ? .zero : .milliseconds(350))
     }
-    private func prepare() {
-        invalidate()
-        busy = true
-        let token = generation
-        let mesh = mesh
-        let scale = Float(scale)
-        let yUp = yUp
-        let corner = SIMD3<Float>(corner)
-        let h = h
-        let domain = model.settings.scenario.domainSize
-        previewTask = Task {
-            let sampling = Task.detached(priority: .userInitiated) {
-                () -> Result<(ImportedMesh, ImportedMesh.Preview), Error> in
-                Result {
-                    let transformed = try mesh.transformed(scale: scale, yUp: yUp, corner: corner)
-                    return (
-                        transformed, try transformed.preview(cellSize: h, domain: domain, allowEmpty: true)
-                    )
-                }
-            }
-            let result = await withTaskCancellationHandler(
-                operation: { await sampling.value }, onCancel: { sampling.cancel() })
-            guard generation == token, !Task.isCancelled else { return }
-            busy = false
-            switch result {
-            case .success(let value):
-                transformedMesh = value.0
-                preview = value.1
-            case .failure(let failure): error = failure.localizedDescription
-            }
+    private func previewFiner() {
+        switch resolution {
+        case .coarse: resolution = .medium
+        case .medium: resolution = .fine
+        case .fine: break
         }
+    }
+    private enum Placement { case center, ground, expand }
+    private func place(_ action: Placement) {
+        do {
+            let size = try ImportPlacement.size(
+                sourceBounds: sourceBounds ?? mesh.bounds, scale: scale, yUp: yUp)
+            let point = SIMD3<Float>(corner)
+            switch action {
+            case .center:
+                corner = SIMD3<Double>(
+                    try ImportPlacement.centeredFootprint(size: size, corner: point, domain: domainSize))
+            case .ground: corner = SIMD3<Double>(ImportPlacement.onGround(corner: point))
+            case .expand:
+                let bytesPerCell = model.settings.detailedCharge ? 73.0 : 57.0
+                let refinement =
+                    model.settings.sharpShocks ? Double(SolverConfiguration().refinementMemory) : 0
+                let budget = Double(model.device?.recommendedMaxWorkingSetSize ?? 8_000_000_000) * 0.7
+                domainSize = try ImportPlacement.expandedDomain(
+                    size: size, corner: point, current: domainSize, cellSize: h,
+                    maxCells: max(0, (budget - refinement) / bytesPerCell))
+            }
+            error = nil
+        } catch { self.error = error.localizedDescription }
     }
     private var canApply: Bool { existing?.canRegenerate(model.settings.scenario.structure) ?? true }
     private func commit() {
-        guard let preview, canApply else { return }
+        guard let preview, canApply, isPreviewCurrent, acknowledged, !busy else { return }
         do {
             let imported = ImportedModel(
                 id: existing?.id ?? UUID(), name: filename, source: mesh, scale: Float(scale), yUp: yUp,
                 corner: SIMD3<Float>(corner), behavior: deformable ? .deformable : .rigid, preview: preview)
             var candidate = model.settings.scenario
+            candidate.domainSize = domainSize
             try candidate.installImport(imported, material: material, fixedBase: fixedBase)
             // Validate every retained source before applying a layout-wide resolution change.
             candidate = try candidate.resamplingImports(cellSize: h)
+            let domainExpanded = candidate.domainSize != model.settings.scenario.domainSize
             model.settings.resolution = resolution
             model.settings.scenario = candidate
+            if domainExpanded { model.camera = .framing(candidate) }
             if deformable { model.settings.solidElementSize = h }
             dismiss()
         } catch { self.error = error.localizedDescription }

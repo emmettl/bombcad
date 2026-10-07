@@ -7,20 +7,28 @@ import simd
 struct ImportComparisonView: View {
     let mesh: ImportedMesh
     let preview: ImportedMesh.Preview
+    let canRefine: Bool
+    let refine: () -> Void
     @State private var showSource = true
     @State private var showSimulation = true
     @State private var showIssues = true
     @State private var selected: ImportedMesh.Diagnostic?
+    @State private var resetRequest = 0
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Toggle("Source", isOn: $showSource)
                 Toggle("Simulation", isOn: $showSimulation)
                 Toggle("Affected regions", isOn: $showIssues)
+                Spacer()
+                Button("Reset view") {
+                    selected = nil
+                    resetRequest += 1
+                }.controlSize(.small)
             }.toggleStyle(.checkbox)
             ImportSceneView(
                 mesh: mesh, preview: preview, showSource: showSource, showSimulation: showSimulation,
-                showIssues: showIssues, selected: selected
+                showIssues: showIssues, selected: selected, resetRequest: resetRequest
             )
             .frame(height: 300).clipShape(.rect(cornerRadius: 8))
             .accessibilityLabel(
@@ -29,34 +37,59 @@ struct ImportComparisonView: View {
             Text(
                 "Drag to orbit · scroll to zoom. Cyan: source wireframe · blue: simulation · orange: thin features and gaps · red: potentially missing surfaces."
             ).font(.caption).foregroundStyle(.secondary)
-            if !preview.diagnostics.isEmpty {
-                Text("Affected regions (approximate)").font(.headline)
+            if !preview.diagnostics.isEmpty || preview.diagnosticsTruncated {
+                HStack {
+                    Text("Affected regions (approximate)").font(.headline)
+                    Spacer()
+                    Button("Preview finer grid", action: refine).disabled(!canRefine)
+                }
+                if !canRefine {
+                    Text(
+                        "Fine is the smallest available grid (0.125 m); highlighted features may still be unresolved."
+                    ).font(.caption).foregroundStyle(.orange)
+                }
+                if let selected {
+                    Text("Selected: \(selected.title). \(selected.detail)").font(.caption).foregroundStyle(
+                        selected.kind == .missing ? .red : .orange)
+                }
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(preview.diagnostics.enumerated()), id: \.element.id) { index, issue in
-                            Button {
-                                selected = selected == issue ? nil : issue
-                                showIssues = true
-                            } label: {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Label(
-                                        "\(index+1). \(issue.title)",
-                                        systemImage: selected == issue ? "scope" : "exclamationmark.triangle")
-                                    Text(issue.detail).font(.caption).foregroundStyle(.secondary)
-                                }.frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(6).background(
-                                        selected == issue ? Color.accentColor.opacity(0.15) : .clear,
-                                        in: .rect(cornerRadius: 6))
-                            }.buttonStyle(.plain)
-                        }
+                        warningGroup(
+                            "Potential geometry loss",
+                            issues: preview.diagnostics.filter { $0.kind == .missing })
+                        warningGroup(
+                            "Resolution risks", issues: preview.diagnostics.filter { $0.kind != .missing })
                     }
-                }.frame(maxHeight: 170)
+                }.frame(maxHeight: 190)
                 Text(
-                    "Select a region to focus the camera. Highlights describe sampled regions; they do not certify that other geometry is resolved."
+                    "Select a region to focus it. Highlights are approximate; compare finer grids before trusting results."
                 ).font(.caption).foregroundStyle(.secondary)
             }
         }.onChange(of: preview) { selected = nil }
     }
+    @ViewBuilder private func warningGroup(_ title: String, issues: [ImportedMesh.Diagnostic]) -> some View {
+        if !issues.isEmpty {
+            Text("\(title) (\(issues.count))").font(.subheadline.bold()).padding(.top, 4)
+            ForEach(issues) { issue in
+                Button {
+                    selected = selected == issue ? nil : issue
+                    showIssues = true
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label(
+                            issue.title, systemImage: selected == issue ? "scope" : "exclamationmark.triangle"
+                        )
+                        .foregroundStyle(issue.kind == .missing ? .red : .orange)
+                        Text(issue.detail).font(.caption).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(6)
+                        .background(
+                            selected == issue ? Color.accentColor.opacity(0.2) : .clear,
+                            in: .rect(cornerRadius: 6))
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
 }
 
 private struct ImportSceneView: NSViewRepresentable {
@@ -66,10 +99,12 @@ private struct ImportSceneView: NSViewRepresentable {
     let showSimulation: Bool
     let showIssues: Bool
     let selected: ImportedMesh.Diagnostic?
+    let resetRequest: Int
     final class Coordinator {
         var mesh: ImportedMesh?
         var preview: ImportedMesh.Preview?
         var selected: ImportedMesh.Diagnostic?
+        var resetRequest = -1
         let camera = SCNNode()
         let source = SCNNode()
         let simulation = SCNNode()
@@ -114,8 +149,9 @@ private struct ImportSceneView: NSViewRepresentable {
         c.source.isHidden = !showSource
         c.simulation.isHidden = !showSimulation
         c.issues.isHidden = !showIssues
-        if changed || c.selected != selected {
+        if changed || c.selected != selected || c.resetRequest != resetRequest {
             c.selected = selected
+            c.resetRequest = resetRequest
             let b = selected?.bounds ?? preview.bounds
             let center = (b.min + b.max) * 0.5
             let half = simd_max(b.size, SIMD3(repeating: preview.cellSize * 0.3)) * 0.5

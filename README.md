@@ -80,10 +80,23 @@ The importer retains each source mesh, its units/orientation and placement in th
 the air grid regenerates retained geometry in the background; the simulation pauses until the
 new geometry is ready. Source edits replace that model rather than adding another copy.
 
+The preview refreshes automatically after a short pause when units, orientation, position or
+grid change. Pending updates keep the previous geometry dimmed and clearly marked; Apply is
+disabled until the current preview is ready and its warnings have been reviewed. Previewing
+does not change the simulation.
+
+Placement shortcuts centre the footprint without changing its height, put the base on the
+ground without moving X/Y, or expand the domain with clearance. Expansion preserves existing
+domain extents and checks the estimated air-memory budget; it takes effect only on Apply and
+can be undone in the sheet before applying.
+
 The interactive 3D preview overlays the source wireframe (cyan) and sampled simulation volumes
 (blue). Orange regions identify thin features or narrow gaps sampled along X, Y and Z; red
 regions identify potentially missing surfaces. Toggle layers, orbit and zoom, or select a
-region to focus the camera. Region descriptions include approximate position, extent and the
+region to focus the camera, or reset the view. Warnings group potentially missing surfaces
+separately from resolution risks. **Preview finer grid** advances to the next available grid;
+the finest grid is explicitly identified, since refinement does not guarantee resolution.
+Region descriptions include approximate position, extent and the
 minimum sampled feature dimension. Empty previews show geometry lost on a coarse grid, but
 cannot be imported until a finer grid or larger scale produces occupied cells.
 
