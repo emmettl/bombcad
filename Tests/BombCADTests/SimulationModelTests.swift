@@ -251,7 +251,8 @@ struct SimulationModelTests {
         model.speed = .unlimited
         model.duration = 0.06
         model.run()
-        try await waitUntil { !model.isRunning && model.time > 0.05 }
+        // 7 s on an M4 Max, 20 s on the CI mini's M4, and longer when other tests share the GPU.
+        try await waitUntil(timeout: .seconds(120)) { !model.isRunning && model.time > 0.05 }
         let summary = try #require(model.structureSummary)
         #expect(model.errorMessage == nil)
         #expect(!summary.hasBlownUp)

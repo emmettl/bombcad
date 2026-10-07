@@ -35,10 +35,17 @@ follows the renderer's shaders (`structureVertex`, `shellVertex` and `beamVertex
 `Render.metal`). Intact solid elements share their nodes, so the solid surface is one connected
 mesh; shells, beams and rubble are separate boxes. Every face is a quad facing outwards.
 
-Per face, two primvars carry the element's state: `damage`, from 0 (sound) to 1 (failing; 1 for
-rubble), and `material`, an index into the mesh's `bombcad:materials` names, with
-`bombcad:transparent` marking glass. The points change every frame; the faces, and with them
-`material`, are written only on the frames where elements fail. Time codes count frames, played
+Per face, three primvars carry the element's state:
+
+- `damage`, the element's damage index: 0 when sound, 1 at the point of failure. It goes on
+  rising past 1 (to about 8 in the concrete building under 1,000 kg) until the element is
+  removed; the app's colours stop at 1. Rubble has 1.
+- `material`, an index into the mesh's `bombcad:materials` names, with `bombcad:transparent`
+  marking glass.
+- `rubble`, true on the lumps that stand for failed elements.
+
+The points and damage change every frame; the faces, and with them `material` and `rubble`, are
+written only on the frames where elements fail. Time codes count frames, played
 at 24 a second; `simulatedSecondsPerFrame` in the layer's `customLayerData` gives the simulated
 time between them.
 
@@ -134,10 +141,32 @@ over "Scene"
 ```
 
 The files have been checked this way, with frames rendered of the concrete building under 1,000
-kg, of the glass façade breaking up, and of the street's blast. They have not yet been opened in
-Blender. Its USD import is expected to bring in a mesh whose points and faces change over time,
-and primvars as attributes, so that `damage` can drive a material through an Attribute node, and
-the volumes either through the scene or as a VDB sequence; all still to be tried.
+kg, of the glass façade breaking up, and of the street's blast.
+
+## In Blender
+
+Checked with Blender 5.2.2 LTS, importing with File → Import → Universal Scene Description and
+its defaults (the script below passes `import_volumes` and `read_mesh_attributes`, both on by
+default):
+
+- **The structure** comes in as a mesh with a Mesh Sequence Cache modifier reading the file, so
+  its points and its faces follow the frames: 116,064 faces at frame 0 of the concrete building
+  under 1,000 kg, 118,306 once its front wall had broken up.
+- **`damage`, `material` and `rubble`** come in as face attributes (float, integer, Boolean).
+  An Attribute node named `damage` feeding a colour ramp colours the structure by damage.
+- **The blast** comes in as a Volume object whose file follows the frames, `blast.0000.vdb` at
+  frame 0 and so on, with both grids, `overpressure` and `shock`. An Attribute node named
+  `overpressure` (scaled down; it is in kPa) feeding a Principled Volume's density renders it in
+  Cycles. The two OpenVDBAsset prims also come in, as empty objects that do nothing.
+- **The camera** is the project's view, and the scene's frame range is set from the file, played
+  at 24 frames a second.
+
+`Scripts/check-export-in-blender.py` does this without opening Blender's window, prints what
+arrived at the frames given, and can render one with Cycles:
+
+```bash
+blender -b --python Scripts/check-export-in-blender.py -- Example.usda 0,10,25 render.png 25
+```
 
 ## Limitations
 
@@ -146,8 +175,8 @@ the volumes either through the scene or as a VDB sequence; all still to be tried
 - **Frames on whole milliseconds** of simulated time. Without a structure and without `--vdb`,
   the scene is a still of one frame. Volume frames in a run without a structure end a time step
   early (above).
-- **No reference reader in the tests.** The files are checked against OpenVDB by hand, through
-  `usdrecord`, not in `make check`.
+- **No reference reader in the tests.** The files are checked against OpenVDB and Blender by
+  hand, through `usdrecord` and the script above, not in `make check`.
 - **Headless only.** The app keeps no frames of its runs, so there is no Export command in the
   app; a project saved from the app is exported with `BombCAD run`.
 - **Large files at fine intervals**, in text form above all; see above.

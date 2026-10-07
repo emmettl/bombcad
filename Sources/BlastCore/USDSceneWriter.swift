@@ -36,6 +36,7 @@ public final class USDSceneWriter {
     private var frames = 0
     private var lastQuads: [Int32]?
     private var lastMaterial: [Int32]?
+    private var lastRubble: [Bool]?
     private var lastDamage: [Float]?
     private var materials: [StructureSurface.Material] = []
     private var hasBody = false
@@ -64,7 +65,7 @@ public final class USDSceneWriter {
         parts = url.deletingLastPathComponent().appending(
             path: ".\(url.lastPathComponent).parts-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: parts, withIntermediateDirectories: false)
-        for name in ["points", "extent", "counts", "indices", "damage", "material"] {
+        for name in ["points", "extent", "counts", "indices", "damage", "material", "rubble"] {
             let file = parts.appending(path: name)
             FileManager.default.createFile(atPath: file.path, contents: nil)
             streams[name] = try FileHandle(forWritingTo: file)
@@ -134,6 +135,13 @@ public final class USDSceneWriter {
             text.append("],\n")
             try write(&text, to: "material")
             lastMaterial = surface.material
+        }
+        if surface.rubble != lastRubble {
+            text.append(frame + "[")
+            text.append(surface.rubble.map { $0 ? "true" : "false" }.joined(separator: ", "))
+            text.append("],\n")
+            try write(&text, to: "rubble")
+            lastRubble = surface.rubble
         }
         if surface.damage != lastDamage {
             text.append(frame + "[")
@@ -254,6 +262,9 @@ public final class USDSceneWriter {
                         int[] primvars:material (
                             interpolation = "uniform"
                         )
+                        bool[] primvars:rubble (
+                            interpolation = "uniform"
+                        )
 
                 """)
             try timeSamples("float3[] extent", "extent")
@@ -261,6 +272,7 @@ public final class USDSceneWriter {
             try timeSamples("int[] faceVertexIndices", "indices")
             try timeSamples("float[] primvars:damage", "damage")
             try timeSamples("int[] primvars:material", "material")
+            try timeSamples("bool[] primvars:rubble", "rubble")
             try timeSamples("point3f[] points", "points")
             text.append("    }\n")
         }
