@@ -1123,6 +1123,48 @@ func runShearBeam() throws {
 }
 
 func runSlab() throws {
+    if flag("unload") {
+        // `--unload`: pushed slowly at mid-span to the test's peak, then released.
+        let layers = option("layers").flatMap { Int($0) } ?? 8
+        let to = option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.105
+        let strengths: [SlabBenchmark.RateTreatment] =
+            flag("rate-only") ? [.strainRate] : flag("static-only") ? [.none] : [.none, .strainRate]
+        for strength in strengths {
+            let result = try SlabBenchmark.pushAndRelease(
+                device: device, elementsThroughThickness: layers, deflection: to, strength: strength,
+                width: option("strip").flatMap { Float($0) }.map { $0 / 1000 } ?? SlabBenchmark.fullWidth,
+                adjust: { model in applyRateOptions(&model) },
+                trace: flag("trace")
+                    ? { time, deflection, push in
+                        print(
+                            "  \(format(time * 1000, 0)) ms: \(format(Double(deflection) * 1000, 1)) mm, \(format(Double(push) / 1000, 1)) kN"
+                        )
+                        fflush(stdout)
+                    } : nil,
+                shapes: { peak, left in
+                    print(
+                        "  at peak (mm, support to mid-span): "
+                            + peak.map { format(Double($0) * 1000, 1) }.joined(separator: " "))
+                    print(
+                        "  left:                              "
+                            + left.map { format(Double($0) * 1000, 1) }.joined(separator: " "))
+                    print(
+                        "  recovered:                         "
+                            + zip(peak, left).map { format(Double($0 - $1) * 1000, 1) }.joined(separator: " ")
+                    )
+                },
+                hinge: flag("hinge")
+                    ? { label, rows in
+                        print("  \(label):")
+                        for row in rows.reversed() { print("    " + row) }
+                    } : nil)
+            print(
+                "\(strength.rawValue): pushed to \(format(Double(result.reached) * 1000, 1)) mm with "
+                    + "\(format(Double(result.force) / 1000, 1)) kN at most, \(format(Double(result.residual) * 1000, 1)) mm left"
+            )
+        }
+        return
+    }
     let load = SlabBenchmark.load
     print("Blast Blind Simulation Contest slab (normal-strength concrete, Grade 60 bars)")
     print(

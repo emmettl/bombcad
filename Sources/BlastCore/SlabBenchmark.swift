@@ -240,6 +240,125 @@ public enum SlabBenchmark {
         return result(history, summary: solver.summary(), elementCount: solver.elementCount, elapsed: elapsed)
     }
 
+    /// The slab pushed down slowly at mid-span, across its width, to `deflection`, then drawn
+    /// back until it no longer pushes and left to settle: how much of its deflection is elastic,
+    /// with no dynamics. Returns the largest push (N), the deflection reached and that left (m).
+    public static func pushAndRelease(
+        device: MTLDevice, elementsThroughThickness: Int = 8, deflection: Float = 0.105, rate: Float = 0.1,
+        strength: RateTreatment = .strainRate, width: Float = fullWidth,
+        adjust: (inout StructureModel) -> Void = { _ in },
+        trace: ((_ time: Double, _ deflection: Float, _ push: Float) -> Void)? = nil,
+        shapes: ((_ peak: [Float], _ left: [Float]) -> Void)? = nil,
+        hinge: ((_ label: String, _ rows: [String]) -> Void)? = nil
+    ) throws -> (force: Float, reached: Float, residual: Float) {
+        var model = model(elementsThroughThickness: elementsThroughThickness, rate: strength, width: width)
+        adjust(&model)
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.damping = 100
+        let h = model.elementSize
+        let first = Int((6 * inch / h).rounded())
+        let second = Int((58 * inch / h).rounded())
+        let middle = solver.ex / 2
+        // A 2 in plate: through one line of nodes the push would crush the elements under it.
+        let plate = Int((inch / h).rounded())
+        var pushed: [Int] = []
+        solver.mutateNodes { nodes in
+            for j in 0...solver.ey {
+                if let n = solver.storedNode(first, j, 0) { nodes[n].restrain(x: true, z: true) }
+                if let n = solver.storedNode(second, j, 0) { nodes[n].restrain(z: true) }
+                for i in (middle - plate)...(middle + plate) {
+                    if let n = solver.storedNode(i, j, solver.ez) {
+                        nodes[n].isPushedVertically = true
+                        nodes[n].velocity = SIMD3(0, 0, -rate)
+                        pushed.append(n)
+                    }
+                }
+            }
+        }
+        let steps = max(1, Int(0.00025 / rate * 0.1 / solver.criticalTimeStep))
+        func reaction() -> Float {
+            var total: Float = 0
+            for j in 0...solver.ey {
+                for i in [first, second] where solver.storedNode(i, j, 0) != nil {
+                    total -= solver.nodalForce(i, j, 0).z
+                }
+            }
+            return total
+        }
+        var force: Float = 0
+        var reached: Float = 0
+        var nextTrace = 0.0
+        func report() {
+            guard let trace, solver.time >= nextTrace else { return }
+            nextTrace += 0.05
+            trace(solver.time, -solver.displacement(middle, solver.ey / 2, 0).z, reaction())
+        }
+        while reached < deflection, solver.time < Double(2 * deflection / rate) {
+            solver.advance(steps: steps)
+            reached = -solver.displacement(middle, solver.ey / 2, 0).z
+            force = max(force, reaction())
+            report()
+        }
+        // The deflected shape of the bottom face along the span, every eighth of the half span.
+        func shape() -> [Float] {
+            stride(from: first, through: middle, by: max(1, (middle - first) / 8)).map {
+                -solver.displacement($0, solver.ey / 2, 0).z
+            }
+        }
+        let atPeak = shape()
+        // Through the depth at mid-span: the lengthwise strain over the four elements either side
+        // of the middle, from the nodes, and each layer's bar plastic strain and crushing there.
+        func section(_ label: String) {
+            guard let hinge else { return }
+            let j = solver.ey / 2
+            var rows: [String] = []
+            for k in 0...solver.ez {
+                let stretch =
+                    (solver.displacement(middle + 4, j, k).x - solver.displacement(middle - 4, j, k).x)
+                    / (8 * h)
+                var line = String(format: "node row %2d: strain %7.2f%%", k, stretch * 100)
+                if k < solver.ez {
+                    let bars = (middle - 4..<middle + 4).map { solver.barPlasticStrain($0, j, k).x }.filter {
+                        abs($0) < 1e8
+                    }
+                    let crush = (middle - 4..<middle + 4).map { solver.plasticStrain($0, j, k) }.max() ?? 0
+                    let crack = (middle - 4..<middle + 4).map { solver.crackStrain($0, j, k) }.max() ?? 0
+                    line += String(
+                        format: "   layer: bar plastic %6.2f%%, crush %6.2f%%, crack %6.2f%%",
+                        (bars.max() ?? 0) * 100, crush * 100, crack * 100)
+                }
+                rows.append(line)
+            }
+            hinge(label, rows)
+        }
+        section("at peak")
+        solver.mutateNodes { nodes in
+            for n in pushed { nodes[n].velocity = SIMD3(0, 0, rate) }
+        }
+        let limit = solver.time + Double(deflection / rate)
+        while solver.time < limit {
+            solver.advance(steps: steps)
+            report()
+            if reaction() <= 0 { break }
+        }
+        solver.mutateNodes { nodes in
+            for n in pushed {
+                nodes[n].isPushedVertically = false
+                nodes[n].velocity = .zero
+            }
+        }
+        let settle = solver.time + 0.1
+        while solver.time < settle {
+            solver.advance(steps: steps)
+            report()
+        }
+        shapes?(atPeak, shape())
+        section("left")
+        return (force, reached, -solver.displacement(middle, solver.ey / 2, 0).z)
+    }
+
     private static func result(
         _ history: [SIMD2<Float>], summary: StructureSummary, elementCount: Int, elapsed: Duration
     ) -> Result {
