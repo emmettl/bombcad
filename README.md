@@ -132,9 +132,20 @@ changes cannot then restore lost features. Layouts saved by the earlier importer
 readable, but their discarded sources cannot be recovered automatically.
 
 Textures and OBJ visual materials are ignored; export triangulated faces or convex polygons.
-Open/non-manifold meshes are rejected. Intersecting or overlapping solids should be repaired
-before export. Limits are 20 MB, 100,000 triangles, 2 million sampled cells, and 2,048 coalesced
-regions; a scanline-work budget also limits expensive previews.
+Open/non-manifold meshes, self-intersections, overlapping solids and ambiguous contacts are
+rejected before sampling, including defects smaller than a grid cell. Intersection errors
+identify triangle numbers and an approximate region in source units. Boolean-union overlapping
+solids or repair the indicated surfaces in your CAD tool before exporting again. Separate nested
+shells are interpreted as cavities, with further nested shells becoming solid islands; a completely
+contained part therefore needs a Boolean union if it is intended to fill material. Face winding
+is normalized internally for sampling without rewriting the source. Rays on triangulation edges
+use one face owner and tangent contacts cancel.
+
+Limits are 20 MB, 100,000 triangles, 2 million sampled cells, and 2,048 coalesced regions.
+A spatial hierarchy limits intersection checking to overlapping triangle bounds, with a
+2 million candidate-pair limit, a traversal budget and cancellation. Models that exceed validation limits must be
+simplified; they are not imported with incomplete checks. A scanline-work budget also limits
+expensive previews.
 
 Gauge and deflection histories export
 as CSV from beside the chart.

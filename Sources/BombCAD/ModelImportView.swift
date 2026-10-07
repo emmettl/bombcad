@@ -47,6 +47,9 @@ struct ModelImportView: View {
                         Text(
                             "OBJ polygons must be triangulated or convex. Texture and visual material files are ignored."
                         ).font(.caption)
+                        Text(
+                            "Nested shells are treated as cavities. Boolean-union contained solid parts before export if they should fill material."
+                        ).font(.caption)
                         Picker("Source units", selection: $scale) {
                             Text("Metres").tag(Float(1.0))
                             Text("Centimetres").tag(Float(0.01))

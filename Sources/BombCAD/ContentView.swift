@@ -68,7 +68,7 @@ struct ContentView: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 Button("Export Layout JSON…", systemImage: "doc.text") { isExportingJSON = true }
-                Button(readingImport ? "Reading Model…" : "Import Model…", systemImage: "cube.box") {
+                Button(readingImport ? "Checking Model…" : "Import Model…", systemImage: "cube.box") {
                     isImporting = true
                 }.disabled(readingImport)
             }
@@ -150,7 +150,7 @@ struct ContentView: View {
             }
         }
         .alert(
-            "Project file",
+            "File error",
             isPresented: Binding(get: { fileError != nil }, set: { if !$0 { fileError = nil } })
         ) {
             Button("OK") { fileError = nil }

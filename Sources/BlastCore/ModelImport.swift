@@ -8,7 +8,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         public var b: SIMD3<Float>
         public var c: SIMD3<Float>
     }
-    public var triangles: [Triangle]
+    public private(set) var triangles: [Triangle]
     public var bounds: Box {
         let points = triangles.flatMap { [$0.a, $0.b, $0.c] }
         return Box(
@@ -131,28 +131,10 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
             else { throw ImportError.invalid("Model contains non-finite or degenerate triangles.") }
         }
         triangles = result
-        try validateClosed()
+        try validateGeometry()
     }
-    private func validateClosed() throws {
-        struct Edge: Hashable {
-            var a: SIMD3<Float>
-            var b: SIMD3<Float>
-        }
-        func less(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> Bool {
-            for k in 0..<3 where a[k] != b[k] { return a[k] < b[k] }
-            return false
-        }
-        var edges: [Edge: Int] = [:]
-        for t in triangles {
-            for (a, b) in [(t.a, t.b), (t.b, t.c), (t.c, t.a)] {
-                edges[less(a, b) ? Edge(a: a, b: b) : Edge(a: b, b: a), default: 0] += 1
-            }
-        }
-        guard edges.values.allSatisfy({ $0 == 2 }) else {
-            throw ImportError.invalid(
-                "The mesh has open or non-manifold edges. Export a watertight, triangulated solid; open surfaces cannot reliably block the blast."
-            )
-        }
+    private func validateGeometry(coordinateUnits: String = "source units") throws {
+        try MeshValidation.validate(triangles, coordinateUnits: coordinateUnits)
     }
     public func transformed(scale: Float, yUp: Bool, corner: SIMD3<Float>) throws -> ImportedMesh {
         guard scale.isFinite, scale > 0, (0..<3).allSatisfy({ corner[$0].isFinite && corner[$0] >= 0 }) else {
@@ -170,6 +152,9 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         guard (0..<3).allSatisfy({ mesh.bounds.max[$0].isFinite }) else {
             throw ImportError.invalid("Scaled coordinates are too large.")
         }
+        // Float placement/scaling can merge previously distinct vertices. Revalidate the actual
+        // coordinates used by the sampler rather than assuming the transform preserved topology.
+        try mesh.validateGeometry(coordinateUnits: "metres in simulation coordinates")
         return mesh
     }
 
@@ -292,27 +277,64 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
             }
             if diagnostics.count < 128 { diagnostics.append(issue) } else { truncated = true }
         }
+        // Orient neighbouring faces consistently without changing the retained source or cavity
+        // semantics. Half-open projected edges count a diagonal once; signed events cancel tangencies.
+        let orientations = try MeshValidation.orientations(triangles)
         func intersections(axis: Int, first: Float, second: Float) throws -> [Float] {
             let j = (axis + 1) % 3
             let k = (axis + 2) % 3
-            var hits: [Float] = []
+            var hits: [(position: Double, sign: Int)] = []
+            let point = SIMD2<Double>(Double(first), Double(second))
+            func cross(_ a: SIMD2<Double>, _ b: SIMD2<Double>) -> Double { a.x * b.y - a.y * b.x }
             for (index, t) in triangles.enumerated() {
                 if index % 256 == 0 { try Task.checkCancellation() }
-                let u = t.b - t.a
-                let v = t.c - t.a
-                let determinant = u[j] * v[k] - u[k] * v[j]
-                if abs(determinant) < 1e-12 { continue }
-                let dy = first - t.a[j]
-                let dz = second - t.a[k]
-                let b = (dy * v[k] - dz * v[j]) / determinant
-                let c = (u[j] * dz - u[k] * dy) / determinant
-                if b >= -1e-6 && c >= -1e-6 && b + c <= 1 + 1e-6 {
-                    hits.append(t.a[axis] + b * u[axis] + c * v[axis])
+                let a = SIMD3<Double>(t.a)
+                let b = SIMD3<Double>(t.b)
+                let c = SIMD3<Double>(t.c)
+                let pa = SIMD2(a[j], a[k])
+                var pb = SIMD2(b[j], b[k])
+                var pc = SIMD2(c[j], c[k])
+                let determinant = cross(pb - pa, pc - pa)
+                if determinant == 0 { continue }
+                if determinant < 0 { swap(&pb, &pc) }
+                func containsEdge(_ a: SIMD2<Double>, _ b: SIMD2<Double>) -> Bool {
+                    let value = cross(b - a, point - a)
+                    // One owner for an exact shared edge, regardless of face winding.
+                    return value > 0 || (value == 0 && (b.y > a.y || (b.y == a.y && b.x < a.x)))
+                }
+                guard containsEdge(pa, pb), containsEdge(pb, pc), containsEdge(pc, pa) else { continue }
+                let u = b - a
+                let v = c - a
+                let dy = Double(first) - a[j]
+                let dz = Double(second) - a[k]
+                let beta = (dy * v[k] - dz * v[j]) / determinant
+                let gamma = (u[j] * dz - u[k] * dy) / determinant
+                hits.append(
+                    (
+                        a[axis] + beta * u[axis] + gamma * v[axis],
+                        (determinant > 0 ? 1 : -1) * orientations[index]
+                    ))
+            }
+            hits.sort { $0.position < $1.position }
+            var unique: [Float] = []
+            var n = 0
+            while n < hits.count {
+                let position = hits[n].position
+                let tolerance = max(abs(position).ulp * 32, Double(h) * 1e-14)
+                var sign = 0
+                repeat {
+                    sign += hits[n].sign
+                    n += 1
+                } while n < hits.count && abs(hits[n].position - position) <= tolerance
+                if sign != 0 {
+                    guard abs(sign) == 1 else {
+                        throw ImportError.invalid(
+                            "Ambiguous mesh crossings. Repair intersecting or touching surfaces before importing."
+                        )
+                    }
+                    unique.append(Float(position))
                 }
             }
-            hits.sort()
-            var unique: [Float] = []
-            for x in hits where unique.last.map({ abs(x - $0) > h * 1e-5 }) ?? true { unique.append(x) }
             guard unique.count % 2 == 0 else {
                 throw ImportError.invalid(
                     "Ambiguous mesh intersections. Repair intersecting surfaces or simplify the model.")
@@ -445,6 +467,6 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                     && simd_length_squared(simd_cross(t.b - t.a, t.c - t.a)) > 1e-20
             })
         else { throw ImportError.invalid("Saved source mesh is invalid or too large.") }
-        try validateClosed()
+        try validateGeometry()
     }
 }
