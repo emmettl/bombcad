@@ -39,7 +39,7 @@ on load, so reading them never requires the original external path. Imported mes
 as versioned JSON assets at `assets/<id>.mesh.json`. Identical sources share one asset;
 content-derived IDs stay stable across repeated saves, and existing asset IDs are retained.
 
-`scene.json` has format `dev.bombcad.scene` and `encodingVersion: 1`. Its `scenario` contains
+`scene.json` has format `dev.bombcad.scene`. Encoding version 1 remains readable and is written for scenes without finite support-region laws; scenes with those laws use version 2 so older readers reject them rather than substitute ideal clamps. Its `scenario` contains
 structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`
 contains instance IDs, source asset references, names, transforms, behavior, attachment status,
 part material assignments and retained previews. Source triangles are not duplicated per instance.

@@ -554,9 +554,16 @@ wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars t
 within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
 resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
 [structural model](structural-model.md#base-connections). Shells and columns of beam elements
-have them too, at points across their footprint, and give the wall the same answers. Still
-open: footings, soil and foundation rotation; connections for support regions; and a measured
-case.
+have them too, at points across their footprint, and give the wall the same answers.
+
+The app now edits base and per-support horizontal bearing connections, including custom
+strength, opening, slip, friction and stiffness. Independent raised-bearing reactions, lift-off,
+clamp precedence, imported-source refinement, save/reopen and undo are checked. Finite support
+regions select initial lower-face/footprint points and use stationary horizontal bearing
+planes; they do not model a footing’s finite contact extents. See
+[structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
+and moving-component connections; bounded footings, soil and foundation rotation; and a
+measured connection case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2
