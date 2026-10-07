@@ -5,9 +5,10 @@ Status: October 2026. The initial shared-package extraction is implemented:
 BombCAD consumes it with compatibility aliases. RoomCAD, its solver and Driftbox integration
 remain proposed work.
 
-The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` exporter
+The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
-Importer asset/part integration and a complete document lifecycle remain follow-up work.
+Native document windows, autosave and unsaved-close handling are implemented. Importer asset/part
+integration remains follow-up work while that worktree is being finished.
 
 ## Goal
 

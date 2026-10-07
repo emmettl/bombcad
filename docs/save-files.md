@@ -18,8 +18,10 @@ Example.bombcad/
 
 The Foundation-only `DocumentKit` target in SimulationKit handles the container. It depends on
 neither BlastCore nor either app. BombCAD's `ProjectDocument` owns its scene and settings codecs
-and uses SwiftUI FileDocument for coordinated package export. FileDocument supports directory
-wrappers as document packages; see [Apple's documentation](https://developer.apple.com/documentation/swiftui/filedocument).
+and uses SwiftUI DocumentGroup/FileDocument for coordinated saves, autosave, document windows and
+close/quit handling. FileDocument supports directory
+wrappers as document packages; see Apple's [FileDocument](https://developer.apple.com/documentation/swiftui/filedocument)
+and [DocumentGroup](https://developer.apple.com/documentation/swiftui/documentgroup) documentation.
 
 The manifest contains:
 
@@ -27,7 +29,7 @@ The manifest contains:
 |---|---|
 | `format` | `dev.simulationkit.project` |
 | `schemaVersion` | Integer `1`, independent of the application release |
-| `documentID` | UUID retained on save/reopen; selecting a built-in layout starts a new identity |
+| `documentID` | UUID retained on save/reopen and scene replacement; New Project starts a new identity |
 | `documentType` | `bombcad`; future RoomCAD documents use their own application codec |
 | `producer` | Producer name, currently `BombCAD` |
 | `assets` | Array of asset records containing a UUID `id`, relative `path` and lowercase hex `sha256` |
@@ -53,10 +55,22 @@ fresh run and clears undo across documents.
 
 ## Open and save behaviour
 
-- Open Project accepts `.bombcad` and plain Scenario JSON. JSON support is a direct reader;
-  no historical migration framework is maintained. Opening does not write to the source.
-- Save Project captures a snapshot when the save button is pressed and exports a `.bombcad`
-  package. The document retains its ID and any already embedded assets and optional files.
+- New/Open use the native document workflow. Each project has its own window and simulation.
+  Open Project accepts `.bombcad`; Import Layout JSON in the More menu opens a separate new,
+  untitled project. JSON support is a direct reader, without a historical migration framework.
+  JSON originals are never the target of autosave.
+- Save Project and Command-S save to the document's current location, asking for a name and
+  location on the first save. Save As is in the More menu. Native File-menu commands provide
+  New, Open, recent documents, Duplicate and Revert where supported by macOS.
+- DocumentGroup tracks snapshots of geometry, numerical settings, duration, camera and display
+  preferences. Time, gauge histories, GPU state, selection and playback pacing do not dirty a
+  document. New/opened projects start clean; named projects autosave edits through the system.
+- Closing/quitting a changed untitled document asks whether to save, discard or cancel. Named
+  projects normally save automatically instead of prompting after each edit; errors are handled
+  by the native document controller. This follows macOS document conventions rather than
+  maintaining a second timer or custom close/quit alert.
+- The document retains its ID and embedded assets across scene replacement and resaving. Retained
+  assets remain available for undo. New documents/windows receive independent identities.
 - Export Layout JSON remains available for scene interchange. It omits run/view settings.
 - Unsupported schema versions and other applications' project types are rejected before
   changing the current model. Known version 1 payloads must include scene and run settings;
@@ -67,7 +81,7 @@ fresh run and clears undo across documents.
 - BombCAD validates numerical settings and bounds its saved air grid to 128 million cells
   before constructing Grid; the existing GPU memory-budget check still applies during loading.
 
-The application uses the system exporter for writing rather than implementing in-place
+The application uses the system document lifecycle for writing rather than implementing in-place
 directory updates. Tests also exercise Foundation's atomic wrapper replacement and confirm
 that validation failures leave the previous saved document readable. This is not a test of
 power-loss durability or a simulation checkpoint facility.
@@ -85,16 +99,17 @@ power-loss durability or a simulation checkpoint facility.
    before the app offers to reuse them.
 4. Add RoomCAD's codec when its scene/source/receiver model exists. WAV impulse responses are
    standalone exports, not project documents.
-5. Consider a DocumentGroup-based editor for normal Save, Save As, dirty-state prompts and
-   autosave after the initial exporter workflow is established. Those lifecycle features are
-   not implemented by this foundation.
+Native document lifecycle is implemented. Further importer integration remains independent of
+that lifecycle and should preserve the same persisted-input change tracking.
 
 ## Checks
 
 ```sh
 swift test --package-path Packages/SimulationKit
-swift test --filter 'ProjectDocumentTests|SimulationModelTests'
+swift test --filter 'ProjectSessionTests|ProjectDocumentTests|SimulationModelTests'
 ```
 
 These cover container integrity, moved files, atomic replacement, asset preservation, every
-built-in scene, settings/view restoration and app-model regressions.
+built-in scene, settings/view restoration, independent windows, revert, simulation progress not
+marking projects changed, and app-model regressions. Native UI checks cover New, close/cancel,
+Save, Save As and autosave of numerical and display edits.

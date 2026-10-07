@@ -63,8 +63,9 @@ largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
 pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). You can move
 the charge, or the selected gauge, by clicking the ground. Save Project writes a `.bombcad`
-document containing the scene, simulation settings and camera; Open Project also accepts JSON
-layouts. Export Layout JSON saves just the scene. See [Save files](docs/save-files.md).
+document containing the scene, simulation settings and camera. Named projects autosave; each
+project has its own window, and closing an edited untitled project asks whether to save.
+The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](docs/save-files.md).
 Gauge and deflection histories export
 as CSV from beside the chart.
 

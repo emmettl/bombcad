@@ -41,7 +41,7 @@ struct ProjectDocumentTests {
         #expect(model.projectDocumentID == snapshot.documentID)
     }
 
-    @Test("Re-saving preserves embedded assets and document ID; selecting a preset starts a new identity")
+    @Test("Re-saving and replacing the scene preserve embedded assets and document identity")
     func assetPreservation() throws {
         let model = SimulationModel()
         model.settings.resolution = .coarse
@@ -59,8 +59,8 @@ struct ProjectDocumentTests {
         #expect(saved.files["results/report.txt"] == archive.files["results/report.txt"])
         let previousID = model.projectDocumentID
         model.select(.openGround)
-        #expect(model.projectDocumentID != previousID)
-        #expect(model.projectArchive == nil)
+        #expect(model.projectDocumentID == previousID)
+        #expect(model.projectArchive?.files[asset.path] == data)
     }
 
     @Test("Every built-in scene can be captured as a project; simple JSON loading remains available")
@@ -74,7 +74,7 @@ struct ProjectDocumentTests {
         let legacy = try ProjectDocument(
             legacyJSON: ScenarioDocument.encode(ScenarioPreset.openGround.scenario))
         #expect(legacy.scenario == ScenarioPreset.openGround.scenario)
-        #expect(legacy.runSettings == nil && legacy.archive == nil)
+        #expect(legacy.runSettings != nil && legacy.archive == nil)
     }
 
     @Test("Invalid settings and other application projects fail before changing the model")

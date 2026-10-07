@@ -10,20 +10,24 @@ extension UTType {
 }
 
 /// Explicit persisted settings; independent of transient run-loop and selection state.
-struct ProjectRunSettings: Codable, Equatable {
+struct ProjectRunSettings: Codable, Equatable, Sendable {
     var resolution: String
     var detailedCharge: Bool
     var sharpShocks: Bool
     var solidElementSize: Float
     var duration: Double
 
+    init(settings: SimulationSettings, duration: Double) {
+        resolution = settings.resolution.rawValue
+        detailedCharge = settings.detailedCharge
+        sharpShocks = settings.sharpShocks
+        solidElementSize = settings.solidElementSize
+        self.duration = duration
+    }
+
     @MainActor
     init(model: SimulationModel) {
-        resolution = model.settings.resolution.rawValue
-        detailedCharge = model.settings.detailedCharge
-        sharpShocks = model.settings.sharpShocks
-        solidElementSize = model.settings.solidElementSize
-        duration = model.duration
+        self.init(settings: model.settings, duration: model.duration)
     }
 
     func validate() throws {
@@ -33,7 +37,7 @@ struct ProjectRunSettings: Codable, Equatable {
     }
 }
 
-struct ProjectViewSettings: Codable, Equatable {
+struct ProjectViewSettings: Codable, Equatable, Sendable {
     var target: SIMD3<Float>
     var distance: Float
     var azimuth: Float
@@ -48,15 +52,13 @@ struct ProjectViewSettings: Codable, Equatable {
     var waveOpacity: Float
     var showCharge: Bool
 
-    @MainActor
-    init(model: SimulationModel) {
-        let camera = model.camera
+    init(camera: OrbitCamera, rendering: RenderSettings) {
         target = camera.target
         distance = camera.distance
         azimuth = camera.azimuth
         elevation = camera.elevation
         fieldOfView = camera.fieldOfView
-        let view = model.renderSettings
+        let view = rendering
         displayMode = view.mode.rawValue
         pressureScale = view.pressureScale
         impulseScale = view.impulseScale
@@ -65,6 +67,11 @@ struct ProjectViewSettings: Codable, Equatable {
         showWave = view.showWave
         waveOpacity = view.waveOpacity
         showCharge = view.showCharge
+    }
+
+    @MainActor
+    init(model: SimulationModel) {
+        self.init(camera: model.camera, rendering: model.renderSettings)
     }
 
     func validate() throws {
@@ -99,8 +106,8 @@ struct ProjectViewSettings: Codable, Equatable {
     }
 }
 
-struct ProjectDocument: FileDocument {
-    static let readableContentTypes: [UTType] = [.bombCADProject, .json]
+struct ProjectDocument: FileDocument, Equatable, Sendable {
+    static let readableContentTypes: [UTType] = [.bombCADProject]
     static let writableContentTypes: [UTType] = [.bombCADProject]
 
     var scenario: Scenario
@@ -108,6 +115,24 @@ struct ProjectDocument: FileDocument {
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
     var documentID: UUID
+
+    /// New documents have complete inputs without allocating a GPU simulation.
+    init(scenario: Scenario = SimulationSettings().scenario) {
+        self.scenario = scenario
+        var settings = SimulationSettings()
+        settings.scenario = scenario
+        let crossing = (scenario.acousticCrossingTime * 100).rounded(.up) / 100
+        runSettings = ProjectRunSettings(
+            settings: settings, duration: scenario.structure == nil ? crossing : max(crossing, 0.25))
+        var rendering = RenderSettings()
+        if scenario.structure != nil {
+            rendering.waveOpacity = 0.06
+            rendering.pressureScale = 1000
+        }
+        viewSettings = ProjectViewSettings(camera: .framing(scenario), rendering: rendering)
+        archive = nil
+        documentID = UUID()
+    }
 
     @MainActor
     init(model: SimulationModel) {
@@ -134,11 +159,7 @@ struct ProjectDocument: FileDocument {
         guard legacyJSON.count <= ProjectArchive.maximumFileBytes else {
             throw ProjectFileError.invalid("Layout file is too large.")
         }
-        scenario = try JSONDecoder().decode(Scenario.self, from: legacyJSON)
-        runSettings = nil
-        viewSettings = nil
-        archive = nil
-        documentID = UUID()
+        self.init(scenario: try JSONDecoder().decode(Scenario.self, from: legacyJSON))
         try Self.validate(scenario)
     }
 

@@ -1,15 +1,15 @@
+import AppKit
 import BlastCore
 import BlastRender
 import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: SimulationModel
+    @Environment(\.newDocument) private var newDocument
     @Environment(\.openWindow) private var openWindow
-    @State private var isOpening = false
-    @State private var isSaving = false
+    @State private var isImportingJSON = false
     @State private var fileError: String?
     @State private var isExportingJSON = false
-    @State private var saveSnapshot: ProjectDocument?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -42,13 +42,22 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
-                Button("Open Project…", systemImage: "folder") { isOpening = true }
-                    .help("Open a BombCAD project or JSON layout")
-                Button("Save Project…", systemImage: "square.and.arrow.down") {
-                    saveSnapshot = ProjectDocument(model: model)
-                    isSaving = true
+                Button("Open Project…", systemImage: "folder") {
+                    NSDocumentController.shared.openDocument(nil)
                 }
-                .help("Save geometry, simulation settings and camera in a BombCAD project")
+                .help("Open a BombCAD project in its own window")
+                Button("Save Project", systemImage: "square.and.arrow.down") {
+                    NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
+                }
+                .help("Save this project; named projects also autosave")
+                Menu {
+                    Button("Save As…") {
+                        NSApp.sendAction(#selector(NSDocument.saveAs(_:)), to: nil, from: nil)
+                    }
+                    Button("Import Layout JSON…") { isImportingJSON = true }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
                 Button("Export Layout JSON…", systemImage: "doc.text") { isExportingJSON = true }
             }
             ToolbarItemGroup(placement: .primaryAction) {
@@ -68,17 +77,15 @@ struct ContentView: View {
             }
         }
         .onChange(of: model.settings) { model.settingsChanged() }
-        .fileImporter(isPresented: $isOpening, allowedContentTypes: [.bombCADProject, .json]) { result in
-            do { try openProject(at: result.get()) } catch {
-                fileError = "Could not open the project: \(error.localizedDescription)"
-            }
-        }
-        .fileExporter(
-            isPresented: $isSaving, document: saveSnapshot,
-            contentType: .bombCADProject, defaultFilename: model.settings.scenario.name
-        ) { result in
-            if case .failure(let error) = result {
-                fileError = "Could not save the project: \(error.localizedDescription)"
+        .fileImporter(isPresented: $isImportingJSON, allowedContentTypes: [.json]) { result in
+            do {
+                let url = try result.get()
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+                let imported = try ProjectDocument.read(from: url)
+                newDocument(imported)
+            } catch {
+                fileError = "Could not import the layout: \(error.localizedDescription)"
             }
         }
         .fileExporter(
@@ -87,11 +94,6 @@ struct ContentView: View {
         ) { result in
             if case .failure(let error) = result {
                 fileError = "Could not export the layout: \(error.localizedDescription)"
-            }
-        }
-        .onOpenURL { url in
-            do { try openProject(at: url) } catch {
-                fileError = "Could not open the project: \(error.localizedDescription)"
             }
         }
         .alert(
@@ -103,11 +105,7 @@ struct ContentView: View {
             Text(fileError ?? "")
         }
     }
-    private func openProject(at url: URL) throws {
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        model.open(try ProjectDocument.read(from: url))
-    }
+
 }
 
 /// Time and playback state, drawn over the viewport.

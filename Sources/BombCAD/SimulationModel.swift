@@ -203,8 +203,8 @@ final class SimulationModel {
     @ObservationIgnored private var settledScenario: Scenario
     private static let undoLimit = 100
 
-    init() {
-        let scenario = SimulationSettings().scenario
+    init(document: ProjectDocument? = nil) {
+        let scenario = document?.scenario ?? SimulationSettings().scenario
         self.scenario = scenario
         settledScenario = scenario
         camera = .framing(scenario)
@@ -216,6 +216,22 @@ final class SimulationModel {
         } catch {
             renderer = nil
             errorMessage = "Could not build the renderer: \(error)"
+        }
+        if let document {
+            settings.scenario = scenario
+            projectArchive = document.archive
+            projectDocumentID = document.documentID
+            if let run = document.runSettings {
+                settings.resolution = Resolution(rawValue: run.resolution)!
+                settings.detailedCharge = run.detailedCharge
+                settings.sharpShocks = run.sharpShocks
+                settings.solidElementSize = run.solidElementSize
+                duration = run.duration
+            }
+            if let view = document.viewSettings {
+                camera = view.camera
+                renderSettings = view.rendering
+            }
         }
         if device == nil {
             errorMessage = "This Mac has no Metal device."
@@ -259,8 +275,7 @@ final class SimulationModel {
 
     /// Switches to a built-in layout, adopting its charge, camera and duration.
     func select(_ preset: ScenarioPreset) {
-        projectArchive = nil
-        projectDocumentID = UUID()
+        // A preset replaces the scene within this project; retained assets support undo.
         settings.preset = preset
         adopt(preset.scenario)
     }

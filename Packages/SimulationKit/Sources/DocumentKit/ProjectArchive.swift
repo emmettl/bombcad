@@ -50,7 +50,7 @@ public struct ProjectManifest: Codable, Equatable, Sendable {
 
 /// A self-contained package. Payload schemas belong to the consuming application.
 /// `files` contains paths relative to the package, excluding manifest.json.
-public struct ProjectArchive: Sendable {
+public struct ProjectArchive: Sendable, Equatable {
     public static let maximumFileBytes = 64 * 1024 * 1024
     public static let maximumTotalBytes = 256 * 1024 * 1024
     public static let maximumFileCount = 4096
