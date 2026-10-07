@@ -81,13 +81,14 @@ a rejected notarization, a Gatekeeper refusal, a missing shader bundle and a mis
 each stop it before an archive is written. On the development Mac `blastbench`, signed with the
 Developer ID identity and the hardened runtime, compiles the shaders and runs.
 
-The whole path has been run for real, with the `BombCAD-notary` profile, on 2026-10-05:
+The whole path has been run for real, with the `BombCAD-notary` profile, from 2026-10-05:
 
 | Build      | Commit    | Apple submission                       | Note                          |
 |------------|-----------|----------------------------------------|-------------------------------|
 | 0.1.0 (1)  | `cb90a14` | `5d9e4182-7794-49d2-a448-21d4eb68190d` | Superseded: no licence inside |
 | 0.1.0 (2)  | `2a906cb` | `1bf60a66-4602-46a3-b940-7eda11545870` | Published as v0.1.0           |
 | 0.1.1 (3)  | `646ff4e` | `59e35f9c-2aca-4144-8130-314d4604c5d5` | Published as v0.1.1           |
+| 0.1.2 (4)  | `239a67e` | `aa446aa3-ba2e-486b-9ef3-ad5651ec6948` | Published as v0.1.2           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -106,6 +107,14 @@ holds the licence text and both shader bundles. Its ZIP, checksum and manifest a
 the GitHub release `v0.1.1`, tagged on `646ff4e`; the copy downloaded back matched the
 checksum. The notary step had to be run from Terminal.app: in shells started by the Claude
 desktop app, `notarytool` reported no `BombCAD-notary` profile.
+
+Build 4 (0.1.2) went the same way on 2026-10-07, with `notarytool` working from a desktop-app
+shell this time. Its first attempt stopped at `make check`'s strict lint, as the code added since
+0.1.1 had not been formatted; after `swift format`, all 146 tests passed, Apple accepted it, and
+a fresh expansion of its ZIP matched the checksum, validated its stapled ticket, passed
+`codesign --verify --deep --strict`, was accepted by `spctl` as `Notarized Developer ID`, and
+holds the licence text and both shader bundles. Its ZIP, checksum and manifest are attached to
+the GitHub release `v0.1.2`, tagged on `239a67e`.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
