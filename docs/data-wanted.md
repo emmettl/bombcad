@@ -109,9 +109,12 @@ Nine values in the code were written from memory and should be checked against t
   (ε̇ / 10⁻⁶)^0.018 to 10 per second and 0.0062 (ε̇ / 10⁻⁶)^(1/3) above, for every strength.
   Needed: the law as printed, and whether the code gives one for fracture energy.
 
-- **Crack dilatancy.** J. C. Walraven, "Fundamental analysis of aggregate interlock",
-  *Journal of the Structural Division, ASCE* 107 (1981), or his thesis (Delft, 1980). Needed:
-  how far a crack opens as it slides, taken as half the slip (`crackDilatancy` 0.5).
+- **Crack dilatancy.** How far a crack opens as it slides, taken as half the slip
+  (`crackDilatancy` 0.5). Walraven and Reinhardt's average crack opening paths (*HERON* 26(1A),
+  1981, Fig. 10; see Obtained) open by about 0.75 to 0.9 of the slip at 2 mm in concretes of
+  20 to 38 N/mm², and about 0.3 in one of 56 N/mm², but their cracks were held shut by bars
+  across them, so the free crack's path is still wanted. The 0.5 has been left, since the
+  beams struck by a falling weight were checked with it.
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.
@@ -139,7 +142,7 @@ Supplied by hand during development, and now in use:
   open access from the TU Delft repository: their push-off tests and the fit to them,
   τ = −f_cc/30 + [1.8 w^−0.80 + (0.234 w^−0.707 − 0.20) f_cc] Δ (eq. 1a, w and Δ in mm), whose
   slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
-  Its crack opening under sliding (Fig. 16a) would also check `crackDilatancy`. Its specimens
+  Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
   were restrained, so their cracks carried compression, which the interlock cap leaves out.
 - J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
   effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
