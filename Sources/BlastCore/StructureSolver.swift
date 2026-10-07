@@ -146,7 +146,7 @@ public final class StructureSolver {
     private var slipBuffer: MTLBuffer
     private var slipSupportBuffer: MTLBuffer
     private var barForceBuffer: MTLBuffer
-    /// The base's connection to the ground, two `SIMD4<Float>` per node (see `anchorForce` in
+    /// The base's connection to the ground, three `SIMD4<Float>` per node (see `anchorForce` in
     /// Structure.metal); a placeholder when the base is clamped or free.
     private let anchorBuffer: MTLBuffer
     private let anchorLawBuffer: MTLBuffer
@@ -447,22 +447,23 @@ public final class StructureSolver {
         try model.validateAnchorages()
         if let stiffness = model.connectionStiffness {
             anchorStiffness = stiffness
-            anchorBuffer = try buffer(nodeList.count * 32, "anchors")
+            anchorBuffer = try buffer(nodeList.count * 48, "anchors")
         } else {
             anchorStiffness = nil
             anchorBuffer = try buffer(16, "anchors")
         }
         anchorLawBuffer = try buffer(
-            (anchorStiffness != nil ? max(nodeList.count, 1) : 1) * 32, "connection laws")
+            (anchorStiffness != nil ? max(nodeList.count, 1) : 1) * MemoryLayout<AnchorageParameters>.stride,
+            "connection laws")
         try setUpBondSlip()
         reset()
         if let anchorStiffness {
             let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
-            let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+            let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
             mutateNodes { nodes in
-                for n in 0..<nodeCount where anchors[2 * n].x > 0 && nodes[n].mass > 0 {
+                for n in 0..<nodeCount where anchors[3 * n].x > 0 && nodes[n].mass > 0 {
                     anchorFrequencySquared = max(
-                        anchorFrequencySquared, stiffest * anchors[2 * n].x / nodes[n].mass)
+                        anchorFrequencySquared, stiffest * anchors[3 * n].x / nodes[n].mass)
                 }
             }
         }
@@ -549,7 +550,7 @@ public final class StructureSolver {
         // A connected base gets each ground node's share of the base area instead of a clamp.
         let anchored = anchorStiffness != nil
         let anchors = anchorBuffer.contents().bindMemory(
-            to: SIMD4<Float>.self, capacity: max(2 * nodeCount, 1))
+            to: SIMD4<Float>.self, capacity: max(3 * nodeCount, 1))
         if anchored { memset(anchorBuffer.contents(), 0, anchorBuffer.length) }
         let laws = anchorLawBuffer.contents().bindMemory(
             to: AnchorageParameters.self, capacity: max(nodeCount, 1))
@@ -568,7 +569,7 @@ public final class StructureSolver {
                     if anchored && corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil),
                         let law = model.connection(at: point)
                     {
-                        anchors[2 * index].x += h * h / 4
+                        anchors[3 * index].x += h * h / 4
                         laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
                     } else if onGround && nk == 0 && model.baseAnchorage == nil {
                         nodes[index].isFixed = true
@@ -753,21 +754,24 @@ public final class StructureSolver {
         /// The largest slip and the largest opening of any node, in metres.
         public var maxSlip: Float = 0
         public var maxOpening: Float = 0
+        /// The deepest the ground has yielded and let the base settle for good, in metres.
+        public var maxSettlement: Float = 0
     }
 
     /// The connection's state after the last step, or nil when the base is clamped or free.
     public func anchorSummary() -> AnchorSummary? {
         guard anchorStiffness != nil else { return nil }
-        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
         let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
         var summary = AnchorSummary()
         var area: Float = 0
         var centre = SIMD3<Float>.zero
         var points: [(SIMD3<Float>, SIMD3<Float>)] = []
         mutateNodes { nodes in
-            for n in 0..<nodeCount where anchors[2 * n].x > 0 {
-                let state = anchors[2 * n]
-                let force = SIMD3(anchors[2 * n + 1].x, anchors[2 * n + 1].y, anchors[2 * n + 1].z)
+            for n in 0..<nodeCount where anchors[3 * n].x > 0 {
+                let state = anchors[3 * n]
+                let force = SIMD3(anchors[3 * n + 1].x, anchors[3 * n + 1].y, anchors[3 * n + 1].z)
+                summary.maxSettlement = max(summary.maxSettlement, -anchors[3 * n + 2].x)
                 let index = Int(lattice[n])
                 let (i, j) = (index % (ex + 1), (index / (ex + 1)) % (ey + 1))
                 let k = index / ((ex + 1) * (ey + 1))
@@ -775,7 +779,7 @@ public final class StructureSolver {
                 guard let anchorage = model.connection(at: position), !nodes[n].isFixed else { continue }
                 let stiffness = anchorage.stiffness(material: model.material, elementSize: model.elementSize)
                 let remaining = anchorage.remaining(
-                    peak: anchors[2 * n + 1].w, wear: state.w, normalStiffness: stiffness.normal)
+                    peak: anchors[3 * n + 1].w, wear: state.w, normalStiffness: stiffness.normal)
                 summary.nodes += 1
                 if remaining <= 0 { summary.separated += 1 }
                 summary.meanDamage += state.x * (1 - remaining)
@@ -798,15 +802,15 @@ public final class StructureSolver {
     /// Read only while the GPU is idle, as with `anchorSummary()`.
     public func supportBearingArea(at support: Int) -> Float {
         guard anchorStiffness != nil, model.supports.indices.contains(support) else { return 0 }
-        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
         let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
         var area: Float = 0
         mutateNodes { nodes in
-            for n in nodes.indices where !nodes[n].isFixed && anchors[2 * n].x > 0 {
+            for n in nodes.indices where !nodes[n].isFixed && anchors[3 * n].x > 0 {
                 let index = Int(lattice[n])
                 let point = referencePosition(
                     index % (ex + 1), (index / (ex + 1)) % (ey + 1), index / ((ex + 1) * (ey + 1)))
-                if model.finiteSupportIndex(at: point) == support { area += anchors[2 * n].x }
+                if model.finiteSupportIndex(at: point) == support { area += anchors[3 * n].x }
             }
         }
         return area

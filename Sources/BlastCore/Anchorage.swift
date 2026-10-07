@@ -15,6 +15,11 @@ import Foundation
 /// slides on it with Coulomb friction and lifts off. The bearing is damped as the solver's
 /// contacts are.
 ///
+/// With a `bearingCapacity`, the ground under the base yields once pressed harder than that, and
+/// the base settles into it for good; unloaded, it springs back from where it settled. Over soil
+/// (`soil(...)`) the connection is a Winkler bed: a subgrade modulus for its stiffness, a bearing
+/// capacity, friction and no tension.
+///
 /// The law has no rate dependence, no dilatancy and no rotational stiffness of its own: a solid
 /// body's base rocks through the opening of its nodes on one side, and a shell's or a column's
 /// through points of its footprint that turn with its node (`ShellMesh.baseFibres`).
@@ -37,12 +42,15 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var cohesionSlip: Float
     /// Coefficient of friction, on the joint and on the ground once it has separated.
     public var friction: Float
+    /// Pressure in Pa the ground bears before it yields and the base settles; nil bears any.
+    public var bearingCapacity: Float?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,
         tensionPlateau: Float = 0, tensionOpening: Float, cohesion: Float, cohesionSlip: Float,
-        friction: Float
+        friction: Float, bearingCapacity: Float? = nil
     ) {
+        self.bearingCapacity = bearingCapacity
         self.normalStiffness = normalStiffness
         self.shearStiffness = shearStiffness
         self.tensileStrength = tensileStrength
@@ -58,6 +66,23 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// ground.
     public static func resting(friction: Float = 0.6) -> Self {
         Self(tensileStrength: 0, tensionOpening: 0, cohesion: 0, cohesionSlip: 0, friction: friction)
+    }
+
+    /// A footing on soil, as a Winkler bed: the ground's stiffness, its subgrade modulus in Pa/m
+    /// (a reaction of that many pascals per metre of settlement), the same along the base; its
+    /// ultimate bearing pressure in Pa; friction; and no tension. The defaults are for a medium
+    /// dense sand under a footing about a metre wide: 50 MN/m³, 600 kPa and 0.5, within the
+    /// ranges foundation texts give for such a sand (J. E. Bowles, *Foundation Analysis and
+    /// Design*, for one), written from memory and not measured for any site.
+    public static func soil(
+        subgradeModulus: Float = 50e6, bearingCapacity: Float = 600e3, friction: Float = 0.5
+    )
+        -> Self
+    {
+        Self(
+            normalStiffness: subgradeModulus, shearStiffness: subgradeModulus, tensileStrength: 0,
+            tensionOpening: 0, cohesion: 0, cohesionSlip: 0, friction: friction,
+            bearingCapacity: bearingCapacity)
     }
 
     /// An unreinforced construction joint, as of a wall cast on its footing: 1 MPa of tension lost
@@ -124,6 +149,8 @@ public enum BaseConnection: String, CaseIterable, Sendable {
     case joint
     /// Standing on the ground without any connection.
     case resting
+    /// On a footing over soil that can settle and yield (`Anchorage.soil()`).
+    case soil
 
     /// The starter bars' ratio of `dowelled`.
     public static let dowelRatio: Float = 2 * 565e-6 / 0.25
@@ -134,6 +161,7 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .dowelled: .dowelled(ratio: Self.dowelRatio)
         case .joint: .constructionJoint
         case .resting: .resting()
+        case .soil: .soil()
         }
     }
 
@@ -143,17 +171,21 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .dowelled: "Starter bars"
         case .joint: "Construction joint"
         case .resting: "Resting on the ground"
+        case .soil: "On soil"
         }
     }
 
-    /// The connection `anchorage` is, or the nearest: any other with a plateau counts as starter
-    /// bars, any other with strength as a joint, and any without as resting.
+    /// The connection `anchorage` is, or the nearest: any with a bearing capacity counts as soil,
+    /// any other with a plateau as starter bars, any other with strength as a joint, and any
+    /// without as resting.
     public init(_ anchorage: Anchorage?) {
         guard let anchorage else {
             self = .clamped
             return
         }
-        if anchorage.tensileStrength <= 0 && anchorage.cohesion <= 0 {
+        if anchorage.bearingCapacity != nil {
+            self = .soil
+        } else if anchorage.tensileStrength <= 0 && anchorage.cohesion <= 0 {
             self = .resting
         } else {
             self = anchorage.tensionPlateau > 0 ? .dowelled : .joint
@@ -161,23 +193,29 @@ public enum BaseConnection: String, CaseIterable, Sendable {
     }
 }
 
-// The same law layout consumed by both Metal node kernels.
+// The same law layout consumed by both Metal node kernels (`AnchorLaw`).
 struct AnchorageParameters {
     var stiffnessAndTension: SIMD4<Float>
     var failureAndFriction: SIMD4<Float>
+    /// The ground's bearing capacity (zero: without limit), then padding.
+    var bearing: SIMD4<Float>
 
     init(_ law: Anchorage, material: StructureMaterial, elementSize: Float) {
         let stiffness = law.stiffness(material: material, elementSize: elementSize)
         stiffnessAndTension = SIMD4(
             stiffness.normal, stiffness.shear, law.tensileStrength, law.tensionPlateau)
         failureAndFriction = SIMD4(law.tensionOpening, law.cohesion, law.cohesionSlip, law.friction)
+        bearing = SIMD4(law.bearingCapacity ?? 0, 0, 0, 0)
     }
 }
 
 extension Anchorage {
     /// Reject invalid laws before they reach a GPU, including laws loaded from a document.
     public func validate() throws {
-        let values = [tensileStrength, tensionPlateau, tensionOpening, cohesion, cohesionSlip, friction]
+        let values = [
+            tensileStrength, tensionPlateau, tensionOpening, cohesion, cohesionSlip, friction,
+            bearingCapacity ?? 0,
+        ]
         guard values.allSatisfy({ $0.isFinite && $0 >= 0 }),
             tensionOpening >= tensionPlateau,
             normalStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,

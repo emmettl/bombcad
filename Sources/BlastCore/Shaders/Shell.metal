@@ -78,7 +78,8 @@ struct ShellUniforms {
 
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
-                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction};
+                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
+                     {0.0f, 0.0f, 0.0f}};
 }
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
@@ -1707,9 +1708,11 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             float rise = node.velocity.z + cross(float3(node.spin), arm + turn).z;
             float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / point.w);
             float4 state = anchorState[f];
-            float3 pointForce = -point.z * anchorTraction(state, float3(node.displacement) + turn, rise, damper, law);
+            float settlement = anchorForces[f].w;  // the ground's, kept beside the force
+            float3 pointForce =
+                -point.z * anchorTraction(state, settlement, float3(node.displacement) + turn, rise, damper, law);
             anchorState[f] = state;
-            anchorForces[f] = float4(pointForce, 0.0f);
+            anchorForces[f] = float4(pointForce, settlement);
             force += pointForce;
             moment += cross(arm + turn, pointForce);
         }

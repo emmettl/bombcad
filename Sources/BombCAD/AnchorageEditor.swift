@@ -36,6 +36,7 @@ struct AnchorageEditor: View {
                 number("Shear cohesion", "MPa", \.cohesion, scale: 1e6)
                 number("Cohesion loss slip", "mm", \.cohesionSlip, scale: 0.001)
                 number("Friction coefficient", "", \.friction, scale: 1)
+                bearing()
                 stiffness("Normal stiffness", \.normalStiffness)
                 stiffness("Shear stiffness", \.shearStiffness)
                 Text(
@@ -74,6 +75,39 @@ struct AnchorageEditor: View {
                 )
                 .labelsHidden().textFieldStyle(.roundedBorder).frame(width: 85)
                 Text(unit).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// The ground's bearing capacity: unlimited, or a pressure past which it yields and the base
+    /// settles for good.
+    private func bearing() -> some View {
+        VStack(alignment: .leading) {
+            Toggle(
+                "Unlimited bearing",
+                isOn: Binding(
+                    get: { law?.bearingCapacity == nil },
+                    set: { unlimited in
+                        guard var candidate = law else { return }
+                        candidate.bearingCapacity = unlimited ? nil : 600e3
+                        law = candidate
+                    }))
+            if law?.bearingCapacity != nil {
+                LabeledContent("Bearing capacity (kPa)") {
+                    TextField(
+                        "Bearing capacity",
+                        value: Binding(
+                            get: { Double(law?.bearingCapacity ?? 600e3) / 1e3 },
+                            set: { value in
+                                guard value.isFinite, value > 0, Float(value * 1e3).isFinite,
+                                    var candidate = law
+                                else { return }
+                                candidate.bearingCapacity = Float(value * 1e3)
+                                law = candidate
+                            }), format: .number.precision(.fractionLength(0...3))
+                    )
+                    .labelsHidden().textFieldStyle(.roundedBorder).frame(width: 85)
+                }
             }
         }
     }

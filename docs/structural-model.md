@@ -141,6 +141,7 @@ Three connections are provided:
 | Resting on the ground | none | none | 0.6 | nothing to lose |
 | Construction joint | 1 MPa | 1.3 MPa | 0.7 | 40 J/m² opening (80 µm); 1 mm of slip |
 | Dowelled (starter bars, ratio ρ) | ρ f_y (at least 1 MPa) | 1.3 MPa + 0.7 ρ f_y | 0.7 | held to 20 mm, gone at 40 mm; 20 mm of slip |
+| On soil (a Winkler bed) | none | none | 0.5 | bears 600 kPa, then settles for good |
 
 The joint's cohesion and friction are those of a rough joint in Eurocode 2, EN 1992-1-1
 §6.2.5 (c = 0.45 of a C30 concrete's mean tensile strength, μ = 0.7), its tensile strength and
@@ -204,11 +205,31 @@ clamped can therefore be thrown over if its base is not tied into its footing. T
 comparison of support assumptions, not a validation: no measured wall is reproduced, the load
 is idealised, and the footing itself is rigid.
 
-**Not modelled.** The ground is rigid and flat: there is no footing, soil, embedment or
-foundation rotation, only the joint at z = 0. The connection has no rate dependence and no
+**On soil.** With a bearing capacity the ground under the base yields once pressed harder
+than that, and the base settles into it for good; unloaded, it springs back from where it
+settled. `Anchorage.soil()` makes the connection a Winkler bed: a subgrade modulus for its
+stiffness (50 MN/m³ by default, along the base as well as across it), an ultimate bearing
+pressure (600 kPa), friction (0.5) and no tension, values within the ranges foundation texts
+give for a medium dense sand under a footing about a metre wide, written from memory and not
+measured for any site. Checks (`AnchorageTests`): a block pressed by 200 kPa settles (w + p) / k
+within 3%; pressed past its bearing it sinks for as long as the load stays, and keeps more than
+10 mm of it once unloaded; a block pushed with half the moment that would lift its heel turns
+by M / (k I) within 10%, I the second moment of its base as its nodes carry it (b³ L / 12 times
+1 + 2 / n² for n elements across); a wall on soft ground (100 kPa) tips once the push's moment
+passes W (b − W / (q L)) / 2, its toe crushing the soil, at a little over half what tips it on
+rigid ground (at 1.3 times that moment it is over by 1 s; at 0.8 times it leans 20 mm and
+stays); and a shell wall on soil settles W / (k t L) within 5%. Without a footing the
+freestanding wall on soil goes over in every case of the study above, as it does resting on
+rigid ground: its 250 mm base is the same lever either way.
+
+**Not modelled.** The ground is flat, and rigid unless it is given a bearing capacity. There is
+no embedment, and a footing is whatever the structure's own solids make of one. The Winkler bed
+is the simplest of soils: it has no mass, no radiation damping, no rate dependence and no
+layers, its springs do not interact, and it neither softens nor hardens as it settles. The connection has no rate dependence and no
 dilatancy, the bars' yield is a plateau of the joint as a whole rather than bars at the faces,
 and opening and sliding interact only through the shared loss of strength. Support regions
-(`supports`) still hold their nodes still.
+(`supports`) hold their nodes still unless given a connection of their own, which acts as a
+horizontal bearing (see [structural editing](structural-editing.md)).
 
 ## Failure and removal
 

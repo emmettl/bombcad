@@ -309,6 +309,118 @@ struct AnchorageTests {
         #expect(joint.uplift < 1e-4 && joint.sway < 1e-3)
     }
 
+    // MARK: - Soil
+
+    /// The block's mean settlement, from its base nodes.
+    private func settlement(_ solver: StructureSolver) -> Float {
+        var total: Float = 0
+        var count: Float = 0
+        solver.mutateNodes { nodes in
+            for j in 0...solver.ey {
+                for i in 0...solver.ex {
+                    if let n = solver.storedNode(i, j, 0) {
+                        total -= nodes[n].uz
+                        count += 1
+                    }
+                }
+            }
+        }
+        return total / count
+    }
+
+    @Test("A footing on soil settles as its subgrade modulus says, and sinks for good past its bearing")
+    func soilSettlement() throws {
+        let soil = Anchorage.soil(subgradeModulus: 50e6, bearingCapacity: 600e3)
+        let solver = try block(SIMD3(1, 1, 0.5), anchorage: soil)
+        let own = material.density * 0.5 * g
+        // Pressed by 200 kPa on top, slowly, then held: (w + p) / k.
+        let start = Float(solver.time)
+        solver.appliedLoad = PressureLoad(
+            axis: 2, positiveSide: true,
+            history: [
+                SIMD2(0, 0), SIMD2(start, 0), SIMD2(start + 0.05, 200e3), SIMD2(start + 0.2, 200e3),
+                SIMD2(start + 0.25, 800e3), SIMD2(start + 0.4, 800e3), SIMD2(start + 0.45, 0),
+                SIMD2(start + 10, 0),
+            ])
+        solver.damping = 300
+        solver.advance(steps: steps(solver, seconds: 0.2))
+        let elastic = (own + 200e3) / 50e6
+        #expect(
+            abs(settlement(solver) - elastic) / elastic < 0.03, "\(settlement(solver)) m against \(elastic)")
+        #expect(try #require(solver.anchorSummary()).maxSettlement < 1e-6)
+        // Pressed past its bearing, it sinks on as long as the load stays, and keeps what it sank.
+        solver.advance(steps: steps(solver, seconds: 0.1))
+        let sinking = settlement(solver)
+        solver.advance(steps: steps(solver, seconds: 0.05))
+        #expect(settlement(solver) > sinking + 1e-3)
+        solver.advance(steps: steps(solver, seconds: 0.2))
+        let left = try #require(solver.anchorSummary()).maxSettlement
+        #expect(left > 0.01)
+        #expect(abs(settlement(solver) - (left + own / 50e6)) < 2e-3)
+    }
+
+    @Test("A footing on soil turns under a moment as k I says, short of lifting")
+    func soilRotation() throws {
+        let k: Float = 50e6
+        let h: Float = 0.125
+        let solver = try block(
+            SIMD3(1, 1, 1), anchorage: .soil(subgradeModulus: k, bearingCapacity: 600e3), elementSize: h)
+        let weight = material.density * 1 * g
+        // Half the moment at which the heel would lift, W b / 6, from a push on the side.
+        let moment = 0.5 * weight * 1 / 6
+        let pressure = 2 * moment / (1 * 1)  // p H w over the face, at H / 2
+        let start = Float(solver.time)
+        solver.appliedLoad = PressureLoad(
+            axis: 0, positiveSide: false,
+            history: [
+                SIMD2(0, 0), SIMD2(start, 0), SIMD2(start + 0.05, pressure), SIMD2(start + 10, pressure),
+            ])
+        solver.damping = 300
+        solver.advance(steps: steps(solver, seconds: 0.25))
+        var turn: Float = 0
+        solver.mutateNodes { nodes in
+            turn = (nodes[solver.nodeIndex(0, 4, 0)].uz - nodes[solver.nodeIndex(solver.ex, 4, 0)].uz) / 1
+        }
+        // The base's second moment as its nodes carry it: their shares of the area, h / 2 at the
+        // edges and h inside, by the trapezoid rule; b^3 L / 12 (1 + 2 / n^2) for n elements.
+        let n = Float(solver.ex)
+        let expected = moment / (k * (1 + 2 / (n * n)) / 12)
+        #expect(abs(turn - expected) / expected < 0.1, "\(turn) against \(expected)")
+    }
+
+    @Test("A wall on soft soil tips sooner, its toe crushing the soil: M = W (b - W / (q L)) / 2")
+    func soilOverturning() throws {
+        let bearing: Float = 100e3
+        let soft = Anchorage.soil(subgradeModulus: 50e6, bearingCapacity: bearing, friction: 1)
+        // Tipping moment on soil that bears q under the toe, over the length W / (q L).
+        let lever = (Self.thickness - weight / (bearing * 1)) / 2
+        let soilTipping = weight * lever / (Self.height * Self.height / 2)  // as a pressure on the face
+        #expect(soilTipping < 0.6 * tippingPressure)
+        /// The top's sway at 0.5 s and at 1 s.
+        func sway(_ pressure: Float) throws -> (early: Float, late: Float) {
+            let solver = try block(SIMD3(Self.thickness, 1, Self.height), anchorage: soft)
+            settle(solver)
+            let start = Float(solver.time)
+            solver.appliedLoad = PressureLoad(
+                axis: 0, positiveSide: false,
+                history: [
+                    SIMD2(0, 0), SIMD2(start, 0), SIMD2(start + 0.1, pressure), SIMD2(start + 10, pressure),
+                ])
+            var values: [Float] = []
+            for _ in 0..<2 {
+                solver.advance(steps: steps(solver, seconds: 0.5))
+                solver.mutateNodes { values.append($0[solver.nodeIndex(0, 0, solver.ez)].ux) }
+            }
+            return (values[0], values[1])
+        }
+        // Held below that moment, it leans on the soil and stays; above it (though well below
+        // what tips it on rigid ground), it goes on over.
+        let below = try sway(0.8 * soilTipping)
+        let above = try sway(1.3 * soilTipping)
+        #expect(below.late < 0.05 && abs(below.late - below.early) < 0.01)
+        #expect(above.late > 2 * above.early && above.late > 0.3)
+    }
+
     // MARK: - Shells
 
     /// The overturning block of `overturn`, as a wall of shells on its midsurface.
@@ -365,6 +477,18 @@ struct AnchorageTests {
         #expect(abs(summary.moment.y) < 0.01 * weight * Self.thickness)
     }
 
+    @Test("A shell wall on soil settles as the subgrade modulus says")
+    func shellSoil() throws {
+        let k: Float = 50e6
+        let solver = try shellWall(anchorage: .soil(subgradeModulus: k, bearingCapacity: 600e3))
+        // About critically damped on the soil (it rings at about 100 rad/s), so it settles.
+        solver.damping = 200
+        solver.advance(steps: steps(solver, seconds: 0.3))
+        let base = solver.node(solver.nearestNode(to: SIMD3(Self.thickness / 2, 0.5, 0)))
+        let expected = weight / (k * Self.thickness * 1)
+        #expect(abs(-base.uz - expected) / expected < 0.05, "\(-base.uz) m against \(expected)")
+    }
+
     @Test("A shell wall resting on the ground tips as the block does; on a joint it stands")
     func shellOverturning() throws {
         let resting = Anchorage.resting(friction: 1)
@@ -412,6 +536,7 @@ struct AnchorageTests {
 
     @Test("Connections are recognised by name")
     func connections() {
+        #expect(BaseConnection(.soil(bearingCapacity: 300e3)) == .soil)
         for connection in BaseConnection.allCases {
             #expect(BaseConnection(connection.anchorage) == connection)
         }

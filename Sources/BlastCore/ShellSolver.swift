@@ -487,7 +487,8 @@ public final class ShellSolver {
         fibreGeometryBuffer = fibreGeometryStorage
         fibreStateBuffer = try buffer(fibreCount * 16, "shell anchor state")
         fibreForceBuffer = try buffer(fibreCount * 16, "shell anchor forces")
-        let lawStorage = try buffer(max(fibreCount, 1) * 32, "shell connection laws")
+        let lawStorage = try buffer(
+            max(fibreCount, 1) * MemoryLayout<AnchorageParameters>.stride, "shell connection laws")
         fibreLaws.withUnsafeBytes { bytes in
             if let base = bytes.baseAddress, !bytes.isEmpty {
                 lawStorage.contents().copyMemory(from: base, byteCount: bytes.count)
@@ -642,6 +643,7 @@ public final class ShellSolver {
                     summary.reaction += force
                     summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(states[f].x, states[f].y)))
                     summary.maxOpening = max(summary.maxOpening, moved.z)
+                    summary.maxSettlement = max(summary.maxSettlement, -forces[f].w)
                     area += points[f].z
                     centre += points[f].z * position
                     loads.append((position, force))
