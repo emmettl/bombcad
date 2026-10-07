@@ -9,6 +9,7 @@ let package = Package(
         .library(name: "BlastRender", targets: ["BlastRender"]),
         .executable(name: "BombCAD", targets: ["BombCAD"]),
         .executable(name: "blastbench", targets: ["blastbench"]),
+        .executable(name: "rigidboxdemo", targets: ["RigidBoxDemo"]),
     ],
     dependencies: [.package(path: "Packages/SimulationKit")],
     targets: [
@@ -31,6 +32,7 @@ let package = Package(
                 "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "SimulationKit"),
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
+        .executableTarget(name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
         .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"]),
         .testTarget(
             name: "BombCADTests",

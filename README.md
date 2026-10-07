@@ -219,6 +219,12 @@ swift run -c release blastbench slab --sensitivity
 `blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
 [Performance](docs/performance.md) and [Validation](docs/validation.md).
 
+For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
+`.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
+holding, sliding, lift-off, rocking and tipping, with playback and a time slider. It records
+the Swift reference mechanics; independent rigid objects are not yet coupled to the blast
+or displayed in the app.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

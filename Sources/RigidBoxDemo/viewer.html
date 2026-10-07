@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rigid box mechanics · BombCAD</title>
+<style>
+:root {color-scheme:light dark; --bg:#f6f7f8;--text:#202a34;--line:#89949e;--box:#548cb9;--dot:#d85e30}
+@media(prefers-color-scheme:dark){:root{--bg:#171d24;--text:#e5eaf0;--line:#85929f;--box:#79b6e3;--dot:#ffac79}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,sans-serif}
+main{max-width:960px;margin:32px auto;padding:0 24px}h1{font-size:24px;font-weight:500;margin-bottom:8px}
+p{line-height:1.5}label{display:flex;align-items:center;gap:8px}.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+select,button{font:inherit;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px}
+button{min-width:80px}svg{width:100%;height:auto;display:block;margin:20px 0 10px}text{fill:var(--text);font-size:14px}
+input[type=range]{width:100%;margin:16px 0}.readout{display:flex;flex-wrap:wrap;gap:24px;font-variant-numeric:tabular-nums}
+.note{font-size:14px}.description{min-height:48px}@media(max-width:480px){main{padding:0 16px;margin-top:20px}text{font-size:18px}}
+</style>
+<main>
+<h1>Rigid box mechanics</h1>
+<p>Gravity, friction and ground contact. Recorded from the Swift reference solver; no blast loading.</p>
+<div class="controls">
+<label>Case <select id="case" aria-label="Mechanics case"></select></label>
+<button id="play" type="button">Play</button>
+<label>Playback <select id="rate"><option value="0.25">¼ speed</option><option value="0.5">½ speed</option><option value="1" selected>Real time</option></select></label>
+</div>
+<p id="description" class="description"></p><div class="note">● Centre of mass · Side view (metres)</div>
+<svg id="scene" viewBox="0 0 840 330" role="img" aria-label="Side view of a rigid box on the ground">
+<title>Rigid box side view</title>
+<g id="grid"></g>
+<line x1="48" y1="275" x2="805" y2="275" stroke="var(--line)"/>
+<polygon id="box" fill="var(--box)" fill-opacity="0.28" stroke="var(--box)" stroke-width="2"/>
+<circle id="com" r="4" fill="var(--dot)"/>
+
+
+</svg>
+<label for="time">Simulation time</label><input id="time" type="range" min="0" max="2" step="0.02" value="0">
+<div class="readout" id="readout" aria-live="off"></div>
+<p class="note">Side view along the y axis. All cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound. The model uses small positional corrections and needs timestep convergence checks. Cars, suspension, crushing and object-to-object collisions are not represented.</p>
+</main>
+<script>
+const recordings = __RECORDINGS__;
+const select = document.getElementById('case'), play = document.getElementById('play'), slider = document.getElementById('time'), rate = document.getElementById('rate');
+const polygon = document.getElementById('box'), com = document.getElementById('com'), description = document.getElementById('description'), readout = document.getElementById('readout');
+const grid = document.getElementById('grid');
+let current=0, time=0, playing=false, last=0, animation;
+const scene=document.getElementById('scene');
+let scale=100, bottom=275;
+const px=x=>48+(x+1.5)*scale, pz=z=>bottom-scale*z;
+function layout(){
+ const width=scene.clientWidth||840, height=Math.max(260,(width-70)/6.5*2.5+70);
+ scale=(width-70)/6.5;bottom=height-45;scene.setAttribute('viewBox',`0 0 ${width} ${height}`);
+ grid.innerHTML='';
+ for(let x=-1;x<=5;x++)grid.insertAdjacentHTML('beforeend',`<line x1="${px(x)}" y1="25" x2="${px(x)}" y2="${bottom}" stroke="var(--line)" opacity="0.15"/><text x="${px(x)}" y="${bottom+23}" text-anchor="middle">${x}</text>`);
+ for(let z=0;z<=2;z++)grid.insertAdjacentHTML('beforeend',`<line x1="48" y1="${pz(z)}" x2="${width-20}" y2="${pz(z)}" stroke="var(--line)" opacity="${z===0?1:0.15}"/><text x="28" y="${pz(z)+5}" text-anchor="middle">${z}</text>`);
+ grid.insertAdjacentHTML('beforeend',`<text x="${width-50}" y="${height-5}">x (m)</text><text x="12" y="16">z (m)</text>`);
+ const ground=scene.querySelector(':scope > line');ground.setAttribute('x2',width-20);ground.setAttribute('y1',bottom);ground.setAttribute('y2',bottom);
+ draw();
+}
+recordings.forEach((r,i)=>{let option=document.createElement('option');option.value=i;option.textContent=r.name;select.append(option)});
+function draw(){
+ const recording=recordings[current], frame=recording.frames[Math.min(100,Math.round(time/0.02))];
+ polygon.setAttribute('points',[0,1,5,4].map(i=>`${px(frame.corners[i][0])},${pz(frame.corners[i][2])}`).join(' '));
+ com.setAttribute('cx',px(frame.centreOfMass[0]));com.setAttribute('cy',pz(frame.centreOfMass[2]));
+ slider.value=frame.time;description.textContent=recording.description;
+ readout.textContent=`Time ${frame.time.toFixed(2)} s   ·   Position x ${frame.centreOfMass[0].toFixed(2)} m   ·   Speed ${frame.speed.toFixed(2)} m/s   ·   Total energy ${frame.energy.toFixed(2)} J`;
+ document.getElementById('scene').setAttribute('aria-label',`${recording.name}: time ${frame.time.toFixed(2)} seconds, speed ${frame.speed.toFixed(2)} metres per second`);
+}
+function stop(){playing=false;play.textContent='Play';if(animation!==undefined)cancelAnimationFrame(animation)}
+select.onchange=()=>{stop();current=Number(select.value);time=0;draw()};
+slider.oninput=()=>{stop();time=Number(slider.value);draw()};
+play.onclick=()=>{if(playing){stop();return}if(time>=2)time=0;playing=true;play.textContent='Pause';last=performance.now();animation=requestAnimationFrame(tick)};
+function tick(now){if(!playing)return;time=Math.min(2,time+Math.min((now-last)/1000,0.1)*Number(rate.value));last=now;draw();if(time>=2){stop();return}animation=requestAnimationFrame(tick)}
+layout();new ResizeObserver(layout).observe(scene);
+</script>
+</html>

@@ -165,8 +165,10 @@ box shape, pose, mass, centre-of-mass offset, optional principal inertia and fri
 convert into fresh reference mechanics state. Definitions validate on construction and load;
 older layouts without them still open. JSON and project-package round trips are tested. A
 nonzero centre-of-mass offset requires explicit inertia. These saved inputs are not yet used
-by rendering or the blast solver. A standalone visual box demonstration is next; milestone 1
-remains incomplete pending a reviewable demonstration.
+by the app renderer or blast solver. `swift run rigidboxdemo` generates a self-contained HTML
+replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping.
+Playback and scrubbing use recorded Swift trajectories, with no second physics implementation
+in the viewer. This supplies milestone 1's standalone box demonstration; air coupling is next.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
