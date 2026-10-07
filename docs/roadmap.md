@@ -549,6 +549,9 @@ two collapsing over several seconds.
      own for dense float grids. The size wants watching: a medium grid is 8.4 million cells, about
      34 MB a frame before VDB's sparseness, so a few gigabytes for a 0.17 s event at 1,000 frames
      a second of simulated time.
+     (Done: `BombCAD run --vdb`, with a writer of our own, checked against OpenVDB through
+     macOS's USD; overpressure and the pressure gradient, about 14 MB a frame on the medium
+     street grid. See [Exporting a run for rendering](usd-export.md#the-air).)
 
 ## Things tried and set aside
 

@@ -26,6 +26,8 @@ public final class USDSceneWriter {
 
     public let url: URL
     private let camera: Camera?
+    private let volumeFields: [String]
+    private var volumes: [(frame: Int, path: String)] = []
     public let frameInterval: Double
     private let scenario: Scenario
     private let playbackRate: Double
@@ -46,7 +48,8 @@ public final class USDSceneWriter {
     ///   - frameInterval: simulated seconds between frames.
     ///   - playbackRate: frames per second when the scene is played back.
     public init(
-        url: URL, scenario: Scenario, frameInterval: Double, playbackRate: Double = 24, camera: Camera? = nil
+        url: URL, scenario: Scenario, frameInterval: Double, playbackRate: Double = 24, camera: Camera? = nil,
+        volumeFields: [String] = []
     ) throws {
         guard frameInterval > 0, frameInterval.isFinite, playbackRate > 0, playbackRate.isFinite else {
             throw CocoaError(
@@ -57,6 +60,7 @@ public final class USDSceneWriter {
         self.frameInterval = frameInterval
         self.playbackRate = playbackRate
         self.camera = camera
+        self.volumeFields = volumeFields
         parts = url.deletingLastPathComponent().appending(
             path: ".\(url.lastPathComponent).parts-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: parts, withIntermediateDirectories: false)
@@ -79,9 +83,12 @@ public final class USDSceneWriter {
         finished = true
     }
 
-    /// Adds the next frame, `frameInterval` after the last; `surface` is nil without a body.
-    public func append(_ surface: StructureSurface?) throws {
+    /// Adds the next frame, `frameInterval` after the last; `surface` is nil without a body, and
+    /// `volume` the asset path of the frame's OpenVDB file, holding the grids named in
+    /// `volumeFields`, if it has one.
+    public func append(_ surface: StructureSurface?, volume: String? = nil) throws {
         defer { frames += 1 }
+        if let volume { volumes.append((frames, volume)) }
         guard let surface else { return }
         hasBody = true
         materials = surface.materials
@@ -229,6 +236,7 @@ public final class USDSceneWriter {
                 to: &text)
         }
         if let camera { appendCamera(camera, to: &text) }
+        if !volumes.isEmpty, !volumeFields.isEmpty { appendVolume(to: &text) }
         try flush()
 
         if hasBody {
@@ -314,6 +322,28 @@ public final class USDSceneWriter {
         )
         text.append(colour)
         text.append("]\n        custom uniform string bombcad:label = \(quoted(label))\n    }\n\n")
+    }
+
+    /// The air: a Volume whose fields read the frames' OpenVDB files.
+    private func appendVolume(to text: inout Text) {
+        let domain = scenario.domainSize
+        text.append("    def Volume \"Blast\"\n    {\n        float3[] extent = [(0, 0, 0), ")
+        text.append(domain)
+        text.append("]\n")
+        for field in volumeFields {
+            text.append("        rel field:\(field) = </Scene/Blast/\(field)>\n")
+        }
+        for field in volumeFields {
+            text.append(
+                "\n        def OpenVDBAsset \"\(field)\"\n        {\n            token fieldName = \"\(field)\"\n"
+            )
+            text.append("            asset filePath.timeSamples = {\n")
+            for (frame, path) in volumes {
+                text.append("                \(frame): @\(path)@,\n")
+            }
+            text.append("            }\n        }\n")
+        }
+        text.append("    }\n\n")
     }
 
     /// USD cameras look down their local -Z with +Y up; the matrix's rows are the camera's axes
