@@ -123,10 +123,10 @@ struct DiagnosticsList: View {
             if let crossover = d.waveCrossover {
                 Text(
                     String(
-                        format: "Wave solver below %.0f Hz: %@ cells, %d %@ on the %@, %.1f s.", crossover,
-                        (d.waveCells ?? 0).formatted(), d.waveRuns ?? 1,
-                        (d.waveRuns ?? 1) == 1 ? "run" : "runs",
-                        d.waveOnGPU == true ? "GPU" : "CPU", d.waveSeconds ?? 0))
+                        format: "Wave solver below %.0f Hz: %@ cells, %@, %.1f s.", crossover,
+                        (d.waveCells ?? 0).formatted(),
+                        Self.engines(runs: d.waveRuns ?? 1, gpu: d.waveGPURuns ?? 0),
+                        d.waveSeconds ?? 0))
             } else if let note = d.waveNote {
                 Text("Wave solver skipped: \(note)")
             }
@@ -144,5 +144,13 @@ struct DiagnosticsList: View {
         }
         .font(.caption)
         .foregroundStyle(.secondary)
+    }
+
+    /// "2 runs on the GPU", "1 run on the CPU", or "3 runs, 1 on the GPU and 2 on the CPU".
+    static func engines(runs: Int, gpu: Int) -> String {
+        let count = runs == 1 ? "1 run" : "\(runs) runs"
+        if gpu == runs { return "\(count) on the GPU" }
+        if gpu == 0 { return "\(count) on the CPU" }
+        return "\(count), \(gpu) on the GPU and \(runs - gpu) on the CPU"
     }
 }

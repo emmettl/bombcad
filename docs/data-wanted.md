@@ -66,12 +66,8 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Ten values in the code were written from memory and should be checked against the original.
+Nine values in the code were written from memory and should be checked against the original.
 
-- **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
-  Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
-  15 MJ/kg) and its heat of detonation (about 4.6 to 5 MJ/kg), whose difference, 10 MJ/kg, is
-  the afterburn energy.
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
   **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2); ASTM E1300 or a
@@ -113,9 +109,12 @@ Ten values in the code were written from memory and should be checked against th
   (ε̇ / 10⁻⁶)^0.018 to 10 per second and 0.0062 (ε̇ / 10⁻⁶)^(1/3) above, for every strength.
   Needed: the law as printed, and whether the code gives one for fracture energy.
 
-- **Crack dilatancy.** J. C. Walraven, "Fundamental analysis of aggregate interlock",
-  *Journal of the Structural Division, ASCE* 107 (1981), or his thesis (Delft, 1980). Needed:
-  how far a crack opens as it slides, taken as half the slip (`crackDilatancy` 0.5).
+- **Crack dilatancy.** How far a crack opens as it slides, taken as half the slip
+  (`crackDilatancy` 0.5). Walraven and Reinhardt's average crack opening paths (*HERON* 26(1A),
+  1981, Fig. 10; see Obtained) open by about 0.75 to 0.9 of the slip at 2 mm in concretes of
+  20 to 38 N/mm², and about 0.3 in one of 56 N/mm², but their cracks were held shut by bars
+  across them, so the free crack's path is still wanted. The 0.5 has been left, since the
+  beams struck by a falling weight were checked with it.
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.
@@ -132,6 +131,23 @@ Ten values in the code were written from memory and should be checked against th
 ## Obtained
 
 Supplied by hand during development, and now in use:
+
+- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996 (supplied as a scan): TNT's heat of
+  combustion, 821 kcal/mol with the water liquid (Table 9.3, p. 130), 15.1 MJ/kg; its heat of
+  detonation and afterburn heat (Table 9.4 and §9.6, pp. 132–133); and the closed vessel worked
+  through on pp. 153–158. See the [air-blast model](air-blast-model.md#sources).
+
+- J. C. Walraven and H. W. Reinhardt, "Theory and experiments on the mechanical behaviour of
+  cracks in plain and reinforced concrete subjected to shear loading", *HERON* 26(1A) (1981),
+  open access from the TU Delft repository: their push-off tests and the fit to them,
+  τ = −f_cc/30 + [1.8 w^−0.80 + (0.234 w^−0.707 − 0.20) f_cc] Δ (eq. 1a, w and Δ in mm), whose
+  slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
+  Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
+  were restrained, so their cracks carried compression, which the interlock cap leaves out.
+- J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
+  effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
+  (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), b = (2 − f_t / f_y)², which corrected the exponent.
 
 - M. M. Swisdak, *Simplified Kingery Airblast Calculations* (1994): the Kingery–Bulmash
   polynomials, in `KingeryBulmash.swift`.

@@ -164,7 +164,7 @@ struct WaveSolverTests {
         let result = solver.responses(
             source: [0.2, 1.1, 0.9], receivers: [([3.8, 1.1, 0.9], .omni)], frames: 24_000,
             fftLength: fftLength, weight: { OctaveBands.rise($0, crossover: 20) }, stop: { false })
-        let signal = try #require(result)[0]
+        let signal = try #require(result).channels[0]
         let c = Atmosphere.standard.soundSpeed
         for (band, mode) in [(0, c / 8), (1, 3 * c / 8)] {
             var single = solver
@@ -193,15 +193,70 @@ struct WaveSolverTests {
             #expect(solver.usesGPU)
             let gpu = try #require(
                 solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: 2048) { false })
+            #expect(gpu.onGPU)
             solver.engine = .cpu
             let cpu = try #require(
                 solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: 2048) { false })
-            for (g, c) in zip(gpu, cpu) {
+            #expect(!cpu.onGPU)
+            for (g, c) in zip(gpu.signals, cpu.signals) {
                 let difference = zip(g, c).reduce(0) { $0 + ($1.0 - $1.1) * ($1.0 - $1.1) }
                 // Single precision on the GPU.
                 #expect(difference < 1e-10 * c.reduce(0) { $0 + $1 * $1 })
             }
         }
+    }
+
+    @Test("A GPU run gives way to the CPU only when it has shown its pace and the CPU would be much faster")
+    func abandonRule() {
+        var asked = false
+        func cpu(_ seconds: Double) -> () -> Double {
+            {
+                asked = true
+                return seconds
+            }
+        }
+        // Too early to judge, and the CPU is not timed.
+        #expect(!WaveSolver.abandonsGPU(done: 128, steps: 10_000, elapsed: 0.2, cpuSeconds: cpu(0)))
+        #expect(!asked)
+        // 4.5 s remain: more than 1.5 times a 2 s CPU run, but not a 4 s one.
+        #expect(WaveSolver.abandonsGPU(done: 1_000, steps: 10_000, elapsed: 0.5, cpuSeconds: cpu(2)))
+        #expect(!WaveSolver.abandonsGPU(done: 1_000, steps: 10_000, elapsed: 0.5, cpuSeconds: cpu(4)))
+        // Under a second remains: never worth it.
+        asked = false
+        #expect(!WaveSolver.abandonsGPU(done: 5_000, steps: 6_000, elapsed: 4, cpuSeconds: cpu(0)))
+        #expect(!asked)
+    }
+
+    @Test(
+        "A run on a GPU kept busy by other work is redone on the CPU, with the same result",
+        .enabled(if: MetalWaveSolver.shared != nil))
+    func busyGPU() throws {
+        var solver = WaveSolver(
+            room: ShoeboxRoom(size: [3.2, 2.6, 2.4], material: .uniform(0.1, name: "Plaster")),
+            sampleRate: 48_000, topFrequency: 100, atmosphere: .standard)
+        let receivers: [(position: SIMD3<Double>, microphone: Microphone)] = [([2.5, 1, 1.2], .omni)]
+        // A coarse grid that the CPU runs in well under a second, even in a debug build alongside other
+        // tests, against 64 command buffers at a quarter of a second each on the GPU.
+        let steps = 64 * MetalWaveSolver.stepsPerBuffer
+        solver.gpuDelay = 0.25
+        let start = Date()
+        let busy = try #require(
+            solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: steps) { false })
+        #expect(!busy.onGPU)
+        #expect(Date().timeIntervalSince(start) < 8)
+        var cpu = solver
+        cpu.engine = .cpu
+        let reference = try #require(
+            cpu.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: steps) { false })
+        let same = busy.signals == reference.signals
+        #expect(same)
+
+        // A run with under a second left when judged stays on the GPU, however slow.
+        let short = try #require(
+            solver.run(
+                source: [0.7, 0.6, 1.1], receivers: receivers, steps: 4 * MetalWaveSolver.stepsPerBuffer
+            ) { false })
+        #expect(short.onGPU)
     }
 
     @Test("Rooms too large for the budget skip the wave solver and say why; settings default to off")

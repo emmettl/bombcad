@@ -110,7 +110,8 @@ device, each gauge's peak and the structure's largest deflection.
 | `--mass <kg>` | Changes the primary charge, as a mass sweep case does |
 | `--duration <s>` | Changes the simulated duration |
 | `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
-| `--frame-interval <ms>` | Milliseconds of simulated time between the USD file's frames, 1 by default |
+| `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
+| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd` and `--vdb`, 1 by default |
 
 The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
 file. With `--out`, the project must have room for another run (16 at most). A legacy layout
