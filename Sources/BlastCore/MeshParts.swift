@@ -9,6 +9,9 @@ extension ImportedMesh {
         public var objectName: String?
         public var groupName: String?
         public var triangleIndices: [Int]
+        public var ifcGlobalID: String? = nil
+        public var ifcClass: String? = nil
+        public var storey: String? = nil
     }
     struct FaceLabel: Sendable, Hashable, Codable {
         var object: String?

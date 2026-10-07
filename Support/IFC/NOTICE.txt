@@ -1,0 +1,19 @@
+BombCAD ships the separate IfcConvert command-line program from IfcOpenShell.
+Pinned version: IfcOpenShell 0.8.5-7bdc1b6, Open CASCADE 7.8.1.
+Copyright and licence notices: https://github.com/IfcOpenShell/IfcOpenShell/tree/7bdc1b6
+IfcOpenShell source and build instructions for this version:
+https://github.com/IfcOpenShell/IfcOpenShell/tree/7bdc1b6
+https://docs.ifcopenshell.org/ifcopenshell/installation.html
+
+IfcConvert and the IfcOpenShell library code are distributed under GNU LGPL v3
+or later. LGPL v3 supplements GNU GPL v3; copies of both licence texts are
+included alongside this notice. These components retain their upstream licences,
+rather than adopting BombCAD's MIT licence.
+
+IfcConvert includes Open CASCADE Technology (OCCT), licensed under LGPL v2.1
+with the Open CASCADE exception. OCCT source, notices and build instructions:
+https://github.com/Open-Cascade-SAS/OCCT/tree/V7_8_1
+
+The converter is invoked as a separate process; no IFC document is uploaded.
+The upstream executable is downloaded by Scripts/prepare-ifc-converter.py from
+an official IfcOpenShell build URL and verified against Support/IFC/converter.json.

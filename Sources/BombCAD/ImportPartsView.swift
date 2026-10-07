@@ -34,14 +34,24 @@ struct ImportPartsView: View {
     @State private var copiedMaterial: StructureMaterial?
     private var filtered: [ImportedMesh.Part] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        return query.isEmpty ? parts : parts.filter { $0.name.localizedCaseInsensitiveContains(query) }
+        return query.isEmpty
+            ? parts
+            : parts.filter {
+                [$0.name, $0.ifcGlobalID ?? "", $0.ifcClass ?? "", $0.storey ?? ""].contains {
+                    $0.localizedCaseInsensitiveContains(query)
+                }
+            }
     }
     private var selected: ImportedMesh.Part? {
         selectedIDs.count == 1 ? parts.first { selectedIDs.contains($0.id) } : nil
     }
     var body: some View {
-        Text("Parts are closed shells. Face groups within a shell do not define separate material volumes.")
-            .font(.caption)
+        Text(
+            parts.contains { $0.ifcGlobalID != nil }
+                ? "IFC products retain their names, types, storeys and GlobalIds. Touching elements remain separate source parts."
+                : "Parts are closed shells. Face groups within a shell do not define separate material volumes."
+        )
+        .font(.caption)
         TextField("Find a part", text: $search)
         HStack {
             Button("Select matching") {
@@ -81,6 +91,11 @@ struct ImportPartsView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(part.name)
+                                if let type = part.ifcClass {
+                                    Text([type, part.storey].compactMap { $0 }.joined(separator: " · ")).font(
+                                        .caption
+                                    ).foregroundStyle(.secondary)
+                                }
                                 Text(
                                     "\(part.triangleIndices.count) triangles · \(deformable ? (assignments[part.id]?.name ?? "Model default") : "Rigid obstacle")"
                                 ).font(.caption).foregroundStyle(.secondary)
@@ -99,6 +114,9 @@ struct ImportPartsView: View {
             .secondary)
         if let selected {
             Text("Selected: \(selected.name)").font(.subheadline.bold())
+            if let id = selected.ifcGlobalID {
+                Text("IFC GlobalId: \(id)").font(.caption).textSelection(.enabled)
+            }
             if previewIsCurrent, let preview, let ids = preview.boxPartIDs {
                 let cells = preview.boxes.enumerated().reduce(0) { count, entry in
                     guard ids.indices.contains(entry.offset), ids[entry.offset] == selected.id else {
@@ -110,7 +128,9 @@ struct ImportPartsView: View {
                 Text("\(cells) sampled solid cells").font(.caption)
                 if cells == 0 {
                     Text(
-                        "No solid cells for this shell: it may describe a cavity or an unresolved feature. Compare grids and review its warnings."
+                        selected.ifcGlobalID == nil
+                            ? "No solid cells for this shell: it may describe a cavity or an unresolved feature. Compare grids and review its warnings."
+                            : "No assigned cells for this IFC element: it may be unresolved or covered by another element. Compare Source and Simulation."
                     ).font(.caption).foregroundStyle(.orange)
                 }
             }

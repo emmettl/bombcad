@@ -1,4 +1,4 @@
-.PHONY: build app run test roomcad-test roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
+.PHONY: build app run test roomcad-test roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ifc-converter ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -14,7 +14,10 @@ app:
 run: app
 	open dist/BombCAD.app
 
-test:
+ifc-converter:
+	python3 Scripts/prepare-ifc-converter.py
+
+test: ifc-converter
 	swift test
 
 roomcad-test:

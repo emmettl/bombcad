@@ -22,9 +22,9 @@ final class ImportFileLoader {
         result = nil
         error = nil
         filename = url.lastPathComponent
-        guard url.isFileURL, ["obj", "stl"].contains(url.pathExtension.lowercased()) else {
+        guard url.isFileURL, ["obj", "stl", "ifc"].contains(url.pathExtension.lowercased()) else {
             error =
-                "Choose one local OBJ or STL file. Export other formats as a watertight, triangulated OBJ or STL."
+                "Choose one local OBJ, STL or IFC file. Export other formats as a watertight, triangulated OBJ or STL."
             failureID = UUID()
             return
         }
@@ -34,14 +34,14 @@ final class ImportFileLoader {
             guard !Task.isCancelled else { return }
             let reading = Task.detached(priority: .userInitiated) {
                 () -> Result<ImportedMesh.Inspection, Error> in
-                Result {
+                do {
                     try Task.checkCancellation()
                     let accessing = url.startAccessingSecurityScopedResource()
                     defer { if accessing { url.stopAccessingSecurityScopedResource() } }
                     let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
                     guard values.isRegularFile == true else {
                         throw ImportedMesh.ImportError.invalid(
-                            "Choose an OBJ or STL file rather than a folder or special file.")
+                            "Choose an OBJ, STL or IFC file rather than a folder or special file.")
                     }
                     let size = values.fileSize ?? 0
                     guard size <= 20_000_000 else {
@@ -58,8 +58,11 @@ final class ImportFileLoader {
                         data.append(chunk)
                     }
                     try Task.checkCancellation()
-                    return try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension)
-                }
+                    if url.pathExtension.lowercased() == "ifc" {
+                        return .success(try await IFCImporter.convert(data).inspection)
+                    }
+                    return .success(try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension))
+                } catch { return .failure(error) }
             }
             let outcome = await withTaskCancellationHandler(
                 operation: { await reading.value }, onCancel: { reading.cancel() })

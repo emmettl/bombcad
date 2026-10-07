@@ -38,7 +38,7 @@ struct ContentView: View {
                         if dropTargeted {
                             RoundedRectangle(cornerRadius: 12).stroke(.blue, lineWidth: 3)
                                 .overlay {
-                                    Text("Drop an OBJ or STL model").font(.title2).padding().background(
+                                    Text("Drop an OBJ, STL or IFC model").font(.title2).padding().background(
                                         .regularMaterial, in: .rect(cornerRadius: 8))
                                 }
                                 .padding(12).allowsHitTesting(false)
@@ -102,7 +102,7 @@ struct ContentView: View {
                 {
                     isImporting = true
                 }.disabled(importLoader.isLoading || model.sweep.isActive)
-                    .help("Open one OBJ or STL model, or drop it into the viewport.")
+                    .help("Open one OBJ, STL or IFC model, or drop it into the viewport.")
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -137,6 +137,7 @@ struct ContentView: View {
             isPresented: $isImporting,
             allowedContentTypes: [
                 UTType(filenameExtension: "obj") ?? .data, UTType(filenameExtension: "stl") ?? .data,
+                UTType(filenameExtension: "ifc") ?? .data,
             ]
         ) { result in
             guard case .success(let url) = result else { return }
