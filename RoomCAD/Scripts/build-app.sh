@@ -19,5 +19,14 @@ cp "$binary_directory/RoomCAD" "$app/Contents/MacOS/RoomCAD"
 cp Support/Info.plist "$app/Contents/Info.plist"
 # The MIT licence asks for its notice to travel with every copy.
 cp ../LICENSE "$app/Contents/Resources/LICENSE"
+# Resource bundles, such as the bundled dry recordings. SwiftPM's accessor looks in the app's Resources
+# directory; nothing may sit at the app's root, or signing fails.
+for bundle in "$binary_directory"/RoomCAD_*.bundle; do
+  cp -R "$bundle" "$app/Contents/Resources/"
+done
+test -f "$app/Contents/Resources/RoomCAD_Audition.bundle/Contents/Resources/Clips/clips.json" || {
+  echo "The app is missing its bundled clips." >&2
+  exit 1
+}
 codesign --force --sign - "$app"
 echo "Built RoomCAD/$app"

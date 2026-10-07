@@ -184,9 +184,23 @@ extension DryClip {
         var credit: String
     }
 
+    /// SwiftPM's resource bundle for this module. Found without `Bundle.module`, which traps when an app
+    /// was packaged without the bundle; then there are simply no bundled clips.
+    static var resources: Bundle? {
+        let name = "RoomCAD_Audition.bundle"
+        let candidates = [
+            Bundle.main.resourceURL, Bundle.main.bundleURL,
+            Bundle.main.executableURL?.deletingLastPathComponent(),
+            // In tests, beside the test bundle.
+            Bundle(for: BundleMarker.self).bundleURL.deletingLastPathComponent(),
+        ]
+        return candidates.compactMap { $0 }.lazy.compactMap { Bundle(url: $0.appendingPathComponent(name)) }
+            .first
+    }
+
     /// The recordings shipped with RoomCAD, listed in `Clips/clips.json`, at `sampleRate`.
     public static func bundled(sampleRate: Int) -> [DryClip] {
-        guard let folder = Bundle.module.url(forResource: "Clips", withExtension: nil),
+        guard let folder = resources?.url(forResource: "Clips", withExtension: nil),
             let data = try? Data(contentsOf: folder.appendingPathComponent("clips.json")),
             let entries = try? JSONDecoder().decode([Entry].self, from: data)
         else { return [] }
@@ -204,3 +218,5 @@ extension DryClip {
         ]
     }
 }
+
+private final class BundleMarker {}

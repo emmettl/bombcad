@@ -114,8 +114,9 @@ struct AuditionTests {
         #expect(energy(physicalWet[0]) < energy(physicalDry[0]))
     }
 
-    @Test("Without a bundled manifest entry the library still offers the test signals")
+    @Test("The library offers the bundled recordings, then the test signals")
     func library() {
+        #expect(DryClip.resources != nil)
         let ids = DryClip.library(sampleRate: 48_000).map(\.id)
         #expect(ids.suffix(2) == ["noise-burst", "clicks"])
         #expect(Set(ids).count == ids.count)
