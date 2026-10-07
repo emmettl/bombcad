@@ -94,6 +94,10 @@ struct StructureUniforms {
     // 1: a crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured, instead
     // of keeping `shearRetention` of the concrete's.
     uint crackShearStiffness;
+    // Bond lost where bars have yielded (Model Code 2010): the plastic strain at the bars'
+    // ultimate strength, and the exponent b of the reduction. Zero range: no reduction.
+    float bondYieldRange;
+    float bondYieldExponent;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -1434,6 +1438,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3 plastic = float3(state.steelPlastic);
         float3 intact = float3(0.0f);
         float3 barForce = float3(0.0f);  // each axis's bar force through the element, in N
+        float3 bondLeft = float3(1.0f);  // the share of the bond its bars keep along each axis
         float steelCapacity = 0.0f;
         for (int j = 0; j < 3; ++j) {
             if (ratio[j] <= 0.0f || fabs(plastic[j]) > 1e8f) {
@@ -1484,10 +1489,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             // Bar force per unit reference area, as a second Piola-Kirchhoff stress.
             material[j][j] += ratio[j] * stress / root;
             barForce[j] = ratio[j] * stress / root * u.h * u.h;
+            // Bars that have yielded hold less well (Model Code 2010, 6.1.1.3):
+            // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate.
+            if (u.bondSlip != 0 && u.bondYieldRange > 0.0f && plastic[j] > 0.0f) {
+                float a = min(plastic[j] / u.bondYieldRange, 1.0f);
+                bondLeft[j] = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));
+            }
         }
         state.steelPlastic = plastic;
         if (u.bondSlip != 0) {
-            barForces[compact] = float4(barForce, 0.0f);
+            barForces[2 * compact] = float4(barForce, 0.0f);
+            barForces[2 * compact + 1] = float4(bondLeft, 0.0f);
         }
 
         // Inclined bars, strained along their own direction, which ruptures by the same rule
@@ -1653,7 +1665,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         flags[element] = elementFailing;
         failureGate[0] = 1;
         if (u.bondSlip != 0) {
-            barForces[compact] = float4(0.0f);
+            barForces[2 * compact] = float4(0.0f);
+            barForces[2 * compact + 1] = float4(1.0f);
         }
         for (uint a = 0; a < 8; ++a) {
             out.force[a] = float3(0.0f);
@@ -2133,7 +2146,8 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
 // `plastic` the slip left when the bond is unloaded; updates both. The envelope is the Model
 // Code's (`BondSlip`), linear to a fiftieth of s1 so that its stiffness is finite; inside it the
 // bond unloads and reloads at that stiffness.
-static inline float bondStress(float s, thread float &plastic, thread float &largest, constant StructureUniforms &u) {
+static inline float bondStress(float s, thread float &plastic, thread float &largest, float left,
+                               constant StructureUniforms &u) {
     float s0 = 0.02f * u.bondS1;
     float stiffness = u.bondPeak * pow(0.02f, u.bondAlpha) / s0;
     largest = max(largest, fabs(s));
@@ -2150,6 +2164,7 @@ static inline float bondStress(float s, thread float &plastic, thread float &lar
     } else {
         envelope = u.bondResidual;
     }
+    envelope *= left;  // bars that have yielded hold less
     float stress = stiffness * (s - plastic);
     if (fabs(stress) > envelope) {
         stress = sign(stress) * envelope;
@@ -2171,6 +2186,8 @@ static inline void relaxSlip(uint index, uint3 tid, uint nodeFlags, device float
     float3 stiffness = slipSupport[2 * index + 1].xyz;
     int3 dims = int3(u.ex, u.ey, u.ez);
     float3 force = float3(0.0f);
+    float3 left = float3(0.0f);  // the share of bond the bars keep, summed over the elements
+    float3 counted = float3(0.0f);
     for (uint a = 0; a < 8; ++a) {
         int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
         if (any(cell < 0) || any(cell >= dims)) {
@@ -2183,7 +2200,11 @@ static inline void relaxSlip(uint index, uint3 tid, uint nodeFlags, device float
         }
         // The node is corner `a` of the element: on its far face along j where bit j is set,
         // where the bar's tension pulls the slip back.
-        float3 bars = barForces[cellElement[element]].xyz;
+        uint compact = cellElement[element];
+        float3 bars = barForces[2 * compact].xyz;
+        float3 carrying = float3(bars != 0.0f);
+        left += carrying * barForces[2 * compact + 1].xyz;
+        counted += carrying;
         float3 side = float3((a & 1u) != 0u ? -1.0f : 1.0f, (a & 2u) != 0u ? -1.0f : 1.0f,
                              (a & 4u) != 0u ? -1.0f : 1.0f);
         force += 0.25f * side * bars;
@@ -2200,7 +2221,8 @@ static inline void relaxSlip(uint index, uint3 tid, uint nodeFlags, device float
         float4 state = slips[3 * index + j];
         float plastic = state.z;
         float largest = state.w;
-        float bond = bondStress(state.x, plastic, largest, u) * area[j];
+        float share = counted[j] > 0.0f ? left[j] / counted[j] : 1.0f;
+        float bond = bondStress(state.x, plastic, largest, share, u) * area[j];
         float mass = stiffness[j] * step * step;
         float damping = 1.4f * stiffness[j] * step;
         float rate = (state.y + dt * (force[j] - bond) / mass) / (1.0f + dt * damping / mass);

@@ -507,7 +507,7 @@ public final class StructureSolver {
             }
         }
         slipBuffer = try buffer(3 * nodeCount * 16, "bar slip")
-        barForceBuffer = try buffer(max(elementCount, 1) * 16, "bar forces")
+        barForceBuffer = try buffer(max(elementCount, 1) * 32, "bar forces")
     }
 
     // MARK: - State
@@ -1125,6 +1125,14 @@ public final class StructureSolver {
             uniforms.bondS2 = law.s2
             uniforms.bondS3 = law.s3
             uniforms.bondAlpha = law.alpha
+            // Bond lost where bars have yielded, from their curve: the plastic strain at their
+            // ultimate strength, and b = 2 - f_u / f_y.
+            if bond.yieldedBondLoss, let steel = model.material.steel,
+                let top = steel.curve.max(by: { $0.y < $1.y }), top.x > 0
+            {
+                uniforms.bondYieldRange = top.x
+                uniforms.bondYieldExponent = max(2 - top.y / steel.curve[0].y, 0.1)
+            }
         }
         if let anchorStiffness, let anchorage = model.baseAnchorage {
             uniforms.anchored = 1

@@ -955,6 +955,8 @@ struct StructureUniforms {
     var bondS3: Float = 0
     var bondAlpha: Float = 0
     var crackShearStiffness: UInt32 = 0
+    var bondYieldRange: Float = 0
+    var bondYieldExponent: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

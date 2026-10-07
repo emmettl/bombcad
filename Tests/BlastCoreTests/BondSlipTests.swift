@@ -88,6 +88,58 @@ struct BondSlipTests {
         #expect(bonded.cracks.count > 40)
     }
 
+    @Test("Bars that lose bond where they yield yield over a longer length")
+    func yieldedBond() throws {
+        /// A 0.6 m tie, 50 mm square, 1% of 12 mm bars, with a weaker slice in the middle, pulled
+        /// until its bars have yielded across the crack there: the length along which they have
+        /// yielded. Their hardening, 500 to 575 MPa, spreads yield only some 16 mm / Omega_y either
+        /// side of the crack, so the elements are 10 mm.
+        func yieldedLength(loss: Bool) throws -> Float {
+            let h: Float = 0.01
+            var weak = Self.material
+            weak.tensileStrength *= 0.8
+            weak.name = "Weak"
+            let tie = Box(min: SIMD3(0, 0, 1), max: SIMD3(0.6, 0.05, 1.05))
+            let slice = Box(min: SIMD3(0.3, 0, 1), max: SIMD3(0.3 + h, 0.05, 1.05))
+            var model = StructureModel(
+                solids: [tie, slice], material: Self.material, elementSize: h, fixedBase: false)
+            model.setMaterial(weak, of: 1)
+            model.reinforcement = [ReinforcementLayer(region: tie, ratio: SIMD3(0.01, 0, 0))]
+            model.bondSlip = BondSlip(condition: .pullOut, barDiameter: Self.diameter, yieldedBondLoss: loss)
+            let solver = try StructureSolver(device: device, model: model)
+            solver.gravity = 0
+            solver.groundContact = false
+            solver.damping = 200
+            let rate: Float = 0.05
+            solver.mutateNodes { nodes in
+                for k in 0...solver.ez {
+                    for j in 0...solver.ey {
+                        if let n = solver.storedNode(0, j, k) { nodes[n].isFixed = true }
+                        if let n = solver.storedNode(solver.ex, j, k) {
+                            nodes[n].isPrescribed = true
+                            nodes[n].velocity = SIMD3(rate, 0, 0)
+                        }
+                    }
+                }
+            }
+            solver.advance(steps: Int((0.006 / rate / solver.criticalTimeStep).rounded()))
+            // Along the tie, the elements in which any bar has yielded.
+            let yielded = (0..<solver.ex).filter { i in
+                (0..<solver.ey).contains { j in
+                    (0..<solver.ez).contains { k in
+                        solver.flag(i, j, k) == .active && solver.barPlasticStrain(i, j, k).x > 0
+                    }
+                }
+            }
+            return Float(yielded.count) * h
+        }
+        let losing = try yieldedLength(loss: true)
+        let keeping = try yieldedLength(loss: false)
+        #expect(keeping > 0)
+        // (0.20 m against 0.15 m when written.)
+        #expect(losing > 1.2 * keeping, "\(losing) m against \(keeping) m")
+    }
+
     @Test("Without bars that slip, nothing changes; a model's bond is saved")
     func persistence() throws {
         var model = StructureModel(solids: [Box(min: .zero, max: SIMD3(1, 1, 1))], elementSize: 0.25)

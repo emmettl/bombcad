@@ -15,6 +15,11 @@ import Foundation
 /// element, as one in plain concrete does, instead of over the crack spacing, and a bar's
 /// rupture is judged in its own element, its strain spread along it by the slip.
 ///
+/// Where bars have yielded they hold less well: the Model Code scales the bond by
+/// Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = 2 − f_u / f_y (§6.1.1.3),
+/// taken here with a the bars' plastic strain over that at their ultimate strength, from the
+/// mean over the elements around each node (`yieldedBondLoss`).
+///
 /// Bars are far lighter than their concrete, too light for the time step, so the slip does not
 /// follow their inertia: it relaxes towards equilibrium each step with a mass scaled to the time
 /// step and close to critical damping, and so lags the load by some tens of steps. Inclined bars
@@ -39,11 +44,26 @@ public struct BondSlip: Sendable, Hashable, Codable {
     public var barDiameter: Float
     /// The clear distance between the bars' ribs, in metres.
     public var ribSpacing: Float
+    /// Whether bars that have yielded lose bond, as the Model Code has it.
+    public var yieldedBondLoss: Bool
 
-    public init(condition: Condition = .pullOut, barDiameter: Float = 0.016, ribSpacing: Float = 0.01) {
+    public init(
+        condition: Condition = .pullOut, barDiameter: Float = 0.016, ribSpacing: Float = 0.01,
+        yieldedBondLoss: Bool = true
+    ) {
         self.condition = condition
         self.barDiameter = barDiameter
         self.ribSpacing = ribSpacing
+        self.yieldedBondLoss = yieldedBondLoss
+    }
+
+    /// Decodes bond saved by any version: properties added since take their standard values.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        condition = try container.decodeIfPresent(Condition.self, forKey: .condition) ?? .pullOut
+        barDiameter = try container.decodeIfPresent(Float.self, forKey: .barDiameter) ?? 0.016
+        ribSpacing = try container.decodeIfPresent(Float.self, forKey: .ribSpacing) ?? 0.01
+        yieldedBondLoss = try container.decodeIfPresent(Bool.self, forKey: .yieldedBondLoss) ?? true
     }
 
     /// The bond–slip curve's points for concrete of mean compressive strength `strength` (Pa):

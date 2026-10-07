@@ -403,7 +403,12 @@ bars along the lattice axes slip:
   stiffness;
 - a crack crossed by bars then softens over its own element, as in plain concrete, and a bar's
   rupture is judged in its own element, its strain spread along it by the slip;
-- held or driven nodes grip their bars: they do not slip there.
+- held or driven nodes grip their bars: they do not slip there;
+- where bars have yielded they hold less well: the bond is scaled by the Model Code's
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = 2 − f_u / f_y
+  (§6.1.1.3; the form is recalled, not checked against the text), with a the bars' plastic
+  strain over that at their ultimate strength, averaged over the elements around each node
+  (`BondSlip.yieldedBondLoss`, on by default).
 
 Bars weigh far too little for the time step, so the slip does not follow their inertia. It is
 relaxed towards equilibrium each step, with a mass scaled to the step and 70% of critical
@@ -418,7 +423,10 @@ concrete.
 on both 20 mm and 10 mm elements, 120–145 mm apart, within the Model Code's l_t to 2 l_t (83 to
 167 mm, with the mean bond stress while cracks form, 1.8 f_ctm). At 1.5 mm it carries 69 and
 71 kN, within 6% of the Model Code's tension stiffening (73 kN, β = 0.4). Perfectly bonded, the
-same tie cracks along its whole length at once.
+same tie cracks along its whole length at once. Pulled past yield (50 mm square, 1% of steel,
+on 10 mm elements), its bars yield over 0.20 m of its length with the bond lost at yield and
+0.15 m without: with hardening from 500 to only 575 MPa, yield spreads some 16 mm / Ω_y either
+side of a crack, under one element on coarser meshes.
 
 **The structural tests** (`--bond pullout` on `blastbench beam`, `shear` and `slab`):
 
@@ -435,8 +443,15 @@ reaches its bending strength instead, 42–47% above the measured shear failure.
 fine mesh with perfect bond came from the smeared band, not from cracks like the test's. The
 crack's shear (aggregate interlock) decides it: with interlock for 1 mm aggregate instead of
 the measured 20 mm the beam carries 436 kN; dowel action barely matters. The slab with slip is
-stiffer and keeps less of its deflection. So the option stays off until the shear across
-discrete cracks, and the slab, are understood.
+stiffer and keeps less of its deflection. Losing bond where the bars yield does not change it
+(88 mm either way). What does is the cracks keeping to one element each: with slip but cracks
+spread over the crack spacing, as without it, the slab reaches 98 mm (91%). Its cracks show why
+(`blastbench slab --map`): perfectly bonded, the whole of its middle cracks as one field over
+95 elements; with slip, the cracks stand about seven elements (90 mm) apart, as the Model Code
+puts them for bars in the concrete around them in bending, over a zone a fifth shorter, and the
+concrete between them still carries tension at blast rates. Whether the test slab cracked so is
+not known. So the option stays off until the shear across discrete cracks, and the slab, are
+understood.
 
 ## Strain-rate effects
 

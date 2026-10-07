@@ -19,7 +19,7 @@ import simd
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
-//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
+//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
@@ -120,10 +120,12 @@ func chosenCrackAxes() -> CrackAxes {
 /// `--bar` gives it in millimetres; nil, perfect bond, without the option.
 func chosenBondSlip(diameter: Float) -> BondSlip? {
     let bar = option("bar").flatMap { Float($0) }.map { $0 / 1000 } ?? diameter
+    // `--keep-yielded-bond`: bars hold as well after yielding as before.
+    let loss = !flag("keep-yielded-bond")
     switch option("bond") {
-    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar)
-    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar)
-    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar)
+    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar, yieldedBondLoss: loss)
+    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar, yieldedBondLoss: loss)
+    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar, yieldedBondLoss: loss)
     default: return nil
     }
 }
@@ -1250,7 +1252,13 @@ func runSlab() throws {
                         print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
                         for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
                     }
-                } : nil)
+                }
+                // `--map`: the cracks through the middle of the width at 80 ms.
+                : flag("map")
+                    ? { solver in
+                        print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
+                        for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                    } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
