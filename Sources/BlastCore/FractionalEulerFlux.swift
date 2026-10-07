@@ -1,20 +1,30 @@
 import simd
 
 /// First-order ideal-gas Rusanov flux for stationary positive fractional volumes.
-/// Faces are paired internal/periodic interfaces; boundary walls and moving geometry
-/// require additional terms. This reference is separate from the app's air solver.
+/// Faces are paired internal/periodic interfaces; stationary walls reflect normal velocity.
+/// Moving geometry requires additional terms. This reference is separate from the app's air solver.
 enum FractionalEulerFlux {
-    enum Failure: Error { case invalidFace, invalidStep, unstableStep }
+    enum Failure: Error { case invalidFace, invalidWall, invalidStep, unstableStep }
     struct Face {
         let a: Int
         let b: Int
         let normal: SIMD3<Double>  // Unit normal from a to b.
         let area: Double
     }
+    struct Wall {
+        let cell: Int
+        let normal: SIMD3<Double>  // Unit normal outward from the gas.
+        let area: Double
+    }
+    struct Result {
+        let cells: [FractionalGasTransport.Cell]
+        /// Equal and opposite to the gas impulse, ordered like the supplied walls.
+        let wallImpulses: [SIMD3<Double>]
+    }
     private static let gamma = 1.4
 
     static func maximumStep(
-        _ cells: [FractionalGasTransport.Cell], faces: [Face], cfl: Double = 0.4
+        _ cells: [FractionalGasTransport.Cell], faces: [Face], walls: [Wall] = [], cfl: Double = 0.4
     ) throws -> Double {
         guard cfl.isFinite && cfl > 0 && cfl <= 0.5 else { throw Failure.invalidStep }
         _ = try FractionalGasTransport.advance(cells, newVolumes: cells.map(\.volume), transfers: [])
@@ -31,6 +41,16 @@ enum FractionalEulerFlux {
             rates[face.a] += rate
             rates[face.b] += rate
         }
+        for wall in walls {
+            guard cells.indices.contains(wall.cell), cells[wall.cell].volume > 0,
+                wall.area.isFinite && wall.area >= 0,
+                (0..<3).allSatisfy({ wall.normal[$0].isFinite }),
+                abs(simd_length_squared(wall.normal) - 1) < 1e-12
+            else { throw Failure.invalidWall }
+            let rate = wall.area * signal(cells[wall.cell], cells[wall.cell], normal: wall.normal)
+            guard rate.isFinite else { throw Failure.invalidWall }
+            rates[wall.cell] += rate
+        }
         return cells.indices.reduce(Double.infinity) { limit, n in
             rates[n] > 0 ? min(limit, cfl * cells[n].volume / rates[n]) : limit
         }
@@ -39,8 +59,15 @@ enum FractionalEulerFlux {
     static func advance(
         _ cells: [FractionalGasTransport.Cell], faces: [Face], duration: Double, cfl: Double = 0.4
     ) throws -> [FractionalGasTransport.Cell] {
+        try advanceWithWalls(cells, faces: faces, walls: [], duration: duration, cfl: cfl).cells
+    }
+
+    static func advanceWithWalls(
+        _ cells: [FractionalGasTransport.Cell], faces: [Face], walls: [Wall], duration: Double,
+        cfl: Double = 0.4
+    ) throws -> Result {
         guard duration.isFinite && duration > 0 else { throw Failure.invalidStep }
-        let limit = try maximumStep(cells, faces: faces, cfl: cfl)
+        let limit = try maximumStep(cells, faces: faces, walls: walls, cfl: cfl)
         guard duration <= limit else { throw Failure.unstableStep }
         var amounts = cells.map(\.amount)
         for face in faces where face.area > 0 {
@@ -54,12 +81,32 @@ enum FractionalEulerFlux {
             amounts[face.a] -= packet
             amounts[face.b] += packet
         }
+        var wallImpulses: [SIMD3<Double>] = []
+        for wall in walls {
+            if wall.area == 0 {
+                wallImpulses.append(.zero)
+                continue
+            }
+            let cell = cells[wall.cell]
+            let density = cell.amount[0] / cell.volume
+            let speed = simd_dot(cell.velocity, wall.normal)
+            let waveSpeed = signal(cell, cell, normal: wall.normal)
+            // Rusanov interface with a mirrored normal velocity: zero mass/energy flux,
+            // normal momentum flux p + rho*u_n² + rho*s*u_n. Do not clip tensile traction.
+            let traction = cell.pressure() + density * speed * speed + density * waveSpeed * speed
+            guard traction.isFinite && traction >= 0 else { throw Failure.invalidWall }
+            let impulse = duration * wall.area * traction * wall.normal
+            amounts[wall.cell] -= SIMD8(0, impulse.x, impulse.y, impulse.z, 0, 0, 0, 0)
+            wallImpulses.append(impulse)
+        }
         let updated = cells.indices.map {
             FractionalGasTransport.Cell(volume: cells[$0].volume, amount: amounts[$0])
         }
         // Reject a nonphysical state transactionally, without density or pressure floors.
-        return try FractionalGasTransport.advance(
-            updated, newVolumes: updated.map(\.volume), transfers: [])
+        return Result(
+            cells: try FractionalGasTransport.advance(
+                updated, newVolumes: updated.map(\.volume), transfers: []),
+            wallImpulses: wallImpulses)
     }
 
     private static func signal(

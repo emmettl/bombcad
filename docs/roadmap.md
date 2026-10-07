@@ -568,6 +568,25 @@ loads, moving-wall work, chronological aperture/flux integration and closure/ope
 still need to be combined consistently. Next, establish a closed stationary-wall pressure
 budget, then couple prescribed piston motion before a freely moving rigid box.
 
+Stationary reflecting slip walls are now included in the isolated Euler flux reference.
+A mirrored normal velocity supplies the Rusanov wall traction; wall mass and total-energy
+fluxes are exactly zero. Each wall impulse is recorded opposite to the gas momentum update,
+and its acoustic rate participates in the cell timestep limit. A resting six-wall box
+preserves its gas state and recovers pressure-times-area loads. Tangential slip transfers
+no tangential momentum. The approximate traction can become tensile for strongly separating
+gas; such updates fail explicitly rather than clipping the load. This wall law is not yet
+suitable for all rarefactions or moving-piston conditions.
+
+`--fractional-walls` applies an end-cell pressure pulse in a closed eight-cell tube for
+0.5 ms. The three volume cases require 11, 38 and 141 steps, with gas-plus-wall momentum
+residuals below 0.000000000000001 N s and relative mass/energy changes below
+0.000000000000001. Reducing the end cell also reduces the initial pulse energy, so response
+differences are not a convergence result. Four wall tests cover uniform-pressure balance,
+closed-pulse impulse accounting, tangential slip, invalid geometry, excessive timesteps and
+tensile-traction rejection; the four existing flux tests also pass. Next, improve the wall
+Riemann treatment for expansion and establish prescribed-piston volume/work consistency
+before coupling freely moving bodies.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

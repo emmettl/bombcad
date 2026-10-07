@@ -7,11 +7,12 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
-    if arguments.contains("--fractional-flux") {
-        let results = try ExperimentalFractionalFluxStudy.run()
+    if arguments.contains("--fractional-flux") || arguments.contains("--fractional-walls") {
+        let reflectingWalls = arguments.contains("--fractional-walls")
+        let results = try ExperimentalFractionalFluxStudy.run(reflectingWalls: reflectingWalls)
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/fractional-flux.json")
+                ?? (reflectingWalls ? ".build/fractional-walls.json" : ".build/fractional-flux.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
