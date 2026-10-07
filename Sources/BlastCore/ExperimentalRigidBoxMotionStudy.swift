@@ -3,7 +3,10 @@ import simd
 /// CPU-only prescribed-motion geometry. Temporal midpoint quadrature is compared with
 /// exact endpoint volume; it is not assumed conservative when walls cross cell boundaries.
 public enum ExperimentalRigidBoxMotionStudy {
+    public enum Integration: String, Codable, Sendable { case midpoint, eventSplitGauss }
     public struct Result: Codable, Sendable {
+        public let integration: Integration
+        public let integrationIntervals: Int
         public let kind: String
         public let cellSize: Double
         public let temporalSamples: Int
@@ -24,12 +27,17 @@ public enum ExperimentalRigidBoxMotionStudy {
                 for samples in [8, 32, 128] {
                     results.append(try measure(kind: kind, cellSize: h, samples: samples))
                 }
+                if kind != "rotation" {
+                    results.append(try measure(kind: kind, cellSize: h, samples: 0, eventSplit: true))
+                }
             }
         }
         return results
     }
 
-    private static func measure(kind: String, cellSize h: Double, samples: Int) throws -> Result {
+    private static func measure(kind: String, cellSize h: Double, samples: Int, eventSplit: Bool = false)
+        throws -> Result
+    {
         let duration = 0.02
         let pressure = 101325.0
         let axis = simd_normalize(SIMD3<Double>(1, 2, 3))
@@ -48,6 +56,19 @@ public enum ExperimentalRigidBoxMotionStudy {
             try RigidBoxBody(
                 mass: 2, size: SIMD3(repeating: 0.8), position: start + time * velocity,
                 orientation: simd_quatd(angle: rotating ? 0.11 + 4 * time : 0, axis: axis))
+        }
+        if eventSplit {
+            let sweep = try TranslatingBoxCellSweep.integrate(
+                body: body(at: 0), velocity: velocity,
+                lower: lower, cellSize: h, duration: duration, pressure: pressure)
+            return Result(
+                integration: .eventSplitGauss, integrationIntervals: sweep.intervals,
+                kind: kind, cellSize: h, temporalSamples: sweep.evaluations, duration: duration,
+                solidVolumeChange: sweep.volumeChange, sweptVolume: sweep.sweptVolume,
+                volumeResidual: sweep.sweptVolume - sweep.volumeChange,
+                gasPressureWork: sweep.gasWork, bodyPressureWork: sweep.bodyWork,
+                workBalanceResidual: sweep.gasWork + sweep.bodyWork,
+                endpointPressureWork: pressure * sweep.volumeChange)
         }
         let initial = FractionalBoxGeometry(try body(at: 0)).solidVolumeFraction(lower: lower, cellSize: h)
         let final = FractionalBoxGeometry(try body(at: duration)).solidVolumeFraction(
@@ -71,6 +92,7 @@ public enum ExperimentalRigidBoxMotionStudy {
             }
         }
         return Result(
+            integration: .midpoint, integrationIntervals: samples,
             kind: kind, cellSize: h, temporalSamples: samples, duration: duration,
             solidVolumeChange: change, sweptVolume: swept, volumeResidual: swept - change,
             gasPressureWork: gasWork, bodyPressureWork: bodyWork, workBalanceResidual: gasWork + bodyWork,

@@ -377,6 +377,25 @@ Next, split time integration at wall/cell crossing events (or use equivalent con
 space-time geometry), then address transport and stability of small fractional gas volumes.
 The current air solver still uses its existing whole-cell boundaries.
 
+Event-aware translation is now implemented as a separate reference. For an axis-aligned box
+moving at constant velocity, it finds every box-face/cell-face crossing time and splits the
+interval there. Two-point Gaussian quadrature integrates the quadratic swept-volume rate
+between events, including simultaneous motion along multiple axes. Non-axis-aligned boxes
+are explicitly rejected; this is not a general rotating-body event solver.
+
+The motion report now has 33 cases: the retained 27 midpoint cases plus six event-split
+translation/gap comparisons. The translation crossings use four temporal evaluations instead
+of 128 and reduce the previous 6.25% volume mismatch to numerical precision (maximum
+absolute event-split residual below 0.000000000000000012 m³). Gas pressure work also matches
+pressure times the exact endpoint volume change within 0.000000000002 J, while remaining
+equal and opposite to body work. Eleven tests include diagonal translation, reverse motion,
+stationary geometry and rejection of unsupported orientations.
+
+This removes the demonstrated translation-crossing error without correcting an already
+computed flux after the fact. Next, extend event/space-time treatment to rotated boxes and
+rotation, then design conservative fractional gas transport and small-volume stabilization.
+The reference remains separate from the air solver and does not change the blast demo.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
