@@ -6,7 +6,7 @@ import Metal
 import Observation
 import simd
 
-enum Resolution: String, CaseIterable, Identifiable {
+enum Resolution: String, CaseIterable, Identifiable, Sendable {
     case coarse
     case medium
     case fine
@@ -31,7 +31,7 @@ enum Resolution: String, CaseIterable, Identifiable {
 }
 
 /// How much slower than real time the simulation is played back.
-enum PlaybackSpeed: Double, CaseIterable, Identifiable {
+enum PlaybackSpeed: Double, CaseIterable, Identifiable, Sendable {
     case x25 = 25
     case x50 = 50
     case x100 = 100
@@ -203,7 +203,7 @@ final class SimulationModel {
     @ObservationIgnored private var settledScenario: Scenario
     private static let undoLimit = 100
 
-    init(document: ProjectDocument? = nil) {
+    init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {
         let scenario = document?.scenario ?? SimulationSettings().scenario
         self.scenario = scenario
         settledScenario = scenario
@@ -233,6 +233,7 @@ final class SimulationModel {
                 renderSettings = view.rendering
             }
         }
+        speed = playbackSpeed
         if device == nil {
             errorMessage = "This Mac has no Metal device."
         }

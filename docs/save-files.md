@@ -86,6 +86,18 @@ directory updates. Tests also exercise Foundation's atomic wrapper replacement a
 that validation failures leave the previous saved document readable. This is not a test of
 power-loss durability or a simulation checkpoint facility.
 
+## Application defaults
+
+BombCAD → Settings (Command-comma) sets the initial grid, afterburning/hot-air option and shock
+refinement for newly created projects. These preferences are stored locally in UserDefaults,
+not added to the project format. Changing defaults leaves current and saved projects untouched;
+new projects capture those choices as their own numerical settings.
+
+The Settings window also selects the starting playback speed for new windows. Playback speed
+is a presentation preference rather than a saved simulation input, and can still be changed in
+each window's Run tab. Restore Defaults returns the app defaults to medium grid, both numerical
+options off, and 100× slow motion.
+
 ## Next integration steps
 
 1. Finish and integrate the importer, then verify its source geometry, stable part IDs,
@@ -106,7 +118,7 @@ that lifecycle and should preserve the same persisted-input change tracking.
 
 ```sh
 swift test --package-path Packages/SimulationKit
-swift test --filter 'ProjectSessionTests|ProjectDocumentTests|SimulationModelTests'
+swift test --filter 'AppPreferencesTests|ProjectSessionTests|ProjectDocumentTests|SimulationModelTests'
 ```
 
 These cover container integrity, moved files, atomic replacement, asset preservation, every

@@ -117,10 +117,13 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var documentID: UUID
 
     /// New documents have complete inputs without allocating a GPU simulation.
-    init(scenario: Scenario = SimulationSettings().scenario) {
+    init(scenario: Scenario = SimulationSettings().scenario, preferences: AppPreferences = AppPreferences()) {
         self.scenario = scenario
         var settings = SimulationSettings()
         settings.scenario = scenario
+        settings.resolution = preferences.resolution
+        settings.detailedCharge = preferences.detailedCharge
+        settings.sharpShocks = preferences.sharpShocks
         let crossing = (scenario.acousticCrossingTime * 100).rounded(.up) / 100
         runSettings = ProjectRunSettings(
             settings: settings, duration: scenario.structure == nil ? crossing : max(crossing, 0.25))
@@ -132,6 +135,10 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         viewSettings = ProjectViewSettings(camera: .framing(scenario), rendering: rendering)
         archive = nil
         documentID = UUID()
+    }
+
+    static func newProject(preferences: AppPreferences = .load()) -> Self {
+        Self(preferences: preferences)
     }
 
     @MainActor

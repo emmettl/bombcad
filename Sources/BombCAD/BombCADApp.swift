@@ -6,7 +6,7 @@ struct BombCADApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        DocumentGroup(newDocument: ProjectDocument()) { file in
+        DocumentGroup(newDocument: ProjectDocument.newProject()) { file in
             ProjectEditor(document: file.$document)
         }
         .defaultSize(width: 1440, height: 920)
@@ -20,6 +20,10 @@ struct BombCADApp: App {
         }
         .defaultSize(width: 780, height: 620)
         .windowResizability(.contentMinSize)
+
+        Settings {
+            AppSettingsView()
+        }
     }
 }
 

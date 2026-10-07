@@ -7,8 +7,8 @@ import SwiftUI
 final class ProjectSession {
     let model: SimulationModel
 
-    init(document: ProjectDocument) {
-        model = SimulationModel(document: document)
+    init(document: ProjectDocument, preferences: AppPreferences = .load()) {
+        model = SimulationModel(document: document, playbackSpeed: preferences.playbackSpeed)
     }
 
     var snapshot: ProjectDocument { ProjectDocument(model: model) }
