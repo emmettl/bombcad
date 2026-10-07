@@ -7,6 +7,35 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--motion-geometry") {
+        let results = try ExperimentalRigidBoxMotionStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-motion-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "\(r.kind) dx \(r.cellSize) samples \(r.temporalSamples): volume residual \(r.volumeResidual) m³, work balance \(r.workBalanceResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--geometry") {
+        let results = try ExperimentalRigidBoxGeometryStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        let error = results.map { abs($0.solidVolume - 0.512) }.max() ?? 0
+        print("\(results.count) geometry cases; maximum box-volume error \(error) m³")
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--diagnostics") {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
@@ -14,8 +43,10 @@ do {
         let transport = arguments.contains("--transport")
         let results = try ExperimentalRigidBoxDiagnostics.run(
             device: device, remapMode: transport ? .connectedTransport : .redistribution)
-        let output = URL(fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-            ?? (transport ? ".build/rigid-box-diagnostics-transport.json" : ".build/rigid-box-diagnostics.json"))
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? (transport
+                    ? ".build/rigid-box-diagnostics-transport.json" : ".build/rigid-box-diagnostics.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
@@ -24,7 +55,9 @@ do {
             let cfl = r.cfl.map { " CFL \($0)" } ?? ""
             let step = r.mechanicalStep.map { " dt \($0)" } ?? ""
             let pressure = r.maximumRelativePressureError.map { ", pressure error \($0)" } ?? ""
-            print("\(r.kind)\(grid)\(cfl)\(step): displacement \(simd_length(r.displacement)) m, speed \(simd_length(r.velocity)) m/s\(pressure)")
+            print(
+                "\(r.kind)\(grid)\(cfl)\(step): displacement \(simd_length(r.displacement)) m, speed \(simd_length(r.velocity)) m/s\(pressure)"
+            )
         }
         print("Wrote \(output.path)")
         exit(0)
@@ -36,8 +69,9 @@ do {
         let extended = arguments.contains("--extended")
         let transport = arguments.contains("--transport")
         let suffix = (transport ? "-transport" : "") + (extended ? "-extended" : "")
-        let output = URL(fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-            ?? ".build/rigid-box-convergence\(suffix).json")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-convergence\(suffix).json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalRigidBoxStudy.Result] = []
@@ -47,10 +81,11 @@ do {
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
-            print(String(
-                format: "Finished dx %.3f CFL %.3f refine %d %@: speed %.5f m/s, %.3f s",
-                r.cellSize, r.cfl, r.refinement, r.held ? "held" : "free",
-                simd_length(r.velocity), r.computeSeconds))
+            print(
+                String(
+                    format: "Finished dx %.3f CFL %.3f refine %d %@: speed %.5f m/s, %.3f s",
+                    r.cellSize, r.cfl, r.refinement, r.held ? "held" : "free",
+                    simd_length(r.velocity), r.computeSeconds))
             fflush(stdout)
         }
         try encoder.encode(results).write(to: output, options: .atomic)
