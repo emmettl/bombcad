@@ -453,6 +453,30 @@ refinement limits and more complex near-contact motion remain relevant. The next
 standalone conservative fractional gas-transport reference using the checked volume/work
 budgets, followed by small-volume stabilization before solver integration.
 
+The first fractional gas-transport reference is now implemented on the CPU. Each cell stores
+extensive mass, momentum and total energy together with its prescribed gas volume. Supplied
+directed transfers carry frozen donor states, with total outgoing volume bounded by the
+donor's old volume. Equal/opposite transfer amounts conserve the five gas quantities; supplied
+wall impulses and pressure work enter separately. New states are validated before returning,
+rejecting donor overdraw, residual gas in a zero-volume cell and nonpositive internal energy.
+Only relative roundoff-sized residuals may be cleared when a cell becomes completely dry.
+
+Six tests cover uniform-state preservation while cells close/open, nonuniform mass/momentum/
+energy budgets, independence from face traversal order, positive opening-cell states at
+volumes down to 0.000000000002 m³, invalid-update rejection and compression-work convergence.
+`--fractional-gas` generates a sealed ideal-gas compression study from 1 to 0.9 m³ with
+first-order pressure work. Fixed and moving wall impulses balance, while the moving boundary
+does work. Pressure error against adiabatic compression falls from 0.292% in one update to
+0.00486% in 64; mass is unchanged and energy-budget residuals remain below 0.00000000005 J.
+The opposing body-work entry is recorded from the supplied gas work; no free-body dynamics
+are simulated in this compression test.
+
+This is conserved-state accounting for prescribed transfers and volumes, not yet a moving-box
+gas solver. It does not construct an adjacent-face displacement field, solve numerical gas
+fluxes or choose a timestep. Tiny positive states in an algebraic test do not establish
+small-cell stability. Next, derive geometry-consistent face transfers and introduce a checked
+small-volume treatment before connecting fractional transport to blast coupling.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

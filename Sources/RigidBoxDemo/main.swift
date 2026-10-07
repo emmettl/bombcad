@@ -7,6 +7,22 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--fractional-gas") {
+        let results = try ExperimentalFractionalGasStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-gas-compression.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "\(r.steps) compression steps: pressure \(r.pressure) Pa, relative error \(r.relativePressureError), energy residual \(r.energyBudgetResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--grazing-geometry") {
         let results = try ExperimentalRigidBoxGrazingStudy.run()
         let output = URL(
