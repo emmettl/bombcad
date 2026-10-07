@@ -2,8 +2,14 @@
 
 Status: October 2026. The initial shared-package extraction is implemented:
 `Packages/SimulationKit` supplies SceneModel (Box and Grid) and SceneView (OrbitCamera).
-BombCAD consumes it with compatibility aliases. RoomCAD, its solver and Driftbox integration
-remain proposed work.
+BombCAD consumes it with compatibility aliases.
+
+The first acoustic backend is implemented in the separate `RoomCAD` package. It covers M2 items 1–3
+and 5: a rectangular-room image-source model with octave-band absorption, air attenuation, and
+stereo 32-bit float WAV export with a JSON description. Driftbox's own convolver plays the exported
+files. See [Room-acoustics model](room-acoustics-model.md). A first RoomCAD app with versioned `.roomcad`
+documents is also implemented (M1 items 3 and 4); see [RoomCAD app and documents](roomcad-app.md).
+The wave solver and the Driftbox rack effect remain proposed work.
 
 The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
@@ -179,6 +185,27 @@ initial acceptance targets, to be revisited explicitly if evidence shows they ar
 Done when: a short design contract and reference fixtures are checked in, and Driftbox's
 integration requirements and any unresolved decisions are recorded.
 
+Progress (October 2026):
+
+- **Driftbox inspected (item 1).** The web app (TypeScript, Web Audio) is the frozen reference. Its
+  rack runs in one AudioWorklet with no FFT or convolution, so it cannot use Swift. Native Driftbox
+  (Swift 6.4, macOS 26) is the active product:
+  - Its DSP is shared across Mac, Windows, Android and Linux, and the engine runs at a fixed 48 kHz.
+  - It has 128-frame rack blocks and render paths that are allocation-free.
+  - Its `WAVDecoder` already reads 32-bit float and extensible WAVs and resamples linearly.
+  - `DriftboxDSP` already has a zero-latency `PartitionedConvolver` and a two-stage convolution
+    reverb.
+  - Rack patches are JSON shared with the web reference, and loaded audio is session-only.
+- **Implications for M6.** A convolution module must either get a native-only exception to the
+  conformance rule, like the plugin modules, or a matching web module. Saved patches must say how
+  they refer to impulse-response files.
+- **Response contract (items 2–4).** This is implemented as `ResponseMetadata` in ImpulseResponseKit
+  and documented in [Room-acoustics model](room-acoustics-model.md#output). The defaults are
+  48 kHz, one channel per receiver, emission at frame 0, a common gain only, and both complete and
+  reflections-only content.
+- **Still open.** Fixed performance budgets and a measured reference room are not yet chosen. The
+  acousticbench reference room is illustrative.
+
 ### M1 — Create the shared foundation and RoomCAD scaffold
 
 1. Extract geometry and camera code with minimal API changes; separate them from blast state.
@@ -194,6 +221,25 @@ integration requirements and any unresolved decisions are recorded.
 
 Done when: both apps build, existing BombCAD checks pass, and RoomCAD round-trips a scene
 and renders its source and receiver positions. Shared shader resources load in both apps.
+
+Progress (October 2026): items 3 and 4 are implemented. RoomCAD is a separate SwiftPM package with
+the RoomCAD app and the acousticbench tool. It depends on SimulationKit's DocumentKit and on nothing
+in BombCAD.
+
+The app edits a rectangular room, its surfaces, one source and 1 to 16 receivers in plan and section
+drawings and an inspector. It saves and reopens versioned `.roomcad` documents, which can keep the
+last response and track when it goes stale. It generates responses in the background and exports
+WAV. Both apps build and the round-trip tests pass. The drawings are checked by an offscreen snapshot;
+the window has not been seen on screen.
+
+Items 1, 2, 5 and 6 are not done:
+
+- **Item 1.** The 2D drawings need no shared camera.
+- **Item 2.** Rendering is not shared yet.
+- **Item 5.** AcousticCore uses Accelerate, not Metal.
+- **Item 6.** GeometryImport extraction waits for imported rooms.
+
+There are no shared shader resources yet.
 
 ### M2 — Produce the first usable stereo reverb file
 
@@ -215,6 +261,22 @@ first-reflection arrival times agree with path length divided by sound speed to 
 output sample, and an anechoic case has the expected distance scaling and no spurious tail.
 Output is labelled as geometrical acoustics with approximate low-frequency behaviour.
 
+Progress (October 2026): items 1–3 and 5 are implemented, and the acceptance checks pass:
+
+- **Arrival timing.** The worst arrival-time error is 0.42 samples.
+- **Anechoic room.** Energy follows 1/r² to 10⁻⁴, with no tail.
+- **Independent engine.** Native Driftbox's decoder and partitioned convolver play the exported
+  stereo file and match direct convolution.
+- **Labelling.** The output is labelled as geometrical acoustics, approximate below the Schroeder
+  frequency.
+
+Without scattering, the rendered decay in the 250 Hz–8 kHz bands is 20–70% longer than
+Eyring's estimate. The decay matches what specular reflection predicts, but M4's scattering is
+needed before the reverb sounds like a real room. Item 6 (preview) is implemented in the RoomCAD
+app. It has a dry clip, a live wet/dry balance and optional loudness matching, and it plays through
+two synchronized players; see [RoomCAD app and documents](roomcad-app.md#the-window). Item 4 (late
+tail) is not done.
+
 ### M3 — Establish a trustworthy low-frequency wave solver
 
 1. Implement linear acoustics using pressure perturbation and particle velocity. Reuse GPU
@@ -234,6 +296,13 @@ with targets of less than 1% modal-frequency error and less than 1 dB amplitude 
 the declared travelling-wave test distance. Linear amplitude scaling and stable passive
 boundaries are demonstrated. Failures narrow the supported band rather than being hidden.
 
+Progress (October 2026): a CPU FDTD solver is implemented in `AcousticCore`, with locally reacting
+impedance walls and a calibrated source. Rigid-room modes are within 0.25% of the analytical values,
+and free-field level within 0.03 dB with no timing offset. Axial decay between absorbing walls is
+within 6% of theory. The crossover's top is resolved at 10 points per wavelength, and work is
+budgeted. It runs on the CPU rather than the GPU, and a fuller benchmark report (phase and directional
+error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
+
 ### M4 — Generate broadband hybrid room responses
 
 1. Add higher-frequency scattering and diffuse propagation, using ray tracing or another
@@ -250,6 +319,26 @@ Done when: reproducible broadband stereo responses have no unexplained crossover
 and a validation report distinguishes agreement with measurements from modelling assumptions.
 Listening comparisons supplement the numerical checks.
 
+Progress (October 2026): item 1 (scattering) is implemented for rectangular rooms. Image sources
+carry the specular part, weakened by 1 − s at each reflection. Ray tracing with Lambert reflection
+carries the energy scattered at least once, rendered as a dense, seeded random reflection pattern.
+
+The tracer's detector matches the diffuse-field rate 4πc/V to within 3%. Full scattering brings the
+decay to within 6% of Kuttruff's corrected Eyring estimate. The illustrative reference room now decays
+between its Eyring and Sabine times instead of 50–70% longer. See
+[Room-acoustics model](room-acoustics-model.md#scattered-energy).
+
+Items 2–4 are implemented with the M3 solver:
+
+- **Crossover.** An automatic crossover at twice the Schroeder frequency, within 80–250 Hz and the
+  budget.
+- **Alignment.** Time origins and gain conventions are aligned by deconvolving the source against free
+  field.
+- **Blending.** Complementary zero-phase crossovers sum to one. The two models agree within 1.5 dB at
+  the crossover across the presets, except for an apparent seat dip in the chamber hall.
+
+Item 5 (comparison with measured rooms) and item 6's validated band are not done.
+
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 
 1. Expand beyond rectangular rooms with openings, connected spaces and practical geometry
@@ -263,6 +352,12 @@ Listening comparisons supplement the numerical checks.
 
 Done when: a user can build, save, reopen, audition and export a room without editing code,
 and can see the output's frequency coverage and modelling assumptions.
+
+Progress (October 2026): the RoomCAD app covers saving, reopening, auditioning and export without
+code. Item 2 has started: 90 absorption and 7 scattering presets come from the annex of Vorländer's
+*Auralization*, via pyroomacoustics. Bands outside the published range are extended and labelled in
+each material's reference. Most surfaces still need scattering values. See
+[RoomCAD app and documents](roomcad-app.md#material-presets).
 
 ### M6 — Add a convolution reverb to Driftbox rack
 
