@@ -1168,12 +1168,13 @@ public final class StructureSolver {
             uniforms.bondS3 = law.s3
             uniforms.bondAlpha = law.alpha
             // Bond lost where bars have yielded, from their curve: the plastic strain at their
-            // ultimate strength, and b = 2 - f_u / f_y.
+            // ultimate strength, and b = (2 - f_u / f_y)^2.
             if bond.yieldedBondLoss, let steel = model.material.steel,
                 let top = steel.curve.max(by: { $0.y < $1.y }), top.x > 0
             {
                 uniforms.bondYieldRange = top.x
-                uniforms.bondYieldExponent = max(2 - top.y / steel.curve[0].y, 0.1)
+                let excess = 2 - top.y / steel.curve[0].y
+                uniforms.bondYieldExponent = max(excess * excess, 0.1)
             }
         }
         if anchorStiffness != nil {

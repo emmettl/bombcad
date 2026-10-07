@@ -270,3 +270,10 @@ struct SpaceKeyTests {
         #expect(SpaceKeyMonitor.isPlayPause(key(" ", in: window), in: window))
     }
 }
+
+@Test("The diagnostics say where the wave solver's runs went")
+func waveEngines() {
+    #expect(DiagnosticsList.engines(runs: 2, gpu: 2) == "2 runs on the GPU")
+    #expect(DiagnosticsList.engines(runs: 1, gpu: 0) == "1 run on the CPU")
+    #expect(DiagnosticsList.engines(runs: 3, gpu: 1) == "3 runs, 1 on the GPU and 2 on the CPU")
+}

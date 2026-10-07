@@ -95,7 +95,7 @@ struct StructureUniforms {
     // of keeping `shearRetention` of the concrete's.
     uint crackShearStiffness;
     // Bond lost where bars have yielded (Model Code 2010): the plastic strain at the bars'
-    // ultimate strength, and the exponent b of the reduction. Zero range: no reduction.
+    // ultimate strength, and the exponent b = (2 - f_u / f_y)^2. Zero range: no reduction.
     float bondYieldRange;
     float bondYieldExponent;
 };
@@ -1491,7 +1491,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             material[j][j] += ratio[j] * stress / root;
             barForce[j] = ratio[j] * stress / root * u.h * u.h;
             // Bars that have yielded hold less well (Model Code 2010, 6.1.1.3):
-            // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate.
+            // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate,
+            // b = (2 - f_u / f_y)^2.
             if (u.bondSlip != 0 && u.bondYieldRange > 0.0f && plastic[j] > 0.0f) {
                 float a = min(plastic[j] / u.bondYieldRange, 1.0f);
                 bondLeft[j] = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));

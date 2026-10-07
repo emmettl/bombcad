@@ -10,12 +10,14 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine] [--mass <kg TNT>]
-                           [--duration <seconds>] [--usd <scene.usda> [--frame-interval <ms>]]
+                           [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>]
+                           [--frame-interval <ms>]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
-        histories. --usd writes the scene for rendering elsewhere, with the structure's surface
-        every --frame-interval milliseconds of simulated time (1 by default). --resolution and
+        histories. --usd writes the scene for rendering elsewhere, with the structure's surface,
+        and --vdb the air as OpenVDB volumes, a file a frame, both every --frame-interval
+        milliseconds of simulated time (1 by default). --resolution and
         --mass change the inputs as a sweep case would; the project itself is never modified.
         """
 
@@ -28,7 +30,9 @@ enum HeadlessRun {
         var mass: Float?
         var duration: Double?
         var usd: URL?
-        /// Whole milliseconds of simulated time between frames of `usd`.
+        /// A new folder for the air's volumes, one OpenVDB file a frame.
+        var vdb: URL?
+        /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
 
         static func parse(_ arguments: [String]) throws -> Options {
@@ -40,8 +44,11 @@ enum HeadlessRun {
                 if argument.hasPrefix("--") {
                     let key = String(argument.dropFirst(2))
                     guard
-                        ["name", "out", "csv", "resolution", "mass", "duration", "usd", "frame-interval"]
-                            .contains(key)
+                        [
+                            "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
+                            "frame-interval",
+                        ]
+                        .contains(key)
                     else {
                         throw ProjectFileError.invalid("Unknown option \(argument).")
                     }
@@ -77,9 +84,10 @@ enum HeadlessRun {
                 options.duration = duration
             }
             options.usd = values["usd"].map { URL(filePath: $0) }
+            options.vdb = values["vdb"].map { URL(filePath: $0, directoryHint: .isDirectory) }
             if let text = values["frame-interval"] {
-                guard options.usd != nil else {
-                    throw ProjectFileError.invalid("--frame-interval needs --usd.")
+                guard options.usd != nil || options.vdb != nil else {
+                    throw ProjectFileError.invalid("--frame-interval needs --usd or --vdb.")
                 }
                 guard let interval = Int(text), interval > 0 else {
                     throw ProjectFileError.invalid(
@@ -90,7 +98,7 @@ enum HeadlessRun {
             if let usd = options.usd, usd.pathExtension != "usda" {
                 throw ProjectFileError.invalid("The USD scene must end in .usda.")
             }
-            for url in [options.out, options.csv, options.usd].compactMap({ $0 })
+            for url in [options.out, options.csv, options.usd, options.vdb].compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
                 throw ProjectFileError.invalid("\(url.path) already exists; choose a new path.")
             }
@@ -149,29 +157,49 @@ enum HeadlessRun {
         start.scenario = inputs.scenario
         start.runSettings = inputs.settings
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
+        let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
+        // Before the inputs load, which sets the first sample time.
+        model.airSampleInterval = interval
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
         let scene = try options.usd.map { url in
             try USDSceneWriter(
-                url: url, scenario: inputs.scenario,
-                frameInterval: Double(options.frameInterval) * SimulationModel.structureSampleInterval,
+                url: url, scenario: inputs.scenario, frameInterval: interval,
                 camera: .init(
                     eye: model.camera.eye, target: model.camera.target,
-                    verticalFieldOfView: model.camera.fieldOfView))
+                    verticalFieldOfView: model.camera.fieldOfView),
+                volumeFields: options.vdb == nil ? [] : ["overpressure", "shock"])
         }
         defer { scene?.discard() }
+        var finished = false
+        if let folder = options.vdb {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        }
+        defer {
+            if !finished, let folder = options.vdb { try? FileManager.default.removeItem(at: folder) }
+        }
         var exportError: Error?
-        if let scene {
-            // Frames fall on the structural samples, where the run loop stops anyway, so exporting
-            // does not change the run.
-            model.onStructureSample = { solver in
+        // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
+        // so exporting does not change the run. Without a structure, only volumes ask for frames,
+        // and the run then stops at each one, ending a time step there.
+        if options.vdb != nil || (scene != nil && inputs.scenario.structure != nil) {
+            var frame = 0
+            model.onSample = { solver in
                 // The last sample, at the end of the run, can fall between frames.
-                let frame = (solver.time / scene.frameInterval).rounded()
-                guard exportError == nil, abs(solver.time - frame * scene.frameInterval) < 1e-6,
-                    Int(frame) == scene.frameCount
-                else { return }
+                let index = (solver.time / interval).rounded()
+                guard exportError == nil, abs(solver.time - index * interval) < 1e-6, Int(index) == frame
+                else {
+                    return
+                }
+                defer { frame += 1 }
                 do {
-                    try scene.append(solver.structureSurface())
+                    var volume: String?
+                    if let folder = options.vdb {
+                        let file = folder.appending(path: String(format: "blast.%04d.vdb", frame))
+                        try OpenVDBWriter.write(solver.volumeGrids(), to: file)
+                        volume = options.usd.map { assetPath(of: file, from: $0) }
+                    }
+                    try scene?.append(solver.structureSurface(), volume: volume)
                 } catch {
                     exportError = error
                 }
@@ -183,6 +211,7 @@ enum HeadlessRun {
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
         try scene?.finish()
+        finished = true
 
         if let out = options.out {
             // The project's own inputs, with the new run among its saved ones.
@@ -193,6 +222,14 @@ enum HeadlessRun {
             try Data(run.csv().utf8).write(to: csv, options: .withoutOverwriting)
         }
         return run
+    }
+
+    /// `file` as the USD file at `scene` should name it: relative where it lies beside or below it.
+    nonisolated static func assetPath(of file: URL, from scene: URL) -> String {
+        let base = scene.deletingLastPathComponent().standardizedFileURL.path(percentEncoded: false)
+        let path = file.standardizedFileURL.path(percentEncoded: false)
+        let prefix = base.hasSuffix("/") ? base : base + "/"
+        return path.hasPrefix(prefix) ? "./" + path.dropFirst(prefix.count) : path
     }
 
     private static func waitUntil(_ model: SimulationModel, _ condition: () -> Bool) async throws {

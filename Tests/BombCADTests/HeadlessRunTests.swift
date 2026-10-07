@@ -19,6 +19,7 @@ struct HeadlessRunOptionTests {
             ["a", "--resolution", "huge"], ["a", "--mass", "lots"], ["a", "--duration", "0"],
             ["a", "--out", "result.json"], ["a", "--frame-interval", "2"], ["a", "--usd", "scene.usdc"],
             ["a", "--usd", "scene.usda", "--frame-interval", "0.5"],
+            ["a", "--vdb", FileManager.default.temporaryDirectory.path],
         ] {
             #expect(throws: ProjectFileError.self) { try HeadlessRun.Options.parse(arguments) }
         }
@@ -158,6 +159,40 @@ struct HeadlessRunTests {
             try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() == [
                 "in.bombcad", "scene.usda",
             ])
+    }
+
+    @Test("An air-only run writes a volume a frame, which the USD scene reads")
+    func volumeExport() async throws {
+        var scene = Scenario(
+            name: "Air only", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0.01, position: SIMD3(2, 2, 1)))
+        scene.gauges = [Gauge("Near", at: SIMD3(2.5, 2, 1))]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.004
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "air.bombcad")
+        try write(document, to: project)
+        let usd = folder.appending(path: "air.usda")
+        let volumes = folder.appending(path: "air.volumes")
+        _ = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([
+                project.path, "--usd", usd.path, "--vdb", volumes.path, "--frame-interval", "2",
+            ]))
+        // 0, 2 and 4 ms.
+        let files = try FileManager.default.contentsOfDirectory(atPath: volumes.path).sorted()
+        #expect(files == ["blast.0000.vdb", "blast.0001.vdb", "blast.0002.vdb"])
+        let text = try String(contentsOf: usd, encoding: .utf8)
+        #expect(text.contains("def Volume \"Blast\""))
+        #expect(text.contains("rel field:overpressure = </Scene/Blast/overpressure>"))
+        #expect(text.contains("2: @./air.volumes/blast.0002.vdb@,"))
+        #expect(!text.contains("def Mesh \"Structure\""))
+        // Each frame is an OpenVDB file, and the blast has moved on between them.
+        let first = try Data(contentsOf: volumes.appending(path: "blast.0000.vdb"))
+        let later = try Data(contentsOf: volumes.appending(path: "blast.0001.vdb"))
+        #expect(first.prefix(4) == Data([0x20, 0x42, 0x44, 0x56]) && later.prefix(4) == first.prefix(4))
+        #expect(later != first)
     }
 
     @Test("A project with no room for another run is refused before running")

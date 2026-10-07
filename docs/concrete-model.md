@@ -278,7 +278,8 @@ the concrete's shear stiffness, kept however wide the crack, suits a crack smear
 elements. A crack in one element (in plain concrete, or with bars that slip) is a discrete
 crack, and Walraven and Reinhardt measured how stiff those are in shear: k = 1.8 w^−0.8 +
 (0.234 w^−0.707 − 0.20) f_cc MPa per mm of slip, for a crack w mm wide in concrete of cube
-strength f_cc MPa (taken as f_c / 0.8). With the option the crack acts in series with the
+strength f_cc MPa (taken as f_c / 0.8): the slope of their eq. 1a (*HERON* 26(1A), 1981), whose
+offset, a shear of −f_cc/30 before the faces engage, is left out. With the option the crack acts in series with the
 concrete across the band: the cracked plane keeps 1 / (1 + G / (k ℓ)) of the concrete's shear
 stiffness, which on 46 mm elements of 23 MPa concrete is 0.07 at 0.2 mm and 0.01 at 1 mm. A
 cube cracked open and sheared a little keeps that share within 15% (`ConcreteModelTests`).
@@ -405,9 +406,10 @@ bars along the lattice axes slip:
   rupture is judged in its own element, its strain spread along it by the slip;
 - held or driven nodes grip their bars: they do not slip there;
 - where bars have yielded they hold less well: the bond is scaled by the Model Code's
-  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = 2 − f_u / f_y
-  (§6.1.1.3; the form is recalled, not checked against the text), with a the bars' plastic
-  strain over that at their ultimate strength, averaged over the elements around each node
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = (2 − f_u / f_y)²
+  (as quoted from the Model Code by J. Santos and A. A. Henriques, *Engineering Structures* 86,
+  2015, 72–83; first written from memory without the square), with a the bars' plastic strain
+  over that at their ultimate strength, averaged over the elements around each node
   (`BondSlip.yieldedBondLoss`, on by default).
 
 Bars weigh far too little for the time step, so the slip does not follow their inertia. It is
@@ -943,8 +945,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
-- **Bond slip**, so that bond governs crack spacing instead of its being assumed, and a bar's
-  stress as well as its rupture is spread over its debonded length.
+- **Bond slip, by default.** It is an option (see
+  [bars that slip](#bars-that-slip-an-option)): it gives the Model Code's crack spacing on any
+  mesh, but leaves the shear beam OA1 42–47% strong and the slab 18% stiff. It needs a direct
+  test of interlock across one crack and the test slab's crack pattern before it can be the
+  default; and inclined bars, shells and beams that slip too.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete close to a charge, and a
   close-in test to check it.
