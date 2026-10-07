@@ -61,7 +61,7 @@ struct DiffuseRayTracer {
         var energy = Array(
             repeating: Array(repeating: [Double](repeating: 0, count: bins), count: bands),
             count: receivers.count)
-        guard rayCount > 0, room.scatters || specularOrderLimit < Int.max || !openings.isEmpty else {
+        guard rayCount > 0, room.scatters || specularOrderLimit < Int.max || !openings.isEmpty, !stop() else {
             return energy
         }
         let rayCount = tracedRays
@@ -231,8 +231,12 @@ struct DiffuseRayTracer {
         return simd_double3x3(q)
     }
 
-    /// Volume of the part of a sphere inside the room, by counting points on a grid.
+    /// Volume of the part of a sphere inside the room: exact when the sphere is wholly inside, otherwise
+    /// by counting points on a grid.
     func insideVolume(of centre: SIMD3<Double>, radius: Double) -> Double {
+        if all(centre .>= radius) && all(centre .<= room.size - radius) {
+            return 4 / 3 * Double.pi * radius * radius * radius
+        }
         let steps = 48
         var inside = 0
         for i in 0..<steps {
