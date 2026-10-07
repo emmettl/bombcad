@@ -744,7 +744,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    elements through the depth: shear strength needs a finer mesh than bending does, about 24
    elements through a member's depth. On coarser meshes the diagonal crack cannot cut through
    the compression zone, and the load arches to the supports over the bars until they yield;
-   neither interlock nor dowel action accounts for it. Beams check each section's shear
+   neither interlock nor dowel action accounts for it, nor the strut's crushing: cracked
+   concrete made weaker in compression by the tension across it, 1 / (0.8 + 170 ε₁) of its
+   strength as in the modified compression field theory (Vecchio and Collins, 1986), left the
+   12-element beam's peak at 456 kN and its curve within 1%. That leaves the crack band itself
+   as the likely cause, unable on coarse elements to turn through the compression zone (stress
+   locking); curing that would need cracks that follow their own path through the mesh. Beams check each section's shear
    instead (see the [shell model](shell-model.md#materials)). Dowel
    action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
