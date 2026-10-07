@@ -2,8 +2,13 @@
 
 Status: October 2026. The initial shared-package extraction is implemented:
 `Packages/SimulationKit` supplies SceneModel (Box and Grid) and SceneView (OrbitCamera).
-BombCAD consumes it with compatibility aliases. RoomCAD, its solver and Driftbox integration
-remain proposed work.
+BombCAD consumes it with compatibility aliases.
+
+The first acoustic backend is implemented in the separate `RoomCAD` package. It covers M2 items 1–3
+and 5: a rectangular-room image-source model with octave-band absorption, air attenuation, and
+stereo 32-bit float WAV export with a JSON description. Driftbox's own convolver plays the exported
+files. See [Room-acoustics model](room-acoustics-model.md). The RoomCAD app, `.roomcad` documents,
+the wave solver and the Driftbox rack effect remain proposed work.
 
 The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
@@ -179,6 +184,27 @@ initial acceptance targets, to be revisited explicitly if evidence shows they ar
 Done when: a short design contract and reference fixtures are checked in, and Driftbox's
 integration requirements and any unresolved decisions are recorded.
 
+Progress (October 2026):
+
+- **Driftbox inspected (item 1).** The web app (TypeScript, Web Audio) is the frozen reference. Its
+  rack runs in one AudioWorklet with no FFT or convolution, so it cannot use Swift. Native Driftbox
+  (Swift 6.4, macOS 26) is the active product:
+  - Its DSP is shared across Mac, Windows, Android and Linux, and the engine runs at a fixed 48 kHz.
+  - It has 128-frame rack blocks and render paths that are allocation-free.
+  - Its `WAVDecoder` already reads 32-bit float and extensible WAVs and resamples linearly.
+  - `DriftboxDSP` already has a zero-latency `PartitionedConvolver` and a two-stage convolution
+    reverb.
+  - Rack patches are JSON shared with the web reference, and loaded audio is session-only.
+- **Implications for M6.** A convolution module must either get a native-only exception to the
+  conformance rule, like the plugin modules, or a matching web module. Saved patches must say how
+  they refer to impulse-response files.
+- **Response contract (items 2–4).** This is implemented as `ResponseMetadata` in ImpulseResponseKit
+  and documented in [Room-acoustics model](room-acoustics-model.md#output). The defaults are
+  48 kHz, one channel per receiver, emission at frame 0, a common gain only, and both complete and
+  reflections-only content.
+- **Still open.** Fixed performance budgets and a measured reference room are not yet chosen. The
+  acousticbench reference room is illustrative.
+
 ### M1 — Create the shared foundation and RoomCAD scaffold
 
 1. Extract geometry and camera code with minimal API changes; separate them from blast state.
@@ -214,6 +240,19 @@ Done when: an exported response plays in an independent convolution engine; dire
 first-reflection arrival times agree with path length divided by sound speed to within one
 output sample, and an anechoic case has the expected distance scaling and no spurious tail.
 Output is labelled as geometrical acoustics with approximate low-frequency behaviour.
+
+Progress (October 2026): items 1–3 and 5 are implemented, and the acceptance checks pass:
+
+- **Arrival timing.** The worst arrival-time error is 0.42 samples.
+- **Anechoic room.** Energy follows 1/r² to 10⁻⁴, with no tail.
+- **Independent engine.** Native Driftbox's decoder and partitioned convolver play the exported
+  stereo file and match direct convolution.
+- **Labelling.** The output is labelled as geometrical acoustics, approximate below the Schroeder
+  frequency.
+
+Without scattering, the rendered decay in the 250 Hz–8 kHz bands is 20–70% longer than
+Eyring's estimate. The decay matches what specular reflection predicts, but M4's scattering is
+needed before the reverb sounds like a real room. Items 4 (late tail) and 6 (preview) are not done.
 
 ### M3 — Establish a trustworthy low-frequency wave solver
 
