@@ -521,16 +521,29 @@ Time-integrated open face areas are now available for axis-aligned constant tran
 the event-split geometry reference. Box-face/cell-face crossings partition time so that each
 open area is a quadratic polynomial within an interval; two-point Gaussian quadrature
 integrates it exactly up to floating-point geometry error. The six area integrals (m² s)
-are included in `--motion-geometry` for midpoint and event-split results. The adaptive
-rotated sweep does not yet report them. Eight midpoint samples differ from the event-split
+are included in `--motion-geometry` for midpoint and event-split results. Eight midpoint samples differ from the event-split
 face integral by 4.17% of the full-face area-time on the 0.1 and 0.05 m crossing cases.
 Three analytical tests check shared-face agreement, quadratic overlap and a brief closure
 missed by endpoint/midpoint samples; all sixteen geometry tests pass.
 
 An area-time integral alone is not a transported gas volume: a numerical flux must be
 integrated with the aperture, preserving the timing of openings as states evolve. The
-capacity remapper still uses its supplied connectivity graph. Next, extend temporal face
-quadrature to rotated motion and use it in a conservative physical flux reference with
+capacity remapper still uses its supplied connectivity graph.
+
+The adaptive rotated-motion reference now also integrates all six open face areas.
+Its interval refinement includes the largest per-face discrepancy between coarse/fine
+Gaussian quadrature and endpoint-inclusive Simpson estimates. A separate area-time tolerance
+defaults to one part in 100 million of the full-face area-time; the report records this
+tolerance and the sum of interval error indicators. Existing separation bounds still
+investigate intervals whose quadrature could miss a brief encounter. These are numerical
+error indicators, not certified bounds or a complete grazing-event detector.
+
+Three additional tests verify an analytical rotating-box secant integral, agreement across
+a shared face, a brief closure with zero pressure (so face refinement is independent of
+force checks), and explicit failure when the refinement budget is insufficient. All nineteen
+geometry tests pass. The 48-case motion report now includes face integrals in every result;
+all six adaptive rotated cases satisfy their face-area tolerance, using 45–621 temporal
+evaluations. Next, use this geometry in a conservative physical gas-flux reference, including
 wall work and small-cell acoustic timestep control.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of

@@ -21,8 +21,9 @@ public enum ExperimentalRigidBoxMotionStudy {
         public let workBalanceResidual: Double
         public let endpointPressureWork: Double
         /// Open face area integrated over time, in m² s (-x,+x,-y,+y,-z,+z).
-        /// Not yet reported by the adaptive rotated sweep.
         public let integratedOpenFaceAreas: [Double]?
+        public let faceAreaTimeErrorEstimate: Double?
+        public let faceAreaTimeTolerance: Double?
     }
 
     public static func run() throws -> [Result] {
@@ -80,7 +81,8 @@ public enum ExperimentalRigidBoxMotionStudy {
                 gasPressureWork: sweep.gasWork, bodyPressureWork: sweep.bodyWork,
                 workBalanceResidual: sweep.gasWork + sweep.bodyWork,
                 endpointPressureWork: pressure * sweep.volumeChange,
-                integratedOpenFaceAreas: sweep.integratedOpenFaceAreas)
+                integratedOpenFaceAreas: sweep.integratedOpenFaceAreas,
+                faceAreaTimeErrorEstimate: nil, faceAreaTimeTolerance: nil)
         }
         if adaptive {
             let tolerance = h * h * h * 1e-9
@@ -95,7 +97,10 @@ public enum ExperimentalRigidBoxMotionStudy {
                 volumeResidual: sweep.sweptVolume - sweep.volumeChange,
                 gasPressureWork: sweep.gasWork, bodyPressureWork: sweep.bodyWork,
                 workBalanceResidual: sweep.gasWork + sweep.bodyWork,
-                endpointPressureWork: pressure * sweep.volumeChange, integratedOpenFaceAreas: nil)
+                endpointPressureWork: pressure * sweep.volumeChange,
+                integratedOpenFaceAreas: sweep.integratedOpenFaceAreas,
+                faceAreaTimeErrorEstimate: sweep.faceAreaTimeErrorEstimate,
+                faceAreaTimeTolerance: sweep.faceAreaTimeTolerance)
         }
         let initial = FractionalBoxGeometry(try body(at: 0)).solidVolumeFraction(lower: lower, cellSize: h)
         let final = FractionalBoxGeometry(try body(at: duration)).solidVolumeFraction(
@@ -127,6 +132,7 @@ public enum ExperimentalRigidBoxMotionStudy {
             kind: kind, cellSize: h, temporalSamples: samples, duration: duration,
             solidVolumeChange: change, sweptVolume: swept, volumeResidual: swept - change,
             gasPressureWork: gasWork, bodyPressureWork: bodyWork, workBalanceResidual: gasWork + bodyWork,
-            endpointPressureWork: pressure * change, integratedOpenFaceAreas: integratedOpenFaceAreas)
+            endpointPressureWork: pressure * change, integratedOpenFaceAreas: integratedOpenFaceAreas,
+            faceAreaTimeErrorEstimate: nil, faceAreaTimeTolerance: nil)
     }
 }
