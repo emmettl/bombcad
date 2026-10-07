@@ -7,6 +7,35 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--motion-geometry") {
+        let results = try ExperimentalRigidBoxMotionStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-motion-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "\(r.kind) dx \(r.cellSize) samples \(r.temporalSamples): volume residual \(r.volumeResidual) m³, work balance \(r.workBalanceResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--geometry") {
+        let results = try ExperimentalRigidBoxGeometryStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        let error = results.map { abs($0.solidVolume - 0.512) }.max() ?? 0
+        print("\(results.count) geometry cases; maximum box-volume error \(error) m³")
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--diagnostics") {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration

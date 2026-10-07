@@ -30,7 +30,7 @@ The manifest contains:
 | `format` | `dev.simulationkit.project` |
 | `schemaVersion` | Integer `1`, independent of the application release |
 | `documentID` | UUID retained on save/reopen and scene replacement; New Project starts a new identity |
-| `documentType` | `bombcad`; future RoomCAD documents use their own application codec |
+| `documentType` | `bombcad`; RoomCAD documents use `roomcad` and their own codec ([RoomCAD documents](roomcad-app.md#document-format)) |
 | `producer` | Producer name, currently `BombCAD` |
 | `assets` | Array of asset records containing a UUID `id`, relative `path` and lowercase hex `sha256` |
 

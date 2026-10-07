@@ -8,4 +8,5 @@ build/
 .claude/settings.local.json
 dist/
 __pycache__/
+roomcad-reference/
 nightly-results/

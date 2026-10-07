@@ -264,6 +264,15 @@ app keep their existing behaviour while this alternative is evaluated.
 writes `.build/rigid-box-convergence-transport.json` (add `--extended` for the longer study).
 Reports record the remapper and separate air and ground impulses. Completed cases are saved
 incrementally; a failed run can leave a partial report.
+`swift run -c release rigidboxdemo --geometry` writes `.build/rigid-box-geometry.json`, a
+CPU-only reference for fractional cell volumes and open face areas. It compares translation,
+rotation and sub-cell ground gaps on three grids without changing air masks or simulation.
+The report also measures clipped wall areas/centroids, uniform-pressure force/torque and
+cell surface/volume balances. Ground cases use virtual cells below the plane to check the
+complete box surface; those loads are geometry identities, not ground-pressure predictions.
+`--motion-geometry` writes `.build/rigid-box-motion-geometry.json`, comparing endpoint cell
+volume changes with temporally integrated wall motion and equal/opposite pressure work.
+It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
 
 ## Headline results
 

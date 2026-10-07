@@ -1,4 +1,4 @@
-.PHONY: build app run test lint format icons ci-test check release-check release
+.PHONY: build app run test roomcad-test roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -17,17 +17,33 @@ run: app
 test:
 	swift test
 
+roomcad-test:
+	swift test --package-path RoomCAD
+	python3 RoomCAD/Scripts/test-release.py
+
+roomcad-app:
+	bash RoomCAD/Scripts/build-app.sh "$(CONFIGURATION)"
+
+roomcad-icon:
+	swift RoomCAD/Scripts/make-icon.swift
+
+roomcad-release-check:
+	python3 RoomCAD/Scripts/release.py check
+
+roomcad-release:
+	python3 RoomCAD/Scripts/release.py prepare
+
 lint:
-	swift format lint --strict --recursive Package.swift Sources Tests Scripts
+	swift format lint --strict --recursive Package.swift Sources Tests Scripts RoomCAD/Package.swift RoomCAD/Sources RoomCAD/Tests RoomCAD/Scripts
 
 format:
-	swift format format --in-place --recursive Package.swift Sources Tests Scripts
+	swift format format --in-place --recursive Package.swift Sources Tests Scripts RoomCAD/Package.swift RoomCAD/Sources RoomCAD/Tests RoomCAD/Scripts
 
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
 
-check: lint test ci-test build
+check: lint test roomcad-test ci-test build
 
 release-check:
 	python3 Scripts/release.py check
