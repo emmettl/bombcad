@@ -5,7 +5,6 @@ import SwiftUI
 struct SidebarView: View {
     @Bindable var model: SimulationModel
     @State private var tab = Tab.run
-    @State private var inspecting: ImportedModel?
 
     private enum Tab: String, CaseIterable {
         case run = "Run"
@@ -25,10 +24,11 @@ struct SidebarView: View {
             case .edit: EditorView(model: model)
             }
         }
-        .onChange(of: tab) { model.selection = nil }
-        .sheet(item: $inspecting) { imported in
-            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
+        .onChange(of: tab) {
+            if case .imported = model.selection, tab == .edit { return }
+            model.selection = nil
         }
+        .onChange(of: model.selection) { if case .imported = model.selection { tab = .edit } }
     }
 
     private var runForm: some View {
@@ -69,7 +69,7 @@ struct SidebarView: View {
                                     "Sampled at \(imported.preview.cellSize, format:.number) m. Compare finer grids to assess accuracy."
                                 ).font(.caption)
                             }
-                            Button("Inspect source and warnings…") { inspecting = imported }
+                            Button("Inspect source and warnings…") { model.inspectImport(id: imported.id) }
                         }
                     }
                 }

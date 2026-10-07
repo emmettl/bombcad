@@ -1,4 +1,5 @@
 import BlastCore
+import BlastRender
 import Foundation
 import Testing
 
@@ -122,6 +123,28 @@ struct SimulationModelTests {
         try await waitUntil { model.grid?.cellSize == 0.125 && model.errorMessage == nil }
         #expect(model.settings.scenario.structure?.openings == [opening])
         #expect(model.settings.scenario.importedModels?.first?.source == imported.source)
+    }
+
+    @Test("Clicking an imported occupied volume selects it and opens the shared inspector")
+    func importedViewportSelection() async throws {
+        let model = try await makeModel()
+        model.open(try importedLayout())
+        try await waitUntil { model.grid?.nx == 8 }
+        let imported = try #require(model.settings.scenario.importedModels?.first)
+        let originalCharge = model.settings.chargePosition
+        model.camera = OrbitCamera(
+            target: SIMD3(1.5, 1.5, 0.5), distance: 5, azimuth: -.pi / 2, elevation: 0.2)
+        model.click(ndc: .zero, aspectRatio: 1)
+        #expect(model.selection == .imported(imported.id))
+        #expect(model.inspectedImportID == imported.id)
+        #expect(model.highlightedBox == imported.preview.boxes.first)
+        #expect(model.settings.chargePosition == originalCharge)
+        model.inspectedImportID = nil
+        model.selection = nil
+        model.isPlacingCharge = true
+        model.click(ndc: .zero, aspectRatio: 1)
+        #expect(model.inspectedImportID == nil)
+        #expect(model.settings.chargePosition != originalCharge)
     }
 
     @Test("An unpaced run reaches the stop time and records every gauge")

@@ -6,7 +6,6 @@ import UniformTypeIdentifiers
 /// charge. Every change rebuilds the simulation from the start.
 struct EditorView: View {
     @Bindable var model: SimulationModel
-    @State private var inspecting: ImportedModel?
 
     var body: some View {
         Form {
@@ -24,12 +23,15 @@ struct EditorView: View {
                     if model.isPreparingImports { ProgressView("Resampling source geometry…") }
                     ForEach(imports) { imported in
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(imported.name).font(.headline)
+                            Label(
+                                imported.name,
+                                systemImage: model.selection == .imported(imported.id) ? "scope" : "cube.box"
+                            ).font(.headline)
                             Text(
                                 "\(imported.isAttached ? imported.behavior.rawValue.capitalized : "Detached") · \(imported.preview.cellSize, format:.number) m sampling"
                             ).font(.caption)
                             HStack {
-                                Button("Inspect / edit source…") { inspecting = imported }
+                                Button("Inspect / edit source…") { model.inspectImport(id: imported.id) }
                                 if imported.isAttached {
                                     Button("Detach geometry") { model.detachImport(id: imported.id) }
                                 }
@@ -199,9 +201,7 @@ struct EditorView: View {
             }
         }
         .formStyle(.grouped)
-        .sheet(item: $inspecting) { imported in
-            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
-        }
+
     }
 
     private var solids: [Box] { model.settings.scenario.structure?.solids ?? [] }

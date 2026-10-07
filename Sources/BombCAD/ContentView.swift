@@ -25,6 +25,9 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 MetalView(model: model)
                     .overlay(alignment: .topLeading) { StatusOverlay(model: model).padding(12) }
+                    .overlay(alignment: .bottomLeading) {
+                        ImportSelectionHint(model: model).padding(12).allowsHitTesting(false)
+                    }
                     .overlay(alignment: .bottomTrailing) {
                         VStack(alignment: .trailing, spacing: 8) {
                             if model.structureSummary != nil { DamageLegendView() }
@@ -128,6 +131,12 @@ struct ContentView: View {
                 case .failure(let error): fileError = error.localizedDescription
                 }
             }
+        }
+        .sheet(
+            item: Binding(
+                get: { model.inspectedImport }, set: { if $0 == nil { model.inspectedImportID = nil } })
+        ) { imported in
+            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
         }
         .sheet(isPresented: $showImport) {
             if let importMesh { ModelImportView(mesh: importMesh, filename: importName, model: model) }
@@ -245,5 +254,22 @@ private struct DamageLegendView: View {
         }
         .padding(10)
         .background(.regularMaterial, in: .rect(cornerRadius: 10))
+    }
+}
+
+private struct ImportSelectionHint: View {
+    let model: SimulationModel
+    var body: some View {
+        if model.settings.scenario.importedModels?.contains(where: { $0.isAttached }) == true {
+            Text(
+                model.isPlacingCharge
+                    ? "Turn off Place Charge to select imported models."
+                    : model.time > 0 || model.isRunning
+                        ? "Reset the simulation to select imported models."
+                        : "Click an imported model to edit its source, placement and material."
+            )
+            .font(.caption).frame(maxWidth: 350, alignment: .leading).padding(8)
+            .background(.regularMaterial, in: .rect(cornerRadius: 6))
+        }
     }
 }

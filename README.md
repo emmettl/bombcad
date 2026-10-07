@@ -80,6 +80,24 @@ The importer retains each source mesh, its units/orientation and placement in th
 the air grid regenerates retained geometry in the background; the simulation pauses until the
 new geometry is ready. Source edits replace that model rather than adding another copy.
 
+Click an imported model in the main viewport to select it and open its source, placement and
+material inspector. Selection follows occupied volumes, respects openings and nearer geometry,
+and outlines the selected model. Turn off Place Charge to select models; charge/gauge placement
+continues to take priority. Viewport selection uses the initial layout, so reset after running
+the simulation before selecting a model. Detached geometry remains independently editable and
+its retained source is accessible from the sidebar.
+
+Placement checks in the preview highlight overlaps with existing geometry (orange), charge
+locations inside the candidate model (red), and floating or disconnected sampled components
+(purple). Selecting a placement issue focuses the camera on its region, with surrounding volume
+for a blocked charge and a ground reference for an elevated component. The Context layer shows
+existing geometry and ground and can be toggled off. Checks exclude the
+model being edited and subtract structural openings. Separate buildings and intentional joints
+can produce advisory warnings; geometric contact does not establish a structural connection
+or validate supports. Fixed-base explanations distinguish the lowest plane from elevated,
+disconnected components. Checks use the sampled geometry of the rebuilt layout and do not
+track moving debris. Work/highlight limits are explicitly reported when checks are incomplete.
+
 The preview refreshes automatically after a short pause when units, orientation, position or
 grid change. Pending updates keep the previous geometry dimmed and clearly marked; Apply is
 disabled until the current preview is ready and its warnings have been reviewed. Previewing

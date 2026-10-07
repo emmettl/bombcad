@@ -32,7 +32,8 @@ struct ModelImportView: View {
     private var busy: Bool { previewModel.isPreparing }
     private var currentRequest: ImportPreviewRequest {
         ImportPreviewRequest(
-            scale: scale, yUp: yUp, corner: SIMD3<Float>(corner), cellSize: h, domain: domainSize)
+            scale: scale, yUp: yUp, corner: SIMD3<Float>(corner), cellSize: h, domain: domainSize,
+            scene: model.settings.scenario, editingID: existing?.id, fixedBase: deformable ? fixedBase : nil)
     }
     private var isPreviewCurrent: Bool { previewModel.isCurrent && previewModel.request == currentRequest }
     private var h: Float { resolution.cellSize }
@@ -153,7 +154,8 @@ struct ModelImportView: View {
                             }
                             if let transformedMesh = previewModel.transformedMesh {
                                 ImportComparisonView(
-                                    mesh: transformedMesh, preview: preview, canRefine: resolution != .fine,
+                                    mesh: transformedMesh, preview: preview,
+                                    placement: previewModel.placementReport, canRefine: resolution != .fine,
                                     refine: { previewFiner() }
                                 )
                                 .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
@@ -162,8 +164,14 @@ struct ModelImportView: View {
                                 Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(
                                     .orange)
                             }
-                            Toggle("I have reviewed the resolution warnings", isOn: $acknowledged).disabled(
-                                !isPreviewCurrent)
+                            if let placement = previewModel.placementReport {
+                                ForEach(placement.warnings, id: \.self) {
+                                    Text($0).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Toggle("I have reviewed the geometry and placement warnings", isOn: $acknowledged)
+                                .disabled(
+                                    !isPreviewCurrent)
                         }
                     }
                 }.formStyle(.grouped)
@@ -199,6 +207,9 @@ struct ModelImportView: View {
             }
             .onChange(of: resolution) { schedulePreview() }
             .onChange(of: domainSize) { schedulePreview() }
+            .onChange(of: deformable) { schedulePreview() }
+            .onChange(of: fixedBase) { schedulePreview() }
+            .onChange(of: model.settings.scenario) { schedulePreview() }
             .onDisappear { previewModel.cancel() }
     }
     private func schedulePreview(immediately: Bool = false) {
@@ -252,6 +263,7 @@ struct ModelImportView: View {
             let domainExpanded = candidate.domainSize != model.settings.scenario.domainSize
             model.settings.resolution = resolution
             model.settings.scenario = candidate
+            model.selection = .imported(imported.id)
             if domainExpanded { model.camera = .framing(candidate) }
             if deformable { model.settings.solidElementSize = h }
             dismiss()

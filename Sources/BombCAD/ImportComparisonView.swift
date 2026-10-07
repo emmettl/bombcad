@@ -7,12 +7,14 @@ import simd
 struct ImportComparisonView: View {
     let mesh: ImportedMesh
     let preview: ImportedMesh.Preview
+    var placement: ImportPlacementReport? = nil
     let canRefine: Bool
     let refine: () -> Void
     @State private var showSource = true
     @State private var showSimulation = true
     @State private var showIssues = true
-    @State private var selected: ImportedMesh.Diagnostic?
+    @State private var showContext = true
+    @State private var selected: ImportFocus?
     @State private var resetRequest = 0
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,6 +22,10 @@ struct ImportComparisonView: View {
                 Toggle("Source", isOn: $showSource)
                 Toggle("Simulation", isOn: $showSimulation)
                 Toggle("Affected regions", isOn: $showIssues)
+                if placement != nil {
+                    Toggle("Context", isOn: $showContext).help(
+                        "Show surrounding geometry and a ground reference.")
+                }
                 Spacer()
                 Button("Reset view") {
                     selected = nil
@@ -27,15 +33,17 @@ struct ImportComparisonView: View {
                 }.controlSize(.small)
             }.toggleStyle(.checkbox)
             ImportSceneView(
-                mesh: mesh, preview: preview, showSource: showSource, showSimulation: showSimulation,
-                showIssues: showIssues, selected: selected, resetRequest: resetRequest
+                mesh: mesh, preview: preview, placement: placement, showSource: showSource,
+                showSimulation: showSimulation,
+                showIssues: showIssues, showContext: showContext, selected: selected,
+                resetRequest: resetRequest
             )
             .frame(height: 300).clipShape(.rect(cornerRadius: 8))
             .accessibilityLabel(
                 "3D geometry comparison. Cyan source surface, blue simulation volumes, orange thin features and gaps, red potentially missing surfaces."
             )
             Text(
-                "Drag to orbit · scroll to zoom. Cyan: source wireframe · blue: simulation · orange: thin features and gaps · red: potentially missing surfaces."
+                "Drag to orbit · scroll to zoom. Cyan: source · blue: simulation · orange: resolution/overlap risks · purple: contact/connectivity · red: missing surfaces or blocked charges."
             ).font(.caption).foregroundStyle(.secondary)
             if !preview.diagnostics.isEmpty || preview.diagnosticsTruncated {
                 HStack {
@@ -50,7 +58,7 @@ struct ImportComparisonView: View {
                 }
                 if let selected {
                     Text("Selected: \(selected.title). \(selected.detail)").font(.caption).foregroundStyle(
-                        selected.kind == .missing ? .red : .orange)
+                        selected.color)
                 }
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
@@ -65,50 +73,109 @@ struct ImportComparisonView: View {
                     "Select a region to focus it. Highlights are approximate; compare finer grids before trusting results."
                 ).font(.caption).foregroundStyle(.secondary)
             }
-        }.onChange(of: preview) { selected = nil }
+            if let placement {
+                Text(
+                    "Placement checks · \(placement.componentCount) sampled component\(placement.componentCount == 1 ? "" : "s")"
+                ).font(.headline)
+                if placement.issues.isEmpty {
+                    Text("No placement issues found in the checked volumes.").font(.caption).foregroundStyle(
+                        .secondary)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            ForEach(placement.issues) { issue in
+                                focusButton(.placement(issue))
+                            }
+                        }
+                    }.frame(maxHeight: 190)
+                }
+                if placement.checksIncomplete {
+                    Text("Placement highlighting is incomplete; some checks reached their limit.").font(
+                        .caption
+                    ).foregroundStyle(.orange)
+                }
+            }
+            if let selected, case .placement = selected {
+                Text("Selected: \(selected.title). \(selected.detail)").font(.caption).foregroundStyle(
+                    selected.color)
+            }
+        }.onChange(of: preview) { selected = nil }.onChange(of: placement) { selected = nil }
     }
     @ViewBuilder private func warningGroup(_ title: String, issues: [ImportedMesh.Diagnostic]) -> some View {
         if !issues.isEmpty {
             Text("\(title) (\(issues.count))").font(.subheadline.bold()).padding(.top, 4)
-            ForEach(issues) { issue in
-                Button {
-                    selected = selected == issue ? nil : issue
-                    showIssues = true
-                } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Label(
-                            issue.title, systemImage: selected == issue ? "scope" : "exclamationmark.triangle"
-                        )
-                        .foregroundStyle(issue.kind == .missing ? .red : .orange)
-                        Text(issue.detail).font(.caption).foregroundStyle(.secondary)
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(6)
-                        .background(
-                            selected == issue ? Color.accentColor.opacity(0.2) : .clear,
-                            in: .rect(cornerRadius: 6))
-                }.buttonStyle(.plain)
-            }
+            ForEach(issues) { issue in focusButton(.geometry(issue)) }
         }
     }
 
+    private func focusButton(_ focus: ImportFocus) -> some View {
+        Button {
+            selected = selected == focus ? nil : focus
+            showIssues = true
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(focus.title, systemImage: selected == focus ? "scope" : "exclamationmark.triangle")
+                    .foregroundStyle(focus.color)
+                Text(focus.detail).font(.caption).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(6)
+                .background(
+                    selected == focus ? Color.accentColor.opacity(0.2) : .clear, in: .rect(cornerRadius: 6))
+        }.buttonStyle(.plain)
+    }
+
+}
+
+private enum ImportFocus: Equatable {
+    case geometry(ImportedMesh.Diagnostic)
+    case placement(ImportPlacementReport.Issue)
+    var bounds: Box {
+        switch self {
+        case .geometry(let d): d.bounds
+        case .placement(let d): d.bounds
+        }
+    }
+    var title: String {
+        switch self {
+        case .geometry(let d): d.title
+        case .placement(let d): d.title
+        }
+    }
+    var detail: String {
+        switch self {
+        case .geometry(let d): d.detail
+        case .placement(let d): d.detail
+        }
+    }
+    var color: Color {
+        switch self {
+        case .geometry(let d): d.kind == .missing ? .red : .orange
+        case .placement(let d): d.isCritical ? .red : d.kind == .overlap ? .orange : .purple
+        }
+    }
 }
 
 private struct ImportSceneView: NSViewRepresentable {
     let mesh: ImportedMesh
     let preview: ImportedMesh.Preview
+    let placement: ImportPlacementReport?
     let showSource: Bool
     let showSimulation: Bool
     let showIssues: Bool
-    let selected: ImportedMesh.Diagnostic?
+    let showContext: Bool
+    let selected: ImportFocus?
     let resetRequest: Int
     final class Coordinator {
         var mesh: ImportedMesh?
         var preview: ImportedMesh.Preview?
-        var selected: ImportedMesh.Diagnostic?
+        var placement: ImportPlacementReport?
+        var selected: ImportFocus?
         var resetRequest = -1
         let camera = SCNNode()
         let source = SCNNode()
         let simulation = SCNNode()
         let issues = SCNNode()
+        let surroundings = SCNNode()
+        let ground = SCNNode()
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> SCNView {
@@ -122,16 +189,31 @@ private struct ImportSceneView: NSViewRepresentable {
         view.scene?.rootNode.addChildNode(context.coordinator.source)
         view.scene?.rootNode.addChildNode(context.coordinator.simulation)
         view.scene?.rootNode.addChildNode(context.coordinator.issues)
+        view.scene?.rootNode.addChildNode(context.coordinator.surroundings)
+        view.scene?.rootNode.addChildNode(context.coordinator.ground)
         view.pointOfView = context.coordinator.camera
         view.defaultCameraController.worldUp = SCNVector3(0, 0, 1)
         return view
     }
     func updateNSView(_ view: SCNView, context: Context) {
         let c = context.coordinator
-        let changed = c.mesh != mesh || c.preview != preview
+        let changed = c.mesh != mesh || c.preview != preview || c.placement != placement
         if changed {
             c.mesh = mesh
             c.preview = preview
+            c.placement = placement
+            c.surroundings.geometry = boxGeometry(placement?.contextVolumes ?? [])
+            c.surroundings.geometry?.materials = [material(.lightGray, alpha: 0.35, wire: true)]
+            c.surroundings.renderingOrder = 19
+            let b = preview.bounds
+            let padding = max(max(b.size.x, b.size.y) * 0.2, 1)
+            c.ground.geometry = SCNPlane(
+                width: CGFloat(b.size.x + 2 * padding), height: CGFloat(b.size.y + 2 * padding))
+            let floor = material(.lightGray, alpha: 0.12)
+            floor.writesToDepthBuffer = false
+            c.ground.geometry?.materials = [floor]
+            c.ground.position = SCNVector3((b.min.x + b.max.x) * 0.5, (b.min.y + b.max.y) * 0.5, 0)
+            c.ground.renderingOrder = -10
             c.source.geometry = sourceGeometry()
             c.simulation.geometry = boxGeometry(preview.boxes)
             c.simulation.geometry?.materials = [material(.systemBlue, alpha: 0.45)]
@@ -145,14 +227,37 @@ private struct ImportSceneView: NSViewRepresentable {
                 node.renderingOrder = 20
                 c.issues.addChildNode(node)
             }
+            for issue in placement?.issues ?? [] {
+                let node = SCNNode(
+                    geometry: boxGeometry([issue.bounds], minimumExtent: preview.cellSize * 0.15))
+                node.geometry?.materials = [
+                    material(
+                        issue.isCritical
+                            ? .systemRed : issue.kind == .overlap ? .systemOrange : .systemPurple, alpha: 0.9,
+                        wire: true)
+                ]
+                node.renderingOrder = 21
+                c.issues.addChildNode(node)
+            }
         }
         c.source.isHidden = !showSource
         c.simulation.isHidden = !showSimulation
         c.issues.isHidden = !showIssues
+        c.surroundings.isHidden = !showContext || placement == nil
+        c.ground.isHidden = !showContext || placement == nil
         if changed || c.selected != selected || c.resetRequest != resetRequest {
             c.selected = selected
             c.resetRequest = resetRequest
-            let b = selected?.bounds ?? preview.bounds
+            var b = selected?.bounds ?? preview.bounds
+            if let selected, case .placement(let issue) = selected {
+                if issue.kind == .blockedCharge || issue.kind == .overlap {
+                    let center = (b.min + b.max) * 0.5
+                    if let surrounding = preview.boxes.first(where: { $0.contains(center) }) {
+                        b = Box(min: simd_min(b.min, surrounding.min), max: simd_max(b.max, surrounding.max))
+                    }
+                }
+                if issue.kind == .floating || issue.kind == .disconnected { b.min.z = min(b.min.z, 0) }
+            }
             let center = (b.min + b.max) * 0.5
             let half = simd_max(b.size, SIMD3(repeating: preview.cellSize * 0.3)) * 0.5
             let direction = simd_normalize(SIMD3<Float>(1.5, -2, 1.4))

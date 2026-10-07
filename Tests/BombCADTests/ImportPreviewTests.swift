@@ -85,6 +85,33 @@ struct ImportPreviewTests {
         #expect(!model.isCurrent)
         #expect(model.preview == old)
     }
+    @Test("Scene and support changes refresh placement checks without replacing valid sampled geometry")
+    func placementContext() async throws {
+        let model = ImportPreviewModel(source: try source())
+        var input = request()
+        input.scene = Scenario(
+            name: "Context", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(3, 3, 2)))
+        model.update(input, delay: .zero)
+        try await waitUntil { model.isCurrent }
+        let geometry = model.preview
+        #expect(model.placementReport?.issues.isEmpty == true)
+        input.scene?.charge.position = SIMD3(1.5, 1.5, 0.5)
+        model.update(input, delay: .zero)
+        #expect(!model.isCurrent)
+        try await waitUntil { model.isCurrent }
+        #expect(model.preview == geometry)
+        #expect(model.placementReport?.issues.contains { $0.kind == .blockedCharge } == true)
+        input.corner.z = 2
+        input.scene?.charge.position = SIMD3(3, 3, 2)
+        input.fixedBase = true
+        model.update(input, delay: .zero)
+        try await waitUntil { model.isCurrent }
+        #expect(
+            model.placementReport?.issues.first { $0.kind == .floating }?.detail.contains("Fixed base holds")
+                == true)
+    }
+
     @Test("Closing cancels queued work and a subsequent preview can start again")
     func cancelAndRestart() async throws {
         let model = ImportPreviewModel(source: try source())

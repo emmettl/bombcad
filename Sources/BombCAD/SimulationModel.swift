@@ -105,6 +105,7 @@ enum EditSelection: Hashable {
     case solid(Int)
     case opening(Int)
     case gauge(Int)
+    case imported(UUID)
 }
 
 struct GaugePoint: Identifiable {
@@ -159,6 +160,7 @@ final class SimulationModel {
     var duration: Double
     /// The block or wall being edited, which the view outlines.
     var selection: EditSelection?
+    var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
 
@@ -322,6 +324,7 @@ final class SimulationModel {
 
     private func adopt(_ scenario: Scenario) {
         settings.scenario = scenario
+        inspectedImportID = nil
         if let h = scenario.importedModels?.first(where: { $0.isAttached })?.preview.cellSize,
             let resolution = Resolution.allCases.first(where: { $0.cellSize == h })
         {
@@ -458,8 +461,27 @@ final class SimulationModel {
             guard scenario.gauges.indices.contains(index) else { return nil }
             let position = scenario.gauges[index].position
             return Box(min: position - 0.25, max: position + 0.25)
+        case .imported(let id):
+            guard let imported = scenario.importedModels?.first(where: { $0.id == id && $0.isAttached })
+            else { return nil }
+            let volumes =
+                imported.behavior == .deformable ? scenario.structure?.solids ?? [] : imported.preview.boxes
+            return volumes.first.map { first in
+                volumes.dropFirst().reduce(first) {
+                    Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
+                }
+            }
         case nil: return nil
         }
+    }
+    var inspectedImport: ImportedModel? {
+        settings.scenario.importedModels?.first { $0.id == inspectedImportID }
+    }
+    func inspectImport(id: UUID) {
+        guard let imported = settings.scenario.importedModels?.first(where: { $0.id == id }) else { return }
+        isRunning = false
+        selection = imported.isAttached ? .imported(id) : nil
+        inspectedImportID = id
     }
 
     /// Whether another gauge can be added; the solver records at most `BlastSolver.maxGauges`.
@@ -582,6 +604,18 @@ final class SimulationModel {
     /// Handles a click in the view, at a point in normalised device coordinates. In placing
     /// mode it moves the selected gauge there, or the charge if no gauge is selected.
     func click(ndc: SIMD2<Float>, aspectRatio: Float) {
+        if !isPlacingCharge {
+            guard time == 0, !isRunning, !isPreparingImports else { return }
+            let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
+            if let id = ScenePicking.importedModel(
+                in: settings.scenario, origin: ray.origin, direction: ray.direction)
+            {
+                inspectImport(id: id)
+            } else if case .imported = selection {
+                selection = nil
+            }
+            return
+        }
         guard isPlacingCharge, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else {
             return
         }
