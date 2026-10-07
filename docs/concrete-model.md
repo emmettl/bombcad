@@ -278,7 +278,8 @@ the concrete's shear stiffness, kept however wide the crack, suits a crack smear
 elements. A crack in one element (in plain concrete, or with bars that slip) is a discrete
 crack, and Walraven and Reinhardt measured how stiff those are in shear: k = 1.8 w^−0.8 +
 (0.234 w^−0.707 − 0.20) f_cc MPa per mm of slip, for a crack w mm wide in concrete of cube
-strength f_cc MPa (taken as f_c / 0.8). With the option the crack acts in series with the
+strength f_cc MPa (taken as f_c / 0.8): the slope of their eq. 1a (*HERON* 26(1A), 1981), whose
+offset, a shear of −f_cc/30 before the faces engage, is left out. With the option the crack acts in series with the
 concrete across the band: the cracked plane keeps 1 / (1 + G / (k ℓ)) of the concrete's shear
 stiffness, which on 46 mm elements of 23 MPa concrete is 0.07 at 0.2 mm and 0.01 at 1 mm. A
 cube cracked open and sheared a little keeps that share within 15% (`ConcreteModelTests`).
@@ -405,9 +406,10 @@ bars along the lattice axes slip:
   rupture is judged in its own element, its strain spread along it by the slip;
 - held or driven nodes grip their bars: they do not slip there;
 - where bars have yielded they hold less well: the bond is scaled by the Model Code's
-  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = 2 − f_u / f_y
-  (§6.1.1.3; the form is recalled, not checked against the text), with a the bars' plastic
-  strain over that at their ultimate strength, averaged over the elements around each node
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = (2 − f_u / f_y)²
+  (as quoted from the Model Code by J. Santos and A. A. Henriques, *Engineering Structures* 86,
+  2015, 72–83; first written from memory without the square), with a the bars' plastic strain
+  over that at their ultimate strength, averaged over the elements around each node
   (`BondSlip.yieldedBondLoss`, on by default).
 
 Bars weigh far too little for the time step, so the slip does not follow their inertia. It is
