@@ -251,6 +251,10 @@ prescribed remapping in ambient air without gas evolution, suspended-box loading
 flow without gravity/contact, and contact-only mechanics under a known force pulse. These
 separate boundary sensitivity from contact sensitivity; the remap-only pressure changes
 are a numerical stress diagnostic, not a prediction of blast error.
+Add `--transport` to compare an opt-in connected-path remapper, writing
+`.build/rigid-box-diagnostics-transport.json`. It preserves uniform states for balanced
+occupancy changes; unequal voxel volumes still use redistribution. The usual driver and
+app keep their existing behaviour while this alternative is evaluated.
 
 ## Headline results
 

@@ -56,6 +56,7 @@ public final class BlastSolver {
     private var experimentalBoxCentre: SIMD3<Double>?
     private var experimentalBoxMaxStep: Float = 0
     private var experimentalBoxBounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
+    var experimentalBoxRemapMode: ExperimentalBoxRemap = .redistribution
 
     let library: MTLLibrary
     private let sweepPipeline: MTLComputePipelineState
@@ -1298,6 +1299,10 @@ extension BlastSolver {
             !initial
             ? try refinement?.prepareBoxRemap(body, grid: grid, previousBounds: experimentalBoxBounds) : nil
         if !initial && refinement == nil {
+            let newLow = body.corners.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, SIMD3<Float>($1)) }
+            let newHigh = body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, SIMD3<Float>($1)) }
+            let low = SIMD3<Int>((simd_min(newLow, experimentalBoxBounds?.min ?? newLow) / grid.cellSize).rounded(.down)) &- 1
+            let high = SIMD3<Int>((simd_max(newHigh, experimentalBoxBounds?.max ?? newHigh) / grid.cellSize).rounded(.up)) &+ 1
             func neighbours(_ n: Int) -> [Int] {
                 let i = n % grid.nx
                 let j = (n / grid.nx) % grid.ny
@@ -1307,13 +1312,15 @@ extension BlastSolver {
                 ]
                 .filter {
                     $0.0 >= 0 && $0.0 < grid.nx && $0.1 >= 0 && $0.1 < grid.ny && $0.2 >= 0 && $0.2 < grid.nz
+                        && (experimentalBoxRemapMode == .redistribution
+                            || (all(SIMD3($0.0, $0.1, $0.2) .>= low) && all(SIMD3($0.0, $0.1, $0.2) .<= high)))
                 }
                 .map { grid.index($0.0, $0.1, $0.2) }
             }
             let cells = try ConservativeCellRemap.apply(
                 withState { Array($0) },
                 oldSolid: Array(UnsafeBufferPointer(start: mask, count: grid.cellCount)).map { $0 != 0 },
-                newSolid: next.map { $0 != 0 }, neighbours: neighbours)
+                newSolid: next.map { $0 != 0 }, mode: experimentalBoxRemapMode, neighbours: neighbours)
             editState { _ = $0.update(from: cells) }
         }
         if let fineCommit { editState(fineCommit) }

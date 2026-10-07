@@ -11,9 +11,11 @@ do {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
-        let results = try ExperimentalRigidBoxDiagnostics.run(device: device)
+        let transport = arguments.contains("--transport")
+        let results = try ExperimentalRigidBoxDiagnostics.run(
+            device: device, remapMode: transport ? .connectedTransport : .redistribution)
         let output = URL(fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-            ?? ".build/rigid-box-diagnostics.json")
+            ?? (transport ? ".build/rigid-box-diagnostics-transport.json" : ".build/rigid-box-diagnostics.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
