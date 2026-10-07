@@ -2,8 +2,8 @@ import Foundation
 import simd
 
 /// Geometry-only OBJ and STL reader. Imported surfaces must enclose a volume.
-public struct ImportedMesh: Sendable {
-    public struct Triangle: Sendable {
+public struct ImportedMesh: Sendable, Hashable, Codable {
+    public struct Triangle: Sendable, Hashable, Codable {
         public var a: SIMD3<Float>
         public var b: SIMD3<Float>
         public var c: SIMD3<Float>
@@ -173,7 +173,33 @@ public struct ImportedMesh: Sendable {
         return mesh
     }
 
-    public struct Preview: Sendable {
+    public struct Diagnostic: Sendable, Hashable, Codable, Identifiable {
+        public enum Kind: String, Sendable, Codable { case thin, gap, missing }
+        public var kind: Kind
+        public var bounds: Box
+        public var axis: Int?
+        public var minimumSize: Float?
+        public var id: Self { self }
+        public var title: String {
+            switch kind {
+            case .thin: "Thin feature"
+            case .gap: "Narrow gap"
+            case .missing: "Potentially missing surface"
+            }
+        }
+        public var detail: String {
+            let size = bounds.size
+            let extent = String(format: "%.3g × %.3g × %.3g m", size.x, size.y, size.z)
+            let position = String(format: "%.3g, %.3g, %.3g m", bounds.min.x, bounds.min.y, bounds.min.z)
+            if let minimumSize, let axis {
+                return String(
+                    format: "Minimum sampled %@ dimension %.3g m. Region %@ at %@.", ["X", "Y", "Z"][axis],
+                    minimumSize, extent, position)
+            }
+            return "Approximate region \(extent) at \(position)."
+        }
+    }
+    public struct Preview: Sendable, Hashable, Codable {
         public var boxes: [Box]
         public var occupiedCells: Int
         public var missedTriangles: Int
@@ -182,114 +208,180 @@ public struct ImportedMesh: Sendable {
         public var uncertainTriangles: Int
         public var cellSize: Float
         public var bounds: Box
+        public var diagnostics: [Diagnostic]
+        public var diagnosticsTruncated: Bool
         public var warnings: [String] {
             var messages = [
-                "Geometry is sampled at cell centres. Small openings and thin features can disappear; this preview is an approximation, not a mesh convergence check."
+                "Geometry is sampled at cell centres. Highlighted regions are approximate diagnostics, not a mesh convergence check. Inspect the overlay and compare finer grids."
             ]
             if thinSpans > 0 {
                 messages.append(
-                    "\(thinSpans) sampled spans or cells indicate features thinner than two cells (\(2 * cellSize) m). Refine the grid to resolve these features."
+                    "Thin regions have sampled dimensions below two cells (\(2 * cellSize) m); walls can disappear or have the wrong thickness."
                 )
             }
             if smallGaps > 0 {
                 messages.append(
-                    "\(smallGaps) sampled gaps are narrower than two cells. Small openings may close or transmit the wrong blast load."
-                )
-            }
-            if uncertainTriangles > 0 {
-                messages.append(
-                    "\(uncertainTriangles) triangle checks reached the diagnostic budget. Missing-feature detection is incomplete; inspect the preview and compare a finer import."
+                    "Narrow gaps were found below two cells in X, Y or Z. Openings may close or transmit the wrong blast load."
                 )
             }
             if missedTriangles > 0 {
                 messages.append(
-                    "\(missedTriangles) triangles have no occupied cell found in their sampled bounding region. Parts of the model may be absent from the simulation."
+                    "\(missedTriangles) triangles have no nearby occupied cell at the tested surface points. Inspect the red regions for potentially missing geometry."
+                )
+            }
+            if diagnosticsTruncated {
+                messages.append(
+                    "The preview shows up to 128 affected regions. Additional regions were found; highlighting is incomplete."
+                )
+            }
+            if occupiedCells == 0 {
+                messages.append(
+                    "No occupied cells remain. Choose a finer grid or increase the model scale before importing."
                 )
             }
             return messages
         }
     }
-    /// Rasterise closed volumes with scanlines, then coalesce adjacent runs into boxes.
-    public func preview(cellSize h: Float, domain: SIMD3<Float>) throws -> Preview {
+    /// Rasterise closed volumes and diagnose continuous spans along all three axes.
+    /// Empty previews are useful for visualising features lost at coarse resolutions.
+    public func preview(cellSize h: Float, domain: SIMD3<Float>, allowEmpty: Bool = false) throws -> Preview {
         let bounds = self.bounds
-        guard h.isFinite, h > 0, (0..<3).allSatisfy({ bounds.min[$0] >= 0 && bounds.max[$0] <= domain[$0] })
+        guard h.isFinite, h > 0,
+            (0..<3).allSatisfy({
+                bounds.min[$0] >= 0 && bounds.max[$0] <= domain[$0] && bounds.max[$0] / h < 1_000_000
+            })
         else {
             throw ImportError.invalid(
-                "Model lies outside the simulation domain. Reduce its scale or move its corner.")
-        }
-        guard (0..<3).allSatisfy({ bounds.max[$0] / h < 1_000_000 }) else {
-            throw ImportError.invalid("Coordinates are too large for this grid.")
+                "Model lies outside the simulation domain or exceeds coordinate limits. Reduce its scale or move its corner."
+            )
         }
         let low = SIMD3<Int>((bounds.min / h).rounded(.down))
         let high = SIMD3<Int>((bounds.max / h).rounded(.up))
         let size = high &- low
+        let scanWork =
+            (Double(size.x) * Double(size.y) + Double(size.y) * Double(size.z) + Double(size.z)
+                * Double(size.x)) * Double(triangles.count)
         guard size.x > 0, size.y > 0, size.z > 0,
-            Double(size.x) * Double(size.y) * Double(size.z) <= 2_000_000,
-            Double(size.y) * Double(size.z) * Double(triangles.count) <= 30_000_000
-        else { throw ImportError.invalid("Preview is too large. Use a coarser grid or simplify the model.") }
+            Double(size.x) * Double(size.y) * Double(size.z) <= 2_000_000, scanWork <= 90_000_000
+        else {
+            throw ImportError.invalid("Preview is too large. Use a coarser grid or simplify the model.")
+        }
+        var diagnostics: [Diagnostic] = []
+        var truncated = false
+        func add(_ kind: Diagnostic.Kind, _ region: Box, axis: Int? = nil, minimum: Float? = nil) {
+            var issue = Diagnostic(kind: kind, bounds: region, axis: axis, minimumSize: minimum)
+            // Adjacent scan samples form an approximate affected region. Merge to a fixed point.
+            var n = 0
+            while n < diagnostics.count {
+                let old = diagnostics[n]
+                let pad = SIMD3<Float>(repeating: h * 0.01)
+                if old.kind == kind && old.axis == axis && all(old.bounds.min .<= issue.bounds.max + pad)
+                    && all(issue.bounds.min .<= old.bounds.max + pad)
+                {
+                    issue.bounds = Box(
+                        min: simd_min(old.bounds.min, issue.bounds.min),
+                        max: simd_max(old.bounds.max, issue.bounds.max))
+                    if let value = old.minimumSize {
+                        issue.minimumSize = min(value, issue.minimumSize ?? value)
+                    }
+                    diagnostics.remove(at: n)
+                    n = 0
+                } else {
+                    n += 1
+                }
+            }
+            if diagnostics.count < 128 { diagnostics.append(issue) } else { truncated = true }
+        }
+        func intersections(axis: Int, first: Float, second: Float) throws -> [Float] {
+            let j = (axis + 1) % 3
+            let k = (axis + 2) % 3
+            var hits: [Float] = []
+            for (index, t) in triangles.enumerated() {
+                if index % 256 == 0 { try Task.checkCancellation() }
+                let u = t.b - t.a
+                let v = t.c - t.a
+                let determinant = u[j] * v[k] - u[k] * v[j]
+                if abs(determinant) < 1e-12 { continue }
+                let dy = first - t.a[j]
+                let dz = second - t.a[k]
+                let b = (dy * v[k] - dz * v[j]) / determinant
+                let c = (u[j] * dz - u[k] * dy) / determinant
+                if b >= -1e-6 && c >= -1e-6 && b + c <= 1 + 1e-6 {
+                    hits.append(t.a[axis] + b * u[axis] + c * v[axis])
+                }
+            }
+            hits.sort()
+            var unique: [Float] = []
+            for x in hits where unique.last.map({ abs(x - $0) > h * 1e-5 }) ?? true { unique.append(x) }
+            guard unique.count % 2 == 0 else {
+                throw ImportError.invalid(
+                    "Ambiguous mesh intersections. Repair intersecting surfaces or simplify the model.")
+            }
+            return unique
+        }
+        var occupied = Set<SIMD3<Int>>()
+        var thin = 0
+        var gaps = 0
         struct Run: Hashable {
             var first: Int
             var end: Int
         }
         var boxes: [Box] = []
-        var occupied = Set<SIMD3<Int>>()
-        var thin = 0
-        var smallGaps = 0
-        for k in low.z..<high.z {
-            var previous: [Run: Int] = [:]
-            for j in low.y..<high.y {
-                let y = (Float(j) + 0.5) * h
-                let z = (Float(k) + 0.5) * h
-                var hits: [Float] = []
-                for t in triangles {
-                    let u = t.b - t.a
-                    let v = t.c - t.a
-                    let determinant = u.y * v.z - u.z * v.y
-                    if abs(determinant) < 1e-12 { continue }
-                    let dy = y - t.a.y
-                    let dz = z - t.a.z
-                    let b = (dy * v.z - dz * v.y) / determinant
-                    let c = (u.y * dz - u.z * dy) / determinant
-                    if b >= -1e-6 && c >= -1e-6 && b + c <= 1 + 1e-6 {
-                        hits.append(t.a.x + b * u.x + c * v.x)
+        for axis in 0..<3 {
+            let jAxis = (axis + 1) % 3
+            let kAxis = (axis + 2) % 3
+            for k in low[kAxis]..<high[kAxis] {
+                try Task.checkCancellation()
+                var previous: [Run: Int] = [:]
+                for j in low[jAxis]..<high[jAxis] {
+                    let hits = try intersections(
+                        axis: axis, first: (Float(j) + 0.5) * h, second: (Float(k) + 0.5) * h)
+                    func region(_ a: Float, _ b: Float) -> Box {
+                        var min = SIMD3<Float>.zero
+                        var max = SIMD3<Float>.zero
+                        min[axis] = a
+                        max[axis] = b
+                        min[jAxis] = Float(j) * h
+                        max[jAxis] = Float(j + 1) * h
+                        min[kAxis] = Float(k) * h
+                        max[kAxis] = Float(k + 1) * h
+                        return Box(min: min, max: max)
                     }
-                }
-                hits.sort()
-                var unique: [Float] = []
-                for x in hits where unique.last.map({ abs(x - $0) > h * 1e-5 }) ?? true { unique.append(x) }
-                guard unique.count % 2 == 0 else {
-                    throw ImportError.invalid(
-                        "Ambiguous mesh intersections. Repair intersecting surfaces or simplify the model.")
-                }
-                if unique.count >= 4 {
-                    for n in stride(from: 1, to: unique.count - 1, by: 2)
-                    where unique[n + 1] - unique[n] < 2 * h { smallGaps += 1 }
-                }
-                var current: [Run: Int] = [:]
-                for n in stride(from: 0, to: unique.count, by: 2) {
-                    let a = unique[n]
-                    let b = unique[n + 1]
-                    if b - a < 2 * h { thin += 1 }
-                    let first = max(low.x, Int(ceil(a / h - 0.5)))
-                    let end = min(high.x, Int(ceil(b / h - 0.5)))
-                    guard first < end else { continue }
-                    for i in first..<end { occupied.insert(SIMD3(i, j, k)) }
-                    let run = Run(first: first, end: end)
-                    if let index = previous[run] {
-                        boxes[index].max.y = Float(j + 1) * h
-                        current[run] = index
-                    } else {
-                        current[run] = boxes.count
-                        boxes.append(
-                            Box(
-                                min: SIMD3(Float(first), Float(j), Float(k)) * h,
-                                max: SIMD3(Float(end), Float(j + 1), Float(k + 1)) * h))
+                    if hits.count >= 4 {
+                        for n in stride(from: 1, to: hits.count - 1, by: 2)
+                        where hits[n + 1] - hits[n] < 2 * h {
+                            gaps += 1
+                            add(
+                                .gap, region(hits[n], hits[n + 1]), axis: axis, minimum: hits[n + 1] - hits[n]
+                            )
+                        }
                     }
+                    var current: [Run: Int] = [:]
+                    for n in stride(from: 0, to: hits.count, by: 2) {
+                        let a = hits[n]
+                        let b = hits[n + 1]
+                        if b - a < 2 * h {
+                            thin += 1
+                            add(.thin, region(a, b), axis: axis, minimum: b - a)
+                        }
+                        guard axis == 0 else { continue }
+                        let first = max(low.x, Int(ceil(a / h - 0.5)))
+                        let end = min(high.x, Int(ceil(b / h - 0.5)))
+                        guard first < end else { continue }
+                        for i in first..<end { occupied.insert(SIMD3(i, j, k)) }
+                        let run = Run(first: first, end: end)
+                        if let index = previous[run] {
+                            boxes[index].max.y = Float(j + 1) * h
+                            current[run] = index
+                        } else {
+                            current[run] = boxes.count
+                            boxes.append(region(Float(first) * h, Float(end) * h))
+                        }
+                    }
+                    previous = current
                 }
-                previous = current
             }
         }
-        // Merge identical rectangles in consecutive Z layers.
         var merged: [Box] = []
         struct Footprint: Hashable {
             var min: SIMD2<Float>
@@ -298,14 +390,14 @@ public struct ImportedMesh: Sendable {
         var last: [Footprint: Int] = [:]
         for box in boxes {
             let key = Footprint(min: SIMD2(box.min.x, box.min.y), max: SIMD2(box.max.x, box.max.y))
-            if let index = last[key], abs(merged[index].max.z - box.min.z) < h * 1e-4 {
-                merged[index].max.z = box.max.z
+            if let n = last[key], abs(merged[n].max.z - box.min.z) < h * 1e-4 {
+                merged[n].max.z = box.max.z
             } else {
                 last[key] = merged.count
                 merged.append(box)
             }
         }
-        guard !occupied.isEmpty else {
+        if occupied.isEmpty && !allowEmpty {
             throw ImportError.invalid(
                 "No solid cells remain at this resolution. Choose a finer grid or enlarge the model.")
         }
@@ -313,46 +405,46 @@ public struct ImportedMesh: Sendable {
             throw ImportError.invalid(
                 "Model needs more than 2,048 voxel regions. Simplify it or use a coarser grid.")
         }
-        // Detect single-cell thickness in all directions, including walls parallel to the scanline.
-        for cell in occupied {
-            if (0..<3).contains(where: { axis in
-                var a = cell
-                var b = cell
-                a[axis] -= 1
-                b[axis] += 1
-                return !occupied.contains(a) && !occupied.contains(b)
-            }) {
-                thin += 1
-            }
-        }
         var missed = 0
-        var uncertain = 0
-        for t in triangles {
-            let a = SIMD3<Int>((simd_min(t.a, simd_min(t.b, t.c)) / h).rounded(.down))
-            let b = SIMD3<Int>((simd_max(t.a, simd_max(t.b, t.c)) / h).rounded(.down))
-            var found = false
-            var examined = 0
-            search: for k in max(low.z, a.z - 1)..<min(high.z, b.z + 2) {
-                for j in max(low.y, a.y - 1)..<min(high.y, b.y + 2) {
-                    for i in max(low.x, a.x - 1)..<min(high.x, b.x + 2) {
-                        if occupied.contains(SIMD3(i, j, k)) {
-                            found = true
-                            break search
+        // Inspect seven actual surface points rather than a triangle's potentially enormous AABB.
+        // Adjacent cells can mask a nearby missing feature, so this remains explicitly approximate.
+        for (index, t) in triangles.enumerated() {
+            if index % 256 == 0 { try Task.checkCancellation() }
+            let points = [
+                t.a, t.b, t.c, (t.a + t.b) * 0.5, (t.b + t.c) * 0.5, (t.c + t.a) * 0.5, (t.a + t.b + t.c) / 3,
+            ]
+            let found = points.contains { point in
+                let cell = SIMD3<Int>((point / h).rounded(.down))
+                for dz in -1...1 {
+                    for dy in -1...1 {
+                        for dx in -1...1 {
+                            if occupied.contains(cell &+ SIMD3(dx, dy, dz)) { return true }
                         }
-                        examined += 1
-                        if examined >= 256 { break search }
                     }
-                    if found { break }
                 }
-                if found { break }
+                return false
             }
             if !found {
-                if examined >= 256 { uncertain += 1 } else { missed += 1 }
+                missed += 1
+                add(
+                    .missing,
+                    Box(min: simd_min(t.a, simd_min(t.b, t.c)), max: simd_max(t.a, simd_max(t.b, t.c))))
             }
         }
-        if (0..<3).contains(where: { bounds.size[$0] < 2 * h }) { thin = max(thin, 1) }
         return Preview(
             boxes: merged, occupiedCells: occupied.count, missedTriangles: missed, thinSpans: thin,
-            smallGaps: smallGaps, uncertainTriangles: uncertain, cellSize: h, bounds: bounds)
+            smallGaps: gaps, uncertainTriangles: 0, cellSize: h, bounds: bounds, diagnostics: diagnostics,
+            diagnosticsTruncated: truncated)
+    }
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        triangles = try container.decode([Triangle].self, forKey: .triangles)
+        guard !triangles.isEmpty, triangles.count <= 100_000,
+            triangles.allSatisfy({ t in
+                [t.a, t.b, t.c].allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }
+                    && simd_length_squared(simd_cross(t.b - t.a, t.c - t.a)) > 1e-20
+            })
+        else { throw ImportError.invalid("Saved source mesh is invalid or too large.") }
+        try validateClosed()
     }
 }

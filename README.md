@@ -75,14 +75,35 @@ stiffness and strength. Deformable imports require a layout without an existing 
 use solid elements at the air cell size, and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
-The importer warns about thin features and potentially missing surfaces. Review these warnings
-before importing. They persist in saved layouts and the editor also warns about features below
-two air cells. Imported geometry is sampled once: changing the air resolution later cannot
-restore discarded walls or openings; re-import the original at a finer resolution. Compare
-resolutions to assess accuracy. Textures and OBJ visual materials are ignored; export triangulated
-faces or convex polygons. Open/non-manifold meshes are rejected. Intersecting or overlapping
-solids should be repaired before export. Limits are 20 MB, 100,000 triangles, 2 million sampled
-cells, and 2,048 coalesced regions; a scanline-work budget also limits expensive previews.
+The importer retains each source mesh, its units/orientation and placement in the saved layout.
+**Inspect / edit source…** in Edit layout reopens an import without its original file. Changing
+the air grid regenerates retained geometry in the background; the simulation pauses until the
+new geometry is ready. Source edits replace that model rather than adding another copy.
+
+The interactive 3D preview overlays the source wireframe (cyan) and sampled simulation volumes
+(blue). Orange regions identify thin features or narrow gaps sampled along X, Y and Z; red
+regions identify potentially missing surfaces. Toggle layers, orbit and zoom, or select a
+region to focus the camera. Region descriptions include approximate position, extent and the
+minimum sampled feature dimension. Empty previews show geometry lost on a coarse grid, but
+cannot be imported until a finer grid or larger scale produces occupied cells.
+
+Warnings persist with retained models. Review them before applying an import, and compare
+resolutions to assess accuracy: highlights are approximate sampling diagnostics, not a
+convergence or completeness guarantee. Up to 128 affected regions are highlighted; the UI
+reports when this limit is reached. Features not crossed by scanlines and missing surfaces
+near other occupied geometry can escape detection.
+
+Deformable regeneration preserves the body's main material. Changes to individual regions,
+openings, reinforcement or supports block regeneration to avoid overwriting local edits.
+**Detach geometry** keeps the current geometry and edits while stopping source regeneration.
+The mesh remains saved and available for inspection; detached geometry is independent. Grid
+changes cannot then restore lost features. Layouts saved by the earlier importer remain
+readable, but their discarded sources cannot be recovered automatically.
+
+Textures and OBJ visual materials are ignored; export triangulated faces or convex polygons.
+Open/non-manifold meshes are rejected. Intersecting or overlapping solids should be repaired
+before export. Limits are 20 MB, 100,000 triangles, 2 million sampled cells, and 2,048 coalesced
+regions; a scanline-work budget also limits expensive previews.
 
 Gauge and deflection histories export
 as CSV from beside the chart.

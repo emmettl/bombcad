@@ -47,6 +47,7 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var boxes: [Box]
     /// Import diagnostics persist with the layout: voxelisation cannot recover lost geometry.
     public var importNotes: [String]?
+    public var importedModels: [ImportedModel]?
     public var charge: Charge
     /// Further charges, fired at the same moment as `charge`. (Optional so that layouts saved
     /// before it existed still open.)
@@ -80,7 +81,7 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// True when the charge sits inside a rigid block or the structure, where it can release
     /// no energy into the air.
     public var chargeIsBlocked: Bool {
-        boxes.contains { $0.contains(charge.position) } || structure?.occupies(charge.position) == true
+        rigidBoxes.contains { $0.contains(charge.position) } || structure?.occupies(charge.position) == true
     }
 
     /// Time for an ambient sound wave to travel from the charge to the farthest corner.
@@ -120,7 +121,7 @@ extension BlastSolver {
 
         mutateMask { mask in
             mask.update(repeating: 0)
-            for box in scenario.boxes {
+            for box in scenario.rigidBoxes {
                 // A cell is solid when its centre lies inside the block.
                 let low = box.min / dx - 0.5
                 let high = box.max / dx - 0.5
@@ -135,7 +136,7 @@ extension BlastSolver {
                 }
             }
         }
-        rigidBoxes = scenario.boxes
+        rigidBoxes = scenario.rigidBoxes
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try setStructure(scenario.structure)
 
@@ -171,7 +172,7 @@ extension BlastSolver {
         let dx = grid.cellSize
         let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin)
         var nearest = Float.infinity
-        var obstacles = scenario.boxes
+        var obstacles = scenario.rigidBoxes
         if let structure = scenario.structure { obstacles.append(structure.bounds) }
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))

@@ -96,7 +96,7 @@ struct ModelImportTests {
         }.joined(separator: "\n")
         let result = try mesh(first + "\n" + second).preview(cellSize: 0.25, domain: SIMD3(repeating: 4))
         #expect(result.smallGaps > 0)
-        #expect(result.warnings.contains { $0.contains("gaps are narrower") })
+        #expect(result.warnings.contains { $0.contains("Narrow gaps") })
     }
     @Test("Imported deformable solids preserve custom material and support assumptions")
     func deformable() throws {
@@ -120,6 +120,175 @@ struct ModelImportTests {
         #expect(solver.structure?.elementCount == 64)
         #expect(solver.grid.cellCount - solver.fluidCellCount == 64)
     }
+    private func combinedCubes(_ size: SIMD3<Float>, offset: SIMD3<Float>) -> String {
+        let second = cube(size, offset: offset).split(separator: "\n").map { line -> String in
+            let fields = line.split(separator: " ")
+            if fields.first == "f" {
+                return "f " + fields.dropFirst().map { String(Int($0)! + 8) }.joined(separator: " ")
+            }
+            return String(line)
+        }.joined(separator: "\n")
+        return cube(size) + "\n" + second
+    }
+    @Test("Narrow-gap regions are detected and located on all axes")
+    func spatialGaps() throws {
+        for axis in 0..<3 {
+            var offset = SIMD3<Float>.zero
+            offset[axis] = 1.05
+            let result = try mesh(combinedCubes(SIMD3(repeating: 1), offset: offset)).preview(
+                cellSize: 0.25, domain: SIMD3(repeating: 4))
+            let issue = try #require(result.diagnostics.first { $0.kind == .gap && $0.axis == axis })
+            #expect(abs((issue.minimumSize ?? 0) - 0.05) < 1e-5)
+            #expect(abs(issue.bounds.min[axis] - 1) < 1e-5)
+            #expect(abs(issue.bounds.max[axis] - 1.05) < 1e-5)
+        }
+    }
+    @Test("Empty previews show lost geometry and refinement recovers it")
+    func lostGeometry() throws {
+        let source = try mesh(cube(SIMD3(0.1, 1, 1)))
+        let coarse = try source.preview(cellSize: 0.5, domain: SIMD3(repeating: 4), allowEmpty: true)
+        #expect(coarse.occupiedCells == 0)
+        #expect(coarse.diagnostics.contains { $0.kind == .thin && $0.axis == 0 })
+        #expect(coarse.diagnostics.contains { $0.kind == .missing })
+        let fine = try source.preview(cellSize: 0.125, domain: SIMD3(repeating: 4))
+        #expect(fine.occupiedCells == 64)
+    }
+    private func retained(_ source: ImportedMesh, h: Float = 0.5, behavior: ImportedModel.Behavior = .rigid)
+        throws -> ImportedModel
+    {
+        ImportedModel(
+            name: "retained.obj", source: source, scale: 1, yUp: false, corner: SIMD3(1, 1, 0),
+            behavior: behavior,
+            preview: try source.transformed(scale: 1, yUp: false, corner: SIMD3(1, 1, 0)).preview(
+                cellSize: h, domain: SIMD3(repeating: 4)))
+    }
+    @Test("Saving retains source geometry and transforms without an external file")
+    func retainedRoundTrip() throws {
+        let source = try mesh(cube(SIMD3(1, 2, 1)))
+        let imported = try retained(source)
+        var layout = Scenario(
+            name: "Sources", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(3, 3, 2)))
+        try layout.installImport(imported, material: .plainConcrete, fixedBase: true)
+        let saved = try JSONEncoder().encode(layout)
+        let restored = try JSONDecoder().decode(Scenario.self, from: saved)
+        #expect(restored.importedModels?.first?.source == source)
+        #expect(restored == layout)
+        #expect(restored.boxes.isEmpty)
+        #expect(restored.rigidBoxes == imported.preview.boxes)
+        let refined = try restored.resamplingImports(cellSize: 0.125)
+        #expect(refined.importedModels?.first?.preview.occupiedCells == 1024)
+        #expect(refined.rigidBoxes == imported.preview.boxes)
+        var repositioned = imported
+        repositioned.corner = SIMD3(2, 1, 0)
+        repositioned = try repositioned.sampled(cellSize: 0.5, domain: layout.domainSize)
+        var moved = restored
+        try moved.installImport(repositioned, material: .plainConcrete, fixedBase: true)
+        #expect(moved.importedModels?.count == 1)
+        #expect(moved.rigidBoxes.first?.min == SIMD3(2, 1, 0))
+    }
+    @Test("A fine resample recovers a thin component absent from the coarse cache")
+    func recovery() throws {
+        let thin = cube(SIMD3(0.1, 1, 1), offset: SIMD3(2, 0, 0)).split(separator: "\n").map {
+            line -> String in
+            let fields = line.split(separator: " ")
+            return fields.first == "f"
+                ? "f " + fields.dropFirst().map { String(Int($0)! + 8) }.joined(separator: " ") : String(line)
+        }.joined(separator: "\n")
+        let imported = try retained(mesh(cube() + "\n" + thin))
+        var layout = Scenario(
+            name: "Recovery", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(3.5, 3.5, 2)))
+        try layout.installImport(imported, material: .plainConcrete, fixedBase: true)
+        #expect(!layout.rigidBoxes.contains { $0.contains(SIMD3(3.05, 1.5, 0.5)) })
+        let refined = try layout.resamplingImports(cellSize: 0.125)
+        #expect(refined.rigidBoxes.contains { $0.contains(SIMD3(3.05, 1.5, 0.5)) })
+        #expect(layout.importedModels?.first?.preview.cellSize == 0.5)
+    }
+    @Test("Deformable regeneration preserves global material and recomputes supports")
+    func regenerateStructure() throws {
+        let imported = try retained(mesh(cube()), behavior: .deformable)
+        var layout = Scenario(
+            name: "Structure source", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(3, 3, 2)))
+        var material = StructureMaterial.plainConcrete
+        material.density = 2200
+        try layout.installImport(imported, material: material, fixedBase: true)
+        let fine = try layout.resamplingImports(cellSize: 0.125)
+        #expect(fine.structure?.material == material)
+        #expect(fine.structure?.elementSize == 0.125)
+        #expect(fine.structure?.reinforcement.isEmpty == true)
+        #expect(fine.structure?.supports == fine.importedModels?.first?.supports(fixedBase: true))
+        #expect(fine.importedModels?.first?.canRegenerate(fine.structure) == true)
+    }
+    @Test("Local structural edits block regeneration; detaching preserves them")
+    func detachEdits() throws {
+        let imported = try retained(mesh(cube()), behavior: .deformable)
+        var layout = Scenario(
+            name: "Edited source", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(3, 3, 2)))
+        try layout.installImport(imported, material: .plainConcrete, fixedBase: true)
+        layout.structure?.openings = [Box(min: SIMD3(1, 1, 0), max: SIMD3(1.5, 1.5, 1))]
+        let edited = layout.structure
+        #expect(throws: ImportedMesh.ImportError.self) { try layout.resamplingImports(cellSize: 0.125) }
+        #expect(layout.structure == edited)
+        layout.detachImport(id: imported.id)
+        #expect(layout.importedModels?.first?.isAttached == false)
+        #expect(layout.importedModels?.first?.source == imported.source)
+        #expect(layout.structure == edited)
+        #expect(try layout.resamplingImports(cellSize: 0.125).structure == edited)
+    }
+    @Test("Detaching rigid geometry preserves occupancy and removes source ownership")
+    func detachRigid() throws {
+        let imported = try retained(mesh(cube()))
+        var layout = Scenario(
+            name: "Detach", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1.5, 1.5, 0.5)))
+        try layout.installImport(imported, material: .plainConcrete, fixedBase: false)
+        #expect(layout.chargeIsBlocked)
+        let before = layout.rigidBoxes
+        layout.detachImport(id: imported.id)
+        #expect(layout.boxes == before)
+        #expect(layout.rigidBoxes == before)
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let solver = try BlastSolver(device: device, scenario: layout, cellSize: 0.5)
+        #expect(solver.grid.cellCount - solver.fluidCellCount == 8)
+    }
+    @Test("Region highlighting reports when its bounded diagnostic list is incomplete")
+    func boundedHighlights() throws {
+        var parts: [String] = []
+        for n in 0..<129 {
+            parts.append(
+                cube(SIMD3(0.1, 1, 1), offset: SIMD3(Float(n) * 2, 0, 0)).split(separator: "\n").map {
+                    line -> String in
+                    let fields = line.split(separator: " ")
+                    return fields.first == "f"
+                        ? "f " + fields.dropFirst().map { String(Int($0)! + 8 * n) }.joined(separator: " ")
+                        : String(line)
+                }.joined(separator: "\n"))
+        }
+        let result = try mesh(parts.joined(separator: "\n")).preview(
+            cellSize: 0.5, domain: SIMD3(260, 4, 4), allowEmpty: true)
+        #expect(result.diagnostics.count <= 128)
+        #expect(result.diagnosticsTruncated)
+        #expect(result.warnings.contains { $0.contains("highlighting is incomplete") })
+    }
+
+    @Test("Cancelled sampling exits without producing a stale preview")
+    func cancelSampling() async throws {
+        let source = try mesh(cube())
+        let sampling = Task.detached { () -> Result<ImportedMesh.Preview, Error> in
+            // Start only after the test has explicitly cancelled this request.
+            while !Task.isCancelled { await Task.yield() }
+            return Result { try source.preview(cellSize: 0.125, domain: SIMD3(repeating: 4)) }
+        }
+        sampling.cancel()
+        switch await sampling.value {
+        case .failure(let error): #expect(error is CancellationError)
+        case .success: Issue.record("Cancelled request produced a preview")
+        }
+    }
+
     @Test("ASCII and binary STL agree with OBJ")
     func stl() throws {
         let original = try mesh(cube())

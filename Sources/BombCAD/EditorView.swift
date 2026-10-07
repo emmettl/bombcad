@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// charge. Every change rebuilds the simulation from the start.
 struct EditorView: View {
     @Bindable var model: SimulationModel
+    @State private var inspecting: ImportedModel?
 
     var body: some View {
         Form {
@@ -18,6 +19,36 @@ struct EditorView: View {
                 }
             }
 
+            if let imports = model.settings.scenario.importedModels, !imports.isEmpty {
+                Section("Imported models") {
+                    if model.isPreparingImports { ProgressView("Resampling source geometry…") }
+                    ForEach(imports) { imported in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(imported.name).font(.headline)
+                            Text(
+                                "\(imported.isAttached ? imported.behavior.rawValue.capitalized : "Detached") · \(imported.preview.cellSize, format:.number) m sampling"
+                            ).font(.caption)
+                            HStack {
+                                Button("Inspect / edit source…") { inspecting = imported }
+                                if imported.isAttached {
+                                    Button("Detach geometry") { model.detachImport(id: imported.id) }
+                                }
+                            }
+                            Button(
+                                imported.isAttached ? "Remove model" : "Remove saved source",
+                                role: .destructive
+                            ) { model.removeImport(id: imported.id) }
+                            ForEach(imported.preview.warnings, id: \.self) { warning in
+                                Label(warning, systemImage: "exclamationmark.triangle").font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                    Text(
+                        "Retained sources regenerate when the grid changes. Detaching keeps the current geometry and local edits, and stops source regeneration."
+                    ).font(.caption)
+                }
+            }
             Section("Resolution warnings") {
                 ForEach(model.settings.scenario.importNotes ?? [], id: \.self) { note in
                     Label(note, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(
@@ -168,6 +199,9 @@ struct EditorView: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(item: $inspecting) { imported in
+            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
+        }
     }
 
     private var solids: [Box] { model.settings.scenario.structure?.solids ?? [] }

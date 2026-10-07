@@ -78,6 +78,7 @@ struct ContentView: View {
                 ) {
                     model.toggleRun()
                 }
+                .disabled(model.isPreparingImports)
                 .help("Run or pause the simulation (Space)")
                 Button("Reset", systemImage: "arrow.counterclockwise") { model.reset() }
                     .help("Return to the moment before detonation (⌘R)")
@@ -159,7 +160,7 @@ private struct StatusOverlay: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("t = \(model.time * 1000, format: .number.precision(.fractionLength(1))) ms")
                 .font(.system(.title2, design: .rounded).monospacedDigit().weight(.semibold))
-            Text(statusLine)
+            Text(model.isPreparingImports ? "Resampling imported geometry…" : statusLine)
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
         }

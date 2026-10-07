@@ -178,6 +178,7 @@ final class SimulationModel {
     private(set) var memoryFootprint = 0
     private(set) var chargeIsBlocked = false
     private(set) var errorMessage: String?
+    private(set) var isPreparingImports = false
     /// Layouts before the most recent edits, newest last, and those undone since.
     private(set) var undoStack: [Scenario] = []
     private(set) var redoStack: [Scenario] = []
@@ -257,7 +258,7 @@ final class SimulationModel {
     }
 
     func run() {
-        guard solver != nil, !isRunning else { return }
+        guard solver != nil, !isRunning, !isPreparingImports, !importsNeedResampling else { return }
         if time >= duration - 1e-9 {
             rebuild()
         }
@@ -267,6 +268,10 @@ final class SimulationModel {
     }
 
     func reset() {
+        if importsNeedResampling {
+            settingsChanged()
+            return
+        }
         requestRebuild()
     }
 
@@ -317,6 +322,11 @@ final class SimulationModel {
 
     private func adopt(_ scenario: Scenario) {
         settings.scenario = scenario
+        if let h = scenario.importedModels?.first(where: { $0.isAttached })?.preview.cellSize,
+            let resolution = Resolution.allCases.first(where: { $0.cellSize == h })
+        {
+            settings.resolution = resolution
+        }
         selection = nil
         camera = .framing(scenario)
         duration = Self.defaultDuration(for: scenario)
@@ -328,14 +338,62 @@ final class SimulationModel {
     }
 
     /// Call when `settings` changes; records the edit and rebuilds once the edits settle.
+    private var importsNeedResampling: Bool {
+        (settings.scenario.importedModels ?? []).contains {
+            $0.isAttached && $0.preview.cellSize != settings.resolution.cellSize
+        }
+    }
     func settingsChanged() {
         rebuildTask?.cancel()
+        isPreparingImports = importsNeedResampling
+        if isPreparingImports { isRunning = false }
         rebuildTask = Task {
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
+            if importsNeedResampling {
+                let source = settings.scenario
+                let h = settings.resolution.cellSize
+                let sampling = Task.detached(priority: .userInitiated) {
+                    Result { try source.resamplingImports(cellSize: h) }
+                }
+                let result = await withTaskCancellationHandler(
+                    operation: { await sampling.value }, onCancel: { sampling.cancel() })
+                guard !Task.isCancelled, settings.scenario == source, settings.resolution.cellSize == h else {
+                    return
+                }
+                isPreparingImports = false
+                switch result {
+                case .success(let updated):
+                    settings.scenario = updated
+                    if let body = updated.structure { settings.solidElementSize = body.elementSize }
+                case .failure(let error):
+                    errorMessage =
+                        "Could not resample retained sources: \(error.localizedDescription) Simulation is paused; choose another grid or detach the affected model."
+                    return
+                }
+            }
+            isPreparingImports = false
             recordEdit()
             requestRebuild()
         }
+    }
+    func detachImport(id: UUID) {
+        settings.scenario.detachImport(id: id)
+        settingsChanged()
+    }
+    func removeImport(id: UUID) {
+        guard let imported = settings.scenario.importedModels?.first(where: { $0.id == id }) else { return }
+        if imported.isAttached && imported.behavior == .deformable {
+            guard imported.canRegenerate(settings.scenario.structure) else {
+                errorMessage =
+                    "This imported structure has local edits. Detach it to preserve them before removing the retained source."
+                return
+            }
+            settings.scenario.structure = nil
+        }
+        settings.scenario.importedModels?.removeAll { $0.id == id }
+        selection = nil
+        settingsChanged()
     }
 
     // MARK: - Undo
@@ -369,6 +427,12 @@ final class SimulationModel {
     private func restore(_ scenario: Scenario) {
         settledScenario = scenario
         settings.scenario = scenario
+        if let h = scenario.importedModels?.first(where: { $0.isAttached })?.preview.cellSize,
+            let resolution = Resolution.allCases.first(where: { $0.cellSize == h })
+        {
+            settings.resolution = resolution
+        }
+        if let body = scenario.structure { settings.solidElementSize = body.elementSize }
         if highlightedBox == nil { selection = nil }
         settingsChanged()
     }
@@ -418,7 +482,7 @@ final class SimulationModel {
 
     /// Adds a rigid block in the middle of the domain.
     func addBlock() {
-        guard settings.scenario.boxes.count < SceneRenderer.maxBoxes else {
+        guard settings.scenario.rigidBoxes.count < SceneRenderer.maxBoxes else {
             errorMessage = "The layout has reached the 2,048 rigid region limit."
             return
         }
@@ -586,6 +650,7 @@ final class SimulationModel {
     private func rebuild() {
         isRunning = false
         rebuildPending = false
+        guard !importsNeedResampling else { return }
         guard let device, let commandQueue, let renderer else { return }
 
         let scenario = settings.scenario

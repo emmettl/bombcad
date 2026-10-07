@@ -25,6 +25,105 @@ struct SimulationModelTests {
         }
     }
 
+    private func importedLayout(deformable: Bool = false) throws -> Scenario {
+        let source = try ImportedMesh(
+            data: Data(
+                """
+                v 0 0 0
+                v 1 0 0
+                v 1 1 0
+                v 0 1 0
+                v 0 0 1
+                v 1 0 1
+                v 1 1 1
+                v 0 1 1
+                f 1 4 3 2
+                f 5 6 7 8
+                f 1 2 6 5
+                f 2 3 7 6
+                f 3 4 8 7
+                f 4 1 5 8
+                """.utf8), fileExtension: "obj")
+        let transformed = try source.transformed(scale: 1, yUp: false, corner: SIMD3(1, 1, 0))
+        let imported = ImportedModel(
+            name: "Cube", source: source, scale: 1, yUp: false, corner: SIMD3(1, 1, 0),
+            behavior: deformable ? .deformable : .rigid,
+            preview: try transformed.preview(cellSize: 0.5, domain: SIMD3(repeating: 4)))
+        var layout = Scenario(
+            name: "Sources", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(3, 3, 2)))
+        try layout.installImport(imported, material: .plainConcrete, fixedBase: false)
+        return layout
+    }
+    @Test("Retained imports resample on grid changes and undo restores their sampling grid")
+    func retainedImportGrid() async throws {
+        let model = try await makeModel()
+        model.open(try importedLayout())
+        try await waitUntil {
+            model.grid?.nx == 8 && model.settings.scenario.importedModels?.first?.preview.cellSize == 0.5
+        }
+        model.settings.resolution = .fine
+        model.settingsChanged()
+        model.run()
+        #expect(!model.isRunning)
+        try await waitUntil {
+            model.grid?.cellSize == 0.125
+                && model.settings.scenario.importedModels?.first?.preview.occupiedCells == 512
+                && !model.isPreparingImports
+        }
+        #expect(model.errorMessage == nil)
+        model.undo()
+        try await waitUntil { model.grid?.cellSize == 0.5 }
+        #expect(model.settings.scenario.importedModels?.first?.preview.occupiedCells == 8)
+        model.redo()
+        try await waitUntil { model.grid?.cellSize == 0.125 }
+        #expect(model.settings.scenario.importedModels?.first?.preview.occupiedCells == 512)
+    }
+    @Test("Rapid grid edits use the latest sampling request and sources survive detaching undo")
+    func retainedImportLatestRequest() async throws {
+        let model = try await makeModel()
+        model.open(try importedLayout())
+        try await waitUntil { model.grid?.nx == 8 }
+        model.settings.resolution = .fine
+        model.settingsChanged()
+        model.settings.resolution = .medium
+        model.settingsChanged()
+        try await waitUntil { model.grid?.cellSize == 0.25 && !model.isPreparingImports }
+        let imported = try #require(model.settings.scenario.importedModels?.first)
+        #expect(imported.preview.occupiedCells == 64)
+        model.detachImport(id: imported.id)
+        try await waitUntil {
+            model.settings.scenario.importedModels?.first?.isAttached == false && !model.canRedo
+        }
+        model.undo()
+        try await waitUntil {
+            model.settings.scenario.importedModels?.first?.id == imported.id
+                && model.settings.scenario.importedModels?.first?.isAttached == true
+        }
+        #expect(model.settings.scenario.boxes.isEmpty)
+    }
+
+    @Test("A grid change cannot run or overwrite an imported structure with local edits")
+    func retainedImportEdits() async throws {
+        let model = try await makeModel()
+        model.open(try importedLayout(deformable: true))
+        try await waitUntil { model.grid?.nx == 8 }
+        let opening = Box(min: SIMD3(1, 1, 0), max: SIMD3(1.5, 1.5, 1))
+        model.settings.scenario.structure?.openings = [opening]
+        model.settings.resolution = .fine
+        model.settingsChanged()
+        try await waitUntil { model.errorMessage?.contains("Could not resample") == true }
+        #expect(model.settings.scenario.structure?.openings == [opening])
+        #expect(!model.isPreparingImports)
+        model.run()
+        #expect(!model.isRunning)
+        let imported = try #require(model.settings.scenario.importedModels?.first)
+        model.detachImport(id: imported.id)
+        try await waitUntil { model.grid?.cellSize == 0.125 && model.errorMessage == nil }
+        #expect(model.settings.scenario.structure?.openings == [opening])
+        #expect(model.settings.scenario.importedModels?.first?.source == imported.source)
+    }
+
     @Test("An unpaced run reaches the stop time and records every gauge")
     func runsToCompletion() async throws {
         let model = try await makeModel()

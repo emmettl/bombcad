@@ -182,9 +182,9 @@ public final class SceneRenderer {
         shells = solver.shells
         ambientPressure = scenario.atmosphere.pressure
 
-        boxCount = min(scenario.boxes.count, Self.maxBoxes)
+        boxCount = min(scenario.rigidBoxes.count, Self.maxBoxes)
         let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
-        for (n, box) in scenario.boxes.prefix(boxCount).enumerated() {
+        for (n, box) in scenario.rigidBoxes.prefix(boxCount).enumerated() {
             boxes[2 * n] = SIMD4(box.min, 0)
             boxes[2 * n + 1] = SIMD4(box.max, 0)
         }

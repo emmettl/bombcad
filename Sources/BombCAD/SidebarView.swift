@@ -5,6 +5,7 @@ import SwiftUI
 struct SidebarView: View {
     @Bindable var model: SimulationModel
     @State private var tab = Tab.run
+    @State private var inspecting: ImportedModel?
 
     private enum Tab: String, CaseIterable {
         case run = "Run"
@@ -25,6 +26,9 @@ struct SidebarView: View {
             }
         }
         .onChange(of: tab) { model.selection = nil }
+        .sheet(item: $inspecting) { imported in
+            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
+        }
     }
 
     private var runForm: some View {
@@ -42,6 +46,32 @@ struct SidebarView: View {
                     LabeledContent("Cells", value: cellSummary(grid))
                     LabeledContent(
                         "GPU memory", value: String(format: "%.2f GB", Double(model.memoryFootprint) / 1e9))
+                }
+            }
+
+            if let imports = model.settings.scenario.importedModels, !imports.isEmpty {
+                Section("Imported geometry") {
+                    if model.isPreparingImports { ProgressView("Resampling…") }
+                    ForEach(imports) { imported in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(imported.name).font(.headline)
+                            if !imported.isAttached {
+                                Text("Detached geometry; source retained for inspection.").font(.caption)
+                            } else if !imported.preview.diagnostics.isEmpty
+                                || imported.preview.diagnosticsTruncated
+                            {
+                                Label(
+                                    "\(imported.preview.diagnosticsTruncated ? "At least " : "")\(imported.preview.diagnostics.count) approximate affected regions at \(imported.preview.cellSize, format:.number) m sampling. Inspect before running.",
+                                    systemImage: "exclamationmark.triangle"
+                                ).font(.caption).foregroundStyle(.orange)
+                            } else {
+                                Text(
+                                    "Sampled at \(imported.preview.cellSize, format:.number) m. Compare finer grids to assess accuracy."
+                                ).font(.caption)
+                            }
+                            Button("Inspect source and warnings…") { inspecting = imported }
+                        }
+                    }
                 }
             }
 
