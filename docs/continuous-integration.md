@@ -2,17 +2,22 @@
 
 The solver needs a Metal device: most of `Tests/BlastCoreTests` stops without one, and every
 `blastbench` command runs on the GPU. GitHub's hosted macOS runners are virtual machines with
-limited Metal support, so CI runs on a self-hosted Mac mini (M4 Pro, 24 GB) instead.
+limited Metal support, so CI runs on a self-hosted Mac mini (M4, 10-core GPU, 24 GB) instead,
+reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
+`~/Developer/bombcad-runner` as a launch agent.
 
 ## What runs
 
 | Workflow | When | What |
 |---|---|---|
 | [Check](../.github/workflows/check.yml) | Every push to `main`, or by hand | `make check`: lint, tests, release-script tests, build |
-| [Nightly](../.github/workflows/nightly.yml) | 01:00 UTC, or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
+| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC, or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
-Both run only on a runner labelled `metal`. A single runner takes one job at a time, so the
-benchmarks never share the GPU.
+Both run only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
+for hellomini-builds, so a BombCAD job can share the GPU with theirs; the nightly run is timed
+to miss Scrimply's, which takes the mini from about 01:30 to 04:30 UTC. A time flagged slower
+may be another job on the machine: check the Actions tabs of those repositories before looking
+for a regression.
 
 ### The nightly comparison
 
@@ -32,8 +37,10 @@ listed in [Validation](validation.md), and a street snapshot. Each night's outpu
   shows the table and the diffs. The next night compares against the changed output, so each
   change fails once: check that it was intended.
 
-The times are the mini's, not the M4 Max figures in [Performance](performance.md): the M4 Pro
-has about half the memory bandwidth, so expect runs to take about twice as long. The largest run
+The times are the mini's, not the M4 Max figures in [Performance](performance.md): the M4 has
+a third of the GPU cores and under a quarter of the memory bandwidth (120 against 546 GB/s),
+so expect runs to take three to four times as long. `swift test` takes about 8 minutes there, building
+included (262 tests, all passing on 2026-10-07). The largest run
 in the suite needs about 4 GB of GPU memory.
 
 One entry or several can be run alone, locally or from the Actions tab:
@@ -48,15 +55,18 @@ python3 Scripts/nightly.py --only beam,snapshot --history /tmp/bombcad-nightly
 
 ## Setting up the runner
 
-On the mini, signed in as the user that will run the jobs:
+Done on 2026-10-07 over SSH, with runner 2.338.0; the runner updates itself. To set it up
+again, on the mini, signed in as the user that runs the jobs:
 
 1. Install the same Xcode as the development machine (the package needs Swift 6.4 tools, and
    `make lint` uses Xcode's `swift format`), and accept its licence.
-2. Keep it awake and signed in: in System Settings, prevent automatic sleeping on power and turn
-   on automatic login. The runner is a launch agent, so it runs only while that user is signed in.
-3. In the repository's Settings → Actions → Runners → New self-hosted runner, choose macOS and
-   ARM64 and follow the download and configure commands, adding the label: `./config.sh --url
-   https://github.com/emmettl/bombcad --token <token> --labels metal`.
+2. Keep it awake and signed in. The runner is a launch agent, so it runs only while that user is
+   signed in.
+3. Download the macOS ARM64 runner from github.com/actions/runner into
+   `~/Developer/bombcad-runner`, check its SHA-256 against the release notes, and register it
+   with a token from `gh api -X POST repos/emmettl/bombcad/actions/runners/registration-token`:
+   `./config.sh --unattended --url https://github.com/emmettl/bombcad --token <token> --name
+   mac-mini-bombcad --labels metal`.
 4. Install it as a service, so it starts at login:
 
 ```bash

@@ -6,7 +6,8 @@ name: Nightly
 
 on:
   schedule:
-    - cron: "0 1 * * *"
+    # Clear of Scrimply's nightly, which holds the same mini from about 01:30 to 04:30 UTC.
+    - cron: "0 19 * * *"
   workflow_dispatch:
     inputs:
       only:
