@@ -61,6 +61,55 @@ struct AcousticCoreTests {
         #expect(summary.orderLimitedAfter != nil)
     }
 
+    @Test("Pruning by order finds exactly the arrivals and the earliest omission that brute force does")
+    func pruning() {
+        var room = ShoeboxRoom(size: [3.1, 2.3, 2.7], material: .uniform(0.2, name: "Test"))
+        room.floor = .uniform(0.5, scattering: 0.3, name: "Floor")
+        let model = ImageSourceModel(
+            room: room, source: [0.7, 1.9, 1.1], atmosphere: .standard, airAbsorption: true)
+        let listener: SIMD3<Double> = [2.6, 0.4, 2.2]
+        for (duration, order) in [(0.08, 4), (0.12, 9), (0.05, 40)] {
+            var found: [Double] = []
+            let summary = model.forEachArrival(at: listener, duration: duration, maximumOrder: order) {
+                delay, _, _ in found.append(delay)
+            }
+            // Every image within reach, with no pruning.
+            let c = Atmosphere.standard.soundSpeed
+            let reach = duration * c
+            let axes = [
+                model.axisImages(
+                    length: room.size.x, source: 0.7, receiver: listener.x, reach: reach,
+                    low: room.west.reflection,
+                    high: room.east.reflection),
+                model.axisImages(
+                    length: room.size.y, source: 1.9, receiver: listener.y, reach: reach,
+                    low: room.south.reflection,
+                    high: room.north.reflection),
+                model.axisImages(
+                    length: room.size.z, source: 1.1, receiver: listener.z, reach: reach,
+                    low: room.floor.reflection,
+                    high: room.ceiling.reflection),
+            ]
+            var expected: [Double] = []
+            var omitted = Double.infinity
+            for x in axes[0] {
+                for y in axes[1] {
+                    for z in axes[2] {
+                        let r = (x.offset * x.offset + y.offset * y.offset + z.offset * z.offset).squareRoot()
+                        guard r <= reach else { continue }
+                        if x.order + y.order + z.order > order {
+                            omitted = min(omitted, r)
+                        } else {
+                            expected.append(r / c)
+                        }
+                    }
+                }
+            }
+            #expect(found.sorted() == expected.sorted(), "duration \(duration), order \(order)")
+            #expect(summary.orderLimitedAfter == (omitted.isFinite ? omitted / c : nil))
+        }
+    }
+
     @Test("Reflection gains multiply the coefficients of the surfaces met")
     func reflectionGains() {
         var room = ShoeboxRoom(size: size, material: .anechoic)

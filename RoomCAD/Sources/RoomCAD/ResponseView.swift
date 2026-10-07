@@ -99,14 +99,22 @@ struct DiagnosticsList: View {
                 "\(d.arrivals.map { $0.formatted() }.joined(separator: " / ")) arrivals, generated in "
                     + String(format: "%.1f s", d.generationSeconds))
             if let limited = d.orderLimitedAfter.compactMap({ $0 }).min() {
-                Label(
-                    String(
-                        format:
-                            "Reflections above order %d are missing after %.2f s; raise the maximum order.",
-                        result.settings.maximumReflectionOrder, limited),
-                    systemImage: "exclamationmark.triangle"
-                )
-                .foregroundStyle(.orange)
+                if (d.diffuseRays ?? 0) > 0 {
+                    Text(
+                        String(
+                            format: "Specular reflections above order %d are omitted after %.2f s; "
+                                + "scattered energy is traced to the end.",
+                            result.settings.maximumReflectionOrder, limited))
+                } else {
+                    Label(
+                        String(
+                            format:
+                                "Reflections above order %d are missing after %.2f s; raise the maximum order.",
+                            result.settings.maximumReflectionOrder, limited),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(.orange)
+                }
             }
             if let schroeder = d.schroederFrequency {
                 Text(String(format: "Approximate below about %.0f Hz (Schroeder frequency).", schroeder))

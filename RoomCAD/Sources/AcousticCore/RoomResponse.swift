@@ -37,7 +37,8 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
     /// modelled as real and positive, the raw response accumulates a slowly decaying offset below the
     /// lowest room mode that is outside the usable band and would offset a convolution reverb.
     public var lowFrequencyCutoff: Double
-    /// Rays traced from the source for the scattered energy; unused if no surface scatters.
+    /// The most rays traced from the source for the scattered energy; fewer are traced in rooms where
+    /// fewer suffice. Unused if no surface scatters.
     public var diffuseRays: Int
     /// Seed for the ray directions and the diffuse tail's random detail, so a response can be reproduced.
     public var randomSeed: UInt64
@@ -301,7 +302,7 @@ public enum RoomResponseGenerator {
             orderLimitedAfter: orderLimitedAfter, sabineReverberationTime: sabine,
             eyringReverberationTime: eyring, schroederFrequency: schroeder,
             generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
-            diffuseRays: settings.room.scatters ? settings.diffuseRays : 0)
+            diffuseRays: settings.room.scatters ? tracer.tracedRays : 0)
 
         let metadata = ResponseMetadata(
             sampleRate: settings.sampleRate, frameCount: frames,

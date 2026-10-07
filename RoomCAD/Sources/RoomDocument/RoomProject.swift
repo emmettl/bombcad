@@ -69,21 +69,13 @@ public struct RoomProject: Equatable, Sendable {
         self.export = export
     }
 
-    /// An 8 × 6 × 3 m room with illustrative uniform absorption and scattering rising with frequency, as
-    /// furniture and surface detail scatter short wavelengths more, one source and a spaced pair of
-    /// receivers off the room's centre lines.
+    /// The living-room preset, with published absorption, a source and a spaced pair of receivers.
     public static var starter: RoomResponseSettings {
-        let material = SurfaceMaterial(
-            name: "Furnished room", absorption: Array(repeating: 0.2, count: 8),
-            scattering: [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.6], reference: "Illustrative")
-        return RoomResponseSettings(
-            room: ShoeboxRoom(size: [8, 6, 3], material: material),
-            source: RoomPoint(name: "Source", position: [2.1, 2.7, 1.4]),
-            receivers: [
-                RoomPoint(name: "Left", position: [5.6, 3.4, 1.2]),
-                RoomPoint(name: "Right", position: [5.8, 2.6, 1.2]),
-            ],
-            duration: 1.2, maximumReflectionOrder: 200)
+        let blank = RoomResponseSettings(
+            room: ShoeboxRoom(size: [1, 1, 1], material: .rigid),
+            source: RoomPoint(name: "Source", position: [0.5, 0.5, 0.5]),
+            receivers: [])
+        return RoomPresets.all[0].applied(to: blank)
     }
 
     /// Whether the retained response was generated from the current settings by the current generator.

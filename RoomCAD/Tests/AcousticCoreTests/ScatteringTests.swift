@@ -97,9 +97,23 @@ struct ScatteringTests {
         a.randomSeed = 2
         let other = try RoomResponseGenerator.generate(a)
         #expect(other.response.channels != first.response.channels)
-        func energy(_ x: [Float]) -> Double { x.reduce(0) { $0 + Double($1) * Double($1) } }
+        // The traced energy hardly depends on the seed.
+        func traced(_ seed: UInt64) -> Double {
+            DiffuseRayTracer(
+                room: a.room, source: a.source.position, atmosphere: .standard, airAbsorption: false,
+                rayCount: a.diffuseRays, seed: seed
+            ).trace(receivers: [receiver.position], duration: a.duration)[0][4].reduce(0, +)
+        }
+        #expect(abs(traced(2) / traced(1) - 1) < 0.05)
+        // Its rendering is one random realization, whose band energy over a short decay varies by about
+        // a decibel, as it does between nearby points in a real room.
+        func energy(_ x: [Float]) -> Double {
+            DecayAnalysis.octaveBand(x, sampleRate: 48_000, band: 4).reduce(0) {
+                $0 + Double($1) * Double($1)
+            }
+        }
         let ratio = energy(other.response.channels[0]) / energy(first.response.channels[0])
-        #expect(abs(ratio - 1) < 0.05)
+        #expect(abs(10 * log10(ratio)) < 1.5)
     }
 
     @Test("Materials and settings saved before scattering existed decode as purely specular with defaults")

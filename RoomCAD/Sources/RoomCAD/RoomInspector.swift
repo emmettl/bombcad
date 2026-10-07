@@ -137,12 +137,24 @@ struct MaterialEditor: View {
 /// All inputs to a response, grouped as in the document.
 struct RoomInspector: View {
     @Binding var project: RoomProject
+    @State private var pendingPreset: RoomPreset?
 
     private var settings: Binding<RoomResponseSettings> { $project.settings }
 
     var body: some View {
         Form {
             Section("Room") {
+                Menu("Load Room Preset…") {
+                    ForEach(RoomPresets.all) { preset in
+                        Button {
+                            pendingPreset = preset
+                        } label: {
+                            Text(preset.name)
+                            Text(preset.summary)
+                        }
+                    }
+                }
+                .help("Replace the room, its surfaces and the positions with a furnished example")
                 NumberField(title: "Length (x)", value: settings.room.size.component(0), unit: "m")
                 NumberField(title: "Width (y)", value: settings.room.size.component(1), unit: "m")
                 NumberField(title: "Height (z)", value: settings.room.size.component(2), unit: "m")
@@ -231,6 +243,18 @@ struct RoomInspector: View {
             }
         }
         .formStyle(.grouped)
+        .confirmationDialog(
+            "Replace this room with “\(pendingPreset?.name ?? "")”?",
+            isPresented: Binding(get: { pendingPreset != nil }, set: { if !$0 { pendingPreset = nil } }),
+            presenting: pendingPreset
+        ) { preset in
+            Button("Replace Room") { project.settings = preset.applied(to: project.settings) }
+            Button("Cancel", role: .cancel) {}
+        } message: { preset in
+            Text(
+                "\(preset.summary). The size, every surface, the source and listener positions, the duration "
+                    + "and the reflection order change. This can't be undone.")
+        }
     }
 
     private func addReceiver() {

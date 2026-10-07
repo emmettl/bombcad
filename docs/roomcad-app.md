@@ -37,6 +37,7 @@ document is opened from Finder.
   - room dimensions;
   - each surface's absorption and scattering, either one value for all bands or band by band, with the
     material's name and reference;
+  - whole rooms from **Load Room Preset…** (see below);
   - published materials: the books icon beside each surface's absorption chooses one of 90 surfaces
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
@@ -89,6 +90,46 @@ document is opened from Finder.
     response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
   beside it.
+
+## Room presets
+
+**Load Room Preset…** at the top of the inspector replaces the room with a furnished example:
+
+| Preset | Size | Surfaces |
+|---|---|---|
+| Living room (new documents) | 5.5 × 4.2 × 2.5 m | Carpet, plastered walls and ceiling, curtained window |
+| Office | 6 × 5 × 2.8 m | Carpet tiles under desks, suspended tile ceiling, plasterboard, a glazed wall |
+| Classroom | 9 × 7 × 3.2 m | Linoleum under rows of desks, tile ceiling, hard walls, windows |
+| Tiled bathroom | 2.6 × 2 × 2.4 m | Ceramic tiles throughout; empty and very live |
+| Vocal booth | 2.4 × 2 × 2.3 m | Fabric-covered rockwool panels, foam ceiling, carpet |
+| Concrete hall | 24 × 16 × 5 m | Bare rough concrete, like an empty car park level |
+| Chamber music hall | 28 × 18 × 11 m | Audience in upholstered seats, wooden linings, hard ceiling |
+| Stone church | 36 × 14 × 16 m | Limestone walls and vault, wooden pews over the floor |
+
+Every surface's absorption comes from the published table below. Scattering comes from a published
+set where one fits: theatre audience in the hall, and rows of desks in the office and classroom.
+Elsewhere it is illustrative, and the material's reference says so.
+
+A preset places the source and two listeners. Its duration is 1.5 times the slowest Eyring time from
+125 Hz to 4 kHz, between 0.5 and 8 s; rooms that are not diffuse can decay more slowly than that. The
+reflection order is capped at 120 to keep the image sources quick, and scattering carries the late
+energy beyond it.
+
+Loading asks for confirmation, because it replaces the size, surfaces, positions, duration and order.
+Sample rate, air, low cut, rays, seed, content and the points' identities and names are kept.
+
+Measured on the development Mac (T30 at 1 kHz, from the left listener):
+
+| Preset | Duration | Eyring at 1 kHz | T30 at 1 kHz | Generation |
+|---|---|---|---|---|
+| Living room | 1.9 s | 0.34 s | 0.38 s | 3.7 s |
+| Office | 0.8 s | 0.33 s | 0.49 s | 1.4 s |
+| Classroom | 1.3 s | 0.54 s | 0.69 s | 2.2 s |
+| Tiled bathroom | 7.9 s | 2.63 s | 2.98 s | about 5 s |
+| Vocal booth | 0.5 s | 0.02 s | 0.03 s | 1.0 s |
+| Concrete hall | 8.0 s | 7.75 s | 7.87 s | 4.4 s |
+| Chamber music hall | 1.8 s | 1.13 s | 1.16 s | 0.4 s |
+| Stone church | 8.0 s | 7.08 s | 7.44 s | 4.3 s |
 
 ## Material presets
 
@@ -205,6 +246,7 @@ offscreen.
 - There is no late tail, and true-stereo (four-path) auditioning is not supported.
 - Playback has not been heard: the mixing is tested offline, but the audio engine and controls are
   unverified by ear and by eye.
-- Most presets have no published scattering, and the starter room's scattering is illustrative.
+- Most material presets have no published scattering, so most room presets' scattering is
+  illustrative.
 - Only rectangular rooms are supported, and there is no 3D view.
 - Generation blocks one core per document and is not shared between windows.

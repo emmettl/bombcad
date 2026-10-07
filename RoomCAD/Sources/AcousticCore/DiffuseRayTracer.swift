@@ -10,7 +10,7 @@ import simd
 /// once. The reflection is chosen at random with probability `p` (the surface's mean scattering), and
 /// per-band weights `s/p` or `(1 - s)/(1 - p)` keep every band's expectation exact.
 ///
-/// Receivers are spheres. A ray crossing one deposits its energy times the chord length over the
+/// Receivers are spheres, sized with the room. A ray crossing one deposits its energy times the chord length over the
 /// sphere's volume inside the room, scaled so a free-field source gives `1/r²`: the same units as the
 /// square of an image source's gain.
 struct DiffuseRayTracer {
@@ -23,8 +23,23 @@ struct DiffuseRayTracer {
 
     /// Width of the energy histogram's bins, in seconds.
     static let binWidth = 0.001
-    /// Radius of the detection sphere around each receiver, in metres.
-    static let receiverRadius = 0.4
+    /// Radius of the detection sphere around each receiver, in metres: a tenth of the room's cube-root
+    /// volume, between 0.3 and 1.5 m. Larger rooms need larger spheres for enough rays to cross them;
+    /// the blur this adds, up to 4 ms, is small beside their reverberation.
+    var receiverRadius: Double { min(max(0.1 * cbrt(room.volume), 0.3), 1.5) }
+
+    /// Detector crossings per millisecond to aim for.
+    static let targetCrossings = 50.0
+
+    /// Rays actually traced: enough that about `targetCrossings` cross each receiver per millisecond,
+    /// at least 5,000 and at most `rayCount`. A ray crosses a sphere of radius R about c π R² / V
+    /// times a second, so small rooms need far fewer rays than large ones.
+    var tracedRays: Int {
+        let crossingsPerRay =
+            atmosphere.soundSpeed * Double.pi * receiverRadius * receiverRadius / room.volume
+        let needed = Int((Self.targetCrossings / (crossingsPerRay * Self.binWidth)).rounded(.up))
+        return min(rayCount, max(5_000, needed))
+    }
 
     /// Scattered energy per receiver, per octave band, per bin. Empty bins are zero. Returns early with
     /// what has been traced if `stop` returns true.
@@ -35,10 +50,11 @@ struct DiffuseRayTracer {
             repeating: Array(repeating: [Double](repeating: 0, count: bins), count: bands),
             count: receivers.count)
         guard rayCount > 0, room.scatters else { return energy }
+        let rayCount = tracedRays
 
         let c = atmosphere.soundSpeed
         let reach = duration * c
-        let radius = Self.receiverRadius
+        let radius = receiverRadius
         let volumes = receivers.map { insideVolume(of: $0, radius: radius) }
         // Energy decay by air per metre, for intensity.
         let air =

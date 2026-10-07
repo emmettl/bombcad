@@ -39,7 +39,11 @@ with:
 | Air | exp(−m r) per band, with m the ISO 9613-1 attenuation at the band centre |
 
 The image list is built per axis and sorted by distance, so the triple loop stops early at the
-response duration. Arrivals are streamed to the renderer rather than stored. A 1.5 s response of an
+response duration. Each list also records the lowest reflection order from each position onwards, so
+the loop also stops once nothing further along is within the order limit. The first image skipped this
+way is the nearest omitted one. Without this, a capped order in a small room over a long duration
+still visited every image within reach: 5.2 s instead of 0.08 s for the tiled bathroom's 2.3 million
+arrivals. A test compares the arrivals and the earliest omission with brute-force enumeration. Arrivals are streamed to the renderer rather than stored. A 1.5 s response of an
 8 × 6 × 3 m room has about four million arrivals per receiver. On the development Mac it takes about
 3 s per receiver.
 
@@ -54,8 +58,10 @@ Settings that would need more than 40 million image sources per receiver are rej
 
 ## Scattered energy
 
-`DiffuseRayTracer` follows rays from the source, by default 40,000 of them, in evenly spread directions
-(a spherical Fibonacci lattice) given a random rotation.
+`DiffuseRayTracer` follows rays from the source: enough for about 50 to cross each receiver per
+millisecond (a ray crosses a sphere of radius R about cπR²/V times a second), at least 5,000 and at
+most the `diffuseRays` setting, 40,000 by default. They start in evenly spread directions (a
+spherical Fibonacci lattice) given a random rotation.
 
 At each wall a ray keeps a fraction 1 − α of its energy per band. It then either scatters, leaving in a
 cosine-weighted random direction, or reflects specularly. It scatters with probability p, the
@@ -64,13 +70,15 @@ Each band's energy is then multiplied by s/p or (1 − s)/(1 − p), so every ba
 expectation even though one path serves all eight. Rays stop at the response duration, or once their
 energy is about 150 dB down.
 
-Each receiver is a sphere of radius 0.4 m. Once a ray has scattered, crossing a sphere deposits its
+Each receiver is a sphere whose radius is a tenth of the room's cube-root volume, between 0.3 and
+1.5 m, so enough rays cross it in large rooms. Once a ray has scattered, crossing a sphere deposits its
 energy × 4π × chord length / V. V is the volume of the part of the sphere inside the room, so receivers
 near walls are not biased. That normalization makes a free-field source give 1/r², the same units as
 an image source's squared gain. Deposits go into 1 ms bins per octave band, with air absorption applied
 over the path length.
 
-`DiffuseTail` turns each receiver's histogram, smoothed over ±2 ms, into impulses with random signs at
+`DiffuseTail` turns each receiver's histogram, smoothed over ±2 ms or ±2% of the time since emission,
+whichever is wider, into impulses with random signs at
 random times within each bin. Each bin's impulses share its energy equally in every band, so they add
 incoherently to it. Their density follows a room's reflection density, 4πc³t²/V per second, between
 2,000 and 20,000 per second. They go through the same renderer as the image sources.
@@ -147,8 +155,9 @@ half-cosine taper to the end of every channel.
 - With full scattering, the 1–8 kHz T30 averages within 6% of the Eyring estimate corrected for the
   spread of free path lengths (below), and each band decays faster than without scattering.
 - Without scattering, nothing is traced and the response does not depend on the ray count or seed.
-- The same seed reproduces a response exactly; another seed changes its detail but keeps its energy
-  within 5%.
+- The same seed reproduces a response exactly. Another seed keeps the traced energy within 5%. The
+  rendered 1 kHz band energy of a 0.2 s response stays within 1.5 dB, a random realization's
+  variation, much like that between nearby points in a real room.
 - Materials and settings saved before scattering existed decode with s = 0 and the default ray count
   and seed.
 - The high-pass removes the low-frequency offset without changing the audible bands.

@@ -8,7 +8,8 @@ import Foundation
 /// density of a room, `4 pi c³ t² / V` per second, between 2,000 and 20,000 per second: sparse enough
 /// to cost little, dense enough not to sound grainy.
 enum DiffuseTail {
-    /// Bins are smoothed over this many on each side, to reduce the ray tracer's noise.
+    /// Bins are smoothed over this many on each side at least, to reduce the ray tracer's noise; later,
+    /// over 2% of the time since emission, as a real decay is smooth over such spans.
     static let smoothing = 2
 
     /// Adds the envelope `energy[band][bin]` to `renderer` and returns its energy summed over `bands`.
@@ -39,10 +40,10 @@ enum DiffuseTail {
         return total
     }
 
-    /// Moving average, over fewer bins at the ends.
+    /// Moving average whose half-width grows with time, over fewer bins at the ends.
     static func smooth(_ values: [Double]) -> [Double] {
-        let span = smoothing
         return values.indices.map { i in
+            let span = max(smoothing, Int(0.02 * Double(i)))
             let range = max(0, i - span)...min(values.count - 1, i + span)
             return values[range].reduce(0, +) / Double(range.count)
         }

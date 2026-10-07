@@ -64,19 +64,41 @@ public struct ImageSourceModel: Sendable {
         var summary = Summary()
         var nearestOmitted = Double.infinity
         var gains = [Double](repeating: 0, count: bands)
+        // Each list is sorted by distance, not strictly by order, so keep the lowest order from each
+        // position onwards: once even that exceeds the limit, nothing further along can be heard, and the
+        // first such image is the nearest omitted one.
+        let yLeast = Self.suffixMinimumOrder(ys)
+        let zLeast = Self.suffixMinimumOrder(zs)
+        let z0 = zs.first.map { $0.offset * $0.offset } ?? 0
+        let y0 = ys.first.map { $0.offset * $0.offset } ?? 0
+        func omit(_ r2: Double) {
+            if r2 <= reach2 { nearestOmitted = min(nearestOmitted, r2.squareRoot()) }
+        }
         for x in xs {
             let x2 = x.offset * x.offset
             if x2 > reach2 || stop() { break }
-            for y in ys {
+            guard x.order + (yLeast.first ?? 0) + (zLeast.first ?? 0) <= maximumOrder else {
+                omit(x2 + y0 + z0)
+                continue
+            }
+            for (j, y) in ys.enumerated() {
                 let xy2 = x2 + y.offset * y.offset
                 if xy2 > reach2 { break }
-                for z in zs {
+                if x.order + yLeast[j] + (zLeast.first ?? 0) > maximumOrder {
+                    omit(xy2 + z0)
+                    break
+                }
+                for (k, z) in zs.enumerated() {
                     let r2 = xy2 + z.offset * z.offset
                     if r2 > reach2 { break }
+                    if x.order + y.order + zLeast[k] > maximumOrder {
+                        omit(r2)
+                        break
+                    }
                     let order = x.order + y.order + z.order
                     let r = r2.squareRoot()
                     if order > maximumOrder {
-                        nearestOmitted = min(nearestOmitted, r)
+                        omit(r2)
                         continue
                     }
                     if order == 0 && !includeDirect { continue }
@@ -95,6 +117,13 @@ public struct ImageSourceModel: Sendable {
         }
         if nearestOmitted.isFinite { summary.orderLimitedAfter = nearestOmitted / c }
         return summary
+    }
+
+    /// For each position, the lowest reflection order at or after it.
+    static func suffixMinimumOrder(_ images: [AxisImage]) -> [Int] {
+        var least = images.map(\.order)
+        for i in stride(from: least.count - 2, through: 0, by: -1) { least[i] = min(least[i], least[i + 1]) }
+        return least
     }
 
     /// Images along one axis within `reach` of the receiver, sorted by distance.
