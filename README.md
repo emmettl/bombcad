@@ -225,6 +225,20 @@ holding, sliding, lift-off, rocking and tipping, with playback and a time slider
 the Swift reference mechanics; independent rigid objects are not yet coupled to the blast
 or displayed in the app.
 
+`swift run -c release rigidboxdemo --blast` generates `.build/rigid-box-blast-demo.html`, a
+slow-motion comparison of a held and free box under the same blast. This experimental path
+uses one box on uniform ideal-gas air and reports reference timings. Chemistry and deformable
+structures are unsupported; whole-cell boundary updates can introduce pressure
+artefacts. It does not enable rigid-object simulation in the app.
+
+`swift run -c release rigidboxdemo --convergence` writes `.build/rigid-box-convergence.json`
+and prints resolution, timestep, impulse, motion, mass-conservation and timing comparisons.
+It includes held/free uniform-grid references and factor-two adaptive held/free runs.
+`swift run -c release rigidboxdemo --refined` generates `.build/rigid-box-refined-demo.html`,
+showing held and moving boxes with fine masks and wall velocities. Translation, rotation and
+ground-gap opening/closure use conservative fine-cell remapping. Free-motion results are
+still sensitive to spatial resolution, and the synchronous remapping path needs optimisation.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

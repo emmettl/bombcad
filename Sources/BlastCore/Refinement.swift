@@ -37,6 +37,7 @@ final class AirRefinement {
     /// of the structure where it is solid; and the structure's points counted into it.
     let fineMask: MTLBuffer
     private let fineWall: MTLBuffer
+    private var experimentalBoxImpulse: MTLBuffer?
     let fineOccupancy: MTLBuffer
     /// The rigid blocks, as minimum and maximum corners, for the fine outline; none to take the
     /// coarse cells' rigid mask instead.
@@ -180,7 +181,7 @@ final class AirRefinement {
             ghostKinds,
             fineFlux, fineImpulse, impulseBase, coarseFlux, fineMask, fineWall, fineOccupancy, ghostSpecies,
             fineSpeciesFlux, coarseSpeciesFlux,
-        ] + fine + fineSpecies).reduce(0) { $0 + $1.length }
+        ] + fine + fineSpecies).reduce(0) { $0 + $1.length } + (experimentalBoxImpulse?.length ?? 0)
     }
 
     /// Patches in use after the last regrid.
@@ -261,6 +262,41 @@ final class AirRefinement {
     }
 
     /// Releases every patch.
+    var hasBoxCells: Bool {
+        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let mask = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * side * side * side)
+        let cells = side * side * side
+        for patch in 0..<maxPatches where owners[patch] != .max {
+            for n in 0..<cells where mask[patch * cells + n] & 8 != 0 { return true }
+        }
+        return false
+    }
+
+    func clearBoxImpulse() throws {
+        let length = maxPatches * side * side * side * 6 * MemoryLayout<Float>.stride
+        if experimentalBoxImpulse == nil {
+            experimentalBoxImpulse = device.makeBuffer(length: length, options: .storageModeShared)
+        }
+        guard let buffer = experimentalBoxImpulse else {
+            throw BlastError.allocationFailed("fine rigid-box impulses")
+        }
+        memset(buffer.contents(), 0, buffer.length)
+    }
+
+    func boxImpulses() -> (linear: SIMD3<Double>, angular: SIMD3<Double>) {
+        var linear = SIMD3<Double>.zero
+        var angular = SIMD3<Double>.zero
+        guard let buffer = experimentalBoxImpulse else { return (linear, angular) }
+        let values = buffer.contents().bindMemory(to: Float.self, capacity: buffer.length / 4)
+        for n in 0..<(buffer.length / 24) {
+            for a in 0..<3 {
+                linear[a] += Double(values[6 * n + a])
+                angular[a] += Double(values[6 * n + 3 + a])
+            }
+        }
+        return (linear, angular)
+    }
+
     func reset() {
         let tiles = tileDims.x * tileDims.y * tileDims.z
         memset(patchOfTile.contents(), 0xFF, tiles * 4)
@@ -370,6 +406,8 @@ final class AirRefinement {
                 encoder.setBuffer(fineSpecies[1 - sweep % 2], offset: 0, index: 17)
                 encoder.setBuffer(ghostSpecies, offset: 0, index: 18)
                 encoder.setBuffer(fineSpeciesFlux, offset: 0, index: 19)
+                encoder.setBuffer(patchOfTile, offset: 0, index: 20)
+                encoder.setBuffer(experimentalBoxImpulse ?? fineImpulse, offset: 0, index: 21)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
@@ -490,7 +528,8 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, coarseSpecies: MTLBuffer, mask: MTLBuffer,
         rigidMask: MTLBuffer, wallVelocity: MTLBuffer, control: MTLBuffer, impulse: MTLBuffer,
         tileFlags: MTLBuffer,
-        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid, uniforms: SolverUniforms
+        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid,
+        uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil
     ) {
         var uniforms = uniforms
         let tileCount = tileDims.x * tileDims.y * tileDims.z
@@ -581,6 +620,7 @@ final class AirRefinement {
         encoder.setBuffer(wallVelocity, offset: 0, index: 15)
         encoder.setBuffer(coarseSpecies, offset: 0, index: 16)
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 17)
+        encoder.setBuffer(boxDefinition ?? fine[0], offset: 0, index: 18)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -608,5 +648,114 @@ final class AirRefinement {
         uniforms.refineTileNz = UInt32(tileDims.z)
         uniforms.refineThreshold = threshold
         uniforms.refineMaxPatches = UInt32(maxPatches)
+    }
+}
+
+extension AirRefinement {
+    /// Prepare without writes so a coverage/collision/remap failure cannot half-change the gas.
+    /// Commit the fine state and its coarse proxy only after the driver validates the whole step.
+    func prepareBoxRemap(_ body: RigidBoxBody, grid: Grid) throws
+        -> (UnsafeMutableBufferPointer<CellState>) -> Void
+    {
+        let geometry = ExperimentalBoxGeometry(body)
+        let h = grid.cellSize / Float(ratio)
+        let perPatch = side * side * side
+        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let masks = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * perPatch)
+        let states = fine[0].contents().bindMemory(to: CellState.self, capacity: maxPatches * perPatch)
+        let walls = fineWall.contents().bindMemory(to: Float.self, capacity: maxPatches * perPatch * 3)
+        var coordinates: [SIMD3<Int>] = []
+        var slots: [Int] = []
+        var oldMask: [UInt8] = []
+        var nextMask: [UInt8] = []
+        var initial: [CellState] = []
+        for patch in 0..<maxPatches where owners[patch] != .max {
+            let tile = Int(owners[patch])
+            let origin =
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* side
+            for n in 0..<perPatch {
+                let p = origin &+ SIMD3(n % side, (n / side) % side, n / (side * side))
+                let coarse = p / ratio
+                guard grid.contains(coarse.x, coarse.y, coarse.z) else { continue }
+                let at = patch * perPatch + n
+                let point = (SIMD3<Float>(p) + 0.5) * h
+                let own = geometry.contains(point, cellSize: h)
+                let rigid = masks[at] & 2 != 0
+                guard !(own && rigid) else { throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision }
+                coordinates.append(p)
+                slots.append(at)
+                oldMask.append(masks[at])
+                nextMask.append((own || rigid ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0))
+                initial.append(states[at])
+            }
+        }
+        // Spatial order, never pool-slot order: sequential donor redistribution must not
+        // depend on nondeterministic GPU patch allocation.
+        let order = coordinates.indices.sorted {
+            let a = coordinates[$0]
+            let b = coordinates[$1]
+            if a.z != b.z { return a.z < b.z }
+            if a.y != b.y { return a.y < b.y }
+            return a.x < b.x
+        }
+        coordinates = order.map { coordinates[$0] }
+        slots = order.map { slots[$0] }
+        initial = order.map { initial[$0] }
+        oldMask = order.map { oldMask[$0] }
+        nextMask = order.map { nextMask[$0] }
+        guard nextMask.contains(where: { $0 & 8 != 0 }) else {
+            throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
+        }
+        let lookup = Dictionary(uniqueKeysWithValues: coordinates.enumerated().map { ($1, $0) })
+        let offsets = [
+            SIMD3(-1, 0, 0), SIMD3(1, 0, 0), SIMD3(0, -1, 0), SIMD3(0, 1, 0), SIMD3(0, 0, -1), SIMD3(0, 0, 1),
+        ]
+        let remapped = try ConservativeCellRemap.apply(
+            initial,
+            oldSolid: oldMask.map { $0 & 1 != 0 }, newSolid: nextMask.map { $0 & 1 != 0 }
+        ) { n in
+            offsets.compactMap { lookup[coordinates[n] &+ $0] }
+        }
+        // Every body face must have a fine cell on both sides (except the domain ground).
+        for n in coordinates.indices where nextMask[n] & 8 != 0 {
+            for offset in offsets {
+                let q = coordinates[n] &+ offset
+                let c = q / ratio
+                guard all(q .>= 0), grid.contains(c.x, c.y, c.z) else { continue }
+                guard lookup[q] != nil else {
+                    throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+                }
+            }
+        }
+        return { coarse in
+            var sums: [Int: (value: SIMD8<Double>, count: Double)] = [:]
+            for n in coordinates.indices {
+                let at = slots[n]
+                let p = coordinates[n]
+                states[at] = remapped[n]
+                masks[at] = nextMask[n]
+                let velocity =
+                    nextMask[n] & 8 != 0 ? geometry.velocity(at: (SIMD3<Float>(p) + 0.5) * h) : .zero
+                for axis in 0..<3 { walls[3 * at + axis] = velocity[axis] }
+                guard nextMask[n] & 1 == 0 else { continue }
+                let c = p / self.ratio
+                let index = grid.index(c.x, c.y, c.z)
+                let state = remapped[n]
+                let value = SIMD8(
+                    Double(state.density), Double(state.momentumX), Double(state.momentumY),
+                    Double(state.momentumZ), Double(state.energy), 0, 0, 0)
+                let before = sums[index] ?? (.zero, 0)
+                sums[index] = (before.value + value, before.count + 1)
+            }
+            for (index, sum) in sums {
+                let mean = sum.value / sum.count
+                coarse[index].density = Float(mean[0])
+                coarse[index].momentumX = Float(mean[1])
+                coarse[index].momentumY = Float(mean[2])
+                coarse[index].momentumZ = Float(mean[3])
+                coarse[index].energy = Float(mean[4])
+            }
+        }
     }
 }

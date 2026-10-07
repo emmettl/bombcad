@@ -1,8 +1,8 @@
 import Foundation
 import simd
 
-/// Experimental saved input for an independent rigid object. These objects are not yet
-/// rendered or coupled to the running blast simulation; they are separate from static boxes.
+/// Experimental saved input for an independent rigid object, separate from static boxes.
+/// Ordinary scene loading leaves it inert; the standalone experimental driver opts into coupling.
 /// Lengths are metres, mass kg, inertia kg m², with z up and an initially stationary body.
 public struct RigidObjectDefinition: Sendable, Hashable, Codable, Identifiable {
     public enum Shape: Sendable, Hashable, Codable {

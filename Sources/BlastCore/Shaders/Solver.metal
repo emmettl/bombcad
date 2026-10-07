@@ -78,7 +78,26 @@ struct SolverUniforms {
     float refineAlpha;
     float refineThreshold;
     uint refineMaxPatches;
+    uint experimentalBox;
+    float boxCentreX;
+    float boxCentreY;
+    float boxCentreZ;
+    float boxMinX; float boxMinY; float boxMinZ;
+    float boxMaxX; float boxMaxY; float boxMaxZ;
 };
+
+// Definition vectors: quaternion, half-size, local centre-of-mass offset, velocity, spin.
+static inline bool experimentalBoxContains(float3 point, float dx, constant SolverUniforms &u,
+                                           const device float4 *definition) {
+    float4 q = definition[0]; q.xyz = -q.xyz;
+    float3 v = point-float3(u.boxCentreX,u.boxCentreY,u.boxCentreZ);
+    float3 local = v+2.0f*cross(q.xyz,cross(q.xyz,v)+q.w*v)+definition[2].xyz;
+    return all(abs(local) <= definition[1].xyz + dx*1e-5f);
+}
+static inline float3 experimentalBoxVelocity(float3 point, constant SolverUniforms &u,
+                                             const device float4 *definition) {
+    return definition[3].xyz+cross(definition[4].xyz,point-float3(u.boxCentreX,u.boxCentreY,u.boxCentreZ));
+}
 
 constant int tileSize = 8;
 // The air is refined in patches of this many cells along each edge (see Refine.metal).
@@ -564,7 +583,7 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
                              const device float *wallVelocity, device uchar *tileFlags,
                              const device float2 *speciesSrc, device float2 *speciesDst,
                              const device int *patchOfTile, device float *coarseFlux,
-                             device float *coarseSpeciesFlux) {
+                             device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (mask[index] != 0) {
         return;
@@ -626,6 +645,37 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
     Flux fluxLow;
     Flux fluxHigh;
     stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+
+    // Experimental rigid-box path: impermeable moving-wall traction, recorded from the
+    // same numerical face flux used by the gas. Each fluid thread owns six output scalars.
+    // Use gauge pressure for body loading; uniform atmospheric preload is balanced externally.
+    if (u.experimentalBox != 0 && (u.refineRatio == 0 || patchAt(cell, patchOfTile, u) < 0)) {
+        float3 received = float3(0.0f);
+        float3 moment = float3(0.0f);
+        float3 centre = float3(u.boxCentreX, u.boxCentreY, u.boxCentreZ);
+        for (int side = 0; side < 2; ++side) {
+            int direction = side == 0 ? -1 : 1;
+            bool inside = side == 0 ? i > 0 : i < n - 1;
+            if (!inside || boxMask[index + direction * stride] == 0) continue;
+            Flux f = side == 0 ? fluxLow : fluxHigh;
+            float speed = side == 0 ? speedM1 : speedP1;
+            float traction = f.momentum.x - f.mass * speed;
+            f.mass = 0.0f;
+            f.momentum = float3(traction, 0.0f, 0.0f);
+            f.energy = traction * speed;
+            if (side == 0) fluxLow = f; else fluxHigh = f;
+            float3 impulse = float3(0.0f);
+            impulse[axis] = float(direction) * (traction - u.ambientPressure) * dt * u.dx * u.dx;
+            float3 face = (float3(cell) + 0.5f) * u.dx;
+            face[axis] += 0.5f * float(direction) * u.dx;
+            received += impulse;
+            moment += cross(face - centre, impulse);
+        }
+        for (uint a = 0; a < 3; ++a) {
+            boxImpulse[6 * index + a] += received[a];
+            boxImpulse[6 * index + 3 + a] += moment[a];
+        }
+    }
 
     // A cell of unrefined air beside a patch records the flux it used through the face they
     // share, so that the patch's own fluxes can replace it (see Refine.metal).
@@ -739,12 +789,14 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
                   const device int *patchOfTile [[buffer(13)]],
                   device float *coarseFlux [[buffer(14)]],
                   device float *coarseSpeciesFlux [[buffer(15)]],
+                  const device uchar *boxMask [[buffer(16)]],
+                  device float *boxImpulse [[buffer(17)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-              speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux);
+              speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -765,6 +817,8 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
                        const device int *patchOfTile [[buffer(13)]],
                        device float *coarseFlux [[buffer(14)]],
                        device float *coarseSpeciesFlux [[buffer(15)]],
+                  const device uchar *boxMask [[buffer(16)]],
+                  device float *boxImpulse [[buffer(17)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -775,7 +829,7 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-                      speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux);
+                      speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse);
         }
     }
 }

@@ -45,7 +45,8 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// Extent of the simulated volume in metres; its origin is at a ground-level corner.
     public var domainSize: SIMD3<Float>
     public var boxes: [Box]
-    /// Experimental independent rigid objects, persisted but not yet rendered or simulated.
+    /// Experimental independent rigid objects. Ordinary scene loading does not render or simulate
+    /// them; the explicit standalone rigid-box driver can consume one definition.
     /// Optional so layouts predating rigid-object definitions continue to decode unchanged.
     public var rigidObjects: [RigidObjectDefinition]?
     /// Import diagnostics persist with the layout: voxelisation cannot recover lost geometry.

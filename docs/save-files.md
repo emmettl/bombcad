@@ -62,8 +62,9 @@ to the box axes. Omitted inertia assumes a uniform centred box; a nonzero offset
 explicit inertia. Friction must satisfy static ≥ sliding ≥ 0. Invalid geometry, mass, pose,
 inertia, friction or initial ground penetration is rejected during decoding.
 
-Rigid objects currently persist as inputs only: the renderer and blast solver do not consume
-them. They are separate from static scenery boxes and imported models marked `rigid`, which
+The app's renderer and normal blast-solver loading do not consume rigid objects. An explicit
+standalone experimental driver can couple one box to uniform or refined ideal-gas air; it is not enabled
+by opening a saved scenario. These inputs are separate from static scenery boxes and imported models marked `rigid`, which
 remain stationary obstacles. Runtime motion is not saved; conversion starts a fresh body at
 rest. See the [freestanding-object roadmap](roadmap.md#freestanding-objects-and-supports).
 

@@ -1,19 +1,74 @@
 import BlastCore
 import Foundation
+import Metal
+import simd
 
 // Generates a self-contained visual replay of the tested Swift mechanics, with no browser physics.
 // swift run rigidboxdemo [output.html]
 do {
+    let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--convergence") {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        let results = try ExperimentalRigidBoxStudy.run(device: device)
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-convergence.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                String(
+                    format:
+                        "dx %.3f CFL %.3f refine %d %@: displacement %.5f m, speed %.5f m/s, impulse x %.5f N s, mass change %.3g, %.3f s",
+                    r.cellSize, r.cfl, r.refinement, r.held ? "held" : "free", simd_length(r.displacement),
+                    simd_length(r.velocity),
+                    r.linearImpulse.x, r.relativeMassChange, r.computeSeconds))
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    let refined = arguments.contains("--refined")
+    let coupled = arguments.contains("--blast") || refined
     let destination = URL(
-        fileURLWithPath: CommandLine.arguments.dropFirst().first ?? ".build/rigid-box-demo.html")
-    let recordings = try RigidObjectDemo.recordings()
+        fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+            ?? (refined
+                ? ".build/rigid-box-refined-demo.html"
+                : coupled ? ".build/rigid-box-blast-demo.html" : ".build/rigid-box-demo.html"))
+    let recordings: [RigidObjectDemo.Recording]
+    if coupled {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        recordings = try RigidObjectDemo.coupledRecordings(device: device, refinement: refined ? 2 : 1)
+    } else {
+        recordings = try RigidObjectDemo.recordings()
+    }
     let data = try JSONEncoder().encode(recordings)
     let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
     let template = try String(contentsOf: source, encoding: .utf8)
-    let html = template.replacingOccurrences(
+    var html = template.replacingOccurrences(
         of: "__RECORDINGS__", with: String(decoding: data, as: UTF8.self))
+    if coupled {
+        html = html.replacingOccurrences(
+            of: "Recorded from the Swift reference solver; no blast loading.",
+            with: "Experimental blast coupling; compare a held and free box.")
+    }
+    if coupled {
+        html = html.replacingOccurrences(
+            of: "<option value=\"1\" selected>Real time</option>",
+            with: "<option value=\"0.01\" selected>100× slow</option><option value=\"1\">Real time</option>")
+        html = html.replacingOccurrences(
+            of: "All cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
+            with:
+                "Experimental 0.8 m cube, mass 2 kg; static friction 0.6, sliding friction 0.5. Held mode fixes the pose; free mode includes gravity and ground contact."
+        )
+    }
     try html.write(to: destination, atomically: true, encoding: .utf8)
-    print("Wrote \(destination.path) (\(recordings.count) cases, Swift mechanics at 1 ms)")
+    print("Wrote \(destination.path) (\(recordings.count) cases)")
+    if coupled { for recording in recordings { print("\(recording.name): \(recording.description)") } }
 } catch {
     FileHandle.standardError.write(Data("rigidboxdemo: \(error.localizedDescription)\n".utf8))
     exit(1)

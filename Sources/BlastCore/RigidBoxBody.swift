@@ -74,6 +74,11 @@ struct RigidBoxBody {
         angularMomentum += simd_cross((point ?? position) - position, impulse)
     }
 
+    mutating func applyAngularImpulse(_ impulse: SIMD3<Double>) {
+        precondition(Self.finite(impulse))
+        angularMomentum += impulse
+    }
+
     /// Advance under constant world-space force, torque about the centre, and gravity.
     /// Translation is exact for constant acceleration. Rotation uses an explicit midpoint
     /// orientation update; callers must resolve angular motion with sufficiently small steps.

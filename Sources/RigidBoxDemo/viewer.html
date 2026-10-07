@@ -57,18 +57,19 @@ function layout(){
 }
 recordings.forEach((r,i)=>{let option=document.createElement('option');option.value=i;option.textContent=r.name;select.append(option)});
 function draw(){
- const recording=recordings[current], frame=recording.frames[Math.min(100,Math.round(time/0.02))];
+ const recording=recordings[current], frame=recording.frames[recording.frames.reduce((best,f,i)=>Math.abs(f.time-time)<Math.abs(recording.frames[best].time-time)?i:best,0)];
  polygon.setAttribute('points',[0,1,5,4].map(i=>`${px(frame.corners[i][0])},${pz(frame.corners[i][2])}`).join(' '));
  com.setAttribute('cx',px(frame.centreOfMass[0]));com.setAttribute('cy',pz(frame.centreOfMass[2]));
- slider.value=frame.time;description.textContent=recording.description;
- readout.textContent=`Time ${frame.time.toFixed(2)} s   ·   Position x ${frame.centreOfMass[0].toFixed(2)} m   ·   Speed ${frame.speed.toFixed(2)} m/s   ·   Total energy ${frame.energy.toFixed(2)} J`;
+ slider.max=recording.frames.at(-1).time;slider.step=Number(slider.max)/100;slider.value=frame.time;description.textContent=recording.description;
+ const stamp=Number(slider.max)<0.1?`${(frame.time*1000).toFixed(2)} ms`:`${frame.time.toFixed(2)} s`;
+ readout.textContent=`Time ${stamp}   ·   Position x ${frame.centreOfMass[0].toFixed(2)} m   ·   Speed ${frame.speed.toFixed(2)} m/s   ·   Total energy ${frame.energy.toFixed(2)} J`;
  document.getElementById('scene').setAttribute('aria-label',`${recording.name}: time ${frame.time.toFixed(2)} seconds, speed ${frame.speed.toFixed(2)} metres per second`);
 }
 function stop(){playing=false;play.textContent='Play';if(animation!==undefined)cancelAnimationFrame(animation)}
 select.onchange=()=>{stop();current=Number(select.value);time=0;draw()};
 slider.oninput=()=>{stop();time=Number(slider.value);draw()};
-play.onclick=()=>{if(playing){stop();return}if(time>=2)time=0;playing=true;play.textContent='Pause';last=performance.now();animation=requestAnimationFrame(tick)};
-function tick(now){if(!playing)return;time=Math.min(2,time+Math.min((now-last)/1000,0.1)*Number(rate.value));last=now;draw();if(time>=2){stop();return}animation=requestAnimationFrame(tick)}
+play.onclick=()=>{if(playing){stop();return}if(time>=Number(slider.max))time=0;playing=true;play.textContent='Pause';last=performance.now();animation=requestAnimationFrame(tick)};
+function tick(now){if(!playing)return;time=Math.min(Number(slider.max),time+Math.min((now-last)/1000,0.1)*Number(rate.value));last=now;draw();if(time>=Number(slider.max)){stop();return}animation=requestAnimationFrame(tick)}
 layout();new ResizeObserver(layout).observe(scene);
 </script>
 </html>

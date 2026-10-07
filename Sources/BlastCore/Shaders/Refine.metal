@@ -299,7 +299,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
                                  device float *fineImpulse, const device uchar *fineMask,
                                  const device packed_float3 *fineWall, const device float2 *speciesSrc,
                                  device float2 *speciesDst, const device float2 *ghostSpecies,
-                                 device float *speciesFluxSums) {
+                                 device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -404,6 +404,33 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     Flux fluxHigh;
     stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
 
+    // Experimental moving box: finest-level tractions and impermeable moving-wall work.
+    if (u.experimentalBox != 0) {
+        int3 global = tile * side + local;
+        float dx = u.dx / float(r);
+        float3 centre = float3(u.boxCentreX, u.boxCentreY, u.boxCentreZ);
+        float3 received = float3(0.0f), moment = float3(0.0f);
+        for (int direction = -1; direction <= 1; direction += 2) {
+            int3 across = global; across[u.axis] += direction;
+            if (any(across < 0) || any(across >= int3(u.nx,u.ny,u.nz) * r)) continue;
+            float3 point = (float3(across)+0.5f)*dx;
+            int holder = patchAt(across/r,boxPatches,u);
+            if (holder < 0) continue;
+            uint there = fineIndex(uint(holder),across,tileCoordinates(tileOfPatch[holder],u),u);
+            if ((fineMask[there] & 8u) == 0) continue;
+            Flux f = direction < 0 ? fluxLow : fluxHigh;
+            float speed = float3(fineWall[there])[u.axis];
+            float traction = f.momentum.x-f.mass*speed;
+            f.mass = 0.0f; f.momentum = float3(traction,0.0f,0.0f); f.energy = traction*speed;
+            if (direction < 0) fluxLow = f; else fluxHigh = f;
+            float3 impulse = float3(0.0f);
+            impulse[u.axis] = float(direction) * (traction-u.ambientPressure) * dt * dx * dx;
+            float3 face = (float3(global)+0.5f)*dx; face[u.axis] += float(direction)*0.5f*dx;
+            received += impulse; moment += cross(face-centre,impulse);
+        }
+        for (uint a=0; a<3; ++a) { boxImpulse[6*index+a] += received[a]; boxImpulse[6*index+3+a] += moment[a]; }
+    }
+
     // A fine cell on the patch's face, beside unrefined fluid, adds up the flux through it.
     if (local[axis] == 0 && ghostKinds[ghostIndex(patch, 1u, a, b, uint(side))] == ghostCoarse) {
         addFlux(fineFlux, registerSlot(patch, 2u * axis, a, b, uint(side)), fluxLow, axis, dt);
@@ -501,6 +528,8 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         device float2 *speciesDst [[buffer(17)]],
                         const device float2 *ghostSpecies [[buffer(18)]],
                         device float *speciesFluxSums [[buffer(19)]],
+                        const device int *boxPatches [[buffer(20)]],
+                        device float *boxImpulse [[buffer(21)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -514,7 +543,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
     for (uint z = local.z; z < 8u; z += groupSize.z) {
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
-                      speciesDst, ghostSpecies, speciesFluxSums);
+                      speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch);
     }
 }
 
@@ -877,6 +906,12 @@ static inline void flagCell(int3 cell, const device Cell *coarse, const device u
                             constant SolverUniforms &u) {
     int3 dims = int3(u.nx, u.ny, u.nz);
     int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
+    if (u.experimentalBox != 0) {
+        float3 point = (float3(cell)+0.5f)*u.dx;
+        float3 low = float3(u.boxMinX,u.boxMinY,u.boxMinZ)-2.0f*u.dx;
+        float3 high = float3(u.boxMaxX,u.boxMaxY,u.boxMaxZ)+2.0f*u.dx;
+        if (all(point >= low) && all(point <= high)) { flagAround(cell,wanted,u); return; }
+    }
     if (mask[index] != 0) {
         return;
     }
@@ -1075,6 +1110,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device float *wallVelocity [[buffer(15)]],
                        const device float2 *coarseSpecies [[buffer(16)]],
                        device float2 *fineSpecies [[buffer(17)]],
+                       const device float4 *boxDefinition [[buffer(18)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -1101,10 +1137,13 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     } else {
         rigid = rigidMask[index] != 0;
     }
-    bool structure = mask[index] != 0 && rigidMask[index] == 0;
+    bool structure = u.experimentalBox == 0 && mask[index] != 0 && rigidMask[index] == 0;
     uint at = patch * cells + position;
-    fineMask[at] = (rigid || structure ? 1 : 0) | (rigid ? 2 : 0);
-    fineWall[at] = structure ? wallVelocityOf(wallVelocity, cell, u) : float3(0.0f);
+    float3 point = (float3(fineCoordinates)+0.5f)*(u.dx/float(r));
+    bool own = u.experimentalBox != 0 && experimentalBoxContains(point,u.dx/float(r),u,boxDefinition);
+    fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0);
+    fineWall[at] = own ? experimentalBoxVelocity(point,u,boxDefinition)
+                      : structure ? wallVelocityOf(wallVelocity,cell,u) : float3(0.0f);
     if (mask[index] == 0) {
         fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u);
     } else {

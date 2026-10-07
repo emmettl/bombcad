@@ -50,6 +50,12 @@ public final class BlastSolver {
     /// single zero cell stands in when there is no structure.
     private var wallVelocityBuffer: MTLBuffer
     private let stillWallBuffer: MTLBuffer
+    private var experimentalBoxDefinition: MTLBuffer?
+    private var experimentalBoxMask: MTLBuffer?
+    private var experimentalBoxImpulse: MTLBuffer?
+    private var experimentalBoxCentre: SIMD3<Double>?
+    private var experimentalBoxMaxStep: Float = 0
+    private var experimentalBoxBounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
 
     let library: MTLLibrary
     private let sweepPipeline: MTLComputePipelineState
@@ -687,10 +693,11 @@ public final class BlastSolver {
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
             refinement.encodeRegrid(
                 encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
-                rigidMask: hasBody ? rigidMaskBuffer : maskBuffer, wallVelocity: wallVelocityBuffer,
+                rigidMask: (hasBody || experimentalBoxCentre != nil) ? rigidMaskBuffer : maskBuffer,
+                wallVelocity: wallVelocityBuffer,
                 control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer, tiles: nil,
                 grid: grid,
-                uniforms: uniforms)
+                uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
             // The structure's own outline in the new patches.
             encodeRemask(encoder)
         }
@@ -845,6 +852,8 @@ public final class BlastSolver {
             encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 13)
             encoder.setBuffer(refinement?.coarseFlux ?? refinementPlaceholder, offset: 0, index: 14)
             encoder.setBuffer(refinement?.coarseSpeciesFlux ?? refinementPlaceholder, offset: 0, index: 15)
+            encoder.setBuffer(experimentalBoxMask ?? noSpecies, offset: 0, index: 16)
+            encoder.setBuffer(experimentalBoxImpulse ?? noSpecies, offset: 0, index: 17)
             for (n, axis) in axes.enumerated() where !asleep {
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
@@ -912,10 +921,11 @@ public final class BlastSolver {
             if let refinement, refining {
                 refinement.encodeRegrid(
                     encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
-                    rigidMask: hasBody ? rigidMaskBuffer : maskBuffer, wallVelocity: wallVelocityBuffer,
+                    rigidMask: (hasBody || experimentalBoxCentre != nil) ? rigidMaskBuffer : maskBuffer,
+                    wallVelocity: wallVelocityBuffer,
                     control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer,
                     tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil, grid: grid,
-                    uniforms: uniforms)
+                    uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
             }
         }
         if updateVisualization {
@@ -1120,6 +1130,9 @@ public final class BlastSolver {
         let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8 + (structure?.memoryFootprint ?? 0)
             + (shells?.memoryFootprint ?? 0) + (refinement?.memoryFootprint ?? 0)
+            + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
+            + (experimentalBoxImpulse?.length ?? 0)
+            + (experimentalBoxCentre == nil ? 0 : wallVelocityBuffer.length)
     }
 
     /// Structural substeps encoded per fluid step. The fluid step never exceeds the CFL limit
@@ -1172,6 +1185,27 @@ public final class BlastSolver {
             uniforms.regionNy = UInt32(region.dims.y)
             uniforms.regionNz = UInt32(region.dims.z)
         }
+        if let centre = experimentalBoxCentre {
+            uniforms.experimentalBox = 1
+            uniforms.boxCentreX = Float(centre.x)
+            uniforms.boxCentreY = Float(centre.y)
+            uniforms.boxCentreZ = Float(centre.z)
+            if let bounds = experimentalBoxBounds {
+                uniforms.boxMinX = bounds.min.x
+                uniforms.boxMinY = bounds.min.y
+                uniforms.boxMinZ = bounds.min.z
+                uniforms.boxMaxX = bounds.max.x
+                uniforms.boxMaxY = bounds.max.y
+                uniforms.boxMaxZ = bounds.max.z
+            }
+            uniforms.regionX = 0
+            uniforms.regionY = 0
+            uniforms.regionZ = 0
+            uniforms.regionNx = UInt32(grid.nx)
+            uniforms.regionNy = UInt32(grid.ny)
+            uniforms.regionNz = UInt32(grid.nz)
+            uniforms.maxStep = experimentalBoxMaxStep
+        }
         return uniforms
     }
 
@@ -1205,5 +1239,151 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 4)
         encoder.setTexture(visualizationTexture, index: 0)
         dispatchGrid(encoder, pipeline: visualizationPipeline)
+    }
+}
+
+// Only the explicit ExperimentalRigidBoxSimulation driver calls this synchronous reference path.
+extension BlastSolver {
+    func installExperimentalBox(_ body: RigidBoxBody) throws {
+        func allocate(_ length: Int) throws -> MTLBuffer {
+            guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
+                throw BlastError.allocationFailed("experimental rigid box")
+            }
+            memset(buffer.contents(), 0, length)
+            return buffer
+        }
+        experimentalBoxDefinition = try allocate(5 * MemoryLayout<SIMD4<Float>>.stride)
+        experimentalBoxMask = try allocate(grid.cellCount)
+        experimentalBoxImpulse = try allocate(grid.cellCount * 6 * MemoryLayout<Float>.stride)
+        wallVelocityBuffer = try allocate(grid.cellCount * 3 * MemoryLayout<Float>.stride)
+        try updateExperimentalBox(body, initial: true)
+    }
+
+    /// Conservative local redistribution when whole cells change occupancy. This is a coarse
+    /// reference remap, not a cut-cell method; local pressure artefacts must be checked on refinement.
+    func updateExperimentalBox(_ body: RigidBoxBody, initial: Bool = false) throws {
+        precondition(!batchInFlight)
+        let domain = SIMD3<Double>(Double(grid.size.x), Double(grid.size.y), Double(grid.size.z))
+        let h = Double(grid.cellSize)
+        guard
+            body.corners.allSatisfy({
+                $0.x >= h && $0.y >= h && $0.z >= -1e-8
+                    && $0.x <= domain.x - h && $0.y <= domain.y - h && $0.z <= domain.z - h
+            })
+        else { throw ExperimentalRigidBoxSimulation.Failure.outsideDomain }
+        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        var next = Array(UnsafeBufferPointer(start: scenery, count: grid.cellCount))
+        var own = [UInt8](repeating: 0, count: grid.cellCount)
+        let walls = wallVelocityBuffer.contents().bindMemory(to: Float.self, capacity: 3 * grid.cellCount)
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let n = grid.index(i, j, k)
+                    let point = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
+                    let local = body.orientation.inverse.act(point - body.position) + body.centreOfMass
+                    guard all(abs(local) .<= body.size / 2) else { continue }
+                    guard scenery[n] == 0 else {
+                        throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision
+                    }
+                    own[n] = 1
+                    next[n] = 1
+                }
+            }
+        }
+        guard own.contains(1) || configuration.refinement > 1 else {
+            throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
+        }
+        let fineCommit = !initial ? try refinement?.prepareBoxRemap(body, grid: grid) : nil
+        if !initial && refinement == nil {
+            func neighbours(_ n: Int) -> [Int] {
+                let i = n % grid.nx
+                let j = (n / grid.nx) % grid.ny
+                let k = n / (grid.nx * grid.ny)
+                return [
+                    (i - 1, j, k), (i + 1, j, k), (i, j - 1, k), (i, j + 1, k), (i, j, k - 1), (i, j, k + 1),
+                ]
+                .filter {
+                    $0.0 >= 0 && $0.0 < grid.nx && $0.1 >= 0 && $0.1 < grid.ny && $0.2 >= 0 && $0.2 < grid.nz
+                }
+                .map { grid.index($0.0, $0.1, $0.2) }
+            }
+            let cells = try ConservativeCellRemap.apply(
+                withState { Array($0) },
+                oldSolid: Array(UnsafeBufferPointer(start: mask, count: grid.cellCount)).map { $0 != 0 },
+                newSolid: next.map { $0 != 0 }, neighbours: neighbours)
+            editState { _ = $0.update(from: cells) }
+        }
+        if let fineCommit { editState(fineCommit) }
+        let geometry = ExperimentalBoxGeometry(body)
+        let definition = experimentalBoxDefinition!.contents().bindMemory(to: SIMD4<Float>.self, capacity: 5)
+        definition.update(from: geometry.vectors, count: 5)
+        let ownMask = experimentalBoxMask!.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        for n in 0..<grid.cellCount {
+            mask[n] = next[n]
+            ownMask[n] = own[n]
+            let i = n % grid.nx
+            let j = (n / grid.nx) % grid.ny
+            let k = n / (grid.nx * grid.ny)
+            let point = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
+            let velocity =
+                own[n] == 0
+                ? SIMD3<Double>.zero
+                : body.linearVelocity + simd_cross(body.angularVelocity, point - body.position)
+            for a in 0..<3 { walls[3 * n + a] = Float(velocity[a]) }
+        }
+        experimentalBoxCentre = body.position
+        experimentalBoxBounds = (
+            body.corners.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, SIMD3<Float>($1)) },
+            body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, SIMD3<Float>($1)) }
+        )
+        let speed =
+            simd_length(body.linearVelocity) + simd_length(body.angularVelocity) * simd_length(body.size)
+        experimentalBoxMaxStep = Float(
+            min(0.001, 0.2 * h / Double(max(configuration.refinement, 1)) / max(speed, 1)))
+    }
+
+    func clearExperimentalBoxImpulse() throws {
+        try refinement?.clearBoxImpulse()
+        memset(experimentalBoxImpulse!.contents(), 0, experimentalBoxImpulse!.length)
+    }
+
+    func experimentalBoxImpulses() -> (linear: SIMD3<Double>, angular: SIMD3<Double>) {
+        let values = experimentalBoxImpulse!.contents().bindMemory(
+            to: Float.self, capacity: 6 * grid.cellCount)
+        var linear = SIMD3<Double>.zero
+        var angular = SIMD3<Double>.zero
+        for n in 0..<grid.cellCount {
+            for a in 0..<3 {
+                linear[a] += Double(values[6 * n + a])
+                angular[a] += Double(values[6 * n + 3 + a])
+            }
+        }
+        if let fine = refinement?.boxImpulses() {
+            linear += fine.linear
+            angular += fine.angular
+        }
+        return (linear, angular)
+    }
+
+    func checkExperimentalBoxRefinement() throws {
+        guard let refinement, let bounds = experimentalBoxBounds else { return }
+        let patches = refinement.patchOfTile.contents().bindMemory(
+            to: Int32.self, capacity: refinement.patchOfTile.length / 4)
+        let dims = refinement.tileDims
+        let gridDims = SIMD3(grid.nx, grid.ny, grid.nz)
+        let low = simd_max(SIMD3<Int>((bounds.min / grid.cellSize).rounded(.down)) &- 1, .zero)
+        let high = simd_min(SIMD3<Int>((bounds.max / grid.cellSize).rounded(.up)) &+ 1, gridDims &- 1)
+        for k in low.z...high.z {
+            for j in low.y...high.y {
+                for i in low.x...high.x {
+                    let tile = SIMD3(i, j, k) / AirRefinement.patchSize
+                    guard patches[tile.x + dims.x * (tile.y + dims.y * tile.z)] >= 0 else {
+                        throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+                    }
+                }
+            }
+        }
+        guard refinement.hasBoxCells else { throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox }
     }
 }

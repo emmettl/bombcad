@@ -168,7 +168,50 @@ nonzero centre-of-mass offset requires explicit inertia. These saved inputs are 
 by the app renderer or blast solver. `swift run rigidboxdemo` generates a self-contained HTML
 replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping.
 Playback and scrubbing use recorded Swift trajectories, with no second physics implementation
-in the viewer. This supplies milestone 1's standalone box demonstration; air coupling is next.
+in the viewer. This supplies milestone 1's standalone box demonstration.
+
+Air coupling has started as `ExperimentalRigidBoxSimulation`, an explicit standalone driver
+for one box on uniform ideal-gas air. It records impulses and torque from the air solver's
+numerical wall traction, advances the reference body and updates the moving boundary.
+Closed-domain gas mass and all five conserved quantities during local remapping are checked,
+as are ambient balance, momentum exchange, pressure-gradient force/torque and grid/timestep
+sensitivity. `swift run -c release rigidboxdemo --blast` compares held and free boxes and
+reports diagnostic timings for this synchronous reference. Existing app simulations continue
+to ignore these inputs. Adaptive coupling now supports translation, rotation and lift-off,
+with factors two and four; fine masks retain box ownership and velocity, fine tractions
+replace covered coarse loads, and insufficient patch coverage is rejected. CPU remapping and
+patch initialisation share geometry; flux recording reads actual fine masks and wall speeds.
+Redistribution crosses patch boundaries and is ordered spatially, independently of GPU pool
+allocation. Opening and collapsing ground gaps conserve gas and energy. The tests compare identical analytic fields, since initial
+prolongation next to a wall can otherwise flatten the coarse slope and obscure that comparison.
+Chemistry, deformable structures and scenery contact are unsupported.
+Whole-cell remapping can introduce pressure artefacts and does not
+preserve the gas's angular momentum exactly; cut-cell accuracy, coupled-blast convergence and
+broader performance measurements remain open before milestone 2 is complete.
+
+`swift run -c release rigidboxdemo --convergence` writes a JSON study of held/free response on
+0.2, 0.1 and 0.05 m uniform grids, a halved timestep on the finest, and adaptive held/free
+comparison. Runs stop at the same 30 ms endpoint in a closed domain, separating gas mass
+conservation from boundary outflow. Grid sensitivity is still substantial for free motion;
+the study is a diagnostic, not a validation result. `swift run -c release rigidboxdemo --refined`
+generates the refined held/free replay. Optimisation of fine-cell remapping and further spatial
+convergence are next, before multiple objects and collision handling.
+
+In the first matched-time study, factor-two adaptive held-box impulse is 36.18 N s against
+37.04 N s on uniform 0.1 m air (2.3% lower). Halving the timestep on uniform 0.05 m air changes
+free-box end speed from 12.30 to 12.21 m/s, while changing the grid from 0.1 to 0.05 m changes
+it from 14.59 to 12.30 m/s. Closed-domain mass changes stay below three parts in ten million.
+These numbers include resolution changes in charge initialisation as well as in the boundary;
+they do not isolate remapping error. Further spatial convergence is needed before trusting
+the free-box response.
+
+With moving refined masks and remapping enabled, the factor-two free-box speed at 30 ms is
+14.39 m/s against 14.59 m/s on uniform 0.1 m air (1.3% lower); its accumulated x impulse is
+29.36 N s against 30.26 N s (3.0% lower). Gas mass change stays below one part in ten million
+in that refined run. Remapping preserves mass, momentum and energy, but can still introduce
+pressure artefacts and does not preserve angular momentum exactly. The reference run is
+slower than the matching uniform case because it rebuilds and orders fine-cell data on the
+CPU; these timings do not establish a production throughput target.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
