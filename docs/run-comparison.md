@@ -117,3 +117,15 @@ peak differences, rename, remove/restore, CSV export and save/reopen at time zer
 cover complete-input undo, sequential cases, cancellation, source-aware grid planning and document
 replacement. Native checks cover restoring a run and undoing it, mass/grid sweeps, partial cancellation
 and the preserved baseline after completion and saving.
+
+## Pressure measurements and grid sensitivity
+
+Saved-run comparisons derive measurements from every recorded pressure sample, using linear interpolation between samples. No archive format change is required; existing saved runs support these measurements.
+
+- Positive impulse integrates only positive overpressure over the entire recorded window, including later positive lobes. Signed impulse integrates positive and negative pressure. Both use Pa·s (equivalent to kPa·ms).
+- Arrival is the first upward crossing of a common, editable absolute overpressure threshold (default 0.1 kPa). The threshold must be finite and greater than zero.
+- Positive-phase duration runs from that threshold crossing to the first subsequent zero crossing. This threshold-dependent duration excludes the initial rise below the threshold.
+- A trace starting above the threshold has unresolved arrival and duration. A detected pulse without a recorded zero crossing has incomplete duration. Impulses cover only the recorded window and can therefore underestimate longer events.
+- Reference differences use the same threshold and matching gauge identity. Missing arrival or duration does not produce a fabricated difference.
+
+The Grid sensitivity disclosure sorts selected runs from coarse to fine and shows successive changes in peak, positive impulse, arrival and phase duration. Comparability requires distinct resolutions and identical physical inputs, numerical settings other than air-grid resolution, target duration and solver version. Resampled imported geometry is deliberately excluded because its changing geometry confounds an air-grid-only study. These changes describe sensitivity; they do not assert mathematical convergence or estimate an order of accuracy.

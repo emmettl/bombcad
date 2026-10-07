@@ -8,6 +8,7 @@ struct RunComparisonView: View {
     @State private var baselineID: UUID?
     @State private var gaugeKey: SavedSimulationRun.Gauge.Key?
     @State private var plotsStructure = false
+    @State private var arrivalThreshold = 0.1
     @State private var currentInputHash: String?
     @State private var removed: [SavedSimulationRun] = []
     @State private var export: ResultsDocument?
@@ -80,7 +81,10 @@ struct RunComparisonView: View {
                     } else {
                         controls
                         comparisonChart.frame(minHeight: 240)
-                        ScrollView { readouts }.frame(maxHeight: 200)
+                        ScrollView {
+                            readouts
+                            if !plotsStructure { gridSummary }
+                        }.frame(maxHeight: 200)
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -129,6 +133,21 @@ struct RunComparisonView: View {
                         )
                         .tag(Optional(gauge.key))
                     }
+                }
+            }
+            if !plotsStructure {
+                HStack {
+                    Text("Arrival threshold (kPa)")
+                    TextField("Threshold", value: $arrivalThreshold, format: .number)
+                        .frame(width: 80)
+                }.font(.caption)
+                Text(
+                    "Impulse uses the full recorded window. Phase duration runs from threshold arrival to the first zero crossing."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+                if !arrivalThreshold.isFinite || arrivalThreshold <= 0 {
+                    Text("Enter a finite threshold greater than zero.").font(.caption).foregroundStyle(
+                        .orange)
                 }
             }
             if Set(runs.map(\.solverVersion)).count > 1 {
@@ -206,6 +225,36 @@ struct RunComparisonView: View {
                         metric(
                             "Peak positive overpressure", gauge.peak,
                             baseline.flatMap { measurement($0)?.peak }, "kPa")
+                        let values = PressureMeasurements(points: gauge.points, threshold: arrivalThreshold)
+                        let reference = baseline.flatMap { measurement($0) }.map {
+                            PressureMeasurements(points: $0.points, threshold: arrivalThreshold)
+                        }
+                        metric(
+                            "Positive impulse (recorded window)", values.positiveImpulse,
+                            reference?.positiveImpulse, "Pa·s")
+                        metric(
+                            "Signed impulse (recorded window)", values.signedImpulse,
+                            reference?.signedImpulse, "Pa·s")
+                        if let arrival = values.arrival {
+                            metric("Arrival", arrival * 1000, reference?.arrival.map { $0 * 1000 }, "ms")
+                        } else {
+                            Text(
+                                !arrivalThreshold.isFinite || arrivalThreshold <= 0
+                                    ? "Arrival requires a valid threshold."
+                                    : values.startsAboveThreshold
+                                        ? "Arrival unresolved: recording starts above threshold."
+                                        : "Arrival threshold not reached."
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let phase = values.positivePhaseDuration {
+                            metric(
+                                "Positive-phase duration", phase * 1000,
+                                reference?.positivePhaseDuration.map { $0 * 1000 }, "ms")
+                        } else if values.phaseIsIncomplete {
+                            Text("Positive phase incomplete in the recorded window.").font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
                         Text("No matching gauge in this run; its pressure trace is omitted.")
                             .font(.callout).foregroundStyle(.orange)
@@ -213,6 +262,45 @@ struct RunComparisonView: View {
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var gridSummary: some View {
+        let study = GridMeasurementStudy(runs: runs)
+        return DisclosureGroup("Grid sensitivity") {
+            if study.isComparable {
+                Text(
+                    "Successive coarse-to-fine changes; these measure sensitivity and do not establish convergence."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+                ForEach(Array(zip(study.runs, study.runs.dropFirst()).enumerated()), id: \.offset) {
+                    _, pair in
+                    if let coarse = measurement(pair.0), let fine = measurement(pair.1) {
+                        let a = PressureMeasurements(points: coarse.points, threshold: arrivalThreshold)
+                        let b = PressureMeasurements(points: fine.points, threshold: arrivalThreshold)
+                        Text(
+                            "\(pair.0.settings.resolution.capitalized) → \(pair.1.settings.resolution.capitalized)"
+                        ).font(.headline)
+                        metric("Peak", fine.peak, coarse.peak, "kPa")
+                        metric("Positive impulse", b.positiveImpulse, a.positiveImpulse, "Pa·s")
+                        if let arrival = b.arrival {
+                            metric("Arrival", arrival * 1000, a.arrival.map { $0 * 1000 }, "ms")
+                        }
+                        if let phase = b.positivePhaseDuration {
+                            metric(
+                                "Phase duration", phase * 1000, a.positivePhaseDuration.map { $0 * 1000 },
+                                "ms")
+                        }
+                    } else {
+                        Text("A matching gauge is required in each run.").font(.caption)
+                    }
+                }
+            } else {
+                Text(
+                    "Select distinct grid resolutions with identical physical inputs, target duration and solver version. Runs with resampled imported geometry require a separate geometry-sensitivity study."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(.top, 8)
     }
 
     private func metric(_ title: String, _ value: Double, _ reference: Double?, _ unit: String) -> some View {
