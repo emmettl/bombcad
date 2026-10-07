@@ -169,6 +169,11 @@ struct AnchorageTests {
         #expect(dowelled.separated == 0)
         #expect(resting.peakSway > 10 * clamped.peakSway)
         #expect(resting.finalSway == resting.peakSway)
+        // Meshed with shells, standing on points through its thickness, it does the same.
+        let shells = try AnchorageStudy.run(
+            device: device, base: .resting, mass: 50, standoff: 25, duration: 0.3, elementSize: 0.125,
+            shells: true)
+        #expect(abs(shells.peakSway - resting.peakSway) < 0.15 * resting.peakSway)
     }
 
     @Test("A block resting on the ground slides once the push passes the friction")
@@ -302,6 +307,107 @@ struct AnchorageTests {
         #expect(try overturn(1.3, anchorage: nil).sway < 1e-3)
         let joint = try overturn(1.3, anchorage: .constructionJoint)
         #expect(joint.uplift < 1e-4 && joint.sway < 1e-3)
+    }
+
+    // MARK: - Shells
+
+    /// The overturning block of `overturn`, as a wall of shells on its midsurface.
+    private func shellWall(anchorage: Anchorage?) throws -> ShellSolver {
+        var model = StructureModel(
+            solids: [Box(min: .zero, max: SIMD3(Self.thickness, 1, Self.height))], material: material,
+            elementSize: 0.25, fixedBase: true)
+        model.elementKind = .shell
+        model.baseAnchorage = anchorage
+        return try ShellSolver(device: device, model: model)
+    }
+
+    private func steps(_ solver: ShellSolver, seconds: Double) -> Int {
+        max(1, Int((seconds / Double(solver.criticalTimeStep)).rounded()))
+    }
+
+    /// The shell wall pushed as `overturn` pushes the block: its heel's uplift and top's sway.
+    private func overturnShells(
+        _ fraction: Float, anchorage: Anchorage?
+    ) throws -> (uplift: Float, sway: Float, summary: StructureSolver.AnchorSummary?) {
+        let solver = try shellWall(anchorage: anchorage)
+        solver.damping = 500
+        solver.advance(steps: steps(solver, seconds: 0.03))
+        solver.damping = 0
+        let start = Float(solver.time)
+        solver.appliedLoad = PressureLoad(
+            axis: 0, positiveSide: false,
+            history: [
+                SIMD2(0, 0), SIMD2(start, 0), SIMD2(start + 0.05, fraction * tippingPressure),
+                SIMD2(start + 1, fraction * tippingPressure),
+            ])
+        solver.advance(steps: steps(solver, seconds: 0.25))
+        let base = solver.node(solver.nearestNode(to: SIMD3(Self.thickness / 2, 0.5, 0)))
+        let top = solver.node(solver.nearestNode(to: SIMD3(Self.thickness / 2, 0.5, Self.height)))
+        // The heel is the base's face towards the charge: its rise as the base node turns.
+        let heel =
+            base.displacement + base.rotation.act(SIMD3(-Self.thickness / 2, 0, 0))
+            - SIMD3(-Self.thickness / 2, 0, 0)
+        return (heel.z, top.ux, solver.anchorSummary())
+    }
+
+    @Test("A shell wall's base is tied by points through its thickness, and bears its weight")
+    func shellBearing() throws {
+        let clamped = try shellWall(anchorage: nil)
+        #expect(clamped.anchorSummary() == nil)
+        let resting = try shellWall(anchorage: .resting())
+        #expect(resting.criticalTimeStep == clamped.criticalTimeStep)
+        resting.damping = 500
+        resting.advance(steps: steps(resting, seconds: 0.05))
+        let summary = try #require(resting.anchorSummary())
+        // Five nodes along the 1 m base, eight points through the thickness at each.
+        #expect(summary.nodes == 5 * ShellSolver.fibresAcross)
+        #expect(abs(summary.reaction.z - weight) / weight < 0.03)
+        #expect(abs(summary.moment.y) < 0.01 * weight * Self.thickness)
+    }
+
+    @Test("A shell wall resting on the ground tips as the block does; on a joint it stands")
+    func shellOverturning() throws {
+        let resting = Anchorage.resting(friction: 1)
+        let below = try overturnShells(0.7, anchorage: resting)
+        #expect(below.uplift < 1e-4 && below.sway < 1e-3)
+        let above = try overturnShells(1.3, anchorage: resting)
+        let rigid = rigidUplift(1.3)
+        #expect(abs(above.uplift - rigid) / rigid < 0.2)
+        let joint = try overturnShells(1.3, anchorage: .constructionJoint)
+        #expect(joint.uplift < 1e-4 && joint.sway < 1e-3)
+        #expect(try #require(joint.summary).separated == 0)
+    }
+
+    @Test("A column of beam elements stands on points over its section, and its base can lift")
+    func columnBase() throws {
+        var model = StructureModel(
+            solids: [Box(min: .zero, max: SIMD3(0.4, 0.4, 3))], material: material, elementSize: 0.25,
+            fixedBase: true)
+        model.elementKind = .shell
+        model.baseAnchorage = .resting()
+        let solver = try ShellSolver(device: device, model: model)
+        #expect(solver.beamCount > 0)
+        solver.damping = 500
+        solver.advance(steps: steps(solver, seconds: 0.05))
+        let summary = try #require(solver.anchorSummary())
+        let weight = material.density * 0.4 * 0.4 * 3 * g
+        #expect(summary.nodes == ShellSolver.fibresAcross * ShellSolver.fibresAcross)
+        #expect(abs(summary.reaction.z - weight) / weight < 0.03)
+        // Set turning about one edge of its foot, it rocks on that edge, the other lifting.
+        solver.damping = 0
+        let spin = SIMD3<Float>(0, 0.5, 0)
+        let toe = SIMD3<Float>(0.4, 0.2, 0)
+        let positions = solver.referencePositions
+        solver.mutateNodes { nodes in
+            for n in nodes.indices {
+                nodes[n].spin = spin
+                nodes[n].velocity = simd_cross(spin, positions[n] - toe)
+            }
+        }
+        solver.advance(steps: steps(solver, seconds: 0.02))
+        let lifted = try #require(solver.anchorSummary())
+        #expect(lifted.maxOpening > 1e-3)
+        #expect(lifted.reaction.z > 0)
     }
 
     @Test("Connections are recognised by name")

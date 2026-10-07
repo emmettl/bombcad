@@ -20,7 +20,7 @@ import simd
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
-//   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625]
+//   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -1319,9 +1319,11 @@ func runAnchorage() throws {
     let mass = option("mass").flatMap { Float($0) } ?? 50
     let standoffs = (option("standoff") ?? "6,10,15,25").split(separator: ",").compactMap { Float($0) }
     let duration = option("time").flatMap { Float($0) } ?? 0.5
-    let h = option("h").flatMap { Float($0) } ?? 0.0625
+    // `--shells` meshes the wall with shells (of 0.125 m unless `--h` says otherwise).
+    let shells = flag("shells")
+    let h = option("h").flatMap { Float($0) } ?? (shells ? 0.125 : 0.0625)
     print(
-        "Freestanding wall, \(format(Double(AnchorageStudy.height), 0)) m high and "
+        "Freestanding wall\(shells ? " of shells" : ""), \(format(Double(AnchorageStudy.height), 0)) m high and "
             + "\(format(Double(AnchorageStudy.thickness) * 1000, 0)) mm thick, a surface burst of "
             + "\(format(Double(mass), 0)) kg; Kingery–Bulmash reflected pulse, no air; \(format(Double(duration), 1)) s"
     )

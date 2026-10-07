@@ -44,6 +44,11 @@ Anything else, a block as long as it is wide, cannot be meshed this way.
    column, a region filling the section (a column's smeared steel) becomes four corner bars at
    40 mm cover, and one filling part of it (a mat near one face) a bar group at its middle, up to
    eight groups; the ratios across the column count as ties.
+8. **The base.** Nodes on the ground are clamped, position and rotation, when the structure has
+   a fixed base, unless it has a base connection that can open, slide and fail: then it acts at
+   nine points through a wall's thickness and nine by nine over a column's section, which turn
+   with the node, so the base can rock on its toe (see
+   [base connections](structural-model.md#base-connections)).
 
 ## Elements
 

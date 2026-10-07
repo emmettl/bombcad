@@ -37,24 +37,64 @@ public enum AnchorageStudy {
         public var wallSeconds: Double
     }
 
+    /// The calls the study makes of a body, whether of solid elements or of shells.
+    private struct Body {
+        var step: Double
+        var time: () -> Double
+        var advance: (Int) -> Void
+        var setDamping: (Float) -> Void
+        var setLoad: (PressureLoad) -> Void
+        /// The top's displacement away from the charge, at mid-length.
+        var sway: () -> Float
+        var anchors: () -> StructureSolver.AnchorSummary?
+        var summary: () -> StructureSummary
+    }
+
+    private static func body(_ solver: StructureSolver) -> Body {
+        let top = solver.nodeIndex(0, solver.ey / 2, solver.ez)
+        return Body(
+            step: Double(solver.criticalTimeStep), time: { solver.time }, advance: solver.advance(steps:),
+            setDamping: { solver.damping = $0 }, setLoad: { solver.appliedLoad = $0 },
+            sway: {
+                var value: Float = 0
+                solver.mutateNodes { value = $0[top].ux }
+                return value
+            }, anchors: solver.anchorSummary, summary: solver.summary)
+    }
+
+    private static func body(_ solver: ShellSolver) -> Body {
+        let top = solver.nearestNode(to: SIMD3(thickness / 2, length / 2, height))
+        return Body(
+            step: Double(solver.criticalTimeStep), time: { solver.time }, advance: solver.advance(steps:),
+            setDamping: { solver.damping = $0 }, setLoad: { solver.appliedLoad = $0 },
+            sway: { solver.node(top).ux }, anchors: solver.anchorSummary, summary: solver.summary)
+    }
+
     /// Runs the wall on `base` for `duration` seconds after a charge of `mass` kg of TNT bursts
-    /// on the ground `standoff` metres in front of it.
+    /// on the ground `standoff` metres in front of it, meshed with solid elements of
+    /// `elementSize`, or with shells of that size if `shells`.
     public static func run(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 6, duration: Float = 0.5,
-        elementSize: Float = 0.0625
+        elementSize: Float = 0.0625, shells: Bool = false
     ) throws -> Result {
         let started = ContinuousClock.now
         let wall = Box(min: .zero, max: SIMD3(thickness, length, height))
         var model = StructureModel(solids: [wall], elementSize: elementSize, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: barArea, depth: 0.04)
         model.baseAnchorage = base.anchorage
-        let solver = try StructureSolver(device: device, model: model)
+        let solver: Body
+        if shells {
+            model.elementKind = .shell
+            solver = body(try ShellSolver(device: device, model: model))
+        } else {
+            solver = body(try StructureSolver(device: device, model: model))
+        }
 
         // Settle under gravity first, with damping that is then removed.
-        let dt = Double(solver.criticalTimeStep)
-        solver.damping = 500
-        solver.advance(steps: Int((0.03 / dt).rounded()))
-        solver.damping = 0
+        let dt = solver.step
+        solver.setDamping(500)
+        solver.advance(Int((0.03 / dt).rounded()))
+        solver.setDamping(0)
 
         let scaled = Double(standoff) / cbrt(Double(mass))
         guard let point = KingeryBulmash.point(at: scaled) else {
@@ -62,32 +102,29 @@ public enum AnchorageStudy {
         }
         let pressure = Float(point.reflectedPressure)
         let pulse = Float(2 * point.reflectedImpulse(mass: Double(mass)) / point.reflectedPressure)
-        let start = Float(solver.time)
-        solver.appliedLoad = PressureLoad(
-            axis: 0, positiveSide: false,
-            history: [SIMD2(0, 0), SIMD2(start, pressure), SIMD2(start + pulse, 0), SIMD2(start + 100, 0)])
+        let start = Float(solver.time())
+        solver.setLoad(
+            PressureLoad(
+                axis: 0, positiveSide: false,
+                history: [
+                    SIMD2(0, 0), SIMD2(start, pressure), SIMD2(start + pulse, 0), SIMD2(start + 100, 0),
+                ]))
 
-        let top = solver.nodeIndex(0, solver.ey / 2, solver.ez)
-        func sway() -> Float {
-            var value: Float = 0
-            solver.mutateNodes { value = $0[top].ux }
-            return value
-        }
         var result = Result(
             base: base, pressure: pressure, duration: pulse, peakSway: 0, finalSway: 0,
             summary: StructureSummary(), wallSeconds: 0)
         let sample = 2e-4
         let stepsPerSample = max(1, Int((sample / dt).rounded()))
         for _ in 0..<Int((Double(duration) / sample).rounded()) {
-            solver.advance(steps: stepsPerSample)
-            result.peakSway = max(result.peakSway, sway())
-            if let anchors = solver.anchorSummary() {
+            solver.advance(stepsPerSample)
+            result.peakSway = max(result.peakSway, solver.sway())
+            if let anchors = solver.anchors() {
                 result.peakUplift = max(result.peakUplift, anchors.maxOpening)
                 result.peakBaseMoment = max(result.peakBaseMoment, abs(anchors.moment.y) / length)
             }
         }
-        result.finalSway = sway()
-        if let anchors = solver.anchorSummary() {
+        result.finalSway = solver.sway()
+        if let anchors = solver.anchors() {
             result.maxSlip = anchors.maxSlip
             result.separated = Float(anchors.separated) / Float(max(anchors.nodes, 1))
             result.meanDamage = anchors.meanDamage

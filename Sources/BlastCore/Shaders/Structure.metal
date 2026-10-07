@@ -2087,66 +2087,92 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
 }
 
 // Gathers element forces at every node and advances velocity and position.
+// A connection of a body's base to the ground (`Anchorage`), as both solvers' uniforms give it.
+struct AnchorLaw {
+    float kn;            // Pa/m
+    float ks;            // Pa/m
+    float tension;       // Pa
+    float plateau;       // m of opening held at full tension
+    float opening;       // m of opening at which tension is gone
+    float cohesion;      // Pa
+    float cohesionSlip;  // m of sliding over which cohesion is lost
+    float friction;
+};
+
+AnchorLaw anchorLaw(constant StructureUniforms &u) {
+    return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
+                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction};
+}
+
 // Fraction of an anchorage's tensile strength left once it has opened by `peak`: all of it to
 // the end of the plateau, then falling linearly to nothing. Matches `Anchorage.envelope`.
-float anchorEnvelope(float peak, constant StructureUniforms &u) {
-    float plateau = max(u.anchorPlateau, u.anchorTension / u.anchorNormalStiffness);
-    float end = max(u.anchorOpening, plateau);
+float anchorEnvelope(float peak, AnchorLaw law) {
+    float plateau = max(law.plateau, law.tension / law.kn);
+    float end = max(law.opening, plateau);
     if (peak <= plateau) {
         return 1.0f;
     }
     return peak >= end ? 0.0f : (end - peak) / (end - plateau);
 }
 
-// A node's connection to the ground (`Anchorage`): two float4 per node, (tributary area, slip x,
-// slip y, wear) and (the force the connection put on the node in the last substep, the largest
-// opening so far). Wear is the fraction of the cohesion that sliding has rubbed away. The area
-// is zero for nodes without a connection. Updates the state and returns the force on the node.
-float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u) {
-    float3 displacement = float3(node.displacement);
-    float4 state = anchors[2 * index];
-    float area = state.x;
-    float2 slip = state.yz;
-    float wear = state.w;
-    float peak = anchors[2 * index + 1].w;
-    float kn = u.anchorNormalStiffness;
-    float ks = u.anchorShearStiffness;
+// The traction (shear x, shear y, normal; normal positive in tension) a point of the joint
+// carries when its side of the joint has moved by `displacement` and rises at `rise` m/s.
+// `damper` (Pa s/m) damps the bearing as contacts are. `state` is (slip x, slip y, wear, largest
+// opening so far), wear being the fraction of the strength that sliding has rubbed away; it is
+// updated.
+float3 anchorTraction(thread float4 &state, float3 displacement, float rise, float damper, AnchorLaw law) {
+    float2 slip = state.xy;
+    float wear = state.z;
+    float peak = state.w;
     float opening = displacement.z;
 
-    // Across the joint: a stiff bearing in compression, damped as contacts are; in tension,
-    // elastic to the strength, then the envelope, unloading towards the origin. Sliding wears
-    // the tension as it wears the cohesion.
-    float normal;  // traction, positive in tension
+    // Across the joint: a stiff bearing in compression, damped; in tension, elastic to the
+    // strength, then the envelope, unloading towards the origin. Sliding wears the tension as it
+    // wears the cohesion.
+    float normal;
     if (opening <= 0.0f) {
-        float damper = 2.0f * u.contactDamping * sqrt(kn * node.mass / area);
-        normal = min(kn * opening + damper * node.velocity.z, 0.0f);
-    } else if (u.anchorTension > 0.0f) {
+        normal = min(law.kn * opening + damper * rise, 0.0f);
+    } else if (law.tension > 0.0f) {
         peak = max(peak, opening);
-        float onset = u.anchorTension / kn;
+        float onset = law.tension / law.kn;
         normal = (1.0f - wear)
-            * (peak <= onset ? kn * opening : u.anchorTension * anchorEnvelope(peak, u) * opening / peak);
+            * (peak <= onset ? law.kn * opening : law.tension * anchorEnvelope(peak, law) * opening / peak);
     } else {
         normal = 0.0f;
     }
 
     // Along it: elastic about the slip so far, up to Mohr-Coulomb. Opening takes the cohesion
     // as it takes the tension, and sliding wears it.
-    float2 shear = ks * (displacement.xy - slip);
-    float cohesion = u.anchorCohesion * (1.0f - wear) * (u.anchorTension > 0.0f ? anchorEnvelope(peak, u) : 1.0f);
-    float limit = cohesion + u.anchorFriction * max(-normal, 0.0f);
+    float2 shear = law.ks * (displacement.xy - slip);
+    float cohesion = law.cohesion * (1.0f - wear) * (law.tension > 0.0f ? anchorEnvelope(peak, law) : 1.0f);
+    float limit = cohesion + law.friction * max(-normal, 0.0f);
     float magnitude = length(shear);
     if (magnitude > limit) {
-        float slide = (magnitude - limit) / ks;
+        float slide = (magnitude - limit) / law.ks;
         float2 direction = shear / magnitude;
         slip += slide * direction;
-        if (u.anchorCohesion > 0.0f) {
-            wear = u.anchorCohesionSlip > 0.0f ? min(1.0f, wear + slide / u.anchorCohesionSlip) : 1.0f;
+        if (law.cohesion > 0.0f) {
+            wear = law.cohesionSlip > 0.0f ? min(1.0f, wear + slide / law.cohesionSlip) : 1.0f;
         }
         shear = limit * direction;
     }
-    float3 force = -area * float3(shear, normal);
-    anchors[2 * index] = float4(area, slip, wear);
-    anchors[2 * index + 1] = float4(force, peak);
+    state = float4(slip, wear, peak);
+    return float3(shear, normal);
+}
+
+// A lattice node's connection to the ground: two float4 per node, (tributary area, slip x,
+// slip y, wear) and (the force the connection put on the node in the last substep, the largest
+// opening so far). The area is zero for nodes without a connection. Updates the state and
+// returns the force on the node.
+float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u) {
+    float4 stored = anchors[2 * index];
+    float area = stored.x;
+    float4 state = float4(stored.yzw, anchors[2 * index + 1].w);
+    AnchorLaw law = anchorLaw(u);
+    float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
+    float3 force = -area * anchorTraction(state, float3(node.displacement), node.velocity.z, damper, law);
+    anchors[2 * index] = float4(area, state.xyz);
+    anchors[2 * index + 1] = float4(force, state.w);
     return force;
 }
 

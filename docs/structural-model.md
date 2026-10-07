@@ -120,6 +120,15 @@ the ground over its share of the base (a quarter of each element face it touches
   times compression, then slides. Opening takes the cohesion away as it takes the tension, and
   sliding wears both away over a given slip.
 
+Shells and beams have one node through a wall's thickness or a column's section, so there the
+connection acts at points of the footprint instead: nine through the thickness at each node on
+a wall's base, over half of each element edge it ends, and nine by nine over a column's
+section, from face to face with the trapezoid rule's weights. Each point moves with its node's
+rotation, so a wall can open at its heel while it bears at its toe, and the node takes the
+points' moment as well as their force. (Points at the middles of nine strips put the toe 7/16
+of the thickness out instead of at the face, and a shell wall resting on the ground rocked
+42% further than the rigid estimate; from face to face it is within 9%, as solid elements are.)
+
 Once nothing is left the node only rests on the ground: it bears on it, slides on it with
 Coulomb friction, and lifts off and lands again anywhere on it. By default the springs are as
 stiff as one more element of the body's material, E / h and G / h per unit area, which leaves
@@ -147,7 +156,10 @@ the joint opens and let go past twice the plateau; a resting block holds a push 
 friction and accelerates at (F − μW)/m within 10% at 130%, with the friction force averaging
 μW within 10%; a construction joint holds 70% of its cohesion and friction and slides through
 at 130%; and a tall block resting on the ground holds 70% of the push that tips it, while at
-130% its heel rises as a rigid block rocking about its toe would, within 15%.
+130% its heel rises as a rigid block rocking about its toe would, within 15%. The same wall
+meshed with shells bears its weight within 3%, holds at 70%, rocks within 20% of the rigid
+block at 130% (9% in fact), and stands on a construction joint; a column of beam elements
+bears its weight and, set turning, rocks on one edge of its foot.
 
 **A freestanding wall** (`AnchorageStudy`, `blastbench anchorage`). The deformable-wall
 preset's wall, 3 m high and 250 mm thick with a 565 mm²/m mat near each face, as a 1 m strip
@@ -176,6 +188,11 @@ impulse for 50 kg of TNT, uniform over its face, with no air and no clearing, fo
 "Over" is a wall rotating away from its base past 0.7 m of sway at 0.5 s; "rising" one still
 rotating away. No element failed in any run; each takes about 2.5 s.
 
+Meshed with shells of 125 mm (`blastbench anchorage --shells`, about 1.4 s a run) the wall
+does the same on every base: peak sway 210, 69, 29 and 10 mm clamped, 248, 78, 33 and 12 mm
+on starter bars, and over, or still going over, on a plain joint or resting, at 6, 10, 15 and
+25 m.
+
 Where the wall is cast on starter bars the clamped base is a fair stand-in at a distance: the
 peak sway is within 10% of the clamped wall's at 15 and 25 m, 21% more at 10 m and 39% more at
 6 m, where the bars yield and the heel lifts 17 mm, and the wall ends no further over. Without
@@ -190,8 +207,8 @@ is idealised, and the footing itself is rigid.
 **Not modelled.** The ground is rigid and flat: there is no footing, soil, embedment or
 foundation rotation, only the joint at z = 0. The connection has no rate dependence and no
 dilatancy, the bars' yield is a plateau of the joint as a whole rather than bars at the faces,
-and opening and sliding interact only through the shared loss of strength. Shells (and the
-shell part of a mixed body) keep a clamped base, as do support regions (`supports`).
+and opening and sliding interact only through the shared loss of strength. Support regions
+(`supports`) still hold their nodes still.
 
 ## Failure and removal
 

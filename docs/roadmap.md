@@ -358,8 +358,10 @@ and dowelled connections are provided, checked against statics, and compared on 
 wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars the wall sways
 within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
 resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
-[structural model](structural-model.md#base-connections). Still open: footings, soil and
-foundation rotation; connections for shells and support regions; and a measured case.
+[structural model](structural-model.md#base-connections). Shells and columns of beam elements
+have them too, at points across their footprint, and give the wall the same answers. Still
+open: footings, soil and foundation rotation; connections for support regions; and a measured
+case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2

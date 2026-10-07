@@ -661,8 +661,9 @@ public final class StructureSolver {
 
     /// The state of the base's connection to the ground, when it has one (`Anchorage`).
     public struct AnchorSummary: Sendable {
-        /// Nodes tied to the ground, and those whose tie has lost all its strength (none for a
-        /// body resting on the ground, which has none to lose).
+        /// Nodes tied to the ground (for shells, points of their footprint), and those whose tie
+        /// has lost all its strength (none for a body resting on the ground, which has none to
+        /// lose).
         public var nodes = 0
         public var separated = 0
         /// The fraction of the tie's strength lost, averaged over the base area.

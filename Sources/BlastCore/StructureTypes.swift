@@ -454,8 +454,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Clamp the nodes that sit on the ground plane.
     public var fixedBase: Bool
     /// With `fixedBase`, ties the base to the ground by a connection that can deform, open,
-    /// slide and fail (see `Anchorage`) instead of clamping it. Nil clamps it. Solid elements
-    /// only; a shell's base stays clamped.
+    /// slide and fail (see `Anchorage`) instead of clamping it. Nil clamps it. Support regions
+    /// stay clamped.
     public var baseAnchorage: Anchorage?
     public var reinforcement: [ReinforcementLayer] = []
     /// Bars at 45 degrees to the lattice (see `InclinedBars`).
