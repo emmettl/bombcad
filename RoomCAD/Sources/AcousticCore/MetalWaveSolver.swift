@@ -47,12 +47,15 @@ final class MetalWaveSolver: @unchecked Sendable {
     }
 
     /// Simulates like `WaveSolver.simulate`, returning each receiver's microphone output after each step,
-    /// or nil if `stop` asks it to.
+    /// or nil if `stop` asks it to, `abandon` gives up on it, or the GPU fails. Between command buffers,
+    /// `abandon` is passed the steps done and the seconds taken so far.
     func simulate(
         _ solver: WaveSolver, source: SIMD3<Double>,
         receivers: [(position: SIMD3<Double>, microphone: Microphone)],
-        steps: Int, stop: @Sendable () -> Bool
+        steps: Int, stop: @Sendable () -> Bool,
+        abandon: (_ done: Int, _ elapsed: TimeInterval) -> Bool = { _, _ in false }
     ) -> [[Double]]? {
+        let started = Date()
         let layout = solver.gridLayout(source: source, receivers: receivers)
         let count = layout.count
         let c = solver.atmosphere.soundSpeed
@@ -148,7 +151,9 @@ final class MetalWaveSolver: @unchecked Sendable {
             commands.commit()
             commands.waitUntilCompleted()
             guard commands.status == .completed else { return nil }
+            if solver.gpuDelay > 0 { Thread.sleep(forTimeInterval: solver.gpuDelay) }
             start += Self.stepsPerBuffer
+            if start < steps, abandon(start, Date().timeIntervalSince(started)) { return nil }
         }
 
         let pressures = output.contents().bindMemory(to: Float.self, capacity: receivers.count * steps)

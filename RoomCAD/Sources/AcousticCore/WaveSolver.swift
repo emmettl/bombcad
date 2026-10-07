@@ -30,6 +30,9 @@ struct WaveSolver {
 
     enum Engine: Sendable { case automatic, cpu }
 
+    /// For tests: extra seconds after each GPU command buffer, standing in for other work on the GPU.
+    var gpuDelay: TimeInterval = 0
+
     /// Grid points per wavelength at `topFrequency`.
     static let pointsPerWavelength = 10.0
     /// Fraction of the stability limit used for the time step.
@@ -301,11 +304,12 @@ extension WaveSolver {
     /// model's units and weighted by `weight(f)`: the crossover's low-pass and the low-frequency cutoff.
     ///
     /// `fftLength` must be a power of two at least `frames` plus room for the decay to finish; the
-    /// solver runs `fftLength / decimation` steps so its spectrum shares the audio spectrum's bins.
+    /// solver runs `fftLength / decimation` steps so its spectrum shares the audio spectrum's bins. Also
+    /// says how many of the runs used the GPU.
     func responses(
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], frames: Int,
         fftLength: Int, weight: (Double) -> Double, stop: @Sendable () -> Bool
-    ) -> [[Float]]? {
+    ) -> (channels: [[Float]], gpuRuns: Int)? {
         let steps = fftLength / decimation
         let dt = timeStep
         let fft = RealFFT(length: steps)
@@ -315,17 +319,18 @@ extension WaveSolver {
         let audio = RealFFT(length: fftLength)
         var real = Array(repeating: [Double](repeating: 0, count: fftLength / 2), count: receivers.count)
         var imag = real
+        var gpuRuns = 0
         // Walls absorb differently in each octave band: one run per group of bands with the same
         // impedances, each kept only in its own bands. The band weights sum to one, so together they
         // cover the spectrum once.
         for group in bandGroups {
             var solver = self
             solver.impedanceBands = group
-            guard let recorded = solver.run(source: source, receivers: receivers, steps: steps, stop: stop)
-            else {
+            guard let run = solver.run(source: source, receivers: receivers, steps: steps, stop: stop) else {
                 return nil
             }
-            for (r, samples) in recorded.enumerated() {
+            if run.onGPU { gpuRuns += 1 }
+            for (r, samples) in run.signals.enumerated() {
                 let p = fft.forward(samples)
                 for k in 1..<half {
                     let f = Double(k) / (Double(steps) * dt)
@@ -350,21 +355,61 @@ extension WaveSolver {
                 }
             }
         }
-        return receivers.indices.map { r in
+        let channels = receivers.indices.map { r in
             let signal = audio.inverse(real: real[r], imag: imag[r])
             return (0..<frames).map { Float(signal[$0]) }
         }
+        return (channels, gpuRuns)
     }
 
-    /// Simulates on the GPU when there is one and the engine allows it, otherwise on the CPU.
+    /// Simulates on the GPU when there is one and the engine allows it, otherwise on the CPU, and says
+    /// which it used.
+    ///
+    /// Other work can share the GPU and slow a run many times over. Once a GPU run has shown its pace, if
+    /// what remains would take over a second and more than half as long again as the whole run on the CPU,
+    /// timed over a few steps of the same grid, the run is abandoned and redone on the CPU. The grid and
+    /// crossover stay the same, so the result does not depend on which engine ran it.
     func run(
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
         stop: @Sendable () -> Bool
-    ) -> [[Double]]? {
+    ) -> (signals: [[Double]], onGPU: Bool)? {
         if engine == .automatic, let gpu = MetalWaveSolver.shared {
-            return gpu.simulate(self, source: source, receivers: receivers, steps: steps, stop: stop)
+            var cpuSeconds: Double?
+            let result = gpu.simulate(self, source: source, receivers: receivers, steps: steps, stop: stop) {
+                done, elapsed in
+                Self.abandonsGPU(done: done, steps: steps, elapsed: elapsed) {
+                    if let cpuSeconds { return cpuSeconds }
+                    let estimate = cpuSecondsEstimate(source: source, receivers: receivers, steps: steps)
+                    cpuSeconds = estimate
+                    return estimate
+                }
+            }
+            if let result { return (result, true) }
+            if stop() { return nil }
         }
-        return simulate(source: source, receivers: receivers, steps: steps, stop: stop)
+        return simulate(source: source, receivers: receivers, steps: steps, stop: stop).map { ($0, false) }
+    }
+
+    /// Seconds a GPU run goes before its pace is judged.
+    static let gpuTrial = 0.25
+
+    /// Whether a GPU run that has done `done` of `steps` steps in `elapsed` seconds should give way to the
+    /// CPU: once it has run for `gpuTrial`, if what remains would take over a second and more than 1.5
+    /// times as long as `cpuSeconds()`, the whole run on the CPU, which is only asked for then.
+    static func abandonsGPU(done: Int, steps: Int, elapsed: TimeInterval, cpuSeconds: () -> Double) -> Bool {
+        guard elapsed > gpuTrial, done > 0 else { return false }
+        let remaining = elapsed / Double(done) * Double(steps - done)
+        return remaining > 1 && remaining > 1.5 * cpuSeconds()
+    }
+
+    /// Seconds the CPU would take for `steps` steps, from a short run of about 5 × 10⁷ cell updates.
+    func cpuSecondsEstimate(
+        source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int
+    ) -> Double {
+        let trial = min(max(Int(5e7 / Double(cells.x * cells.y * cells.z)), 8), 256, steps)
+        let start = Date()
+        _ = simulate(source: source, receivers: receivers, steps: trial, stop: { false })
+        return Date().timeIntervalSince(start) / Double(trial) * Double(steps)
     }
 
     /// Whether `run` will use the GPU.

@@ -226,6 +226,17 @@ its six faces' wall coefficients, so the GPU has no separate plan path. It reach
 updates a second on large grids, limited by memory bandwidth. Without a GPU the CPU solver runs as
 before, on the CPU's cores, with small grids on one thread.
 
+Other apps can keep the GPU busy and slow a run many times over. Each run therefore starts on the GPU
+and, after a quarter of a second, projects its pace to the end. If what remains would take over a
+second, and more than 1.5 times as long as the whole run on the CPU, the run is abandoned and redone
+on the CPU. The CPU's time is estimated by timing a few steps of the same grid. The crossover and grid
+don't change, so the response doesn't depend on which engine ran it, beyond single-precision rounding.
+Each run decides afresh, so the GPU is used again once it frees up.
+
+With a separate process saturating the GPU, the L-shaped living room's runs projected to about 30 s
+each on the GPU and took 6.5 s on the CPU, which the estimate predicted within about 20%. The response
+view says how many runs used each engine.
+
 Tests check the solver against theory:
 
 - In a 16 m room with absorbing walls, the low-frequency direct sound matches the geometrical model
@@ -241,6 +252,9 @@ Tests check the solver against theory:
   (129 Hz) each decay within 10% of the rate their own band's impedance gives.
 - The GPU and CPU solvers agree to within 10⁻¹⁰ of the energy, in a box and in an L-shaped plan with a
   door, for omni and cardioid receivers.
+- The rule itself is tested on its own. End to end, a delay after each GPU command buffer stands in for
+  a busy GPU: a long run moves to the CPU and gives exactly the CPU's result, while a run with under a
+  second left when judged stays on the GPU.
 - The impedance inversion reproduces the absorption, and rooms over budget skip the solver.
 
 On an M-series Mac the presets' crossovers run from 69 Hz (stone church) to 457 Hz (vocal booth), with

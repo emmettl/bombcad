@@ -189,9 +189,10 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     /// The wave solver's grid cells and the time it took, if it was used.
     public var waveCells: Int?
     public var waveSeconds: Double?
-    /// Whether it ran on the GPU, and how many runs the walls' frequency-dependent absorption needed.
-    public var waveOnGPU: Bool?
+    /// How many runs the walls' frequency-dependent absorption needed, and how many of them used the GPU;
+    /// the rest ran on the CPU, because there was no GPU or other work was keeping it busy.
     public var waveRuns: Int?
+    public var waveGPURuns: Int?
     /// Why the wave solver was not used although asked for, if so.
     public var waveNote: String?
     /// In a room with a floor plan, the wall reflections and total reflections the image sources reached.
@@ -428,7 +429,7 @@ public enum RoomResponseGenerator {
         }
 
         // Below the crossover, replace the geometrical response with the wave solver's.
-        var wave: (crossover: Double, cells: Int, seconds: Double, gpu: Bool, runs: Int)?
+        var wave: (crossover: Double, cells: Int, seconds: Double, runs: Int, gpuRuns: Int)?
         var waveNote: String?
         if settings.lowFrequencyModel {
             let waveStart = Date()
@@ -453,12 +454,12 @@ public enum RoomResponseGenerator {
                         ) {
                             OctaveBands.rise($0, crossover: crossover)
                         }
-                        channels[index] = zip(high, low[index]).map { $0 + $1 }
+                        channels[index] = zip(high, low.channels[index]).map { $0 + $1 }
                     }
                     let cells = plan.solver.cells
                     wave = (
                         crossover, cells.x * cells.y * cells.z, Date().timeIntervalSince(waveStart),
-                        plan.solver.usesGPU, plan.solver.bandGroups.count
+                        plan.solver.bandGroups.count, low.gpuRuns
                     )
                 }
             } else {
@@ -473,7 +474,8 @@ public enum RoomResponseGenerator {
             generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
             diffuseRays: settings.room.scatters || tracer.specularOrderLimit < Int.max
                 ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
-            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveOnGPU: wave?.gpu, waveRuns: wave?.runs,
+            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveRuns: wave?.runs,
+            waveGPURuns: wave?.gpuRuns,
             waveNote: waveNote,
             planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
 

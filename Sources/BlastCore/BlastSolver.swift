@@ -95,7 +95,7 @@ public final class BlastSolver {
     static let oxygenInAir: Float = 0.232
     static let oxygenPerFuel: Float = 5.25 * 32 / 227.13
     private var current = 0
-    private let maskBuffer: MTLBuffer
+    let maskBuffer: MTLBuffer
     /// Solid flags of the rigid blocks alone, which never change.
     private let rigidMaskBuffer: MTLBuffer
     private let peakBuffer: MTLBuffer
