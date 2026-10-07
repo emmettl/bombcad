@@ -28,6 +28,36 @@ a source's wavefronts and one path reflecting off a wall to a listener) is drawn
 RoomCAD opens a new room at launch rather than the Open panel, unless macOS restores windows or a
 document is opened from Finder.
 
+### Releasing RoomCAD
+
+`RoomCAD/Scripts/release.py` makes a Developer ID-signed, notarized build, with the same steps as
+BombCAD's (see [Releasing](releasing.md)). It never tags or publishes anything. It uses the same
+certificate and notary profile: `ROOMCAD_SIGNING_IDENTITY` and `ROOMCAD_NOTARY_PROFILE`, or BombCAD's
+variables if those are unset. Set the version in `RoomCAD/Support/Info.plist`, commit, then run:
+
+```bash
+make roomcad-release-check
+make roomcad-release
+```
+
+The script requires a clean checkout and a well-formed version. It runs RoomCAD's strict lint, its
+tests and the release script's tests, then builds `RoomCAD/dist/RoomCAD.app` in release and checks
+that the app:
+
+- matches the source's version;
+- is arm64;
+- carries its bundled recordings with their credits, the icon, `LICENSE` and
+  `THIRD-PARTY-NOTICES.md`.
+
+It then signs the app with the hardened runtime and submits it to Apple, stopping unless notarization
+is accepted. Finally it staples and validates the ticket, re-verifies the signature and asks
+Gatekeeper to assess the app. Only then does it write `RoomCAD-<version>-macos-arm64.zip` with its
+checksum and manifest.
+
+The release tests run with `make roomcad-test`, with every external tool stubbed out. They check that
+a rejected notarization, a Gatekeeper refusal, missing recordings and missing licences each stop the
+script before an archive is written.
+
 ## The window
 
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
