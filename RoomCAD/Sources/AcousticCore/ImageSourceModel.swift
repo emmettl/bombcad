@@ -38,11 +38,11 @@ public struct ImageSourceModel: Sendable {
     ///
     /// The gain is relative to the free-field pressure 1 m from the source: spherical spreading `1/r`,
     /// the product of the reflection coefficients met on the path and, optionally, air attenuation.
-    /// Arrivals are not delivered in time order.
+    /// Arrivals are not delivered in time order. Enumeration ends early once `stop` returns true.
     @discardableResult
     public func forEachArrival(
         at receiver: SIMD3<Double>, duration: Double, maximumOrder: Int, includeDirect: Bool = true,
-        _ body: (_ delay: Double, _ order: Int, _ gains: [Double]) -> Void
+        stop: () -> Bool = { false }, _ body: (_ delay: Double, _ order: Int, _ gains: [Double]) -> Void
     ) -> Summary {
         let c = atmosphere.soundSpeed
         let reach = duration * c
@@ -66,7 +66,7 @@ public struct ImageSourceModel: Sendable {
         var gains = [Double](repeating: 0, count: bands)
         for x in xs {
             let x2 = x.offset * x.offset
-            if x2 > reach2 { break }
+            if x2 > reach2 || stop() { break }
             for y in ys {
                 let xy2 = x2 + y.offset * y.offset
                 if xy2 > reach2 { break }

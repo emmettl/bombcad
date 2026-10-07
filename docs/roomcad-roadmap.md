@@ -7,8 +7,9 @@ BombCAD consumes it with compatibility aliases.
 The first acoustic backend is implemented in the separate `RoomCAD` package. It covers M2 items 1–3
 and 5: a rectangular-room image-source model with octave-band absorption, air attenuation, and
 stereo 32-bit float WAV export with a JSON description. Driftbox's own convolver plays the exported
-files. See [Room-acoustics model](room-acoustics-model.md). The RoomCAD app, `.roomcad` documents,
-the wave solver and the Driftbox rack effect remain proposed work.
+files. See [Room-acoustics model](room-acoustics-model.md). A first RoomCAD app with versioned `.roomcad`
+documents is also implemented (M1 items 3 and 4); see [RoomCAD app and documents](roomcad-app.md).
+The wave solver and the Driftbox rack effect remain proposed work.
 
 The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
@@ -220,6 +221,25 @@ Progress (October 2026):
 
 Done when: both apps build, existing BombCAD checks pass, and RoomCAD round-trips a scene
 and renders its source and receiver positions. Shared shader resources load in both apps.
+
+Progress (October 2026): items 3 and 4 are implemented. RoomCAD is a separate SwiftPM package with
+the RoomCAD app and the acousticbench tool. It depends on SimulationKit's DocumentKit and on nothing
+in BombCAD.
+
+The app edits a rectangular room, its surfaces, one source and 1 to 16 receivers in plan and section
+drawings and an inspector. It saves and reopens versioned `.roomcad` documents, which can keep the
+last response and track when it goes stale. It generates responses in the background and exports
+WAV. Both apps build and the round-trip tests pass. The drawings are checked by an offscreen snapshot;
+the window has not been seen on screen.
+
+Items 1, 2, 5 and 6 are not done:
+
+- **Item 1.** The 2D drawings need no shared camera.
+- **Item 2.** Rendering is not shared yet.
+- **Item 5.** AcousticCore uses Accelerate, not Metal.
+- **Item 6.** GeometryImport extraction waits for imported rooms.
+
+There are no shared shader resources yet.
 
 ### M2 — Produce the first usable stereo reverb file
 

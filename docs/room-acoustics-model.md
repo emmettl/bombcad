@@ -3,7 +3,8 @@
 RoomCAD's first acoustic backend generates impulse responses of rectangular rooms for
 convolution reverb. It lives in the separate `RoomCAD` package: `Sources/AcousticCore` holds the
 model and `Sources/ImpulseResponseKit` holds the response format and WAV files. It is milestone M2
-of the [RoomCAD roadmap](roomcad-roadmap.md). There is no RoomCAD app or document yet.
+of the [RoomCAD roadmap](roomcad-roadmap.md). The app that edits rooms and generates responses is
+described in [RoomCAD app and documents](roomcad-app.md).
 
 ## What it models
 
@@ -176,7 +177,6 @@ The roadmap orders the work as follows:
 - a bounded, labelled late tail if auditioning needs one (M2 item 4);
 - scattering and diffuse reflection (M4);
 - sourced material data (M5);
-- the RoomCAD app and its `.roomcad` documents (M1);
 - a low-frequency wave solver (M3).
 
 Receivers could be generated in parallel.

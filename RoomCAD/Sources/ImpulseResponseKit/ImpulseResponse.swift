@@ -198,12 +198,12 @@ public struct ImpulseResponse: Equatable, Sendable {
 
     // MARK: - Files
 
-    /// Writes the response as 32-bit float WAV and its metadata as a JSON file beside it.
+    /// The response as 32-bit float WAV and its metadata as JSON.
     ///
     /// Generator-specific settings and diagnostics go under the `generatorDetails` key, which readers of
     /// the interchange contract may ignore.
-    public func write(wav url: URL, generatorDetails: (any Encodable)? = nil) throws {
-        try WAVFile.encode(channels: channels, sampleRate: sampleRate).write(to: url, options: .atomic)
+    public func encoded(generatorDetails: (any Encodable)? = nil) throws -> (wav: Data, metadata: Data) {
+        let wav = try WAVFile.encode(channels: channels, sampleRate: sampleRate)
         let encoder = Self.encoder
         var json = try encoder.encode(metadata)
         if let generatorDetails {
@@ -214,14 +214,13 @@ public struct ImpulseResponse: Equatable, Sendable {
                 with: encoder.encode(generatorDetails))
             json = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         }
-        try json.write(to: Self.metadataURL(for: url), options: .atomic)
+        return (wav, json)
     }
 
-    /// Reads a WAV written by `write(wav:)` and its metadata.
-    public static func read(wav url: URL) throws -> ImpulseResponse {
-        let audio = try WAVFile.decode(Data(contentsOf: url))
-        let metadata = try JSONDecoder().decode(
-            ResponseMetadata.self, from: Data(contentsOf: metadataURL(for: url)))
+    /// Decodes a response from WAV data and the metadata that describes it.
+    public init(wav: Data, metadata json: Data) throws {
+        let audio = try WAVFile.decode(wav)
+        let metadata = try JSONDecoder().decode(ResponseMetadata.self, from: json)
         guard metadata.format == ResponseMetadata.formatIdentifier else {
             throw ImpulseResponseError.invalid("The metadata is not an impulse-response description.")
         }
@@ -234,7 +233,26 @@ public struct ImpulseResponse: Equatable, Sendable {
         else {
             throw ImpulseResponseError.invalid("The WAV file does not match its metadata.")
         }
-        return try ImpulseResponse(channels: audio.channels, metadata: metadata)
+        try self.init(channels: audio.channels, metadata: metadata)
+    }
+
+    /// The `generatorDetails` stored in metadata JSON, if present.
+    public static func generatorDetails<Details: Decodable>(
+        _ type: Details.Type, from metadata: Data
+    ) throws -> Details? {
+        try JSONDecoder().decode(GeneratorDetailsWrapper<Details>.self, from: metadata).generatorDetails
+    }
+
+    /// Writes the response as 32-bit float WAV and its metadata as a JSON file beside it.
+    public func write(wav url: URL, generatorDetails: (any Encodable)? = nil) throws {
+        let files = try encoded(generatorDetails: generatorDetails)
+        try files.wav.write(to: url, options: .atomic)
+        try files.metadata.write(to: Self.metadataURL(for: url), options: .atomic)
+    }
+
+    /// Reads a WAV written by `write(wav:)` and its metadata.
+    public static func read(wav url: URL) throws -> ImpulseResponse {
+        try ImpulseResponse(wav: Data(contentsOf: url), metadata: Data(contentsOf: metadataURL(for: url)))
     }
 
     public static func metadataURL(for wav: URL) -> URL {
@@ -246,4 +264,8 @@ public struct ImpulseResponse: Equatable, Sendable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return encoder
     }
+}
+
+private struct GeneratorDetailsWrapper<Details: Decodable>: Decodable {
+    var generatorDetails: Details?
 }

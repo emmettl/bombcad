@@ -1,0 +1,127 @@
+# RoomCAD app and documents
+
+RoomCAD is a macOS document app for designing a rectangular room and generating its impulse response.
+It lives in the `RoomCAD` package:
+
+- `Sources/RoomCAD` is the SwiftUI app.
+- `Sources/RoomDocument` holds the document format and the response summary. It has no SwiftUI.
+
+The acoustic model is described in [Room-acoustics model](room-acoustics-model.md). This is milestone
+M1 of the [RoomCAD roadmap](roomcad-roadmap.md), without the shared geometry-import and rendering
+extractions.
+
+## Running it
+
+```bash
+swift run -c release --package-path RoomCAD RoomCAD
+```
+
+```bash
+make roomcad-app
+```
+
+The second command builds `RoomCAD/dist/RoomCAD.app`, ad-hoc signed. That bundle declares the
+`.roomcad` document type. It is not notarized, and RoomCAD has no release process yet.
+
+## The window
+
+- **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
+  the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
+  stay 5 cm inside the walls.
+- **Inspector.** Edits everything that affects the response:
+  - room dimensions;
+  - each surface's absorption, either one value for all bands or band by band, with the material's
+    name and reference;
+  - the source and receiver positions and names, with receivers added or removed (1 to 16);
+  - sample rate, duration, maximum reflection order and content;
+  - low cut, air absorption, temperature and humidity;
+  - export conditioning.
+
+  It also shows the estimated number of image sources per receiver.
+- **Response.**
+  - **Generate** (⌘R) runs in the background, and **Cancel** (⌘.) stops it.
+  - The result shows each channel's peak envelope in dB.
+  - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
+  - It shows arrival counts and generation time, and the Schroeder frequency.
+  - It shows a warning when the reflection-order limit removed arrivals within the duration.
+  - The response is marked out of date once any input that affects it changes. Export settings don't
+    count, since they are applied on export.
+- **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
+  beside it.
+
+## Document format
+
+A `.roomcad` document is a SimulationKit package (see [Save files](save-files.md)) with
+`documentType` `roomcad` and producer `RoomCAD`:
+
+```text
+Example.roomcad/
+  manifest.json
+  scene.json              # dev.roomcad.scene, version 1
+  settings.json           # dev.roomcad.settings, version 1
+  results/response.wav    # optional: the last generated response, unconditioned
+  results/response.json   # optional: its description, settings and diagnostics
+```
+
+`scene.json` holds the room's size in metres (z up) and each surface's material. A material has a
+name, a reference and eight octave-band absorption coefficients. The file also holds the source and
+receivers, each with a UUID, name and position.
+
+`settings.json` holds the atmosphere and air-absorption switch. It also holds the sample rate,
+duration, maximum reflection order, content, low-frequency cutoff and export settings:
+
+- peak level, or none;
+- fade-out length;
+- whether to remove the leading delay.
+
+The retained response is stored exactly as generated, so export settings can change without
+regenerating. Its description records the settings that produced it. The document compares those
+with its own to decide whether the response is current. A response from another generator is
+rejected.
+
+A response larger than 48 MB is not kept, and the window says so. A 30 s, 16-channel response at
+48 kHz is 92 MB, for example.
+
+On reading, a document is rejected if:
+
+- it belongs to another app;
+- it uses an unknown or newer scene or settings encoding;
+- its settings are invalid (for example a receiver outside the room or too many image sources);
+- two points share an identity;
+- its response is missing its audio or its description.
+
+Files this version does not interpret, such as a future `view.json`, are kept when the document is
+saved again.
+
+## Verification
+
+`swift test --package-path RoomCAD` covers the following:
+
+- **RoomDocumentTests:**
+  - round trips, including per-band materials and moved documents on disk;
+  - retained responses and when they go stale;
+  - preserved unknown files and rejected documents;
+  - responses too large to retain;
+  - export conditioning on a copy, with one common gain and shift;
+  - the response summary.
+- **RoomCADTests:**
+  - background generation and its delivery;
+  - invalid settings;
+  - cancellation, and a newer generation replacing one in progress;
+  - the mapping between drawing and room coordinates, including clamping.
+
+The window itself has not been checked on screen; its layout and controls are unverified by eye.
+`RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen, with a generated
+response's envelope, decay table and diagnostics. That was used to check the drawing code. It caught
+overlapping labels where receivers coincide in one projection; labels now move apart. Form controls
+and toolbars do not render offscreen.
+
+## Limitations
+
+- Undo has not been checked; SwiftUI may not register document edits with the undo manager.
+- Inspector fields accept invalid values. The window reports them and disables **Generate** rather
+  than preventing them.
+- There is no auditioning preview (roadmap M2 item 6) and no late tail.
+- There are no material presets, since sourced absorption data is roadmap M5.
+- Only rectangular rooms are supported, and there is no 3D view.
+- Generation blocks one core per document and is not shared between windows.

@@ -1,4 +1,4 @@
-.PHONY: build app run test roomcad-test lint format icons ci-test check release-check release
+.PHONY: build app run test roomcad-test roomcad-app lint format icons ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -19,6 +19,9 @@ test:
 
 roomcad-test:
 	swift test --package-path RoomCAD
+
+roomcad-app:
+	bash RoomCAD/Scripts/build-app.sh "$(CONFIGURATION)"
 
 lint:
 	swift format lint --strict --recursive Package.swift Sources Tests Scripts RoomCAD/Package.swift RoomCAD/Sources RoomCAD/Tests
