@@ -37,6 +37,9 @@ final class AirRefinement {
     /// of the structure where it is solid; and the structure's points counted into it.
     let fineMask: MTLBuffer
     private let fineWall: MTLBuffer
+    var useLocalBoxRemap = true
+    var measureBoxRemap = false
+    private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
     let fineOccupancy: MTLBuffer
     /// The rigid blocks, as minimum and maximum corners, for the fine outline; none to take the
@@ -654,11 +657,39 @@ final class AirRefinement {
 extension AirRefinement {
     /// Prepare without writes so a coverage/collision/remap failure cannot half-change the gas.
     /// Commit the fine state and its coarse proxy only after the driver validates the whole step.
-    func prepareBoxRemap(_ body: RigidBoxBody, grid: Grid) throws
+    func prepareBoxRemap(
+        _ body: RigidBoxBody, grid: Grid,
+        previousBounds: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil
+    ) throws
         -> (UnsafeMutableBufferPointer<CellState>) -> Void
     {
+        var stamp = measureBoxRemap ? Date.timeIntervalSinceReferenceDate : 0
+        func phase(_ name: String) {
+            guard measureBoxRemap else { return }
+            let now = Date.timeIntervalSinceReferenceDate
+            boxRemapProfile[name, default: 0] += now - stamp
+            stamp = now
+        }
         let geometry = ExperimentalBoxGeometry(body)
         let h = grid.cellSize / Float(ratio)
+        // Use complete coarse cells so averaging their fine children remains unchanged.
+        // One coarse-cell margin contains every donor adjacent to an opening/closing cell.
+        let newLow = body.corners.reduce(SIMD3<Float>(repeating: .infinity)) {
+            simd_min($0, SIMD3<Float>($1))
+        }
+        let newHigh = body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) {
+            simd_max($0, SIMD3<Float>($1))
+        }
+        let unionLow = simd_min(newLow, previousBounds?.min ?? newLow)
+        let unionHigh = simd_max(newHigh, previousBounds?.max ?? newHigh)
+        let gridDims = SIMD3(grid.nx, grid.ny, grid.nz)
+        let low =
+            useLocalBoxRemap
+            ? simd_max(SIMD3<Int>((unionLow / grid.cellSize).rounded(.down)) &- 1, .zero) : .zero
+        let high =
+            useLocalBoxRemap
+            ? simd_min(SIMD3<Int>((unionHigh / grid.cellSize).rounded(.up)) &+ 1, gridDims &- 1)
+            : gridDims &- 1
         let perPatch = side * side * side
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
         let masks = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * perPatch)
@@ -674,10 +705,15 @@ extension AirRefinement {
             let origin =
                 SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
                 &* side
+            let coarseOrigin = origin / ratio
+            guard all(coarseOrigin .<= high), all((coarseOrigin &+ (Self.patchSize - 1)) .>= low) else {
+                continue
+            }
             for n in 0..<perPatch {
                 let p = origin &+ SIMD3(n % side, (n / side) % side, n / (side * side))
                 let coarse = p / ratio
-                guard grid.contains(coarse.x, coarse.y, coarse.z) else { continue }
+                guard all(coarse .>= low), all(coarse .<= high), grid.contains(coarse.x, coarse.y, coarse.z)
+                else { continue }
                 let at = patch * perPatch + n
                 let point = (SIMD3<Float>(p) + 0.5) * h
                 let own = geometry.contains(point, cellSize: h)
@@ -690,6 +726,7 @@ extension AirRefinement {
                 initial.append(states[at])
             }
         }
+        phase("snapshot")
         // Spatial order, never pool-slot order: sequential donor redistribution must not
         // depend on nondeterministic GPU patch allocation.
         let order = coordinates.indices.sorted {
@@ -707,16 +744,19 @@ extension AirRefinement {
         guard nextMask.contains(where: { $0 & 8 != 0 }) else {
             throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
         }
+        phase("ordering")
         let lookup = Dictionary(uniqueKeysWithValues: coordinates.enumerated().map { ($1, $0) })
         let offsets = [
             SIMD3(-1, 0, 0), SIMD3(1, 0, 0), SIMD3(0, -1, 0), SIMD3(0, 1, 0), SIMD3(0, 0, -1), SIMD3(0, 0, 1),
         ]
+        phase("lookup")
         let remapped = try ConservativeCellRemap.apply(
             initial,
             oldSolid: oldMask.map { $0 & 1 != 0 }, newSolid: nextMask.map { $0 & 1 != 0 }
         ) { n in
             offsets.compactMap { lookup[coordinates[n] &+ $0] }
         }
+        phase("redistribution")
         // Every body face must have a fine cell on both sides (except the domain ground).
         for n in coordinates.indices where nextMask[n] & 8 != 0 {
             for offset in offsets {
@@ -728,7 +768,9 @@ extension AirRefinement {
                 }
             }
         }
+        phase("coverage")
         return { coarse in
+            let started = self.measureBoxRemap ? Date.timeIntervalSinceReferenceDate : 0
             var sums: [Int: (value: SIMD8<Double>, count: Double)] = [:]
             for n in coordinates.indices {
                 let at = slots[n]
@@ -755,6 +797,9 @@ extension AirRefinement {
                 coarse[index].momentumY = Float(mean[2])
                 coarse[index].momentumZ = Float(mean[3])
                 coarse[index].energy = Float(mean[4])
+            }
+            if self.measureBoxRemap {
+                self.boxRemapProfile["commit", default: 0] += Date.timeIntervalSinceReferenceDate - started
             }
         }
     }

@@ -19,12 +19,14 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(model: model)
+                .disabled(model.sweep.isActive)
                 .frame(width: 310)
             Divider()
             VStack(spacing: 0) {
                 MetalView(model: model)
                     .dropDestination(for: URL.self) { urls, _ in
-                        guard urls.count == 1, !importLoader.isLoading, importLoader.result == nil,
+                        guard !model.sweep.isActive, urls.count == 1, !importLoader.isLoading,
+                            importLoader.result == nil,
                             model.inspectedImport == nil
                         else { return false }
                         importLoader.load(urls[0])
@@ -99,7 +101,7 @@ struct ContentView: View {
                 Button(importLoader.isLoading ? "Checking Model…" : "Import Model…", systemImage: "cube.box")
                 {
                     isImporting = true
-                }.disabled(importLoader.isLoading)
+                }.disabled(importLoader.isLoading || model.sweep.isActive)
                     .help("Open one OBJ or STL model, or drop it into the viewport.")
             }
             ToolbarItemGroup(placement: .primaryAction) {
@@ -111,7 +113,7 @@ struct ContentView: View {
                 ) {
                     model.toggleRun()
                 }
-                .disabled(model.isPreparingImports)
+                .disabled(model.isLoadingInputs || model.isPreparingImports || model.sweep.isActive)
                 .help("Run or pause the simulation (Space)")
                 Button("Reset", systemImage: "arrow.counterclockwise") { model.reset() }
                     .help("Return to the moment before detonation (⌘R)")

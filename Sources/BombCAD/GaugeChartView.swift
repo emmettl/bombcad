@@ -8,6 +8,7 @@ struct GaugeChartView: View {
     @State private var showsStructure = false
     @State private var export: ResultsDocument?
     @State private var exportError: String?
+    @State private var isSweeping = false
     @State private var isNamingRun = false
     @State private var isComparingRuns = false
     @State private var runName = ""
@@ -32,10 +33,10 @@ struct GaugeChartView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
-                if plotsStructure {
-                    structureReadout
-                } else {
-                    pressureReadout
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if plotsStructure { structureReadout } else { pressureReadout }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack {
                     Button("Keep Run…") {
@@ -43,21 +44,29 @@ struct GaugeChartView: View {
                         while model.savedRuns.contains(where: { $0.name == "Run \(number)" }) { number += 1 }
                         runName = "Run \(number)"
                         isNamingRun = true
-                    }.disabled(!model.canKeepRun)
+                    }.disabled(model.sweep.isActive || !model.canKeepRun)
                         .help("Keep a completed run with its inputs and full measurement histories")
                     Button("Compare (\(model.savedRuns.count))…") { isComparingRuns = true }
                         .disabled(model.savedRuns.isEmpty)
                 }.controlSize(.small)
-                Button("Export CSV…", systemImage: "square.and.arrow.up") {
-                    export = ResultsDocument(text: model.resultsCSV())
+                HStack {
+                    Button("Export CSV…", systemImage: "square.and.arrow.up") {
+                        export = ResultsDocument(text: model.resultsCSV())
+                    }
+                    .controlSize(.small)
+                    .disabled(model.stepCount == 0)
+                    .help("Save every gauge sample and the deflection history as a spreadsheet")
+                    Button("Sweep…") { isSweeping = true }.controlSize(.small)
                 }
-                .controlSize(.small)
-                .disabled(model.stepCount == 0)
-                .help("Save every gauge sample and the deflection history as a spreadsheet")
+                if model.sweep.isActive {
+                    Text(model.sweep.message).font(.caption).lineLimit(2)
+                    Button("Cancel sweep") { model.sweep.cancel() }.controlSize(.small)
+                }
             }
             .frame(width: 230)
         }
         .padding(12)
+        .sheet(isPresented: $isSweeping) { ParameterSweepView(model: model) }
         .sheet(isPresented: $isComparingRuns) { RunComparisonView(model: model) }
         .alert("Keep completed run", isPresented: $isNamingRun) {
             TextField("Run name", text: $runName)

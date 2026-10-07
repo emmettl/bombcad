@@ -8,6 +8,7 @@ struct RunComparisonView: View {
     @State private var baselineID: UUID?
     @State private var gaugeKey: SavedSimulationRun.Gauge.Key?
     @State private var plotsStructure = false
+    @State private var arrivalThreshold = 0.1
     @State private var currentInputHash: String?
     @State private var removed: [SavedSimulationRun] = []
     @State private var export: ResultsDocument?
@@ -36,7 +37,7 @@ struct RunComparisonView: View {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(model.savedRuns) { run in
                                 SavedRunRow(
-                                    run: run, selected: selection(run),
+                                    run: run, selected: selection(run), editable: !model.sweep.isActive,
                                     differs: run.inputSHA256 != currentInputHash,
                                     rename: { model.renameRun(id: run.id, name: $0) },
                                     remove: {
@@ -44,7 +45,13 @@ struct RunComparisonView: View {
                                         model.removeRun(id: run.id)
                                         reconcile()
                                     },
-                                    export: { export = ResultsDocument(text: run.csv()) })
+                                    export: { export = ResultsDocument(text: run.csv()) },
+                                    useInputs: {
+                                        do {
+                                            try model.useRunInputs(id: run.id)
+                                            dismiss()
+                                        } catch { exportError = error.localizedDescription }
+                                    })
                             }
                         }
                     }
@@ -57,7 +64,8 @@ struct RunComparisonView: View {
                                 }
                                 reconcile()
                             }
-                        }.disabled(model.savedRuns.count >= SavedSimulationRun.maximumRuns)
+                        }.disabled(
+                            model.sweep.isActive || model.savedRuns.count >= SavedSimulationRun.maximumRuns)
                     }
                     Text(
                         "Keeping, renaming and removing runs are saved with the project. Chart selections are temporary."
@@ -73,7 +81,10 @@ struct RunComparisonView: View {
                     } else {
                         controls
                         comparisonChart.frame(minHeight: 240)
-                        ScrollView { readouts }.frame(maxHeight: 200)
+                        ScrollView {
+                            readouts
+                            if !plotsStructure { gridSummary }
+                        }.frame(maxHeight: 200)
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -81,9 +92,8 @@ struct RunComparisonView: View {
         .padding(20).frame(minWidth: 920, minHeight: 640)
         .onAppear {
             selectedIDs = Set(model.savedRuns.prefix(2).map(\.id))
-            currentInputHash = try? SavedSimulationRun.fingerprint(
-                model.settings.scenario,
-                settings: ProjectRunSettings(model: model))
+            let inputs = model.sweep.baseline ?? model.currentInputs
+            currentInputHash = try? SavedSimulationRun.fingerprint(inputs.scenario, settings: inputs.settings)
             reconcile()
         }
         .onChange(of: baselineID) { gaugeKey = baseline?.gauges.first?.key }
@@ -94,7 +104,7 @@ struct RunComparisonView: View {
             if case .failure(let error) = result { exportError = error.localizedDescription }
         }
         .alert(
-            "Could not export run",
+            "Run action failed",
             isPresented: Binding(
                 get: { exportError != nil },
                 set: { if !$0 { exportError = nil } })
@@ -123,6 +133,21 @@ struct RunComparisonView: View {
                         )
                         .tag(Optional(gauge.key))
                     }
+                }
+            }
+            if !plotsStructure {
+                HStack {
+                    Text("Arrival threshold (kPa)")
+                    TextField("Threshold", value: $arrivalThreshold, format: .number)
+                        .frame(width: 80)
+                }.font(.caption)
+                Text(
+                    "Impulse uses the full recorded window. Phase duration runs from threshold arrival to the first zero crossing."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+                if !arrivalThreshold.isFinite || arrivalThreshold <= 0 {
+                    Text("Enter a finite threshold greater than zero.").font(.caption).foregroundStyle(
+                        .orange)
                 }
             }
             if Set(runs.map(\.solverVersion)).count > 1 {
@@ -200,6 +225,36 @@ struct RunComparisonView: View {
                         metric(
                             "Peak positive overpressure", gauge.peak,
                             baseline.flatMap { measurement($0)?.peak }, "kPa")
+                        let values = PressureMeasurements(points: gauge.points, threshold: arrivalThreshold)
+                        let reference = baseline.flatMap { measurement($0) }.map {
+                            PressureMeasurements(points: $0.points, threshold: arrivalThreshold)
+                        }
+                        metric(
+                            "Positive impulse (recorded window)", values.positiveImpulse,
+                            reference?.positiveImpulse, "Pa·s")
+                        metric(
+                            "Signed impulse (recorded window)", values.signedImpulse,
+                            reference?.signedImpulse, "Pa·s")
+                        if let arrival = values.arrival {
+                            metric("Arrival", arrival * 1000, reference?.arrival.map { $0 * 1000 }, "ms")
+                        } else {
+                            Text(
+                                !arrivalThreshold.isFinite || arrivalThreshold <= 0
+                                    ? "Arrival requires a valid threshold."
+                                    : values.startsAboveThreshold
+                                        ? "Arrival unresolved: recording starts above threshold."
+                                        : "Arrival threshold not reached."
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let phase = values.positivePhaseDuration {
+                            metric(
+                                "Positive-phase duration", phase * 1000,
+                                reference?.positivePhaseDuration.map { $0 * 1000 }, "ms")
+                        } else if values.phaseIsIncomplete {
+                            Text("Positive phase incomplete in the recorded window.").font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
                         Text("No matching gauge in this run; its pressure trace is omitted.")
                             .font(.callout).foregroundStyle(.orange)
@@ -207,6 +262,45 @@ struct RunComparisonView: View {
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var gridSummary: some View {
+        let study = GridMeasurementStudy(runs: runs)
+        return DisclosureGroup("Grid sensitivity") {
+            if study.isComparable {
+                Text(
+                    "Successive coarse-to-fine changes; these measure sensitivity and do not establish convergence."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+                ForEach(Array(zip(study.runs, study.runs.dropFirst()).enumerated()), id: \.offset) {
+                    _, pair in
+                    if let coarse = measurement(pair.0), let fine = measurement(pair.1) {
+                        let a = PressureMeasurements(points: coarse.points, threshold: arrivalThreshold)
+                        let b = PressureMeasurements(points: fine.points, threshold: arrivalThreshold)
+                        Text(
+                            "\(pair.0.settings.resolution.capitalized) → \(pair.1.settings.resolution.capitalized)"
+                        ).font(.headline)
+                        metric("Peak", fine.peak, coarse.peak, "kPa")
+                        metric("Positive impulse", b.positiveImpulse, a.positiveImpulse, "Pa·s")
+                        if let arrival = b.arrival {
+                            metric("Arrival", arrival * 1000, a.arrival.map { $0 * 1000 }, "ms")
+                        }
+                        if let phase = b.positivePhaseDuration {
+                            metric(
+                                "Phase duration", phase * 1000, a.positivePhaseDuration.map { $0 * 1000 },
+                                "ms")
+                        }
+                    } else {
+                        Text("A matching gauge is required in each run.").font(.caption)
+                    }
+                }
+            } else {
+                Text(
+                    "Select distinct grid resolutions with identical physical inputs, target duration and solver version. Runs with resampled imported geometry require a separate geometry-sensitivity study."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(.top, 8)
     }
 
     private func metric(_ title: String, _ value: Double, _ reference: Double?, _ unit: String) -> some View {
@@ -242,16 +336,18 @@ struct RunComparisonView: View {
 private struct SavedRunRow: View {
     let run: SavedSimulationRun
     @Binding var selected: Bool
+    let editable: Bool
     let differs: Bool
     let rename: (String) -> Void
     let remove: () -> Void
     let export: () -> Void
+    let useInputs: () -> Void
     @State private var draft = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(run.name, isOn: $selected).toggleStyle(.checkbox)
-            TextField("Name", text: $draft).textFieldStyle(.roundedBorder)
+            TextField("Name", text: $draft).textFieldStyle(.roundedBorder).disabled(!editable)
                 .onSubmit {
                     rename(draft)
                     draft = run.name
@@ -264,9 +360,10 @@ private struct SavedRunRow: View {
             .font(.caption)
             Text("\(run.solverVersion) · \(run.appVersion)").font(.caption2).foregroundStyle(.secondary)
             if differs { Text("Inputs differ from the editor.").font(.caption).foregroundStyle(.secondary) }
+            Button("Use this run’s inputs", action: useInputs).disabled(!editable)
             HStack {
                 Button("Export CSV…", action: export)
-                Button("Remove", role: .destructive, action: remove)
+                Button("Remove", role: .destructive, action: remove).disabled(!editable)
             }.controlSize(.small)
         }
         .onAppear { draft = run.name }

@@ -48,6 +48,10 @@ private enum HelpTopic: String, CaseIterable, Identifiable {
                     "Complete a stable run, then choose Keep Run… beside the chart and give it a unique name. Compare opens retained runs with pressure or deflection overlays and peak differences from a reference run. Matching gauges must have the same name and position. Saved runs keep their inputs and full pressure samples across resets, edits and reopening. Structural deflection is recorded every 1 ms of simulation time; its recorded peak can miss faster motion. Rename by pressing Return in a run’s name field, export its CSV, or remove it and use Undo last removal. Keeping results adds them to the project; ordinary simulation progress does not."
                 ),
                 (
+                    "Restore inputs and sweep parameters",
+                    "Use this run’s inputs in Compare to restore its geometry and numerical settings at time zero without losing saved results. Undo restores the previous inputs, including grid and duration. Sweep… beside the chart runs up to eight primary-charge masses or grid resolutions sequentially and keeps successful results under a unique name prefix. Reset first if needed. Original editor inputs and playback speed return after completion, cancellation or failure; finished results remain. Cancel sweep or Command-R stops the queue. Closing the sweep dialog leaves it running. Autosave keeps the original editor inputs and completed results, rather than temporary case inputs."
+                ),
+                (
                     "About the model",
                     "BombCAD is an experimental study of simulation numerics and performance, not a design tool. Results depend on grid resolution, material assumptions and supports. Peak pressures can be under-resolved, and collapse and debris have not been validated against tests."
                 ),

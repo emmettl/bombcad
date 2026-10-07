@@ -145,8 +145,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     @MainActor
     init(model: SimulationModel) {
         savedRuns = model.savedRuns
-        scenario = model.settings.scenario
-        runSettings = ProjectRunSettings(model: model)
+        scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
+        runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
         archive = model.projectArchive
         documentID = model.projectDocumentID

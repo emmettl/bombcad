@@ -2,7 +2,7 @@ import simd
 
 /// CPU reference mechanics for a rigid box, independent of the blast/structural solvers.
 /// SI units; position is the centre of mass, orientation maps body coordinates into world space.
-/// Ground contact is optional; blast coupling is not yet implemented.
+/// Ground contact is optional; the experimental air driver supplies blast impulses.
 struct RigidBoxBody {
     enum InvalidDefinition: Error { case mass, dimensions, pose, centreOfMass, inertia }
 

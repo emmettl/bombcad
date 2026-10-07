@@ -41,6 +41,7 @@ struct ProjectEditor: View {
         .onChange(of: session?.snapshot) { _, snapshot in
             if let snapshot, snapshot != document { document = snapshot }
         }
+        .onDisappear { session?.model.sweep.cancel() }
         .onChange(of: document) { _, incoming in session?.receive(incoming) }
     }
 }
@@ -71,7 +72,7 @@ struct SimulationCommands: Commands {
         CommandMenu("Simulation") {
             Button(model?.isRunning == true ? "Pause" : "Run") { model?.toggleRun() }
                 .keyboardShortcut(.space, modifiers: [])
-                .disabled(model == nil)
+                .disabled(model == nil || model?.sweep.isActive == true)
             Button("Reset") { model?.reset() }
                 .keyboardShortcut("r")
                 .disabled(model == nil)

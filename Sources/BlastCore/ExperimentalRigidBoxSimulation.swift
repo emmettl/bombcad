@@ -14,6 +14,10 @@ public final class ExperimentalRigidBoxSimulation {
     public let air: BlastSolver
     public let definition: RigidObjectDefinition
     public let motion: Motion
+    public var recordsRemapTimings = false {
+        didSet { air.refinement?.measureBoxRemap = recordsRemapTimings }
+    }
+    public var remapTimings: [String: Double] { air.refinement?.boxRemapProfile ?? [:] }
     public var gravity = SIMD3<Double>(0, 0, -9.81)
     private var body: RigidBoxBody
     public var position: SIMD3<Double> { body.position }

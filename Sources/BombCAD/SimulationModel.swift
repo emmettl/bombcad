@@ -188,11 +188,12 @@ final class SimulationModel {
     private(set) var chargeIsBlocked = false
     private(set) var errorMessage: String?
     private(set) var isPreparingImports = false
+    private(set) var isLoadingInputs = false
     /// Layouts before the most recent edits, newest last, and those undone since.
-    private(set) var undoStack: [Scenario] = []
-    private(set) var redoStack: [Scenario] = []
-    var canUndo: Bool { !undoStack.isEmpty || settings.scenario != settledScenario }
-    var canRedo: Bool { !redoStack.isEmpty }
+    private(set) var undoStack: [SimulationInputs] = []
+    private(set) var redoStack: [SimulationInputs] = []
+    var canUndo: Bool { !sweep.isActive && (!undoStack.isEmpty || currentInputs != settledInputs) }
+    var canRedo: Bool { !sweep.isActive && !redoStack.isEmpty }
 
     @ObservationIgnored let device: MTLDevice?
     @ObservationIgnored let commandQueue: MTLCommandQueue?
@@ -210,13 +211,14 @@ final class SimulationModel {
     @ObservationIgnored private var lastTracePublication = ContinuousClock.now
     /// The layout as of the last recorded edit. Edits are recorded once they settle, so that
     /// typing a number or dragging a slider is one step to undo, not dozens.
-    @ObservationIgnored private var settledScenario: Scenario
+    @ObservationIgnored private var settledInputs: SimulationInputs?
+    @ObservationIgnored private var handledSettings: SimulationSettings?
+    @ObservationIgnored lazy var sweep = ParameterSweep(model: self)
     private static let undoLimit = 100
 
     init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {
         let scenario = document?.scenario ?? SimulationSettings().scenario
         self.scenario = scenario
-        settledScenario = scenario
         camera = .framing(scenario)
         duration = Self.defaultDuration(for: scenario)
         device = MTLCreateSystemDefaultDevice()
@@ -248,6 +250,7 @@ final class SimulationModel {
         if device == nil {
             errorMessage = "This Mac has no Metal device."
         }
+        settledInputs = currentInputs
         rebuild()
     }
 
@@ -260,6 +263,7 @@ final class SimulationModel {
     // MARK: - Controls
 
     func toggleRun() {
+        guard !sweep.isActive else { return }
         if isRunning {
             isRunning = false
         } else {
@@ -268,7 +272,9 @@ final class SimulationModel {
     }
 
     func run() {
-        guard solver != nil, !isRunning, !isPreparingImports, !importsNeedResampling else { return }
+        guard solver != nil, runtimeInputsMatch, !isLoadingInputs, !rebuildPending, !isRunning,
+            !isPreparingImports, !importsNeedResampling
+        else { return }
         if time >= duration - 1e-9 {
             rebuild()
         }
@@ -284,6 +290,10 @@ final class SimulationModel {
     }
 
     func reset() {
+        if sweep.isActive {
+            sweep.cancel()
+            return
+        }
         if importsNeedResampling {
             settingsChanged()
             return
@@ -304,15 +314,22 @@ final class SimulationModel {
 
     /// Replaces the layout with one loaded from a file.
     func open(_ scenario: Scenario) {
+        sweep.abandon()
+        handledSettings = nil
         savedRuns = []
         projectArchive = nil
         projectDocumentID = UUID()
         adopt(scenario)
+        undoStack.removeAll()
+        redoStack.removeAll()
+        settledInputs = currentInputs
         settingsChanged()
     }
 
     /// Restores a project at time zero, including numerical settings and view preferences.
     func open(_ document: ProjectDocument) {
+        sweep.abandon()
+        handledSettings = nil
         rebuildTask?.cancel()
         isRunning = false
         renderSettings = RenderSettings()
@@ -333,7 +350,7 @@ final class SimulationModel {
         }
         undoStack.removeAll()
         redoStack.removeAll()
-        settledScenario = settings.scenario
+        settledInputs = currentInputs
         isPlacingCharge = false
         settingsChanged()
     }
@@ -363,6 +380,8 @@ final class SimulationModel {
         }
     }
     func settingsChanged() {
+        guard settings != handledSettings || importsNeedResampling else { return }
+        isLoadingInputs = true
         rebuildTask?.cancel()
         isPreparingImports = importsNeedResampling
         if isPreparingImports { isRunning = false }
@@ -386,6 +405,7 @@ final class SimulationModel {
                     settings.scenario = updated
                     if let body = updated.structure { settings.solidElementSize = body.elementSize }
                 case .failure(let error):
+                    isLoadingInputs = false
                     errorMessage =
                         "Could not resample retained sources: \(error.localizedDescription) Simulation is paused; choose another grid or detach the affected model."
                     return
@@ -423,41 +443,87 @@ final class SimulationModel {
 
     /// Makes the current layout a step that can be undone back to, if it has changed.
     func recordEdit() {
-        guard settings.scenario != settledScenario else { return }
-        undoStack.append(settledScenario)
-        if undoStack.count > Self.undoLimit {
-            undoStack.removeFirst(undoStack.count - Self.undoLimit)
+        guard !sweep.isActive else { return }
+        let inputs = currentInputs
+        guard let previous = settledInputs, inputs != previous else {
+            settledInputs = inputs
+            return
         }
+        undoStack.append(previous)
+        if undoStack.count > Self.undoLimit { undoStack.removeFirst(undoStack.count - Self.undoLimit) }
         redoStack.removeAll()
-        settledScenario = settings.scenario
+        settledInputs = inputs
     }
 
-    /// Returns the layout to how it was before the last edit.
     func undo() {
-        // An edit still settling counts as the last edit.
+        guard !sweep.isActive else { return }
         recordEdit()
         guard let previous = undoStack.popLast() else { return }
-        redoStack.append(settings.scenario)
-        restore(previous)
+        redoStack.append(currentInputs)
+        settledInputs = previous
+        applyExperimentInputs(previous)
     }
 
     func redo() {
-        guard let next = redoStack.popLast() else { return }
-        undoStack.append(settings.scenario)
-        restore(next)
+        guard !sweep.isActive, let next = redoStack.popLast() else { return }
+        undoStack.append(currentInputs)
+        settledInputs = next
+        applyExperimentInputs(next)
     }
 
-    private func restore(_ scenario: Scenario) {
-        settledScenario = scenario
-        settings.scenario = scenario
-        if let h = scenario.importedModels?.first(where: { $0.isAttached })?.preview.cellSize,
-            let resolution = Resolution.allCases.first(where: { $0.cellSize == h })
-        {
-            settings.resolution = resolution
+    var currentInputs: SimulationInputs {
+        SimulationInputs(scenario: settings.scenario, settings: ProjectRunSettings(model: self))
+    }
+
+    private var runtimeInputsMatch: Bool {
+        guard var loaded = loadedRunSettings else { return false }
+        loaded.duration = duration
+        return scenario == settings.scenario && loaded == ProjectRunSettings(model: self)
+    }
+
+    var hasPendingGPUWork: Bool { batchInFlight || rebuildPending || isPreparingImports || isLoadingInputs }
+    var experimentIsReady: Bool {
+        runtimeInputsMatch && !hasPendingGPUWork && !isRunning && time == 0 && errorMessage == nil
+    }
+
+    func useRunInputs(id: UUID) throws {
+        guard !sweep.isActive, let run = savedRuns.first(where: { $0.id == id }) else {
+            throw ProjectFileError.invalid("Finish the sweep before restoring a saved run's inputs.")
         }
-        if let body = scenario.structure { settings.solidElementSize = body.elementSize }
-        if highlightedBox == nil { selection = nil }
-        settingsChanged()
+        let inputs = SimulationInputs(scenario: run.scenario, settings: run.settings)
+        try inputs.validate()
+        recordEdit()
+        if inputs != currentInputs {
+            undoStack.append(currentInputs)
+            if undoStack.count > Self.undoLimit { undoStack.removeFirst(undoStack.count - Self.undoLimit) }
+            redoStack.removeAll()
+        }
+        settledInputs = inputs
+        applyExperimentInputs(inputs)
+        camera = .framing(inputs.scenario)
+    }
+
+    /// Experiment cases bypass debounce and undo. Their owner preserves the document's baseline.
+    func applyExperimentInputs(_ inputs: SimulationInputs) {
+        isLoadingInputs = true
+        rebuildTask?.cancel()
+        isRunning = false
+        completedRunSettings = nil
+        selection = nil
+        inspectedImportID = nil
+        settings.scenario = inputs.scenario
+        settings.resolution = Resolution(rawValue: inputs.settings.resolution)!
+        settings.detailedCharge = inputs.settings.detailedCharge
+        settings.sharpShocks = inputs.settings.sharpShocks
+        settings.solidElementSize = inputs.settings.solidElementSize
+        duration = inputs.settings.duration
+        handledSettings = settings
+        if importsNeedResampling {
+            settingsChanged()
+        } else {
+            isPreparingImports = false
+            requestRebuild()
+        }
     }
 
     var domainSize: SIMD3<Float> { settings.scenario.domainSize }
@@ -702,6 +768,7 @@ final class SimulationModel {
     /// Handles a click in the view, at a point in normalised device coordinates. In placing
     /// mode it moves the selected gauge there, or the charge if no gauge is selected.
     func click(ndc: SIMD2<Float>, aspectRatio: Float) {
+        guard !sweep.isActive else { return }
         if !isPlacingCharge {
             guard time == 0, !isRunning, !isPreparingImports else { return }
             let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
@@ -764,7 +831,7 @@ final class SimulationModel {
         guard let completed = completedRunSettings else { return false }
         var current = ProjectRunSettings(model: self)
         current.duration = completed.duration
-        return !isRunning && !batchInFlight && !rebuildPending && !isPreparingImports
+        return !isRunning && !batchInFlight && !rebuildPending && !isPreparingImports && !isLoadingInputs
             && errorMessage == nil && stepCount > 0 && current == completed
             && settings.scenario == scenario && savedRuns.count < SavedSimulationRun.maximumRuns
     }
@@ -811,6 +878,7 @@ final class SimulationModel {
     }
 
     func renameRun(id: UUID, name: String) {
+        guard !sweep.isActive else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 120,
             !savedRuns.contains(where: {
@@ -821,9 +889,13 @@ final class SimulationModel {
         savedRuns[index].name = trimmed
     }
 
-    func removeRun(id: UUID) { savedRuns.removeAll { $0.id == id } }
+    func removeRun(id: UUID) {
+        guard !sweep.isActive else { return }
+        savedRuns.removeAll { $0.id == id }
+    }
 
     func restoreRun(_ run: SavedSimulationRun) {
+        guard !sweep.isActive else { return }
         guard savedRuns.count < SavedSimulationRun.maximumRuns,
             !savedRuns.contains(where: {
                 $0.id == run.id || $0.name.localizedCaseInsensitiveCompare(run.name) == .orderedSame
@@ -836,6 +908,7 @@ final class SimulationModel {
 
     private func requestRebuild() {
         if batchInFlight {
+            isLoadingInputs = true
             // The GPU still owns the solver's buffers; rebuild when the batch lands.
             rebuildPending = true
         } else {
@@ -852,6 +925,8 @@ final class SimulationModel {
     }
 
     private func rebuild() {
+        isLoadingInputs = true
+        defer { isLoadingInputs = false }
         completedRunSettings = nil
         loadedRunSettings = nil
         isRunning = false
@@ -893,6 +968,7 @@ final class SimulationModel {
             errorMessage = "\(error)"
         }
 
+        handledSettings = settings
         loadedRunSettings = solver == nil ? nil : ProjectRunSettings(model: self)
         self.scenario = scenario
         self.grid = solver?.grid

@@ -9,6 +9,34 @@ struct ExperimentalRigidBoxTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }
 
+    @Test("Controlled diagnostics separate conservative remapping, gas loading and ground impulses")
+    func controlledDiagnostics() throws {
+        // Physical budgets need one grid here; the release CLI performs the full spatial study.
+        let results = try ExperimentalRigidBoxDiagnostics.run(device: device, cellSizes: [0.2])
+        for r in results {
+            if r.kind.hasPrefix("remap-") {
+                #expect(abs(try #require(r.relativeGasMassChange)) < 1e-7)
+                #expect(abs(try #require(r.relativeGasEnergyChange)) < 1e-7)
+                #expect(simd_length(try #require(r.gasMomentumChange)) < 1e-8)
+                #expect(abs(r.displacement.x - 0.12) < 1e-10)
+            } else if r.kind == "uniform-flow-no-contact" {
+                // With no gravity/contact, the body must receive precisely the recorded gas impulse.
+                #expect(simd_length(2 * r.velocity - r.appliedImpulse) < 1e-8)
+                #expect(r.groundImpulse == .zero)
+            } else {
+                // Includes gravity, whose integral is known independently of the contact algorithm.
+                let expected = r.appliedImpulse + r.groundImpulse + SIMD3<Double>(0, 0, -2 * 9.81 * r.time)
+                #expect(simd_length(2 * r.velocity - expected) < 1e-8)
+                #expect(abs(r.appliedImpulse.x - 5) < 1e-10)
+            }
+        }
+        let contact = results.filter { $0.kind == "contact-only" }
+        let finest = try #require(contact.last)
+        let preceding = contact[contact.count - 2]
+        #expect(simd_length(finest.velocity - preceding.velocity) < 1e-4)
+        #expect(simd_length(finest.displacement - preceding.displacement) < 1e-4)
+    }
+
     private func scenario(position: SIMD3<Double> = SIMD3(2, 2, 2)) throws -> Scenario {
         Scenario(
             name: "One box", domainSize: SIMD3(repeating: 4), boxes: [],
@@ -312,6 +340,8 @@ struct ExperimentalRigidBoxTests {
         }
         let first = try make()
         let second = try make()
+        let reference = try make()
+        try #require(reference.air.refinement).useLocalBoxRemap = false
         let r = try #require(second.air.refinement)
         let cells = r.side * r.side * r.side
         let owners = r.tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: r.maxPatches)
@@ -342,6 +372,7 @@ struct ExperimentalRigidBoxTests {
         moved.advance(by: 0.12, gravity: .zero)
         try first.air.updateExperimentalBox(moved)
         try second.air.updateExperimentalBox(moved)
+        try reference.air.updateExperimentalBox(moved)
         func snapshot(_ air: BlastSolver) throws -> [SIMD3<Int>: CellState] {
             let r = try #require(air.refinement)
             let count = r.side * r.side * r.side
@@ -363,5 +394,6 @@ struct ExperimentalRigidBoxTests {
             return result
         }
         #expect(try snapshot(first.air) == snapshot(second.air))
+        #expect(try snapshot(first.air) == snapshot(reference.air))
     }
 }
