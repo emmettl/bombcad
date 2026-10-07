@@ -90,13 +90,16 @@ bit-for-bit reproducibility across builds or hardware.
 swift run -c release BombCAD run Example.bombcad --out Example-run.bombcad --csv run.csv
 ```
 
-It drives the same simulation model as the app and its sweeps. Without a structure, a run gives
-the same answer to the last bit as the same case swept in the app, on any Mac. With one it does
-not quite: the app sizes its batches of steps to the GPU's speed, and each batch caps the air's
-step by the previous batch's, so the steps differ from run to run, even on one Mac. Three runs
-of the concrete box on the medium grid took 2,225 to 2,309 steps, with front-wall peaks of
-1,091 to 1,094 kPa. (`blastbench` steps in fixed batches, and repeats exactly.) The command prints a summary: steps, simulated and wall time,
-the Metal device, each gauge's peak and the structure's largest deflection.
+It drives the same simulation model as the app and its sweeps, and gives the same answer to
+the last bit as the same case swept in the app, with or without a structure. The app sizes its
+batches of steps to the GPU's speed, but the solver takes every decision that changes a step
+(how many structural substeps to encode, which caps the air's step; when to freeze the air;
+when contact joins after a failure) at checkpoints every 64 steps, which no batch runs past, and
+it clips a step to a time limit only at the start of a batch. Three runs of the concrete box on
+the medium grid each took 2,116 steps, with a front-wall peak of 1,093.1 kPa. (A run played back
+at a set speed stops at moments the wall clock sets, so it does not repeat; sweeps and `BombCAD
+run` go flat out.) The command prints a summary: steps, simulated and wall time, the Metal
+device, each gauge's peak and the structure's largest deflection.
 
 | Option | Effect |
 |---|---|

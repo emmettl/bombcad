@@ -70,6 +70,7 @@ public final class BlastSolver {
     private let wakeTilesPipeline: MTLComputePipelineState
     private let collectTilesPipeline: MTLComputePipelineState
     private let preparePipeline: MTLComputePipelineState
+    private let sampleGaugesPipeline: MTLComputePipelineState
     private let measurePipeline: MTLComputePipelineState
     private let visualizationPipeline: MTLComputePipelineState
     private let splatPipeline: MTLComputePipelineState
@@ -170,6 +171,7 @@ public final class BlastSolver {
         wakeTilesPipeline = try pipeline("wakeTiles")
         collectTilesPipeline = try pipeline("collectTiles")
         preparePipeline = try pipeline("prepareStep")
+        sampleGaugesPipeline = try pipeline("sampleGauges")
         measurePipeline = try pipeline("measureWaveSpeed")
         visualizationPipeline = try pipeline("updateVisualization")
         splatPipeline = try pipeline("splatStructure")
@@ -200,7 +202,7 @@ public final class BlastSolver {
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
         maxSpeedBuffer = try buffer(2 * MemoryLayout<UInt32>.stride, "max wave speed and overpressure")
         gaugeLogBuffer = try buffer(
-            Self.maxStepsPerBatch * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
+            (Self.maxStepsPerBatch + 1) * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
         gaugeChildBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge fine cells")
         memset(gaugeChildBuffer.contents(), 0xFF, gaugeChildBuffer.length)
@@ -956,6 +958,22 @@ public final class BlastSolver {
                     uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
             }
         }
+        if gaugeCount > 0 {
+            var uniforms = makeUniforms()
+            encoder.setComputePipelineState(sampleGaugesPipeline)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 0)
+            encoder.setBuffer(stateBuffers[current], offset: 0, index: 2)
+            encoder.setBuffer(gaugeLogBuffer, offset: 0, index: 3)
+            encoder.setBuffer(gaugeCellBuffer, offset: 0, index: 4)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+            encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 8)
+            encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 9)
+            encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
+            encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
+            encoder.dispatchThreads(
+                MTLSize(width: 1, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        }
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -970,7 +988,8 @@ public final class BlastSolver {
         precondition(batchInFlight, "No batch to complete")
         batchInFlight = false
         let control = controlBuffer.contents().load(as: StepControl.self)
-        let rows = Int(control.stepIndex)
+        // A row per step, and one for the state the batch ended in.
+        let rows = Int(control.stepIndex) + (gaugeCount > 0 ? 1 : 0)
         let rowStride = gaugeCount + 1
         let log = gaugeLogBuffer.contents().bindMemory(to: Float.self, capacity: rows * rowStride)
         // The clock adds up the steps one by one, so that it reads the same however they were
@@ -980,7 +999,8 @@ public final class BlastSolver {
         for row in 0..<rows {
             let step = log[row * rowStride]
             for gauge in 0..<gaugeCount {
-                // Steps that did nothing repeat the previous sample; skip them.
+                // A step that did nothing, and the batch's last row, repeat a sample at a time
+                // already recorded; skip them.
                 if let last = gaugeHistories[gauge].last, last.time >= time { continue }
                 gaugeHistories[gauge].append(
                     GaugeSample(time: time, pressure: log[row * rowStride + 1 + gauge]))
@@ -1014,7 +1034,8 @@ public final class BlastSolver {
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
-            refinedTiles: refinement?.patchCount ?? 0, stoppedShort: control.halted != 0)
+            refinedTiles: refinement?.patchCount ?? 0, stoppedShort: control.stopped == 1,
+            reachedLimit: control.stopped == 2)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -1022,8 +1043,10 @@ public final class BlastSolver {
     public func advance(steps: Int, timeLimit: Double? = nil) -> BatchResult {
         var total = BatchResult(steps: 0, elapsed: 0, lastTimeStep: 0, isStable: true)
         var remaining = steps
+        var stoppedShort = false
         while remaining > 0 {
-            let count = batchSteps(remaining)
+            // A batch that stopped just short of the limit is nearly always one step from it.
+            let count = batchSteps(stoppedShort ? 1 : remaining)
             guard let commandBuffer = encodeBatch(steps: count, timeLimit: timeLimit) else { break }
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
@@ -1036,7 +1059,10 @@ public final class BlastSolver {
             total.isStable = total.isStable && result.isStable && commandBuffer.error == nil
             total.refinedTiles = result.refinedTiles
             remaining -= result.steps
-            if result.steps == 0 || (result.steps < count && !result.stoppedShort) || !result.isStable {
+            stoppedShort = result.stoppedShort
+            if result.steps == 0 || result.reachedLimit || (result.steps < count && !result.stoppedShort)
+                || !result.isStable
+            {
                 break
             }
         }

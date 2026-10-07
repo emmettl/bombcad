@@ -198,7 +198,7 @@ struct StepControl {
     var maxOverpressure: Float = .greatestFiniteMagnitude
     var activeTiles: UInt32 = 0
     var tileSweeps: UInt32 = 0
-    var halted: UInt32 = 0
+    var stopped: UInt32 = 0
     var lastStep: Float = 0
 }
 
@@ -349,6 +349,8 @@ public struct BatchResult: Sendable {
     /// True when the batch stopped just short of its time limit, leaving the last step up to it
     /// for another batch; its unused steps did nothing.
     public var stoppedShort = false
+    /// True when the batch's time reached its limit; its unused steps did nothing.
+    public var reachedLimit = false
 }
 
 public enum BlastError: Error, CustomStringConvertible {

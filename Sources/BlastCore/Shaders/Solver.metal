@@ -115,7 +115,7 @@ struct StepControl {
     float maxOverpressure;  // largest |overpressure| anywhere after the previous step
     uint activeTiles;       // tiles swept in the last step
     uint tileSweeps;        // tiles swept, summed over the batch's steps
-    uint halted;            // 1 once a step has stopped short of the time limit; the rest do nothing
+    uint stopped;           // 1 once a step has stopped short of the time limit, 2 once one reached it
     float lastStep;         // the last step that advanced, before any clipping to the time limit
 };
 
@@ -897,62 +897,12 @@ kernel void collectTiles(device uchar *tileFlags [[buffer(0)]],
     }
 }
 
-// Runs once per step on a single thread: turns the fastest wave speed of the previous
-// step into the next dt, advances the batch clock and samples the gauges.
-kernel void prepareStep(device StepControl &control [[buffer(0)]],
-                        device atomic_uint *maxSpeed [[buffer(1)]],
-                        const device Cell *state [[buffer(2)]],
-                        device float *gaugeLog [[buffer(3)]],
-                        const device uint *gaugeCells [[buffer(4)]],
-                        constant SolverUniforms &u [[buffer(5)]],
-                        device atomic_uint *tileCount [[buffer(6)]],
-                        device uint *tileDispatch [[buffer(7)]],
-                        const device int *patchOfTile [[buffer(8)]],
-                        const device Cell *fine [[buffer(9)]],
-                        const device uint *gaugeChildren [[buffer(10)]],
-                        const device uchar *fineMask [[buffer(11)]],
-                        uint tid [[thread_position_in_grid]]) {
-    if (tid != 0) {
-        return;
-    }
-    if (u.tileNx != 0) {
-        // One threadgroup per awake tile in the sweeps that follow.
-        uint count = atomic_exchange_explicit(tileCount, 0u, memory_order_relaxed);
-        tileDispatch[0] = count;
-        tileDispatch[1] = 1;
-        tileDispatch[2] = 1;
-        control.activeTiles = count;
-        control.tileSweeps += count;
-    }
-    float fastest = as_type<float>(atomic_load_explicit(maxSpeed, memory_order_relaxed));
-    float dt = u.cfl * u.dx / max(fastest, 1e-6f);
-    if (u.maxStep > 0.0f) {
-        dt = min(dt, u.maxStep);
-    }
-    if (u.forcedStep > 0.0f) {
-        dt = u.forcedStep;
-    }
-    // Only a batch's first step is clipped to the time limit, where the time left is exactly
-    // what the host worked out. A later step that would come within a thousandth of it stops
-    // the batch instead, so that rounding in the batch's own clock never decides how long a
-    // step is, and the steps come out the same however they are batched.
-    float unclipped = dt;
-    if (control.stepIndex == 0) {
-        dt = min(dt, max(control.timeLimit, 0.0f));
-    } else if (control.halted != 0 || control.batchTime + dt >= 0.999f * control.timeLimit) {
-        control.halted = control.batchTime < control.timeLimit ? 1u : control.halted;
-        dt = 0.0f;
-    }
-    // A step that does nothing leaves the limits for the next step as they are.
-    if (dt > 0.0f) {
-        control.lastStep = unclipped;
-        atomic_store_explicit(maxSpeed, 0u, memory_order_relaxed);
-        if (u.forcedStep == 0.0f) {
-            control.maxOverpressure = as_type<float>(atomic_exchange_explicit(maxSpeed + 1, 0u, memory_order_relaxed));
-        }
-    }
-
-    uint row = control.stepIndex * (u.gaugeCount + 1);
+// Writes row `row` of the gauge log: the step's length, then each gauge's pressure.
+static inline void logGauges(device float *gaugeLog, uint row, float dt, const device Cell *state,
+                             const device uint *gaugeCells, constant SolverUniforms &u,
+                             const device int *patchOfTile, const device Cell *fine,
+                             const device uint *gaugeChildren, const device uchar *fineMask) {
+    row *= u.gaugeCount + 1;
     gaugeLog[row] = dt;
     for (uint g = 0; g < u.gaugeCount; ++g) {
         Cell c = state[gaugeCells[g]];
@@ -975,11 +925,93 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);
         gaugeLog[row + 1 + g] = gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
     }
+}
+
+// Runs once per step on a single thread: turns the fastest wave speed of the previous
+// step into the next dt, advances the batch clock and samples the gauges.
+kernel void prepareStep(device StepControl &control [[buffer(0)]],
+                        device atomic_uint *maxSpeed [[buffer(1)]],
+                        const device Cell *state [[buffer(2)]],
+                        device float *gaugeLog [[buffer(3)]],
+                        const device uint *gaugeCells [[buffer(4)]],
+                        constant SolverUniforms &u [[buffer(5)]],
+                        device atomic_uint *tileCount [[buffer(6)]],
+                        device uint *tileDispatch [[buffer(7)]],
+                        const device int *patchOfTile [[buffer(8)]],
+                        const device Cell *fine [[buffer(9)]],
+                        const device uint *gaugeChildren [[buffer(10)]],
+                        const device uchar *fineMask [[buffer(11)]],
+                        uint tid [[thread_position_in_grid]]) {
+    if (tid != 0) {
+        return;
+    }
+    uint tiles = 0;
+    if (u.tileNx != 0) {
+        // One threadgroup per awake tile in the sweeps that follow.
+        tiles = atomic_exchange_explicit(tileCount, 0u, memory_order_relaxed);
+        tileDispatch[0] = tiles;
+        tileDispatch[1] = 1;
+        tileDispatch[2] = 1;
+        control.activeTiles = tiles;
+    }
+    float fastest = as_type<float>(atomic_load_explicit(maxSpeed, memory_order_relaxed));
+    float dt = u.cfl * u.dx / max(fastest, 1e-6f);
+    if (u.maxStep > 0.0f) {
+        dt = min(dt, u.maxStep);
+    }
+    if (u.forcedStep > 0.0f) {
+        dt = u.forcedStep;
+    }
+    // Only a batch's first step is clipped to the time limit, where the time left is exactly
+    // what the host worked out. A later step that would come within a ten-thousandth of the
+    // batch's time to it stops the batch instead (rounding in the batch's own clock is at most
+    // a sixtieth of that), so that the rounding never decides how long a step is, and the steps
+    // come out the same however they are batched.
+    float unclipped = dt;
+    if (control.stopped != 0) {
+        dt = 0.0f;
+    } else if (control.stepIndex == 0) {
+        if (dt >= control.timeLimit) {
+            dt = max(control.timeLimit, 0.0f);
+            control.stopped = 2;
+        }
+    } else if (control.batchTime + dt >= 0.9999f * control.timeLimit) {
+        dt = 0.0f;
+        control.stopped = 1;
+    }
+    // A step that does nothing leaves the limits for the next step as they are.
+    if (dt > 0.0f) {
+        control.tileSweeps += tiles;
+        control.lastStep = unclipped;
+        atomic_store_explicit(maxSpeed, 0u, memory_order_relaxed);
+        if (u.forcedStep == 0.0f) {
+            control.maxOverpressure = as_type<float>(atomic_exchange_explicit(maxSpeed + 1, 0u, memory_order_relaxed));
+        }
+    }
+
+    logGauges(gaugeLog, control.stepIndex, dt, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask);
 
     control.dt = dt;
     control.batchTime += dt;
     control.stepIndex += 1;
     control.activeSteps += dt > 0.0f ? 1 : 0;
+}
+
+// After a batch's last step: samples the gauges once more, so that the state a batch ends in is
+// recorded however the steps were batched (the next batch's first sample repeats it).
+kernel void sampleGauges(const device StepControl &control [[buffer(0)]],
+                         const device Cell *state [[buffer(2)]],
+                         device float *gaugeLog [[buffer(3)]],
+                         const device uint *gaugeCells [[buffer(4)]],
+                         constant SolverUniforms &u [[buffer(5)]],
+                         const device int *patchOfTile [[buffer(8)]],
+                         const device Cell *fine [[buffer(9)]],
+                         const device uint *gaugeChildren [[buffer(10)]],
+                         const device uchar *fineMask [[buffer(11)]],
+                         uint tid [[thread_position_in_grid]]) {
+    if (tid == 0) {
+        logGauges(gaugeLog, control.stepIndex, 0.0f, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask);
+    }
 }
 
 // Seeds the wave-speed maximum from the initial condition.

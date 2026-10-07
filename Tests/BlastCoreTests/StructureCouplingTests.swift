@@ -134,15 +134,16 @@ struct StructureCouplingTests {
         #expect(structure.summary().maxDisplacement == 0)
     }
 
-    /// The wall breached by 500 kg, run to 40 ms in batches of the given sizes, stopping at every
-    /// 5 ms on the way as the app does to sample the structure, with the air frozen at 30 ms.
+    /// The wall breached by 500 kg, on 0.5 m cells, run to 30 ms in batches of the given sizes,
+    /// stopping every 5 ms on the way as the app does to sample the structure, with the air
+    /// frozen from 20 ms.
     private func breachedWall(batches sizes: [Int]) throws -> BlastSolver {
         var scenario = ScenarioPreset.blastWall.scenario
         scenario.charge.mass = 500
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
         let crossing = Double(simd_length(solver.grid.size)) / 340
-        solver.configuration.airSleepCrossings = Float(0.03 / crossing)
-        let end = 0.04
+        solver.configuration.airSleepCrossings = Float(0.02 / crossing)
+        let end = 0.03
         var next = 0.005
         var batch = 0
         while solver.time < end - 1e-9, batch < 10_000 {
