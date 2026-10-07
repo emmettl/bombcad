@@ -71,6 +71,58 @@ struct RoomCADTests {
         #expect(names == ["second"])
     }
 
+    @Test("Automatic regeneration waits for changes to settle and generates only the latest settings")
+    func debounced() async {
+        let editor = RoomEditor()
+        var delivered: [Double] = []
+        var first = Self.settings
+        first.duration = 0.1
+        let superseded = Task {
+            await editor.regenerate(first, after: .milliseconds(300)) {
+                delivered.append($0.settings.duration)
+            }
+        }
+        // A newer change cancels the wait, as SwiftUI does when a task's identity changes.
+        superseded.cancel()
+        await superseded.value
+        await editor.regenerate(Self.settings, after: .milliseconds(50)) {
+            delivered.append($0.settings.duration)
+        }
+        #expect(editor.isGenerating)
+        await editor.finished()
+        #expect(delivered == [Self.settings.duration])
+    }
+
+    @Test(
+        "A change cancels a run for older settings at once, and repeats of the running settings are ignored")
+    func supersedes() async {
+        let editor = RoomEditor()
+        // Points get new identities on each access, so keep one copy.
+        let current = Self.settings
+        var slow = current
+        slow.duration = 4
+        slow.maximumReflectionOrder = 400
+        var delivered: [Double] = []
+        editor.generate(slow) { delivered.append($0.settings.duration) }
+        await editor.regenerate(current, after: .zero) { delivered.append($0.settings.duration) }
+        #expect(editor.generatingSettings == current)
+        // Asking again for what is running does not restart it.
+        await editor.regenerate(current, after: .zero) { _ in delivered.append(-1) }
+        await editor.finished()
+        #expect(delivered == [current.duration])
+    }
+
+    @Test("Automatic regeneration skips invalid settings and results that arrived during the wait")
+    func skips() async {
+        let editor = RoomEditor()
+        var invalid = Self.settings
+        invalid.receivers[0].position.x = 99
+        await editor.regenerate(invalid, after: .zero) { _ in }
+        #expect(!editor.isGenerating)
+        await editor.regenerate(Self.settings, after: .zero, needed: { false }, deliver: { _ in })
+        #expect(!editor.isGenerating)
+    }
+
     @Test("Drawing coordinates map to the room and dragged points stay inside it")
     func layout() {
         let size: SIMD3<Double> = [8, 6, 3]

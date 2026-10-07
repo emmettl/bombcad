@@ -10,8 +10,9 @@ struct AuditionBar: View {
     let sampleRate: Int
     /// The response the clip is played through, if any.
     let result: RoomResponse?
-    /// Starts playback, generating a response first if needed.
+    /// Starts playback, generating a response first if there is none.
     let play: () -> Void
+    /// Whether Play cannot work: there is no response and none can be generated.
     let busy: Bool
 
     private var active: Bool { player.isPlaying || player.isPreparing }
@@ -25,7 +26,7 @@ struct AuditionBar: View {
                     Label(active ? "Pause" : "Play", systemImage: active ? "pause.fill" : "play.fill")
                 }
                 .disabled(busy && !player.isPlaying)
-                .help("Play the clip through the room, generating the response first if it is out of date")
+                .help("Play the clip through the room; a response being updated takes over when it is ready")
                 Button("Back to Start", systemImage: "backward.end.fill") { player.seek(to: 0) }
                     .labelStyle(.iconOnly)
 

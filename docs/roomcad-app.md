@@ -44,16 +44,22 @@ document is opened from Finder.
 
   It also shows the estimated number of image sources per receiver.
 - **Response.**
-  - **Generate** (⌘R) runs in the background, and **Cancel** (⌘.) stops it.
+  - The response regenerates in the background 0.4 s after any input that affects it changes, so
+    dragging or typing starts one run once you pause. A run for older inputs is cancelled at once.
+  - A new document generates on opening. **Generate** (⌘R) forces a run, and **Cancel** (⌘.) stops
+    one.
+  - Export settings don't affect the response, since they are applied on export, so they don't start
+    a run.
+  - While a run is in progress the response is marked "Updating…"; until it finishes, the previous one
+    stays in use.
   - The result shows each channel's peak envelope in dB.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
   - It shows arrival counts and generation time, and the Schroeder frequency.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
-  - The response is marked out of date once any input that affects it changes. Export settings don't
-    count, since they are applied on export.
 - **Audition.** Play a dry clip through the room.
-  - Play generates the response first if it is missing or out of date.
-  - During playback, a newly generated response replaces the old one.
+  - Play starts at once with the latest response, even while a newer one is being generated; the new
+    one takes over, from the same point, when it is ready. With no response yet, playback starts when
+    the first one arrives.
   - The first receiver is heard on the left and the second on the right; a single receiver is heard
     on both.
   - A waveform strip shows the clip, and once a response exists, the clip dry and through the room
@@ -148,6 +154,8 @@ saved again.
   - matching changes the wet level only.
 - **RoomCADTests:**
   - background generation and its delivery;
+  - automatic regeneration: waiting for changes to settle, superseding older runs, ignoring repeats,
+    invalid settings and results that arrive during the wait;
   - invalid settings;
   - cancellation, and a newer generation replacing one in progress;
   - the mapping between drawing and room coordinates, including clamping.

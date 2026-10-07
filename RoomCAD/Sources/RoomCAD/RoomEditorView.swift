@@ -10,6 +10,8 @@ struct RoomEditorView: View {
     let fileURL: URL?
     @State private var editor = RoomEditor()
     @State private var player = AuditionPlayer()
+    /// Play as soon as a response arrives; set when Play is pressed before there is one.
+    @State private var playWhenGenerated = false
 
     private var project: RoomProject { document.project }
 
@@ -45,7 +47,15 @@ struct RoomEditorView: View {
                     .disabled(project.result == nil)
             }
         }
-        .onDisappear { player.stop() }
+        .onDisappear {
+            editor.cancel()
+            player.stop()
+        }
+        // Keep the response up to date: regenerate in the background shortly after the inputs change.
+        .task(id: project.settings) {
+            guard !project.isResultCurrent else { return }
+            await editor.regenerate(project.settings, needed: { !project.isResultCurrent }, deliver: deliver)
+        }
         // Show the clip through the current room as soon as there is one.
         .task(id: project.result?.settings) {
             if let result = project.result { player.prepare(result) }
@@ -84,7 +94,7 @@ struct RoomEditorView: View {
             AuditionBar(
                 player: player, sampleRate: project.settings.sampleRate, result: project.result,
                 play: audition,
-                busy: editor.isGenerating || validationMessage != nil)
+                busy: project.result == nil && validationMessage != nil)
             if let message = validationMessage ?? editor.message {
                 Label(message, systemImage: "exclamationmark.circle").foregroundStyle(.red).font(.callout)
             }
@@ -113,7 +123,7 @@ struct RoomEditorView: View {
     @ViewBuilder
     private var status: some View {
         if editor.isGenerating {
-            Text("Generating…").foregroundStyle(.secondary)
+            Text(project.result == nil ? "Generating…" : "Updating…").foregroundStyle(.secondary)
         } else if project.result != nil {
             if project.isResultCurrent {
                 Text("Up to date").foregroundStyle(.green)
@@ -126,19 +136,25 @@ struct RoomEditorView: View {
         }
     }
 
-    private func generate(thenPlay: Bool = false) {
-        editor.generate(project.settings) { result in
-            document.project.result = result
-            // Keeps playing, from the same point, with the new room.
-            player.prepare(result, thenPlay: thenPlay)
-        }
+    private func generate() {
+        editor.generate(project.settings, deliver: deliver)
     }
 
+    private func deliver(_ result: RoomResponse) {
+        document.project.result = result
+        // Keeps playing, from the same point, with the new room.
+        player.prepare(result, thenPlay: playWhenGenerated)
+        playWhenGenerated = false
+    }
+
+    /// Plays at once with the latest response, even while a newer one is generated; it takes over
+    /// when it arrives.
     private func audition() {
-        if project.isResultCurrent, let result = project.result {
+        if let result = project.result {
             player.prepare(result, thenPlay: true)
         } else {
-            generate(thenPlay: true)
+            playWhenGenerated = true
+            if !editor.isGenerating { generate() }
         }
     }
 
