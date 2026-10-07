@@ -14,8 +14,10 @@ do {
         let transport = arguments.contains("--transport")
         let results = try ExperimentalRigidBoxDiagnostics.run(
             device: device, remapMode: transport ? .connectedTransport : .redistribution)
-        let output = URL(fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-            ?? (transport ? ".build/rigid-box-diagnostics-transport.json" : ".build/rigid-box-diagnostics.json"))
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? (transport
+                    ? ".build/rigid-box-diagnostics-transport.json" : ".build/rigid-box-diagnostics.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
@@ -24,7 +26,9 @@ do {
             let cfl = r.cfl.map { " CFL \($0)" } ?? ""
             let step = r.mechanicalStep.map { " dt \($0)" } ?? ""
             let pressure = r.maximumRelativePressureError.map { ", pressure error \($0)" } ?? ""
-            print("\(r.kind)\(grid)\(cfl)\(step): displacement \(simd_length(r.displacement)) m, speed \(simd_length(r.velocity)) m/s\(pressure)")
+            print(
+                "\(r.kind)\(grid)\(cfl)\(step): displacement \(simd_length(r.displacement)) m, speed \(simd_length(r.velocity)) m/s\(pressure)"
+            )
         }
         print("Wrote \(output.path)")
         exit(0)
@@ -35,15 +39,17 @@ do {
         }
         let extended = arguments.contains("--extended")
         let results = try ExperimentalRigidBoxStudy.run(device: device, extended: extended) { r in
-            print(String(
-                format: "Finished dx %.3f CFL %.3f refine %d %@: speed %.5f m/s, %.3f s",
-                r.cellSize, r.cfl, r.refinement, r.held ? "held" : "free",
-                simd_length(r.velocity), r.computeSeconds))
+            print(
+                String(
+                    format: "Finished dx %.3f CFL %.3f refine %d %@: speed %.5f m/s, %.3f s",
+                    r.cellSize, r.cfl, r.refinement, r.held ? "held" : "free",
+                    simd_length(r.velocity), r.computeSeconds))
             fflush(stdout)
         }
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? (extended ? ".build/rigid-box-convergence-extended.json" : ".build/rigid-box-convergence.json"))
+                ?? (extended
+                    ? ".build/rigid-box-convergence-extended.json" : ".build/rigid-box-convergence.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
