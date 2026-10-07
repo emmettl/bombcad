@@ -106,6 +106,8 @@ the Metal device, each gauge's peak and the structure's largest deflection.
 | `--resolution coarse\|medium\|fine` | Runs on another air grid, resampling attached imports as a grid sweep case does |
 | `--mass <kg>` | Changes the primary charge, as a mass sweep case does |
 | `--duration <s>` | Changes the simulated duration |
+| `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
+| `--frame-interval <ms>` | Milliseconds of simulated time between the USD file's frames, 1 by default |
 
 The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
 file. With `--out`, the project must have room for another run (16 at most). A legacy layout

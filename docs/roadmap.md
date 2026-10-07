@@ -355,7 +355,9 @@ two collapsing over several seconds.
   rate. In two steps:
   1. **Geometry as USD**, in its text form (`.usda`), which needs no library: the blocks and
      ground once, the structure's surface with its points sampled per frame and failed elements
-     dropped, and the charge and gauges as markers. Days of work.
+     dropped, and the charge and gauges as markers. (Done: `BombCAD run --usd`, with the
+     project's view as a camera; see [Exporting a run for rendering](usd-export.md). Not yet
+     opened in Blender.)
   2. **The blast as OpenVDB volumes**, one file per frame, from the overpressure the renderer
      already ray-marches (the solver's visualisation volume). Blender reads volumes only as VDB,
      so this needs either the OpenVDB library (a large C++ dependency) or a small writer of our
