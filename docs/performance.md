@@ -331,3 +331,7 @@ and a kernel to write the dispatch sizes, for at most those 3%; it has not been 
 
 Shells and the skipping of still air are done. Adaptive refinement is the one left that would
 change what is feasible.
+
+Spreading one run over several Macs' GPUs is weighed in [Distributed computing](distributed-computing.md):
+it would pay only on identical machines with fast links and large grids, and a bigger single GPU
+or independent runs on other Macs come first.

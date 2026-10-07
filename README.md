@@ -221,6 +221,10 @@ swift run -c release blastbench slab --sensitivity
 compares a freestanding wall on a clamped base with one on starter bars, a construction joint
 or friction alone (see [base connections](docs/structural-model.md#base-connections)).
 
+`BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
+keeps the result as a saved run, for scripts and other Macs; see
+[headless runs](docs/run-comparison.md#headless-runs).
+
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
 holding, sliding, lift-off, rocking and tipping, with playback and a time slider. It records
@@ -327,11 +331,13 @@ Collapse and debris have not been compared with anything.
 | [Shell model](docs/shell-model.md)          | Shells for walls and slabs, beams for columns                   |
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
+| [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |
 | [Save files](docs/save-files.md)            | Versioned project packages, assets and persisted settings       |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
+| [Continuous integration](docs/continuous-integration.md) | The Mac mini runner, nightly validation and benchmarks |
 
 Each model document lists its sources, its limitations and the work that would address them.
 
