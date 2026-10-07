@@ -35,11 +35,12 @@ document is opened from Finder.
   stay 5 cm inside the walls.
 - **Inspector.** Edits everything that affects the response:
   - room dimensions;
-  - each surface's absorption, either one value for all bands or band by band, with the material's
-    name and reference;
+  - each surface's absorption and scattering, either one value for all bands or band by band, with the
+    material's name and reference;
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
   - sample rate, duration, maximum reflection order and content;
-  - low cut, air absorption, temperature and humidity;
+  - low cut, the number of diffuse rays and the random seed, air absorption, temperature and
+    humidity;
   - export conditioning.
 
   It also shows the estimated number of image sources per receiver.
@@ -54,7 +55,8 @@ document is opened from Finder.
     stays in use.
   - The result shows each channel's peak envelope in dB.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
-  - It shows arrival counts and generation time, and the Schroeder frequency.
+  - It shows arrival counts and generation time, the Schroeder frequency, and the share of energy from
+    500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.
   - Play starts at once with the latest response, even while a newer one is being generated; the new

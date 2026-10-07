@@ -31,33 +31,64 @@ public struct SurfaceMaterial: Codable, Equatable, Sendable {
     public var name: String
     /// Energy absorption coefficient in each octave band of `OctaveBands`, from 0 (rigid) to 1.
     public var absorption: [Double]
+    /// Scattering coefficient in each octave band, from 0 (mirror-like) to 1: the fraction of the
+    /// reflected energy that leaves diffusely rather than specularly (ISO 17497-1).
+    public var scattering: [Double]
     /// Where the coefficients come from, or that they are illustrative.
     public var reference: String
 
-    public init(name: String, absorption: [Double], reference: String) {
+    public init(name: String, absorption: [Double], scattering: [Double]? = nil, reference: String) {
         self.name = name
         self.absorption = absorption
+        self.scattering = scattering ?? Array(repeating: 0, count: absorption.count)
         self.reference = reference
     }
 
-    /// The same coefficient in every band.
-    public static func uniform(_ alpha: Double, name: String, reference: String = "Illustrative") -> Self {
-        Self(name: name, absorption: Array(repeating: alpha, count: OctaveBands.count), reference: reference)
+    /// The same coefficients in every band.
+    public static func uniform(
+        _ alpha: Double, scattering: Double = 0, name: String, reference: String = "Illustrative"
+    ) -> Self {
+        Self(
+            name: name, absorption: Array(repeating: alpha, count: OctaveBands.count),
+            scattering: Array(repeating: scattering, count: OctaveBands.count), reference: reference)
     }
 
     public static let rigid = uniform(0, name: "Rigid", reference: "Ideal: no absorption")
     public static let anechoic = uniform(1, name: "Anechoic", reference: "Ideal: total absorption")
 
-    /// Pressure reflection coefficient per band, assumed real and positive: `sqrt(1 - alpha)`.
-    public var reflection: [Double] { absorption.map { sqrt(max(0, 1 - $0)) } }
+    /// Pressure reflection coefficient of the specular part per band, assumed real and positive:
+    /// `sqrt((1 - alpha)(1 - s))`. The scattered energy is modelled separately.
+    public var reflection: [Double] {
+        zip(absorption, scattering).map { sqrt(max(0, 1 - $0) * max(0, 1 - $1)) }
+    }
+
+    var scatters: Bool { scattering.contains { $0 > 0 } }
+
+    enum CodingKeys: String, CodingKey {
+        case name, absorption, scattering, reference
+    }
+
+    /// Materials saved before scattering existed decode as purely specular.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        absorption = try container.decode([Double].self, forKey: .absorption)
+        scattering =
+            try container.decodeIfPresent([Double].self, forKey: .scattering)
+            ?? Array(repeating: 0, count: absorption.count)
+        reference = try container.decode(String.self, forKey: .reference)
+    }
 
     func validate() throws {
-        guard absorption.count == OctaveBands.count else {
+        guard absorption.count == OctaveBands.count, scattering.count == OctaveBands.count else {
             throw AcousticError.invalid(
-                "\(name) needs \(OctaveBands.count) octave-band absorption coefficients.")
+                "\(name) needs \(OctaveBands.count) octave-band absorption and scattering coefficients.")
         }
         guard absorption.allSatisfy({ (0...1).contains($0) }) else {
             throw AcousticError.invalid("\(name) has an absorption coefficient outside 0 to 1.")
+        }
+        guard scattering.allSatisfy({ (0...1).contains($0) }) else {
+            throw AcousticError.invalid("\(name) has a scattering coefficient outside 0 to 1.")
         }
     }
 }
@@ -109,6 +140,9 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
     }
 
     public var surfaceArea: Double { Surface.allCases.reduce(0) { $0 + area($1) } }
+
+    /// Whether any surface scatters in any band.
+    public var scatters: Bool { Surface.allCases.contains { self[$0].scatters } }
 
     /// Whether a point lies strictly inside the room.
     public func contains(_ point: SIMD3<Double>) -> Bool {

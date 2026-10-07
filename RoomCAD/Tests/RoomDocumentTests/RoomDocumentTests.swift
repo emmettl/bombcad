@@ -195,3 +195,40 @@ struct RoomDocumentTests {
         return try JSONSerialization.data(withJSONObject: object)
     }
 }
+
+@Suite("RoomCAD documents and scattering")
+struct RoomDocumentScatteringTests {
+    @Test("Ray count, seed and scattering coefficients survive saving")
+    func roundTrip() throws {
+        var project = RoomProject(settings: RoomDocumentTests.settings)
+        project.settings.room.north.scattering = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        project.settings.diffuseRays = 12_345
+        project.settings.randomSeed = 77
+        let loaded = try RoomProject(
+            archive: ProjectArchive(fileWrapper: project.makeArchive().fileWrapper()))
+        #expect(loaded.settings == project.settings)
+    }
+
+    @Test("Documents saved before scattering open with defaults, and their responses become out of date")
+    func olderDocuments() throws {
+        var project = RoomProject(settings: RoomDocumentTests.settings)
+        project.result = try RoomResponseGenerator.generate(project.settings)
+        var archive = try project.makeArchive()
+        func strip(_ path: String, keys: [String]) throws {
+            var object = try #require(
+                try JSONSerialization.jsonObject(with: archive.files[path]!) as? [String: Any])
+            for key in keys { object[key] = nil }
+            archive.files[path] = try JSONSerialization.data(withJSONObject: object)
+        }
+        try strip("settings.json", keys: ["diffuseRays", "randomSeed"])
+        // A response from the previous, specular-only generator.
+        var description = try #require(
+            try JSONSerialization.jsonObject(with: archive.files["results/response.json"]!) as? [String: Any])
+        description["generator"] = "RoomCAD image-source model 1"
+        archive.files["results/response.json"] = try JSONSerialization.data(withJSONObject: description)
+        let loaded = try RoomProject(archive: archive)
+        #expect(loaded.settings.diffuseRays == 40_000 && loaded.settings.randomSeed == 1)
+        #expect(loaded.result != nil)
+        #expect(!loaded.isResultCurrent)
+    }
+}

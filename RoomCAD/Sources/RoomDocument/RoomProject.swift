@@ -69,12 +69,15 @@ public struct RoomProject: Equatable, Sendable {
         self.export = export
     }
 
-    /// An 8 × 6 × 3 m room with illustrative uniform absorption, one source and a spaced pair of
+    /// An 8 × 6 × 3 m room with illustrative uniform absorption and scattering rising with frequency, as
+    /// furniture and surface detail scatter short wavelengths more, one source and a spaced pair of
     /// receivers off the room's centre lines.
     public static var starter: RoomResponseSettings {
-        RoomResponseSettings(
-            room: ShoeboxRoom(
-                size: [8, 6, 3], material: .uniform(0.2, name: "Uniform 0.2", reference: "Illustrative")),
+        let material = SurfaceMaterial(
+            name: "Furnished room", absorption: Array(repeating: 0.2, count: 8),
+            scattering: [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.6], reference: "Illustrative")
+        return RoomResponseSettings(
+            room: ShoeboxRoom(size: [8, 6, 3], material: material),
             source: RoomPoint(name: "Source", position: [2.1, 2.7, 1.4]),
             receivers: [
                 RoomPoint(name: "Left", position: [5.6, 3.4, 1.2]),
@@ -112,6 +115,9 @@ public struct RoomProject: Equatable, Sendable {
         var content: ResponseMetadata.Content
         var lowFrequencyCutoff: Double
         var export: ExportSettings
+        /// Absent in documents saved before scattering was modelled.
+        var diffuseRays: Int?
+        var randomSeed: UInt64?
     }
 
     static let resultWAV = "results/response.wav"
@@ -138,7 +144,8 @@ public struct RoomProject: Equatable, Sendable {
             room: scene.room, source: scene.source, receivers: scene.receivers, atmosphere: stored.atmosphere,
             airAbsorption: stored.airAbsorption, sampleRate: stored.sampleRate, duration: stored.duration,
             maximumReflectionOrder: stored.maximumReflectionOrder, content: stored.content,
-            lowFrequencyCutoff: stored.lowFrequencyCutoff)
+            lowFrequencyCutoff: stored.lowFrequencyCutoff, diffuseRays: stored.diffuseRays ?? 40_000,
+            randomSeed: stored.randomSeed ?? 1)
         do {
             try settings.validate()
         } catch {
@@ -182,7 +189,8 @@ public struct RoomProject: Equatable, Sendable {
                 atmosphere: settings.atmosphere, airAbsorption: settings.airAbsorption,
                 sampleRate: settings.sampleRate, duration: settings.duration,
                 maximumReflectionOrder: settings.maximumReflectionOrder, content: settings.content,
-                lowFrequencyCutoff: settings.lowFrequencyCutoff, export: export))
+                lowFrequencyCutoff: settings.lowFrequencyCutoff, export: export,
+                diffuseRays: settings.diffuseRays, randomSeed: settings.randomSeed))
         if let result, retainsResult {
             let encoded = try result.encoded()
             files[Self.resultWAV] = encoded.wav

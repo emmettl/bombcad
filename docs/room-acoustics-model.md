@@ -2,8 +2,8 @@
 
 RoomCAD's first acoustic backend generates impulse responses of rectangular rooms for
 convolution reverb. It lives in the separate `RoomCAD` package: `Sources/AcousticCore` holds the
-model and `Sources/ImpulseResponseKit` holds the response format and WAV files. It is milestone M2
-of the [RoomCAD roadmap](roomcad-roadmap.md). The app that edits rooms and generates responses is
+model and `Sources/ImpulseResponseKit` holds the response format and WAV files. It covers milestone
+M2 and the scattering part of M4 of the [RoomCAD roadmap](roomcad-roadmap.md). The app that edits rooms and generates responses is
 described in [RoomCAD app and documents](roomcad-app.md).
 
 ## What it models
@@ -11,9 +11,18 @@ described in [RoomCAD app and documents](roomcad-app.md).
 The model covers one omnidirectional point source and up to 16 omnidirectional point receivers in a
 rectangular room whose interior spans `[0, size]` in metres, z up. Each receiver becomes one output
 channel. Two receivers give the mono-to-stereo case. Each of the six surfaces has its own material,
-given as energy absorption coefficients α in eight octave bands (nominally 63 Hz to 8 kHz). The model
-is geometrical acoustics: specular reflection only, with no wave effects except those the coherent sum
-of images reproduces.
+given as energy absorption coefficients α and scattering coefficients s in eight octave bands (nominally
+63 Hz to 8 kHz). The model is geometrical acoustics, with no wave effects except those the coherent
+sum of images reproduces.
+
+At each reflection the energy that is not absorbed, a fraction 1 − α, splits in two:
+
+- a fraction 1 − s leaves specularly, like light from a mirror;
+- a fraction s leaves diffusely, in a Lambert (cosine) distribution.
+
+This is the scattering coefficient's definition in ISO 17497-1. Image sources give the paths that are
+specular at every reflection. Ray tracing gives the energy that has scattered at least once, so each
+path is counted once.
 
 ## Image sources
 
@@ -26,7 +35,7 @@ with:
 |---|---|
 | Delay | r / c, with c = 331.3 √(T / 273.15 K) m/s (343.2 m/s at 20 °C) |
 | Spreading | 1 / r, relative to the free-field pressure 1 m from the source |
-| Reflection | the product of √(1 − α) over the surfaces met, per band; real and positive, so no phase shift and no angle dependence |
+| Reflection | the product of √((1 − α)(1 − s)) over the surfaces met, per band; real and positive, so no phase shift and no angle dependence |
 | Air | exp(−m r) per band, with m the ISO 9613-1 attenuation at the band centre |
 
 The image list is built per axis and sorted by distance, so the triple loop stops early at the
@@ -42,6 +51,33 @@ Two limits bound the work, and both are explicit settings:
   incomplete from that time. No late tail is synthesized.
 
 Settings that would need more than 40 million image sources per receiver are rejected.
+
+## Scattered energy
+
+`DiffuseRayTracer` follows rays from the source, by default 40,000 of them, in evenly spread directions
+(a spherical Fibonacci lattice) given a random rotation.
+
+At each wall a ray keeps a fraction 1 − α of its energy per band. It then either scatters, leaving in a
+cosine-weighted random direction, or reflects specularly. It scatters with probability p, the
+surface's mean scattering coefficient, kept between 0.05 and 0.95 when the surface scatters at all.
+Each band's energy is then multiplied by s/p or (1 − s)/(1 − p), so every band keeps its exact
+expectation even though one path serves all eight. Rays stop at the response duration, or once their
+energy is about 150 dB down.
+
+Each receiver is a sphere of radius 0.4 m. Once a ray has scattered, crossing a sphere deposits its
+energy × 4π × chord length / V. V is the volume of the part of the sphere inside the room, so receivers
+near walls are not biased. That normalization makes a free-field source give 1/r², the same units as
+an image source's squared gain. Deposits go into 1 ms bins per octave band, with air absorption applied
+over the path length.
+
+`DiffuseTail` turns each receiver's histogram, smoothed over ±2 ms, into impulses with random signs at
+random times within each bin. Each bin's impulses share its energy equally in every band, so they add
+incoherently to it. Their density follows a room's reflection density, 4πc³t²/V per second, between
+2,000 and 20,000 per second. They go through the same renderer as the image sources.
+
+The ray directions and the tail's detail come from `randomSeed`, so a response is reproduced exactly.
+A surface with s = 0 in every band leaves the response exactly as the image sources alone give it, and
+no rays are traced.
 
 ## Rendering
 
@@ -103,8 +139,18 @@ half-cosine taper to the end of every channel.
   more than 1 ms from the arrival.
 - The reflections-only response equals the complete response minus the direct sound.
 - The order limit is reported when it removes arrivals within the duration.
-- The decay of a uniformly absorbing room matches the decay expected of purely specular reflection
-  (below).
+- The decay of a uniformly absorbing, purely specular room matches the decay expected of specular
+  reflection (below).
+- In a rigid room that scatters fully, the detected energy arrives at the diffuse-field rate 4πc/V to
+  within 3%, including at a receiver 0.2 m from a corner.
+- Scattering weakens each specular reflection by √(1 − s).
+- With full scattering, the 1–8 kHz T30 averages within 6% of the Eyring estimate corrected for the
+  spread of free path lengths (below), and each band decays faster than without scattering.
+- Without scattering, nothing is traced and the response does not depend on the ray count or seed.
+- The same seed reproduces a response exactly; another seed changes its detail but keeps its energy
+  within 5%.
+- Materials and settings saved before scattering existed decode with s = 0 and the default ray count
+  and seed.
 - The high-pass removes the low-frequency offset without changing the audible bands.
 - WAV and metadata round trip, including unknown chunks and extensible files; integer PCM,
   non-finite samples and truncated files are rejected.
@@ -117,7 +163,7 @@ a reference room and exports its responses. Its results on the development Mac:
 | Direct and first-reflection arrival times | worst error 0.42 samples at 48 kHz |
 | Anechoic energy × r², 0.5 to 4 m | 1.0000 to 1.0001 |
 | Anechoic energy more than 1 ms after the arrival | 10⁻³² without the high-pass; 2.9 × 10⁻⁴ with it |
-| Reference room, 2 receivers × 1.5 s | about 4.0 million arrivals per receiver, 5.8 s |
+| Reference room, 2 receivers × 1.5 s | about 4.0 million arrivals per receiver, 5.7 s; with scattering, 6.0 s including 40,000 rays |
 
 The exported stereo file was also played through Driftbox's own engine. That code is independent of
 RoomCAD: native Driftbox's WAV decoder and its zero-latency `PartitionedConvolver`. Convolving a noise
@@ -147,15 +193,46 @@ The reference room (8 × 6 × 3 m, α = 0.2) shows the same thing:
 | 1 kHz | 0.63 s | 0.57 s | 0.87–0.89 s |
 | 4 kHz | 0.58 s | 0.53 s | 0.69–0.70 s |
 
-The rendered reverberation is longer than real rooms with the same absorption. Real rooms scatter
-sound, which makes the field more diffuse.
+Without scattering, the rendered reverberation is longer than in real rooms with the same absorption,
+because real rooms scatter sound and that makes the field more diffuse.
+
+### Decay with scattering
+
+When every reflection scatters, the decay should approach diffuse-field theory. Eyring's formula
+assumes every free path between reflections has the mean length 4V/S. Kuttruff corrects it for the
+spread of path lengths:
+
+T ≈ T_Eyring / (1 + (γ²/2) ln(1 − α))
+
+Here γ² is the relative variance of the free path lengths, about 0.4 in rooms of ordinary shape. This
+correction is quoted from Kuttruff from memory and should be checked against the book. It predicts
+times 7.7% and 16% longer than Eyring's for α = 0.3 and 0.5. In a fully scattering 5 × 4 × 3 m room the
+tracer gives 8% and 12.5% longer, and the test above holds the α = 0.5 case to within 6% of the
+corrected value.
+
+The reference room with scattering rising from 0.1 at 63 Hz to 0.6 at 4–8 kHz, an illustrative
+furnished room, decays between the Eyring and Sabine estimates. About 75% of its energy from 500 Hz to
+4 kHz arrives scattered:
+
+| Band | Sabine | Eyring | T30 specular only | T30 with scattering |
+|---|---|---|---|---|
+| 125 Hz | 0.64 s | 0.58 s | 0.98–1.02 s | 0.55–0.57 s |
+| 500 Hz | 0.64 s | 0.57 s | 0.87–0.91 s | 0.58–0.65 s |
+| 1 kHz | 0.63 s | 0.57 s | 0.87–0.89 s | 0.60–0.61 s |
+| 4 kHz | 0.58 s | 0.53 s | 0.69–0.70 s | 0.54–0.55 s |
 
 ## Limitations
 
 - **Geometry.** Only rectangular rooms, with one material per surface, are supported. There are no
   openings, no furniture and no coupled spaces.
-- **Specular reflection only.** There is no scattering or diffraction, so late decay is too long
-  and too regular (above). Flutter between parallel surfaces is exaggerated.
+- **Scattering.** Its coefficients are inputs; there are no sourced values yet, and the starter room's
+  are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
+  exaggerated (above).
+- **Diffuse part.** The scattered part is an energy envelope with random detail, not a wave solution.
+  It carries no direction and no interference between scattered paths. Each bin's energy is shared
+  equally across its impulses in every band, so its fine structure is the same in all bands. The
+  tracer's noise (a few percent per 5 ms at 40,000 rays) is smoothed but remains.
+- **Diffraction.** There is none.
 - **Reflection coefficients.** These are angle-independent, real and positive. The low-frequency
   behaviour is approximate below the reported Schroeder frequency, `2000 √(T/V)` with the Sabine time
   at 500 Hz–1 kHz.
@@ -173,13 +250,12 @@ sound, which makes the field more diffuse.
 
 The roadmap orders the work as follows:
 
-- an auditioning preview (M2 item 6);
 - a bounded, labelled late tail if auditioning needs one (M2 item 4);
-- scattering and diffuse reflection (M4);
-- sourced material data (M5);
+- sourced material data, including scattering coefficients (M5);
+- a crossover to the low-frequency wave solver (the rest of M4);
 - a low-frequency wave solver (M3).
 
-Receivers could be generated in parallel.
+Receivers could be generated in parallel, and the ray tracer could run on the GPU.
 
 ## Sources
 
@@ -191,4 +267,7 @@ Receivers could be generated in parallel.
 - ISO 3382-1:2009, *Acoustics — Measurement of room acoustic parameters — Part 1: Performance
   spaces*, for Schroeder backward integration and T30.
 - H. Kuttruff, *Room Acoustics*, 6th edn, CRC Press, 2016, for the Sabine and Eyring formulae, the
-  Schroeder frequency and decay in non-diffuse rooms.
+  Schroeder frequency, decay in non-diffuse rooms, the correction for the spread of free path
+  lengths, and ray tracing with diffuse reflection.
+- ISO 17497-1:2004, *Acoustics — Sound-scattering properties of surfaces — Part 1: Measurement of the
+  random-incidence scattering coefficient in a reverberation room*, for the definition of s.

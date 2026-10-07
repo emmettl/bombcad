@@ -111,7 +111,14 @@ struct DiagnosticsList: View {
             if let schroeder = d.schroederFrequency {
                 Text(String(format: "Approximate below about %.0f Hz (Schroeder frequency).", schroeder))
             }
-            Text("Specular reflection only: decay is slower than in a real room with scattering.")
+            if let scattered = d.scatteredFraction, let rays = d.diffuseRays, rays > 0 {
+                Text(
+                    "Scattered energy, 500 Hz–4 kHz: "
+                        + scattered.map { String(format: "%.0f%%", $0 * 100) }.joined(separator: " / ")
+                        + " (\(rays.formatted()) rays)")
+            } else {
+                Text("Specular reflection only: decay is slower than in a real room, which scatters sound.")
+            }
         }
         .font(.caption)
         .foregroundStyle(.secondary)

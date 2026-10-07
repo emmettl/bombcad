@@ -89,31 +89,41 @@ do {
     }
     print("")
 
-    // 3. Reference room.
-    let material = SurfaceMaterial.uniform(0.2, name: "Uniform 0.2", reference: "Illustrative")
+    // 3. Reference room, without and with scattering.
+    let specularMaterial = SurfaceMaterial.uniform(0.2, name: "Uniform 0.2", reference: "Illustrative")
+    var scatteringMaterial = specularMaterial
+    scatteringMaterial.scattering = [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.6]
     var settings = RoomResponseSettings(
-        room: ShoeboxRoom(size: size, material: material), source: source, receivers: [left, right],
+        room: ShoeboxRoom(size: size, material: specularMaterial), source: source, receivers: [left, right],
         duration: 1.5, maximumReflectionOrder: 250)
+    let specular = try RoomResponseGenerator.generate(settings)
+    settings.room = ShoeboxRoom(size: size, material: scatteringMaterial)
     let complete = try RoomResponseGenerator.generate(settings)
     settings.content = .reflectionsOnly
     let reflections = try RoomResponseGenerator.generate(settings)
     let d = complete.diagnostics
     print("Reference room 8 × 6 × 3 m, alpha 0.2 everywhere, air at 20 °C and 50% RH, 1.5 s")
-    print("  arrivals per receiver \(d.arrivals), generated in \(format(d.generationSeconds, 2)) s")
+    print("  specular only: generated in \(format(specular.diagnostics.generationSeconds, 2)) s")
+    print(
+        "  with scattering 0.1 (63 Hz) rising to 0.6 (4–8 kHz): generated in \(format(d.generationSeconds, 2)) s, "
+            + "\(d.diffuseRays ?? 0) rays, scattered energy \((d.scatteredFraction ?? []).map { format($0, 2) })"
+    )
     print("  order limit reached after \(d.orderLimitedAfter.map { format($0) })")
     print("  Schroeder frequency \(format(d.schroederFrequency, 0)) Hz")
-    print("  Specular reflection alone decays more slowly than the diffuse-field estimates.")
-    print("  band (Hz)  Sabine T  Eyring T  T30 left  T30 right")
-    for (b, centre) in OctaveBands.nominalCentres.enumerated() {
-        let measured = complete.response.channels.map {
+    print("  band (Hz)  Sabine T  Eyring T  T30 specular  T30 scattering (left, right)")
+    func t30(_ result: RoomResponse, _ band: Int) -> [String] {
+        result.response.channels.map {
             format(
                 DecayAnalysis.reverberationTime(
-                    DecayAnalysis.octaveBand($0, sampleRate: fs, band: b), sampleRate: fs), 2)
+                    DecayAnalysis.octaveBand($0, sampleRate: fs, band: band), sampleRate: fs), 2)
         }
+    }
+    for (b, centre) in OctaveBands.nominalCentres.enumerated() {
         print(
             "  \(String(centre).padding(toLength: 9, withPad: " ", startingAt: 0))  "
                 + "\(format(d.sabineReverberationTime[b], 2)) s    \(format(d.eyringReverberationTime[b], 2)) s    "
-                + "\(measured[0]) s    \(measured[1]) s")
+                + "\(t30(specular, b).joined(separator: ", ")) s    \(t30(complete, b).joined(separator: ", ")) s"
+        )
     }
 
     // 4. Export, with one common gain and a short fade so the files are ready to audition.

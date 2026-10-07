@@ -43,29 +43,53 @@ struct PointEditor: View {
     }
 }
 
-/// Edits a surface's octave-band absorption.
+/// Edits a surface's octave-band absorption and scattering.
 struct MaterialEditor: View {
     let surface: Surface
     @Binding var material: SurfaceMaterial
 
-    private var all: Binding<Double> {
+    /// The mean of `values`; setting it sets every band.
+    private func mean(_ values: WritableKeyPath<SurfaceMaterial, [Double]>) -> Binding<Double> {
         Binding(
-            get: { material.absorption.reduce(0, +) / Double(material.absorption.count) },
-            set: { value in material.absorption = material.absorption.map { _ in value } })
+            get: { material[keyPath: values].reduce(0, +) / Double(material[keyPath: values].count) },
+            set: { value in material[keyPath: values] = material[keyPath: values].map { _ in value } })
     }
 
     var body: some View {
         DisclosureGroup {
             TextField("Material", text: $material.name)
             TextField("Reference", text: $material.reference)
-            ForEach(OctaveBands.nominalCentres.indices, id: \.self) { band in
-                NumberField(
-                    title: "α at \(Self.bandName(band))", value: $material.absorption[band])
+            NumberField(title: "Scattering, all bands", value: mean(\.scattering))
+                .help("Fraction of the reflected energy sent off diffusely rather than like a mirror")
+            Grid(alignment: .trailing, horizontalSpacing: 8, verticalSpacing: 4) {
+                GridRow {
+                    Text("Band")
+                    Text("Absorption α")
+                    Text("Scattering s")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                ForEach(OctaveBands.nominalCentres.indices, id: \.self) { band in
+                    GridRow {
+                        Text(Self.bandName(band)).font(.caption)
+                        coefficient("α at \(Self.bandName(band))", $material.absorption[band])
+                        coefficient("s at \(Self.bandName(band))", $material.scattering[band])
+                    }
+                }
             }
         } label: {
-            NumberField(title: surface.rawValue.capitalized, value: all)
-                .help("Mean absorption coefficient; editing it sets every band. Expand for each band.")
+            NumberField(title: surface.rawValue.capitalized, value: mean(\.absorption))
+                .help(
+                    "Mean absorption coefficient; editing it sets every band. Expand for scattering and each band."
+                )
         }
+    }
+
+    private func coefficient(_ title: String, _ value: Binding<Double>) -> some View {
+        TextField(title, value: value, format: .number.precision(.fractionLength(0...2)))
+            .labelsHidden()
+            .multilineTextAlignment(.trailing)
+            .frame(width: 60)
     }
 
     static func bandName(_ band: Int) -> String {
@@ -129,6 +153,16 @@ struct RoomInspector: View {
                 }
                 NumberField(
                     title: "Low cut (0 = off)", value: settings.lowFrequencyCutoff, unit: "Hz", digits: 0)
+                LabeledContent("Diffuse rays") {
+                    TextField("Diffuse rays", value: settings.diffuseRays, format: .number)
+                        .labelsHidden().multilineTextAlignment(.trailing).frame(width: 72)
+                }
+                .help("Rays traced for the scattered energy. More rays give a smoother tail and take longer.")
+                LabeledContent("Random seed") {
+                    TextField("Random seed", value: settings.randomSeed, format: .number)
+                        .labelsHidden().multilineTextAlignment(.trailing).frame(width: 72)
+                }
+                .help("Fixes the scattered tail's random detail, so a response can be reproduced exactly")
                 Toggle("Air absorption", isOn: settings.airAbsorption)
                 NumberField(
                     title: "Temperature", value: settings.atmosphere.temperatureCelsius, unit: "°C", digits: 1

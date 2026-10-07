@@ -312,6 +312,16 @@ Done when: reproducible broadband stereo responses have no unexplained crossover
 and a validation report distinguishes agreement with measurements from modelling assumptions.
 Listening comparisons supplement the numerical checks.
 
+Progress (October 2026): item 1 (scattering) is implemented for rectangular rooms. Image sources
+carry the specular part, weakened by 1 − s at each reflection. Ray tracing with Lambert reflection
+carries the energy scattered at least once, rendered as a dense, seeded random reflection pattern.
+
+The tracer's detector matches the diffuse-field rate 4πc/V to within 3%. Full scattering brings the
+decay to within 6% of Kuttruff's corrected Eyring estimate. The illustrative reference room now decays
+between its Eyring and Sabine times instead of 50–70% longer. See
+[Room-acoustics model](room-acoustics-model.md#scattered-energy). The wave-solver crossover (items 2–6)
+waits for M3.
+
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 
 1. Expand beyond rectangular rooms with openings, connected spaces and practical geometry

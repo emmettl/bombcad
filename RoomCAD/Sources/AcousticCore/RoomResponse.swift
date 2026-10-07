@@ -37,6 +37,10 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
     /// modelled as real and positive, the raw response accumulates a slowly decaying offset below the
     /// lowest room mode that is outside the usable band and would offset a convolution reverb.
     public var lowFrequencyCutoff: Double
+    /// Rays traced from the source for the scattered energy; unused if no surface scatters.
+    public var diffuseRays: Int
+    /// Seed for the ray directions and the diffuse tail's random detail, so a response can be reproduced.
+    public var randomSeed: UInt64
 
     /// Upper bound on the estimated number of image sources per receiver.
     public static let maximumImageCount = 40_000_000
@@ -47,7 +51,7 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         room: ShoeboxRoom, source: RoomPoint, receivers: [RoomPoint], atmosphere: Atmosphere = .standard,
         airAbsorption: Bool = true, sampleRate: Int = 48_000, duration: Double = 1,
         maximumReflectionOrder: Int = 60, content: ResponseMetadata.Content = .complete,
-        lowFrequencyCutoff: Double = 20
+        lowFrequencyCutoff: Double = 20, diffuseRays: Int = 40_000, randomSeed: UInt64 = 1
     ) {
         self.room = room
         self.source = source
@@ -59,6 +63,31 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         self.maximumReflectionOrder = maximumReflectionOrder
         self.content = content
         self.lowFrequencyCutoff = lowFrequencyCutoff
+        self.diffuseRays = diffuseRays
+        self.randomSeed = randomSeed
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case room, source, receivers, atmosphere, airAbsorption, sampleRate, duration, maximumReflectionOrder
+        case content, lowFrequencyCutoff, diffuseRays, randomSeed
+    }
+
+    /// Settings saved before scattering existed decode with its defaults.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            room: try c.decode(ShoeboxRoom.self, forKey: .room),
+            source: try c.decode(RoomPoint.self, forKey: .source),
+            receivers: try c.decode([RoomPoint].self, forKey: .receivers),
+            atmosphere: try c.decode(Atmosphere.self, forKey: .atmosphere),
+            airAbsorption: try c.decode(Bool.self, forKey: .airAbsorption),
+            sampleRate: try c.decode(Int.self, forKey: .sampleRate),
+            duration: try c.decode(Double.self, forKey: .duration),
+            maximumReflectionOrder: try c.decode(Int.self, forKey: .maximumReflectionOrder),
+            content: try c.decode(ResponseMetadata.Content.self, forKey: .content),
+            lowFrequencyCutoff: try c.decode(Double.self, forKey: .lowFrequencyCutoff),
+            diffuseRays: try c.decodeIfPresent(Int.self, forKey: .diffuseRays) ?? 40_000,
+            randomSeed: try c.decodeIfPresent(UInt64.self, forKey: .randomSeed) ?? 1)
     }
 
     /// Estimated image sources per receiver within the duration and order limits.
@@ -81,6 +110,9 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         }
         guard lowFrequencyCutoff == 0 || (5...200).contains(lowFrequencyCutoff) else {
             throw AcousticError.invalid("The low-frequency cutoff must be 0 (off) or between 5 and 200 Hz.")
+        }
+        guard (1_000...1_000_000).contains(diffuseRays) else {
+            throw AcousticError.invalid("The number of diffuse rays must be between 1,000 and 1,000,000.")
         }
         guard (0...1_000).contains(maximumReflectionOrder) else {
             throw AcousticError.invalid("The maximum reflection order must be between 0 and 1000.")
@@ -122,6 +154,11 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     /// sparse and the geometrical model is approximate.
     public var schroederFrequency: Double?
     public var generationSeconds: Double
+    /// Per receiver: the fraction of the response's energy from 500 Hz to 4 kHz that was scattered at
+    /// least once. Nil for responses made before scattering was modelled.
+    public var scatteredFraction: [Double]?
+    /// Rays traced for the scattered energy; zero when no surface scatters.
+    public var diffuseRays: Int?
 }
 
 /// A generated response together with the settings that produced it.
@@ -130,12 +167,18 @@ public struct RoomResponse: Sendable {
     public var settings: RoomResponseSettings
     public var diagnostics: RoomResponseDiagnostics
 
-    public static let generatorName = "RoomCAD image-source model 1"
+    public static let generatorName = "RoomCAD hybrid model 2"
+    /// Generators whose saved responses can still be read; only the current one is up to date.
+    public static let readableGenerators: Set<String> = ["RoomCAD image-source model 1", generatorName]
 
     public static let assumptions = [
-        "Rectangular room, specular reflections only (image-source method); no diffraction or scattering.",
-        "Pressure reflection coefficient sqrt(1 - alpha) per octave band, real and positive (no phase shift), "
-            + "independent of the angle of incidence.",
+        "Rectangular room. Specular reflections by the image-source method; energy scattered at least once by "
+            + "ray tracing with Lambert (cosine) reflection, rendered as a dense random reflection pattern with "
+            + "that energy envelope. No diffraction.",
+        "Each reflection keeps (1 - alpha) of the energy, of which a fraction s (the scattering coefficient) "
+            + "leaves diffusely and the rest specularly.",
+        "Specular pressure reflection coefficient sqrt((1 - alpha)(1 - s)) per octave band, real and positive "
+            + "(no phase shift), independent of the angle of incidence.",
         "Absorption and air attenuation blend smoothly between octave-band centres; air attenuation uses "
             + "ISO 9613-1 at each band centre, so it is underestimated above about 11 kHz.",
         "Omnidirectional point source and receivers.",
@@ -178,10 +221,10 @@ public struct RoomResponse: Sendable {
     /// Decodes data from `encoded()`, rejecting responses from another generator.
     public init(wav: Data, metadata: Data) throws {
         let response = try ImpulseResponse(wav: wav, metadata: metadata)
-        guard response.metadata.generator == Self.generatorName,
+        guard Self.readableGenerators.contains(response.metadata.generator),
             let details = try ImpulseResponse.generatorDetails(Details.self, from: metadata)
         else {
-            throw AcousticError.invalid("The response was not generated by \(Self.generatorName).")
+            throw AcousticError.invalid("The response was not generated by RoomCAD.")
         }
         guard details.settings.receivers.count == response.channels.count,
             details.settings.sampleRate == response.sampleRate
@@ -208,21 +251,39 @@ public enum RoomResponseGenerator {
         var channels: [[Float]] = []
         var arrivals: [Int] = []
         var orderLimitedAfter: [Double?] = []
-        for receiver in settings.receivers {
+        var scatteredFraction: [Double] = []
+        let cancelled = { Task.isCancelled }
+        let tracer = DiffuseRayTracer(
+            room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
+            airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
+        let diffuse = tracer.trace(
+            receivers: settings.receivers.map(\.position), duration: settings.duration, stop: cancelled)
+        try Task.checkCancellation()
+        // The bands whose energy the scattered fraction reports, 500 Hz to 4 kHz.
+        let reported = 3...6
+        for (index, receiver) in settings.receivers.enumerated() {
             var renderer = BandRenderer(
                 sampleRate: settings.sampleRate, frames: frames,
                 lowFrequencyCutoff: settings.lowFrequencyCutoff)
-            let cancelled = { Task.isCancelled }
+            var specularEnergy = 0.0
             let summary = model.forEachArrival(
                 at: receiver.position, duration: settings.duration,
                 maximumOrder: settings.maximumReflectionOrder, includeDirect: includeDirect, stop: cancelled
             ) { delay, _, gains in
                 renderer.add(delay: delay, gains: gains)
+                for b in reported { specularEnergy += gains[b] * gains[b] }
             }
             try Task.checkCancellation()
+            let diffuseEnergy = DiffuseTail.render(
+                diffuse[index], into: &renderer, roomVolume: settings.room.volume,
+                soundSpeed: settings.atmosphere.soundSpeed,
+                seed: settings.randomSeed &+ UInt64(index) &* 0x9E37,
+                bands: reported)
             channels.append(renderer.render())
             arrivals.append(summary.arrivals)
             orderLimitedAfter.append(summary.orderLimitedAfter)
+            let total = specularEnergy + diffuseEnergy
+            scatteredFraction.append(total > 0 ? diffuseEnergy / total : 0)
         }
 
         let c = settings.atmosphere.soundSpeed
@@ -239,7 +300,8 @@ public enum RoomResponseGenerator {
             directDelay: settings.receivers.map { simd_distance($0.position, settings.source.position) / c },
             orderLimitedAfter: orderLimitedAfter, sabineReverberationTime: sabine,
             eyringReverberationTime: eyring, schroederFrequency: schroeder,
-            generationSeconds: Date().timeIntervalSince(start))
+            generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
+            diffuseRays: settings.room.scatters ? settings.diffuseRays : 0)
 
         let metadata = ResponseMetadata(
             sampleRate: settings.sampleRate, frameCount: frames,
@@ -256,7 +318,9 @@ public enum RoomResponseGenerator {
                 lowerHz: max(settings.lowFrequencyCutoff, 20),
                 upperHz: BandRenderer.passbandFraction * Double(settings.sampleRate)),
             approximateBelowHz: schroeder,
-            model: "Geometrical acoustics (image-source method); low-frequency behaviour is approximate.",
+            model:
+                "Geometrical acoustics (image sources for specular paths, ray tracing for scattered energy); "
+                + "low-frequency behaviour is approximate.",
             assumptions: RoomResponse.assumptions, generator: RoomResponse.generatorName)
         return RoomResponse(
             response: try ImpulseResponse(channels: channels, metadata: metadata), settings: settings,
