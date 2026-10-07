@@ -53,7 +53,7 @@ Finite supports do not attach arbitrary interior solid nodes, vertical wall face
 
 Ideal clamps override finite connections wherever they overlap. Among overlapping finite regions the last region wins; a finite region overrides the ground connection at its bearing points. Ground restraint and support regions are independent. All properties, geometry and per-region assignments persist in projects and saved run inputs and participate in Undo/Redo.
 
-`StructureModel.supportAnchorages` is aligned with `supports`. Missing/null entries mean ideal clamps; removing a support removes its law at the same index. Empty arrays are omitted from JSON to preserve historical input fingerprints. Invalid law values and references are rejected on editing, project loading and solver construction. Solver provenance advances to `blast-solver-2` for these connections; existing saved results remain readable.
+`StructureModel.supportAnchorages` is aligned with `supports`. Missing/null entries mean ideal clamps; removing a support removes its law at the same index. Empty arrays are omitted from JSON to preserve historical input fingerprints. Project scene payloads with finite support-region laws use encoding version 2, so older apps reject them instead of silently treating the connections as clamps; version 1 scenes remain readable. Invalid law values and references are rejected on editing, project loading and solver construction. Solver provenance advances to `blast-solver-2` for these connections; existing saved results remain readable.
 
 ## Persisted ownership
 

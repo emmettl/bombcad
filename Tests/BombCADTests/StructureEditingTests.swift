@@ -197,7 +197,15 @@ struct StructuralEditorWorkflowTests {
         #expect(model.settings.scenario.importedModels?.first?.isAttached == false)
         let detached = model.settings.scenario
         #expect(try detached.resamplingImports(cellSize: 0.125) == detached)
-        let restored = try ProjectDocument(archive: ProjectDocument(model: model).makeArchive())
+        let archive = try ProjectDocument(model: model).makeArchive()
+        let payload = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self, from: #require(archive.files["scene.json"]))
+        #expect(payload.encodingVersion == 2)
+        let oldArchive = try ProjectDocument(scenario: clamped).makeArchive()
+        let oldPayload = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self, from: #require(oldArchive.files["scene.json"]))
+        #expect(oldPayload.encodingVersion == 1)
+        let restored = try ProjectDocument(archive: archive)
         #expect(restored.scenario == detached)
         model.removeSupport(at: 0)
         #expect(model.settings.scenario.structure?.anchorage(ofSupport: 0) == .resting(friction: 0.25))
