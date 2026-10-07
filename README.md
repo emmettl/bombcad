@@ -290,6 +290,10 @@ separation bounds to investigate intervals whose samples could miss a complete e
 work in prescribed fractional volumes. The CPU transport reference conserves extensive mass,
 momentum and energy for supplied transfers; it does not yet derive face fluxes or choose a
 stable timestep, and is separate from the air solver.
+`--fractional-remap` writes `.build/fractional-remap.json`, deriving conservative adjacent
+transfers from a translating box's fractional volumes and sampled face openings. The network
+limits outgoing volume to each donor's old gas inventory. This is remapping, not physical
+air fluxes; dry relays and insufficient transit capacity are rejected.
 
 ## Headline results
 

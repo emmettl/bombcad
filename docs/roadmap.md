@@ -477,6 +477,32 @@ fluxes or choose a timestep. Tiny positive states in an algebraic test do not es
 small-cell stability. Next, derive geometry-consistent face transfers and introduce a checked
 small-volume treatment before connecting fractional transport to blast coupling.
 
+Geometry-linked adjacent transfers are now implemented as a capacity-network reference.
+Contracting and expanding gas cells supply the volume constraints; each cell's outgoing
+volume is bounded by its old inventory. Positive shared face openings define the graph.
+Residual network paths can revise earlier transfers to preserve a later cell's only escape
+route, avoiding the failures of greedy routing. Initially dry cells can receive gas but cannot
+relay it in the same frozen-donor update. Disconnected paths, insufficient transit inventory
+and significant total-volume imbalance are rejected. Roundoff excess at a saturated donor
+is adjusted on both sides of a transfer, with endpoint volume residuals checked afterward.
+
+`--fractional-remap` compares a 0.01 m translation of the 0.8 m box on 0.2, 0.1 and 0.05 m
+grids. Fractions within 0.000000000001 of dry/full are canonicalised as geometric roundoff.
+Connectivity uses the maximum open area at start, midpoint and endpoint; this does not
+provide a time-integrated face capacity. The three plans contain 102, 572 and 3046 transfers.
+Mass and energy changes stay below one part in a trillion, momentum changes below
+0.00000000000001 N s, and maximum relative pressure departure below 0.000000000002.
+All donors stay within their old-volume limit; some reach it exactly on the finer grids.
+These are uniform-state remapping checks, not a blast-convergence result.
+
+Six planner tests cover moving-box geometry on all three grids, rerouting a contested exit,
+dry/blocked paths, volume imbalance and small transit cells, alongside the six gas-accounting
+tests. A 0.001 m³ transit cell cannot pass a 0.02 m³ displacement in one update, but forty
+smaller prescribed steps preserve mass, energy and uniform pressure. This demonstrates a
+bounded substep approach rather than automatic stability control. Next, compute conservative
+motion substeps from geometry and capacity limits, then add time-integrated face apertures
+and physical gas fluxes before enabling fractional blast coupling.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
