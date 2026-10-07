@@ -217,7 +217,9 @@ swift run -c release blastbench slab --sensitivity
 ```
 
 `blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
-[Performance](docs/performance.md) and [Validation](docs/validation.md).
+[Performance](docs/performance.md) and [Validation](docs/validation.md). `blastbench anchorage`
+compares a freestanding wall on a clamped base with one on starter bars, a construction joint
+or friction alone (see [base connections](docs/structural-model.md#base-connections)).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
@@ -249,6 +251,14 @@ prescribed remapping in ambient air without gas evolution, suspended-box loading
 flow without gravity/contact, and contact-only mechanics under a known force pulse. These
 separate boundary sensitivity from contact sensitivity; the remap-only pressure changes
 are a numerical stress diagnostic, not a prediction of blast error.
+Add `--transport` to compare an opt-in connected-path remapper, writing
+`.build/rigid-box-diagnostics-transport.json`. It preserves uniform states for balanced
+occupancy changes; unequal voxel volumes still use redistribution. The usual driver and
+app keep their existing behaviour while this alternative is evaluated.
+`--convergence --transport` applies the same alternative to the matched blast study and
+writes `.build/rigid-box-convergence-transport.json` (add `--extended` for the longer study).
+Reports record the remapper and separate air and ground impulses. Completed cases are saved
+incrementally; a failed run can leave a partial report.
 
 ## Headline results
 

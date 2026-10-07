@@ -1,6 +1,11 @@
 import Foundation
 import simd
 
+/// Experimental alternatives for whole-cell boundary updates; neither is a cut-cell scheme.
+public enum ExperimentalBoxRemap: String, Codable, Sendable {
+    case redistribution, connectedTransport
+}
+
 /// Local conservative reference redistribution of density, momentum and total energy.
 /// It preserves these sums, but not angular momentum or a sharp pressure field; it is not a
 /// cut-cell scheme. The caller supplies adjacent cells, including across patch boundaries.
@@ -18,11 +23,50 @@ enum ConservativeCellRemap {
     }
     static func apply(
         _ original: [CellState], oldSolid: [Bool], newSolid: [Bool],
+        mode: ExperimentalBoxRemap = .redistribution,
+        closingTransit: Set<Int> = [],
         neighbours: (Int) -> [Int]
     ) throws -> [CellState] {
         let opening = original.indices.filter { oldSolid[$0] && !newSolid[$0] }
         let closing = original.indices.filter { !oldSolid[$0] && newSolid[$0] }
         guard !opening.isEmpty || !closing.isEmpty else { return original }
+        if mode == .connectedTransport && !opening.isEmpty && !closing.isEmpty {
+            var cells = original
+            var adjustedOld = oldSolid
+            var available = Set(opening)
+            // Shift complete conserved states along adjacent air cells. A balanced occupancy
+            // change therefore preserves a constant field exactly, without teleporting gas
+            // through the body. Greedy shortest paths are a diagnostic, not an ALE solution;
+            // they can transport gradients anisotropically and do not preserve angular momentum.
+            for start in closing {
+                guard !available.isEmpty else { break }
+                var queue = [start]
+                var parents = [start: start]
+                var head = 0
+                var end: Int?
+                while head < queue.count && end == nil {
+                    let n = queue[head]
+                    head += 1
+                    for adjacent in neighbours(n) where !newSolid[adjacent] && parents[adjacent] == nil {
+                        parents[adjacent] = n
+                        if available.contains(adjacent) { end = adjacent; break }
+                        queue.append(adjacent)
+                    }
+                }
+                guard let end else { continue }
+                var path = [end]
+                while path.last! != start { path.append(parents[path.last!]!) }
+                // Back-to-front copy keeps each original parcel intact, including gradients.
+                for slot in 0..<(path.count - 1) { cells[path[slot]] = cells[path[slot + 1]] }
+                available.remove(end)
+                adjustedOld[end] = false
+                adjustedOld[start] = true
+            }
+            // Unequal voxel volumes or disconnected surfaces still use conservative local
+            // redistribution. This fallback cannot preserve a uniform field when volume changes.
+            return try apply(cells, oldSolid: adjustedOld, newSolid: newSolid,
+                closingTransit: Set(closing), neighbours: neighbours)
+        }
         var cells = original
         func vector(_ c: CellState) -> SIMD8<Double> {
             SIMD8(
@@ -39,7 +83,9 @@ enum ConservativeCellRemap {
             return c
         }
         for n in opening { cells[n] = state(.zero) }
-        let closingSet = Set(closing)
+        // Already matched closing cells still provide the same escape routes for residual
+        // gas in a collapsing sheet. Their state is excluded from the residual source sum.
+        let closingSet = Set(closing).union(closingTransit)
         for n in closing {
             // A collapsing ground gap can swallow a whole sheet at once. Interior cells
             // expel gas through other closing cells to the nearest remaining air, rather than

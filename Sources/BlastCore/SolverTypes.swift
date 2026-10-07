@@ -355,6 +355,8 @@ public enum BlastError: Error, CustomStringConvertible {
     case notPlateLike(Int)
     /// The benchmark's supports do not fall on nodes of the mesh.
     case supportsMissNodes
+    /// A scaled distance (m/kg^(1/3)) outside the Kingery–Bulmash curves.
+    case outsideBlastCurves(Double)
 
     public var description: String {
         switch self {
@@ -365,6 +367,8 @@ public enum BlastError: Error, CustomStringConvertible {
             "The structure has \(count) materials; at most \(StructureModel.maxMaterials) are supported"
         case .supportsMissNodes:
             "The supports do not fall on nodes of the mesh; choose an element size that divides 6 inches"
+        case .outsideBlastCurves(let z):
+            "A scaled distance of \(String(format: "%.2f", z)) m/kg^(1/3) is outside the Kingery–Bulmash curves (0.2 to 40)"
         case .notPlateLike(let index):
             "Solid \(index + 1) is neither a wall or slab nor a column, so it cannot be meshed with shells and beams"
         }

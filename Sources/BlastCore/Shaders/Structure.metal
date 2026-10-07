@@ -73,6 +73,16 @@ struct StructureUniforms {
     uint barAxes;       // bits 0 to 2: the body has bars along x, y, z somewhere
     uint bareBars;      // 1: concrete removed while its bars are intact leaves them (elementBare)
     uint crackSlip;     // 1: shear past a crack's interlock slides it for good (stored in jointSlip)
+    // The base's connection to the ground (`Anchorage`), when it is not clamped.
+    uint anchored;
+    float anchorNormalStiffness;  // Pa/m
+    float anchorShearStiffness;   // Pa/m
+    float anchorTension;          // Pa
+    float anchorPlateau;          // m of opening held at full tension
+    float anchorOpening;          // m of opening at which tension is gone
+    float anchorCohesion;         // Pa
+    float anchorCohesionSlip;     // m of sliding over which cohesion is lost
+    float anchorFriction;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -2077,6 +2087,69 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
 }
 
 // Gathers element forces at every node and advances velocity and position.
+// Fraction of an anchorage's tensile strength left once it has opened by `peak`: all of it to
+// the end of the plateau, then falling linearly to nothing. Matches `Anchorage.envelope`.
+float anchorEnvelope(float peak, constant StructureUniforms &u) {
+    float plateau = max(u.anchorPlateau, u.anchorTension / u.anchorNormalStiffness);
+    float end = max(u.anchorOpening, plateau);
+    if (peak <= plateau) {
+        return 1.0f;
+    }
+    return peak >= end ? 0.0f : (end - peak) / (end - plateau);
+}
+
+// A node's connection to the ground (`Anchorage`): two float4 per node, (tributary area, slip x,
+// slip y, wear) and (the force the connection put on the node in the last substep, the largest
+// opening so far). Wear is the fraction of the cohesion that sliding has rubbed away. The area
+// is zero for nodes without a connection. Updates the state and returns the force on the node.
+float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u) {
+    float3 displacement = float3(node.displacement);
+    float4 state = anchors[2 * index];
+    float area = state.x;
+    float2 slip = state.yz;
+    float wear = state.w;
+    float peak = anchors[2 * index + 1].w;
+    float kn = u.anchorNormalStiffness;
+    float ks = u.anchorShearStiffness;
+    float opening = displacement.z;
+
+    // Across the joint: a stiff bearing in compression, damped as contacts are; in tension,
+    // elastic to the strength, then the envelope, unloading towards the origin. Sliding wears
+    // the tension as it wears the cohesion.
+    float normal;  // traction, positive in tension
+    if (opening <= 0.0f) {
+        float damper = 2.0f * u.contactDamping * sqrt(kn * node.mass / area);
+        normal = min(kn * opening + damper * node.velocity.z, 0.0f);
+    } else if (u.anchorTension > 0.0f) {
+        peak = max(peak, opening);
+        float onset = u.anchorTension / kn;
+        normal = (1.0f - wear)
+            * (peak <= onset ? kn * opening : u.anchorTension * anchorEnvelope(peak, u) * opening / peak);
+    } else {
+        normal = 0.0f;
+    }
+
+    // Along it: elastic about the slip so far, up to Mohr-Coulomb. Opening takes the cohesion
+    // as it takes the tension, and sliding wears it.
+    float2 shear = ks * (displacement.xy - slip);
+    float cohesion = u.anchorCohesion * (1.0f - wear) * (u.anchorTension > 0.0f ? anchorEnvelope(peak, u) : 1.0f);
+    float limit = cohesion + u.anchorFriction * max(-normal, 0.0f);
+    float magnitude = length(shear);
+    if (magnitude > limit) {
+        float slide = (magnitude - limit) / ks;
+        float2 direction = shear / magnitude;
+        slip += slide * direction;
+        if (u.anchorCohesion > 0.0f) {
+            wear = u.anchorCohesionSlip > 0.0f ? min(1.0f, wear + slide / u.anchorCohesionSlip) : 1.0f;
+        }
+        shear = limit * direction;
+    }
+    float3 force = -area * float3(shear, normal);
+    anchors[2 * index] = float4(area, slip, wear);
+    anchors[2 * index + 1] = float4(force, peak);
+    return force;
+}
+
 kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device ElementForces *forces [[buffer(1)]],
                            device uchar *flags [[buffer(2)]],
@@ -2094,6 +2167,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device uint2 *interfaceEntries [[buffer(14)]],
                            const device InterfaceLink *links [[buffer(15)]],
                            const device float4 *interfaceLoads [[buffer(16)]],
+                           device float4 *anchors [[buffer(17)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2167,6 +2241,10 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (contactEnabled(u, failureGate)) {
         force += float3(contact[threadIndex]);
     }
+    bool anchoredNode = u.anchored != 0 && anchors[2 * threadIndex].x > 0.0f;
+    if (anchoredNode) {
+        force += anchorForce(anchors, threadIndex, node, u);
+    }
 
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
     velocity *= max(0.0f, 1.0f - u.damping * dt);
@@ -2195,7 +2273,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         velocity.z = min(velocity.z, 0.0f);
     }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
-    if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f) {
+    if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f && !anchoredNode) {
         // Debris landing on the ground: stop the fall and shed horizontal speed.
         displacement.z = -referenceHeight;
         velocity.z = max(velocity.z, 0.0f);

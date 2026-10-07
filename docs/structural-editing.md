@@ -43,6 +43,12 @@ from the whole body, so an opening can affect another region if its bounds overl
 updates the generated restraint at the model's base. After detachment it leaves custom
 supports intact.
 
+**Base connection**, shown while the ground restraint is on, chooses how the nodes on the
+ground are held: clamped (the default), or tied by starter bars, a construction joint without
+bars, or friction alone, each of which can open, slide and fail (see
+[base connections](structural-model.md#base-connections)). Solid elements only; shells keep a
+clamped base, and support regions always hold their nodes still.
+
 **Add base support** places a strip at the bottom of the selected part or region. The general
 **Add Support** button uses the body bounds when nothing structural is selected. Select a
 support to edit its corner and size or remove it. Nodes inside any support are held still;

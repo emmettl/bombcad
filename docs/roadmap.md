@@ -28,7 +28,7 @@ it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
-| 9 | Ground restraints are permanent; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -268,6 +268,60 @@ The next priority is improving and checking moving-boundary occupancy/remapping 
 Grid sensitivity persists without contact, and free response is not yet spatially converged,
 so adding multiple objects remains behind those checks.
 
+An opt-in connected-transport remapper now shifts complete conserved states along shortest
+connected air paths from closing cells to newly exposed cells, instead of first concentrating
+gas next to the closing surface and then diluting opening neighbours. Balanced occupancy
+changes preserve a uniform field exactly; paths never cross permanently solid cells. Unpaired
+or disconnected occupancy changes fall back to the existing conservative redistribution.
+The usual driver still defaults to redistribution. `--diagnostics --transport` writes a
+separate comparison report with the selected remapping mode recorded in each case.
+
+In the same prescribed-motion study, all three translation cases now have zero pressure
+departure; translation plus rotation is also uniform on 0.2 and 0.1 m air. On 0.05 m air,
+rotation still produces a 100% peak departure through intermediate voxel-volume changes
+(against 400% with redistribution), even though the final occupied volume is unchanged.
+Mass, energy and momentum remain conserved. In suspended uniform flow, the 0.1-to-0.05 m
+displacement difference falls from 21% to 4.5%, while speed changes by 4.7%. Halving the
+finer timestep changes speed by 3.5%, so this is not yet a converged result.
+
+Connected transport is a numerical reference, not a cut-cell/ALE treatment: greedy paths can
+transport gradients anisotropically, do not preserve angular momentum, and require additional
+CPU searches. Its blast response, refinement behaviour and cost need broader evaluation before
+changing the default. The remaining volume-change disturbance motivates fractional occupancy
+and a consistent treatment of gas displacement and moving-wall work.
+Tests cover exact constant-field preservation, conserved gradient transport around a permanent
+obstacle, rejection of disconnected paths, factor-two fine remapping across patches, ground-gap
+opening/closure, and independence from patch-slot allocation and local-window selection.
+Residual gas in a collapsing gap retains routes through already matched closing cells.
+
+The matched blast study now accepts `--convergence --transport`, records the selected remapper
+and separates accumulated air and ground impulses (linear and angular). Completed cases are
+written incrementally, so an interrupted or failed run may leave a partial report. A regression
+checks that air, contact and gravity account for body momentum; both ten-case release studies
+also pass these budgets, share initial gas energy and the 30 ms endpoint, and preserve held-box
+loads. Their closed-domain mass changes remain below three parts in ten million.
+
+| Air grid / CFL | Free speed, redistribution (m/s) | Free speed, connected transport (m/s) |
+| --- | ---: | ---: |
+| Uniform 0.1 m / 0.45 | 14.59 | 8.93 |
+| Uniform 0.05 m / 0.45 | 12.30 | 14.34 |
+| Uniform 0.05 m / 0.225 | 12.21 | 14.01 |
+| Adaptive 0.2 m, factor 2 / 0.45 | 14.39 | 9.25 |
+
+Connected transport's speed changes by 61% between 0.1 and 0.05 m uniform air; halving the
+finer timestep changes it by 2.3%. Its uniform-flow improvement therefore does not establish
+blast convergence. At 0.1 m, forward air impulse rises from 30.26 to 32.94 N s, but opposing
+ground x impulse rises from 1.15 to 15.22 N s. At 0.05 m, opposing ground x impulse instead
+falls from 9.03 to 6.17 N s. The remapping choice affects the coupled load/contact response,
+so neither method's free-box trajectory is ready for validation or a default change.
+
+In this profiled pair, adaptive free runtime rises from 0.314 to 0.352 s; the remapping phase
+rises from 0.0020 to 0.0300 s. Both take 294 steps, but their trajectories differ; these are
+whole-run diagnostics rather than isolated algorithm benchmarks. The next implementation
+step is an isolated fractional-occupancy geometry reference, before changing gas transport or
+moving-wall work. This must address changing voxel volume and under-box gaps consistently,
+rather than relying on constant-field preservation alone.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
@@ -296,6 +350,16 @@ option, then add connections that can deform, open and fail under tension or she
 contact and friction after separation. Compare fixed and finite-strength supports on a
 freestanding wall or column before pursuing detailed footing and soil behaviour. Rigid-body
 motion alone does not address foundation failure or deformable-object breakup.
+
+Started: a solid body's base can now be tied to the ground by a connection that deforms, opens
+and slides, and fails in tension and shear, with contact and Coulomb friction after separation
+(`StructureModel.baseAnchorage`; ideal clamping stays the default). Resting, construction-joint
+and dowelled connections are provided, checked against statics, and compared on a freestanding
+wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars the wall sways
+within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
+resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
+[structural model](structural-model.md#base-connections). Still open: footings, soil and
+foundation rotation; connections for shells and support regions; and a measured case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2

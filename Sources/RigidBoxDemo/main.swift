@@ -11,9 +11,11 @@ do {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
-        let results = try ExperimentalRigidBoxDiagnostics.run(device: device)
+        let transport = arguments.contains("--transport")
+        let results = try ExperimentalRigidBoxDiagnostics.run(
+            device: device, remapMode: transport ? .connectedTransport : .redistribution)
         let output = URL(fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-            ?? ".build/rigid-box-diagnostics.json")
+            ?? (transport ? ".build/rigid-box-diagnostics-transport.json" : ".build/rigid-box-diagnostics.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
@@ -32,18 +34,25 @@ do {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
         let extended = arguments.contains("--extended")
-        let results = try ExperimentalRigidBoxStudy.run(device: device, extended: extended) { r in
+        let transport = arguments.contains("--transport")
+        let suffix = (transport ? "-transport" : "") + (extended ? "-extended" : "")
+        let output = URL(fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+            ?? ".build/rigid-box-convergence\(suffix).json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalRigidBoxStudy.Result] = []
+        let results = try ExperimentalRigidBoxStudy.run(
+            device: device, extended: extended,
+            remapMode: transport ? .connectedTransport : .redistribution
+        ) { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
             print(String(
                 format: "Finished dx %.3f CFL %.3f refine %d %@: speed %.5f m/s, %.3f s",
                 r.cellSize, r.cfl, r.refinement, r.held ? "held" : "free",
                 simd_length(r.velocity), r.computeSeconds))
             fflush(stdout)
         }
-        let output = URL(
-            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? (extended ? ".build/rigid-box-convergence-extended.json" : ".build/rigid-box-convergence.json"))
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(results).write(to: output, options: .atomic)
         for r in results {
             print(

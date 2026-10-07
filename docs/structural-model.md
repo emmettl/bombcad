@@ -16,7 +16,8 @@ lattice cell's centre lies inside the body. The built-in layouts use elements of
 
 Because the mesh is a lattice, there is no connectivity table: an element finds its eight nodes
 from its lattice position. Nodes on the ground plane are clamped when the structure has a fixed
-base.
+base, or tied to the ground by a connection that can fail (see
+[base connections](#base-connections)).
 
 **Materials.** Each box can have its own material, up to eight in one structure; where boxes
 overlap, the later one's wins. Pieces that touch share nodes, so they are bonded: masonry
@@ -98,9 +99,99 @@ Supports and loading:
   still, for structures cut off at a part treated as rigid, such as a massive end wall;
 - a node can rest on a support that pushes it up but does not hold it down, so a member can
   rotate onto the edge of a bearing and lift off it;
+- the nodes on the ground plane can be tied to it by a connection of finite stiffness and
+  strength instead of clamped ([base connections](#base-connections));
 - gravity acts on every node;
 - nodes cannot pass below the ground plane, and lose horizontal speed while on it;
 - for running without the air, a pressure history can be applied to one outer face.
+
+## Base connections
+
+A clamped base is an assumption: the joint between a wall and its footing, and the footing in
+the ground, never give. `StructureModel.baseAnchorage` replaces the clamp with a connection
+(`Anchorage`) that can deform, open, slide and fail. Each node on the ground plane is tied to
+the ground over its share of the base (a quarter of each element face it touches) by:
+
+- **across the joint**, a stiff bearing in compression, damped as contacts are (30% of
+  critical), and in tension a spring up to the joint's tensile strength, then a plateau held to
+  a given opening (yielding starter bars) and a linear fall to nothing, unloading towards the
+  origin;
+- **along the joint**, a spring that sticks up to the Mohr–Coulomb limit, cohesion plus friction
+  times compression, then slides. Opening takes the cohesion away as it takes the tension, and
+  sliding wears both away over a given slip.
+
+Once nothing is left the node only rests on the ground: it bears on it, slides on it with
+Coulomb friction, and lifts off and lands again anywhere on it. By default the springs are as
+stiff as one more element of the body's material, E / h and G / h per unit area, which leaves
+the time step unchanged; a stiffer connection shortens it to keep the base nodes stable.
+
+Three connections are provided:
+
+| Connection | Tension | Cohesion | Friction | Lost over |
+|---|---|---|---|---|
+| Resting on the ground | none | none | 0.6 | nothing to lose |
+| Construction joint | 1 MPa | 1.3 MPa | 0.7 | 40 J/m² opening (80 µm); 1 mm of slip |
+| Dowelled (starter bars, ratio ρ) | ρ f_y (at least 1 MPa) | 1.3 MPa + 0.7 ρ f_y | 0.7 | held to 20 mm, gone at 40 mm; 20 mm of slip |
+
+The joint's cohesion and friction are those of a rough joint in Eurocode 2, EN 1992-1-1
+§6.2.5 (c = 0.45 of a C30 concrete's mean tensile strength, μ = 0.7), its tensile strength and
+fracture energy about half the concrete's own; the bars' clamping is §6.2.5's ρ f_y μ for bars
+at right angles to the joint. The bars' plateau stands for yield over a debonded length, about
+their uniform elongation over twenty diameters each side; it is a placeholder, not a fitted
+value.
+
+**Checks** (`AnchorageTests`, an elastic block so the body itself stays out of it): a resting
+block bears its weight within 3%; a bonded block pulled up by a slowly rising body force holds
+at 80% of the joint's strength and comes away at 130%; starter bars hold their yield force as
+the joint opens and let go past twice the plateau; a resting block holds a push of 80% of the
+friction and accelerates at (F − μW)/m within 10% at 130%, with the friction force averaging
+μW within 10%; a construction joint holds 70% of its cohesion and friction and slides through
+at 130%; and a tall block resting on the ground holds 70% of the push that tips it, while at
+130% its heel rises as a rigid block rocking about its toe would, within 15%.
+
+**A freestanding wall** (`AnchorageStudy`, `blastbench anchorage`). The deformable-wall
+preset's wall, 3 m high and 250 mm thick with a 565 mm²/m mat near each face, as a 1 m strip
+on 62.5 mm elements, loaded by a triangular pulse of the Kingery–Bulmash reflected pressure and
+impulse for 50 kg of TNT, uniform over its face, with no air and no clearing, for 0.5 s:
+
+| Distance (pulse) | Base | Peak sway | At 0.5 s | Base uplift | Slip | Ties lost |
+|---|---|---|---|---|---|---|
+| 6 m (1,950 kPa, 1.8 ms) | clamped | 183 mm | 114 mm | | | |
+| | starter bars | 254 mm | 113 mm | 17 mm | 0.4 mm | 0% |
+| | construction joint | over | over | | 169 mm | 100% |
+| | resting | over | over | | 203 mm | |
+| 10 m (434 kPa, 4.3 ms) | clamped | 64 mm | 28 mm | | | |
+| | starter bars | 77 mm | 14 mm | 3.5 mm | 0.1 mm | 0% |
+| | construction joint | over | over | | 34 mm | 100% |
+| | resting | over | over | | 51 mm | |
+| 15 m (156 kPa, 7.5 ms) | clamped | 28 mm | −9 mm | | | |
+| | starter bars | 31 mm | 0 mm | 1.2 mm | 0.04 mm | 0% |
+| | construction joint | over | over | | 8 mm | 100% |
+| | resting | over | over | | 27 mm | |
+| 25 m (58 kPa, 11.5 ms) | clamped | 11 mm | 5 mm | | | |
+| | starter bars | 11 mm | −1 mm | 0.3 mm | 0 | 0% |
+| | construction joint | 310 mm | rising | 26 mm | 1.3 mm | 80% |
+| | resting | 327 mm | rising | 27 mm | 5 mm | |
+
+"Over" is a wall rotating away from its base past 0.7 m of sway at 0.5 s; "rising" one still
+rotating away. No element failed in any run; each takes about 2.5 s.
+
+Where the wall is cast on starter bars the clamped base is a fair stand-in at a distance: the
+peak sway is within 10% of the clamped wall's at 15 and 25 m, 21% more at 10 m and 39% more at
+6 m, where the bars yield and the heel lifts 17 mm, and the wall ends no further over. Without
+bars it is not. A plain construction joint cracks through under every pulse here, even the
+58 kPa one at 25 m that sways the clamped wall 11 mm, and the wall then rocks on its toe as if
+it stood loose. Resting on the ground it rocks up at every distance; at 25 m it is given about
+200 J per metre against the 92 J it takes to tip it, so it goes over. A wall that stands
+clamped can therefore be thrown over if its base is not tied into its footing. This is a
+comparison of support assumptions, not a validation: no measured wall is reproduced, the load
+is idealised, and the footing itself is rigid.
+
+**Not modelled.** The ground is rigid and flat: there is no footing, soil, embedment or
+foundation rotation, only the joint at z = 0. The connection has no rate dependence and no
+dilatancy, the bars' yield is a plateau of the joint as a whole rather than bars at the faces,
+and opening and sliding interact only through the shared loss of strength. Shells (and the
+shell part of a mixed body) keep a clamped base, as do support regions (`supports`).
 
 ## Failure and removal
 
@@ -314,6 +405,9 @@ shock, and the drag and pressure-gradient push on loose debris.
 
 ## Sources
 
+- CEN, EN 1992-1-1:2004, *Eurocode 2: Design of concrete structures — Part 1-1*, §6.2.5, shear
+  at the interface between concretes cast at different times. The construction joint's
+  cohesion and friction, and the clamping of bars across it.
 - D. P. Flanagan and T. Belytschko, "A uniform strain hexahedron and quadrilateral with
   orthogonal hourglass control", *International Journal for Numerical Methods in Engineering*
   17, 1981. The element and its hourglass control.

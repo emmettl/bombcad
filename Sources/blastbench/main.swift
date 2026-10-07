@@ -20,6 +20,7 @@ import simd
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
+//   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -1313,6 +1314,51 @@ func runSlab() throws {
     }
 }
 
+/// A freestanding wall under a blast on each kind of base connection (`AnchorageStudy`).
+func runAnchorage() throws {
+    let mass = option("mass").flatMap { Float($0) } ?? 50
+    let standoffs = (option("standoff") ?? "6,10,15,25").split(separator: ",").compactMap { Float($0) }
+    let duration = option("time").flatMap { Float($0) } ?? 0.5
+    let h = option("h").flatMap { Float($0) } ?? 0.0625
+    print(
+        "Freestanding wall, \(format(Double(AnchorageStudy.height), 0)) m high and "
+            + "\(format(Double(AnchorageStudy.thickness) * 1000, 0)) mm thick, a surface burst of "
+            + "\(format(Double(mass), 0)) kg; Kingery–Bulmash reflected pulse, no air; \(format(Double(duration), 1)) s"
+    )
+    for standoff in standoffs {
+        print("")
+        var header = false
+        for base in BaseConnection.allCases {
+            let r = try AnchorageStudy.run(
+                device: device, base: base, mass: mass, standoff: standoff, duration: duration, elementSize: h
+            )
+            if !header {
+                print(
+                    "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
+                        + "\(format(Double(r.duration) * 1000, 1)) ms, "
+                        + "\(format(Double(r.pressure * r.duration) / 2, 0)) Pa s")
+                print(
+                    pad("base", 22) + pad("peak sway", 11) + pad("final", 10) + pad("uplift", 10)
+                        + pad("slip", 10) + pad("tie failed", 12) + pad("base M", 12) + pad("eroded", 8)
+                        + pad("run time", 9))
+                header = true
+            }
+            let anchored = base != .clamped
+            // A body resting on the ground has no tie to fail.
+            let failed = anchored && base != .resting ? "\(format(Double(r.separated) * 100, 0))%" : "-"
+            let sway = pad("\(format(Double(r.peakSway) * 1000, 1)) mm", 11)
+            let final = pad("\(format(Double(r.finalSway) * 1000, 1)) mm", 10)
+            let uplift = anchored ? "\(format(Double(r.peakUplift) * 1000, 2)) mm" : "-"
+            let slip = anchored ? "\(format(Double(r.maxSlip) * 1000, 2)) mm" : "-"
+            print(
+                pad(base.title.lowercased(), 22) + sway + final + pad(uplift, 10) + pad(slip, 10)
+                    + pad(failed, 12)
+                    + pad(anchored ? "\(format(Double(r.peakBaseMoment) / 1000, 0)) kN m/m" : "-", 12)
+                    + pad("\(r.summary.erodedElements)", 8) + pad("\(format(r.wallSeconds)) s", 9))
+        }
+    }
+}
+
 do {
     switch command {
     case "slab": try runSlab()
@@ -1327,6 +1373,7 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "snapshot": try runSnapshot()
+    case "anchorage": try runAnchorage()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

@@ -38,6 +38,7 @@ final class AirRefinement {
     let fineMask: MTLBuffer
     private let fineWall: MTLBuffer
     var useLocalBoxRemap = true
+    var boxRemapMode: ExperimentalBoxRemap = .redistribution
     var measureBoxRemap = false
     private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
@@ -752,7 +753,7 @@ extension AirRefinement {
         phase("lookup")
         let remapped = try ConservativeCellRemap.apply(
             initial,
-            oldSolid: oldMask.map { $0 & 1 != 0 }, newSolid: nextMask.map { $0 & 1 != 0 }
+            oldSolid: oldMask.map { $0 & 1 != 0 }, newSolid: nextMask.map { $0 & 1 != 0 }, mode: boxRemapMode
         ) { n in
             offsets.compactMap { lookup[coordinates[n] &+ $0] }
         }
