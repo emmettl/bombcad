@@ -35,15 +35,17 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
 
 | Cell size | Cells  | GPU memory | Steps/s | Steps | Air swept | Whole event | Slower than real time | Sweeping all of it |
 |-----------|--------|------------|---------|-------|-----------|-------------|-----------------------|--------------------|
-| 0.5 m     | 1.0 M  | 0.06 GB    | 3,060   | 727   | 64%       | 0.2 s       | 1×                    | 2×                 |
+| 0.5 m     | 1.0 M  | 0.06 GB    | 3,060   | 727   | 59%       | 0.2 s       | 1×                    | 2×                 |
 | 0.25 m    | 8.4 M  | 0.48 GB    | 524     | 1,526 | 50%       | 2.9 s       | 17×                   | 27×                |
 | 0.125 m   | 67 M   | 3.8 GB     | 71      | 3,055 | 42%       | 43 s        | 252×                  | 427× (est.)        |
 
 - **Still air is skipped.** The grid is cut into tiles of 8 × 8 × 8 cells, and a tile is swept
   only from the step before the blast can first reach it (see the
-  [air-blast model](air-blast-model.md#skipping-still-air)). Over the street event 42% to 64%
+  [air-blast model](air-blast-model.md#skipping-still-air)). Over the street event 42% to 59%
   of the tiles are swept on average, and the event computes 1.6 to 1.7 times faster. The answer
-  is the same to the last bit; `--no-skip` sweeps everything.
+  is the same to the last bit; `--no-skip` sweeps everything. (The 0.5 m run used to show 64%:
+  the idle steps encoded past the end of the event were counted as sweeping tiles, and no
+  longer are. The timings predate that change, which does not affect them.)
 - Throughput is about **2.8 billion cell-updates per second** at every size when every cell is
   swept, each update being three directional sweeps; counting the skipped cells as updated,
   it is 3.2 to 4.8 billion.
