@@ -145,7 +145,7 @@ public struct RoomProject: Equatable, Sendable {
             maximumReflectionOrder: stored.maximumReflectionOrder, content: stored.content,
             lowFrequencyCutoff: stored.lowFrequencyCutoff, diffuseRays: stored.diffuseRays ?? 40_000,
             randomSeed: stored.randomSeed ?? 1, lowFrequencyModel: stored.lowFrequencyModel ?? false,
-            crossoverFrequency: stored.crossoverFrequency)
+            crossoverFrequency: stored.crossoverFrequency, openings: scene.openings ?? [])
         do {
             try settings.validate()
         } catch {
