@@ -46,6 +46,10 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
     public var diffuseRays: Int
     /// Seed for the ray directions and the diffuse tail's random detail, so a response can be reproduced.
     public var randomSeed: UInt64
+    /// Use the wave solver below the crossover, for room modes the geometrical model only approximates.
+    public var lowFrequencyModel: Bool
+    /// Crossover between the wave solver and the geometrical model in Hz; nil chooses it from the room.
+    public var crossoverFrequency: Double?
 
     /// Upper bound on the estimated number of image sources per receiver.
     public static let maximumImageCount = 40_000_000
@@ -56,7 +60,8 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         room: ShoeboxRoom, source: RoomPoint, receivers: [RoomPoint], atmosphere: Atmosphere = .standard,
         airAbsorption: Bool = true, sampleRate: Int = 48_000, duration: Double = 1,
         maximumReflectionOrder: Int = 60, content: ResponseMetadata.Content = .complete,
-        lowFrequencyCutoff: Double = 20, diffuseRays: Int = 40_000, randomSeed: UInt64 = 1
+        lowFrequencyCutoff: Double = 20, diffuseRays: Int = 40_000, randomSeed: UInt64 = 1,
+        lowFrequencyModel: Bool = false, crossoverFrequency: Double? = nil
     ) {
         self.room = room
         self.source = source
@@ -70,11 +75,13 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         self.lowFrequencyCutoff = lowFrequencyCutoff
         self.diffuseRays = diffuseRays
         self.randomSeed = randomSeed
+        self.lowFrequencyModel = lowFrequencyModel
+        self.crossoverFrequency = crossoverFrequency
     }
 
     enum CodingKeys: String, CodingKey {
         case room, source, receivers, atmosphere, airAbsorption, sampleRate, duration, maximumReflectionOrder
-        case content, lowFrequencyCutoff, diffuseRays, randomSeed
+        case content, lowFrequencyCutoff, diffuseRays, randomSeed, lowFrequencyModel, crossoverFrequency
     }
 
     /// Settings saved before scattering existed decode with its defaults.
@@ -92,7 +99,9 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
             content: try c.decode(ResponseMetadata.Content.self, forKey: .content),
             lowFrequencyCutoff: try c.decode(Double.self, forKey: .lowFrequencyCutoff),
             diffuseRays: try c.decodeIfPresent(Int.self, forKey: .diffuseRays) ?? 40_000,
-            randomSeed: try c.decodeIfPresent(UInt64.self, forKey: .randomSeed) ?? 1)
+            randomSeed: try c.decodeIfPresent(UInt64.self, forKey: .randomSeed) ?? 1,
+            lowFrequencyModel: try c.decodeIfPresent(Bool.self, forKey: .lowFrequencyModel) ?? false,
+            crossoverFrequency: try c.decodeIfPresent(Double.self, forKey: .crossoverFrequency))
     }
 
     /// Estimated image sources per receiver within the duration and order limits.
@@ -115,6 +124,9 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         }
         guard lowFrequencyCutoff == 0 || (5...200).contains(lowFrequencyCutoff) else {
             throw AcousticError.invalid("The low-frequency cutoff must be 0 (off) or between 5 and 200 Hz.")
+        }
+        if let crossoverFrequency, !(40...500).contains(crossoverFrequency) {
+            throw AcousticError.invalid("The crossover must be between 40 and 500 Hz.")
         }
         guard (1_000...1_000_000).contains(diffuseRays) else {
             throw AcousticError.invalid("The number of diffuse rays must be between 1,000 and 1,000,000.")
@@ -165,6 +177,13 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     public var scatteredFraction: [Double]?
     /// Rays traced for the scattered energy; zero when no surface scatters.
     public var diffuseRays: Int?
+    /// Crossover to the wave solver in Hz, if it was used.
+    public var waveCrossover: Double?
+    /// The wave solver's grid cells and the time it took, if it was used.
+    public var waveCells: Int?
+    public var waveSeconds: Double?
+    /// Why the wave solver was not used although asked for, if so.
+    public var waveNote: String?
 }
 
 /// A generated response together with the settings that produced it.
@@ -189,7 +208,9 @@ public struct RoomResponse: Sendable {
             + "(no phase shift), independent of the angle of incidence.",
         "Absorption and air attenuation blend smoothly between octave-band centres; air attenuation uses "
             + "ISO 9613-1 at each band centre, so it is underestimated above about 11 kHz.",
-        "Omnidirectional point source and receivers.",
+        "Omnidirectional point source; receivers omnidirectional or ideal first-order microphones.",
+        "Optionally, below a crossover, a finite-difference wave solver replaces the geometrical model, with "
+            + "locally reacting walls of frequency-independent impedance from the low-band absorption.",
         "Arrivals after the duration and reflections above the maximum order are omitted; no late tail is "
             + "synthesized.",
         "Zero-phase band filters can spread small pre-echoes ahead of an arrival whose band gains differ.",
@@ -338,7 +359,7 @@ public enum RoomResponseGenerator {
         }
         try check()
         let rendered = results.values
-        let channels = rendered.map(\.samples)
+        var channels = rendered.map(\.samples)
         let arrivals = rendered.map(\.arrivals)
         let orderLimitedAfter = rendered.map(\.orderLimitedAfter)
         let scatteredFraction = rendered.map(\.scatteredFraction)
@@ -352,13 +373,50 @@ public enum RoomResponseGenerator {
         if let t500 = sabine[3], let t1000 = sabine[4] {
             schroeder = 2000 * ((t500 + t1000) / 2 / settings.room.volume).squareRoot()
         }
+
+        // Below the crossover, replace the geometrical response with the wave solver's.
+        var wave: (crossover: Double, cells: Int, seconds: Double)?
+        var waveNote: String?
+        if settings.lowFrequencyModel {
+            let waveStart = Date()
+            let fftLength = BandRenderer(sampleRate: settings.sampleRate, frames: frames).fftLength
+            if let plan = WavePlan(settings: settings, schroeder: schroeder, fftLength: fftLength) {
+                let crossover = plan.crossover
+                let cutoff = settings.lowFrequencyCutoff
+                let low = plan.solver.responses(
+                    source: settings.source.position,
+                    receivers: settings.receivers.map { ($0.position, $0.microphone ?? .omni) },
+                    frames: frames,
+                    fftLength: fftLength,
+                    weight: { f in
+                        (1 - OctaveBands.rise(f, crossover: crossover))
+                            * (cutoff > 0 ? OctaveBands.rise(f, crossover: cutoff / 2.squareRoot()) : 1)
+                    }, stop: cancelled)
+                try check()
+                if let low {
+                    for index in channels.indices {
+                        let high = RealFFT.zeroPhaseFilter(
+                            channels[index], sampleRate: Double(settings.sampleRate)
+                        ) {
+                            OctaveBands.rise($0, crossover: crossover)
+                        }
+                        channels[index] = zip(high, low[index]).map { $0 + $1 }
+                    }
+                    let cells = plan.solver.cells
+                    wave = (crossover, cells.x * cells.y * cells.z, Date().timeIntervalSince(waveStart))
+                }
+            } else {
+                waveNote = "The room is too large or the response too long for the wave solver's budget."
+            }
+        }
         let diagnostics = RoomResponseDiagnostics(
             soundSpeed: c, bandCentres: OctaveBands.centres, arrivals: arrivals,
             directDelay: settings.receivers.map { simd_distance($0.position, settings.source.position) / c },
             orderLimitedAfter: orderLimitedAfter, sabineReverberationTime: sabine,
             eyringReverberationTime: eyring, schroederFrequency: schroeder,
             generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
-            diffuseRays: settings.room.scatters ? tracer.tracedRays : 0)
+            diffuseRays: settings.room.scatters ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
+            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveNote: waveNote)
 
         let metadata = ResponseMetadata(
             sampleRate: settings.sampleRate, frameCount: frames,
@@ -395,4 +453,40 @@ public final class CancellationFlag: Sendable {
     public func cancel() { state.store(true, ordering: .relaxed) }
 
     public var isCancelled: Bool { state.load(ordering: .relaxed) }
+}
+
+/// The wave solver's crossover and grid for a response, within a fixed amount of work.
+struct WavePlan {
+    let crossover: Double
+    let solver: WaveSolver
+
+    /// Cell updates allowed: a few seconds on the CPU.
+    static let budget = 4e9
+
+    /// Nil if even the lowest useful crossover is too much work.
+    init?(settings: RoomResponseSettings, schroeder: Double?, fftLength: Int) {
+        let span = Double(fftLength) / Double(settings.sampleRate)
+        func solver(_ crossover: Double) -> WaveSolver {
+            WaveSolver(
+                room: settings.room, sampleRate: settings.sampleRate,
+                topFrequency: crossover * 2.squareRoot(),
+                atmosphere: settings.atmosphere)
+        }
+        if let chosen = settings.crossoverFrequency {
+            crossover = chosen
+            self.solver = solver(chosen)
+            return
+        }
+        // Twice the Schroeder frequency, where modes stop being sparse, within 80 to 250 Hz.
+        var f = min(max(2 * (schroeder ?? 125), 80), 250)
+        var candidate = solver(f)
+        // Work grows as the fourth power of frequency; lower the crossover until it fits.
+        while candidate.cost(duration: span) > Self.budget {
+            f *= 0.97 * pow(Self.budget / candidate.cost(duration: span), 0.25)
+            guard f >= 60 else { return nil }
+            candidate = solver(f)
+        }
+        crossover = f
+        self.solver = candidate
+    }
 }

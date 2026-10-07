@@ -296,6 +296,13 @@ with targets of less than 1% modal-frequency error and less than 1 dB amplitude 
 the declared travelling-wave test distance. Linear amplitude scaling and stable passive
 boundaries are demonstrated. Failures narrow the supported band rather than being hidden.
 
+Progress (October 2026): a CPU FDTD solver is implemented in `AcousticCore`, with locally reacting
+impedance walls and a calibrated source. Rigid-room modes are within 0.25% of the analytical values,
+and free-field level within 0.03 dB with no timing offset. Axial decay between absorbing walls is
+within 6% of theory. The crossover's top is resolved at 10 points per wavelength, and work is
+budgeted. It runs on the CPU rather than the GPU, and a fuller benchmark report (phase and directional
+error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
+
 ### M4 — Generate broadband hybrid room responses
 
 1. Add higher-frequency scattering and diffuse propagation, using ray tracing or another
@@ -319,8 +326,18 @@ carries the energy scattered at least once, rendered as a dense, seeded random r
 The tracer's detector matches the diffuse-field rate 4πc/V to within 3%. Full scattering brings the
 decay to within 6% of Kuttruff's corrected Eyring estimate. The illustrative reference room now decays
 between its Eyring and Sabine times instead of 50–70% longer. See
-[Room-acoustics model](room-acoustics-model.md#scattered-energy). The wave-solver crossover (items 2–6)
-waits for M3.
+[Room-acoustics model](room-acoustics-model.md#scattered-energy).
+
+Items 2–4 are implemented with the M3 solver:
+
+- **Crossover.** An automatic crossover at twice the Schroeder frequency, within 80–250 Hz and the
+  budget.
+- **Alignment.** Time origins and gain conventions are aligned by deconvolving the source against free
+  field.
+- **Blending.** Complementary zero-phase crossovers sum to one. The two models agree within 1.5 dB at
+  the crossover across the presets, except for an apparent seat dip in the chamber hall.
+
+Item 5 (comparison with measured rooms) and item 6's validated band are not done.
 
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 

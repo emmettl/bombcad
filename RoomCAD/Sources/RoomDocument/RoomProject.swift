@@ -69,13 +69,16 @@ public struct RoomProject: Equatable, Sendable {
         self.export = export
     }
 
-    /// The living-room preset, with published absorption, a source and a spaced pair of receivers.
+    /// The living-room preset, with published absorption, a source and a spaced pair of receivers, and the
+    /// wave solver below the crossover.
     public static var starter: RoomResponseSettings {
         let blank = RoomResponseSettings(
             room: ShoeboxRoom(size: [1, 1, 1], material: .rigid),
             source: RoomPoint(name: "Source", position: [0.5, 0.5, 0.5]),
             receivers: [])
-        return RoomPresets.all[0].applied(to: blank)
+        var settings = RoomPresets.all[0].applied(to: blank)
+        settings.lowFrequencyModel = true
+        return settings
     }
 
     /// Whether the retained response was generated from the current settings by the current generator.
@@ -110,6 +113,8 @@ public struct RoomProject: Equatable, Sendable {
         /// Absent in documents saved before scattering was modelled.
         var diffuseRays: Int?
         var randomSeed: UInt64?
+        var lowFrequencyModel: Bool?
+        var crossoverFrequency: Double?
     }
 
     static let resultWAV = "results/response.wav"
@@ -137,7 +142,8 @@ public struct RoomProject: Equatable, Sendable {
             airAbsorption: stored.airAbsorption, sampleRate: stored.sampleRate, duration: stored.duration,
             maximumReflectionOrder: stored.maximumReflectionOrder, content: stored.content,
             lowFrequencyCutoff: stored.lowFrequencyCutoff, diffuseRays: stored.diffuseRays ?? 40_000,
-            randomSeed: stored.randomSeed ?? 1)
+            randomSeed: stored.randomSeed ?? 1, lowFrequencyModel: stored.lowFrequencyModel ?? false,
+            crossoverFrequency: stored.crossoverFrequency)
         do {
             try settings.validate()
         } catch {
@@ -182,7 +188,9 @@ public struct RoomProject: Equatable, Sendable {
                 sampleRate: settings.sampleRate, duration: settings.duration,
                 maximumReflectionOrder: settings.maximumReflectionOrder, content: settings.content,
                 lowFrequencyCutoff: settings.lowFrequencyCutoff, export: export,
-                diffuseRays: settings.diffuseRays, randomSeed: settings.randomSeed))
+                diffuseRays: settings.diffuseRays, randomSeed: settings.randomSeed,
+                lowFrequencyModel: settings.lowFrequencyModel, crossoverFrequency: settings.crossoverFrequency
+            ))
         if let result, retainsResult {
             let encoded = try result.encoded()
             files[Self.resultWAV] = encoded.wav

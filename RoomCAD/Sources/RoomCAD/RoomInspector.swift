@@ -260,6 +260,24 @@ struct RoomInspector: View {
                         .labelsHidden().multilineTextAlignment(.trailing).frame(width: 72)
                 }
                 .help("Fixes the scattered tail's random detail, so a response can be reproduced exactly")
+                Toggle("Wave solver for low frequencies", isOn: settings.lowFrequencyModel)
+                    .help(
+                        "Below the crossover, simulate the sound field on a grid, for the room's modes. "
+                            + "Slower; skipped when the room is too large.")
+                if project.settings.lowFrequencyModel {
+                    Toggle(
+                        "Automatic crossover",
+                        isOn: Binding(
+                            get: { project.settings.crossoverFrequency == nil },
+                            set: { project.settings.crossoverFrequency = $0 ? nil : 150 }))
+                    if project.settings.crossoverFrequency != nil {
+                        NumberField(
+                            title: "Crossover",
+                            value: Binding(
+                                get: { project.settings.crossoverFrequency ?? 150 },
+                                set: { project.settings.crossoverFrequency = $0 }), unit: "Hz", digits: 0)
+                    }
+                }
                 Toggle("Air absorption", isOn: settings.airAbsorption)
                 NumberField(
                     title: "Temperature", value: settings.atmosphere.temperatureCelsius, unit: "°C", digits: 1

@@ -47,8 +47,9 @@ document is opened from Finder.
     [Microphones](room-acoustics-model.md#microphones)). Directional microphones show their aim as an
     arrow in the drawings;
   - sample rate, duration, maximum reflection order and content;
-  - low cut, the number of diffuse rays and the random seed, air absorption, temperature and
-    humidity;
+  - low cut, the number of diffuse rays and the random seed;
+  - the wave solver for low frequencies, on for new documents, with an automatic or fixed crossover;
+  - air absorption, temperature and humidity;
   - export conditioning.
 
   It also shows the estimated number of image sources per receiver.
@@ -63,8 +64,8 @@ document is opened from Finder.
     stays in use.
   - The result shows each channel's peak envelope in dB.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
-  - It shows arrival counts and generation time, the Schroeder frequency, and the share of energy from
-    500 Hz to 4 kHz that arrived scattered.
+  - It shows arrival counts and generation time, the wave solver's crossover, grid and time, the
+    Schroeder frequency, and the share of energy from 500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.
   - Play starts at once with the latest response, even while a newer one is being generated; the new

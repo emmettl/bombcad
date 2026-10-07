@@ -116,6 +116,15 @@ struct DiagnosticsList: View {
                     .foregroundStyle(.orange)
                 }
             }
+            if let crossover = d.waveCrossover {
+                Text(
+                    String(
+                        format: "Wave solver below %.0f Hz: %@ cells, %.1f s.", crossover,
+                        (d.waveCells ?? 0).formatted(),
+                        d.waveSeconds ?? 0))
+            } else if let note = d.waveNote {
+                Text("Wave solver skipped: \(note)")
+            }
             if let schroeder = d.schroederFrequency {
                 Text(String(format: "Approximate below about %.0f Hz (Schroeder frequency).", schroeder))
             }

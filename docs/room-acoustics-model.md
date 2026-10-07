@@ -124,6 +124,63 @@ The patterns are ideal, the same at every frequency. Real microphones narrow at 
 widen at low ones. Mid-side and binaural (head-related) responses are not modelled. Each channel's JSON
 description records its microphone. Receivers saved before microphones existed load as omni.
 
+## Low frequencies: the wave solver
+
+Below a crossover, an optional finite-difference time-domain (FDTD) solver replaces the geometrical
+model, which only approximates room modes. `WaveSolver` advances linear acoustics on Yee's staggered
+grid, with pressure at cell centres and particle velocity on faces, by leapfrog. The cells exactly
+fill the room, at least 10 per wavelength at the top of the crossover's transition.
+
+- **Time step.** The time step is the audio sample period times a power of two, within 95% of the
+  stability limit. The solver's spectrum then shares the audio spectrum's bins and needs no
+  resampling.
+- **Walls.** Walls are locally reacting, with a real normalized impedance ξ, treated semi-implicitly
+  so any ξ > 0 is stable. Published coefficients are random-incidence values, so ξ is found by
+  inverting Paris's statistical absorption, α = (8/ξ)[1 + 1/(1 + ξ) − (2/ξ) ln(1 + ξ)]. The value is
+  averaged over the bands the solver covers, and is at most about 0.951 for a real impedance. Using
+  the normal-incidence relation instead made the walls absorb about half as much again at α = 0.3, and
+  left the wave part 1.5–5.6 dB too quiet at the crossover.
+- **Source and calibration.** The source injects volume velocity, a Gaussian derivative with no net
+  volume. Each receiver's spectrum, taken at its exact sample times, is divided by the free-field
+  pressure 1 m away, ρ·j2πf·Q(f)/4π. That gives the geometrical model's units and time origin.
+- **Microphones.** A directional microphone's output is a·p − (1 − a)·ρc·(u · axis), with the
+  velocity interpolated to the pressure's times. Near a source, the velocity's 1/(jkr) term then gives
+  real gradient microphones' proximity effect, which the geometrical model's ideal pattern lacks.
+- **Blending.** The two models are blended with complementary zero-phase half-cosine crossovers
+  (±0.5 octave), which sum to one.
+
+`WavePlan` chooses the crossover: twice the Schroeder frequency, between 80 and 250 Hz, lowered until
+the work fits a budget of 4 × 10⁹ cell updates. Work grows as frequency to the fourth power. If even
+60 Hz doesn't fit, the solver is skipped with a note: the stone church's modes are dense above about
+60 Hz anyway. A fixed crossover from 40 to 500 Hz can be set instead. The solver runs on the CPU's
+cores; small grids use one thread.
+
+Tests check the solver against theory:
+
+- In a 16 m room with absorbing walls, the low-frequency direct sound matches the geometrical model
+  within 0.25 dB, before any reflection arrives. Their difference is under 1% of the energy, with no
+  timing offset (0.03 dB in a release build).
+- A rigid 3 × 2.5 × 2 m room's first five modes are within 0.5% of c/2·√((l/Lx)² + (m/Ly)² + (n/Lz)²).
+  The first ten are within 0.25% at a finer grid, against the roadmap's 1% target.
+- The axial mode between two walls of α = 0.3 decays within 10% of the rate their normal-incidence
+  reflection coefficient gives (6% in a release build).
+- Far from the source, a cardioid facing it hears it within 10% of an omni. Facing away, or side-on as
+  a figure of eight, it hears under 3%.
+- The impedance inversion reproduces the absorption, and rooms over budget skip the solver.
+
+Across the presets, the two models' energy just below the crossover agrees within 1.5 dB, except in the
+chamber music hall (−4.3 dB). There the listener sits over a large absorbent floor of seats, where
+sound passing over the seats cancels at low frequencies, the "seat dip" known from concert halls. Only
+the wave model can show this, so the difference is probably physical, but it has not been checked
+against a measurement. Generation with the solver takes 0.7–5.5 s for the presets.
+
+Limitations of the solver:
+
+- The wall impedance is real and the same at every frequency below the crossover.
+- There is no air absorption, which is negligible there.
+- It models a bare box: no furniture, scattering or openings.
+- The grid's dispersion grows towards the top frequency.
+
 ## Rendering
 
 Each arrival is a Hann-windowed sinc of 64 taps, cut off at 0.9 of the Nyquist frequency. It is placed
@@ -288,9 +345,9 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
   equally across its impulses in every band, so its fine structure is the same in all bands. The
   tracer's noise (a few percent per 5 ms at 40,000 rays) is smoothed but remains.
 - **Diffraction.** There is none.
-- **Reflection coefficients.** These are angle-independent, real and positive. The low-frequency
-  behaviour is approximate below the reported Schroeder frequency, `2000 √(T/V)` with the Sabine time
-  at 500 Hz–1 kHz.
+- **Reflection coefficients.** These are angle-independent, real and positive. Without the wave
+  solver, the low-frequency behaviour is approximate below the reported Schroeder frequency,
+  `2000 √(T/V)` with the Sabine time at 500 Hz–1 kHz.
 - **Air attenuation.** This uses each band's centre value, so it is underestimated above about
   11 kHz.
 - **Filter artefacts.** The zero-phase band filters and high-pass can put small pre-echoes ahead of
@@ -308,8 +365,8 @@ The roadmap orders the work as follows:
 
 - a bounded, labelled late tail if auditioning needs one (M2 item 4);
 - more sourced scattering data (M5);
-- a crossover to the low-frequency wave solver (the rest of M4);
-- a low-frequency wave solver (M3).
+- frequency-dependent wall impedance and a GPU wave solver, for higher crossovers and larger rooms;
+- comparison with measured room responses (M4 item 5).
 
 The ray tracer and image sources could run on the GPU.
 
