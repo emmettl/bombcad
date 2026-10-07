@@ -255,6 +255,10 @@ Add `--transport` to compare an opt-in connected-path remapper, writing
 `.build/rigid-box-diagnostics-transport.json`. It preserves uniform states for balanced
 occupancy changes; unequal voxel volumes still use redistribution. The usual driver and
 app keep their existing behaviour while this alternative is evaluated.
+`--convergence --transport` applies the same alternative to the matched blast study and
+writes `.build/rigid-box-convergence-transport.json` (add `--extended` for the longer study).
+Reports record the remapper and separate air and ground impulses. Completed cases are saved
+incrementally; a failed run can leave a partial report.
 
 ## Headline results
 

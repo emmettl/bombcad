@@ -294,6 +294,34 @@ obstacle, rejection of disconnected paths, factor-two fine remapping across patc
 opening/closure, and independence from patch-slot allocation and local-window selection.
 Residual gas in a collapsing gap retains routes through already matched closing cells.
 
+The matched blast study now accepts `--convergence --transport`, records the selected remapper
+and separates accumulated air and ground impulses (linear and angular). Completed cases are
+written incrementally, so an interrupted or failed run may leave a partial report. A regression
+checks that air, contact and gravity account for body momentum; both ten-case release studies
+also pass these budgets, share initial gas energy and the 30 ms endpoint, and preserve held-box
+loads. Their closed-domain mass changes remain below three parts in ten million.
+
+| Air grid / CFL | Free speed, redistribution (m/s) | Free speed, connected transport (m/s) |
+| --- | ---: | ---: |
+| Uniform 0.1 m / 0.45 | 14.59 | 8.93 |
+| Uniform 0.05 m / 0.45 | 12.30 | 14.34 |
+| Uniform 0.05 m / 0.225 | 12.21 | 14.01 |
+| Adaptive 0.2 m, factor 2 / 0.45 | 14.39 | 9.25 |
+
+Connected transport's speed changes by 61% between 0.1 and 0.05 m uniform air; halving the
+finer timestep changes it by 2.3%. Its uniform-flow improvement therefore does not establish
+blast convergence. At 0.1 m, forward air impulse rises from 30.26 to 32.94 N s, but opposing
+ground x impulse rises from 1.15 to 15.22 N s. At 0.05 m, opposing ground x impulse instead
+falls from 9.03 to 6.17 N s. The remapping choice affects the coupled load/contact response,
+so neither method's free-box trajectory is ready for validation or a default change.
+
+In this profiled pair, adaptive free runtime rises from 0.314 to 0.352 s; the remapping phase
+rises from 0.0020 to 0.0300 s. Both take 294 steps, but their trajectories differ; these are
+whole-run diagnostics rather than isolated algorithm benchmarks. The next implementation
+step is an isolated fractional-occupancy geometry reference, before changing gas transport or
+moving-wall work. This must address changing voxel volume and under-box gaps consistently,
+rather than relying on constant-field preservation alone.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

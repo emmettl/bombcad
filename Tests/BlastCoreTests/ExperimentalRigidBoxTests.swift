@@ -9,6 +9,24 @@ struct ExperimentalRigidBoxTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }
 
+    @Test("Ground and air impulse records account for the coupled body's momentum")
+    func groundImpulseBudget() throws {
+        let simulation = try ExperimentalRigidBoxSimulation(
+            device: device, scenario: scenario(position: SIMD3(2, 2, 0.4)), cellSize: 0.2)
+        let initial = SIMD3<Double>(10, 0, 0)
+        try simulation.applyImpulse(initial)
+        var linear = SIMD3<Double>.zero
+        var angular = SIMD3<Double>.zero
+        while simulation.air.time < 0.005 - 1e-8 {
+            try simulation.advance(steps: 1, timeLimit: 0.005)
+            linear += simulation.lastImpulse + simulation.lastGroundImpulse
+            angular += simulation.lastAngularImpulse + simulation.lastGroundAngularImpulse
+        }
+        #expect(simd_length(10 * simulation.velocity - initial - linear
+            - 10 * simulation.air.time * simulation.gravity) < 1e-7)
+        #expect(simd_length(simulation.angularMomentum - angular) < 1e-7)
+    }
+
     @Test("Connected remapping preserves a uniform field and transports gradients around solid cells")
     func connectedRemap() throws {
         let old = (0..<9).map { $0 == 4 || $0 == 8 }

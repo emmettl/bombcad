@@ -6,6 +6,7 @@ import simd
 /// Uniform fine-grid references plus held/free adaptive comparisons.
 public enum ExperimentalRigidBoxStudy {
     public struct Result: Codable, Sendable {
+        public let remapMode: ExperimentalBoxRemap
         public let cellSize: Float
         public let cfl: Float
         public let refinement: Int
@@ -16,6 +17,8 @@ public enum ExperimentalRigidBoxStudy {
         public let velocity: SIMD3<Double>
         public let linearImpulse: SIMD3<Double>
         public let angularImpulse: SIMD3<Double>
+        public let groundImpulse: SIMD3<Double>
+        public let groundAngularImpulse: SIMD3<Double>
         public let orientation: SIMD4<Double>
         public let angularMomentum: SIMD3<Double>
         public let initialGasMass: Double
@@ -32,7 +35,9 @@ public enum ExperimentalRigidBoxStudy {
     /// The closed domain isolates mass conservation from boundary outflow; its reflections
     /// are part of this study, so it must not be compared directly with the open-domain demo.
     public static func run(
-        device: MTLDevice, extended: Bool = false, completed: ((Result) -> Void)? = nil
+        device: MTLDevice, extended: Bool = false,
+        remapMode: ExperimentalBoxRemap = .redistribution,
+        completed: ((Result) throws -> Void)? = nil
     ) throws -> [Result] {
         let object = try RigidObjectDefinition(
             name: "Study box", shape: .box(size: SIMD3(repeating: 0.8)),
@@ -59,29 +64,36 @@ public enum ExperimentalRigidBoxStudy {
                 let simulation = try ExperimentalRigidBoxSimulation(
                     device: device, scenario: scene,
                     cellSize: cell, configuration: config, motion: held ? .held : .free)
+                simulation.remapMode = remapMode
                 simulation.recordsRemapTimings = true
                 let initialTotals = simulation.air.totals()
                 let initialPosition = simulation.position
                 var linear = SIMD3<Double>.zero
                 var angular = SIMD3<Double>.zero
+                var ground = SIMD3<Double>.zero
+                var groundAngular = SIMD3<Double>.zero
                 let started = Date.timeIntervalSinceReferenceDate
                 while simulation.air.time < 0.03 - 1e-8 {
                     try simulation.advance(steps: 1, timeLimit: 0.03)
                     linear += simulation.lastImpulse
                     angular += simulation.lastAngularImpulse
+                    ground += simulation.lastGroundImpulse
+                    groundAngular += simulation.lastGroundAngularImpulse
                 }
                 results.append(
                     Result(
+                        remapMode: remapMode,
                         cellSize: cell, cfl: cfl, refinement: ratio, held: held,
                         time: simulation.air.time, steps: simulation.air.stepCount,
                         displacement: simulation.position - initialPosition, velocity: simulation.velocity,
                         linearImpulse: linear, angularImpulse: angular,
+                        groundImpulse: ground, groundAngularImpulse: groundAngular,
                         orientation: simulation.orientation, angularMomentum: simulation.angularMomentum,
                         initialGasMass: initialTotals.mass, initialGasEnergy: initialTotals.energy,
                         relativeMassChange: simulation.air.totals().mass / initialTotals.mass - 1,
                         computeSeconds: Date.timeIntervalSinceReferenceDate - started,
                         remapTimings: simulation.remapTimings))
-                completed?(results.last!)
+                try completed?(results.last!)
             }
         }
         return results
