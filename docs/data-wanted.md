@@ -66,12 +66,8 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Ten values in the code were written from memory and should be checked against the original.
+Nine values in the code were written from memory and should be checked against the original.
 
-- **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
-  Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
-  15 MJ/kg) and its heat of detonation (about 4.6 to 5 MJ/kg), whose difference, 10 MJ/kg, is
-  the afterburn energy.
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
   **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2); ASTM E1300 or a
@@ -132,6 +128,11 @@ Ten values in the code were written from memory and should be checked against th
 ## Obtained
 
 Supplied by hand during development, and now in use:
+
+- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996 (supplied as a scan): TNT's heat of
+  combustion, 821 kcal/mol with the water liquid (Table 9.3, p. 130), 15.1 MJ/kg; its heat of
+  detonation and afterburn heat (Table 9.4 and §9.6, pp. 132–133); and the closed vessel worked
+  through on pp. 153–158. See the [air-blast model](air-blast-model.md#sources).
 
 - J. C. Walraven and H. W. Reinhardt, "Theory and experiments on the mechanical behaviour of
   cracks in plain and reinforced concrete subjected to shear loading", *HERON* 26(1A) (1981),
