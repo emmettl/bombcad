@@ -22,6 +22,7 @@ import simd
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
+//                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -1360,15 +1361,34 @@ func runAnchorage() throws {
     print(
         "Freestanding wall\(shells ? " of shells" : ""), \(format(Double(AnchorageStudy.height), 0)) m high and "
             + "\(format(Double(AnchorageStudy.thickness) * 1000, 0)) mm thick, a surface burst of "
-            + "\(format(Double(mass), 0)) kg; Kingery–Bulmash reflected pulse, no air; \(format(Double(duration), 1)) s"
+            + "\(format(Double(mass), 0)) kg; "
+            + (flag("air") ? "12 m long, loaded by the air" : "Kingery–Bulmash reflected pulse, no air")
+            + "; \(format(Double(duration), 1)) s"
     )
     for standoff in standoffs {
         print("")
         var header = false
-        for base in BaseConnection.allCases {
-            let r = try AnchorageStudy.run(
-                device: device, base: base, mass: mass, standoff: standoff, duration: duration, elementSize: h
-            )
+        // `--bases clamped,dowelled` picks the bases; `--air` loads a 12 m wall by the air solver
+        // instead of the pulse, on cells of `--cell` metres (0.25 by default), the air reaching
+        // `--margin` metres (12) beyond the wall and charge and `--height` metres (18) up.
+        let bases =
+            option("bases").map {
+                $0.split(separator: ",").compactMap { BaseConnection(rawValue: String($0)) }
+            }
+            ?? BaseConnection.allCases
+        for base in bases {
+            let r =
+                flag("air")
+                ? try AnchorageStudy.runCoupled(
+                    device: device, base: base, mass: mass, standoff: standoff, duration: Double(duration),
+                    cellSize: option("cell").flatMap { Float($0) } ?? 0.25, elementSize: h,
+                    margin: option("margin").flatMap { Float($0) } ?? 12,
+                    domainHeight: option("height").flatMap { Float($0) } ?? 18,
+                    progress: flag("progress") ? { print("    " + $0) } : nil)
+                : try AnchorageStudy.run(
+                    device: device, base: base, mass: mass, standoff: standoff, duration: duration,
+                    elementSize: h,
+                    shells: shells)
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
@@ -1392,6 +1412,13 @@ func runAnchorage() throws {
                     + pad(failed, 12)
                     + pad(anchored ? "\(format(Double(r.peakBaseMoment) / 1000, 0)) kN m/m" : "-", 12)
                     + pad("\(r.summary.erodedElements)", 8) + pad("\(format(r.wallSeconds)) s", 9))
+            if flag("air") {
+                print(
+                    pad("", 22)
+                        + "face \(format(Double(r.pressure * r.duration) / 2, 0)) Pa s (positive phase); "
+                        + "over 50 ms, back \(format(Double(r.backImpulse), 0)) Pa s, net \(format(Double(r.netImpulse), 0)) Pa s; "
+                        + "back towards the charge \(format(Double(r.peakBackSway) * 1000, 1)) mm")
+            }
         }
     }
 }
