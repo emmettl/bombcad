@@ -110,11 +110,15 @@ script before an archive is written.
   - Export settings don't affect the response, since they are applied on export, so they don't start
     a run.
   - While a run is in progress the response is marked "Updating…"; until it finishes, the previous one
-    stays in use.
-  - The result shows each channel's peak envelope in dB.
+    stays in use. The toolbar shows the run's stage and how far it has got, such as "Tracing rays 40%"
+    or "Wave solver 67%".
+  - The result shows each channel's peak envelope in dB, or, switched with the picker above it, its
+    spectrum from 20 Hz to 20 kHz, twelve points to an octave, each averaged over a sixth of an
+    octave, with the wave solver's crossover marked.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
-  - It shows arrival counts and generation time, the wave solver's crossover, grid, runs and how many used the GPU or the CPU, and time, the
-    Schroeder frequency, and the share of energy from 500 Hz to 4 kHz that arrived scattered.
+  - It shows arrival counts and generation time. It also shows the wave solver's crossover, grid, time
+    and runs, with how many ran on the GPU and how many on the CPU. Then come the Schroeder
+    frequency and the share of energy from 500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.
   - Play starts at once with the latest response, even while a newer one is being generated; the new
@@ -287,12 +291,13 @@ saved again.
     invalid settings and results that arrive during the wait;
   - invalid settings;
   - cancellation, and a newer generation replacing one in progress;
-  - the mapping between drawing and room coordinates, including clamping.
+  - the mapping between drawing and room coordinates, including clamping;
+  - the wording of generation progress and of the wave solver's engines.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
 `RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen. It also renders
-the audition waveform with its playhead, and a generated response's envelope, decay table and
-diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
+the audition waveform with its playhead, and a generated response's envelope, spectrum, decay table
+and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
 coincide in one projection; labels now move apart. Form controls and toolbars do not render
 offscreen.
 

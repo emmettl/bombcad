@@ -286,10 +286,12 @@ public enum RoomResponseGenerator {
     /// frame 0, as pressure relative to the free-field pressure 1 m from the source.
     ///
     /// The work runs on several cores. Throws `CancellationError` if the calling task is cancelled.
-    public static func generate(_ settings: RoomResponseSettings) async throws -> RoomResponse {
+    public static func generate(_ settings: RoomResponseSettings, progress: GenerationProgress? = nil)
+        async throws -> RoomResponse
+    {
         let flag = CancellationFlag()
         return try await withTaskCancellationHandler {
-            try generate(settings, cancellation: flag)
+            try generate(settings, cancellation: flag, progress: progress)
         } onCancel: {
             flag.cancel()
         }
@@ -311,7 +313,8 @@ public enum RoomResponseGenerator {
 
     /// Generates synchronously; `cancellation`, or cancelling the calling task, stops it.
     public static func generate(
-        _ settings: RoomResponseSettings, cancellation: CancellationFlag = CancellationFlag()
+        _ settings: RoomResponseSettings, cancellation: CancellationFlag = CancellationFlag(),
+        progress: GenerationProgress? = nil
     ) throws -> RoomResponse {
         try settings.validate()
         let start = Date()
@@ -355,10 +358,11 @@ public enum RoomResponseGenerator {
         {
             tracer.specularOrderLimit = settings.maximumReflectionOrder
         }
+        progress?.begin(.rays)
         let diffuse = tracer.trace(
             receivers: settings.receivers.map { ($0.position, $0.microphone ?? .omni) },
             duration: settings.duration,
-            stop: cancelled)
+            stop: cancelled, progress: progress)
         try check()
         // The bands whose energy the scattered fraction reports, 500 Hz to 4 kHz.
         let reported = 3...6
@@ -371,7 +375,9 @@ public enum RoomResponseGenerator {
             var scatteredFraction: Double
         }
         let results = ChunkResults<Channel>(count: settings.receivers.count)
+        progress?.begin(.reflections)
         DispatchQueue.concurrentPerform(iterations: settings.receivers.count) { index in
+            defer { progress?.advance(by: 1 / Double(settings.receivers.count)) }
             guard !cancelled() else { return }
             var renderer = BandRenderer(
                 sampleRate: settings.sampleRate, frames: frames,
@@ -437,11 +443,12 @@ public enum RoomResponseGenerator {
             if let plan = WavePlan(settings: settings, schroeder: schroeder, fftLength: fftLength) {
                 let crossover = plan.crossover
                 let cutoff = settings.lowFrequencyCutoff
+                progress?.begin(.waveSolver)
                 let low = plan.solver.responses(
                     source: settings.source.position,
                     receivers: settings.receivers.map { ($0.position, $0.microphone ?? .omni) },
                     frames: frames,
-                    fftLength: fftLength,
+                    fftLength: fftLength, progress: progress,
                     weight: { f in
                         (1 - OctaveBands.rise(f, crossover: crossover))
                             * (cutoff > 0 ? OctaveBands.rise(f, crossover: cutoff / 2.squareRoot()) : 1)
@@ -509,6 +516,28 @@ public enum RoomResponseGenerator {
             response: try ImpulseResponse(channels: channels, metadata: metadata), settings: settings,
             diagnostics: diagnostics)
     }
+}
+
+/// What a generation is doing and how far it has got, for showing progress; any thread may read it.
+public final class GenerationProgress: @unchecked Sendable {
+    public enum Stage: String, Sendable, CaseIterable {
+        case rays = "Tracing rays"
+        case reflections = "Rendering reflections"
+        case waveSolver = "Wave solver"
+    }
+
+    private let lock = NSLock()
+    private var stage: Stage?
+    private var fraction = 0.0
+
+    public init() {}
+
+    /// The stage under way, if any, and the fraction of it done, from 0 to 1.
+    public var current: (stage: Stage?, fraction: Double) { lock.withLock { (stage, fraction) } }
+
+    func begin(_ stage: Stage) { lock.withLock { (self.stage, fraction) = (stage, 0) } }
+
+    func advance(by amount: Double) { lock.withLock { fraction = min(fraction + amount, 1) } }
 }
 
 /// A cancellation request that worker threads can see.

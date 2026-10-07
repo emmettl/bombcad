@@ -65,7 +65,11 @@ private struct SnapshotView: View {
                 Text(player.clip?.credit ?? "").font(.caption).foregroundStyle(.secondary)
             }
             HStack(alignment: .top, spacing: 16) {
-                EnvelopeChart(summary: summary).frame(width: 560, height: 240)
+                VStack(spacing: 12) {
+                    EnvelopeChart(summary: summary).frame(width: 560, height: 240)
+                    SpectrumChart(summary: summary, crossover: result.diagnostics.waveCrossover)
+                        .frame(width: 560, height: 200)
+                }
                 VStack(alignment: .leading, spacing: 10) {
                     DecayTable(summary: summary, diagnostics: result.diagnostics)
                     DiagnosticsList(result: result)

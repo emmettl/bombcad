@@ -13,6 +13,9 @@ struct RoomEditorView: View {
     /// Play as soon as a response arrives; set when Play is pressed before there is one.
     @State private var playWhenGenerated = false
     @State private var spaceKey = SpaceKeyMonitor()
+    @State private var chart = Chart.envelope
+
+    enum Chart { case envelope, spectrum }
 
     private var project: RoomProject { document.project }
 
@@ -36,6 +39,9 @@ struct RoomEditorView: View {
             ToolbarItemGroup {
                 if editor.isGenerating {
                     ProgressView().controlSize(.small)
+                    if let text = editor.progressText {
+                        Text(text).font(.callout).monospacedDigit().foregroundStyle(.secondary)
+                    }
                     Button("Cancel", systemImage: "stop.fill") { editor.cancel() }
                         .keyboardShortcut(".", modifiers: .command)
                 } else {
@@ -104,7 +110,21 @@ struct RoomEditorView: View {
             }
             if let result = project.result, let summary = editor.summary {
                 HStack(alignment: .top, spacing: 16) {
-                    EnvelopeChart(summary: summary).frame(minWidth: 260)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker("Chart", selection: $chart) {
+                            Text("Envelope").tag(Chart.envelope)
+                            Text("Spectrum").tag(Chart.spectrum)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                        switch chart {
+                        case .envelope: EnvelopeChart(summary: summary)
+                        case .spectrum:
+                            SpectrumChart(summary: summary, crossover: result.diagnostics.waveCrossover)
+                        }
+                    }
+                    .frame(minWidth: 260)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 10) {
                             DecayTable(summary: summary, diagnostics: result.diagnostics)

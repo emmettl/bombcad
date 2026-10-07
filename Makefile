@@ -1,4 +1,4 @@
-.PHONY: build app run test roomcad-test roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
+.PHONY: build app run test roomcad-test roomcad-validate roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -20,6 +20,9 @@ test:
 roomcad-test:
 	swift test --package-path RoomCAD
 	python3 RoomCAD/Scripts/test-release.py
+
+roomcad-validate:
+	swift run -c release --package-path RoomCAD acousticbench --bras-cr2
 
 roomcad-app:
 	bash RoomCAD/Scripts/build-app.sh "$(CONFIGURATION)"
