@@ -186,6 +186,17 @@ struct EditorView: View {
                         isOn: Binding(
                             get: { model.settings.scenario.structure?.fixedBase ?? false },
                             set: { model.setFixedBase($0) }))
+                    if model.settings.scenario.structure?.fixedBase == true {
+                        Picker(
+                            "Base connection",
+                            selection: Binding(
+                                get: { BaseConnection(model.settings.scenario.structure?.baseAnchorage) },
+                                set: { choice in model.editStructure { $0.baseAnchorage = choice.anchorage } }
+                            )
+                        ) {
+                            ForEach(BaseConnection.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }
+                    }
                     ForEach(supports.indices, id: \.self) { index in
                         BoxRow(
                             title: "Support \(index + 1)", box: supportBinding(index), step: 0.125,
@@ -197,7 +208,7 @@ struct EditorView: View {
                     Text("Structural supports")
                 } footer: {
                     Text(
-                        "Nodes inside support regions are held still. Add Support places a strip at the base of the selected part or region; edit its corner and size to locate the restraint."
+                        "Nodes inside support regions are held still. Add Support places a strip at the base of the selected part or region; edit its corner and size to locate the restraint. The base connection ties the nodes on the ground to it: clamped, or by starter bars, a construction joint or friction alone, which can open, slide and fail. Shells keep a clamped base."
                     )
                 }
             }

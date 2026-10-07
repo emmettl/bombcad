@@ -217,7 +217,9 @@ swift run -c release blastbench slab --sensitivity
 ```
 
 `blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
-[Performance](docs/performance.md) and [Validation](docs/validation.md).
+[Performance](docs/performance.md) and [Validation](docs/validation.md). `blastbench anchorage`
+compares a freestanding wall on a clamped base with one on starter bars, a construction joint
+or friction alone (see [base connections](docs/structural-model.md#base-connections)).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction

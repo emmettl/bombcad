@@ -139,6 +139,13 @@ public final class StructureSolver {
     let contactForceBuffer: MTLBuffer
     /// Non-zero once any element has failed.
     private let failureGateBuffer: MTLBuffer
+    /// The base's connection to the ground, two `SIMD4<Float>` per node (see `anchorForce` in
+    /// Structure.metal); a placeholder when the base is clamped or free.
+    private let anchorBuffer: MTLBuffer
+    /// The connection's stiffnesses per unit area, when the base has one.
+    private let anchorStiffness: (normal: Float, shear: Float)?
+    /// The largest square angular frequency, in 1/s², of a node on its connection alone.
+    private var anchorFrequencySquared: Float = 0
     private var stamp: UInt32 = 0
 
     public init(
@@ -420,7 +427,24 @@ public final class StructureSolver {
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         contactForceBuffer = try buffer(nodeList.count * 12, "contact forces")
         failureGateBuffer = try buffer(16, "failure gate")
+        if let anchorage = model.baseAnchorage, model.fixedBase {
+            anchorStiffness = anchorage.stiffness(material: model.material, elementSize: h)
+            anchorBuffer = try buffer(nodeList.count * 32, "anchors")
+        } else {
+            anchorStiffness = nil
+            anchorBuffer = try buffer(16, "anchors")
+        }
         reset()
+        if let anchorStiffness {
+            let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
+            let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+            mutateNodes { nodes in
+                for n in 0..<nodeCount where anchors[2 * n].x > 0 && nodes[n].mass > 0 {
+                    anchorFrequencySquared = max(
+                        anchorFrequencySquared, stiffest * anchors[2 * n].x / nodes[n].mass)
+                }
+            }
+        }
     }
 
     // MARK: - State
@@ -447,6 +471,11 @@ public final class StructureSolver {
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
+        // A connected base gets each ground node's share of the base area instead of a clamp.
+        let anchored = anchorStiffness != nil
+        let anchors = anchorBuffer.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: max(2 * nodeCount, 1))
+        if anchored { memset(anchorBuffer.contents(), 0, anchorBuffer.length) }
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
             for n in 0..<elementCount {
@@ -457,7 +486,11 @@ public final class StructureSolver {
                     let index = nodeIndex(i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
                     nodes[index].mass += cornerMass
                     if onGround && k + ((corner >> 2) & 1) == 0 {
-                        nodes[index].isFixed = true
+                        if anchored {
+                            anchors[2 * index].x += h * h / 4
+                        } else {
+                            nodes[index].isFixed = true
+                        }
                     }
                 }
             }
@@ -626,6 +659,59 @@ public final class StructureSolver {
         SIMD3((0..<3).map { stateValue(i, j, k, offset: 92 + 4 * $0) })
     }
 
+    /// The state of the base's connection to the ground, when it has one (`Anchorage`).
+    public struct AnchorSummary: Sendable {
+        /// Nodes tied to the ground, and those whose tie has lost all its strength (none for a
+        /// body resting on the ground, which has none to lose).
+        public var nodes = 0
+        public var separated = 0
+        /// The fraction of the tie's strength lost, averaged over the base area.
+        public var meanDamage: Float = 0
+        /// Total force the ground puts on the body through the connection, in N.
+        public var reaction = SIMD3<Float>.zero
+        /// Its moment about the base's centre of area, in N m.
+        public var moment = SIMD3<Float>.zero
+        /// The largest slip and the largest opening of any node, in metres.
+        public var maxSlip: Float = 0
+        public var maxOpening: Float = 0
+    }
+
+    /// The connection's state after the last step, or nil when the base is clamped or free.
+    public func anchorSummary() -> AnchorSummary? {
+        guard let anchorStiffness, let anchorage = model.baseAnchorage else { return nil }
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+        let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
+        var summary = AnchorSummary()
+        var area: Float = 0
+        var centre = SIMD3<Float>.zero
+        var points: [(SIMD3<Float>, SIMD3<Float>)] = []
+        mutateNodes { nodes in
+            for n in 0..<nodeCount where anchors[2 * n].x > 0 {
+                let state = anchors[2 * n]
+                let force = SIMD3(anchors[2 * n + 1].x, anchors[2 * n + 1].y, anchors[2 * n + 1].z)
+                let index = Int(lattice[n])
+                let (i, j) = (index % (ex + 1), (index / (ex + 1)) % (ey + 1))
+                let position = referencePosition(i, j, 0)
+                let remaining = anchorage.remaining(
+                    peak: anchors[2 * n + 1].w, wear: state.w, normalStiffness: anchorStiffness.normal)
+                summary.nodes += 1
+                if remaining <= 0 { summary.separated += 1 }
+                summary.meanDamage += state.x * (1 - remaining)
+                summary.reaction += force
+                summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(state.y, state.z)))
+                summary.maxOpening = max(summary.maxOpening, nodes[n].uz)
+                area += state.x
+                centre += state.x * position
+                points.append((position, force))
+            }
+        }
+        guard area > 0 else { return summary }
+        summary.meanDamage /= area
+        centre /= area
+        summary.moment = points.reduce(.zero) { $0 + simd_cross($1.0 - centre, $1.1) }
+        return summary
+    }
+
     /// Total linear momentum of the body in kg m/s.
     public func momentum() -> SIMD3<Double> {
         var total = SIMD3<Double>.zero
@@ -727,7 +813,15 @@ public final class StructureSolver {
                 material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * densestSteel[n]
             return (modulus / material.density).squareRoot()
         }
-        return timeStepSafety * model.elementSize / (speeds.max() ?? 1)
+        let step = timeStepSafety * model.elementSize / (speeds.max() ?? 1)
+        // A node on a stiff connection to the ground: its frequency on the connection adds to
+        // the highest the elements alone can give it, 2 c / h; the bearing's damping shortens the
+        // stable step by √(1 + ζ²) − ζ, and the step keeps a tenth in hand.
+        guard anchorFrequencySquared > 0 else { return step }
+        let elementFrequency = 2 * (speeds.max() ?? 1) / model.elementSize
+        let frequency = (elementFrequency * elementFrequency + anchorFrequencySquared).squareRoot()
+        let damping = (1 + contactDamping * contactDamping).squareRoot() - contactDamping
+        return min(step, 0.9 * 2 * damping / frequency)
     }
 
     /// Substeps to encode per fluid step so that a fluid step of `fluidStepBound` seconds can be
@@ -867,6 +961,7 @@ public final class StructureSolver {
             encoder.setBuffer(interface?.entries ?? placeholderBuffer, offset: 0, index: 14)
             encoder.setBuffer(interface?.links ?? placeholderBuffer, offset: 0, index: 15)
             encoder.setBuffer(interface?.loads ?? placeholderBuffer, offset: 0, index: 16)
+            encoder.setBuffer(anchorBuffer, offset: 0, index: 17)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             afterNodes?(substep)
@@ -917,6 +1012,17 @@ public final class StructureSolver {
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
+        if let anchorStiffness, let anchorage = model.baseAnchorage {
+            uniforms.anchored = 1
+            uniforms.anchorNormalStiffness = anchorStiffness.normal
+            uniforms.anchorShearStiffness = anchorStiffness.shear
+            uniforms.anchorTension = anchorage.tensileStrength
+            uniforms.anchorPlateau = anchorage.tensionPlateau
+            uniforms.anchorOpening = anchorage.tensionOpening
+            uniforms.anchorCohesion = anchorage.cohesion
+            uniforms.anchorCohesionSlip = anchorage.cohesionSlip
+            uniforms.anchorFriction = anchorage.friction
+        }
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))

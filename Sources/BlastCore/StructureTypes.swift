@@ -453,6 +453,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var elementSize: Float
     /// Clamp the nodes that sit on the ground plane.
     public var fixedBase: Bool
+    /// With `fixedBase`, ties the base to the ground by a connection that can deform, open,
+    /// slide and fail (see `Anchorage`) instead of clamping it. Nil clamps it. Solid elements
+    /// only; a shell's base stays clamped.
+    public var baseAnchorage: Anchorage?
     public var reinforcement: [ReinforcementLayer] = []
     /// Bars at 45 degrees to the lattice (see `InclinedBars`).
     public var inclinedBars: [InclinedBars] = []
@@ -927,6 +931,15 @@ struct StructureUniforms {
     var barAxes: UInt32 = 7
     var bareBars: UInt32 = 0
     var crackSlip: UInt32 = 0
+    var anchored: UInt32 = 0
+    var anchorNormalStiffness: Float = 0
+    var anchorShearStiffness: Float = 0
+    var anchorTension: Float = 0
+    var anchorPlateau: Float = 0
+    var anchorOpening: Float = 0
+    var anchorCohesion: Float = 0
+    var anchorCohesionSlip: Float = 0
+    var anchorFriction: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1097,6 +1110,7 @@ extension StructureModel {
         material = try container.decode(StructureMaterial.self, forKey: .material)
         elementSize = try container.decode(Float.self, forKey: .elementSize)
         fixedBase = try container.decode(Bool.self, forKey: .fixedBase)
+        baseAnchorage = try container.decodeIfPresent(Anchorage.self, forKey: .baseAnchorage)
         reinforcement = try container.decodeIfPresent([ReinforcementLayer].self, forKey: .reinforcement) ?? []
         inclinedBars = try container.decodeIfPresent([InclinedBars].self, forKey: .inclinedBars) ?? []
         solidReinforcement =

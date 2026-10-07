@@ -28,7 +28,7 @@ it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
-| 9 | Ground restraints are permanent; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -241,6 +241,16 @@ option, then add connections that can deform, open and fail under tension or she
 contact and friction after separation. Compare fixed and finite-strength supports on a
 freestanding wall or column before pursuing detailed footing and soil behaviour. Rigid-body
 motion alone does not address foundation failure or deformable-object breakup.
+
+Started: a solid body's base can now be tied to the ground by a connection that deforms, opens
+and slides, and fails in tension and shear, with contact and Coulomb friction after separation
+(`StructureModel.baseAnchorage`; ideal clamping stays the default). Resting, construction-joint
+and dowelled connections are provided, checked against statics, and compared on a freestanding
+wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars the wall sways
+within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
+resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
+[structural model](structural-model.md#base-connections). Still open: footings, soil and
+foundation rotation; connections for shells and support regions; and a measured case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2
