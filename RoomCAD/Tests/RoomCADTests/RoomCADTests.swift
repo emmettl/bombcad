@@ -249,4 +249,24 @@ struct SpaceKeyTests {
         #expect(window.firstResponder is NSText)
         #expect(!SpaceKeyMonitor.isPlayPause(key(" ", in: window), in: window))
     }
+
+    @Test("A new window's text field gives up the keyboard so the space bar plays")
+    func initialFocus() async throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [.titled],
+            backing: .buffered,
+            defer: false)
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 100, height: 24))
+        window.contentView?.addSubview(field)
+        window.makeFirstResponder(field)
+        #expect(window.firstResponder is NSText)
+        let monitor = SpaceKeyMonitor()
+        let sink = WindowReader.FocusSink()
+        sink.monitor = monitor
+        window.contentView?.addSubview(sink)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(monitor.window === window)
+        #expect(window.firstResponder === sink)
+        #expect(SpaceKeyMonitor.isPlayPause(key(" ", in: window), in: window))
+    }
 }

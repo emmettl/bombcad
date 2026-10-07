@@ -35,17 +35,52 @@ final class SpaceKeyMonitor {
     }
 }
 
-/// Reports the window a view is in.
+/// Reports the window a view is in, and keeps keyboard focus off text fields when it opens.
+///
+/// macOS gives a new window's first text field the keyboard, which would make the space bar type into
+/// it. The view this places is focusable and takes the keyboard instead.
 struct WindowReader: NSViewRepresentable {
     let monitor: SpaceKeyMonitor
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { [weak view] in monitor.window = view?.window }
+    func makeNSView(context: Context) -> FocusSink {
+        let view = FocusSink()
+        view.monitor = monitor
         return view
     }
 
-    func updateNSView(_ view: NSView, context: Context) {
+    func updateNSView(_ view: FocusSink, context: Context) {
         if monitor.window !== view.window { monitor.window = view.window }
     }
+
+    final class FocusSink: NSView {
+        weak var monitor: SpaceKeyMonitor?
+        override var acceptsFirstResponder: Bool { true }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            monitor?.window = window
+            window.initialFirstResponder = self
+            // After SwiftUI has set up the window's views.
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self, let window,
+                    window.firstResponder is NSText || window.firstResponder === window
+                else { return }
+                window.makeFirstResponder(self)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Ends text editing when Return is pressed, so the space bar plays again.
+    func endsEditingOnSubmit() -> some View {
+        onSubmit { NSApp.keyWindow?.makeFirstResponder(nil) }
+    }
+}
+
+/// Ends any text editing in the key window, as clicking a drawing should.
+@MainActor
+func endTextEditing() {
+    if let window = NSApp.keyWindow, window.firstResponder is NSText { window.makeFirstResponder(nil) }
 }

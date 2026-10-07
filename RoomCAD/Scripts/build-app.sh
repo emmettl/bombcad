@@ -21,6 +21,8 @@ cp Support/Info.plist "$app/Contents/Info.plist"
 cp Support/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 # The MIT licence asks for its notice to travel with every copy.
 cp ../LICENSE "$app/Contents/Resources/LICENSE"
+# The material data's licence, and where the bundled recordings come from.
+cp THIRD-PARTY-NOTICES.md "$app/Contents/Resources/THIRD-PARTY-NOTICES.md"
 # Resource bundles, such as the bundled dry recordings. SwiftPM's accessor looks in the app's Resources
 # directory; nothing may sit at the app's root, or signing fails.
 for bundle in "$binary_directory"/RoomCAD_*.bundle; do

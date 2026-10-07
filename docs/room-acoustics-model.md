@@ -225,8 +225,8 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 
 - **Geometry.** Only rectangular rooms, with one material per surface, are supported. There are no
   openings, no furniture and no coupled spaces.
-- **Scattering.** Its coefficients are inputs; there are no sourced values yet, and the starter room's
-  are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
+- **Scattering.** Published scattering values exist only for a few surfaces (seven presets). Others
+  are inputs, and the starter room's are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
   exaggerated (above).
 - **Diffuse part.** The scattered part is an energy envelope with random detail, not a wave solution.
   It carries no direction and no interference between scattered paths. Each bin's energy is shared
@@ -242,8 +242,9 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
   an arrival whose band gains differ. The high-pass also spreads about 3 × 10⁻⁴ of each arrival's
   energy around it.
 - **No late tail.** Responses end at the duration, which is a hard cut unless a fade-out is applied.
-- **Materials.** There are no sourced material presets yet, only rigid, anechoic and uniform
-  coefficients. The bench's α = 0.2 is illustrative.
+- **Materials.** Presets give published random-incidence absorption from 125 Hz, extended to 63 Hz
+  and, where missing, to 8 kHz (see [the app's presets](roomcad-app.md#material-presets)). The bench's
+  α = 0.2 is illustrative.
 - **Performance.** Generation runs on the CPU, on one thread per response.
 
 ## Future work
@@ -251,7 +252,7 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 The roadmap orders the work as follows:
 
 - a bounded, labelled late tail if auditioning needs one (M2 item 4);
-- sourced material data, including scattering coefficients (M5);
+- more sourced scattering data (M5);
 - a crossover to the low-frequency wave solver (the rest of M4);
 - a low-frequency wave solver (M3).
 
@@ -269,5 +270,8 @@ Receivers could be generated in parallel, and the ray tracer could run on the GP
 - H. Kuttruff, *Room Acoustics*, 6th edn, CRC Press, 2016, for the Sabine and Eyring formulae, the
   Schroeder frequency, decay in non-diffuse rooms, the correction for the spread of free path
   lengths, and ray tracing with diffuse reflection.
+- M. Vorländer, *Auralization: Fundamentals of Acoustics, Modelling, Simulation, Algorithms and
+  Acoustic Virtual Reality*, Springer, 2008, annex, for the material presets, via the pyroomacoustics
+  materials database (https://github.com/LCAV/pyroomacoustics, MIT licence).
 - ISO 17497-1:2004, *Acoustics — Sound-scattering properties of surfaces — Part 1: Measurement of the
   random-incidence scattering coefficient in a reverberation room*, for the definition of s.

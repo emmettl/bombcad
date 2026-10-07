@@ -37,6 +37,9 @@ document is opened from Finder.
   - room dimensions;
   - each surface's absorption and scattering, either one value for all bands or band by band, with the
     material's name and reference;
+  - published materials: the books icon beside each surface's absorption chooses one of 90 surfaces
+    in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
+    below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
   - sample rate, duration, maximum reflection order and content;
   - low cut, the number of diffuse rays and the random seed, air absorption, temperature and
@@ -70,7 +73,8 @@ document is opened from Finder.
     follows silently, and playback continues from where you release it.
   - **Play/Pause**, or the space bar, resumes from the playhead, and the back button returns it to the
     start. The space bar works anywhere in the window except while a text field is being edited, where
-    it types a space.
+    it types a space. Pressing Return in a field, or clicking a drawing or the waveform, ends the
+    editing. Text fields don't take the keyboard when a window opens, as macOS would otherwise arrange.
   - Changing the room, the loudness matching or looping keeps the position. Choosing another clip
     starts it from the beginning.
   - A slider balances the dry and wet sound while it plays; the lanes fade to match.
@@ -85,6 +89,23 @@ document is opened from Finder.
     response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
   beside it.
+
+## Material presets
+
+The absorption presets are the table in the annex of Vorländer's *Auralization* (Springer, 2008), as
+collected in pyroomacoustics' materials database (MIT licence). They cover hard surfaces, linings,
+glazing, wood, floor coverings, curtains, seating, audience, and wall, ceiling and special absorbers.
+The scattering presets come from the same database and cover diffusers, theatre audience, classroom
+tables, amphitheatre steps, and studio wall and ceiling boxes.
+
+The data starts at 125 Hz, and some entries stop at 4 kHz or earlier. The 63 Hz band takes the 125 Hz
+value, and missing high bands take the highest published one. The material's reference names the
+source and the extended bands.
+
+Few absorption entries have published scattering. Choosing a material therefore sets its name and
+absorption and keeps the surface's scattering; a scattering preset sets only the scattering. The
+generated table is `Sources/AcousticCore/MaterialPresetData.swift`, pinned to the source commit, and
+pyroomacoustics' licence is in `RoomCAD/THIRD-PARTY-NOTICES.md`, which also ships in the app.
 
 ## Document format
 
@@ -156,8 +177,11 @@ saved again.
   - seeking clamped to the clip;
   - choosing a clip resets the playhead;
   - matching changes the wet level only.
-- **SpaceKeyTests:** a bare space in the editor's window toggles playback. Modified, repeated or other
-  keys pass through, as do keys for other windows and spaces typed into a text field.
+- **SpaceKeyTests:**
+  - a bare space in the editor's window toggles playback;
+  - modified, repeated or other keys pass through, as do keys for other windows and spaces typed into
+    a text field;
+  - a new window's text field gives up the keyboard.
 - **RoomCADTests:**
   - background generation and its delivery;
   - automatic regeneration: waiting for changes to settle, superseding older runs, ignoring repeats,
@@ -181,6 +205,6 @@ offscreen.
 - There is no late tail, and true-stereo (four-path) auditioning is not supported.
 - Playback has not been heard: the mixing is tested offline, but the audio engine and controls are
   unverified by ear and by eye.
-- There are no material presets, since sourced absorption data is roadmap M5.
+- Most presets have no published scattering, and the starter room's scattering is illustrative.
 - Only rectangular rooms are supported, and there is no 3D view.
 - Generation blocks one core per document and is not shared between windows.

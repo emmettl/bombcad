@@ -14,6 +14,7 @@ struct NumberField: View {
         LabeledContent(title) {
             HStack(spacing: 4) {
                 TextField(title, value: $value, format: .number.precision(.fractionLength(0...digits)))
+                    .endsEditingOnSubmit()
                     .labelsHidden()
                     .multilineTextAlignment(.trailing)
                     .frame(width: 72)
@@ -36,7 +37,7 @@ struct PointEditor: View {
     @Binding var point: RoomPoint
 
     var body: some View {
-        TextField("Name", text: $point.name)
+        TextField("Name", text: $point.name).endsEditingOnSubmit()
         NumberField(title: "x", value: $point.position.component(0), unit: "m")
         NumberField(title: "y", value: $point.position.component(1), unit: "m")
         NumberField(title: "z", value: $point.position.component(2), unit: "m")
@@ -57,8 +58,13 @@ struct MaterialEditor: View {
 
     var body: some View {
         DisclosureGroup {
-            TextField("Material", text: $material.name)
-            TextField("Reference", text: $material.reference)
+            TextField("Material", text: $material.name).endsEditingOnSubmit()
+            TextField("Reference", text: $material.reference).endsEditingOnSubmit()
+            LabeledContent("Scattering preset") {
+                presetMenu(MaterialPresets.scattering, title: "Choose…") {
+                    material = material.applying(scattering: $0)
+                }
+            }
             NumberField(title: "Scattering, all bands", value: mean(\.scattering))
                 .help("Fraction of the reflected energy sent off diffusely rather than like a mirror")
             Grid(alignment: .trailing, horizontalSpacing: 8, verticalSpacing: 4) {
@@ -78,15 +84,45 @@ struct MaterialEditor: View {
                 }
             }
         } label: {
-            NumberField(title: surface.rawValue.capitalized, value: mean(\.absorption))
-                .help(
-                    "Mean absorption coefficient; editing it sets every band. Expand for scattering and each band."
-                )
+            HStack(spacing: 6) {
+                NumberField(title: surface.rawValue.capitalized, value: mean(\.absorption))
+                    .help(
+                        "Mean absorption coefficient; editing it sets every band. Expand for scattering and each band."
+                    )
+                presetMenu(MaterialPresets.absorption, title: nil) {
+                    material = material.applying(absorption: $0)
+                }
+                .help("Choose a material with published absorption. Now: \(material.name)")
+            }
         }
+    }
+
+    /// A menu of presets grouped by category.
+    private func presetMenu(
+        _ presets: [MaterialPreset], title: String?, choose: @escaping (MaterialPreset) -> Void
+    ) -> some View {
+        Menu {
+            ForEach(MaterialPresets.categories(of: presets), id: \.self) { category in
+                Menu(category) {
+                    ForEach(presets.filter { $0.category == category }) { preset in
+                        Button(preset.name) { choose(preset) }
+                    }
+                }
+            }
+        } label: {
+            if let title {
+                Text(title)
+            } else {
+                Image(systemName: "books.vertical")
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
     }
 
     private func coefficient(_ title: String, _ value: Binding<Double>) -> some View {
         TextField(title, value: value, format: .number.precision(.fractionLength(0...2)))
+            .endsEditingOnSubmit()
             .labelsHidden()
             .multilineTextAlignment(.trailing)
             .frame(width: 60)
@@ -145,6 +181,7 @@ struct RoomInspector: View {
                 NumberField(title: "Duration", value: settings.duration, unit: "s")
                 LabeledContent("Maximum order") {
                     TextField("Maximum order", value: settings.maximumReflectionOrder, format: .number)
+                        .endsEditingOnSubmit()
                         .labelsHidden().multilineTextAlignment(.trailing).frame(width: 72)
                 }
                 Picker("Content", selection: settings.content) {
@@ -155,11 +192,13 @@ struct RoomInspector: View {
                     title: "Low cut (0 = off)", value: settings.lowFrequencyCutoff, unit: "Hz", digits: 0)
                 LabeledContent("Diffuse rays") {
                     TextField("Diffuse rays", value: settings.diffuseRays, format: .number)
+                        .endsEditingOnSubmit()
                         .labelsHidden().multilineTextAlignment(.trailing).frame(width: 72)
                 }
                 .help("Rays traced for the scattered energy. More rays give a smoother tail and take longer.")
                 LabeledContent("Random seed") {
                     TextField("Random seed", value: settings.randomSeed, format: .number)
+                        .endsEditingOnSubmit()
                         .labelsHidden().multilineTextAlignment(.trailing).frame(width: 72)
                 }
                 .help("Fixes the scattered tail's random detail, so a response can be reproduced exactly")

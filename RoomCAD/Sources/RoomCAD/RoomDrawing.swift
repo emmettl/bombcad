@@ -118,6 +118,7 @@ struct RoomDrawing: View {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
                 if dragging == nil {
+                    endTextEditing()
                     let nearest = points.indices.min {
                         distance(layout.point(points[$0].position), value.startLocation)
                             < distance(layout.point(points[$1].position), value.startLocation)

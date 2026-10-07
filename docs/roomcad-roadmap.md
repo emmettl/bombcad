@@ -336,6 +336,12 @@ waits for M3.
 Done when: a user can build, save, reopen, audition and export a room without editing code,
 and can see the output's frequency coverage and modelling assumptions.
 
+Progress (October 2026): the RoomCAD app covers saving, reopening, auditioning and export without
+code. Item 2 has started: 90 absorption and 7 scattering presets come from the annex of Vorländer's
+*Auralization*, via pyroomacoustics. Bands outside the published range are extended and labelled in
+each material's reference. Most surfaces still need scattering values. See
+[RoomCAD app and documents](roomcad-app.md#material-presets).
+
 ### M6 — Add a convolution reverb to Driftbox rack
 
 1. Integrate response loading through the existing rack architecture, sharing DSP code only

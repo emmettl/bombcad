@@ -27,4 +27,5 @@ swift run -c release --package-path RoomCAD acousticbench --out roomcad-referenc
 The app and its documents are described in [RoomCAD app and documents](../docs/roomcad-app.md),
 and the model, its checks and its limitations in
 [Room-acoustics model](../docs/room-acoustics-model.md). The package uses the shared SimulationKit
-for its document container and depends on nothing in BombCAD.
+for its document container and depends on nothing in BombCAD. Third-party data and recordings are
+credited in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

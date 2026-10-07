@@ -19,7 +19,10 @@ struct AuditionWaveform: View {
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { scrubTime = time(at: $0.location.x, width: geometry.size.width) }
+                    .onChanged {
+                        if scrubTime == nil { endTextEditing() }
+                        scrubTime = time(at: $0.location.x, width: geometry.size.width)
+                    }
                     .onEnded {
                         player.seek(to: time(at: $0.location.x, width: geometry.size.width))
                         scrubTime = nil
