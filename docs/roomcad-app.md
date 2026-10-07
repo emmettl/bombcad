@@ -54,6 +54,20 @@ is accepted. Finally it staples and validates the ticket, re-verifies the signat
 Gatekeeper to assess the app. Only then does it write `RoomCAD-<version>-macos-arm64.zip` with its
 checksum and manifest.
 
+RoomCAD 0.1.0 (build 1) was released this way on 2026-10-07, from commit `1e8c68d`, with Apple
+submission `fe528b2d-59cd-4a64-a889-096177cdcc20`:
+
+- Apple accepted it, the ticket was stapled and validated, and Gatekeeper assessed the app as
+  `Notarized Developer ID`.
+- A fresh expansion of the final ZIP matched its checksum, validated its stapled ticket, passed
+  `codesign --verify --deep --strict` and was accepted by `spctl`. It holds the recordings with their
+  credits, the icon, `LICENSE` and `THIRD-PARTY-NOTICES.md`, and it rendered its offscreen snapshot.
+- The ZIP, checksum and manifest are attached to the GitHub release `roomcad-v0.1.0`, tagged on that
+  commit. It is not marked latest, so the repository's latest release remains BombCAD's. The copy
+  downloaded back matched the checksum.
+- The tag is on the RoomCAD branch, not main, because main had moved on with uncommitted work in
+  progress at the time.
+
 The release tests run with `make roomcad-test`, with every external tool stubbed out. They check that
 a rejected notarization, a Gatekeeper refusal, missing recordings and missing licences each stop the
 script before an archive is written.
