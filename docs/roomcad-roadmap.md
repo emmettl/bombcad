@@ -69,6 +69,87 @@ structural support assumptions, source/receiver placement checks and solver conv
 their respective adapters. Acoustic absorption/scattering assignments and structural strength/
 reinforcement assignments reference the same parts through separate property sets.
 
+## Save-file design proposal
+
+Agree the document contract before the 0.2 importer release. Current main saves a JSON-encoded
+Scenario, rather than a complete project with solver settings. The importer work adds source
+meshes, part assignments and derived volumes to saved scenarios. Preserve support for those
+legacy files while introducing an explicitly versioned project document.
+
+### Container and ownership
+
+Use a native macOS document package (a directory presented as one file), with proposed
+extensions `.bombcad` and `.roomcad`. Use the same container conventions and scene schema in
+both apps, with distinct application settings. Archive packaging can be added for transport;
+do not require ZIP handling in the initial document implementation.
+
+```text
+Example.roomcad/
+  manifest.json          # Format identifier, schema version, document UUID and producer
+  scene.json             # Geometry, instances, transforms, part references and asset IDs
+  settings.json          # App-specific solver and export settings
+  assets/                # Embedded source geometry and normalized meshes
+  results/               # Optional retained responses and reports, with provenance
+  preview.png            # Optional thumbnail
+```
+
+Introduce a shared DocumentKit for container reading/writing, versions, asset references and
+migration infrastructure when implementing the format. App-specific codecs own blast and
+acoustic settings; DocumentKit does not import either solver. Persisted schema types are
+explicit contracts, not automatic dumps of live GPU or UI objects.
+
+### Required semantics
+
+- Give the document, assets, instances and parts stable IDs. Bind materials to source parts,
+  never generated voxel indices. Scope existing importer part IDs to their source asset during
+  migration; keep identity through resampling and define remapping explicitly for reimport.
+- Store geometry in metres with a declared z-up coordinate system. Preserve source units,
+  source-axis convention and import transform as provenance; avoid applying conversion twice.
+- Embed the geometry needed to reopen the project on another Mac. Original OBJ/STL bytes are
+  optional provenance; keep normalized mesh data with a versioned encoding and documented
+  precision. Do not depend on the original external file path. External-link mode is deferred.
+- Separate structural properties from acoustic absorption/scattering, both referencing the
+  same parts. Preserve assignments and source geometry when transferring a scene between apps;
+  app-specific settings need an explicit conversion, not a renamed extension.
+- Retain solver settings needed to reproduce a run: resolution, atmosphere, sources/receivers,
+  material assignments, numerical options, random seeds and export conditioning. Store camera
+  and display preferences separately from physics settings. Do not save transient playback state
+  as a simulation checkpoint.
+- Regenerable voxel grids and previews are optional caches keyed by source, transforms,
+  settings and generator version. Detached, locally edited geometry is authoritative and must
+  be saved, including supports/reinforcement and its detached status; never silently regenerate
+  it from the source. A stale cache must not overwrite authoritative edits.
+- Simulation fields and audio responses are optional results. Tag them with input hashes,
+  solver version, sampling/channel conventions and processing history; changing inputs marks
+  them stale. Normal saves need not carry full simulation histories. Exact mid-run restart is
+  outside the first format.
+- Use a schema version independent of the app release number. Migrate known older versions;
+  reject unsupported newer versions without overwriting the file. Report missing assets and
+  invalid references clearly rather than silently dropping imported objects.
+- Stage complete writes and replace the document through the document framework's coordinated
+  save mechanism. A failed or interrupted save must leave the previous document usable.
+  Validate relative asset paths, finite numbers, reference integrity and file/mesh size limits.
+
+### Implementation steps and acceptance
+
+1. Inventory persisted fields in current Scenario and the integrated importer; identify missing
+   simulation settings and authoritative detached edits. Check in a format specification and
+   small example documents before implementing codecs.
+2. Implement versioned manifest and asset handling in DocumentKit, with BombCAD's document
+   adapter and a reader for legacy Scenario JSON. Legacy opening must not rewrite the source
+   until the user saves a new project. Keep JSON scene export as an interchange/debugging option.
+3. Wire the document package into open/save, document type registration and the existing editor.
+   Embed imported geometry and migrate part/material relationships without losing edits.
+4. Test round trips, moved/copied documents, absent original imports, legacy files, detached
+   geometry, unsupported versions, corrupt assets and interrupted saves. Verify that reopening
+   restores simulation settings, and that changing resolution preserves part assignments.
+5. Add RoomCAD's settings adapter and optional IR result storage when its scaffold exists.
+   Export WAV separately for convolution engines; a RoomCAD document is not the reverb file.
+
+Done when: imported projects reopen on another Mac without their original source files, all
+authoritative edits and reproducibility settings survive saving, and legacy layouts still open.
+The choice of a package container and its extensions remains a proposal until implementation.
+
 ## Milestones
 
 Each milestone ends in a usable artifact or a measured result. Numerical tolerances below are
@@ -85,6 +166,8 @@ initial acceptance targets, to be revisited explicitly if evidence shows they ar
    complete response; document any delay removal in the reverb export.
 5. Choose reference rooms, source/receiver positions and analytical checks. Set performance
    budgets on a named Mac, including generation time, memory and preview CPU usage.
+6. Agree the shared save-file contract above, including legacy migration, asset ownership and
+   app-specific settings. Treat BombCAD's importer document reliability as a 0.2 readiness gate.
 
 Done when: a short design contract and reference fixtures are checked in, and Driftbox's
 integration requirements and any unresolved decisions are recorded.
