@@ -8,6 +8,7 @@ struct ImportComparisonView: View {
     let mesh: ImportedMesh
     let preview: ImportedMesh.Preview
     var placement: ImportPlacementReport? = nil
+    var selectedPartID: Int? = nil
     let canRefine: Bool
     let refine: () -> Void
     @State private var showSource = true
@@ -36,6 +37,7 @@ struct ImportComparisonView: View {
                 mesh: mesh, preview: preview, placement: placement, showSource: showSource,
                 showSimulation: showSimulation,
                 showIssues: showIssues, showContext: showContext, selected: selected,
+                selectedPartID: selectedPartID,
                 resetRequest: resetRequest
             )
             .frame(height: 300).clipShape(.rect(cornerRadius: 8))
@@ -99,7 +101,18 @@ struct ImportComparisonView: View {
                 Text("Selected: \(selected.title). \(selected.detail)").font(.caption).foregroundStyle(
                     selected.color)
             }
-        }.onChange(of: preview) { selected = nil }.onChange(of: placement) { selected = nil }
+        }.onChange(of: preview) { focusPart() }.onChange(of: placement) {
+            selected = nil
+            focusPart()
+        }
+        .onChange(of: selectedPartID) { focusPart() }.onAppear { focusPart() }
+    }
+    private func focusPart() {
+        if let part = mesh.parts.first(where: { $0.id == selectedPartID }) {
+            selected = .part(id: part.id, bounds: mesh.bounds(of: part), name: part.name)
+        } else {
+            selected = nil
+        }
     }
     @ViewBuilder private func warningGroup(_ title: String, issues: [ImportedMesh.Diagnostic]) -> some View {
         if !issues.isEmpty {
@@ -128,28 +141,33 @@ struct ImportComparisonView: View {
 private enum ImportFocus: Equatable {
     case geometry(ImportedMesh.Diagnostic)
     case placement(ImportPlacementReport.Issue)
+    case part(id: Int, bounds: Box, name: String)
     var bounds: Box {
         switch self {
         case .geometry(let d): d.bounds
         case .placement(let d): d.bounds
+        case .part(_, let bounds, _): bounds
         }
     }
     var title: String {
         switch self {
         case .geometry(let d): d.title
         case .placement(let d): d.title
+        case .part(_, _, let name): name
         }
     }
     var detail: String {
         switch self {
         case .geometry(let d): d.detail
         case .placement(let d): d.detail
+        case .part: "Selected source part, highlighted in green."
         }
     }
     var color: Color {
         switch self {
         case .geometry(let d): d.kind == .missing ? .red : .orange
         case .placement(let d): d.isCritical ? .red : d.kind == .overlap ? .orange : .purple
+        case .part: .green
         }
     }
 }
@@ -163,12 +181,14 @@ private struct ImportSceneView: NSViewRepresentable {
     let showIssues: Bool
     let showContext: Bool
     let selected: ImportFocus?
+    let selectedPartID: Int?
     let resetRequest: Int
     final class Coordinator {
         var mesh: ImportedMesh?
         var preview: ImportedMesh.Preview?
         var placement: ImportPlacementReport?
         var selected: ImportFocus?
+        var partID: Int?
         var resetRequest = -1
         let camera = SCNNode()
         let source = SCNNode()
@@ -176,6 +196,7 @@ private struct ImportSceneView: NSViewRepresentable {
         let issues = SCNNode()
         let surroundings = SCNNode()
         let ground = SCNNode()
+        let part = SCNNode()
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> SCNView {
@@ -191,6 +212,7 @@ private struct ImportSceneView: NSViewRepresentable {
         view.scene?.rootNode.addChildNode(context.coordinator.issues)
         view.scene?.rootNode.addChildNode(context.coordinator.surroundings)
         view.scene?.rootNode.addChildNode(context.coordinator.ground)
+        view.scene?.rootNode.addChildNode(context.coordinator.part)
         view.pointOfView = context.coordinator.camera
         view.defaultCameraController.worldUp = SCNVector3(0, 0, 1)
         return view
@@ -217,7 +239,7 @@ private struct ImportSceneView: NSViewRepresentable {
             c.source.geometry = sourceGeometry()
             c.simulation.geometry = boxGeometry(preview.boxes)
             c.simulation.geometry?.materials = [material(.systemBlue, alpha: 0.45)]
-            c.issues.childNodes.forEach { $0.removeFromParentNode() }
+            for node in c.issues.childNodes { node.removeFromParentNode() }
             for issue in preview.diagnostics {
                 let node = SCNNode(
                     geometry: boxGeometry([issue.bounds], minimumExtent: preview.cellSize * 0.15))
@@ -245,6 +267,15 @@ private struct ImportSceneView: NSViewRepresentable {
         c.issues.isHidden = !showIssues
         c.surroundings.isHidden = !showContext || placement == nil
         c.ground.isHidden = !showContext || placement == nil
+        if changed || c.partID != selectedPartID {
+            c.partID = selectedPartID
+            c.part.geometry = nil
+            if let part = mesh.parts.first(where: { $0.id == selectedPartID }) {
+                c.part.geometry = sourceGeometry(indices: part.triangleIndices)
+                c.part.geometry?.materials = [material(.systemGreen, alpha: 1, wire: true)]
+                c.part.renderingOrder = 30
+            }
+        }
         if changed || c.selected != selected || c.resetRequest != resetRequest {
             c.selected = selected
             c.resetRequest = resetRequest
@@ -288,8 +319,11 @@ private struct ImportSceneView: NSViewRepresentable {
         m.writesToDepthBuffer = !wire
         return m
     }
-    private func sourceGeometry() -> SCNGeometry {
-        let vertices = mesh.triangles.flatMap { [SCNVector3($0.a), SCNVector3($0.b), SCNVector3($0.c)] }
+    private func sourceGeometry(indices triangleIndices: [Int]? = nil) -> SCNGeometry {
+        let vertices = (triangleIndices ?? Array(mesh.triangles.indices)).flatMap { n in
+            let t = mesh.triangles[n]
+            return [SCNVector3(t.a), SCNVector3(t.b), SCNVector3(t.c)]
+        }
         let indices = (0..<vertices.count).map { UInt32($0) }
         let g = SCNGeometry(
             sources: [SCNGeometrySource(vertices: vertices)],

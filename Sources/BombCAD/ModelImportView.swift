@@ -14,6 +14,8 @@ struct ModelImportView: View {
     @State private var deformable = false
     @State private var fixedBase = true
     @State private var material = StructureMaterial.reinforcedConcrete
+    @State private var partMaterials: [Int: StructureMaterial] = [:]
+    @State private var selectedPartID: Int?
     @State private var error: String?
     @State private var acknowledged = false
     @State private var resolution = Resolution.medium
@@ -115,6 +117,12 @@ struct ModelImportView: View {
                             ).font(.caption)
                         }
                     }
+                    Section("Parts (\(mesh.parts.count))") {
+                        ImportPartsView(
+                            parts: mesh.parts, preview: preview, previewIsCurrent: isPreviewCurrent,
+                            deformable: deformable, defaultMaterial: material, editable: canApply,
+                            selectedID: $selectedPartID, assignments: $partMaterials)
+                    }
                     Section("Simulation preview") {
                         Picker("Grid", selection: $resolution) {
                             ForEach(Resolution.allCases) { Text($0.title).tag($0) }
@@ -158,7 +166,8 @@ struct ModelImportView: View {
                             if let transformedMesh = previewModel.transformedMesh {
                                 ImportComparisonView(
                                     mesh: transformedMesh, preview: preview,
-                                    placement: previewModel.placementReport, canRefine: resolution != .fine,
+                                    placement: previewModel.placementReport, selectedPartID: selectedPartID,
+                                    canRefine: resolution != .fine,
                                     refine: { previewFiner() }
                                 )
                                 .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
@@ -200,6 +209,7 @@ struct ModelImportView: View {
                     yUp = existing.yUp
                     corner = SIMD3<Double>(existing.corner)
                     deformable = existing.behavior == .deformable
+                    partMaterials = existing.partMaterials ?? [:]
                     if deformable, let body = model.settings.scenario.structure {
                         material = body.material
                         fixedBase = body.fixedBase
@@ -257,7 +267,8 @@ struct ModelImportView: View {
         do {
             let imported = ImportedModel(
                 id: existing?.id ?? UUID(), name: filename, source: mesh, scale: Float(scale), yUp: yUp,
-                corner: SIMD3<Float>(corner), behavior: deformable ? .deformable : .rigid, preview: preview)
+                corner: SIMD3<Float>(corner), behavior: deformable ? .deformable : .rigid, preview: preview,
+                partMaterials: partMaterials.isEmpty ? nil : partMaterials)
             var candidate = model.settings.scenario
             candidate.domainSize = domainSize
             try candidate.installImport(imported, material: material, fixedBase: fixedBase)

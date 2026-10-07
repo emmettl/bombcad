@@ -87,6 +87,22 @@ continues to take priority. Viewport selection uses the initial layout, so reset
 the simulation before selecting a model. Detached geometry remains independently editable and
 its retained source is accessible from the sidebar.
 
+The source inspector includes a searchable Parts browser. OBJ object and group names label
+complete connected shells; STL components and unnamed sources receive stable component names.
+Face groups within one shell do not define separate material volumes. Select a part to highlight
+its source surface in green and focus the preview; the browser reports its sampled solid cells.
+A shell with no cells may represent a cavity or a feature lost at the selected resolution.
+
+For deformable imports, each part can use the model's default material or a custom preset with
+editable properties. Assignments are saved against source part IDs and survive grid, unit,
+orientation and placement changes, including a thin part disappearing and later returning at a
+finer grid. Sampling keeps different parts in separate generated regions even when a coarse grid
+closes their gap. Cavity walls use the enclosing solid's material; a solid island within a cavity
+uses its own. The solver supports eight distinct active materials, including the model default;
+imports or refinements exceeding that limit fail before changing the layout. Rigid parts remain
+obstacles and ignore structural materials. Material textures and external OBJ material files are
+not imported.
+
 Placement checks in the preview highlight overlaps with existing geometry (orange), charge
 locations inside the candidate model (red), and floating or disconnected sampled components
 (purple). Selecting a placement issue focuses the camera on its region, with surrounding volume
@@ -124,7 +140,7 @@ convergence or completeness guarantee. Up to 128 affected regions are highlighte
 reports when this limit is reached. Features not crossed by scanlines and missing surfaces
 near other occupied geometry can escape detection.
 
-Deformable regeneration preserves the body's main material. Changes to individual regions,
+Deformable regeneration preserves the body's main material and source part assignments. Changes to individual generated regions,
 openings, reinforcement or supports block regeneration to avoid overwriting local edits.
 **Detach geometry** keeps the current geometry and edits while stopping source regeneration.
 The mesh remains saved and available for inspection; detached geometry is independent. Grid
@@ -143,8 +159,8 @@ use one face owner and tangent contacts cancel.
 
 Limits are 20 MB, 100,000 triangles, 2 million sampled cells, and 2,048 coalesced regions.
 A spatial hierarchy limits intersection checking to overlapping triangle bounds, with a
-2 million candidate-pair limit, a traversal budget and cancellation. Models that exceed validation limits must be
-simplified; they are not imported with incomplete checks. A scanline-work budget also limits
+2 million candidate-pair limit, a traversal budget and cancellation. Models that exceed
+validation limits must be simplified; they are not imported with incomplete checks. A scanline-work budget also limits
 expensive previews.
 
 Gauge and deflection histories export

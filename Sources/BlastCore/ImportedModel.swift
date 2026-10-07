@@ -13,10 +13,12 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
     public var behavior: Behavior
     public var preview: ImportedMesh.Preview
     public var regenerationEnabled: Bool?
+    /// Source-shell IDs, never generated region indices. Nil means every part uses the body default.
+    public var partMaterials: [Int: StructureMaterial]?
     public var isAttached: Bool { regenerationEnabled ?? true }
     public init(
         id: UUID = UUID(), name: String, source: ImportedMesh, scale: Float, yUp: Bool, corner: SIMD3<Float>,
-        behavior: Behavior, preview: ImportedMesh.Preview
+        behavior: Behavior, preview: ImportedMesh.Preview, partMaterials: [Int: StructureMaterial]? = nil
     ) {
         self.id = id
         self.name = name
@@ -26,6 +28,7 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
         self.corner = corner
         self.behavior = behavior
         self.preview = preview
+        self.partMaterials = partMaterials
     }
     public func transformedSource() throws -> ImportedMesh {
         try source.transformed(scale: scale, yUp: yUp, corner: corner)
@@ -34,6 +37,25 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
         var copy = self
         copy.preview = try transformedSource().preview(cellSize: cellSize, domain: domain)
         return copy
+    }
+    public func regionMaterials() throws -> [StructureMaterial?] {
+        let assignments = partMaterials ?? [:]
+        let known = Set(source.parts.map(\.id))
+        guard assignments.keys.allSatisfy({ known.contains($0) }) else {
+            throw ImportedMesh.ImportError.invalid("A material assignment references a missing source part.")
+        }
+        guard let owners = preview.boxPartIDs else {
+            guard assignments.isEmpty else {
+                throw ImportedMesh.ImportError.invalid(
+                    "Refresh this source preview before assigning part materials.")
+            }
+            return Array(repeating: nil, count: preview.boxes.count)
+        }
+        guard owners.count == preview.boxes.count, owners.allSatisfy({ known.contains($0) }) else {
+            throw ImportedMesh.ImportError.invalid(
+                "The preview's source part ownership is invalid. Refresh the preview.")
+        }
+        return owners.map { assignments[$0] }
     }
     public func supports(fixedBase: Bool) -> [Box] {
         guard fixedBase, !preview.boxes.isEmpty else { return [] }
@@ -51,9 +73,14 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
     public func canRegenerate(_ body: StructureModel?) -> Bool {
         guard isAttached else { return false }
         guard behavior == .deformable, let body, !preview.boxes.isEmpty else { return behavior == .rigid }
+        guard body.solids == preview.boxes, let expected = try? regionMaterials() else { return false }
+        let materialsMatch = body.solids.indices.allSatisfy { n in
+            let actual = body.solidMaterial.indices.contains(n) ? body.solidMaterial[n] : nil
+            return actual == expected[n] || (actual == nil && expected[n] == body.material)
+        }
         return body.solids == preview.boxes && body.openings.isEmpty && body.elementKind == .solid
             && body.solidElementKind.allSatisfy { $0 == nil || $0 == .solid }
-            && body.solidMaterial.allSatisfy { $0 == nil } && body.reinforcement.isEmpty
+            && materialsMatch && body.reinforcement.isEmpty
             && body.inclinedBars.isEmpty && body.solidReinforcement.count == body.solids.count
             && body.solidReinforcement.allSatisfy { $0 == .none }
             && body.supports == supports(fixedBase: body.fixedBase)
@@ -79,9 +106,16 @@ extension Scenario {
             let updated = try original.sampled(cellSize: cellSize, domain: domainSize)
             if original.behavior == .deformable, var body = copy.structure {
                 body.solids = updated.preview.boxes
+                body.solidMaterial = try updated.regionMaterials()
+                body.solidElementKind = []
                 body.elementSize = cellSize
                 body.solidReinforcement = Array(repeating: .none, count: body.solids.count)
                 body.supports = updated.supports(fixedBase: body.fixedBase)
+                guard body.materials.count <= StructureModel.maxMaterials else {
+                    throw ImportedMesh.ImportError.invalid(
+                        "The regenerated body exceeds the \(StructureModel.maxMaterials)-material solver limit. Reuse materials or reset part assignments before refining."
+                    )
+                }
                 copy.structure = body
             }
             if let index = copy.importedModels?.firstIndex(where: { $0.id == original.id }) {
@@ -101,6 +135,7 @@ extension Scenario {
             throw ImportedMesh.ImportError.invalid(
                 "No occupied cells remain. Choose a finer grid before importing.")
         }
+        let materials = try imported.regionMaterials()
         let old = importedModels?.first { $0.id == imported.id }
         guard old?.isAttached != false else {
             throw ImportedMesh.ImportError.invalid(
@@ -135,11 +170,18 @@ extension Scenario {
                 structure
                 ?? StructureModel(solids: [], material: material, elementSize: imported.preview.cellSize)
             body.solids = imported.preview.boxes
+            body.solidMaterial = materials
+            body.solidElementKind = []
             body.material = material
             body.fixedBase = fixedBase
             body.elementSize = imported.preview.cellSize
             body.solidReinforcement = Array(repeating: .none, count: body.solids.count)
             body.supports = imported.supports(fixedBase: fixedBase)
+            guard body.materials.count <= StructureModel.maxMaterials else {
+                throw ImportedMesh.ImportError.invalid(
+                    "The body exceeds the \(StructureModel.maxMaterials)-material solver limit, including its default. Reuse materials or reset part assignments."
+                )
+            }
             structure = body
         }
         importedModels = models

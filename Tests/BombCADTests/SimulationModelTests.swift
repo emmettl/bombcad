@@ -80,6 +80,28 @@ struct SimulationModelTests {
         try await waitUntil { model.grid?.cellSize == 0.125 }
         #expect(model.settings.scenario.importedModels?.first?.preview.occupiedCells == 512)
     }
+    @Test("Source material assignments survive app grid changes and undo/redo")
+    func partMaterialGridUndo() async throws {
+        let model = try await makeModel()
+        var layout = try importedLayout(deformable: true)
+        var imported = try #require(layout.importedModels?.first)
+        imported.partMaterials = [imported.source.parts[0].id: .structuralSteel]
+        try layout.installImport(imported, material: .plainConcrete, fixedBase: false)
+        model.open(layout)
+        try await waitUntil { model.grid?.nx == 8 && model.errorMessage == nil }
+        model.settings.resolution = .fine
+        model.settingsChanged()
+        try await waitUntil { model.grid?.cellSize == 0.125 && !model.isPreparingImports }
+        #expect(model.settings.scenario.structure?.material(of: 0) == .structuralSteel)
+        #expect(model.settings.scenario.importedModels?.first?.partMaterials == imported.partMaterials)
+        model.undo()
+        try await waitUntil { model.grid?.cellSize == 0.5 }
+        #expect(model.settings.scenario.structure?.material(of: 0) == .structuralSteel)
+        model.redo()
+        try await waitUntil { model.grid?.cellSize == 0.125 }
+        #expect(model.settings.scenario.structure?.material(of: 0) == .structuralSteel)
+        #expect(model.errorMessage == nil)
+    }
     @Test("Rapid grid edits use the latest sampling request and sources survive detaching undo")
     func retainedImportLatestRequest() async throws {
         let model = try await makeModel()
