@@ -117,8 +117,19 @@ struct AuditionTests {
     @Test("The library offers the bundled recordings, then the test signals")
     func library() {
         #expect(DryClip.resources != nil)
-        let ids = DryClip.library(sampleRate: 48_000).map(\.id)
-        #expect(ids.suffix(2) == ["noise-burst", "clicks"])
-        #expect(Set(ids).count == ids.count)
+        let clips = DryClip.library(sampleRate: 48_000)
+        #expect(
+            clips.map(\.id) == [
+                "openair-operatic-voice", "iowa-violin-pizzicato", "openair-drums", "noise-burst", "clicks",
+            ])
+        for clip in clips.prefix(3) {
+            #expect(!clip.credit.isEmpty)
+            #expect(clip.sampleRate == 48_000)
+            #expect(clip.duration > 4 && clip.duration < 12)
+            #expect(abs(clip.samples.map(abs).max()! - DryClip.peak) < 1e-6)
+        }
+        // The 44.1 kHz pizzicato is converted, keeping its length.
+        let pizzicato = clips.first { $0.id == "iowa-violin-pizzicato" }!
+        #expect(abs(pizzicato.duration - 11.25) < 0.01)
     }
 }

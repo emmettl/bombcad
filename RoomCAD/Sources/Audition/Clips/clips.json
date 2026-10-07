@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "openair-operatic-voice",
+    "name": "Operatic voice",
+    "file": "openair-operatic-voice.flac",
+    "credit": "Marina Theodoropoulou (voice), Aglaia Foteinou (engineer), OpenAIR, www.openairlib.net · CC BY-SA"
+  },
+  {
+    "id": "iowa-violin-pizzicato",
+    "name": "Violin pizzicato",
+    "file": "iowa-violin-pizzicato.flac",
+    "credit": "University of Iowa Electronic Music Studios, Musical Instrument Samples (Lawrence Fritts) · free to use"
+  },
+  {
+    "id": "openair-drums",
+    "name": "Drums",
+    "file": "openair-drums.flac",
+    "credit": "Simon Shelley, OpenAIR, www.openairlib.net · CC BY-SA"
+  }
+]

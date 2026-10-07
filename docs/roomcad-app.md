@@ -58,8 +58,11 @@ document is opened from Finder.
   - **Match loudness** gives the two equal energy, so switching between them compares the room
     rather than the level. Without it, levels are physical: the dry sound is the source heard 1 m
     away in open air. Either way, one common gain keeps the mix below 0.9 full scale.
-  - Clips are bundled recordings (with their credits shown), generated test signals (a pink-noise
-    burst and clicks) or any audio file you choose. Files are mixed to mono, converted to the
+  - Clips are bundled anechoic recordings, generated test signals (a pink-noise burst and clicks) or
+    any audio file you choose. The recordings are an operatic voice and synthesized drums from the
+    OpenAIR library (CC BY-SA), and violin pizzicato from the University of Iowa Musical Instrument
+    Samples (free to use). The window shows each clip's credit. Sources, licences and edits are in
+    `RoomCAD/Sources/Audition/Clips/CREDITS.md`, which ships inside the app. Files are mixed to mono, converted to the
     response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
   beside it.
