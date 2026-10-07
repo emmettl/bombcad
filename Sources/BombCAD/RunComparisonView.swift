@@ -36,7 +36,7 @@ struct RunComparisonView: View {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(model.savedRuns) { run in
                                 SavedRunRow(
-                                    run: run, selected: selection(run),
+                                    run: run, selected: selection(run), editable: !model.sweep.isActive,
                                     differs: run.inputSHA256 != currentInputHash,
                                     rename: { model.renameRun(id: run.id, name: $0) },
                                     remove: {
@@ -44,7 +44,13 @@ struct RunComparisonView: View {
                                         model.removeRun(id: run.id)
                                         reconcile()
                                     },
-                                    export: { export = ResultsDocument(text: run.csv()) })
+                                    export: { export = ResultsDocument(text: run.csv()) },
+                                    useInputs: {
+                                        do {
+                                            try model.useRunInputs(id: run.id)
+                                            dismiss()
+                                        } catch { exportError = error.localizedDescription }
+                                    })
                             }
                         }
                     }
@@ -57,7 +63,8 @@ struct RunComparisonView: View {
                                 }
                                 reconcile()
                             }
-                        }.disabled(model.savedRuns.count >= SavedSimulationRun.maximumRuns)
+                        }.disabled(
+                            model.sweep.isActive || model.savedRuns.count >= SavedSimulationRun.maximumRuns)
                     }
                     Text(
                         "Keeping, renaming and removing runs are saved with the project. Chart selections are temporary."
@@ -81,9 +88,8 @@ struct RunComparisonView: View {
         .padding(20).frame(minWidth: 920, minHeight: 640)
         .onAppear {
             selectedIDs = Set(model.savedRuns.prefix(2).map(\.id))
-            currentInputHash = try? SavedSimulationRun.fingerprint(
-                model.settings.scenario,
-                settings: ProjectRunSettings(model: model))
+            let inputs = model.sweep.baseline ?? model.currentInputs
+            currentInputHash = try? SavedSimulationRun.fingerprint(inputs.scenario, settings: inputs.settings)
             reconcile()
         }
         .onChange(of: baselineID) { gaugeKey = baseline?.gauges.first?.key }
@@ -94,7 +100,7 @@ struct RunComparisonView: View {
             if case .failure(let error) = result { exportError = error.localizedDescription }
         }
         .alert(
-            "Could not export run",
+            "Run action failed",
             isPresented: Binding(
                 get: { exportError != nil },
                 set: { if !$0 { exportError = nil } })
@@ -242,16 +248,18 @@ struct RunComparisonView: View {
 private struct SavedRunRow: View {
     let run: SavedSimulationRun
     @Binding var selected: Bool
+    let editable: Bool
     let differs: Bool
     let rename: (String) -> Void
     let remove: () -> Void
     let export: () -> Void
+    let useInputs: () -> Void
     @State private var draft = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(run.name, isOn: $selected).toggleStyle(.checkbox)
-            TextField("Name", text: $draft).textFieldStyle(.roundedBorder)
+            TextField("Name", text: $draft).textFieldStyle(.roundedBorder).disabled(!editable)
                 .onSubmit {
                     rename(draft)
                     draft = run.name
@@ -264,9 +272,10 @@ private struct SavedRunRow: View {
             .font(.caption)
             Text("\(run.solverVersion) · \(run.appVersion)").font(.caption2).foregroundStyle(.secondary)
             if differs { Text("Inputs differ from the editor.").font(.caption).foregroundStyle(.secondary) }
+            Button("Use this run’s inputs", action: useInputs).disabled(!editable)
             HStack {
                 Button("Export CSV…", action: export)
-                Button("Remove", role: .destructive, action: remove)
+                Button("Remove", role: .destructive, action: remove).disabled(!editable)
             }.controlSize(.small)
         }
         .onAppear { draft = run.name }

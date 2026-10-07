@@ -10,6 +10,39 @@ add result data or mark a project changed. Keeping, renaming and removing result
 project saving and autosave include those choices. Changing inputs or selecting another preset
 keeps earlier named runs. Opening a different project restores that project's run collection.
 
+## Restore a baseline and run experiments
+
+**Use this run’s inputs** restores the selected run's geometry, materials and numerical settings
+at time zero, framing the restored scene. The saved-run collection and document identity stay
+intact. Restoration is one undo step; Undo/Redo now also restore grid, numerical options,
+structural element-size preference and duration alongside the scene. Camera and playback speed
+are presentation preferences rather than historical simulation inputs.
+
+**Sweep…**, beside the chart, runs one to eight cases sequentially at unlimited playback. Reset
+first if the current simulation has advanced. Choose either primary-charge masses (comma-separated
+kg TNT) or air-grid resolutions, plus a unique result-name prefix. Other charges and all other
+inputs stay at baseline values. Every case is validated before the first starts, including source
+resampling, numerical bounds, estimated air-memory budget and space in the 16-run collection.
+
+Grid cases resample attached imports independently from the original source baseline, retaining
+part materials. Detached geometry and its structural element size remain unchanged. A source
+that cannot safely regenerate rejects the plan before any case runs. Unsupported masses, duplicate
+values, duplicate result names and insufficient run slots are reported without overwriting results.
+
+Successful cases are captured automatically using the normal saved-run codec. Completion,
+cancellation or failure restores the original editor inputs and playback speed at time zero;
+already completed results remain available for comparison. **Cancel sweep** or Reset (Command-R)
+stops the queue. Closing the configuration dialog leaves it running, with cancellation available
+beside the chart. Closing the document cancels its sweep; replacing/reverting the document prevents
+a cancelled task from restoring old inputs over the replacement.
+
+During a sweep, project snapshots and autosave retain the original editor scene and numerical
+settings, plus completed results. Temporary case inputs are excluded from the persisted editor
+state. Input edits, run restoration, result renaming/removal and undo are disabled while the sweep
+owns the simulation. Cases create no individual editor undo steps, and existing undo history
+survives. The sweep plan/progress are transient; reopening restores completed results, not a queue
+or a running simulation.
+
 ## Measurements and interpretation
 
 Pressure snapshots retain every recorded solver gauge sample, converted to kPa relative to the
@@ -74,10 +107,13 @@ index, and JSON layout export continues to omit this project-level result collec
 ## Verification
 
 ```sh
-swift test --filter 'SavedRunTests|CompletedRunCaptureTests|ProjectSessionTests|ProjectDocumentTests'
+swift test --filter 'SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
 ```
 
 Tests cover actual Metal runs, explicit change tracking, stable historical inputs, fixed-time
 structural sampling, reset/reopen, moved packages with imported history, shared source assets,
 removal, invalid data, chart reduction and CSV quoting. Native checks cover two grids, overlays,
-peak differences, rename, remove/restore, CSV export and save/reopen at time zero.
+peak differences, rename, remove/restore, CSV export and save/reopen at time zero. Additional checks
+cover complete-input undo, sequential cases, cancellation, source-aware grid planning and document
+replacement. Native checks cover restoring a run and undoing it, mass/grid sweeps, partial cancellation
+and the preserved baseline after completion and saving.

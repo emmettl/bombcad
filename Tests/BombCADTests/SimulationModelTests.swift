@@ -10,10 +10,10 @@ import Testing
 @Suite("Simulation model", .serialized)
 struct SimulationModelTests {
     private func makeModel() async throws -> SimulationModel {
-        let model = SimulationModel()
+        var document = ProjectDocument()
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
         try #require(model.device != nil, "These tests need a Metal device")
-        model.settings.resolution = .coarse
-        model.settingsChanged()
         try await waitUntil { model.grid?.cellSize == 0.5 }
         return model
     }
