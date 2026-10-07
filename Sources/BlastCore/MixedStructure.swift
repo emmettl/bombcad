@@ -203,9 +203,10 @@ public final class MixedStructure {
     ) {
         let tie = (link: shellLink, loads: interface.loads)
         // Contact between the parts needs both parts' tables, so once either part would collide,
-        // both do, for this batch.
+        // both do, for this batch (coupled to the air, from its first checkpoint after either
+        // fails).
         let modes = (solids.contactMode, shells.contactMode)
-        let failed = solids.hasFailed || shells.hasFailed
+        let failed = solids.encodesAsFailed || shells.encodesAsFailed
         let touching =
             modes.0 != .off && modes.1 != .off
             && (modes.0 == .always || modes.1 == .always || failed)

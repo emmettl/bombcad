@@ -9,6 +9,12 @@ import simd
 /// `advance(steps:)` and `advance(until:)` wrap the pair synchronously for tools and tests.
 public final class BlastSolver {
     public static let maxStepsPerBatch = 256
+    /// With a body, how many steps apart the decisions that change what is encoded are taken:
+    /// how many structural substeps each step may need (which caps the air's step), whether the
+    /// air has gone quiet enough to freeze, and whether the body has failed (which brings in
+    /// contact and debris). Batches end at these checkpoints, so that the decisions depend only
+    /// on the step count, never on how the steps were batched.
+    public static let checkpointInterval = 64
     public static let maxGauges = 16
 
     public let device: MTLDevice
@@ -64,6 +70,7 @@ public final class BlastSolver {
     private let wakeTilesPipeline: MTLComputePipelineState
     private let collectTilesPipeline: MTLComputePipelineState
     private let preparePipeline: MTLComputePipelineState
+    private let sampleGaugesPipeline: MTLComputePipelineState
     private let measurePipeline: MTLComputePipelineState
     private let visualizationPipeline: MTLComputePipelineState
     private let splatPipeline: MTLComputePipelineState
@@ -116,8 +123,11 @@ public final class BlastSolver {
     private var batchInFlight = false
     /// True once the blast has left and the air has been frozen; only the structure advances.
     public private(set) var airIsAsleep = false
-    /// The air's time step at the end of the last batch, which sizes the next batch's substeps.
+    /// The air's last time step (before any clipping to a time limit), which at a checkpoint
+    /// sizes the substeps of the steps up to the next.
     private var lastFluidStep: Float = 0
+    /// Structural substeps encoded per air step until the next checkpoint.
+    private var checkpointSubsteps = 0
     /// The finer level of the air, while it is refined (see `SolverConfiguration.refinement`).
     private(set) var refinement: AirRefinement?
     /// Bound in place of the refinement's buffers while the air is not refined.
@@ -161,6 +171,7 @@ public final class BlastSolver {
         wakeTilesPipeline = try pipeline("wakeTiles")
         collectTilesPipeline = try pipeline("collectTiles")
         preparePipeline = try pipeline("prepareStep")
+        sampleGaugesPipeline = try pipeline("sampleGauges")
         measurePipeline = try pipeline("measureWaveSpeed")
         visualizationPipeline = try pipeline("updateVisualization")
         splatPipeline = try pipeline("splatStructure")
@@ -191,7 +202,7 @@ public final class BlastSolver {
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
         maxSpeedBuffer = try buffer(2 * MemoryLayout<UInt32>.stride, "max wave speed and overpressure")
         gaugeLogBuffer = try buffer(
-            Self.maxStepsPerBatch * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
+            (Self.maxStepsPerBatch + 1) * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
         gaugeChildBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge fine cells")
         memset(gaugeChildBuffer.contents(), 0xFF, gaugeChildBuffer.length)
@@ -616,6 +627,7 @@ public final class BlastSolver {
         time = 0
         stepCount = 0
         lastFluidStep = 0
+        checkpointSubsteps = 0
         if let mixed {
             mixed.reset()
         } else {
@@ -755,15 +767,26 @@ public final class BlastSolver {
 
     // MARK: - Stepping
 
+    /// The most steps the next batch may take: `steps`, limited to `maxStepsPerBatch` and, with
+    /// a body, to the next checkpoint.
+    public func batchSteps(_ steps: Int) -> Int {
+        var steps = min(max(steps, 1), Self.maxStepsPerBatch)
+        if hasBody {
+            steps = min(steps, Self.checkpointInterval - stepCount % Self.checkpointInterval)
+        }
+        return steps
+    }
+
     /// Encodes up to `steps` time steps into a new, uncommitted command buffer.
     ///
     /// Commit the buffer, wait for it to complete, then call `completeBatch()` before encoding
-    /// another. Steps that would pass `timeLimit` (absolute simulation time) become no-ops.
+    /// another. Steps that would pass `timeLimit` (absolute simulation time) become no-ops, and
+    /// with a body the batch ends at the next checkpoint (see `batchSteps`).
     public func encodeBatch(
         steps: Int, timeLimit: Double? = nil, updateVisualization: Bool = false
     ) -> MTLCommandBuffer? {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
-        let steps = min(max(steps, 1), Self.maxStepsPerBatch)
+        let steps = batchSteps(steps)
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         else { return nil }
@@ -775,11 +798,16 @@ public final class BlastSolver {
         controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
 
         let extents = [grid.nx, grid.ny, grid.nz]
-        var substeps = structureSubsteps
-        if let bodyStep, lastFluidStep > 0 {
-            let likely = Int((1.25 * lastFluidStep / bodyStep).rounded(.up)) + 1
-            substeps = min(max(likely, 1), structureSubsteps)
+        if stepCount % Self.checkpointInterval == 0 || checkpointSubsteps == 0 {
+            checkpointSubsteps = structureSubsteps
+            if let bodyStep, lastFluidStep > 0 {
+                let likely = Int((1.25 * lastFluidStep / bodyStep).rounded(.up)) + 1
+                checkpointSubsteps = max(likely, 1)
+            }
+            structure?.failedAtCheckpoint = structure?.hasFailed
+            shells?.failedAtCheckpoint = shells?.hasFailed
         }
+        let substeps = min(checkpointSubsteps, structureSubsteps)
         for step in 0..<steps {
             let globalStep = stepCount + step
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
@@ -790,7 +818,8 @@ public final class BlastSolver {
                 uniforms.forcedStep = 0.999 * Float(structureSubsteps) * bodyStep
             } else if let bodyStep {
                 // Only the substeps this step is likely to need are encoded, a quarter more than
-                // the last batch's step took; the air may step no further than they cover.
+                // the step before the last checkpoint took; the air may step no further than
+                // they cover.
                 uniforms.maxStep = 0.999 * Float(substeps) * bodyStep
             }
 
@@ -929,6 +958,22 @@ public final class BlastSolver {
                     uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
             }
         }
+        if gaugeCount > 0 {
+            var uniforms = makeUniforms()
+            encoder.setComputePipelineState(sampleGaugesPipeline)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 0)
+            encoder.setBuffer(stateBuffers[current], offset: 0, index: 2)
+            encoder.setBuffer(gaugeLogBuffer, offset: 0, index: 3)
+            encoder.setBuffer(gaugeCellBuffer, offset: 0, index: 4)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+            encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 8)
+            encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 9)
+            encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
+            encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
+            encoder.dispatchThreads(
+                MTLSize(width: 1, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        }
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -943,23 +988,31 @@ public final class BlastSolver {
         precondition(batchInFlight, "No batch to complete")
         batchInFlight = false
         let control = controlBuffer.contents().load(as: StepControl.self)
-        let rows = Int(control.stepIndex)
+        // A row per step, and one for the state the batch ended in.
+        let rows = Int(control.stepIndex) + (gaugeCount > 0 ? 1 : 0)
         let rowStride = gaugeCount + 1
         let log = gaugeLogBuffer.contents().bindMemory(to: Float.self, capacity: rows * rowStride)
-        for row in 0..<rows where gaugeCount > 0 {
-            let sampleTime = time + Double(log[row * rowStride])
+        // The clock adds up the steps one by one, so that it reads the same however they were
+        // batched.
+        let start = time
+        var lastStep: Float = 0
+        for row in 0..<rows {
+            let step = log[row * rowStride]
             for gauge in 0..<gaugeCount {
-                // Steps clipped by the time limit repeat the previous sample; skip them.
-                if let last = gaugeHistories[gauge].last, last.time >= sampleTime { continue }
+                // A step that did nothing, and the batch's last row, repeat a sample at a time
+                // already recorded; skip them.
+                if let last = gaugeHistories[gauge].last, last.time >= time { continue }
                 gaugeHistories[gauge].append(
-                    GaugeSample(time: sampleTime, pressure: log[row * rowStride + 1 + gauge]))
+                    GaugeSample(time: time, pressure: log[row * rowStride + 1 + gauge]))
             }
+            time += Double(step)
+            if step > 0 { lastStep = step }
         }
-        let elapsed = Double(control.batchTime)
-        time += elapsed
+        let elapsed = time - start
         stepCount += Int(control.activeSteps)
         // Once the blast has left and the air is close to ambient everywhere, stop advancing it.
-        if hasBody, !airIsAsleep, control.activeSteps > 0 {
+        // This is decided only at a checkpoint, from the step before it.
+        if hasBody, !airIsAsleep, control.activeSteps > 0, stepCount % Self.checkpointInterval == 0 {
             let quiet =
                 configuration.airSleepThreshold > 0
                 && control.maxOverpressure < configuration.airSleepThreshold * configuration.ambientPressure
@@ -969,7 +1022,7 @@ public final class BlastSolver {
                 && time > Double(configuration.airSleepCrossings) * crossing
             airIsAsleep = quiet || late
         }
-        if control.activeSteps > 0 { lastFluidStep = control.dt }
+        if control.activeSteps > 0 { lastFluidStep = control.lastStep }
         var swept = 1.0
         if tilesEnabled {
             let tiles = Double(tileDims.x * tileDims.y * tileDims.z)
@@ -978,10 +1031,11 @@ public final class BlastSolver {
                 ? Double(control.tileSweeps) / (Double(control.activeSteps) * tiles) : 0
         }
         return BatchResult(
-            steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(control.dt),
+            steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
-            refinedTiles: refinement?.patchCount ?? 0)
+            refinedTiles: refinement?.patchCount ?? 0, stoppedShort: control.stopped == 1,
+            reachedLimit: control.stopped == 2)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -989,8 +1043,10 @@ public final class BlastSolver {
     public func advance(steps: Int, timeLimit: Double? = nil) -> BatchResult {
         var total = BatchResult(steps: 0, elapsed: 0, lastTimeStep: 0, isStable: true)
         var remaining = steps
+        var stoppedShort = false
         while remaining > 0 {
-            let count = min(remaining, Self.maxStepsPerBatch)
+            // A batch that stopped just short of the limit is nearly always one step from it.
+            let count = batchSteps(stoppedShort ? 1 : remaining)
             guard let commandBuffer = encodeBatch(steps: count, timeLimit: timeLimit) else { break }
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
@@ -1002,8 +1058,13 @@ public final class BlastSolver {
             total.maxOverpressure = result.maxOverpressure
             total.isStable = total.isStable && result.isStable && commandBuffer.error == nil
             total.refinedTiles = result.refinedTiles
-            remaining -= count
-            if result.steps < count || !result.isStable { break }
+            remaining -= result.steps
+            stoppedShort = result.stoppedShort
+            if result.steps == 0 || result.reachedLimit || (result.steps < count && !result.stoppedShort)
+                || !result.isStable
+            {
+                break
+            }
         }
         return total
     }

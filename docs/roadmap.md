@@ -322,6 +322,61 @@ step is an isolated fractional-occupancy geometry reference, before changing gas
 moving-wall work. This must address changing voxel volume and under-box gaps consistently,
 rather than relying on constant-field preservation alone.
 
+That geometry reference is now implemented as double-precision convex clipping of a cell
+against the six planes of an oriented box. It measures occupied cell volume and open area on
+each grid face, including sub-cell under-box gaps. It uses the geometric centre even when the
+centre of mass is offset. Six tests cover analytical axis-aligned intersections, a 45-degree
+cube's octagonal intersection, adjacent-face agreement and exact face contact, mass offsets,
+partitioned volume under translation/rotation, and gaps down to 10 micrometres on 0.2 m cells.
+
+`swift run -c release rigidboxdemo --geometry` generates a CPU-only 90-case comparison on
+0.2, 0.1 and 0.05 m grids. The 0.8 m cube's summed volume stays at 0.512 m³, with maximum
+absolute error below 0.00000000000005 m³. In the matching translation/rotation sequence,
+the finest grid's centre-point mask instead ranges from 0.508 to 0.512 m³ before recovering
+its original volume. Analytical thin-gap volume and side-face openings agree throughout.
+
+This is geometry only: it changes neither air masks nor fluxes and does not establish blast
+accuracy. Conservative gas transport, moving-wall work and treatment of very small fluid volumes
+must be designed together before enabling fractional occupancy in the solver.
+
+Clipped box-wall areas and centroids are now available. Walls exactly on a grid face belong
+only to the fluid-side cell, preventing double counting; open grid-face centroids include the
+first moment of the remaining area. Each cell passes vector surface closure, moment closure
+and the volume identity from its boundary surface. Complete-box wall area is 3.84 m² in all
+90 cases, and ambient-pressure residual force/torque stay below 0.000000003 N and
+0.0000000003 N m. Ground cases include virtual cells below z=0 for full-surface identities;
+these are not predictions of physical pressure on a ground-contacting box.
+
+Eight geometry tests now include coincident-wall ownership and analytical pressure loads on
+rotated boxes with offset centres of mass. Degree-two triangle quadrature integrates linear
+pressure force and torque, avoiding the torque error from placing all pressure at a patch's
+centroid. The maximum per-cell area and volume residuals in the 90-case report are below
+0.000000000000007 m² and 0.0000000000000003 m³, respectively. No solver fluxes change.
+Next, verify moving-cell volume changes against swept wall motion and wall work before
+introducing conservative transport of fractional gas volumes.
+
+Those moving-geometry checks are now available with `--motion-geometry`. The CPU-only
+27-case study prescribes translation, rotation and thin-gap opening on three spatial grids,
+using 8, 32 and 128 temporal midpoint samples over 20 ms. Swept solid volume is the integral
+of wall velocity dotted with its outward area normal; positive sweep shrinks gas volume.
+Gas pressure work has the opposite sign to body pressure work. Triangle quadrature checks
+this exchange for linear pressure and rigid translation/rotation, including torque power.
+
+Smooth rotation's volume residual drops about sixteenfold each time the sample count rises
+fourfold. Thin-gap opening matches the endpoint volume change to numerical precision.
+However, the selected crossing on 0.1 and 0.05 m cells misses 100%, 25% and 6.25% of the
+swept volume at 8, 32 and 128 samples. This is an intentional quadrature diagnostic: spatial
+geometry is accurate, but sampling a moving wall in time does not automatically conserve
+geometric volume. The 0.2 m crossing happens to align with interval boundaries and is exact;
+that alignment must not be treated as general accuracy.
+
+All 27 gas/body work balances close within 0.00000000000002 J. Work agrees with pressure
+times the sampled swept volume, but differs from pressure times the exact endpoint change
+when temporal volume is wrong. Ten geometry tests now cover these motion and work checks.
+Next, split time integration at wall/cell crossing events (or use equivalent consistent
+space-time geometry), then address transport and stability of small fractional gas volumes.
+The current air solver still uses its existing whole-cell boundaries.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

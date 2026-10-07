@@ -65,21 +65,44 @@ struct HeadlessRunTests {
         try write(document, to: project)
         let run = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--mass", "0.02"]))
 
-        let model = SimulationModel(document: document)
-        try model.sweep.start(.init(prefix: "Sweep", parameter: .chargeMass([0.02])))
-        let deadline = ContinuousClock.now + .seconds(60)
-        while model.sweep.isActive || !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline)
-            try await Task.sleep(for: .milliseconds(5))
-        }
-        let swept = try #require(model.savedRuns.last)
+        let swept = try await sweep(document, mass: 0.02)
         #expect(run.name == "Headless run" && swept.name == "Sweep · 0.02 kg")
         #expect(run.inputSHA256 == swept.inputSHA256 && run.stepCount == swept.stepCount)
         #expect(run.gauges == swept.gauges && run.gauges.allSatisfy { $0.peak > 0 })
     }
 
-    /// A structure's steps depend on how the app batches them, which follows the GPU's speed, so
-    /// only completion is checked here, not equality with a sweep.
+    /// Sweeps `document` in the app over the one charge `mass`, and returns the run it saves.
+    private func sweep(_ document: ProjectDocument, mass: Float) async throws -> SavedSimulationRun {
+        let model = SimulationModel(document: document)
+        try model.sweep.start(.init(prefix: "Sweep", parameter: .chargeMass([mass])))
+        let deadline = ContinuousClock.now + .seconds(120)
+        while model.sweep.isActive || !model.experimentIsReady {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        return try #require(model.savedRuns.last)
+    }
+
+    /// The app batches a structure's steps to suit the GPU's speed, but the solver takes every
+    /// decision that changes a step at checkpoints of the step count, so the runs still agree.
+    @Test("A structural run matches the same case swept in the app, to the last bit")
+    func matchesSweepWithStructure() async throws {
+        var document = ProjectDocument(scenario: ScenarioPreset.blastWall.scenario)
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.015
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "wall.bombcad")
+        try write(document, to: project)
+        let run = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--mass", "50"]))
+
+        let swept = try await sweep(document, mass: 50)
+        #expect(run.inputSHA256 == swept.inputSHA256 && run.stepCount == swept.stepCount)
+        #expect(run.elapsedTime == swept.elapsedTime)
+        #expect(run.gauges == swept.gauges && run.gauges.allSatisfy { $0.peak > 0 })
+        #expect(run.structure == swept.structure && run.structure.map { !$0.points.isEmpty } == true)
+    }
+
     @Test("A structural run is added to a copy of the project, which itself is left untouched")
     func structuralRun() async throws {
         let kept = try SavedRunTests().fixture()
