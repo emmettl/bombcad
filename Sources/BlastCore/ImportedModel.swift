@@ -57,6 +57,9 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
         }
         return owners.map { assignments[$0] }
     }
+    public var regionSourceParts: [StructureModel.SourcePart?] {
+        (preview.boxPartIDs ?? []).map { StructureModel.SourcePart(modelID: id, partID: $0) }
+    }
     public func supports(fixedBase: Bool) -> [Box] {
         guard fixedBase, !preview.boxes.isEmpty else { return [] }
         let h = preview.cellSize
@@ -80,6 +83,7 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
         }
         return body.solids == preview.boxes && body.openings.isEmpty && body.elementKind == .solid
             && body.solidElementKind.allSatisfy { $0 == nil || $0 == .solid }
+            && (body.solidSourceParts.isEmpty || body.solidSourceParts == regionSourceParts)
             && materialsMatch && body.reinforcement.isEmpty
             && body.inclinedBars.isEmpty && body.solidReinforcement.count == body.solids.count
             && body.solidReinforcement.allSatisfy { $0 == .none }
@@ -107,6 +111,7 @@ extension Scenario {
             if original.behavior == .deformable, var body = copy.structure {
                 body.solids = updated.preview.boxes
                 body.solidMaterial = try updated.regionMaterials()
+                body.solidSourceParts = updated.regionSourceParts
                 body.solidElementKind = []
                 body.elementSize = cellSize
                 body.solidReinforcement = Array(repeating: .none, count: body.solids.count)
@@ -171,6 +176,7 @@ extension Scenario {
                 ?? StructureModel(solids: [], material: material, elementSize: imported.preview.cellSize)
             body.solids = imported.preview.boxes
             body.solidMaterial = materials
+            body.solidSourceParts = imported.regionSourceParts
             body.solidElementKind = []
             body.material = material
             body.fixedBase = fixedBase

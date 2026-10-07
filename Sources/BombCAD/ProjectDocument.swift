@@ -245,6 +245,15 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             }),
             scenario.structure.map({ $0.elementSize.isFinite && $0.elementSize > 0 }) ?? true
         else { throw ProjectFileError.invalid("Project geometry or atmosphere is invalid.") }
+        if let body = scenario.structure {
+            let parts = Set(
+                (scenario.importedModels ?? []).filter { $0.behavior == .deformable }.flatMap { model in
+                    model.source.parts.map { StructureModel.SourcePart(modelID: model.id, partID: $0.id) }
+                })
+            guard body.solidSourceParts.count <= body.solids.count,
+                body.solidSourceParts.compactMap({ $0 }).allSatisfy({ parts.contains($0) })
+            else { throw ProjectFileError.invalid("A structural region references a missing source part.") }
+        }
         try validateGrid(scenario, resolution: .coarse)
     }
 

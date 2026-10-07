@@ -104,6 +104,8 @@ enum EditSelection: Hashable {
     case block(Int)
     case solid(Int)
     case opening(Int)
+    case support(Int)
+    case part(StructureModel.SourcePart)
     case gauge(Int)
     case imported(UUID)
 }
@@ -394,6 +396,10 @@ final class SimulationModel {
             }
             settings.scenario.structure = nil
         }
+        if var body = settings.scenario.structure {
+            body.solidSourceParts = body.solidSourceParts.map { $0?.modelID == id ? nil : $0 }
+            settings.scenario.structure = body
+        }
         settings.scenario.importedModels?.removeAll { $0.id == id }
         selection = nil
         settingsChanged()
@@ -457,6 +463,16 @@ final class SimulationModel {
                 return nil
             }
             return openings[index]
+        case .support(let index):
+            guard let supports = scenario.structure?.supports, supports.indices.contains(index) else {
+                return nil
+            }
+            return supports[index]
+        case .part(let reference):
+            guard let body = scenario.structure,
+                let part = StructureEditing.parts(in: scenario).first(where: { $0.id == reference })
+            else { return nil }
+            return StructureEditing.bounds(of: part.regions, in: body)
         case .gauge(let index):
             guard scenario.gauges.indices.contains(index) else { return nil }
             let position = scenario.gauges[index].position
@@ -577,9 +593,13 @@ final class SimulationModel {
 
     /// Adds an opening (a window or door) to cut out of the structure.
     func addOpening() {
-        guard let first = settings.scenario.structure?.solids.first else { return }
-        let centre = (first.min + first.max) / 2
-        let opening = Box(min: centre - SIMD3(0.5, 0.5, 0.5), max: centre + SIMD3(0.5, 0.5, 0.5))
+        guard let body = settings.scenario.structure, !body.solids.isEmpty else { return }
+        let target = selectedStructureBounds ?? body.solids[0]
+        let centre = (target.min + target.max) / 2
+        var half = simd_min(target.size / 4, SIMD3<Float>(repeating: 0.5))
+        let thin = (0..<3).min { target.size[$0] < target.size[$1] } ?? 0
+        half[thin] = target.size[thin] / 2 + settings.resolution.cellSize
+        let opening = Box(min: centre - half, max: centre + half)
         editStructure { $0.openings.append(opening) }
         selection = .opening((settings.scenario.structure?.openings.count ?? 1) - 1)
     }
@@ -595,10 +615,74 @@ final class SimulationModel {
     /// Changes the deformable structure and re-derives its reinforcement from the new shapes.
     /// A structure left with no solids is removed.
     func editStructure(_ change: (inout StructureModel) -> Void) {
-        var structure = settings.scenario.structure ?? StructureModel(solids: [], elementSize: 0.0625)
-        change(&structure)
-        structure.autoReinforce()
-        settings.scenario.structure = structure.solids.isEmpty ? nil : structure
+        guard !isPreparingImports else { return }
+        do {
+            settings.scenario = try StructureEditing.changing(settings.scenario, change)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    var structuralParts: [StructureEditing.Part] { StructureEditing.parts(in: settings.scenario) }
+
+    var selectedStructureBounds: Box? {
+        switch selection {
+        case .solid, .part: highlightedBox
+        case .imported(let id):
+            settings.scenario.importedModels?.first(where: { $0.id == id })?.behavior == .deformable
+                ? highlightedBox : nil
+        default: nil
+        }
+    }
+
+    func setPartMaterial(_ material: StructureMaterial?, for part: StructureModel.SourcePart) {
+        guard !isPreparingImports else { return }
+        do {
+            settings.scenario = try StructureEditing.settingMaterial(
+                material, for: part, in: settings.scenario)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func setPartReinforcement(_ spec: Reinforcement, for part: StructureModel.SourcePart) {
+        guard let selected = structuralParts.first(where: { $0.id == part }), !selected.regions.isEmpty else {
+            return
+        }
+        editStructure { body in
+            for index in selected.regions { body.setReinforcement(spec, of: index) }
+        }
+    }
+
+    func setStructureMaterial(_ material: StructureMaterial) {
+        editStructure { $0.material = material }
+    }
+
+    func setFixedBase(_ fixed: Bool) {
+        let imported = settings.scenario.importedModels?.first {
+            $0.behavior == .deformable && $0.canRegenerate(settings.scenario.structure)
+        }
+        editStructure { body in
+            body.fixedBase = fixed
+            if let imported { body.supports = imported.supports(fixedBase: fixed) }
+        }
+    }
+
+    func addSupport() {
+        guard let body = settings.scenario.structure, !body.solids.isEmpty else { return }
+        let target = selectedStructureBounds ?? body.bounds
+        let thickness = max(body.elementSize, 0.01)
+        let support = Box(
+            min: target.min - SIMD3(repeating: thickness * 0.01),
+            max: SIMD3(
+                target.max.x + thickness * 0.01, target.max.y + thickness * 0.01,
+                target.min.z + thickness * 0.5))
+        editStructure { $0.supports.append(support) }
+        selection = .support((settings.scenario.structure?.supports.count ?? 1) - 1)
+    }
+
+    func removeSupport(at index: Int) {
+        editStructure { body in
+            guard body.supports.indices.contains(index) else { return }
+            body.supports.remove(at: index)
+        }
+        selection = nil
     }
 
     /// Handles a click in the view, at a point in normalised device coordinates. In placing

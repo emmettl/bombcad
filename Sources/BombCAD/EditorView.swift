@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// charge. Every change rebuilds the simulation from the start.
 struct EditorView: View {
     @Bindable var model: SimulationModel
+    @State private var showAllImportedRegions = false
 
     var body: some View {
         Form {
@@ -35,6 +36,12 @@ struct EditorView: View {
                                 if imported.isAttached {
                                     Button("Detach geometry") { model.detachImport(id: imported.id) }
                                 }
+                            }
+                            if imported.behavior == .deformable,
+                                let part = model.structuralParts.first(where: { $0.id.modelID == imported.id }
+                                )
+                            {
+                                Button("Edit structural parts") { model.selection = .part(part.id) }
                             }
                             Button(
                                 imported.isAttached ? "Remove model" : "Remove saved source",
@@ -88,7 +95,15 @@ struct EditorView: View {
             }
 
             Section {
-                ForEach(solids.indices, id: \.self) { index in
+                if !model.structuralParts.isEmpty {
+                    StructuralPartsEditor(model: model)
+                    Toggle("Show all sampled regions", isOn: $showAllImportedRegions)
+                    Text(
+                        "Region edits, reinforcement and custom supports detach the structure. Undo restores its source link."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(visibleSolidIndices, id: \.self) { index in
                     BoxRow(
                         title: name(of: solids[index], index: index), box: solidBinding(index), step: 0.125,
                         isSelected: model.selection == .solid(index),
@@ -127,16 +142,16 @@ struct EditorView: View {
                             select: { toggle(.opening(index)) }, remove: { model.removeOpening(at: index) })
                     }
                     Button("Add Opening", systemImage: "plus") { model.addOpening() }
-                    Picker("Main material", selection: $model.settings.material) {
+                    Picker("Main material", selection: mainMaterialBinding) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                         if !StructureMaterial.presets.contains(model.settings.material) {
                             Text("Custom: \(model.settings.material.name)").tag(model.settings.material)
                         }
                     }
                     DisclosureGroup("Main material properties") {
-                        MaterialEditor(material: $model.settings.material)
+                        MaterialEditor(material: mainMaterialBinding)
                     }
-                    Picker("Elements", selection: $model.settings.elementKind) {
+                    Picker("Elements", selection: mainElementKindBinding) {
                         Text("Solid").tag(ElementKind.solid)
                         Text("Shell").tag(ElementKind.shell)
                     }
@@ -162,6 +177,29 @@ struct EditorView: View {
                         + "set otherwise. Openings are cut out of them. Shell elements (with beams for "
                         + "columns) run many times faster, but every piece must then be a wall, slab or column."
                 )
+            }
+
+            if !solids.isEmpty {
+                Section {
+                    Toggle(
+                        "Fix nodes on the ground",
+                        isOn: Binding(
+                            get: { model.settings.scenario.structure?.fixedBase ?? false },
+                            set: { model.setFixedBase($0) }))
+                    ForEach(supports.indices, id: \.self) { index in
+                        BoxRow(
+                            title: "Support \(index + 1)", box: supportBinding(index), step: 0.125,
+                            isSelected: model.selection == .support(index),
+                            select: { toggle(.support(index)) }, remove: { model.removeSupport(at: index) })
+                    }
+                    Button("Add Support", systemImage: "plus") { model.addSupport() }
+                } header: {
+                    Text("Structural supports")
+                } footer: {
+                    Text(
+                        "Nodes inside support regions are held still. Add Support places a strip at the base of the selected part or region; edit its corner and size to locate the restraint."
+                    )
+                }
             }
 
             Section {
@@ -201,11 +239,66 @@ struct EditorView: View {
             }
         }
         .formStyle(.grouped)
+        .disabled(model.isPreparingImports)
 
     }
 
     private var solids: [Box] { model.settings.scenario.structure?.solids ?? [] }
     private var openings: [Box] { model.settings.scenario.structure?.openings ?? [] }
+
+    private var supports: [Box] { model.settings.scenario.structure?.supports ?? [] }
+
+    private var visibleSolidIndices: [Int] {
+        guard !showAllImportedRegions else { return Array(solids.indices) }
+        if case .part(let id) = model.selection {
+            return model.structuralParts.first(where: { $0.id == id })?.regions ?? []
+        }
+        let owned = Set(model.structuralParts.flatMap(\.regions))
+        return solids.indices.filter { !owned.contains($0) || model.selection == .solid($0) }
+    }
+
+    private var mainMaterialBinding: Binding<StructureMaterial> {
+        Binding(get: { model.settings.material }, set: { model.setStructureMaterial($0) })
+    }
+
+    private var mainElementKindBinding: Binding<ElementKind> {
+        Binding(
+            get: { model.settings.elementKind },
+            set: { kind in
+                // Preserve the existing mixed-mesh sizing rules, then make it a local edit.
+                let size = kind == .shell ? SimulationSettings.shellSize : model.settings.solidElementSize
+                if kind == .shell {
+                    model.settings.solidElementSize = model.settings.scenario.structure?.elementSize ?? size
+                }
+                model.editStructure {
+                    $0.elementKind = kind
+                    $0.elementSize = size
+                }
+            })
+    }
+
+    private func supportBinding(_ index: Int) -> Binding<Box> {
+        regionBinding(index, keyPath: \.supports)
+    }
+
+    /// SwiftUI can read an old row's binding while undo/deletion removes it from the form.
+    private func regionBinding(_ index: Int, keyPath: WritableKeyPath<StructureModel, [Box]>) -> Binding<Box>
+    {
+        let original =
+            (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: index)
+            ?? Box(min: .zero, max: SIMD3(repeating: 1))
+        return Binding(
+            get: {
+                (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: index)
+                    ?? original
+            },
+            set: { box in
+                model.editStructure { body in
+                    guard body[keyPath: keyPath].indices.contains(index) else { return }
+                    body[keyPath: keyPath][index] = box
+                }
+            })
+    }
 
     private func toggle(_ selection: EditSelection) {
         model.selection = model.selection == selection ? nil : selection
@@ -222,21 +315,23 @@ struct EditorView: View {
     }
 
     private func blockBinding(_ index: Int) -> Binding<Box> {
-        Binding(
-            get: { model.settings.scenario.boxes[index] },
-            set: { model.settings.scenario.boxes[index] = $0 })
+        let original =
+            model.settings.scenario.boxes.safeElement(at: index)
+            ?? Box(min: .zero, max: SIMD3(repeating: 1))
+        return Binding(
+            get: { model.settings.scenario.boxes.safeElement(at: index) ?? original },
+            set: {
+                guard model.settings.scenario.boxes.indices.contains(index) else { return }
+                model.settings.scenario.boxes[index] = $0
+            })
     }
 
     private func solidBinding(_ index: Int) -> Binding<Box> {
-        Binding(
-            get: { solids[index] },
-            set: { box in model.editStructure { $0.solids[index] = box } })
+        regionBinding(index, keyPath: \.solids)
     }
 
     private func openingBinding(_ index: Int) -> Binding<Box> {
-        Binding(
-            get: { openings[index] },
-            set: { box in model.editStructure { $0.openings[index] = box } })
+        regionBinding(index, keyPath: \.openings)
     }
 
     private var bondBinding: Binding<Bool> {
@@ -270,15 +365,20 @@ struct EditorView: View {
     }
 
     private func gaugeBinding(_ index: Int) -> Binding<BlastCore.Gauge> {
-        Binding(
-            get: { model.settings.scenario.gauges[index] },
-            set: { model.settings.scenario.gauges[index] = $0 })
+        let original = model.settings.scenario.gauges.safeElement(at: index) ?? Gauge("Removed", at: .zero)
+        return Binding(
+            get: { model.settings.scenario.gauges.safeElement(at: index) ?? original },
+            set: {
+                guard model.settings.scenario.gauges.indices.contains(index) else { return }
+                model.settings.scenario.gauges[index] = $0
+            })
     }
+
 }
 
 /// How the selected piece of the structure is reinforced, with the quantities for a custom
 /// arrangement in the units engineers use.
-private struct ReinforcementEditor: View {
+struct ReinforcementEditor: View {
     @Binding var spec: Reinforcement
 
     private enum Kind: String, CaseIterable {
@@ -486,7 +586,7 @@ private struct BoxRow: View {
 
     private var summary: String {
         let size = box.size
-        return String(format: "%.2f × %.2f × %.2f m", size.x, size.y, size.z)
+        return String(format: "%.3g × %.3g × %.3g m", size.x, size.y, size.z)
     }
 
     private func field(_ value: Binding<Double>) -> some View {
@@ -565,5 +665,11 @@ struct ScenarioDocument: FileDocument {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(scenario)
+    }
+}
+
+extension Array {
+    fileprivate func safeElement(at index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

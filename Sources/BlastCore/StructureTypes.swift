@@ -462,6 +462,17 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// The material of each solid, by index into `solids`, where it is not `material`. Where
     /// solids overlap, the later one's material wins.
     public var solidMaterial: [StructureMaterial?] = []
+    /// Source ownership travels with editable regions, including after detachment. A nil
+    /// entry is a locally added region; the part ID is scoped to its imported instance.
+    public struct SourcePart: Sendable, Hashable, Codable {
+        public var modelID: UUID
+        public var partID: Int
+        public init(modelID: UUID, partID: Int) {
+            self.modelID = modelID
+            self.partID = partID
+        }
+    }
+    public var solidSourceParts: [SourcePart?] = []
     /// Solid elements on a lattice, or shells on the midsurfaces of walls and slabs. With
     /// shells, `elementSize` is their size in the plane of the wall or slab.
     public var elementKind: ElementKind = .solid
@@ -582,6 +593,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
         if solidReinforcement.indices.contains(index) { solidReinforcement.remove(at: index) }
         if solidMaterial.indices.contains(index) { solidMaterial.remove(at: index) }
         if solidElementKind.indices.contains(index) { solidElementKind.remove(at: index) }
+        if solidSourceParts.indices.contains(index) { solidSourceParts.remove(at: index) }
     }
 
     /// How solid `index` is meshed.
@@ -1090,6 +1102,8 @@ extension StructureModel {
         solidReinforcement =
             try container.decodeIfPresent([Reinforcement].self, forKey: .solidReinforcement) ?? []
         solidMaterial = try container.decodeIfPresent([StructureMaterial?].self, forKey: .solidMaterial) ?? []
+        solidSourceParts =
+            try container.decodeIfPresent([SourcePart?].self, forKey: .solidSourceParts) ?? []
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []

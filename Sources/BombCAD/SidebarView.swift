@@ -115,7 +115,11 @@ struct SidebarView: View {
 
             if let summary = model.structureSummary {
                 Section("Structure") {
-                    Picker("Material", selection: $model.settings.material) {
+                    Picker(
+                        "Material",
+                        selection: Binding(
+                            get: { model.settings.material }, set: { model.setStructureMaterial($0) })
+                    ) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                         if !StructureMaterial.presets.contains(model.settings.material) {
                             Text("Custom: \(model.settings.material.name)").tag(model.settings.material)
