@@ -9,16 +9,62 @@ struct ExperimentalRigidBoxTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }
 
-    @Test("Controlled diagnostics separate conservative remapping, gas loading and ground impulses")
-    func controlledDiagnostics() throws {
+    @Test("Connected remapping preserves a uniform field and transports gradients around solid cells")
+    func connectedRemap() throws {
+        let old = (0..<9).map { $0 == 4 || $0 == 8 }
+        let new = (0..<9).map { $0 == 0 || $0 == 4 }
+        func neighbours(_ n: Int) -> [Int] {
+            let x = n % 3, y = n / 3
+            return [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+                .filter { $0.0 >= 0 && $0.0 < 3 && $0.1 >= 0 && $0.1 < 3 }
+                .map { $0.0 + 3 * $0.1 }
+        }
+        for gradient in [false, true] {
+            let cells = (0..<9).map { n in
+                CellState(Primitive(density: gradient ? 1 + Float(n) : 1.225,
+                    velocity: SIMD3(1, 2, 3), pressure: gradient ? 101325 + 100 * Float(n) : 101325), gamma: 1.4)
+            }
+            let remapped = try ConservativeCellRemap.apply(
+                cells, oldSolid: old, newSolid: new, mode: .connectedTransport, neighbours: neighbours)
+            func sum(_ field: [CellState], mask: [Bool]) -> SIMD8<Double> {
+                field.indices.filter { !mask[$0] }.reduce(.zero) { total, n in
+                    let c = field[n]
+                    return total + SIMD8(Double(c.density), Double(c.momentumX), Double(c.momentumY),
+                        Double(c.momentumZ), Double(c.energy), 0, 0, 0)
+                }
+            }
+            #expect(sum(cells, mask: old) == sum(remapped, mask: new))
+            #expect(remapped[4].energy == cells[4].energy)
+            if !gradient {
+                for n in cells.indices where !new[n] {
+                    #expect(remapped[n].density == cells[0].density)
+                    #expect(remapped[n].energy == cells[0].energy)
+                }
+            }
+        }
+        let cells = Array(repeating: CellState(Primitive(density: 1.225, pressure: 101325), gamma: 1.4), count: 3)
+        #expect(throws: ConservativeCellRemap.Failure.self) {
+            try ConservativeCellRemap.apply(cells, oldSolid: [false, true, true],
+                newSolid: [true, true, false], mode: .connectedTransport) { n in
+                [n - 1, n + 1].filter { (0..<3).contains($0) }
+            }
+        }
+    }
+
+    @Test("Controlled diagnostics separate conservative remapping, gas loading and ground impulses",
+        arguments: [ExperimentalBoxRemap.redistribution, .connectedTransport])
+    func controlledDiagnostics(mode: ExperimentalBoxRemap) throws {
         // Physical budgets need one grid here; the release CLI performs the full spatial study.
-        let results = try ExperimentalRigidBoxDiagnostics.run(device: device, cellSizes: [0.2])
+        let results = try ExperimentalRigidBoxDiagnostics.run(device: device, cellSizes: [0.2], remapMode: mode)
         for r in results {
             if r.kind.hasPrefix("remap-") {
                 #expect(abs(try #require(r.relativeGasMassChange)) < 1e-7)
                 #expect(abs(try #require(r.relativeGasEnergyChange)) < 1e-7)
                 #expect(simd_length(try #require(r.gasMomentumChange)) < 1e-8)
                 #expect(abs(r.displacement.x - 0.12) < 1e-10)
+                if mode == .connectedTransport {
+                    #expect(try #require(r.maximumRelativePressureError) < 1e-7)
+                }
             } else if r.kind == "uniform-flow-no-contact" {
                 // With no gravity/contact, the body must receive precisely the recorded gas impulse.
                 #expect(simd_length(2 * r.velocity - r.appliedImpulse) < 1e-8)
@@ -273,8 +319,9 @@ struct ExperimentalRigidBoxTests {
         #expect(simd_length(simulation.air.momentum() + 10 * simulation.velocity - momentum) < 1e-3)
     }
 
-    @Test("Fine-cell translation across patch boundaries and rotation conserve gas quantities")
-    func refinedConservativeRemap() throws {
+    @Test("Fine-cell translation across patch boundaries and rotation conserve gas quantities",
+        arguments: [ExperimentalBoxRemap.redistribution, .connectedTransport])
+    func refinedConservativeRemap(mode: ExperimentalBoxRemap) throws {
         var scene = try scenario(position: SIMD3(2.095, 2, 2))
         scene.domainSize.x = 8
         var config = SolverConfiguration()
@@ -283,6 +330,7 @@ struct ExperimentalRigidBoxTests {
         let simulation = try ExperimentalRigidBoxSimulation(
             device: device, scenario: scene, cellSize: 0.2,
             configuration: config)
+        simulation.remapMode = mode
         simulation.air.fill { _, _, _ in Primitive(density: 1.225, velocity: SIMD3(1, 2, 3), pressure: 101325)
         }
         let before = simulation.air.totals()
@@ -298,14 +346,16 @@ struct ExperimentalRigidBoxTests {
         #expect(simd_length(simulation.air.momentum() - momentum) < 1e-5)
     }
 
-    @Test("A refined ground gap can open and close without losing gas or energy")
-    func refinedGroundGap() throws {
+    @Test("A refined ground gap can open and close without losing gas or energy",
+        arguments: [ExperimentalBoxRemap.redistribution, .connectedTransport])
+    func refinedGroundGap(mode: ExperimentalBoxRemap) throws {
         let scene = try scenario(position: SIMD3(2, 2, 0.4))
         var config = SolverConfiguration()
         config.refinement = 2
         config.refinementMemory = 32 << 20
         let simulation = try ExperimentalRigidBoxSimulation(
             device: device, scenario: scene, cellSize: 0.2, configuration: config)
+        simulation.remapMode = mode
         let before = simulation.air.totals()
         var moved = try #require(scene.rigidObjects?.first).makeBody()
         moved.applyImpulse(SIMD3(0, 0, 1))
@@ -322,8 +372,9 @@ struct ExperimentalRigidBoxTests {
         #expect(abs(closed.energy / before.energy - 1) < 1e-7)
     }
 
-    @Test("Fine remapping is independent of GPU patch-slot allocation")
-    func patchOrderIndependence() throws {
+    @Test("Fine remapping is independent of GPU patch-slot allocation",
+        arguments: [ExperimentalBoxRemap.redistribution, .connectedTransport])
+    func patchOrderIndependence(mode: ExperimentalBoxRemap) throws {
         let scene = try scenario(position: SIMD3(2.095, 2, 2))
         var config = SolverConfiguration()
         config.refinement = 2
@@ -331,6 +382,7 @@ struct ExperimentalRigidBoxTests {
         func make() throws -> ExperimentalRigidBoxSimulation {
             let s = try ExperimentalRigidBoxSimulation(
                 device: device, scenario: scene, cellSize: 0.2, configuration: config)
+            s.remapMode = mode
             s.air.fill { i, j, k in
                 Primitive(
                     density: 1.225, velocity: SIMD3(Float(i) * 0.01, Float(j) * 0.01, Float(k) * 0.01),

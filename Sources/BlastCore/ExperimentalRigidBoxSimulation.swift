@@ -14,6 +14,12 @@ public final class ExperimentalRigidBoxSimulation {
     public let air: BlastSolver
     public let definition: RigidObjectDefinition
     public let motion: Motion
+    public var remapMode: ExperimentalBoxRemap = .redistribution {
+        didSet {
+            air.experimentalBoxRemapMode = remapMode
+            air.refinement?.boxRemapMode = remapMode
+        }
+    }
     public var recordsRemapTimings = false {
         didSet { air.refinement?.measureBoxRemap = recordsRemapTimings }
     }

@@ -268,6 +268,32 @@ The next priority is improving and checking moving-boundary occupancy/remapping 
 Grid sensitivity persists without contact, and free response is not yet spatially converged,
 so adding multiple objects remains behind those checks.
 
+An opt-in connected-transport remapper now shifts complete conserved states along shortest
+connected air paths from closing cells to newly exposed cells, instead of first concentrating
+gas next to the closing surface and then diluting opening neighbours. Balanced occupancy
+changes preserve a uniform field exactly; paths never cross permanently solid cells. Unpaired
+or disconnected occupancy changes fall back to the existing conservative redistribution.
+The usual driver still defaults to redistribution. `--diagnostics --transport` writes a
+separate comparison report with the selected remapping mode recorded in each case.
+
+In the same prescribed-motion study, all three translation cases now have zero pressure
+departure; translation plus rotation is also uniform on 0.2 and 0.1 m air. On 0.05 m air,
+rotation still produces a 100% peak departure through intermediate voxel-volume changes
+(against 400% with redistribution), even though the final occupied volume is unchanged.
+Mass, energy and momentum remain conserved. In suspended uniform flow, the 0.1-to-0.05 m
+displacement difference falls from 21% to 4.5%, while speed changes by 4.7%. Halving the
+finer timestep changes speed by 3.5%, so this is not yet a converged result.
+
+Connected transport is a numerical reference, not a cut-cell/ALE treatment: greedy paths can
+transport gradients anisotropically, do not preserve angular momentum, and require additional
+CPU searches. Its blast response, refinement behaviour and cost need broader evaluation before
+changing the default. The remaining volume-change disturbance motivates fractional occupancy
+and a consistent treatment of gas displacement and moving-wall work.
+Tests cover exact constant-field preservation, conserved gradient transport around a permanent
+obstacle, rejection of disconnected paths, factor-two fine remapping across patches, ground-gap
+opening/closure, and independence from patch-slot allocation and local-window selection.
+Residual gas in a collapsing gap retains routes through already matched closing cells.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

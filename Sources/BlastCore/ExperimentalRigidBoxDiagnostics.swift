@@ -6,6 +6,7 @@ import simd
 public enum ExperimentalRigidBoxDiagnostics {
     public struct Result: Codable, Sendable {
         public let kind: String
+        public let remapMode: ExperimentalBoxRemap
         public let cellSize: Float?
         public let cfl: Float?
         public let mechanicalStep: Double?
@@ -25,7 +26,10 @@ public enum ExperimentalRigidBoxDiagnostics {
 
     /// Remap-only tests have no air evolution or ground; uniform-flow tests have no
     /// charge, gravity or contact; contact-only tests have no gas or spatial grid.
-    public static func run(device: MTLDevice, cellSizes: [Float] = [0.2, 0.1, 0.05]) throws -> [Result] {
+    public static func run(
+        device: MTLDevice, cellSizes: [Float] = [0.2, 0.1, 0.05],
+        remapMode: ExperimentalBoxRemap = .redistribution
+    ) throws -> [Result] {
         let object = try RigidObjectDefinition(
             name: "Diagnostic box", shape: .box(size: SIMD3(repeating: 0.8)),
             position: SIMD3(2.095, 2, 2), mass: 2)
@@ -37,6 +41,7 @@ public enum ExperimentalRigidBoxDiagnostics {
             for rotate in [false, true] {
                 let simulation = try ExperimentalRigidBoxSimulation(
                     device: device, scenario: scene, cellSize: cell, motion: .held)
+                simulation.remapMode = remapMode
                 let initial = simulation.air.totals()
                 let momentum = simulation.air.momentum()
                 let fluidCount = simulation.air.fluidCellCount
@@ -53,6 +58,7 @@ public enum ExperimentalRigidBoxDiagnostics {
                 let final = simulation.air.totals()
                 results.append(Result(
                     kind: rotate ? "remap-translation-rotation" : "remap-translation",
+                    remapMode: remapMode,
                     cellSize: cell, cfl: nil, mechanicalStep: 0.0025, time: 0.03,
                     displacement: body.position - start, velocity: body.linearVelocity,
                     orientation: body.orientation.vector, angularMomentum: body.angularMomentum,
@@ -75,6 +81,7 @@ public enum ExperimentalRigidBoxDiagnostics {
             open.reflectiveFaces = []
             let simulation = try ExperimentalRigidBoxSimulation(
                 device: device, scenario: open, cellSize: cell, configuration: config)
+            simulation.remapMode = remapMode
             simulation.gravity = .zero
             simulation.air.fill(uniform: Primitive(density: 1.225, velocity: SIMD3(20, 0, 0), pressure: 101325))
             simulation.air.restart()
@@ -88,7 +95,7 @@ public enum ExperimentalRigidBoxDiagnostics {
             }
             let final = simulation.air.totals()
             results.append(Result(
-                kind: "uniform-flow-no-contact", cellSize: cell, cfl: cfl, mechanicalStep: nil,
+                kind: "uniform-flow-no-contact", remapMode: remapMode, cellSize: cell, cfl: cfl, mechanicalStep: nil,
                 time: simulation.air.time, displacement: simulation.position - start,
                 velocity: simulation.velocity, orientation: simulation.orientation,
                 angularMomentum: simulation.angularMomentum, appliedImpulse: impulse, groundImpulse: .zero,
@@ -114,7 +121,7 @@ public enum ExperimentalRigidBoxDiagnostics {
                 time += dt
             }
             results.append(Result(
-                kind: "contact-only", cellSize: nil, cfl: nil, mechanicalStep: step, time: time,
+                kind: "contact-only", remapMode: remapMode, cellSize: nil, cfl: nil, mechanicalStep: step, time: time,
                 displacement: body.position - start, velocity: body.linearVelocity,
                 orientation: body.orientation.vector, angularMomentum: body.angularMomentum,
                 appliedImpulse: impulse, groundImpulse: contactImpulse,
