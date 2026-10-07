@@ -91,7 +91,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
    [the concrete model](concrete-model.md#limitations)). Bars that slip, now an option, give
    discrete cracks at the Model Code's spacing on any mesh and a mesh-independent shear beam,
-   but 42–47% strong, and the slab's peak 18% low, so the shear across discrete cracks comes next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   but 42–47% strong, and the slab's peak 18% low. Across discrete cracks, a shear stiffness that
+   falls as they open (Walraven and Reinhardt, now an option) barely moves either; the beam's
+   strength follows the interlock cap alone, 108–109% on both meshes at a fifth of it, which
+   nothing measured yet supports. A direct test of interlock across one crack, and the slab's
+   stiffness with slip (bond lost where bars yield, perhaps), come next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)

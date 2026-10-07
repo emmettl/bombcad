@@ -15,6 +15,7 @@ import simd
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
+//               [--bond pullout|splitting|confined] [--crack-shear]   (also on beam and slab)
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
@@ -770,7 +771,7 @@ func runBeam() throws {
             device: device, elementsThroughDepth: layers,
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
             unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
-            bondSlip: chosenBondSlip(diameter: 0.019)
+            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear")
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
@@ -1107,6 +1108,7 @@ func runShearBeam() throws {
         let result = try ShearBeamBenchmark.run(
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
+            crackShearStiffness: flag("crack-shear"),
             mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
         ) { material in
             if let dowel { material.dowelFactor = dowel }
@@ -1240,6 +1242,7 @@ func runSlab() throws {
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
+            crackShearStiffness: flag("crack-shear"),
             adjust: { applyRateOptions(&$0) },
             inspect: flag("hinge")
                 ? { solver in

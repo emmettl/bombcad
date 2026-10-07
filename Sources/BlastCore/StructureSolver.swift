@@ -1115,6 +1115,7 @@ public final class StructureSolver {
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
+        uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
         if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)
             uniforms.bondSlip = 1

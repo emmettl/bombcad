@@ -91,6 +91,9 @@ struct StructureUniforms {
     float bondS2;
     float bondS3;
     float bondAlpha;
+    // 1: a crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured, instead
+    // of keeping `shearRetention` of the concrete's.
+    uint crackShearStiffness;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -1232,6 +1235,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             if (opened > 0.0f) {
                 float width = opened * m.crackBand;
                 float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+                // The crack's shear stiffness: a fixed share of the concrete's, or, measured on
+                // cracks in plain concrete by Walraven and Reinhardt (1981), k = 1.8 w^-0.8 +
+                // (0.234 w^-0.707 - 0.20) f_cc MPa per mm of slip for a crack w mm wide in concrete
+                // of cube strength f_cc MPa, acting in series with the concrete across the band.
+                float retention = m.shearRetention;
+                if (u.crackShearStiffness != 0) {
+                    float millimetres = max(width * 1000.0f, 0.01f);
+                    float cube = m.compressiveStrength / 0.8e6f;
+                    float stiffness = 1e9f * (1.8f * pow(millimetres, -0.8f)
+                                              + max(0.234f * pow(millimetres, -0.707f) - 0.20f, 0.0f) * cube);
+                    retention = 1.0f / (1.0f + m.mu / (stiffness * m.crackBand));
+                }
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
                 int across = opening[a] >= opening[b] ? a : b;
@@ -1273,14 +1288,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
                     }
                 }
-                float trial = m.shearRetention * stress;
+                float trial = retention * stress;
                 stress = clamp(trial, -interlock, interlock);
                 // A crack slid past what interlock and dowels hold has slid for good: the faces
                 // ride over, grind and jam, and do not spring back. Without this the crack was a
                 // nonlinear spring that returned all the work of sliding, and a beam hinged on a
                 // diagonal crack sprang back past where it started.
                 if (slides && !jointed && trial != stress) {
-                    slip += (trial - stress) / (m.shearRetention * m.mu);
+                    slip += (trial - stress) / (retention * m.mu);
                 }
             }
             // A mortar joint slides by Coulomb friction: along it the shear is held to the

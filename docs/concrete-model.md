@@ -273,6 +273,26 @@ where a is the largest aggregate size (16 mm by default) and w is the crack widt
 crack strain times the band width ℓ. A hairline crack carries about 0.58 √f_c, close to the
 tensile strength; a 1 mm crack carries about 30% of that.
 
+**A crack's shear stiffness** (an option, `StructureModel.crackShearStiffness`). A quarter of
+the concrete's shear stiffness, kept however wide the crack, suits a crack smeared over many
+elements. A crack in one element (in plain concrete, or with bars that slip) is a discrete
+crack, and Walraven and Reinhardt measured how stiff those are in shear: k = 1.8 w^−0.8 +
+(0.234 w^−0.707 − 0.20) f_cc MPa per mm of slip, for a crack w mm wide in concrete of cube
+strength f_cc MPa (taken as f_c / 0.8). With the option the crack acts in series with the
+concrete across the band: the cracked plane keeps 1 / (1 + G / (k ℓ)) of the concrete's shear
+stiffness, which on 46 mm elements of 23 MPa concrete is 0.07 at 0.2 mm and 0.01 at 1 mm. A
+cube cracked open and sheared a little keeps that share within 15% (`ConcreteModelTests`).
+
+It matters less than the cap. Vecchio and Shim's beam OA1 with bars that slip carries 453 kN
+with it (136%) against 472 without, and Janney's beam with slip 103% (failing at 45 mm) against
+107% (42 mm); the contest slab is unchanged (105 mm perfectly bonded, 90 mm with slip). The
+cap decides OA1: with slip and the measured stiffness, and no dowel action, it carries 447 and
+463 kN on 12 and 24 elements through its depth at the full cap; 413 kN (124%) at half of it; 361
+and 358 kN (109% and 108%) at a fifth; and 296 kN (89%) at a twentieth. Its shear strength no
+longer depends on the mesh, but on the interlock cap, which has not been checked against a
+measurement in this model. A fifth of the cap was not adopted: nothing measured supports it,
+and it breaks Janney's beam at 27 mm instead of the measured 42.
+
 This term was added after a model without it failed. With no shear transfer across cracks, a
 flexurally cracked slab with no steel through its thickness cannot pass shear between its
 tension and compression zones; the zones slide apart and the member splits along its length.

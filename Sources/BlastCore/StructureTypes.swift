@@ -521,6 +521,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Bars that slip in their concrete, by the Model Code's bond-slip law (see `BondSlip`); nil
     /// bonds them perfectly. Solid elements' bars along the lattice axes only.
     public var bondSlip: BondSlip?
+    /// Whether a crack's shear stiffness falls as it opens, by Walraven and Reinhardt's
+    /// measurements on cracks in plain concrete (1981), instead of keeping a quarter of the
+    /// concrete's whatever its width. Solid elements only.
+    public var crackShearStiffness = false
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -950,6 +954,7 @@ struct StructureUniforms {
     var bondS2: Float = 0
     var bondS3: Float = 0
     var bondAlpha: Float = 0
+    var crackShearStiffness: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1136,6 +1141,7 @@ extension StructureModel {
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
+        crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)

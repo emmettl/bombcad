@@ -93,6 +93,7 @@ public enum ShearBeamBenchmark {
     public static func run(
         device: MTLDevice, elementsThroughDepth: Int = 12, slice: Float? = nil, deflection: Float = 0.016,
         rate: Float = 0.05, crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
+        crackShearStiffness: Bool = false,
         mapAt: Float? = nil,
         adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
@@ -100,6 +101,7 @@ public enum ShearBeamBenchmark {
         let scale = width / (slice ?? width)
         model.crackAxes = crackAxes
         model.bondSlip = bondSlip
+        model.crackShearStiffness = crackShearStiffness
         adjust(&model.material)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
