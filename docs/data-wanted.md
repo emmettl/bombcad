@@ -60,10 +60,9 @@ titles; the authors, journals and years should be enough to find each one.
   [Validation](validation.md#beams-struck-by-a-falling-weight)).
 - **Use:** the rate law for interlock, in place of borrowing the tensile one.
 - **Partly answered:** Ando et al. (2000; see Obtained) struck beams without stirrups at
-  increasing speeds; the model breaks them at the speed the tests did with interlock as it is,
-  so SS0a-1 is the exception. The rest of their 27 tests (other shear spans and bar ratios)
-  are in figures, and the full set, in their Japanese paper (*Structural Engineering* 46A,
-  2000, Muroran Institute of Technology's repository), would test it further.
+  increasing speeds; with interlock as it is the model follows them to 3 m/s, and breaks the
+  heavily reinforced 1.5 m beam at the speed the test did; beyond 3 m/s how the ends were held
+  matters more than interlock.
 
 ## 3. Formulae quoted from memory
 
@@ -166,7 +165,10 @@ Supplied by hand during development, and now in use:
   strength, the anchorage and the charges' shapes, which are assumed.
 - T. Ando, N. Kishi, H. Mikami and K. G. Matsuoka, "Weight falling impact tests on
   shear-failure type RC beams without stirrups", *Structures under Shock and Impact VI*, WIT
-  Press (2000), open access: six of its single impacts, in `ImpactBenchmark.shearTests`.
+  Press (2000), open access, and its fuller Japanese version (*Structural Engineering* 46A,
+  2000): nineteen of its single impacts and the measured materials, in
+  `ImpactBenchmark.shearTests`. Still wanted: how the support jig held the beams' ends, which
+  decides the faster tests.
 - S. Saatci, *Behaviour and modelling of reinforced concrete structures subjected to impact
   loads*, PhD thesis, University of Toronto (2007), open access from the university's
   repository: the beams, materials, drop weights and measured first impacts of eight beams, in

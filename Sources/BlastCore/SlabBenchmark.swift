@@ -310,28 +310,43 @@ public enum SlabBenchmark {
         let atPeak = shape()
         // Through the depth at mid-span: the lengthwise strain over the four elements either side
         // of the middle, from the nodes, and each layer's bar plastic strain and crushing there.
+        // A section through the depth `offset` metres from mid-span, over four elements either side
+        // of it: the lengthwise strain at each row of nodes, and each layer's mean lengthwise
+        // stress, crack opening and bar plastic strain; with the moment the stresses carry about
+        // the bars and the push's reaction times the distance from the support.
         func section(_ label: String) {
             guard let hinge else { return }
             let j = solver.ey / 2
-            var rows: [String] = []
-            for k in 0...solver.ez {
-                let stretch =
-                    (solver.displacement(middle + 4, j, k).x - solver.displacement(middle - 4, j, k).x)
-                    / (8 * h)
-                var line = String(format: "node row %2d: strain %7.2f%%", k, stretch * 100)
-                if k < solver.ez {
-                    let bars = (middle - 4..<middle + 4).map { solver.barPlasticStrain($0, j, k).x }.filter {
-                        abs($0) < 1e8
+            for offset in [Float(0), 0.15] {
+                let centre = middle - Int((offset / h).rounded())
+                let span = (centre - 4)..<(centre + 4)
+                var rows: [String] = []
+                var moment: Float = 0
+                let barHeight: Float = inch
+                for k in 0...solver.ez {
+                    let stretch =
+                        (solver.displacement(centre + 4, j, k).x - solver.displacement(centre - 4, j, k).x)
+                        / (8 * h)
+                    var line = String(format: "node row %2d: strain %7.3f%%", k, stretch * 100)
+                    if k < solver.ez {
+                        let stress = span.map { solver.stress($0, j, k)[0] }.reduce(0, +) / Float(span.count)
+                        let bars = span.map { solver.barPlasticStrain($0, j, k).x }.filter { abs($0) < 1e8 }
+                        let crack = span.map { solver.crackStrain($0, j, k) }.max() ?? 0
+                        moment += stress * h * width * ((Float(k) + 0.5) * h - barHeight)
+                        line += String(
+                            format: "   layer: stress %7.2f MPa, crack %6.2f%%, bar plastic %6.2f%%",
+                            stress / 1e6,
+                            crack * 100, (bars.max() ?? 0) * 100)
                     }
-                    let crush = (middle - 4..<middle + 4).map { solver.plasticStrain($0, j, k) }.max() ?? 0
-                    let crack = (middle - 4..<middle + 4).map { solver.crackStrain($0, j, k) }.max() ?? 0
-                    line += String(
-                        format: "   layer: bar plastic %6.2f%%, crush %6.2f%%, crack %6.2f%%",
-                        (bars.max() ?? 0) * 100, crush * 100, crack * 100)
+                    rows.append(line)
                 }
-                rows.append(line)
+                let arm = Float(middle - first) * h - offset
+                rows.append(
+                    String(
+                        format: "moment from stresses %.0f N m, from the push %.0f N m", moment,
+                        0.5 * reaction() * arm))
+                hinge("\(label), \(Int((offset * 1000).rounded())) mm from mid-span", rows)
             }
-            hinge(label, rows)
         }
         section("at peak")
         solver.mutateNodes { nodes in

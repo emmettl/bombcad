@@ -122,7 +122,7 @@ Seven comparisons with the outside world, all in the [validation notes](docs/val
   their stirrups: with stirrups, the peaks are within 15% under the light drops and −5% to +15%
   under the heavy ones, and the beam without stirrups is broken by the heavy drop, as in the
   test, but also by the light one, which it survived. Ando et al.'s beams without stirrups,
-  struck at rising speeds, break at the speed the tests did.
+  struck at rising speeds, peak within 15% up to 3 m/s and go too far at higher speeds.
 - **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
   them: the impulse under the charge is 86–95% of the empirical curves' on fine cells (and
   within 8% from 0.3 m/kg^(1/3) on a rigid surface), and light charges

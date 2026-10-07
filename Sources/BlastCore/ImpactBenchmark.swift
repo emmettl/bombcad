@@ -104,6 +104,13 @@ public enum ImpactBenchmark {
         public var plate: SIMD2<Float>
         public var bearingLength: Float
         public var material: StructureMaterial
+        /// Both supports hold the beam lengthwise (pins), rather than one (a pin and a roller).
+        public var pinnedEnds = false
+        /// Steel plates of this thickness, `bearingLength` long, under and over the beam at each
+        /// support, held along their centre lines only: clamps that turn with the beam. Nil
+        /// holds the beam's own faces over the bearing length instead, which resists its ends'
+        /// turning.
+        public var supportPlates: Float?
     }
 
     public static func specimen(_ test: Test) -> Specimen {
@@ -130,9 +137,22 @@ public enum ImpactBenchmark {
         let plateBox = Box(
             min: SIMD3(middle - s.plate.x / 2, 0, base + s.depth),
             max: SIMD3(middle + s.plate.x / 2, s.width, base + s.depth + s.plate.y))
+        var solids = [beam, plateBox]
+        if let thickness = s.supportPlates {
+            let t = max((thickness / h).rounded(), 1) * h
+            for support in [(s.length - s.span) / 2, (s.length + s.span) / 2] {
+                let x = (support - s.bearingLength / 2)...(support + s.bearingLength / 2)
+                solids.append(
+                    Box(min: SIMD3(x.lowerBound, 0, base - t), max: SIMD3(x.upperBound, s.width, base)))
+                solids.append(
+                    Box(
+                        min: SIMD3(x.lowerBound, 0, base + s.depth),
+                        max: SIMD3(x.upperBound, s.width, base + s.depth + t)))
+            }
+        }
         var model = StructureModel(
-            solids: [beam, plateBox], material: s.material, elementSize: h, fixedBase: false)
-        model.setMaterial(.structuralSteel, of: 1)
+            solids: solids, material: s.material, elementSize: h, fixedBase: false)
+        for index in 1..<solids.count { model.setMaterial(.structuralSteel, of: index) }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
             var band = beam
@@ -197,7 +217,10 @@ public enum ImpactBenchmark {
         solver.groundContact = false
         let h = model.elementSize
         let middle = Int((length / 2 / h).rounded())
-        let beamTop = Int((depth / h).rounded())
+        // With support plates the lattice starts at their undersides, this many rows below the beam.
+        let plateRows = specimen.supportPlates.map { Int(max(($0 / h).rounded(), 1)) } ?? 0
+        let beamBottom = plateRows
+        let beamTop = plateRows + Int((depth / h).rounded())
         // The plate is as many elements thick as its 50 mm rounds to.
         let top = (0...solver.ez).last { solver.storedNode(middle, 0, $0) != nil } ?? solver.ez
         let reach = Int((plate.x / 2 / h).rounded())
@@ -222,6 +245,21 @@ public enum ImpactBenchmark {
                 nodes[n].mass += weight / Float(struck.count)
                 nodes[n].velocity = SIMD3(0, 0, -speed)
             }
+            if plateRows > 0 {
+                // The plates are held along their centre lines, under the bottom plate and over
+                // the top one, up and down; lengthwise at the bottom line, at one support or both.
+                for (side, support) in supports.enumerated() {
+                    for j in 0...solver.ey {
+                        if let n = solver.storedNode(support, j, 0) {
+                            nodes[n].restrain(x: side == 0 || specimen.pinnedEnds, y: j == 0, z: true)
+                        }
+                        if let n = solver.storedNode(support, j, beamTop + plateRows) {
+                            nodes[n].restrain(z: true)
+                        }
+                    }
+                }
+                return
+            }
             for range in bearingNodes {
                 for i in range {
                     for j in 0...solver.ey {
@@ -233,7 +271,18 @@ public enum ImpactBenchmark {
                     }
                 }
             }
-            if let n = solver.storedNode(supports[0], 0, 0) { nodes[n].restrain(x: true) }
+            if specimen.pinnedEnds {
+                // Lengthwise at mid-depth along the whole clamp, so the thrust is not on one line.
+                for range in bearingNodes {
+                    for i in range {
+                        for j in 0...solver.ey {
+                            if let n = solver.storedNode(i, j, beamTop / 2) { nodes[n].restrain(x: true) }
+                        }
+                    }
+                }
+            } else if let n = solver.storedNode(supports[0], 0, 0) {
+                nodes[n].restrain(x: true)
+            }
         }
         let start = ContinuousClock.now
         var history: [SIMD2<Float>] = []
@@ -242,7 +291,8 @@ public enum ImpactBenchmark {
         var attached = true
         while solver.time < duration {
             solver.advance(steps: stepsPerSample)
-            history.append(SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, 0).z))
+            history.append(
+                SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, beamBottom).z))
             if attached && bounce {
                 // The weight rides the plate down and leaves it once the plate turns back up:
                 // its mass comes off, carrying away its share of the plate's (by then nearly
@@ -256,7 +306,16 @@ public enum ImpactBenchmark {
                 }
             }
             var reaction = SIMD2<Float>.zero
-            for (side, range) in bearingNodes.enumerated() {
+            if plateRows > 0 {
+                for (side, support) in supports.enumerated() {
+                    for j in 0...solver.ey {
+                        for k in [0, beamTop + plateRows] where solver.storedNode(support, j, k) != nil {
+                            reaction[side] += solver.nodalForce(support, j, k).z
+                        }
+                    }
+                }
+            }
+            for (side, range) in bearingNodes.enumerated() where plateRows == 0 {
                 for i in range {
                     // Only the nodes sitting on their stops bear on the supports.
                     for j in 0...solver.ey {
@@ -377,43 +436,68 @@ public enum ImpactBenchmark {
         /// Shear span over effective depth (span = 2 a, d = 208 mm).
         public var shearSpanRatio: Float
         public var speed: Float
-        /// What the paper reports: whether the beam broke apart in shear, and its residual
-        /// mid-span displacement where given.
+        /// What the paper reports: whether the beam broke apart in shear, and its peak and
+        /// residual mid-span displacement where given (read off its plots, to about 2 mm).
         public var broken: Bool
+        public var peak: Float?
         public var residual: Float?
         public var remark: String
     }
 
-    public static let shearTests: [ShearTest] = [
-        ShearTest(
-            name: "A36-1", heavyBars: true, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
-            remark: "flexural cracks only"),
-        ShearTest(
-            name: "A36-3", heavyBars: true, shearSpanRatio: 3.6, speed: 3, broken: false, residual: nil,
-            remark: "a severe diagonal crack from the load to the support"),
-        ShearTest(
-            name: "A36-5", heavyBars: true, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
-            remark: "split into three by diagonal cracks"),
-        ShearTest(
-            name: "B36-1", heavyBars: false, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
-            remark: "flexural cracks only"),
-        ShearTest(
-            name: "B36-4", heavyBars: false, shearSpanRatio: 3.6, speed: 4, broken: false, residual: 0.0226,
-            remark: "bent, flexure cracks only"),
-        ShearTest(
-            name: "B36-5", heavyBars: false, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
-            remark: "broken by a wide diagonal crack"),
-    ]
+    /// The tests the paper's text and figures report: the 1.5 m beams' displacement histories,
+    /// and the loops of load against displacement for the 1.0 m beams with D19 bars and the
+    /// 2.0 m beams with D13, whose ends give the peak and where they come back to no load the
+    /// residual.
+    public static let shearTests: [ShearTest] = {
+        func test(
+            _ name: String, _ heavy: Bool, _ ratio: Float, _ speed: Float, _ peak: Float?, _ residual: Float?,
+            broken: Bool = false, _ remark: String = ""
+        ) -> ShearTest {
+            ShearTest(
+                name: name, heavyBars: heavy, shearSpanRatio: ratio, speed: speed, broken: broken,
+                peak: peak.map { $0 / 1000 }, residual: residual.map { $0 / 1000 }, remark: remark)
+        }
+        return [
+            test("A24-1", true, 2.4, 1, 2, 0),
+            test("A24-3", true, 2.4, 3, 11, 8),
+            test("A24-4", true, 2.4, 4, 16, 11),
+            test("A24-5", true, 2.4, 5, 29, 25, broken: true, "broken by diagonal cracks"),
+            test("A24-6", true, 2.4, 6, 54, 48, broken: true, "broken by diagonal cracks"),
+            test("A36-1", true, 3.6, 1, 1.5, 0, "flexural cracks only"),
+            test("A36-3", true, 3.6, 3, 13.5, 9.5, "a severe diagonal crack from the load to the support"),
+            test("A36-4", true, 3.6, 4, 28, 24, "diagonal cracks"),
+            test("A36-5", true, 3.6, 5, 66, 53, broken: true, "split into three by diagonal cracks"),
+            test("A48-4", true, 4.8, 4, nil, 10.7, "bent, not failed"),
+            test("B36-1", false, 3.6, 1, 2.7, 0, "flexural cracks only"),
+            test("B36-3", false, 3.6, 3, 16, 11.4, "flexure cracks"),
+            test("B36-4", false, 3.6, 4, 26, 22.6, "bent, flexure cracks only"),
+            test("B36-5", false, 3.6, 5, 105, 88, broken: true, "broken by a wide diagonal crack"),
+            test("B48-1", false, 4.8, 1, 4, 0, "flexure cracks"),
+            test("B48-3", false, 4.8, 3, 21, 19, "bent"),
+            test("B48-4", false, 4.8, 4, 36, 30, "bent"),
+            test("B48-5", false, 4.8, 5, 55, 47, "bent far"),
+            test("B48-6", false, 4.8, 6, 73, 70, "bent far"),
+        ]
+    }()
 
+    /// The paper's measured materials (two casts, averaged): concrete of 33 MPa with a modulus
+    /// of 23.3 GPa and Poisson's ratio 0.21; D19 bars yielding at 385 MPa and breaking at 577,
+    /// D13 at 400 and 573, both 206 GPa.
     public static func specimen(_ test: ShearTest) -> Specimen {
         let span = 2 * test.shearSpanRatio * 0.208
         var steel = SteelProperties(
-            yieldStress: 393e6, ultimateStress: 560e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
-        steel.youngsModulus = 200e9
+            yieldStress: test.heavyBars ? 385e6 : 400e6, ultimateStress: test.heavyBars ? 577e6 : 573e6,
+            ultimateStrain: 0.1, ruptureStrain: 0.15)
+        steel.youngsModulus = 206e9
         var material = StructureMaterial.concrete(
             name: "Ando beam", compressiveStrength: 33e6, density: 2350, steel: steel)
+        material.youngsModulus = 23.3e9
+        material.poissonRatio = 0.21
         material.aggregateSize = 0.02
         material.rateDependent = true
+        // The paper describes the clamps as letting the beam turn and nothing else. Held as pins
+        // at both ends, or on plates that turn freely, the beams went further than with the
+        // clamps holding their faces over 50 mm, and further than the tests (docs/validation.md).
         return Specimen(
             width: 0.15, depth: 0.25, length: span + 0.4, span: span,
             bars: [(test.heavyBars ? 2 * 286.5e-6 : 2 * 126.7e-6, 0.04)], stirrups: nil,

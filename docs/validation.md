@@ -51,7 +51,7 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 104–112 mm (96–103%) on 4 to 16 elements through, shells 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 15% under light drops and −5% to +15% under heavy ones, the beam without stirrups broken by the heavy drop as in the test but by the light one too; six on beams without stirrups at rising speeds, broken at the speed the tests were | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the concrete's strain-rate law decides it |
+| Structural response  | One slab test: solid elements 104–112 mm (96–103%) on 4 to 16 elements through, shells 124 mm (115%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 15% under light drops and −5% to +15% under heavy ones, the beam without stirrups broken by the heavy drop as in the test but by the light one too; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s, too far beyond, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the concrete's strain-rate law decides it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
@@ -526,37 +526,61 @@ model takes to be as much as the tensile strength, is the open question.
 
 **Beams without stirrups at increasing speeds.** T. Ando, N. Kishi, H. Mikami and K. G.
 Matsuoka, "Weight falling impact tests on shear-failure type RC beams without stirrups",
-*Structures under Shock and Impact VI*, WIT Press, 2000 (open access), struck 27 beams of
-150 × 250 mm without stirrups once each with 300 kg, at 1 m/s and then from 2 or 3 m/s up in
-steps of 1 m/s until they broke: two bottom bars 40 mm up (2 D19 in series A, 2 D13 in B), 33
-MPa concrete, 393 MPa bars, clamped top and bottom 200 mm in from each end. The text reports
-two series at a shear span of 3.6 depths (1.5 m span); `blastbench impact --ando` runs them
-(assumed: the weight's face as a 100 mm steel plate, 50 mm clamps, 20 mm aggregate). The weight
-leaves the plate once the plate turns back up, as a real one does; left on, it pulled the
-concrete under the plate off on the rebound.
+*Structures under Shock and Impact VI*, WIT Press, 2000 (open access), with the fuller
+Japanese paper, *Structural Engineering* 46A (2000) 1809–1818 (Muroran Institute of
+Technology's repository), struck 27 beams of 150 × 250 mm without stirrups once each with
+300 kg, at 1 m/s and then from 2 or 3 m/s up in steps of 1 m/s until they broke: two bottom
+bars 40 mm up (2 D19 in series A, 2 D13 in B), spans of 1.0, 1.5 and 2.0 m (shear spans of
+2.4, 3.6 and 4.8 depths), clamped top and bottom 200 mm in from each end in a jig the paper
+describes as letting them turn and nothing else. The materials are as measured: 33 MPa concrete
+of modulus 23.3 GPa, D19 bars yielding at 385 MPa and D13 at 400. `blastbench impact --ando`
+runs the nineteen tests whose peak or residual displacement the papers give: the 1.5 m beams'
+displacement histories, and the loops of load against displacement for the 1.0 m beams with
+D19 bars and the 2.0 m beams with D13, whose ends give the peak and where they come back to no
+load the residual, read to about 2 mm. Assumed: the weight's face as a 100 mm steel plate, the
+clamps as 50 mm of each face held, 20 mm aggregate. The weight leaves the plate once the plate
+turns back up, as a real one does; left on, it pulled the concrete under the plate off on the
+rebound.
 
-| Test | Speed  | Measured (peak / residual, read off the histories) | 16 through | 24 through | 16, Malvar–Ross, before slip |
-|------|--------|-------------------------------|-------------------|--------------------|-------------------|
-| A36  | 1 m/s  | 1.5 / 0, flexural cracks only  | 2.1 / −0.4, whole | 2.4 / −1.5, whole  | 1.9 / −0.2, whole |
-| A36  | 3 m/s  | 13.5 / 9.5, a severe diagonal crack | 15.3 / 8.6 (280) | 21.4 / 11.2 (983) | 7.4 / −0.1, whole |
-| A36  | 5 m/s  | 66 / 53, split into three     | 79 / 59, broken (1,979) | 126 / 70, broken (4,620) | 32 / 10 (708) |
-| B36  | 1 m/s  | 2.7 / 0, flexural cracks only  | 2.6 / −0.5, whole | 3.0 / −2.5, whole  | 2.3 / −0.2, whole |
-| B36  | 4 m/s  | 26 / 22.6, bent                | 35 / 26 (236)     | 42 / 28 (1,273)    | 18 / 4.6 (9)      |
-| B36  | 5 m/s  | 105 / 88, broken by a diagonal crack | 57 / 46 (636) | 128 / 88, broken (3,417) | 26 / 18 (205) |
+| Test | Speed | Measured (peak / residual) | 16 through | 24 through |
+|------|-------|----------------------------|------------|------------|
+| A24 | 1 m/s | 2 / 0 | 1.4 / −0.6 | 1.5 / −0.9 |
+| A24 | 3 m/s | 11 / 8 | 12.5 / 7.6 (149) | 16.4 / 10.6 (787) |
+| A24 | 4 m/s | 16 / 11 | 28.1 / 16.7 (590) | 27.6 / 17.8 (1,599) |
+| A24 | 5 m/s | 29 / 25, broken | 41.7 / 24.7 (939) | 82.8 / 42.6 (4,242) |
+| A24 | 6 m/s | 54 / 48, broken | 96.7 / 62.6 (1,763) | 121.3 / 74.3 (8,230) |
+| A36 | 1 m/s | 1.5 / 0, flexural cracks only | 2.2 / −0.8 | 2.5 / −2.1 |
+| A36 | 3 m/s | 13.5 / 9.5, a severe diagonal crack | 14.0 / 8.4 (182) | 17.9 / 7.7 (1,146) |
+| A36 | 4 m/s | 28 / 24 | 38.1 / 29.5 (867) | 56.8 / 28.9 (2,439) |
+| A36 | 5 m/s | 66 / 53, split into three | 104 / 48 (1,624) | 147 / 92, broken (4,187) |
+| A48 | 4 m/s | – / 10.7, bent | 50.2 / 24.6 (715) | 114 / 36 (4,249) |
+| B36 | 1 m/s | 2.7 / 0, flexural cracks only | 2.6 / −0.6 | 3.1 / −1.9 |
+| B36 | 3 m/s | 16 / 11.4 | 16.1 / 5.9 (36) | 17.3 / 4.0 (603) |
+| B36 | 4 m/s | 26 / 22.6, bent | 31.2 / 20.4 (314) | 36.4 / 19.4 (653) |
+| B36 | 5 m/s | 105 / 88, broken by a diagonal crack | 60.9 / 44.9 (525) | 68.7 / 38.4 (2,431) |
+| B48 | 1 m/s | 4 / 0 | 3.9 / −0.8 | 4.4 / −2.2 |
+| B48 | 3 m/s | 21 / 19, bent | 21.5 / 10.7 (305) | 21.8 / 3.7 (249) |
+| B48 | 4 m/s | 36 / 30 | 46.2 / 33.1 (171) | 46.2 / 31.2 (1,467) |
+| B48 | 5 m/s | 55 / 47 | 116.5 / 95.7 (882) | 171 / 168 (3,644) |
+| B48 | 6 m/s | 73 / 70 | 212 / 202 (1,287) | 429 / 408 (5,591) |
 
 (Peak / residual mid-span displacement in mm; elements removed or left as bare bars in
-brackets.) With the default law these beams break where the tests did, at 5 m/s and not
-before (on 16 elements B36 bends badly at 5 m/s but holds), and are left down by about what the
-tests were; under Malvar and Ross's law neither breaks at 5 m/s, and B36 at 4 m/s is left a
-fifth as far down. The test beams kept 70–85% of their peak deflection; until cracks were made
-to slide for good and ride up on their aggregate, the model's sprang back to a tenth of it,
-A36 at 3 m/s rebounding past where it started. Janney's beam, bent slowly to 30 mm and
-unloaded (`blastbench beam --to 30 --unload`), keeps 18 mm, as its cracked stiffness predicts:
-the fault was in cracks that slide, not in bending. The paper
-also finds the largest reaction about equal to the static shear capacity, as if the shear
-across cracks gained little with rate. So for beams without stirrups the default law, and
-interlock rising with it, hold; SS0a-1, broken under a drop its test beam survived, is the
-exception.
+brackets.) Up to 3 m/s the peaks are within 15% on 16 elements, with little damage and the
+diagonal cracking the tests show. From 4 m/s the model goes further than the tests, a fifth to
+three quarters at 4 m/s and far more at 5 and 6 m/s, most of all in the 2.0 m beams, which in
+the test bent and kept gaining strength (their reaction rose to 110–120 kN, against 45 kN
+statically) while the model's lose it; and on 24 elements further still. A36 breaks at 5 m/s
+as its test beam did; B36, which its test beam also broke at 5 m/s, bends far but holds.
+
+How the jig held the beams decides much of this. Held as pins at both ends (the paper's "turning
+and nothing else"), the 1.0 m beams came within 15% at every speed and B36 broke at 5 m/s, but
+the 2.0 m beams went twice as far; on steel plates turning freely about their centres, every
+beam went two to five times too far. The paper's static tests carried more than a simply
+supported beam would (68 kN against about 53 for B36), so the jig restrained the beams'
+ends; how much, it does not say. Averaged over the fourteen peaks it reports, the clamps above
+are 50% off and the pins 59%. The earlier figures above (A36 and B36 at 3–5 m/s) were made with
+material properties from the usual correlations rather than those measured; with them the
+model was somewhat stiffer.
 
 **The tensile strain-rate law decides it.** Turning the laws off one at a time on SS2b-1 (16
 through) shows that the concrete's tensile law is the one that matters. Under Malvar and Ross's

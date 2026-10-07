@@ -1004,9 +1004,9 @@ func runImpact() throws {
                 if flag("no-rate") { model.material.rateDependent = false }
                 applyRateOptions(&model)
             }
-            let measured =
-                test.broken
-                ? "broken" : test.residual.map { "whole, \(format(Double($0) * 1000)) mm left" } ?? "whole"
+            let numbers =
+                "\(test.peak.map { format(Double($0) * 1000) } ?? "-") / \(test.residual.map { format(Double($0) * 1000) } ?? "-")"
+            let measured = test.broken ? "\(numbers), broken" : numbers
             print(
                 pad(test.name, 8) + pad("\(format(Double(test.speed), 0)) m/s", 8) + pad(measured, 22)
                     + pad(
