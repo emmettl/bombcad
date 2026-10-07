@@ -1299,10 +1299,20 @@ extension BlastSolver {
             !initial
             ? try refinement?.prepareBoxRemap(body, grid: grid, previousBounds: experimentalBoxBounds) : nil
         if !initial && refinement == nil {
-            let newLow = body.corners.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, SIMD3<Float>($1)) }
-            let newHigh = body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, SIMD3<Float>($1)) }
-            let low = SIMD3<Int>((simd_min(newLow, experimentalBoxBounds?.min ?? newLow) / grid.cellSize).rounded(.down)) &- 1
-            let high = SIMD3<Int>((simd_max(newHigh, experimentalBoxBounds?.max ?? newHigh) / grid.cellSize).rounded(.up)) &+ 1
+            let newLow = body.corners.reduce(SIMD3<Float>(repeating: .infinity)) {
+                simd_min($0, SIMD3<Float>($1))
+            }
+            let newHigh = body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) {
+                simd_max($0, SIMD3<Float>($1))
+            }
+            let low =
+                SIMD3<Int>(
+                    (simd_min(newLow, experimentalBoxBounds?.min ?? newLow) / grid.cellSize).rounded(.down))
+                &- 1
+            let high =
+                SIMD3<Int>(
+                    (simd_max(newHigh, experimentalBoxBounds?.max ?? newHigh) / grid.cellSize).rounded(.up))
+                &+ 1
             func neighbours(_ n: Int) -> [Int] {
                 let i = n % grid.nx
                 let j = (n / grid.nx) % grid.ny

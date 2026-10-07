@@ -221,6 +221,11 @@ swift run -c release blastbench slab --sensitivity
 compares a freestanding wall on a clamped base with one on starter bars, a construction joint
 or friction alone (see [base connections](docs/structural-model.md#base-connections)).
 
+`BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
+keeps the result as a saved run, for scripts and other Macs; see
+[headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` to write the scene and the
+structure over time for rendering elsewhere ([USD export](docs/usd-export.md)).
+
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
 holding, sliding, lift-off, rocking and tipping, with playback and a time slider. It records
@@ -259,6 +264,15 @@ app keep their existing behaviour while this alternative is evaluated.
 writes `.build/rigid-box-convergence-transport.json` (add `--extended` for the longer study).
 Reports record the remapper and separate air and ground impulses. Completed cases are saved
 incrementally; a failed run can leave a partial report.
+`swift run -c release rigidboxdemo --geometry` writes `.build/rigid-box-geometry.json`, a
+CPU-only reference for fractional cell volumes and open face areas. It compares translation,
+rotation and sub-cell ground gaps on three grids without changing air masks or simulation.
+The report also measures clipped wall areas/centroids, uniform-pressure force/torque and
+cell surface/volume balances. Ground cases use virtual cells below the plane to check the
+complete box surface; those loads are geometry identities, not ground-pressure predictions.
+`--motion-geometry` writes `.build/rigid-box-motion-geometry.json`, comparing endpoint cell
+volume changes with temporally integrated wall motion and equal/opposite pressure work.
+It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
 
 ## Headline results
 
@@ -327,11 +341,15 @@ Collapse and debris have not been compared with anything.
 | [Shell model](docs/shell-model.md)          | Shells for walls and slabs, beams for columns                   |
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
+| [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
+| [USD export](docs/usd-export.md) | Writing a run's geometry over time as USD, for rendering in Blender and elsewhere |
+| [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |
 | [Save files](docs/save-files.md)            | Versioned project packages, assets and persisted settings       |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
+| [Continuous integration](docs/continuous-integration.md) | The Mac mini runner, nightly validation and benchmarks |
 
 Each model document lists its sources, its limitations and the work that would address them.
 

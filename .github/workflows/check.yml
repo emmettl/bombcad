@@ -1,0 +1,24 @@
+# Lint, tests and build on the self-hosted Mac mini, which has the Metal device the solver tests
+# need. Only pushes to main and manual runs trigger it: the repository is public, and a
+# self-hosted runner must never run code from other people's pull requests.
+name: Check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: check
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: make check

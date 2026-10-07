@@ -163,7 +163,10 @@ final class SimulationModel {
     private(set) var savedRuns: [SavedSimulationRun] = []
     @ObservationIgnored private var loadedRunSettings: ProjectRunSettings?
     @ObservationIgnored private var completedRunSettings: ProjectRunSettings?
-    private static let structureSampleInterval = 0.001
+    static let structureSampleInterval = 0.001
+    /// Called with the solver at each structural sample, every `structureSampleInterval` of
+    /// simulated time from time zero, while no batch is in flight.
+    @ObservationIgnored var onStructureSample: ((BlastSolver) -> Void)?
     @ObservationIgnored private var nextStructureSampleTime = structureSampleInterval
     /// The block or wall being edited, which the view outlines.
     var selection: EditSelection?
@@ -283,6 +286,7 @@ final class SimulationModel {
             structureHistory = [
                 StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
             ]
+            if let solver { onStructureSample?(solver) }
         }
         isRunning = true
         restartPacing()
@@ -1112,6 +1116,7 @@ final class SimulationModel {
             nextStructureSampleTime =
                 (floor(solver.time / Self.structureSampleInterval + 1e-6) + 1)
                 * Self.structureSampleInterval
+            onStructureSample?(solver)
         }
         if structureSummary?.hasBlownUp == true {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."

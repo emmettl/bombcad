@@ -56,19 +56,20 @@ public enum ExperimentalRigidBoxDiagnostics {
                     pressureError = max(pressureError, relativePressureError(simulation.air))
                 }
                 let final = simulation.air.totals()
-                results.append(Result(
-                    kind: rotate ? "remap-translation-rotation" : "remap-translation",
-                    remapMode: remapMode,
-                    cellSize: cell, cfl: nil, mechanicalStep: 0.0025, time: 0.03,
-                    displacement: body.position - start, velocity: body.linearVelocity,
-                    orientation: body.orientation.vector, angularMomentum: body.angularMomentum,
-                    appliedImpulse: SIMD3(8, 0, 0), groundImpulse: .zero,
-                    relativeGasMassChange: final.mass / initial.mass - 1,
-                    relativeGasEnergyChange: final.energy / initial.energy - 1,
-                    gasMomentumChange: simulation.air.momentum() - momentum,
-                    maximumRelativePressureError: pressureError,
-                    occupiedVolumeChange: Double(fluidCount - simulation.air.fluidCellCount)
-                        * pow(Double(cell), 3)))
+                results.append(
+                    Result(
+                        kind: rotate ? "remap-translation-rotation" : "remap-translation",
+                        remapMode: remapMode,
+                        cellSize: cell, cfl: nil, mechanicalStep: 0.0025, time: 0.03,
+                        displacement: body.position - start, velocity: body.linearVelocity,
+                        orientation: body.orientation.vector, angularMomentum: body.angularMomentum,
+                        appliedImpulse: SIMD3(8, 0, 0), groundImpulse: .zero,
+                        relativeGasMassChange: final.mass / initial.mass - 1,
+                        relativeGasEnergyChange: final.energy / initial.energy - 1,
+                        gasMomentumChange: simulation.air.momentum() - momentum,
+                        maximumRelativePressureError: pressureError,
+                        occupiedVolumeChange: Double(fluidCount - simulation.air.fluidCellCount)
+                            * pow(Double(cell), 3)))
             }
         }
         var flowCases = cellSizes.map { ($0, Float(0.45)) }
@@ -83,7 +84,8 @@ public enum ExperimentalRigidBoxDiagnostics {
                 device: device, scenario: open, cellSize: cell, configuration: config)
             simulation.remapMode = remapMode
             simulation.gravity = .zero
-            simulation.air.fill(uniform: Primitive(density: 1.225, velocity: SIMD3(20, 0, 0), pressure: 101325))
+            simulation.air.fill(
+                uniform: Primitive(density: 1.225, velocity: SIMD3(20, 0, 0), pressure: 101325))
             simulation.air.restart()
             let initial = simulation.air.totals()
             let momentum = simulation.air.momentum()
@@ -94,15 +96,18 @@ public enum ExperimentalRigidBoxDiagnostics {
                 impulse += simulation.lastImpulse
             }
             let final = simulation.air.totals()
-            results.append(Result(
-                kind: "uniform-flow-no-contact", remapMode: remapMode, cellSize: cell, cfl: cfl, mechanicalStep: nil,
-                time: simulation.air.time, displacement: simulation.position - start,
-                velocity: simulation.velocity, orientation: simulation.orientation,
-                angularMomentum: simulation.angularMomentum, appliedImpulse: impulse, groundImpulse: .zero,
-                relativeGasMassChange: final.mass / initial.mass - 1,
-                relativeGasEnergyChange: final.energy / initial.energy - 1,
-                gasMomentumChange: simulation.air.momentum() - momentum,
-                maximumRelativePressureError: nil, occupiedVolumeChange: nil))
+            results.append(
+                Result(
+                    kind: "uniform-flow-no-contact", remapMode: remapMode, cellSize: cell, cfl: cfl,
+                    mechanicalStep: nil,
+                    time: simulation.air.time, displacement: simulation.position - start,
+                    velocity: simulation.velocity, orientation: simulation.orientation,
+                    angularMomentum: simulation.angularMomentum, appliedImpulse: impulse,
+                    groundImpulse: .zero,
+                    relativeGasMassChange: final.mass / initial.mass - 1,
+                    relativeGasEnergyChange: final.energy / initial.energy - 1,
+                    gasMomentumChange: simulation.air.momentum() - momentum,
+                    maximumRelativePressureError: nil, occupiedVolumeChange: nil))
         }
         for step in [0.0002, 0.0001, 0.00005, 0.000025] {
             var body = try RigidBoxBody(mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(2, 2, 0.4))
@@ -114,19 +119,24 @@ public enum ExperimentalRigidBoxDiagnostics {
                 let dt = min(step, 0.03 - time)
                 let midpoint = time + 0.5 * dt
                 // Smooth 10 ms centred force pulse, integral 5 N s, followed by free contact motion.
-                let force = SIMD3<Double>(midpoint < 0.01 ? 1000 * pow(sin(.pi * midpoint / 0.01), 2) : 0, 0, 0)
+                let force = SIMD3<Double>(
+                    midpoint < 0.01 ? 1000 * pow(sin(.pi * midpoint / 0.01), 2) : 0, 0, 0)
                 let contacts = body.advanceWithGround(by: dt, force: force)
                 impulse += dt * force
-                for contact in contacts { contactImpulse += SIMD3(contact.tangent.x, contact.tangent.y, contact.normal) }
+                for contact in contacts {
+                    contactImpulse += SIMD3(contact.tangent.x, contact.tangent.y, contact.normal)
+                }
                 time += dt
             }
-            results.append(Result(
-                kind: "contact-only", remapMode: remapMode, cellSize: nil, cfl: nil, mechanicalStep: step, time: time,
-                displacement: body.position - start, velocity: body.linearVelocity,
-                orientation: body.orientation.vector, angularMomentum: body.angularMomentum,
-                appliedImpulse: impulse, groundImpulse: contactImpulse,
-                relativeGasMassChange: nil, relativeGasEnergyChange: nil, gasMomentumChange: nil,
-                maximumRelativePressureError: nil, occupiedVolumeChange: nil))
+            results.append(
+                Result(
+                    kind: "contact-only", remapMode: remapMode, cellSize: nil, cfl: nil, mechanicalStep: step,
+                    time: time,
+                    displacement: body.position - start, velocity: body.linearVelocity,
+                    orientation: body.orientation.vector, angularMomentum: body.angularMomentum,
+                    appliedImpulse: impulse, groundImpulse: contactImpulse,
+                    relativeGasMassChange: nil, relativeGasEnergyChange: nil, gasMomentumChange: nil,
+                    maximumRelativePressureError: nil, occupiedVolumeChange: nil))
         }
         return results
     }
@@ -135,7 +145,8 @@ public enum ExperimentalRigidBoxDiagnostics {
         let grid = air.grid
         return air.withState { cells in
             var maximum = 0.0
-            for n in cells.indices where !air.isSolid(n % grid.nx, (n / grid.nx) % grid.ny, n / (grid.nx * grid.ny)) {
+            for n in cells.indices
+            where !air.isSolid(n % grid.nx, (n / grid.nx) % grid.ny, n / (grid.nx * grid.ny)) {
                 let pressure = cells[n].primitive(gamma: 1.4).pressure
                 maximum = max(maximum, abs(Double(pressure) / 101325 - 1))
             }

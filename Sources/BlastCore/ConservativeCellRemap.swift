@@ -11,7 +11,9 @@ public enum ExperimentalBoxRemap: String, Codable, Sendable {
 /// cut-cell scheme. The caller supplies adjacent cells, including across patch boundaries.
 enum ConservativeCellRemap {
     enum Failure: Error, LocalizedError {
-        case enclosedClosingCell(Int), disconnectedOpening(Int)
+        case enclosedClosingCell(Int)
+        case disconnectedOpening(Int)
+
         var errorDescription: String? {
             switch self {
             case .enclosedClosingCell(let index):
@@ -49,7 +51,10 @@ enum ConservativeCellRemap {
                     head += 1
                     for adjacent in neighbours(n) where !newSolid[adjacent] && parents[adjacent] == nil {
                         parents[adjacent] = n
-                        if available.contains(adjacent) { end = adjacent; break }
+                        if available.contains(adjacent) {
+                            end = adjacent
+                            break
+                        }
                         queue.append(adjacent)
                     }
                 }
@@ -64,7 +69,8 @@ enum ConservativeCellRemap {
             }
             // Unequal voxel volumes or disconnected surfaces still use conservative local
             // redistribution. This fallback cannot preserve a uniform field when volume changes.
-            return try apply(cells, oldSolid: adjustedOld, newSolid: newSolid,
+            return try apply(
+                cells, oldSolid: adjustedOld, newSolid: newSolid,
                 closingTransit: Set(closing), neighbours: neighbours)
         }
         var cells = original
