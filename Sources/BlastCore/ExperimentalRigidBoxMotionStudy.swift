@@ -3,10 +3,12 @@ import simd
 /// CPU-only prescribed-motion geometry. Temporal midpoint quadrature is compared with
 /// exact endpoint volume; it is not assumed conservative when walls cross cell boundaries.
 public enum ExperimentalRigidBoxMotionStudy {
-    public enum Integration: String, Codable, Sendable { case midpoint, eventSplitGauss }
+    public enum Integration: String, Codable, Sendable { case midpoint, eventSplitGauss, adaptiveGauss }
     public struct Result: Codable, Sendable {
         public let integration: Integration
         public let integrationIntervals: Int
+        public let volumeTolerance: Double?
+        public let quadratureVolumeError: Double?
         public let kind: String
         public let cellSize: Double
         public let temporalSamples: Int
@@ -23,25 +25,30 @@ public enum ExperimentalRigidBoxMotionStudy {
     public static func run() throws -> [Result] {
         var results: [Result] = []
         for h in [0.2, 0.1, 0.05] {
-            for kind in ["translation-crossing", "rotation", "ground-gap-opening"] {
+            for kind in ["translation-crossing", "rotation", "rotated-translation", "ground-gap-opening"] {
                 for samples in [8, 32, 128] {
                     results.append(try measure(kind: kind, cellSize: h, samples: samples))
                 }
-                if kind != "rotation" {
+                if kind == "translation-crossing" || kind == "ground-gap-opening" {
                     results.append(try measure(kind: kind, cellSize: h, samples: 0, eventSplit: true))
+                } else {
+                    results.append(try measure(kind: kind, cellSize: h, samples: 0, adaptive: true))
                 }
             }
         }
         return results
     }
 
-    private static func measure(kind: String, cellSize h: Double, samples: Int, eventSplit: Bool = false)
+    private static func measure(
+        kind: String, cellSize h: Double, samples: Int, eventSplit: Bool = false, adaptive: Bool = false
+    )
         throws -> Result
     {
         let duration = 0.02
         let pressure = 101325.0
         let axis = simd_normalize(SIMD3<Double>(1, 2, 3))
         let rotating = kind == "rotation"
+        let tilted = rotating || kind == "rotated-translation"
         let gap = kind == "ground-gap-opening"
         let start = gap ? SIMD3<Double>(2, 2, 0.40001) : SIMD3<Double>(2.095, 2, 2)
         let velocity = rotating ? SIMD3<Double>.zero : gap ? SIMD3(0, 0, 0.6) : SIMD3(6, 0, 0)
@@ -55,7 +62,7 @@ public enum ExperimentalRigidBoxMotionStudy {
         func body(at time: Double) throws -> RigidBoxBody {
             try RigidBoxBody(
                 mass: 2, size: SIMD3(repeating: 0.8), position: start + time * velocity,
-                orientation: simd_quatd(angle: rotating ? 0.11 + 4 * time : 0, axis: axis))
+                orientation: simd_quatd(angle: tilted ? 0.11 + (rotating ? 4 * time : 0) : 0, axis: axis))
         }
         if eventSplit {
             let sweep = try TranslatingBoxCellSweep.integrate(
@@ -63,6 +70,22 @@ public enum ExperimentalRigidBoxMotionStudy {
                 lower: lower, cellSize: h, duration: duration, pressure: pressure)
             return Result(
                 integration: .eventSplitGauss, integrationIntervals: sweep.intervals,
+                volumeTolerance: nil, quadratureVolumeError: nil,
+                kind: kind, cellSize: h, temporalSamples: sweep.evaluations, duration: duration,
+                solidVolumeChange: sweep.volumeChange, sweptVolume: sweep.sweptVolume,
+                volumeResidual: sweep.sweptVolume - sweep.volumeChange,
+                gasPressureWork: sweep.gasWork, bodyPressureWork: sweep.bodyWork,
+                workBalanceResidual: sweep.gasWork + sweep.bodyWork,
+                endpointPressureWork: pressure * sweep.volumeChange)
+        }
+        if adaptive {
+            let tolerance = h * h * h * 1e-9
+            let sweep = try AdaptiveBoxCellSweep.integrate(
+                body: body(at: 0), velocity: velocity, spin: spin,
+                lower: lower, cellSize: h, duration: duration, pressure: pressure, volumeTolerance: tolerance)
+            return Result(
+                integration: .adaptiveGauss, integrationIntervals: sweep.intervals,
+                volumeTolerance: tolerance, quadratureVolumeError: sweep.errorEstimate,
                 kind: kind, cellSize: h, temporalSamples: sweep.evaluations, duration: duration,
                 solidVolumeChange: sweep.volumeChange, sweptVolume: sweep.sweptVolume,
                 volumeResidual: sweep.sweptVolume - sweep.volumeChange,
@@ -93,6 +116,7 @@ public enum ExperimentalRigidBoxMotionStudy {
         }
         return Result(
             integration: .midpoint, integrationIntervals: samples,
+            volumeTolerance: nil, quadratureVolumeError: nil,
             kind: kind, cellSize: h, temporalSamples: samples, duration: duration,
             solidVolumeChange: change, sweptVolume: swept, volumeResidual: swept - change,
             gasPressureWork: gasWork, bodyPressureWork: bodyWork, workBalanceResidual: gasWork + bodyWork,
