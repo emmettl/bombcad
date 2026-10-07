@@ -81,7 +81,9 @@ warnings, material assignment, repair, and saving or reopening imported sources.
 
 Repository-only [importer sample files](Samples/Importer/README.md) cover named parts,
 STL components, units, cavities, thin features, narrow gaps, and the repair workflow.
-They are not bundled with the app.
+They are not bundled with the app. The [real CAD fixtures](Samples/Importer/RealCAD/README.md)
+add unchanged FreeCAD library exports, pinned provenance and current acceptance/resolution expectations;
+their STEP counterparts are references for future support.
 
 The importer retains each source mesh, its units/orientation and placement in the saved layout.
 **Inspect / edit source…** in Edit layout reopens an import without its original file. Changing

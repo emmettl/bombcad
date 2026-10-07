@@ -1,0 +1,155 @@
+{
+  "repository": "FreeCAD/FreeCAD-library",
+  "revision": "f5ca01cdcaa2f69b9295a6382719c2d90628780c",
+  "models": [
+    {
+      "name": "concrete-block",
+      "files": [
+        {
+          "file": "concrete-block.stl",
+          "upstreamPath": "Architectural Parts/Construction blocks/Concrete block 14x39x19.stl",
+          "sha256": "966aaaad3fa906b30ae08c9416ab6eea7d8d0c3b9e72102619219655b01750ba",
+          "bytes": 18684,
+          "sourceURL": "https://github.com/FreeCAD/FreeCAD-library/blob/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Construction%20blocks/Concrete%20block%2014x39x19.stl",
+          "rawURL": "https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Construction%20blocks/Concrete%20block%2014x39x19.stl"
+        },
+        {
+          "file": "concrete-block.step",
+          "upstreamPath": "Architectural Parts/Construction blocks/Concrete block 14x39x19.step",
+          "sha256": "cb8eec55733f1917b64a7b476488bf5efdb85682c189accf2e51ae21d9fa1eb1",
+          "bytes": 74730,
+          "sourceURL": "https://github.com/FreeCAD/FreeCAD-library/blob/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Construction%20blocks/Concrete%20block%2014x39x19.step",
+          "rawURL": "https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Construction%20blocks/Concrete%20block%2014x39x19.step"
+        }
+      ],
+      "history": [
+        {
+          "revision": "6f071a4bab37fff7784092548e6dbff21499b751",
+          "author": "WladIMirG",
+          "message": "INICIO\n\nEn este commit me hago colaborador de este proyecto."
+        },
+        {
+          "revision": "5490996448262af069cd11c962d2b64122b0b457",
+          "author": "Yorik van Havre",
+          "message": "Added Architectural Parts -> Concrete blocks"
+        }
+      ],
+      "stlUnits": "millimetres (inferred from corresponding STEP declaration; STL does not encode units)",
+      "stepUnits": "millimetres (SI_UNIT(.MILLI.,.METRE.))",
+      "attribution": "Yorik van Havre; WladIMirG (upstream history)",
+      "features": [
+        "rounded corners in through-openings",
+        "thin webs",
+        "single closed solid"
+      ],
+      "triangleCount": 372,
+      "rawSize": [
+        390,
+        140,
+        190
+      ],
+      "expectedSTL": "accepted"
+    },
+    {
+      "name": "casement-window",
+      "files": [
+        {
+          "file": "casement-window.stl",
+          "upstreamPath": "Architectural Parts/Windows/Casement/Simple 2-panes window.stl",
+          "sha256": "d1b56119d4f55e8cd1d3b3ba9999c45f19e83db4317dbe98b93746c67aac4e89",
+          "bytes": 5484,
+          "sourceURL": "https://github.com/FreeCAD/FreeCAD-library/blob/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Windows/Casement/Simple%202-panes%20window.stl",
+          "rawURL": "https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Windows/Casement/Simple%202-panes%20window.stl"
+        },
+        {
+          "file": "casement-window.step",
+          "upstreamPath": "Architectural Parts/Windows/Casement/Simple 2-panes window.step",
+          "sha256": "975ce6e171202754546f9e6884fb2dda466cfad1d98b0bdd8de645ef54f1d241",
+          "bytes": 102810,
+          "sourceURL": "https://github.com/FreeCAD/FreeCAD-library/blob/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Windows/Casement/Simple%202-panes%20window.step",
+          "rawURL": "https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Architectural%20Parts/Windows/Casement/Simple%202-panes%20window.step"
+        }
+      ],
+      "history": [
+        {
+          "revision": "6f071a4bab37fff7784092548e6dbff21499b751",
+          "author": "WladIMirG",
+          "message": "INICIO\n\nEn este commit me hago colaborador de este proyecto."
+        },
+        {
+          "revision": "2df97c87cc31d6298849397eec6654c502dffc13",
+          "author": "Yorik van Havre",
+          "message": "Fixed wrong folder names"
+        }
+      ],
+      "stlUnits": "millimetres (inferred from corresponding STEP declaration; STL does not encode units)",
+      "stepUnits": "millimetres (SI_UNIT(.MILLI.,.METRE.))",
+      "attribution": "Yorik van Havre; WladIMirG (upstream history; native LastModifiedBy confirms Yorik van Havre)",
+      "nativePath": "Architectural Parts/Windows/Casement/Simple 2-panes window.fcstd",
+      "nativeLicenseURL": "http://creativecommons.org/licenses/by/3.0/",
+      "features": [
+        "multiple solids",
+        "ambiguous contacts",
+        "assembly conversion baseline"
+      ],
+      "triangleCount": 108,
+      "rawSize": [
+        100,
+        120,
+        5.25
+      ],
+      "expectedSTL": "rejected: intersecting or ambiguously touching triangles"
+    },
+    {
+      "name": "pvc-tee",
+      "files": [
+        {
+          "file": "pvc-tee.stl",
+          "upstreamPath": "Pipes and tubes/PVC Tee 32mm.stl",
+          "sha256": "739e05cf3d9a29a382d641919acb4c29ef048bd438f519322f1fd2c96ada1863",
+          "bytes": 200284,
+          "sourceURL": "https://github.com/FreeCAD/FreeCAD-library/blob/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Pipes%20and%20tubes/PVC%20Tee%2032mm.stl",
+          "rawURL": "https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Pipes%20and%20tubes/PVC%20Tee%2032mm.stl"
+        },
+        {
+          "file": "pvc-tee.step",
+          "upstreamPath": "Pipes and tubes/PVC Tee 32mm.step",
+          "sha256": "e7c19ecc17d02a0de4c9750195db7784bdab21180f2aaafee10850c3e93cbdc4",
+          "bytes": 133299,
+          "sourceURL": "https://github.com/FreeCAD/FreeCAD-library/blob/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Pipes%20and%20tubes/PVC%20Tee%2032mm.step",
+          "rawURL": "https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/f5ca01cdcaa2f69b9295a6382719c2d90628780c/Pipes%20and%20tubes/PVC%20Tee%2032mm.step"
+        }
+      ],
+      "history": [
+        {
+          "revision": "5d1105126aec8cbfa5e017241179ec72ab657fea",
+          "author": "BERSERK",
+          "message": "File and folder organization\n\nTrying to give a more readable organization for those who can and want (I include myself) to contribute to the parts library\nThat movement seems important to me because there are repeated objects that are outside its area"
+        }
+      ],
+      "stlUnits": "millimetres (inferred from corresponding STEP declaration; STL does not encode units)",
+      "stepUnits": "millimetres (SI_UNIT(.MILLI.,.METRE.))",
+      "attribution": "Javier Castellanos (Mirddyn), creator recorded in native FreeCAD document; BERSERK (upstream organizer)",
+      "nativePath": "Pipes and tubes/PVC Tee 32mm.FCStd",
+      "nativeLicenseURL": "http://creativecommons.org/licenses/by/4.0/",
+      "licenseNote": "The repository asset notice specifies CC-BY-3.0; this model author also records CC-BY-4.0 in the native document. Both notices are retained.",
+      "features": [
+        "curved tubular surfaces",
+        "intersecting bores",
+        "thin walls",
+        "negative source coordinates"
+      ],
+      "triangleCount": 4004,
+      "rawSize": [
+        82,
+        37.974647521972656,
+        67
+      ],
+      "expectedSTL": "accepted"
+    }
+  ],
+  "formatVersion": 1,
+  "retrievedOn": "2026-10-08",
+  "modifications": "None: all CAD files are byte-for-byte copies; only local filenames differ.",
+  "licenseURL": "https://creativecommons.org/licenses/by/3.0/"
+}
