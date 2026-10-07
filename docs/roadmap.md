@@ -153,6 +153,21 @@ horizontal velocity. Cars and furniture need independent motion and contact forc
 by their actual ground reactions. This is planned work, not an implemented or validated
 vehicle model.
 
+Started: a standalone CPU reference for a rigid box, with analytical uniform-box mass properties,
+linear and angular impulses, gravity, force/torque integration and orientation updates, plus
+ground contact with lift-off and separate static/sliding friction. Thirteen tests cover
+ballistic motion, rotated inertia, angular-momentum conservation, resting support, friction
+thresholds and deceleration, lift-off, inelastic impact, rocking and tipping, and timestep
+convergence. Contact uses a first-order impulse step with a small geometric tolerance and
+positional correction; impacts have no rebound. This is a mechanics reference, not a measured
+vehicle model or a performance-optimised production solver. Scenario definitions now persist
+box shape, pose, mass, centre-of-mass offset, optional principal inertia and friction, and
+convert into fresh reference mechanics state. Definitions validate on construction and load;
+older layouts without them still open. JSON and project-package round trips are tested. A
+nonzero centre-of-mass offset requires explicit inertia. These saved inputs are not yet used
+by rendering or the blast solver. A standalone visual box demonstration is next; milestone 1
+remains incomplete pending a reviewable demonstration.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

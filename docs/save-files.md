@@ -50,6 +50,23 @@ table checked against the reconstructed mesh. Scale, up-axis conversion and plac
 once by the importer. Integer part IDs belong to their source asset; they are not voxel IDs.
 Original OBJ/STL files are unnecessary for reopening the project.
 
+The optional `scenario.rigidObjects` array stores experimental independent rigid-object inputs.
+Older scenarios omit it and decode with no objects; an explicitly empty array also remains
+empty on save/reopen. Each definition retains a UUID `id`, `name`, `shape`, `position`,
+`orientation`, `mass`, `centreOfMass`, optional `inertia`, `staticFriction` and `slidingFriction`.
+Currently `shape` supports only a box, encoded as `{"box":{"size":[x,y,z]}}` with full dimensions
+in metres. Position refers to its geometric centre in world coordinates; orientation is a
+body-to-world unit quaternion `[x,y,z,w]`. Centre of mass is a local offset from the geometric
+centre. Inertia gives principal moments about the centre of mass in kg m², with axes aligned
+to the box axes. Omitted inertia assumes a uniform centred box; a nonzero offset requires
+explicit inertia. Friction must satisfy static ≥ sliding ≥ 0. Invalid geometry, mass, pose,
+inertia, friction or initial ground penetration is rejected during decoding.
+
+Rigid objects currently persist as inputs only: the renderer and blast solver do not consume
+them. They are separate from static scenery boxes and imported models marked `rigid`, which
+remain stationary obstacles. Runtime motion is not saved; conversion starts a fresh body at
+rest. See the [freestanding-object roadmap](roadmap.md#freestanding-objects-and-supports).
+
 Each preview carries a provenance key containing the source checksum, transform, cell size,
 domain size and sampler version. Loading rejects mismatched keys. Resolution changes use the
 importer's normal resampling path and preserve part assignments. Detached scene boxes and the

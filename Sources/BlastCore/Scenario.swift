@@ -45,6 +45,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// Extent of the simulated volume in metres; its origin is at a ground-level corner.
     public var domainSize: SIMD3<Float>
     public var boxes: [Box]
+    /// Experimental independent rigid objects, persisted but not yet rendered or simulated.
+    /// Optional so layouts predating rigid-object definitions continue to decode unchanged.
+    public var rigidObjects: [RigidObjectDefinition]?
     /// Import diagnostics persist with the layout: voxelisation cannot recover lost geometry.
     public var importNotes: [String]?
     public var importedModels: [ImportedModel]?
@@ -60,7 +63,7 @@ public struct Scenario: Sendable, Hashable, Codable {
 
     public init(
         name: String, domainSize: SIMD3<Float>, boxes: [Box], charge: Charge, gauges: [Gauge] = [],
-        structure: StructureModel? = nil
+        structure: StructureModel? = nil, rigidObjects: [RigidObjectDefinition]? = nil
     ) {
         self.name = name
         self.domainSize = domainSize
@@ -68,6 +71,7 @@ public struct Scenario: Sendable, Hashable, Codable {
         self.charge = charge
         self.gauges = gauges
         self.structure = structure
+        self.rigidObjects = rigidObjects
     }
 
     public func grid(cellSize: Float) -> Grid {
