@@ -125,7 +125,7 @@ struct DiagnosticsList: View {
             } else if let note = d.waveNote {
                 Text("Wave solver skipped: \(note)")
             }
-            if let schroeder = d.schroederFrequency {
+            if d.waveCrossover == nil, let schroeder = d.schroederFrequency {
                 Text(String(format: "Approximate below about %.0f Hz (Schroeder frequency).", schroeder))
             }
             if let scattered = d.scatteredFraction, let rays = d.diffuseRays, rays > 0 {

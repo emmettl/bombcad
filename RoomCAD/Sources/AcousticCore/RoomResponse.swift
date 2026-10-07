@@ -433,9 +433,15 @@ public enum RoomResponseGenerator {
             usableBand: .init(
                 lowerHz: max(settings.lowFrequencyCutoff, 20),
                 upperHz: BandRenderer.passbandFraction * Double(settings.sampleRate)),
-            approximateBelowHz: schroeder,
-            model:
-                "Geometrical acoustics (image sources for specular paths, ray tracing for scattered energy); "
+            // With the wave solver, the low frequencies are modelled as waves, not approximated.
+            approximateBelowHz: wave == nil ? schroeder : nil,
+            model: wave.map {
+                String(
+                    format:
+                        "Finite-difference wave solver below %.0f Hz; above it, geometrical acoustics (image "
+                        + "sources for specular paths, ray tracing for scattered energy).", $0.crossover)
+            }
+                ?? "Geometrical acoustics (image sources for specular paths, ray tracing for scattered energy); "
                 + "low-frequency behaviour is approximate.",
             assumptions: RoomResponse.assumptions, generator: RoomResponse.generatorName)
         return RoomResponse(

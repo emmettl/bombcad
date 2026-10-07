@@ -160,3 +160,19 @@ struct WaveSolverTests {
         #expect(throws: AcousticError.self) { try bad.validate() }
     }
 }
+
+@Suite("Wave solver metadata")
+struct WaveMetadataTests {
+    @Test("A response with the wave solver says so and no longer calls its low end approximate")
+    func describes() throws {
+        let settings = RoomResponseSettings(
+            room: ShoeboxRoom(size: [3, 2.5, 2.2], material: .uniform(0.2, name: "Plaster")),
+            source: RoomPoint(name: "S", position: [0.8, 0.9, 1.1]),
+            receivers: [RoomPoint(name: "R", position: [2.2, 1.6, 1.2])],
+            duration: 0.2, maximumReflectionOrder: 20, lowFrequencyModel: true, crossoverFrequency: 100)
+        let result = try RoomResponseGenerator.generate(settings, cancellation: CancellationFlag())
+        #expect(result.diagnostics.waveCrossover == 100)
+        #expect(result.response.metadata.approximateBelowHz == nil)
+        #expect(result.response.metadata.model.hasPrefix("Finite-difference wave solver below 100 Hz"))
+    }
+}
