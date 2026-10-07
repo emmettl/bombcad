@@ -25,6 +25,7 @@ format:
 
 ci-test:
 	python3 Scripts/test-release.py
+	python3 Scripts/test-nightly.py
 
 check: lint test ci-test build
 

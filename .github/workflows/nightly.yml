@@ -1,0 +1,43 @@
+# The validation suite and the benchmarks, every night on the self-hosted Mac mini. Results are
+# compared with the previous night's (kept on the runner in ~/bombcad-nightly); the job fails
+# when a result changes, a run is much slower than usual or a command fails. See
+# docs/continuous-integration.md.
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Comma-separated suite entries to run (blank for all)"
+        required: false
+        default: ""
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the suite
+        env:
+          ONLY: ${{ inputs.only }}
+        run: >
+          python3 Scripts/nightly.py
+          --history "$HOME/bombcad-nightly"
+          --out nightly-results
+          --summary "$GITHUB_STEP_SUMMARY"
+          ${ONLY:+--only "$ONLY"}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-${{ github.run_number }}
+          path: nightly-results/

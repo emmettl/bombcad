@@ -328,6 +328,7 @@ Collapse and debris have not been compared with anything.
 | [Save files](docs/save-files.md)            | Versioned project packages, assets and persisted settings       |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
+| [Continuous integration](docs/continuous-integration.md) | The Mac mini runner, nightly validation and benchmarks |
 
 Each model document lists its sources, its limitations and the work that would address them.
 
