@@ -194,8 +194,8 @@ broader performance measurements remain open before milestone 2 is complete.
 comparison. Runs stop at the same 30 ms endpoint in a closed domain, separating gas mass
 conservation from boundary outflow. Grid sensitivity is still substantial for free motion;
 the study is a diagnostic, not a validation result. `swift run -c release rigidboxdemo --refined`
-generates the refined held/free replay. Optimisation of fine-cell remapping and further spatial
-convergence are next, before multiple objects and collision handling.
+generates the refined held/free replay. Further spatial convergence and broader performance
+measurements are next, before multiple objects and collision handling.
 
 In the first matched-time study, factor-two adaptive held-box impulse is 36.18 N s against
 37.04 N s on uniform 0.1 m air (2.3% lower). Halving the timestep on uniform 0.05 m air changes
@@ -209,9 +209,64 @@ With moving refined masks and remapping enabled, the factor-two free-box speed a
 14.39 m/s against 14.59 m/s on uniform 0.1 m air (1.3% lower); its accumulated x impulse is
 29.36 N s against 30.26 N s (3.0% lower). Gas mass change stays below one part in ten million
 in that refined run. Remapping preserves mass, momentum and energy, but can still introduce
-pressure artefacts and does not preserve angular momentum exactly. The reference run is
-slower than the matching uniform case because it rebuilds and orders fine-cell data on the
-CPU; these timings do not establish a production throughput target.
+pressure artefacts and does not preserve angular momentum exactly.
+
+Fine-cell remapping now gathers only complete coarse cells within the swept old/new box
+bounds plus a one-coarse-cell donor margin. A direct translation/rotation field test matches
+the retained whole-domain remapper exactly, including independence from patch allocation
+order. In one profiled release study, the adaptive free-box run fell from 1.27 s to 0.32 s
+(about four times faster); remapping phases fell from 0.95 s to 0.12 s. End velocity changed
+by less than 0.000007 m/s and displacement by less than 0.00000002 m through floating-point
+rounding. These measurements cover one synchronous reference case and do not establish a
+production throughput target. The JSON study records phase timings for further profiling.
+
+`swift run -c release rigidboxdemo --convergence --extended` adds 0.025 m uniform grids
+at both CFL settings and adaptive runs with 0.05 m fine cells, using a 128 MiB patch budget.
+The 18-case report includes initial gas mass/energy and final orientation/angular momentum.
+The extended closed-domain study gives these results at 30 ms (CFL 0.45):
+
+| Air grid | Held-box x impulse (N s) | Free-box displacement (m) | Free-box speed (m/s) |
+| --- | ---: | ---: | ---: |
+| Uniform 0.1 m | 37.04 | 0.11247 | 14.59 |
+| Uniform 0.05 m | 40.35 | 0.14244 | 12.30 |
+| Uniform 0.025 m | 41.89 | 0.13641 | 9.43 |
+| Adaptive 0.1 m, factor 2 | 40.14 | 0.14447 | 13.12 |
+| Adaptive 0.2 m, factor 4 | 39.26 | 0.14240 | 12.22 |
+
+Held impulse changes by 3.8% between the two finest uniform grids, compared with 8.9%
+between the previous pair. Free speed still changes by 23%, and rotational response is
+also sensitive to the grid. Halving the finest timestep changes held impulse by 0.14%,
+free displacement by 0.86% and free speed by 1.6%. Initial gas mass agrees within
+0.00000004 kg and energy within 0.016 J across cases; this confirms consistent totals,
+not identical spatial charge profiles. All 18 mass changes remain below one part per
+million. The adaptive runs' free-speed differences from uniform 0.05 m are 6.6% and
+0.7%, respectively; a close endpoint alone does not establish convergence.
+
+Controlled diagnostics are now available with `swift run -c release rigidboxdemo --diagnostics`.
+They compare prescribed ambient remapping without air evolution, a suspended box in uniform
+20 m/s flow with gravity disabled, and contact-only mechanics under a centred 10 ms force
+pulse of total impulse 5 N s. The last case runs to 30 ms with mechanical steps from 0.2 ms
+to 0.025 ms; it has no gas or spatial grid. Between its two finest steps, displacement changes
+by 0.000030 m and speed by 0.0000027 m/s, and the integrated contact/force/gravity impulse
+balances body momentum.
+
+Without ground contact, uniform-flow displacement at 10 ms changes from 0.04993 m on 0.1 m
+air to 0.03944 m on 0.05 m air (21%); speed changes from 5.67 to 5.77 m/s. Halving the finer
+timestep gives 0.04039 m and 5.86 m/s. The initial flow is uniform, but the stationary box
+creates a startup transient; this is not an analytical steady-drag benchmark. Open boundaries
+exchange gas, so their mass/energy changes are reported rather than treated as conservation
+failures. Body momentum matches the recorded gas impulse without contact or gravity.
+
+Remap-only cases translate by 0.12 m, optionally rotating 5 degrees, over twelve prescribed
+updates. Gas mass and energy remain within one part in ten million and momentum is unchanged,
+but peak local pressure departures from the initially uniform ambient field reach 100–400%
+across the tested grids. These intentionally omit air evolution: their pressure errors expose
+how strongly whole-cell redistribution perturbs the field, not the error in a coupled blast
+trajectory. They also do not prove ground contact is converged under arbitrary blast loading.
+
+The next priority is improving and checking moving-boundary occupancy/remapping accuracy.
+Grid sensitivity persists without contact, and free response is not yet spatially converged,
+so adding multiple objects remains behind those checks.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.

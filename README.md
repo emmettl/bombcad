@@ -222,8 +222,8 @@ swift run -c release blastbench slab --sensitivity
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
 holding, sliding, lift-off, rocking and tipping, with playback and a time slider. It records
-the Swift reference mechanics; independent rigid objects are not yet coupled to the blast
-or displayed in the app.
+the Swift reference mechanics; independent rigid objects are not yet simulated or displayed
+in the app.
 
 `swift run -c release rigidboxdemo --blast` generates `.build/rigid-box-blast-demo.html`, a
 slow-motion comparison of a held and free box under the same blast. This experimental path
@@ -237,7 +237,18 @@ It includes held/free uniform-grid references and factor-two adaptive held/free 
 `swift run -c release rigidboxdemo --refined` generates `.build/rigid-box-refined-demo.html`,
 showing held and moving boxes with fine masks and wall velocities. Translation, rotation and
 ground-gap opening/closure use conservative fine-cell remapping. Free-motion results are
-still sensitive to spatial resolution, and the synchronous remapping path needs optimisation.
+still sensitive to spatial resolution. The synchronous remapper operates within the swept
+box bounds plus a donor margin; the convergence report includes remapping phase timings.
+Add `--extended` to the convergence command for 0.025 m uniform grids at both timesteps
+and adaptive comparisons with 0.05 m fine cells. This writes
+`.build/rigid-box-convergence-extended.json`, including initial gas mass/energy and final
+orientation/angular momentum; each completed case prints its timing.
+
+`swift run -c release rigidboxdemo --diagnostics` writes `.build/rigid-box-diagnostics.json`:
+prescribed remapping in ambient air without gas evolution, suspended-box loading in uniform
+flow without gravity/contact, and contact-only mechanics under a known force pulse. These
+separate boundary sensitivity from contact sensitivity; the remap-only pressure changes
+are a numerical stress diagnostic, not a prediction of blast error.
 
 ## Headline results
 

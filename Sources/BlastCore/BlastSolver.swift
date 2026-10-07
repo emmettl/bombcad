@@ -1294,7 +1294,9 @@ extension BlastSolver {
         guard own.contains(1) || configuration.refinement > 1 else {
             throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
         }
-        let fineCommit = !initial ? try refinement?.prepareBoxRemap(body, grid: grid) : nil
+        let fineCommit =
+            !initial
+            ? try refinement?.prepareBoxRemap(body, grid: grid, previousBounds: experimentalBoxBounds) : nil
         if !initial && refinement == nil {
             func neighbours(_ n: Int) -> [Int] {
                 let i = n % grid.nx
