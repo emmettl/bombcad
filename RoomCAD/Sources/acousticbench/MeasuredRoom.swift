@@ -117,7 +117,13 @@ enum MeasuredRoom {
                 let d = result.diagnostics
                 print(
                     "Simulated \(set) \(source) in \(format(Date().timeIntervalSince(start), 1)) s; wave solver "
-                        + "below \(format(d.waveCrossover, 0)) Hz, \(d.waveRuns ?? 0) runs")
+                        + "below \(format(d.waveCrossover, 0)) Hz, \(d.waveRuns ?? 0) runs; bare decay "
+                        + OctaveBands.centres.indices.compactMap { band in
+                            (d.waveBareDecay?[band] ?? nil).map {
+                                "\(formatBand(OctaveBands.centres[band])) \(format($0, 2)) s (Eyring "
+                                    + "\(format(d.eyringReverberationTime[band], 2)) s)"
+                            }
+                        }.joined(separator: ", "))
             }
         }
         try? FileManager.default.createDirectory(
@@ -235,5 +241,7 @@ enum MeasuredRoom {
         }
     }
 
-    static func formatBand(_ f: Double) -> String { f >= 1000 ? "\(Int(f / 1000)) kHz" : "\(Int(f)) Hz" }
+    static func formatBand(_ f: Double) -> String {
+        f >= 1000 ? "\(Int(f / 1000)) kHz" : "\(Int(f.rounded())) Hz"
+    }
 }

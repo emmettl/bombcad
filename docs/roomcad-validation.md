@@ -39,8 +39,8 @@ is in that folder's README. In short:
 
 ## Method
 
-`make roomcad-validate` (`acousticbench --bras-cr2`) simulates all ten pairs, 3.5 s long like the measurements, in three
-configurations:
+`make roomcad-validate` (`acousticbench --bras-cr2`) simulates all ten pairs, 3.5 s long like the
+measurements, in three configurations:
 
 - the initial materials with the wave solver;
 - the fitted materials with the wave solver;
@@ -77,6 +77,14 @@ solver.
 
 ## Results
 
+The first run of this comparison found the wave solver's low-frequency decay too long. Its walls are
+locally reacting, and they take only half as much energy from modes that graze them as from modes that
+strike them. With the fitted materials, its T30 at 63 and 125 Hz came out 2.02 and 1.85 s, against
+1.71 and 1.40 s measured. The solver now damps each band so the room decays, on average, at Eyring's
+diffuse rate (see [the wave solver](room-acoustics-model.md#low-frequencies-the-wave-solver)). The
+results below include that matching. The probes measured the bare decay at 1.25–1.35 times Eyring's
+estimate in each of the solver's bands.
+
 ### Reverberation time
 
 T30, mean over the pairs (measured ± spread across the pairs), with JNDs in brackets:
@@ -84,52 +92,52 @@ T30, mean over the pairs (measured ± spread across the pairs), with JNDs in bra
 | | 63 Hz | 125 Hz | 250 Hz | 500 Hz | 1 kHz | 2 kHz | 4 kHz | 8 kHz |
 |---|---|---|---|---|---|---|---|---|
 | Measured | 1.71 ± 0.47 | 1.40 ± 0.12 | 1.72 ± 0.14 | 2.02 ± 0.04 | 1.94 ± 0.04 | 1.75 ± 0.02 | 1.57 ± 0.01 | 1.03 ± 0.02 |
-| Initial | 4.33 (+31) | 3.49 (+30) | 1.93 (+2.4) | 1.84 (−1.8) | 1.88 (−0.6) | 1.66 (−1.0) | 1.27 (−3.7) | 0.71 (−6.2) |
-| Fitted | 2.02 (+3.7) | 1.85 (+6.4) | 1.93 (+2.5) | 2.27 (+2.5) | 2.16 (+2.3) | 1.91 (+1.9) | 1.67 (+1.3) | 0.94 (−1.8) |
-| Fitted, no wave solver | 1.55 (−1.9) | 1.56 (+2.2) | 1.89 (+2.0) | 2.26 (+2.4) | 2.17 (+2.4) | 1.90 (+1.7) | 1.67 (+1.3) | 0.94 (−1.7) |
+| Initial | 3.22 (+18) | 2.61 (+17) | 1.92 (+2.3) | 1.81 (−2.1) | 1.84 (−1.0) | 1.67 (−0.9) | 1.27 (−3.7) | 0.71 (−6.2) |
+| Fitted | 1.53 (−2.1) | 1.45 (+0.7) | 1.91 (+2.2) | 2.24 (+2.2) | 2.12 (+1.9) | 1.92 (+1.9) | 1.67 (+1.3) | 0.94 (−1.7) |
+| Fitted, no wave solver | 1.56 (−1.7) | 1.61 (+2.9) | 1.90 (+2.1) | 2.24 (+2.2) | 2.12 (+1.9) | 1.92 (+1.9) | 1.67 (+1.3) | 0.94 (−1.7) |
 
 T20 and EDT follow the same pattern.
 
-- **250 Hz to 2 kHz, initial materials.** RoomCAD predicts the measured T30 to within 12% (−9% to
+- **250 Hz to 2 kHz, initial materials.** RoomCAD predicts the measured T30 to within 12% (−10% to
   +12%) from published material data alone. That is the most useful result, because a designer
   usually has no measurement.
 - **Fitted materials.** These make Eyring's estimate equal the measured times by construction.
-  RoomCAD's decay is 6–12% longer than that from 250 Hz to 4 kHz. In a room this close to a box,
-  with scattering of only 0.05–0.07 below 1 kHz on the walls and floor, some sound keeps travelling between parallel surfaces
-  and decays more slowly than in a diffuse field. This is the non-diffuse decay that Kuttruff
-  describes, and the model shows it for that reason. The real room has chairs, radiators and
-  fittings that scatter more.
+  RoomCAD's decay is 6–11% longer than that from 250 Hz to 4 kHz. In a room this close to a box, with
+  scattering of only 0.05–0.07 below 1 kHz on the walls and floor, some sound keeps travelling between
+  parallel surfaces and decays more slowly than in a diffuse field. This is the non-diffuse decay that
+  Kuttruff describes, and the geometrical model shows it for that reason. The real room has chairs,
+  radiators and fittings that scatter more.
 - **4 and 8 kHz, initial materials.** The decay is 19% and 31% too short. The initial high-frequency
   absorption, including air, is too high for this room. The fitted set corrects it.
-- **63 and 125 Hz, initial materials.** The decay is two and a half times too long. The published
-  absorption of plaster and concrete is only 0.02–0.05 there. The real room loses much more energy
-  at low frequencies, through the windows' and doors' flexibility and transmission. A designer needs
+- **63 and 125 Hz, initial materials.** The decay is nearly twice as long as measured. The published
+  absorption of plaster and concrete is only 0.02–0.05 there. The real room loses much more energy at
+  low frequencies, through the windows' and doors' flexibility and transmission. A designer needs
   realistic low-frequency absorption for small rooms, which published coefficients for hard walls
   don't give.
-- **63 and 125 Hz, fitted materials, with the wave solver.** The decay is still 18% and 32% too long.
-  The geometrical model without it comes closer, at −9% and +11%. The wave solver's walls are locally
-  reacting with a real impedance, which absorbs nothing at grazing incidence. Below about 150 Hz,
-  this room's field is dominated by axial and tangential modes, which graze the floor and ceiling,
-  half of its surface. So the solver's modes keep their energy longer than a diffuse field would.
-  Real surfaces such as windows, doors and suspended ceilings absorb at grazing incidence too,
-  because they are not locally reacting. This is a limitation of the wave solver's boundary model
-  (see Limitations).
+- **63 and 125 Hz, fitted materials.** With the wave solver, the decay is within 11% and 4% of the
+  measurement. Geometrical acoustics alone gives −9% and +15%.
 
 ### Clarity, definition and early decay
 
-| | | 125 Hz | 250 Hz | 500 Hz | 1 kHz | 2 kHz | 4 kHz | 8 kHz |
-|---|---|---|---|---|---|---|---|---|
-| C80 (dB) | Measured | 0.8 ± 2.0 | 1.0 ± 1.3 | −1.4 ± 0.7 | −0.8 ± 0.6 | −0.1 ± 0.6 | 0.2 ± 0.4 | 6.8 ± 0.5 |
-| | Initial | −3.2 (−3.9) | −1.6 (−2.6) | −0.6 (+0.7) | −1.3 (−0.6) | 0.2 (+0.3) | 2.0 (+1.9) | 6.4 (−0.4) |
-| | Fitted | 0.1 (−0.6) | −1.7 (−2.7) | −2.2 (−0.8) | −1.9 (−1.1) | −0.7 (−0.5) | 0.0 (−0.1) | 3.8 (−3.0) |
-| D50 | Measured | 0.36 ± 0.09 | 0.42 ± 0.12 | 0.30 ± 0.05 | 0.32 ± 0.04 | 0.36 ± 0.03 | 0.36 ± 0.02 | 0.69 ± 0.03 |
-| | Initial | 0.23 (−2.6) | 0.28 (−2.7) | 0.31 (+0.3) | 0.30 (−0.3) | 0.37 (+0.1) | 0.46 (+1.9) | 0.65 (−0.7) |
-| | Fitted | 0.37 (+0.2) | 0.29 (−2.5) | 0.26 (−0.9) | 0.28 (−0.8) | 0.33 (−0.5) | 0.36 (+0.0) | 0.54 (−3.0) |
+| | | 63 Hz | 125 Hz | 250 Hz | 500 Hz | 1 kHz | 2 kHz | 4 kHz | 8 kHz |
+|---|---|---|---|---|---|---|---|---|---|
+| C80 (dB) | Measured | 2.7 ± 2.4 | 0.8 ± 2.0 | 1.0 ± 1.3 | −1.4 ± 0.7 | −0.8 ± 0.6 | −0.1 ± 0.6 | 0.2 ± 0.4 | 6.8 ± 0.5 |
+| | Initial | −2.9 (−5.6) | −1.9 (−2.6) | −2.4 (−3.4) | −0.6 (+0.8) | −1.2 (−0.4) | 0.1 (+0.2) | 2.1 (+1.9) | 6.4 (−0.3) |
+| | Fitted | 1.1 (−1.6) | 1.7 (+0.9) | −2.5 (−3.4) | −1.9 (−0.5) | −2.1 (−1.3) | −0.9 (−0.7) | 0.1 (−0.0) | 3.8 (−3.0) |
+| | Fitted, no wave solver | −0.5 (−3.2) | −0.4 (−1.2) | −2.5 (−3.5) | −1.9 (−0.5) | −2.1 (−1.3) | −0.9 (−0.7) | 0.1 (−0.0) | 3.8 (−3.0) |
+| D50 | Measured | 0.48 ± 0.14 | 0.36 ± 0.09 | 0.42 ± 0.12 | 0.30 ± 0.05 | 0.32 ± 0.04 | 0.36 ± 0.03 | 0.36 ± 0.02 | 0.69 ± 0.03 |
+| | Initial | 0.26 (−4.4) | 0.28 (−1.6) | 0.26 (−3.1) | 0.34 (+0.7) | 0.29 (−0.5) | 0.36 (+0.1) | 0.46 (+2.0) | 0.66 (−0.6) |
+| | Fitted | 0.44 (−0.8) | 0.44 (+1.6) | 0.26 (−3.2) | 0.28 (−0.5) | 0.26 (−1.2) | 0.32 (−0.8) | 0.36 (+0.0) | 0.54 (−3.0) |
+| | Fitted, no wave solver | 0.30 (−3.7) | 0.30 (−1.3) | 0.25 (−3.3) | 0.28 (−0.5) | 0.26 (−1.2) | 0.32 (−0.8) | 0.36 (+0.0) | 0.54 (−3.0) |
 
 - **500 Hz to 2 kHz.** C80 and D50 are within about one JND with either material set. EDT is within
   about 2 JND with the initial set; the fitted set's EDT is 2–3 JND long, like its T30.
-- **250 Hz.** Both sets give about 2.5 dB less clarity than measured. This is the crossover band:
-  above it the geometrical model applies, and below it the wave solver's slow low-frequency decay.
+- **63 and 125 Hz, fitted materials.** With the wave solver, clarity, definition and EDT are within
+  about 1.6 JND. Without it, clarity and definition at 63 Hz are 3–4 JND too low: geometrical acoustics
+  misses how the room's modes shape the early energy.
+- **250 Hz.** All three configurations give about 3.4 dB less clarity than measured. This band lies
+  above the wave solver's crossover (174 Hz), where the geometrical model's slow, nearly specular
+  decay applies.
 - **8 kHz.** The measured response is much clearer than its own decay suggests: EDT 0.68 s against
   T30 1.03 s, and C80 6.8 dB. The fitted model gives 3 dB less. At 8 kHz a dodecahedron is
   noticeably directional, which RoomCAD's omnidirectional source does not reproduce, so this is
@@ -141,15 +149,15 @@ From 30 to 175 Hz:
 
 | | Same position | Other positions | Best frequency scale |
 |---|---|---|---|
-| Initial | 0.62 ± 0.08 | 0.39 | 0.67, simulated frequencies 1% higher |
-| Fitted | 0.63 ± 0.09 | 0.38 | 0.67, simulated frequencies 1.5% higher |
-| Fitted, no wave solver | 0.10 ± 0.14 | 0.05 | 0.12 |
+| Initial | 0.63 ± 0.08 | 0.39 | 0.67, simulated frequencies 1.5% higher |
+| Fitted | 0.63 ± 0.09 | 0.37 | 0.68, simulated frequencies 1.5% higher |
+| Fitted, no wave solver | 0.13 ± 0.15 | 0.02 | 0.15 |
 
 - **The wave solver reproduces the room's modal structure.** At the same position the fine
-  structure correlates at 0.63, against 0.10 for geometrical acoustics alone, whose low end has no
-  modes.
+  structure correlates at 0.63, against 0.13 for geometrical acoustics alone, whose low end has no
+  modes. Matching the decay left this unchanged.
 - **Position-specific structure.** The correlation is higher at the same position than at others
-  (0.38), so the solver captures where each mode is loud or quiet, not just its frequency.
+  (0.37), so the solver captures where each mode is loud or quiet, not just its frequency.
 - **Mode frequencies.** Raising the simulated frequencies by 1–1.5% improves the agreement slightly,
   so the measured modes lie about 1.5% higher than the simulated ones. The solver's own mode
   frequencies are checked to 0.25% in a rigid box. The likely cause is that the simplified room is a
@@ -157,35 +165,30 @@ From 30 to 175 Hz:
 
 ### Early reflections
 
-Above 500 Hz, between 1.5 and 19.5 ms:
+Above 500 Hz, between 1.5 and 19.5 ms, the correlation is the same in all three configurations, since
+the wave solver works only below 174 Hz: 0.61 ± 0.25 at the same position, against 0.22 at others.
 
-| | Same position | Other positions |
-|---|---|---|
-| Initial | 0.64 ± 0.20 | 0.20 |
-| Fitted | 0.71 ± 0.11 | 0.20 |
-| Fitted, no wave solver | 0.65 ± 0.14 | 0.20 |
-
-The simulated early reflections follow the measured pattern at each position: 0.71 against 0.20 for
-the wrong position. They are not identical. The dodecahedron spans about 30 cm, and its drivers
-radiate unevenly. The measured onsets imply positions that agree with the documented ones to within
-about ±20 cm. The model also leaves out the window recesses, sills and fittings, which add
-reflections of their own. Two of the measured responses from loudspeaker 2 have a weak direct sound
-and strong arrivals near 10 and 16 ms that the model lacks.
+The simulated early reflections follow the measured pattern at most positions. They are not identical.
+The dodecahedron spans about 30 cm, and its drivers radiate unevenly. The measured onsets imply
+positions that agree with the documented ones to within about ±20 cm. The model also leaves out the
+window recesses, sills and fittings, which add reflections of their own. One pair, loudspeaker 1 to
+microphone 2, doesn't correlate at all. Two of the measured responses from loudspeaker 2 have a weak
+direct sound and strong arrivals near 10 and 16 ms that the model lacks.
 
 ## What the comparison shows
 
 1. **Mid frequencies.** From 250 Hz to 2 kHz, with only published material data, RoomCAD predicts
    reverberation time within 12%, and clarity and definition within about one JND.
-2. **Diffuseness.** With materials fitted to Eyring's formula, RoomCAD decays about 10% more slowly
-   than Eyring's formula and the measurement, because the room is not fully diffuse. Fitting
-   materials to a measured T30 should therefore be done with RoomCAD itself rather than with
+2. **Diffuseness.** With materials fitted to Eyring's formula, the geometrical model decays about 10%
+   more slowly than Eyring's formula and the measurement, because the room is not fully diffuse.
+   Fitting materials to a measured T30 should therefore be done with RoomCAD itself rather than with
    Eyring's formula.
 3. **Low-frequency modes.** The wave solver reproduces the room's modal fine structure and its
    position dependence, with mode frequencies within about 1.5%.
-4. **Low-frequency decay.** The wave solver's locally reacting, real-impedance walls absorb too
-   little at grazing incidence, so its decay below about 150 Hz is too long in this room. Without
-   the wave solver, decay comes closer but there are no modes.
-5. **Early reflections.** These follow the measured pattern at each position.
+4. **Low-frequency decay.** The bare wave solver's locally reacting walls let modes that graze them
+   outlast a diffuse field, by about 30% here. With each band matched to the diffuse decay, the solver
+   gives the measured T30, EDT, clarity and definition at 63 and 125 Hz within about 2 JND.
+5. **Early reflections.** These follow the measured pattern at most positions.
 6. **Published low-frequency absorption.** For walls such as plaster and concrete, it is much lower
    than real rooms behave, which a designer must allow for.
 

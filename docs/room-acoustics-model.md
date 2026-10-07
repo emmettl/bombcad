@@ -203,6 +203,24 @@ fill the room, at least 10 per wavelength at the top of the crossover's transiti
   frequency-independent materials needs one run and one with several distinct bands needs one per band.
   Each run's spectrum is kept only in its own bands, through the same octave weights the geometrical
   model uses, which sum to one.
+- **Decay matched to a diffuse field.** Published absorption coefficients are diffuse-field values, and
+  the geometrical model uses them that way. In the solver a wall is a locally reacting impedance. By
+  Morse's first-order theory, a mode loses only half as much energy to a wall it grazes as to one it
+  strikes. Axial and tangential modes therefore outlast a diffuse field, and a bare-walled box's decay
+  in a band is 20–60% longer than Eyring's estimate for the same coefficients. The measured seminar
+  room ([RoomCAD against a measured room](roomcad-validation.md)) decayed at the diffuse rate, because
+  real rooms mix grazing and oblique energy through their irregularities, furniture and surfaces that
+  are not locally reacting.
+
+  Each run therefore also records 24 probes, spread through the room by a Halton sequence and kept
+  0.3 m clear of every boundary. Their summed energy in each band gives the room's average T30.
+  Where that is longer than Eyring's estimate for the band, with air absorption and openings, the
+  band's response is damped by e^(−Δt) from the direct sound's arrival, so that it decays at Eyring's
+  rate. Every mode in the band is damped alike, so the modes' frequencies, their spatial pattern and
+  their differences in decay remain, and the response never decays more slowly than before. In boxes
+  whose absorption is uniform, on the floor and ceiling only, or on one wall, the damped decay at
+  receivers other than the probes was within 12% of Eyring's estimate; bare, it was 20–60% longer. The
+  bare decay of each band is reported with the response.
 - **Source and calibration.** The source injects volume velocity, a Gaussian derivative with no net
   volume. Each receiver's spectrum, taken at its exact sample times, is divided by the free-field
   pressure 1 m away, ρ·j2πf·Q(f)/4π. That gives the geometrical model's units and time origin.
@@ -275,11 +293,10 @@ Both are probably physical, but neither has been checked against a measurement.
 Limitations of the solver:
 
 - The wall impedance is real, and constant within each octave band.
-- Walls are locally reacting, so a real impedance absorbs nothing at grazing incidence. Axial and
-  tangential modes that graze a surface lose little energy to it. In the measured seminar room (see
-  [RoomCAD against a measured room](roomcad-validation.md)), this left the solver's decay at 63 and
-  125 Hz 18–32% longer than measured, even with materials fitted to the measured decay. Real windows,
-  doors and suspended ceilings are not locally reacting and absorb at grazing incidence too.
+- Walls are locally reacting. The decay matching above makes each band decay, on average, as a
+  diffuse field would. It does not model how real surfaces absorb at grazing incidence, so which modes
+  decay faster than others may differ from a real room. In a room that really is a smooth, bare box,
+  matching makes the low end decay faster than it would.
 - There is no air absorption, which is negligible there.
 - It models bare walls: no furniture or scattering. Openings are walls of ξ = 1.
 - The grid's dispersion grows towards the top frequency.
@@ -397,8 +414,10 @@ in a 145 m³ seminar room from the BRAS database:
   2 kHz is within 12%, and clarity within about one just-noticeable difference.
 - **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
   frequencies within about 1.5%.
-- **Early reflections.** These follow the measured pattern at each position.
-- **Low-frequency decay.** With the wave solver it is too long (see the solver's limitations above).
+- **Early reflections.** These follow the measured pattern at most positions (correlation 0.61,
+  against 0.22 for the wrong position).
+- **Low-frequency decay.** The bare wave solver's was about 30% too long. With each band matched to
+  the diffuse decay, T30, EDT, clarity and definition at 63 and 125 Hz are within about 2 JND.
 
 `RoomParameters` computes the ISO 3382-1 parameters it uses: EDT, T20, T30, C50, C80, D50 and
 centre time, with Lundeby's noise compensation for measured responses.

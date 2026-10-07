@@ -117,7 +117,8 @@ script before an archive is written.
     octave, with the wave solver's crossover marked.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
   - It shows arrival counts and generation time. It also shows the wave solver's crossover, grid, time
-    and runs, with how many ran on the GPU and how many on the CPU. Then come the Schroeder
+    and runs, with how many ran on the GPU and how many on the CPU, and the decay each of its bands
+    had before it was matched to Eyring's estimate. Then come the Schroeder
     frequency and the share of energy from 500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.

@@ -156,7 +156,9 @@ struct WaveSolverTests {
             name: "Panel", absorption: [0.2, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6], reference: "Test")
         room.west = absorber
         room.east = absorber
-        let solver = WaveSolver(room: room, sampleRate: 48_000, topFrequency: 200, atmosphere: .standard)
+        var solver = WaveSolver(room: room, sampleRate: 48_000, topFrequency: 200, atmosphere: .standard)
+        // The bare boundary model, without matching the decay to a diffuse field's.
+        solver.matchesDiffuseDecay = false
         #expect(solver.bandGroups == [[0], [1, 2]])
         // The first axial mode lies in the 63 Hz band and the third in the 125 Hz band; nothing else is
         // within 25 Hz of either on the y and z centre lines.
@@ -328,4 +330,70 @@ func generationProgress() throws {
     _ = try RoomResponseGenerator.generate(settings, progress: geometrical)
     #expect(geometrical.current.stage == .reflections)
     #expect(abs(geometrical.current.fraction - 1) < 1e-9)
+}
+
+@Suite("Wave solver decay")
+struct WaveDecayTests {
+    /// The T30 in `band` of the energy summed over receivers spread through the room, other than the
+    /// solver's own probes.
+    private func roomDecay(_ solver: WaveSolver, band: Int) throws -> (t30: Double, bare: Double?) {
+        let size = solver.room.size
+        let receivers: [(position: SIMD3<Double>, microphone: Microphone)] = (0..<12).map { i in
+            let u = SIMD3(
+                0.17 + 0.61 * Double(i % 3) / 2, 0.21 + 0.55 * Double((i / 3) % 4) / 3,
+                0.3 + 0.4 * Double(i % 2))
+            return (u * size, .omni)
+        }
+        let responses = solver.responses(
+            source: [0.11, 0.13, 0.17] * size, receivers: receivers, frames: 96_000, fftLength: 1 << 17,
+            weight: { OctaveBands.rise($0, crossover: 20) }, stop: { false })
+        let result = try #require(responses)
+        var energy = [Double](repeating: 0, count: 96_000)
+        for channel in result.channels {
+            for (i, x) in DecayAnalysis.octaveBand(channel, sampleRate: 48_000, band: band).enumerated() {
+                energy[i] += Double(x) * Double(x)
+            }
+        }
+        let t30 = try #require(
+            RoomParameters.measure(energy: energy, sampleRate: 48_000, noiseCompensated: false).t30)
+        return (t30, result.decay[band]?.bare)
+    }
+
+    @Test(
+        "A box's modes decay more slowly than Eyring's estimate with bare walls, and at its rate once matched",
+        arguments: [false, true])
+    func diffuseDecay(concentrated: Bool) throws {
+        var room = ShoeboxRoom(size: [5.3, 4.1, 2.9], material: .uniform(0.1, name: "Absorber"))
+        if concentrated {
+            // Absorption on the floor and ceiling only, which axial and tangential modes graze.
+            room = ShoeboxRoom(size: [5.3, 4.1, 2.9], material: .uniform(0.01, name: "Hard"))
+            room.floor = .uniform(0.25, name: "Floor")
+            room.ceiling = .uniform(0.25, name: "Ceiling")
+        }
+        let band = 1
+        let eyring = try #require(
+            room.eyringReverberationTime(atmosphere: .standard, airAbsorption: true)[band])
+        var solver = WaveSolver(room: room, sampleRate: 48_000, topFrequency: 250, atmosphere: .standard)
+        let matched = try roomDecay(solver, band: band)
+        solver.matchesDiffuseDecay = false
+        let bare = try roomDecay(solver, band: band)
+        #expect(bare.t30 > 1.15 * eyring, "bare \(bare.t30) s, Eyring \(eyring) s")
+        #expect(abs(matched.t30 / eyring - 1) < 0.12, "matched \(matched.t30) s, Eyring \(eyring) s")
+        // The probes saw the bare decay too.
+        #expect(abs(try #require(matched.bare) / bare.t30 - 1) < 0.15)
+    }
+
+    @Test("Probes lie inside a floor plan, clear of its walls")
+    func probes() {
+        var room = ShoeboxRoom(size: [8, 6, 2.6], material: .uniform(0.1, name: "Plaster"))
+        room.plan = .lShape([8, 6], notch: [4, 3], material: .uniform(0.1, name: "Plaster"))
+        let solver = WaveSolver(room: room, sampleRate: 48_000, topFrequency: 200, atmosphere: .standard)
+        let probes = solver.probePositions()
+        #expect(probes.count == 24)
+        #expect(
+            probes.allSatisfy {
+                room.plan!.contains([$0.x, $0.y]) && room.plan!.distanceToWalls([$0.x, $0.y]) >= 0.3 - 1e-9
+                    && $0.z >= 0.3 && $0.z <= 2.3
+            })
+    }
 }

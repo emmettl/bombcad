@@ -193,6 +193,9 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     /// the rest ran on the CPU, because there was no GPU or other work was keeping it busy.
     public var waveRuns: Int?
     public var waveGPURuns: Int?
+    /// For each octave band the wave solver covers, its room-averaged T30 before its decay was matched to
+    /// Eyring's estimate (see `WaveSolver.responses`); nil for other bands.
+    public var waveBareDecay: [Double?]?
     /// Why the wave solver was not used although asked for, if so.
     public var waveNote: String?
     /// In a room with a floor plan, the wall reflections and total reflections the image sources reached.
@@ -206,11 +209,11 @@ public struct RoomResponse: Sendable {
     public var settings: RoomResponseSettings
     public var diagnostics: RoomResponseDiagnostics
 
-    public static let generatorName = "RoomCAD hybrid model 6"
+    public static let generatorName = "RoomCAD hybrid model 7"
     /// Generators whose saved responses can still be read; only the current one is up to date.
     public static let readableGenerators: Set<String> = [
         "RoomCAD image-source model 1", "RoomCAD hybrid model 2", "RoomCAD hybrid model 3",
-        "RoomCAD hybrid model 4", "RoomCAD hybrid model 5",
+        "RoomCAD hybrid model 4", "RoomCAD hybrid model 5", "RoomCAD hybrid model 6",
         generatorName,
     ]
 
@@ -435,7 +438,8 @@ public enum RoomResponseGenerator {
         }
 
         // Below the crossover, replace the geometrical response with the wave solver's.
-        var wave: (crossover: Double, cells: Int, seconds: Double, runs: Int, gpuRuns: Int)?
+        var wave:
+            (crossover: Double, cells: Int, seconds: Double, runs: Int, gpuRuns: Int, bareDecay: [Double?])?
         var waveNote: String?
         if settings.lowFrequencyModel {
             let waveStart = Date()
@@ -466,7 +470,8 @@ public enum RoomResponseGenerator {
                     let cells = plan.solver.cells
                     wave = (
                         crossover, cells.x * cells.y * cells.z, Date().timeIntervalSince(waveStart),
-                        plan.solver.bandGroups.count, low.gpuRuns
+                        plan.solver.bandGroups.count, low.gpuRuns,
+                        OctaveBands.centres.indices.map { low.decay[$0]?.bare }
                     )
                 }
             } else {
@@ -482,7 +487,7 @@ public enum RoomResponseGenerator {
             diffuseRays: settings.room.scatters || tracer.specularOrderLimit < Int.max
                 ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
             waveCells: wave?.cells, waveSeconds: wave?.seconds, waveRuns: wave?.runs,
-            waveGPURuns: wave?.gpuRuns,
+            waveGPURuns: wave?.gpuRuns, waveBareDecay: wave?.bareDecay,
             waveNote: waveNote,
             planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
 
