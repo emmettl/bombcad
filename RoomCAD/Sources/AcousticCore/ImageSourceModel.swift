@@ -37,11 +37,13 @@ public struct ImageSourceModel: Sendable {
     /// image arriving at `receiver` within `duration` and up to `maximumOrder` reflections.
     ///
     /// The gain is relative to the free-field pressure 1 m from the source: spherical spreading `1/r`,
-    /// the product of the reflection coefficients met on the path and, optionally, air attenuation.
+    /// the product of the reflection coefficients met on the path, the microphone's gain towards the
+    /// image and, optionally, air attenuation.
     /// Arrivals are not delivered in time order. Enumeration ends early once `stop` returns true.
     @discardableResult
     public func forEachArrival(
-        at receiver: SIMD3<Double>, duration: Double, maximumOrder: Int, includeDirect: Bool = true,
+        at receiver: SIMD3<Double>, microphone: Microphone = .omni, duration: Double, maximumOrder: Int,
+        includeDirect: Bool = true,
         stop: () -> Bool = { false }, _ body: (_ delay: Double, _ order: Int, _ gains: [Double]) -> Void
     ) -> Summary {
         let c = atmosphere.soundSpeed
@@ -102,12 +104,15 @@ public struct ImageSourceModel: Sendable {
                         continue
                     }
                     if order == 0 && !includeDirect { continue }
-                    let spreading = 1 / r
+                    var spreading = 1 / r
+                    if !microphone.isOmni {
+                        spreading *= microphone.gain(from: SIMD3(x.offset, y.offset, z.offset) / r)
+                    }
                     var audible = false
                     for b in 0..<bands {
                         let g = x.gains[b] * y.gains[b] * z.gains[b] * spreading * exp(-air[b] * r)
                         gains[b] = g
-                        audible = audible || g > 0
+                        audible = audible || g != 0
                     }
                     guard audible else { continue }
                     summary.arrivals += 1

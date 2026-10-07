@@ -190,16 +190,58 @@ struct RoomDrawing: View {
         context.stroke(
             paths, with: .color(.secondary.opacity(0.6)), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
 
-        // Labels move up until they clear those already placed, so coincident points stay readable.
-        var placed: [CGPoint] = [CGPoint(x: source.x, y: source.y + 16)]
-        func labelPosition(near point: CGPoint) -> CGPoint {
-            var label = CGPoint(x: point.x, y: point.y - 14)
-            while placed.contains(where: { abs($0.x - label.x) < 44 && abs($0.y - label.y) < 13 }) {
-                label.y -= 13
+        var obstacles: [CGPoint] = []
+        // Each directional microphone's aim, as a short arrow from it in this projection.
+        var aims = Path()
+        for receiver in settings.receivers {
+            guard let microphone = receiver.microphone, microphone.pattern != .omni else { continue }
+            let start = layout.point(receiver.position)
+            let tip = layout.point(receiver.position + microphone.axis * 0.5)
+            let dx = tip.x - start.x
+            let dy = tip.y - start.y
+            let length = hypot(dx, dy)
+            guard length > 1 else { continue }
+            let end = CGPoint(x: start.x + dx / length * 22, y: start.y + dy / length * 22)
+            aims.move(to: start)
+            aims.addLine(to: end)
+            obstacles += [CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2), end]
+            let angle = atan2(dy, dx)
+            for side in [-1.0, 1.0] {
+                aims.move(to: end)
+                aims.addLine(
+                    to: CGPoint(
+                        x: end.x - 6 * cos(angle + side * 0.5), y: end.y - 6 * sin(angle + side * 0.5)))
             }
-            placed.append(label)
-            return label
         }
+        context.stroke(
+            aims, with: .color(Self.receiverColor), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+        // Each label goes to the first place around its point that clears the points and the labels
+        // already placed, so close or coincident points stay readable.
+        let dots = [source] + settings.receivers.map { layout.point($0.position) } + obstacles
+        var placed: [CGRect] = []
+        func labelPosition(near point: CGPoint, text: String) -> CGPoint {
+            let size = CGSize(width: CGFloat(text.count) * 7 + 4, height: 14)
+            let offsets: [CGPoint] = [
+                CGPoint(x: 0, y: -15), CGPoint(x: 0, y: 16), CGPoint(x: size.width / 2 + 10, y: 0),
+                CGPoint(x: -size.width / 2 - 10, y: 0), CGPoint(x: 0, y: -29), CGPoint(x: 0, y: 30),
+            ]
+            func frame(_ centre: CGPoint) -> CGRect {
+                CGRect(
+                    x: centre.x - size.width / 2, y: centre.y - size.height / 2, width: size.width,
+                    height: size.height)
+            }
+            let chosen =
+                offsets.map { CGPoint(x: point.x + $0.x, y: point.y + $0.y) }.first { centre in
+                    let box = frame(centre)
+                    return !placed.contains { $0.intersects(box) }
+                        && !dots.contains { box.insetBy(dx: -6, dy: -6).contains($0) }
+                } ?? CGPoint(x: point.x, y: point.y - 15)
+            placed.append(frame(chosen))
+            return chosen
+        }
+        let sourceLabel = labelPosition(near: source, text: settings.source.name)
+
         for receiver in settings.receivers {
             let point = layout.point(receiver.position)
             context.fill(
@@ -207,13 +249,13 @@ struct RoomDrawing: View {
                 with: .color(Self.receiverColor))
             context.draw(
                 Text(receiver.name).font(.caption).foregroundStyle(Self.receiverColor),
-                at: labelPosition(near: point))
+                at: labelPosition(near: point, text: receiver.name))
         }
         context.fill(
             Path(ellipseIn: CGRect(x: source.x - 8, y: source.y - 8, width: 16, height: 16)),
             with: .color(Self.sourceColor))
         context.draw(
             Text(settings.source.name).font(.caption.bold()).foregroundStyle(Self.sourceColor),
-            at: CGPoint(x: source.x, y: source.y + 16))
+            at: sourceLabel)
     }
 }

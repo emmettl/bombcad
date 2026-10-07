@@ -7,8 +7,11 @@ import simd
 @Suite("Scattering")
 struct ScatteringTests {
     let size: SIMD3<Double> = [5, 4, 3]
-    let source = RoomPoint(name: "S", position: [1.3, 1.1, 1.2])
-    let receiver = RoomPoint(name: "R", position: [3.7, 2.9, 1.6])
+    // Fixed identities, because a receiver's diffuse tail is seeded from its identity.
+    let source = RoomPoint(
+        id: UUID(uuidString: "00000000-0000-0000-0000-00000000000A")!, name: "S", position: [1.3, 1.1, 1.2])
+    let receiver = RoomPoint(
+        id: UUID(uuidString: "00000000-0000-0000-0000-00000000000B")!, name: "R", position: [3.7, 2.9, 1.6])
 
     private func settings(alpha: Double, scattering: Double, duration: Double = 0.3) -> RoomResponseSettings {
         RoomResponseSettings(
@@ -78,12 +81,14 @@ struct ScatteringTests {
         let eyring =
             try #require(diffuse.diagnostics.eyringReverberationTime[4]) / (1 + spread / 2 * log(1 - alpha))
         var diffuseTimes: [Double] = []
+        var specularTimes: [Double] = []
         for band in 4...7 {
-            let d = try #require(t30(diffuse.response.channels[0], band: band))
-            let s = try #require(t30(specular.response.channels[0], band: band))
-            #expect(d < s, "band \(band): diffuse \(d) s, specular \(s) s")
-            diffuseTimes.append(d)
+            diffuseTimes.append(try #require(t30(diffuse.response.channels[0], band: band)))
+            specularTimes.append(try #require(t30(specular.response.channels[0], band: band)))
         }
+        // In this small, absorbent room the difference is about 8%, and single bands of one random
+        // realization vary by a few percent, so compare the averages.
+        #expect(diffuseTimes.reduce(0, +) < 0.97 * specularTimes.reduce(0, +))
         let mean = diffuseTimes.reduce(0, +) / Double(diffuseTimes.count)
         #expect(abs(mean / eyring - 1) < 0.06, "mean \(mean) s against corrected Eyring \(eyring) s")
         #expect((diffuse.diagnostics.scatteredFraction?[0] ?? 0) > 0.5)

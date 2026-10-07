@@ -9,11 +9,14 @@ public struct RoomPoint: Codable, Equatable, Sendable, Identifiable {
     public var name: String
     /// Position in metres from the room's west, south, floor corner.
     public var position: SIMD3<Double>
+    /// For receivers, the microphone; nil is omni, as in documents saved before microphones existed.
+    public var microphone: Microphone?
 
-    public init(id: UUID = UUID(), name: String, position: SIMD3<Double>) {
+    public init(id: UUID = UUID(), name: String, position: SIMD3<Double>, microphone: Microphone? = nil) {
         self.id = id
         self.name = name
         self.position = position
+        self.microphone = microphone
     }
 }
 
@@ -122,6 +125,7 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         guard (1...16).contains(receivers.count) else {
             throw AcousticError.invalid("A response needs between 1 and 16 receivers.")
         }
+        for receiver in receivers { try receiver.microphone?.validate() }
         for point in [source] + receivers where !room.contains(point.position) {
             throw AcousticError.invalid("\(point.name) is not inside the room.")
         }
@@ -288,7 +292,9 @@ public enum RoomResponseGenerator {
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
         let diffuse = tracer.trace(
-            receivers: settings.receivers.map(\.position), duration: settings.duration, stop: cancelled)
+            receivers: settings.receivers.map { ($0.position, $0.microphone ?? .omni) },
+            duration: settings.duration,
+            stop: cancelled)
         try check()
         // The bands whose energy the scattered fraction reports, 500 Hz to 4 kHz.
         let reported = 3...6
@@ -308,8 +314,10 @@ public enum RoomResponseGenerator {
                 lowFrequencyCutoff: settings.lowFrequencyCutoff)
             var specularEnergy = 0.0
             let summary = model.forEachArrival(
-                at: settings.receivers[index].position, duration: settings.duration,
-                maximumOrder: settings.maximumReflectionOrder, includeDirect: includeDirect, stop: cancelled
+                at: settings.receivers[index].position,
+                microphone: settings.receivers[index].microphone ?? .omni,
+                duration: settings.duration, maximumOrder: settings.maximumReflectionOrder,
+                includeDirect: includeDirect, stop: cancelled
             ) { delay, _, gains in
                 renderer.add(delay: delay, gains: gains)
                 for b in reported { specularEnergy += gains[b] * gains[b] }
@@ -357,7 +365,8 @@ public enum RoomResponseGenerator {
             channels: settings.receivers.map {
                 .init(
                     name: $0.name, sourceID: settings.source.id, receiverID: $0.id,
-                    receiverPosition: [$0.position.x, $0.position.y, $0.position.z])
+                    receiverPosition: [$0.position.x, $0.position.y, $0.position.z],
+                    directivity: $0.microphone.flatMap { $0.pattern == .omni ? nil : $0.summary })
             },
             content: settings.content,
             gainConvention:

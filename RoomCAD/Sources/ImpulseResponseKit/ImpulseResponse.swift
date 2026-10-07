@@ -32,12 +32,18 @@ public struct ResponseMetadata: Codable, Equatable, Sendable {
         public var receiverID: UUID
         /// Receiver position in metres, z up, when the generator has one.
         public var receiverPosition: [Double]?
+        /// The receiver's directivity and aim, in words, when it is not omnidirectional.
+        public var directivity: String?
 
-        public init(name: String, sourceID: UUID, receiverID: UUID, receiverPosition: [Double]? = nil) {
+        public init(
+            name: String, sourceID: UUID, receiverID: UUID, receiverPosition: [Double]? = nil,
+            directivity: String? = nil
+        ) {
             self.name = name
             self.sourceID = sourceID
             self.receiverID = receiverID
             self.receiverPosition = receiverPosition
+            self.directivity = directivity
         }
     }
 

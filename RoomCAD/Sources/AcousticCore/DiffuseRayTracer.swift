@@ -10,7 +10,8 @@ import simd
 /// once. The reflection is chosen at random with probability `p` (the surface's mean scattering), and
 /// per-band weights `s/p` or `(1 - s)/(1 - p)` keep every band's expectation exact.
 ///
-/// Receivers are spheres, sized with the room. A ray crossing one deposits its energy times the chord length over the
+/// Receivers are spheres, sized with the room, weighted by their microphone's squared gain towards
+/// where each ray comes from. A ray crossing one deposits its energy times the chord length over the
 /// sphere's volume inside the room, scaled so a free-field source gives `1/r²`: the same units as the
 /// square of an image source's gain.
 struct DiffuseRayTracer {
@@ -47,7 +48,8 @@ struct DiffuseRayTracer {
     static let chunks = 16
 
     func trace(
-        receivers: [SIMD3<Double>], duration: Double, stop: @Sendable () -> Bool = { false }
+        receivers: [(position: SIMD3<Double>, microphone: Microphone)], duration: Double,
+        stop: @Sendable () -> Bool = { false }
     ) -> [[[Double]]] {
         let bands = OctaveBands.count
         let bins = Int((duration / Self.binWidth).rounded(.up))
@@ -60,7 +62,7 @@ struct DiffuseRayTracer {
         let c = atmosphere.soundSpeed
         let reach = duration * c
         let radius = receiverRadius
-        let volumes = receivers.map { insideVolume(of: $0, radius: radius) }
+        let volumes = receivers.map { insideVolume(of: $0.position, radius: radius) }
         // Energy decay by air per metre, for intensity.
         let air =
             airAbsorption
@@ -107,7 +109,7 @@ struct DiffuseRayTracer {
                     }
                     let segment = min(hit, reach - travelled)
                     if scattered {
-                        for (r, receiver) in receivers.enumerated() {
+                        for (r, (receiver, microphone)) in receivers.enumerated() {
                             // Chord of the segment through the receiver's sphere.
                             let offset = position - receiver
                             let b = simd_dot(offset, direction)
@@ -120,7 +122,12 @@ struct DiffuseRayTracer {
                             let distance = travelled + (enter + leave) / 2
                             let bin = Int(distance / c / Self.binWidth)
                             guard bin < bins else { continue }
-                            let scale = 4 * Double.pi * (leave - enter) / volumes[r]
+                            var scale = 4 * Double.pi * (leave - enter) / volumes[r]
+                            if !microphone.isOmni {
+                                // Squared gain towards where the ray comes from.
+                                let gain = microphone.gain(from: -direction)
+                                scale *= gain * gain
+                            }
                             for band in 0..<bands {
                                 energy[r][band][bin] += weights[band] * scale * exp(-air[band] * distance)
                             }
@@ -260,4 +267,11 @@ final class ChunkResults<Value>: @unchecked Sendable {
 
     /// The stored values in slot order.
     var values: [Value] { lock.withLock { slots.compactMap { $0 } } }
+}
+
+extension DiffuseRayTracer {
+    /// Scattered energy at omni receivers.
+    func trace(receivers: [SIMD3<Double>], duration: Double) -> [[[Double]]] {
+        trace(receivers: receivers.map { ($0, .omni) }, duration: duration)
+    }
 }

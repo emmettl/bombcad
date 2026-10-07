@@ -42,6 +42,10 @@ document is opened from Finder.
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
+  - each receiver's microphone: pattern, azimuth and elevation, with **Arrange First Two as a Stereo
+    Pair** for A–B, XY, ORTF, NOS or Blumlein (see
+    [Microphones](room-acoustics-model.md#microphones)). Directional microphones show their aim as an
+    arrow in the drawings;
   - sample rate, duration, maximum reflection order and content;
   - low cut, the number of diffuse rays and the random seed, air absorption, temperature and
     humidity;
@@ -67,7 +71,7 @@ document is opened from Finder.
     one takes over, from the same point, when it is ready. With no response yet, playback starts when
     the first one arrives.
   - The first receiver is heard on the left and the second on the right; a single receiver is heard
-    on both.
+    on both. With a stereo pair, that is its stereo image.
   - A waveform strip shows the clip, and once a response exists, the clip dry and through the room
     on one time axis. Both lanes are drawn at the levels played, scaled together.
   - A red playhead follows playback. Click or drag the strip to move it; while you drag, the playhead

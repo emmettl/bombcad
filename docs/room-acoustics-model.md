@@ -8,7 +8,8 @@ described in [RoomCAD app and documents](roomcad-app.md).
 
 ## What it models
 
-The model covers one omnidirectional point source and up to 16 omnidirectional point receivers in a
+The model covers one omnidirectional point source and up to 16 point receivers, each omnidirectional
+or a first-order microphone (below), in a
 rectangular room whose interior spans `[0, size]` in metres, z up. Each receiver becomes one output
 channel. Two receivers give the mono-to-stereo case. Each of the six surfaces has its own material,
 given as energy absorption coefficients α and scattering coefficients s in eight octave bands (nominally
@@ -94,6 +95,35 @@ The ray directions and the tail's detail come from `randomSeed`, so a response i
 A surface with s = 0 in every band leaves the response exactly as the image sources alone give it, and
 no rays are traced.
 
+## Microphones
+
+A receiver can be a first-order microphone aimed by azimuth and elevation. Its gain is
+a + (1 − a) cos θ at angle θ from its axis:
+
+| Pattern | Omni | Subcardioid | Cardioid | Supercardioid | Hypercardioid | Figure of eight |
+|---|---|---|---|---|---|---|
+| a | 1 | 0.7 | 0.5 | 0.37 | 0.25 | 0 |
+
+A figure of eight picks up its rear lobe in inverted polarity, as a real one does. Each image source's
+gain is multiplied by the microphone's gain towards the image. Each ray crossing is weighted by the
+squared gain towards where the ray comes from. So in a diffuse field a microphone picks up
+a² + (1 − a)²/3 of an omni's energy, a third for a cardioid or a figure of eight.
+
+**Arrange First Two as a Stereo Pair** places the first two receivers around their midpoint, facing
+the source horizontally, with the first as the left channel:
+
+| Pair | Spacing | Axes | Pattern |
+|---|---|---|---|
+| A–B | 60 cm | parallel | Omni |
+| XY | coincident | ±45° | Cardioid |
+| ORTF | 17 cm | ±55° | Cardioid |
+| NOS | 30 cm | ±45° | Cardioid |
+| Blumlein | coincident | ±45° | Figure of eight |
+
+The patterns are ideal, the same at every frequency. Real microphones narrow at high frequencies and
+widen at low ones. Mid-side and binaural (head-related) responses are not modelled. Each channel's JSON
+description records its microphone. Receivers saved before microphones existed load as omni.
+
 ## Rendering
 
 Each arrival is a Hann-windowed sinc of 64 taps, cut off at 0.9 of the Nyquist frequency. It is placed
@@ -160,13 +190,20 @@ half-cosine taper to the end of every channel.
   within 3%, including at a receiver 0.2 m from a corner.
 - Scattering weakens each specular reflection by √(1 − s).
 - With full scattering, the 1–8 kHz T30 averages within 6% of the Eyring estimate corrected for the
-  spread of free path lengths (below), and each band decays faster than without scattering.
+  spread of free path lengths (below), and at least 3% shorter than without scattering. In that small,
+  absorbent room the difference is only about 8%, and single bands vary by a few percent between
+  random realizations.
 - Without scattering, nothing is traced and the response does not depend on the ray count or seed.
 - The same seed reproduces a response exactly. Another seed keeps the traced energy within 5%. The
   rendered 1 kHz band energy of a 0.2 s response stays within 1.5 dB, a random realization's
   variation, much like that between nearby points in a real room.
 - Materials and settings saved before scattering existed decode with s = 0 and the default ray count
   and seed.
+- First-order patterns have their textbook gains, including a figure of eight's inverted rear lobe. A
+  cardioid hears the direct sound fully when facing the source, not at all facing away, and at a
+  quarter of the energy side-on. In a fully scattering rigid room each pattern picks up its
+  diffuse-field share of an omni's energy to within 5%. Stereo pairs are placed and aimed as specified,
+  with left on the left.
 - Responses are identical whether generated synchronously or asynchronously. A receiver rendered
   alone matches the same receiver among others, and a cancelled generation stops at once.
 - The high-pass removes the low-frequency offset without changing the audible bands.

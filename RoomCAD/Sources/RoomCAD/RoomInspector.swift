@@ -44,6 +44,42 @@ struct PointEditor: View {
     }
 }
 
+/// Edits a receiver's pattern and aim; omni needs no aim.
+struct MicrophoneEditor: View {
+    @Binding var microphone: Microphone?
+
+    private var pattern: Binding<Microphone.Pattern> {
+        Binding(
+            get: { microphone?.pattern ?? .omni },
+            set: { pattern in
+                if pattern == .omni {
+                    microphone = nil
+                } else {
+                    var updated = microphone ?? Microphone(pattern: pattern)
+                    updated.pattern = pattern
+                    microphone = updated
+                }
+            })
+    }
+
+    private func angle(_ keyPath: WritableKeyPath<Microphone, Double>) -> Binding<Double> {
+        Binding(
+            get: { microphone?[keyPath: keyPath] ?? 0 },
+            set: { microphone?[keyPath: keyPath] = $0 })
+    }
+
+    var body: some View {
+        Picker("Microphone", selection: pattern) {
+            ForEach(Microphone.Pattern.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        if microphone != nil {
+            NumberField(title: "Azimuth", value: angle(\.azimuth), unit: "°", digits: 0)
+                .help("Direction of aim in plan: 0° points along x, 90° along y")
+            NumberField(title: "Elevation", value: angle(\.elevation), unit: "°", digits: 0)
+        }
+    }
+}
+
 /// Edits a surface's octave-band absorption and scattering.
 struct MaterialEditor: View {
     let surface: Surface
@@ -173,8 +209,18 @@ struct RoomInspector: View {
                 PointEditor(point: settings.source)
             }
             Section("Receivers") {
+                Menu("Arrange First Two as a Stereo Pair") {
+                    ForEach(StereoPair.allCases) { pair in
+                        Button(pair.title) { project.settings = pair.arranged(in: project.settings) }
+                    }
+                }
+                .disabled(project.settings.receivers.count < 2)
+                .help(
+                    "Place and aim the first two receivers as a standard pair around their centre, facing the source"
+                )
                 ForEach(settings.receivers) { $receiver in
                     PointEditor(point: $receiver)
+                    MicrophoneEditor(microphone: $receiver.microphone)
                     if project.settings.receivers.count > 1 {
                         Button("Remove \(receiver.name)", role: .destructive) {
                             project.settings.receivers.removeAll { $0.id == receiver.id }

@@ -9,7 +9,7 @@ import SwiftUI
 enum Snapshot {
     static func write(to url: URL) -> Bool {
         do {
-            let settings = RoomProject.starter
+            let settings = StereoPair.ortf.arranged(in: RoomProject.starter)
             let result = try RoomResponseGenerator.generate(settings)
             let player = AuditionPlayer()
             try player.prepareImmediately(result)
