@@ -176,7 +176,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             throw ProjectFileError.invalid(
                 "This project belongs to \(archive.manifest.documentType), not BombCAD.")
         }
-        scenario = try JSONDecoder().decode(Scenario.self, from: archive.files["scene.json"]!)
+        scenario = try ImportedSceneCodec.decode(archive)
         let run = try JSONDecoder().decode(ProjectRunSettings.self, from: archive.files["settings.json"]!)
         try Self.validate(scenario)
         try run.validate()
@@ -211,16 +211,16 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         try runSettings.validate()
         try Self.validateGrid(scenario, resolution: Resolution(rawValue: runSettings.resolution)!)
         var files = archive?.files ?? [:]
-        files["scene.json"] = try ProjectArchive.encodeJSON(scenario)
+        var manifest =
+            archive?.manifest
+            ?? ProjectManifest(documentType: "bombcad", producer: "BombCAD", documentID: documentID)
+        files["scene.json"] = try ImportedSceneCodec.encode(scenario, manifest: &manifest, files: &files)
         files["settings.json"] = try ProjectArchive.encodeJSON(runSettings)
         if let viewSettings {
             try viewSettings.validate()
             files["view.json"] = try ProjectArchive.encodeJSON(viewSettings)
         }
         // Preserve embedded assets and unknown optional files when a project is re-saved.
-        let manifest =
-            archive?.manifest
-            ?? ProjectManifest(documentType: "bombcad", producer: "BombCAD", documentID: documentID)
         return try ProjectArchive(manifest: manifest, files: files)
     }
 

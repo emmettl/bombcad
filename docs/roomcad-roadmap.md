@@ -7,8 +7,8 @@ remain proposed work.
 
 The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
-Native document windows, autosave and unsaved-close handling are implemented. Importer asset/part
-integration remains follow-up work while that worktree is being finished.
+Native document windows, autosave and unsaved-close handling are implemented. The importer is
+on main, with versioned embedded source meshes, stable part references and detached-edit round trips.
 
 ## Goal
 
@@ -54,10 +54,10 @@ in BombCAD until RoomCAD needs them and their dependencies can be extracted clea
 
 ### Reuse the model-import work
 
-The ongoing BombCAD importer is a major shared foundation: OBJ/STL parsing, scale and axis
+The integrated BombCAD importer is a major shared foundation: OBJ/STL parsing, scale and axis
 conversion, placement, mesh diagnostics, preview overlays and selection can serve both apps.
-Its current implementation lives in the separate model-importer worktree; integrate the
-finished work before extracting it, rather than developing a competing importer.
+Its current implementation lives in BlastCore and BombCAD; extract the shared pieces when
+RoomCAD needs them.
 
 Keep the source mesh, stable part identifiers and material-group references as the canonical
 import. Voxel boxes are derived data for a particular solver and resolution. RoomCAD's
@@ -85,8 +85,8 @@ files with a simple JSON reader; extensive legacy migrations are not a priority.
 ### Container and ownership
 
 Use a native macOS document package (a directory presented as one file), with proposed
-extensions `.bombcad` and `.roomcad`. Use the same container conventions and scene schema in
-both apps, with distinct application settings. Archive packaging can be added for transport;
+extensions `.bombcad` and `.roomcad`. Share container conventions, with application-specific
+scene and settings codecs initially. Extract a common scene schema as RoomCAD takes shape. Archive packaging can be added for transport;
 do not require ZIP handling in the initial document implementation.
 
 ```text
@@ -154,8 +154,8 @@ explicit contracts, not automatic dumps of live GPU or UI objects.
 
 Done when: imported projects reopen on another Mac without their original source files, all
 authoritative edits and reproducibility settings survive saving, and legacy layouts still open.
-The `.bombcad` package container is implemented; `.roomcad` and the richer scene/asset schema
-remain planned.
+The `.bombcad` package container and referenced source-mesh assets are implemented.
+`.roomcad` and a common application-neutral scene schema remain planned.
 
 ## Milestones
 

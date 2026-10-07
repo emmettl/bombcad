@@ -35,14 +35,26 @@ The manifest contains:
 | `assets` | Array of asset records containing a UUID `id`, relative `path` and lowercase hex `sha256` |
 
 Every file under `assets/` must have a manifest entry. Assets are embedded and checksum-checked
-on load, so reading them never requires the original external path. Source-mesh encoding and
-references from scene parts remain for the importer integration; this first foundation does
-not claim to have converted imported meshes into asset files.
+on load, so reading them never requires the original external path. Imported meshes are stored
+as versioned JSON assets at `assets/<id>.mesh.json`. Identical sources share one asset;
+content-derived IDs stay stable across repeated saves, and existing asset IDs are retained.
 
-`scene.json` is the current Codable Scenario representation, including structural geometry,
-openings, materials and reinforcement. Coordinates are in metres, z up. Retaining this payload
-initially keeps the in-flight importer integration small; a common scene/part schema will be
-introduced with GeometryImport rather than inventing a second mesh representation now.
+`scene.json` has format `dev.bombcad.scene` and `encodingVersion: 1`. Its `scenario` contains
+structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`
+contains instance IDs, source asset references, names, transforms, behavior, attachment status,
+part material assignments and retained previews. Source triangles are not duplicated per instance.
+
+Mesh assets have format `dev.simulationkit.source-mesh`, `encodingVersion: 1` and
+`coordinateSpace: source`. They retain original coordinates and face labels, plus a part identity
+table checked against the reconstructed mesh. Scale, up-axis conversion and placement are applied
+once by the importer. Integer part IDs belong to their source asset; they are not voxel IDs.
+Original OBJ/STL files are unnecessary for reopening the project.
+
+Each preview carries a provenance key containing the source checksum, transform, cell size,
+domain size and sampler version. Loading rejects mismatched keys. Resolution changes use the
+importer's normal resampling path and preserve part assignments. Detached scene boxes and the
+full structural model, including supports, openings and reinforcement, remain authoritative;
+opening a document never silently regenerates them from the source.
 
 `settings.json` stores resolution (`coarse`, `medium`, `fine`), `detailedCharge`, `sharpShocks`,
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`
@@ -98,30 +110,23 @@ is a presentation preference rather than a saved simulation input, and can still
 each window's Run tab. Restore Defaults returns the app defaults to medium grid, both numerical
 options off, and 100× slow motion.
 
-## Next integration steps
+## Remaining work
 
-1. Finish and integrate the importer, then verify its source geometry, stable part IDs,
-   material assignments, attachment status and authoritative detached edits round-trip through
-   scene.json. Add those cases to ProjectDocumentTests.
-2. Move large source meshes to embedded asset files using a documented, versioned mesh
-   encoding. Add scene references and importer reconstruction, preserving stable identities.
-   Decide schema changes explicitly before files are released to users.
-3. Key regenerable voxel previews by source, transform, settings and generator version;
-   detached local edits remain authoritative. Optional results need input hashes and provenance
-   before the app offers to reuse them.
-4. Add RoomCAD's codec when its scene/source/receiver model exists. WAV impulse responses are
-   standalone exports, not project documents.
-Native document lifecycle is implemented. Further importer integration remains independent of
-that lifecycle and should preserve the same persisted-input change tracking.
+Importer source assets, part assignments, transforms, attachment status and detached edits now
+round-trip through the package. The scene codec remains BombCAD-specific for 0.2; extract a
+shared scene contract when RoomCAD has a concrete consumer. Measure large-mesh storage before
+introducing a binary encoding. Optional results need input hashes and provenance before the app
+offers reuse. WAV impulse responses remain standalone exports, not project documents.
 
 ## Checks
 
 ```sh
 swift test --package-path Packages/SimulationKit
-swift test --filter 'AppPreferencesTests|ProjectSessionTests|ProjectDocumentTests|SimulationModelTests'
+swift test --filter 'AppPreferencesTests|ProjectSessionTests|ProjectDocumentTests|ImportedProjectTests|SimulationModelTests'
 ```
 
 These cover container integrity, moved files, atomic replacement, asset preservation, every
-built-in scene, settings/view restoration, independent windows, revert, simulation progress not
+built-in scene, embedded imports, stable source identities, detached edits, part assignments,
+settings/view restoration, independent windows, revert, simulation progress not
 marking projects changed, and app-model regressions. Native UI checks cover New, close/cancel,
 Save, Save As and autosave of numerical and display edits.
