@@ -14,13 +14,14 @@ import simd
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
-//   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1]
+//   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
+//               [--bond pullout|splitting|confined] [--crack-shear]   (also on beam and slab)
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
-//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25]
+//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
-//   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625]
+//   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--stationary-walls]
 
@@ -111,6 +112,21 @@ func chosenCrackAxes() -> CrackAxes {
     case "lattice": .lattice
     case "fixed": .fixedAtFirstCrack
     default: flag("oriented") ? .fixedAtFirstCrack : .turningUntilOpen
+    }
+}
+
+/// `--bond pullout`, `--bond splitting` or `--bond confined`: bars that slip in their concrete
+/// by the Model Code's law for those conditions (see `BondSlip`), of `diameter` metres unless
+/// `--bar` gives it in millimetres; nil, perfect bond, without the option.
+func chosenBondSlip(diameter: Float) -> BondSlip? {
+    let bar = option("bar").flatMap { Float($0) }.map { $0 / 1000 } ?? diameter
+    // `--keep-yielded-bond`: bars hold as well after yielding as before.
+    let loss = !flag("keep-yielded-bond")
+    switch option("bond") {
+    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar, yieldedBondLoss: loss)
+    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar, yieldedBondLoss: loss)
+    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar, yieldedBondLoss: loss)
+    default: return nil
     }
 }
 
@@ -756,7 +772,8 @@ func runBeam() throws {
         let result = try BeamBenchmark.run(
             device: device, elementsThroughDepth: layers,
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
-            unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes()
+            unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
+            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear")
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
@@ -1092,7 +1109,9 @@ func runShearBeam() throws {
         let slice = option("slice").flatMap { Float($0) }.map { $0 / 1000 }
         let result = try ShearBeamBenchmark.run(
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
-            crackAxes: chosenCrackAxes()
+            crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
+            crackShearStiffness: flag("crack-shear"),
+            mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
         ) { material in
             if let dowel { material.dowelFactor = dowel }
             // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
@@ -1108,6 +1127,14 @@ func runShearBeam() throws {
                 + pad("\(format(Double(result.peak / ShearBeamBenchmark.measuredPeak) * 100, 0))%", 9)
                 + pad("\(format(Double(result.peakDeflection) * 1000)) mm", 9)
                 + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
+    }
+    // `--map 9` draws the cracks through the middle of the width at 9 mm of deflection.
+    for (layers, result) in results where !result.crackMap.isEmpty {
+        print(
+            "\nCracks open past 0.1% strain, \(layers) layers, at \(option("map") ?? "") mm "
+                + "(\(format(Double(result.mapLoad) / 1000, 0)) kN): | vertical, / and \\ inclined, - horizontal"
+        )
+        for line in result.crackMap { print(line) }
     }
     print("\nMid-span load (kN) against deflection:")
     print(
@@ -1216,14 +1243,22 @@ func runSlab() throws {
             flag("held-bearings") ? .bearings(width: 0.0254, holdDown: true) : .lines
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
-            crackAxes: chosenCrackAxes(), adjust: { applyRateOptions(&$0) },
+            crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
+            crackShearStiffness: flag("crack-shear"),
+            adjust: { applyRateOptions(&$0) },
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
                         print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
                         for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
                     }
-                } : nil)
+                }
+                // `--map`: the cracks through the middle of the width at 80 ms.
+                : flag("map")
+                    ? { solver in
+                        print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
+                        for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                    } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
@@ -1319,9 +1354,11 @@ func runAnchorage() throws {
     let mass = option("mass").flatMap { Float($0) } ?? 50
     let standoffs = (option("standoff") ?? "6,10,15,25").split(separator: ",").compactMap { Float($0) }
     let duration = option("time").flatMap { Float($0) } ?? 0.5
-    let h = option("h").flatMap { Float($0) } ?? 0.0625
+    // `--shells` meshes the wall with shells (of 0.125 m unless `--h` says otherwise).
+    let shells = flag("shells")
+    let h = option("h").flatMap { Float($0) } ?? (shells ? 0.125 : 0.0625)
     print(
-        "Freestanding wall, \(format(Double(AnchorageStudy.height), 0)) m high and "
+        "Freestanding wall\(shells ? " of shells" : ""), \(format(Double(AnchorageStudy.height), 0)) m high and "
             + "\(format(Double(AnchorageStudy.thickness) * 1000, 0)) mm thick, a surface burst of "
             + "\(format(Double(mass), 0)) kg; Kingery–Bulmash reflected pulse, no air; \(format(Double(duration), 1)) s"
     )

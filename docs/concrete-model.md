@@ -273,6 +273,26 @@ where a is the largest aggregate size (16 mm by default) and w is the crack widt
 crack strain times the band width ℓ. A hairline crack carries about 0.58 √f_c, close to the
 tensile strength; a 1 mm crack carries about 30% of that.
 
+**A crack's shear stiffness** (an option, `StructureModel.crackShearStiffness`). A quarter of
+the concrete's shear stiffness, kept however wide the crack, suits a crack smeared over many
+elements. A crack in one element (in plain concrete, or with bars that slip) is a discrete
+crack, and Walraven and Reinhardt measured how stiff those are in shear: k = 1.8 w^−0.8 +
+(0.234 w^−0.707 − 0.20) f_cc MPa per mm of slip, for a crack w mm wide in concrete of cube
+strength f_cc MPa (taken as f_c / 0.8). With the option the crack acts in series with the
+concrete across the band: the cracked plane keeps 1 / (1 + G / (k ℓ)) of the concrete's shear
+stiffness, which on 46 mm elements of 23 MPa concrete is 0.07 at 0.2 mm and 0.01 at 1 mm. A
+cube cracked open and sheared a little keeps that share within 15% (`ConcreteModelTests`).
+
+It matters less than the cap. Vecchio and Shim's beam OA1 with bars that slip carries 453 kN
+with it (136%) against 472 without, and Janney's beam with slip 103% (failing at 45 mm) against
+107% (42 mm); the contest slab is unchanged (105 mm perfectly bonded, 90 mm with slip). The
+cap decides OA1: with slip and the measured stiffness, and no dowel action, it carries 447 and
+463 kN on 12 and 24 elements through its depth at the full cap; 413 kN (124%) at half of it; 361
+and 358 kN (109% and 108%) at a fifth; and 296 kN (89%) at a twentieth. Its shear strength no
+longer depends on the mesh, but on the interlock cap, which has not been checked against a
+measurement in this model. A fifth of the cap was not adopted: nothing measured supports it,
+and it breaks Janney's beam at 27 mm instead of the measured 42.
+
 This term was added after a model without it failed. With no shear transfer across cracks, a
 flexurally cracked slab with no steel through its thickness cannot pass shear between its
 tension and compression zones; the zones slide apart and the member splits along its length.
@@ -364,6 +384,74 @@ they then unloaded elastically to between −230 and −380 MPa while the crack 
 still open; with it they reach about −100 MPa.
 
 The default steel has a 500 MPa yield, 575 MPa ultimate at 7.5% strain and rupture at 12%.
+
+### Bars that slip (an option)
+
+By default bars are perfectly bonded: they stretch with their element. Real bars slip in their
+concrete near a crack, which lets the concrete between cracks shed its tension to them and so
+sets how far apart cracks form. Perfectly bonded smeared bars cannot do this, so the model
+spreads each crack over the crack spacing instead (above), and on elements coarser than half
+that spacing it cannot separate cracks at all. `StructureModel.bondSlip` (`BondSlip`) lets the
+bars along the lattice axes slip:
+
+- each node carries the slip of its bars along each axis, relative to the concrete; an
+  element's bars are strained by the concrete's stretch plus the change in slip across it;
+- the bond resists slip with the fib Model Code 2010's bond–slip law (§6.1.1, good bond), for
+  pull-out (bars confined), splitting (unconfined) or splitting held by stirrups, over the
+  bars' surface, 4 ρ / d per unit volume for bars of diameter d. Its power-law start is made
+  linear to a fiftieth of s₁, so that its stiffness is finite, and it unloads at that
+  stiffness;
+- a crack crossed by bars then softens over its own element, as in plain concrete, and a bar's
+  rupture is judged in its own element, its strain spread along it by the slip;
+- held or driven nodes grip their bars: they do not slip there;
+- where bars have yielded they hold less well: the bond is scaled by the Model Code's
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = 2 − f_u / f_y
+  (§6.1.1.3; the form is recalled, not checked against the text), with a the bars' plastic
+  strain over that at their ultimate strength, averaged over the elements around each node
+  (`BondSlip.yieldedBondLoss`, on by default).
+
+Bars weigh far too little for the time step, so the slip does not follow their inertia. It is
+relaxed towards equilibrium each step, with a mass scaled to the step and 70% of critical
+damping. Its stiffness for that counts each element's bars eight times over: an element ties
+the slip at each corner to all eight, and counted once the slip rang at about ±40 kN in a tie
+pulled to 30 kN. The slip lags the load by some tens of steps, tens of microseconds. Inclined
+bars, shells and beams stay perfectly bonded, and the bond's peak follows the body's main
+concrete.
+
+**A reinforced tie** (`BondSlipTests`): 1 m long, 100 mm square, 2% of 12 mm bars, pulled to
+1.5 mm. With slip it cracks at 31–34 kN, as when bonded, then at discrete places: eight cracks
+on both 20 mm and 10 mm elements, 120–145 mm apart, within the Model Code's l_t to 2 l_t (83 to
+167 mm, with the mean bond stress while cracks form, 1.8 f_ctm). At 1.5 mm it carries 69 and
+71 kN, within 6% of the Model Code's tension stiffening (73 kN, β = 0.4). Perfectly bonded, the
+same tie cracks along its whole length at once. Pulled past yield (50 mm square, 1% of steel,
+on 10 mm elements), its bars yield over 0.20 m of its length with the bond lost at yield and
+0.15 m without: with hardening from 500 to only 575 MPa, yield spreads some 16 mm / Ω_y either
+side of a crack, under one element on coarser meshes.
+
+**The structural tests** (`--bond pullout` on `blastbench beam`, `shear` and `slab`):
+
+| Test | Perfect bond | With slip |
+|---|---|---|
+| Janney's beam, 12 elements through | 41.6 kN m (100%), fails at 51 mm | 44.3 kN m (107%), fails at 42 mm, as the test did |
+| Vecchio and Shim's OA1, 12 / 24 through | 456 / 367 kN (137% / 111%) | 472 / 489 kN (142% / 147%); splitting bond 490 kN on 12 |
+| The contest slab, 8 through | 104 mm (97%), 65 mm left | 88 mm (82%), 53 mm left |
+
+With slip the shear beam cracks as the test did on both meshes, in flexure–shear cracks about
+200 mm apart that lean towards the load as they climb (`--map`), and its strength no longer
+depends on the mesh. But the diagonal crack never runs through the compression zone: the beam
+reaches its bending strength instead, 42–47% above the measured shear failure. The 11% of the
+fine mesh with perfect bond came from the smeared band, not from cracks like the test's. The
+crack's shear (aggregate interlock) decides it: with interlock for 1 mm aggregate instead of
+the measured 20 mm the beam carries 436 kN; dowel action barely matters. The slab with slip is
+stiffer and keeps less of its deflection. Losing bond where the bars yield does not change it
+(88 mm either way). What does is the cracks keeping to one element each: with slip but cracks
+spread over the crack spacing, as without it, the slab reaches 98 mm (91%). Its cracks show why
+(`blastbench slab --map`): perfectly bonded, the whole of its middle cracks as one field over
+95 elements; with slip, the cracks stand about seven elements (90 mm) apart, as the Model Code
+puts them for bars in the concrete around them in bending, over a zone a fifth shorter, and the
+concrete between them still carries tension at blast rates. Whether the test slab cracked so is
+not known. So the option stays off until the shear across discrete cracks, and the slab, are
+understood.
 
 ## Strain-rate effects
 
@@ -744,7 +832,36 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    elements through the depth: shear strength needs a finer mesh than bending does, about 24
    elements through a member's depth. On coarser meshes the diagonal crack cannot cut through
    the compression zone, and the load arches to the supports over the bars until they yield;
-   neither interlock nor dowel action accounts for it. Beams check each section's shear
+   neither interlock nor dowel action accounts for it, nor the strut's crushing: cracked
+   concrete made weaker in compression by the tension across it, 1 / (0.8 + 170 ε₁) of its
+   strength as in the modified compression field theory (Vecchio and Collins, 1986), left the
+   12-element beam's peak at 456 kN and its curve within 1%.
+
+   The cracks themselves show the difference (`blastbench shear --map 8.5` draws them through
+   the middle of the width). On 24 elements through the depth the beam cracks as the tests do,
+   in discrete bands two to four elements wide and 115–140 mm apart, many of them inclined, the
+   inclined ones reaching a third of the depth from the top. On 12 elements (46 mm) cracks that
+   far apart are two elements apart, which the lattice cannot separate: the whole tension zone
+   cracks as one field, vertical in the middle and inclined towards the supports in bands up to
+   ten elements wide, which reach as high as the fine mesh's cracks but as a smeared field. With
+   no discrete diagonal crack there is none to run through the compression zone.
+
+   Crack tracking was tried for this (kept on the branch `experiment/crack-tracking`): within
+   one to three elements of a crack, an element might crack only where a neighbouring crack's
+   plane passed through it, after M. Cervera and M. Chiumenti (2006) and M. Cervera, L. Pelà,
+   R. Clemente and P. Roca (2010). It narrowed the cracks in the middle of the span but left
+   the inclined bands, which grow from flexural cracks turning, and the peak at 455–460 kN for
+   every radius; and it stiffened the cracked beam (167 kN at 2 mm against 153), since the
+   blocked elements beside a crack, tied to smeared bars that cannot slip, carried tension of
+   several times the concrete's strength. Without bond slip, so that concrete between cracks
+   can shed its tension to the bars, tracked cracks do not suit reinforced concrete on this
+   lattice. A plain concrete beam 200 mm deep notched to half its depth, which forms one crack,
+   peaks at 2.22, 1.96 and 1.91 kN on 25, 12.5 and 6.25 mm elements, with or without tracking:
+   the crack band holds roughly, 16% strong at eight elements through the depth, so how a single
+   crack advances accounts for part of the coarse beam's excess at most. Bars that slip (see
+   [Reinforcement](#bars-that-slip-an-option)) do separate cracks on coarse elements, and make
+   the beam's strength the same on both meshes, but 42–47% strong: with discrete cracks the
+   shear they carry by interlock keeps the diagonal crack from running. Beams check each section's shear
    instead (see the [shell model](shell-model.md#materials)). Dowel
    action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their

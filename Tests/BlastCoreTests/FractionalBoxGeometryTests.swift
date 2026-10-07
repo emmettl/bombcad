@@ -5,6 +5,84 @@ import simd
 
 @Suite("Fractional rigid-box geometry")
 struct FractionalBoxGeometryTests {
+    @Test(
+        "A brief corner graze carries pressure impulse despite zero endpoint volume change",
+        arguments: [0.001, 0.0001, 0.00001])
+    func grazingImpulse(gap: Double) throws {
+        let duration = 0.4
+        let pressure = 101325.0
+        let body = try RigidBoxBody(
+            mass: 1, size: SIMD3(repeating: 0.2),
+            position: SIMD3(-0.3, 0.1 + gap, 0.5))
+        let tolerance = max(1e-12, pressure * 0.2 * gap * gap / 2 * 1e-5)
+        let r = try AdaptiveBoxCellSweep.integrate(
+            body: body, velocity: SIMD3(1, -1, 0), spin: .zero,
+            lower: .zero, cellSize: 1, duration: duration, pressure: pressure, volumeTolerance: 1e-14,
+            impulseTolerance: tolerance, angularTolerance: tolerance)
+        let expected = SIMD3<Double>(repeating: -pressure * 0.2 * gap * gap / 2)
+        #expect(abs(r.volumeChange) < 1e-14)
+        #expect(abs(r.sweptVolume) < 1e-12)
+        #expect(abs(r.linearImpulse.x - expected.x) < 2 * tolerance)
+        #expect(abs(r.linearImpulse.y - expected.y) < 2 * tolerance)
+        #expect(abs(r.linearImpulse.z) < 1e-12)
+        #expect(simd_length(r.angularImpulse) < 2 * tolerance)
+        #expect(r.impulseErrorEstimate <= tolerance && r.angularErrorEstimate <= tolerance)
+        #expect(abs(r.gasWork + r.bodyWork) < 1e-8)
+    }
+    @Test("Adaptive rotated sweeps meet volume tolerance and fail at a refinement limit")
+    func adaptiveSweep() throws {
+        let body = try RigidBoxBody(
+            mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(2.095, 2, 2),
+            orientation: simd_quatd(angle: 0.11, axis: simd_normalize(SIMD3(1, 2, 3))))
+        let lower = SIMD3<Double>(2.475, 1.9, 1.9)
+        let spin = 4 * simd_normalize(SIMD3<Double>(1, 2, 3))
+        let r = try AdaptiveBoxCellSweep.integrate(
+            body: body, velocity: .zero, spin: spin,
+            lower: lower, cellSize: 0.2, duration: 0.02, pressure: 101325, volumeTolerance: 1e-12)
+        #expect(abs(r.sweptVolume - r.volumeChange) <= 1e-12)
+        #expect(r.errorEstimate <= 1e-12)
+        #expect(abs(r.gasWork + r.bodyWork) < 1e-8)
+        #expect(abs(r.gasWork - 101325 * r.volumeChange) < 2e-7)
+        let offset = SIMD3<Double>(0.1, 0.05, -0.07)
+        let shifted = try RigidBoxBody(
+            mass: 2, size: SIMD3(0.8, 0.6, 0.4),
+            position: body.position + body.orientation.act(offset), orientation: body.orientation,
+            centreOfMass: offset, inertia: SIMD3(repeating: 0.2))
+        let combined = try AdaptiveBoxCellSweep.integrate(
+            body: shifted, velocity: SIMD3(0.6, -0.3, 0.2),
+            spin: SIMD3(0.3, 0.4, 1.1), lower: lower, cellSize: 0.2, duration: 0.02,
+            pressure: 101325, volumeTolerance: 1e-12)
+        #expect(abs(combined.sweptVolume - combined.volumeChange) <= 1e-12)
+        #expect(abs(combined.gasWork + combined.bodyWork) < 1e-8)
+        #expect(throws: AdaptiveBoxCellSweep.Failure.self) {
+            try AdaptiveBoxCellSweep.integrate(
+                body: body, velocity: .zero, spin: spin,
+                lower: lower, cellSize: 0.2, duration: 0.02, pressure: 101325,
+                volumeTolerance: 1e-30, maximumIntervals: 2)
+        }
+    }
+    @Test("Event-split translation conserves volume and work for crossings in either direction")
+    func eventSplitTranslation() throws {
+        let body = try RigidBoxBody(mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(1, 1, 1))
+        for velocity in [SIMD3<Double>(2, 1.7, 0.6), SIMD3(-2, -1.7, -0.6), .zero] {
+            for lower in [SIMD3<Double>(1.35, 1.35, 1.35), SIMD3(0.55, 0.55, 0.55)] {
+                let r = try TranslatingBoxCellSweep.integrate(
+                    body: body, velocity: velocity, lower: lower,
+                    cellSize: 0.1, duration: 0.12, pressure: 101325)
+                #expect(abs(r.sweptVolume - r.volumeChange) < 1e-12)
+                #expect(abs(r.gasWork - 101325 * r.volumeChange) < 1e-8)
+                #expect(abs(r.gasWork + r.bodyWork) < 1e-8)
+            }
+        }
+        let rotated = try RigidBoxBody(
+            mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(1, 1, 1),
+            orientation: simd_quatd(angle: 0.37, axis: SIMD3(0, 0, 1)))
+        #expect(throws: TranslatingBoxCellSweep.Failure.self) {
+            try TranslatingBoxCellSweep.integrate(
+                body: rotated, velocity: SIMD3(1, 0, 0), lower: .zero,
+                cellSize: 0.2, duration: 0.01, pressure: 101325)
+        }
+    }
     @Test("Moving-wall pressure work is equal and opposite for gas and body")
     func pressureWork() throws {
         let body = try RigidBoxBody(
@@ -33,6 +111,16 @@ struct FractionalBoxGeometryTests {
         for r in results {
             #expect(abs(r.workBalanceResidual) < 1e-8)
             #expect(abs(r.gasPressureWork - 101325 * r.sweptVolume) < 1e-8)
+            if r.integration == .eventSplitGauss {
+                #expect(abs(r.volumeResidual) < 1e-12)
+                #expect(abs(r.gasPressureWork - r.endpointPressureWork) < 1e-8)
+            }
+            if r.integration == .adaptiveGauss {
+                let tolerance = try #require(r.volumeTolerance)
+                #expect(try #require(r.quadratureVolumeError) <= tolerance)
+                #expect(abs(r.volumeResidual) <= tolerance + 1e-15)
+                #expect(abs(r.gasPressureWork - r.endpointPressureWork) <= 101325 * tolerance + 1e-8)
+            }
             if r.kind == "ground-gap-opening" {
                 #expect(abs(r.volumeResidual) < 1e-12)
                 #expect(r.gasPressureWork < 0 && r.bodyPressureWork > 0)
@@ -40,7 +128,9 @@ struct FractionalBoxGeometryTests {
             }
         }
         for h in [0.1, 0.05] {
-            let crossing = results.filter { $0.kind == "translation-crossing" && $0.cellSize == h }
+            let crossing = results.filter {
+                $0.kind == "translation-crossing" && $0.cellSize == h && $0.integration == .midpoint
+            }
             #expect(abs(crossing[2].volumeResidual) < abs(crossing[1].volumeResidual))
             #expect(abs(crossing[1].volumeResidual) < abs(crossing[0].volumeResidual))
             #expect(abs(crossing[2].volumeResidual) > 1e-8)

@@ -77,6 +77,10 @@ public enum ShearBeamBenchmark {
         public var summary: StructureSummary
         public var elementCount: Int
         public var wallSeconds: Double
+        /// The cracks through the middle of the width when the beam had deflected by `mapAt`
+        /// (see `StructureSolver.crackMap`), and the load then; empty if not asked for.
+        public var crackMap: [String] = []
+        public var mapLoad: Float = 0
 
         public func load(at deflection: Float) -> Float {
             SlabBenchmark.interpolate(curve, at: deflection)
@@ -88,12 +92,16 @@ public enum ShearBeamBenchmark {
     /// load is scaled up to the whole beam's.
     public static func run(
         device: MTLDevice, elementsThroughDepth: Int = 12, slice: Float? = nil, deflection: Float = 0.016,
-        rate: Float = 0.05, crackAxes: CrackAxes = .turningUntilOpen,
+        rate: Float = 0.05, crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
+        crackShearStiffness: Bool = false,
+        mapAt: Float? = nil,
         adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth, slice: slice)
         let scale = width / (slice ?? width)
         model.crackAxes = crackAxes
+        model.bondSlip = bondSlip
+        model.crackShearStiffness = crackShearStiffness
         adjust(&model.material)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
@@ -129,6 +137,8 @@ public enum ShearBeamBenchmark {
 
         let start = ContinuousClock.now
         var curve: [SIMD2<Float>] = [.zero]
+        var map: [String] = []
+        var mapLoad: Float = 0
         let stepsPerSample = max(1, Int(0.0001 / rate / solver.criticalTimeStep))
         while curve.last!.x < deflection, solver.time < Double(1.5 * deflection / rate) {
             solver.advance(steps: stepsPerSample)
@@ -142,6 +152,10 @@ public enum ShearBeamBenchmark {
             }
             let centre = -solver.displacement(middle, solver.ey / 2, 0).z
             curve.append(SIMD2(centre, reaction * scale))
+            if let mapAt, map.isEmpty, centre >= mapAt {
+                map = solver.crackMap(row: solver.ey / 2)
+                mapLoad = reaction * scale
+            }
             if !centre.isFinite { break }
         }
         let elapsed = ContinuousClock.now - start
@@ -149,6 +163,7 @@ public enum ShearBeamBenchmark {
         return Result(
             curve: curve, peak: top.y, peakDeflection: top.x, summary: solver.summary(),
             elementCount: solver.elementCount,
-            wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
+            wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18,
+            crackMap: map, mapLoad: mapLoad)
     }
 }

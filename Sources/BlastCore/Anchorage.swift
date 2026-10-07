@@ -15,9 +15,9 @@ import Foundation
 /// slides on it with Coulomb friction and lifts off. The bearing is damped as the solver's
 /// contacts are.
 ///
-/// The law has no rate dependence, no dilatancy and no rotational stiffness of its own (a solid
-/// body's base rocks through the opening of its nodes on one side). It applies to solid elements;
-/// shells keep a clamped base.
+/// The law has no rate dependence, no dilatancy and no rotational stiffness of its own: a solid
+/// body's base rocks through the opening of its nodes on one side, and a shell's or a column's
+/// through points of its footprint that turn with its node (`ShellMesh.baseFibres`).
 public struct Anchorage: Sendable, Hashable, Codable {
     /// Normal stiffness per unit area in Pa/m; nil takes the body material's E / h, as stiff as
     /// one more element of the body, which leaves its time step unchanged.

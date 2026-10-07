@@ -273,6 +273,19 @@ complete box surface; those loads are geometry identities, not ground-pressure p
 `--motion-geometry` writes `.build/rigid-box-motion-geometry.json`, comparing endpoint cell
 volume changes with temporally integrated wall motion and equal/opposite pressure work.
 It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
+It also compares event-split integration for constant translation of axis-aligned boxes,
+recording the integration method and actual temporal evaluation count in each result.
+Rotated translation and rotation use an adaptive reference checked against endpoint volume
+changes and coarse/fine quadrature. The 48-case report includes volume tolerances and error
+indicators. This reference does not certify force impulses or detect every brief grazing event.
+`--grazing-geometry` writes `.build/rigid-box-grazing-geometry.json`, comparing analytical
+cell-pressure impulses for 1 ms, 100 µs and 10 µs corner encounters against midpoint and
+adaptive sampling. Adaptive refinement now also checks force/torque quadrature and uses
+separation bounds to investigate intervals whose samples could miss a complete encounter.
+`--fractional-gas` writes `.build/fractional-gas-compression.json`, checking ideal-gas pressure
+work in prescribed fractional volumes. The CPU transport reference conserves extensive mass,
+momentum and energy for supplied transfers; it does not yet derive face fluxes or choose a
+stable timestep, and is separate from the air solver.
 
 ## Headline results
 

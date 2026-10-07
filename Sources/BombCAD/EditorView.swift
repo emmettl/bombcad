@@ -208,7 +208,7 @@ struct EditorView: View {
                     Text("Structural supports")
                 } footer: {
                     Text(
-                        "Nodes inside support regions are held still. Add Support places a strip at the base of the selected part or region; edit its corner and size to locate the restraint. The base connection ties the nodes on the ground to it: clamped, or by starter bars, a construction joint or friction alone, which can open, slide and fail. Shells keep a clamped base."
+                        "Nodes inside support regions are held still. Add Support places a strip at the base of the selected part or region; edit its corner and size to locate the restraint. The base connection ties the nodes on the ground to it: clamped, or by starter bars, a construction joint or friction alone, which can open, slide and fail."
                     )
                 }
             }

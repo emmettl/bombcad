@@ -499,4 +499,62 @@ struct ShellMesh {
         }
         return layers
     }
+
+    /// Where each node on the ground carries its share of a connection to it (`Anchorage`): points
+    /// of the footprint as (offset x, offset y from the node, area, 0). A wall's node carries
+    /// `across` points through the wall's thickness, over half of each element edge it ends; a
+    /// column's, `across` × `across` over its section. The points run from face to face with the
+    /// trapezoid rule's weights, so that a base rocking on its toe bears at the face, as solid
+    /// elements' corner nodes do. Nodes of neither carry none.
+    func baseFibres(across: Int) -> [[SIMD4<Float>]] {
+        var fibres = [[SIMD4<Float>]](repeating: [], count: positions.count)
+        let intervals = Float(across - 1)
+        func onGround(_ node: UInt32) -> Bool { abs(positions[Int(node)].z) < 1e-4 }
+        // Position from -1/2 to 1/2 and weight, summing to one, of point k.
+        func point(_ k: Int) -> (offset: Float, weight: Float) {
+            (Float(k) / intervals - 0.5, (k == 0 || k == across - 1 ? 0.5 : 1) / intervals)
+        }
+        for element in elements where element.axis != 2 {
+            // A wall: its thickness is horizontal, along `axis`; its base edge runs along the
+            // other horizontal axis, the element's first unless that is vertical.
+            let edge = (element.axis + 1) % 3 == 2 ? element.size.y : element.size.x
+            var normal = SIMD2<Float>.zero
+            normal[element.axis] = 1
+            for corner in 0..<4 where onGround(element.nodes[corner]) {
+                for k in 0..<across {
+                    let (fraction, weight) = point(k)
+                    let offset: SIMD2<Float> = fraction * element.thickness * normal
+                    let area: Float = weight * element.thickness * edge / 2
+                    fibres[Int(element.nodes[corner])].append(SIMD4(offset.x, offset.y, area, 0))
+                }
+            }
+        }
+        for beam in beams where beam.axis == 2 {
+            for end in 0..<2 where onGround(beam.nodes[end]) {
+                for i in 0..<across {
+                    for j in 0..<across {
+                        let (u, wu) = point(i)
+                        let (v, wv) = point(j)
+                        let offset: SIMD2<Float> = SIMD2(u, v) * beam.section
+                        let area: Float = wu * wv * beam.section.x * beam.section.y
+                        fibres[Int(beam.nodes[end])].append(SIMD4(offset.x, offset.y, area, 0))
+                    }
+                }
+            }
+        }
+        // Points that elements meeting at a node both give are one point, with both shares.
+        return fibres.map { list in
+            var merged: [SIMD4<Float>] = []
+            for point in list {
+                if let k = merged.firstIndex(where: {
+                    simd_distance(SIMD2($0.x, $0.y), SIMD2(point.x, point.y)) < 1e-6
+                }) {
+                    merged[k].z += point.z
+                } else {
+                    merged.append(point)
+                }
+            }
+            return merged
+        }
+    }
 }

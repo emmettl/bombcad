@@ -104,10 +104,14 @@ public enum BeamBenchmark {
     public static func run(
         device: MTLDevice, elementsThroughDepth: Int = 12, deflection: Float = 0.06, rate: Float = 0.1,
         unload: Bool = false, crackSlip: Bool = true,
-        crackAxes: CrackAxes = .turningUntilOpen, adjust: (inout StructureMaterial) -> Void = { _ in }
+        crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
+        crackShearStiffness: Bool = false,
+        adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth)
         model.crackAxes = crackAxes
+        model.bondSlip = bondSlip
+        model.crackShearStiffness = crackShearStiffness
         model.crackSlip = crackSlip
         adjust(&model.material)
         let solver = try StructureSolver(device: device, model: model)

@@ -87,7 +87,17 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    [air-blast model](air-blast-model.md#dissociating-air).)
 4. **Shear in concrete.** A member that failed in shear under a blast, to judge a sectional
    check for shells; a sectional check that works under impact, where the present one breaks
-   every beam; and solid elements that fail in shear on coarse meshes. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
+   cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
+   [the concrete model](concrete-model.md#limitations)). Bars that slip, now an option, give
+   discrete cracks at the Model Code's spacing on any mesh and a mesh-independent shear beam,
+   but 42–47% strong, and the slab's peak 18% low. Across discrete cracks, a shear stiffness that
+   falls as they open (Walraven and Reinhardt, now an option) barely moves either; the beam's
+   strength follows the interlock cap alone, 108–109% on both meshes at a fifth of it, which
+   nothing measured yet supports. Bond lost where bars yield (now part of slip) spreads yield
+   along them but leaves the slab at 88 mm; its stiffness with slip comes from cracks that keep
+   to one element each, 90 mm apart over a shorter zone (98 mm if spread over the crack spacing).
+   A direct test of interlock across one crack, and the test slab's crack pattern, come next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
@@ -377,6 +387,96 @@ Next, split time integration at wall/cell crossing events (or use equivalent con
 space-time geometry), then address transport and stability of small fractional gas volumes.
 The current air solver still uses its existing whole-cell boundaries.
 
+Event-aware translation is now implemented as a separate reference. For an axis-aligned box
+moving at constant velocity, it finds every box-face/cell-face crossing time and splits the
+interval there. Two-point Gaussian quadrature integrates the quadratic swept-volume rate
+between events, including simultaneous motion along multiple axes. Non-axis-aligned boxes
+are explicitly rejected; this is not a general rotating-body event solver.
+
+The motion report now has 33 cases: the retained 27 midpoint cases plus six event-split
+translation/gap comparisons. The translation crossings use four temporal evaluations instead
+of 128 and reduce the previous 6.25% volume mismatch to numerical precision (maximum
+absolute event-split residual below 0.000000000000000012 m³). Gas pressure work also matches
+pressure times the exact endpoint volume change within 0.000000000002 J, while remaining
+equal and opposite to body work. Eleven tests include diagonal translation, reverse motion,
+stationary geometry and rejection of unsupported orientations.
+
+This removes the demonstrated translation-crossing error without correcting an already
+computed flux after the fact. Rotated motion needs the broader space-time reference below,
+before conservative fractional gas transport and small-volume stabilization.
+The reference remains separate from the air solver and does not change the blast demo.
+
+An adaptive reference now supports arbitrary initial pose, constant world spin and constant
+centre-of-mass velocity. It checks endpoint solid-volume changes against integrated wall
+motion, compares coarse/fine Gaussian quadrature, and refines the interval with the largest
+combined error indicator until the summed indicator meets the requested tolerance. Initial
+subdivision limits wall travel and angular excursion; a refinement limit causes an explicit
+failure rather than returning an unchecked result. No flux is corrected to force agreement.
+
+The motion report now contains 48 cases, including rotated translation and six adaptive
+comparisons with tolerances of one billionth of a full cell's volume. All six meet their
+reported tolerance and constant-pressure work checks. Smooth rotation uses 12–30 temporal
+geometry evaluations, while rotated translation uses 258–312 (including evaluations discarded
+during refinement). On 0.05 m air, rotated translation's volume residual falls from
+0.00000000687 m³ with 128 midpoint samples to 0.00000000000000150 m³ adaptively.
+Twelve tests include combined translation/rotation with an offset centre of mass and failure
+at a refinement limit.
+
+This is a numerical reference, not a complete rotating-wall event detector. Volume checks and
+excursion limits do not prove detection of arbitrarily brief grazing contacts or certify
+force-impulse accuracy. Those stress cases and consistent space-time force/transport checks
+remain necessary before coupling fractional gas volumes into the solver. Small-volume
+stabilization and the blast-convergence study also remain open.
+
+Grazing-contact and force-impulse checks are now implemented. Adaptive refinement compares
+linear and angular impulse estimates as well as volume. An endpoint-inclusive force estimate
+checks jumps that Gaussian nodes can sample on only one side. When temporal samples appear
+empty, separating-axis projections of the midpoint box are inflated by maximum corner travel;
+the interval is refined unless those projections prove separation over the whole interval.
+This also investigates short contact tails at occupied endpoints, rather than assuming that
+small endpoint volume implies small pressure impulse. Roundoff-sized clipped volumes are not
+used as evidence that a whole interval has been sampled adequately.
+
+`--grazing-geometry` compares 1 ms, 100 µs and 10 µs corner encounters over a 0.4 s sweep.
+Each selected cell has zero endpoint volume change, but nonzero pressure impulse. At
+101325 Pa, analytical x and y impulses are −0.0101325, −0.000101325 and −0.00000101325 N s,
+respectively. All three adaptive results agree within the requested impulse tolerances, with
+zero analytical angular impulse and balanced gas/body work. A uniform 128-sample midpoint
+integration misses all three encounters entirely. These are cell-pressure contributions,
+not net loads on a complete box in uniform ambient pressure.
+
+Thirteen tests pass, including these three analytical grazing cases and the previous motion
+checks. The grazing references require 1161–1197 geometry evaluations: useful for checking
+correctness, not a production throughput result. Coarse/fine and endpoint estimates remain
+numerical indicators rather than rigorous general force-error bounds; geometry tolerance,
+refinement limits and more complex near-contact motion remain relevant. The next step is a
+standalone conservative fractional gas-transport reference using the checked volume/work
+budgets, followed by small-volume stabilization before solver integration.
+
+The first fractional gas-transport reference is now implemented on the CPU. Each cell stores
+extensive mass, momentum and total energy together with its prescribed gas volume. Supplied
+directed transfers carry frozen donor states, with total outgoing volume bounded by the
+donor's old volume. Equal/opposite transfer amounts conserve the five gas quantities; supplied
+wall impulses and pressure work enter separately. New states are validated before returning,
+rejecting donor overdraw, residual gas in a zero-volume cell and nonpositive internal energy.
+Only relative roundoff-sized residuals may be cleared when a cell becomes completely dry.
+
+Six tests cover uniform-state preservation while cells close/open, nonuniform mass/momentum/
+energy budgets, independence from face traversal order, positive opening-cell states at
+volumes down to 0.000000000002 m³, invalid-update rejection and compression-work convergence.
+`--fractional-gas` generates a sealed ideal-gas compression study from 1 to 0.9 m³ with
+first-order pressure work. Fixed and moving wall impulses balance, while the moving boundary
+does work. Pressure error against adiabatic compression falls from 0.292% in one update to
+0.00486% in 64; mass is unchanged and energy-budget residuals remain below 0.00000000005 J.
+The opposing body-work entry is recorded from the supplied gas work; no free-body dynamics
+are simulated in this compression test.
+
+This is conserved-state accounting for prescribed transfers and volumes, not yet a moving-box
+gas solver. It does not construct an adjacent-face displacement field, solve numerical gas
+fluxes or choose a timestep. Tiny positive states in an algebraic test do not establish
+small-cell stability. Next, derive geometry-consistent face transfers and introduce a checked
+small-volume treatment before connecting fractional transport to blast coupling.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
@@ -413,8 +513,10 @@ and dowelled connections are provided, checked against statics, and compared on 
 wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars the wall sways
 within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
 resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
-[structural model](structural-model.md#base-connections). Still open: footings, soil and
-foundation rotation; connections for shells and support regions; and a measured case.
+[structural model](structural-model.md#base-connections). Shells and columns of beam elements
+have them too, at points across their footprint, and give the wall the same answers. Still
+open: footings, soil and foundation rotation; connections for support regions; and a measured
+case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2

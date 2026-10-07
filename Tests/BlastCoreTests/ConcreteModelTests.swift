@@ -26,10 +26,11 @@ struct ConcreteModelTests {
     /// rate. Returns the nominal stress against strain, sampled as it goes.
     private func strainCube(
         size: Float, material: StructureMaterial, steelRatio: Float = 0, to strains: [Float],
-        samplesPerLeg: Int = 150
+        samplesPerLeg: Int = 150, crackShearStiffness: Bool = false
     ) throws -> (curve: [(strain: Float, stress: Float)], solver: StructureSolver) {
         let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
         var model = StructureModel(solids: [cube], material: material, elementSize: size, fixedBase: false)
+        model.crackShearStiffness = crackShearStiffness
         if steelRatio > 0 {
             model.reinforcement = [ReinforcementLayer(region: cube, ratio: SIMD3(steelRatio, 0, 0))]
         }
@@ -794,6 +795,46 @@ struct ConcreteModelTests {
             #expect(
                 abs(capacity - target) / target < 0.05,
                 "\(opening * 1000) mm: \(capacity) Pa against \(target) Pa")
+        }
+    }
+}
+
+extension ConcreteModelTests {
+    @Test("A crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured")
+    func crackShearStiffness() throws {
+        // Open a crack across x, then shear the cube across it a little, short of the interlock
+        // limit, and compare its shear stiffness with the concrete's.
+        let material = Self.concrete()
+        let size: Float = 0.05
+        func retention(opening: Float, measured: Bool) throws -> Float {
+            let (_, solver) = try strainCube(
+                size: size, material: material, to: [opening / size], crackShearStiffness: measured)
+            let before = solver.stress(0, 0, 0)[5]
+            let speed: Float = 0.002
+            solver.mutateNodes { nodes in
+                for k in 0...1 {
+                    for j in 0...1 { nodes[solver.nodeIndex(1, j, k)].velocity = SIMD3(0, 0, speed) }
+                }
+            }
+            let steps = 400
+            solver.advance(steps: steps)
+            let shear = speed * Float(steps) * solver.criticalTimeStep / size
+            return abs(solver.stress(0, 0, 0)[5] - before) / (shear * material.shearModulus)
+        }
+        // Without it, a quarter of the concrete's, at any width.
+        #expect(abs(try retention(opening: 0.0003, measured: false) - 0.25) < 0.03)
+        // With it, the crack's stiffness k (MPa per mm of slip, w in mm, f_cc the cube strength)
+        // in series with the concrete across the element: 1 / (1 + G / (k h)).
+        for opening in [0.0002, 0.0008] as [Float] {
+            let onset = material.tensileStrength / material.youngsModulus
+            let width = (opening - onset * size) * 1000
+            let cube = material.compressiveStrength / 0.8e6
+            let k = 1e9 * (1.8 * pow(width, -0.8) + max(0.234 * pow(width, -0.707) - 0.2, 0) * cube)
+            let expected = 1 / (1 + material.shearModulus / (k * size))
+            let measured = try retention(opening: opening, measured: true)
+            #expect(
+                abs(measured - expected) / expected < 0.15,
+                "\(opening * 1000) mm: \(measured) against \(expected)")
         }
     }
 }
