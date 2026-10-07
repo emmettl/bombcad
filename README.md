@@ -75,6 +75,10 @@ stiffness and strength. Deformable imports require a layout without an existing 
 use solid elements at the air cell size, and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
+Repository-only [importer sample files](Samples/Importer/README.md) cover named parts,
+STL components, units, cavities, thin features, narrow gaps, and the repair workflow.
+They are not bundled with the app.
+
 The importer retains each source mesh, its units/orientation and placement in the saved layout.
 **Inspect / edit source…** in Edit layout reopens an import without its original file. Changing
 the air grid regenerates retained geometry in the background; the simulation pauses until the
