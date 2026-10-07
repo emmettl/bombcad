@@ -68,7 +68,9 @@ document is opened from Finder.
     on one time axis. Both lanes are drawn at the levels played, scaled together.
   - A red playhead follows playback. Click or drag the strip to move it; while you drag, the playhead
     follows silently, and playback continues from where you release it.
-  - **Play/Pause** resumes from the playhead, and the back button returns it to the start.
+  - **Play/Pause**, or the space bar, resumes from the playhead, and the back button returns it to the
+    start. The space bar works anywhere in the window except while a text field is being edited, where
+    it types a space.
   - Changing the room, the loudness matching or looping keeps the position. Choosing another clip
     starts it from the beginning.
   - A slider balances the dry and wet sound while it plays; the lanes fade to match.
@@ -154,6 +156,8 @@ saved again.
   - seeking clamped to the clip;
   - choosing a clip resets the playhead;
   - matching changes the wet level only.
+- **SpaceKeyTests:** a bare space in the editor's window toggles playback. Modified, repeated or other
+  keys pass through, as do keys for other windows and spaces typed into a text field.
 - **RoomCADTests:**
   - background generation and its delivery;
   - automatic regeneration: waiting for changes to settle, superseding older runs, ignoring repeats,

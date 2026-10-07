@@ -26,7 +26,7 @@ struct AuditionBar: View {
                     Label(active ? "Pause" : "Play", systemImage: active ? "pause.fill" : "play.fill")
                 }
                 .disabled(busy && !player.isPlaying)
-                .help("Play the clip through the room; a response being updated takes over when it is ready")
+                .help("Play or pause (Space). A response being updated takes over when it is ready.")
                 Button("Back to Start", systemImage: "backward.end.fill") { player.seek(to: 0) }
                     .labelStyle(.iconOnly)
 

@@ -12,6 +12,7 @@ struct RoomEditorView: View {
     @State private var player = AuditionPlayer()
     /// Play as soon as a response arrives; set when Play is pressed before there is one.
     @State private var playWhenGenerated = false
+    @State private var spaceKey = SpaceKeyMonitor()
 
     private var project: RoomProject { document.project }
 
@@ -47,7 +48,10 @@ struct RoomEditorView: View {
                     .disabled(project.result == nil)
             }
         }
+        .background(WindowReader(monitor: spaceKey))
+        .onAppear { spaceKey.start { togglePlayback() } }
         .onDisappear {
+            spaceKey.stop()
             editor.cancel()
             player.stop()
         }
@@ -145,6 +149,15 @@ struct RoomEditorView: View {
         // Keeps playing, from the same point, with the new room.
         player.prepare(result, thenPlay: playWhenGenerated)
         playWhenGenerated = false
+    }
+
+    /// Space bar: pause if playing, otherwise play.
+    private func togglePlayback() {
+        if player.isPlaying || player.isPreparing {
+            player.pause()
+        } else if validationMessage == nil || project.result != nil {
+            audition()
+        }
     }
 
     /// Plays at once with the latest response, even while a newer one is generated; it takes over

@@ -1,4 +1,5 @@
 import AcousticCore
+import AppKit
 import CoreGraphics
 import Foundation
 import RoomDocument
@@ -206,5 +207,46 @@ struct AuditionPlayerTests {
         let physical = try #require(player.wetOverview)
         #expect(matched.duration == physical.duration)
         #expect(matched.maximum != physical.maximum)
+    }
+}
+
+@MainActor
+@Suite("RoomCAD space bar")
+struct SpaceKeyTests {
+    private func key(
+        _ characters: String, in window: NSWindow, modifiers: NSEvent.ModifierFlags = [],
+        repeated: Bool = false
+    ) -> NSEvent {
+        NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil, characters: characters, charactersIgnoringModifiers: characters,
+            isARepeat: repeated,
+            keyCode: characters == " " ? 49 : 0)!
+    }
+
+    @Test("A bare space in the editor's window toggles playback; anything else passes through")
+    func filter() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [.titled],
+            backing: .buffered,
+            defer: false)
+        let other = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [.titled],
+            backing: .buffered,
+            defer: false)
+        #expect(SpaceKeyMonitor.isPlayPause(key(" ", in: window), in: window))
+        #expect(!SpaceKeyMonitor.isPlayPause(key(" ", in: window, modifiers: .command), in: window))
+        #expect(!SpaceKeyMonitor.isPlayPause(key(" ", in: window, repeated: true), in: window))
+        #expect(!SpaceKeyMonitor.isPlayPause(key("a", in: window), in: window))
+        #expect(!SpaceKeyMonitor.isPlayPause(key(" ", in: other), in: window))
+        #expect(!SpaceKeyMonitor.isPlayPause(key(" ", in: window), in: nil))
+
+        // While a text field is being edited, space types a space.
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 100, height: 24))
+        window.contentView?.addSubview(field)
+        window.makeFirstResponder(field)
+        #expect(window.firstResponder is NSText)
+        #expect(!SpaceKeyMonitor.isPlayPause(key(" ", in: window), in: window))
     }
 }
