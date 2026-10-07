@@ -275,6 +275,11 @@ Both are probably physical, but neither has been checked against a measurement.
 Limitations of the solver:
 
 - The wall impedance is real, and constant within each octave band.
+- Walls are locally reacting, so a real impedance absorbs nothing at grazing incidence. Axial and
+  tangential modes that graze a surface lose little energy to it. In the measured seminar room (see
+  [RoomCAD against a measured room](roomcad-validation.md)), this left the solver's decay at 63 and
+  125 Hz 18–32% longer than measured, even with materials fitted to the measured decay. Real windows,
+  doors and suspended ceilings are not locally reacting and absorb at grazing incidence too.
 - There is no air absorption, which is negligible there.
 - It models bare walls: no furniture or scattering. Openings are walls of ξ = 1.
 - The grid's dispersion grows towards the top frequency.
@@ -383,6 +388,23 @@ a reference room and exports its responses. Its results on the development Mac:
 | Anechoic energy more than 1 ms after the arrival | 10⁻³² without the high-pass; 2.9 × 10⁻⁴ with it |
 | Reference room, 2 receivers × 1.5 s | about 4.0 million arrivals per receiver, 5.7 s; with scattering, 6.0 s including 40,000 rays |
 
+### Comparison with a measured room
+
+[RoomCAD against a measured room](roomcad-validation.md) compares RoomCAD with ten measured responses
+in a 145 m³ seminar room from the BRAS database:
+
+- **Reverberation.** With only published absorption data, the reverberation time from 250 Hz to
+  2 kHz is within 12%, and clarity within about one just-noticeable difference.
+- **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
+  frequencies within about 1.5%.
+- **Early reflections.** These follow the measured pattern at each position.
+- **Low-frequency decay.** With the wave solver it is too long (see the solver's limitations above).
+
+`RoomParameters` computes the ISO 3382-1 parameters it uses: EDT, T20, T30, C50, C80, D50 and
+centre time, with Lundeby's noise compensation for measured responses.
+
+### Playback in Driftbox
+
 The exported stereo file was also played through Driftbox's own engine. That code is independent of
 RoomCAD: native Driftbox's WAV decoder and its zero-latency `PartitionedConvolver`. Convolving a noise
 burst matched direct convolution to 3 × 10⁻⁷ of the peak, and an impulse input reproduced the
@@ -473,9 +495,13 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 
 The roadmap orders the work as follows:
 
-- a bounded, labelled late tail if auditioning needs one (M2 item 4);
 - more sourced scattering data (M5);
-- comparison with measured room responses (M4 item 5).
+- wave-solver walls that also absorb at grazing incidence, such as extended-reaction or
+  frequency-dependent complex impedances, checked against the measured room;
+- comparison with larger measured rooms, which needs geometry beyond vertical walls.
+
+A synthetic late tail (M2 item 4) is no longer needed: rays carry every reflection beyond the image
+sources' order.
 
 The ray tracer and image sources could run on the GPU.
 
@@ -487,12 +513,17 @@ The ray tracer and image sources could run on the GPU.
   Calculation of the absorption of sound by the atmosphere*. The equations are as transcribed by
   [sengpielaudio](https://sengpielaudio.com/LuftdaempfungFormel.htm).
 - ISO 3382-1:2009, *Acoustics — Measurement of room acoustic parameters — Part 1: Performance
-  spaces*, for Schroeder backward integration and T30.
+  spaces*, for Schroeder backward integration, T30 and the other room-acoustic parameters.
 - H. Kuttruff, *Room Acoustics*, 6th edn, CRC Press, 2016, for the Sabine and Eyring formulae, the
   Schroeder frequency, decay in non-diffuse rooms, the correction for the spread of free path
   lengths, and ray tracing with diffuse reflection.
 - M. Vorländer, *Auralization: Fundamentals of Acoustics, Modelling, Simulation, Algorithms and
   Acoustic Virtual Reality*, Springer, 2008, annex, for the material presets, via the pyroomacoustics
   materials database (https://github.com/LCAV/pyroomacoustics, MIT licence).
+- L. Aspöck, M. Vorländer, F. Brinkmann, D. Ackermann and S. Weinzierl, *Benchmark for Room
+  Acoustical Simulation (BRAS)*, TU Berlin and RWTH Aachen, 2020, DOI 10.14279/depositonce-6726.3,
+  CC BY-SA 4.0, for the measured seminar room.
+- A. Lundeby, T. E. Vigran, H. Bietz and M. Vorländer, "Uncertainties of measurements in room
+  acoustics", *Acustica* 81, 344–355, 1995, for noise compensation in measured decay.
 - ISO 17497-1:2004, *Acoustics — Sound-scattering properties of surfaces — Part 1: Measurement of the
   random-incidence scattering coefficient in a reverberation room*, for the definition of s.

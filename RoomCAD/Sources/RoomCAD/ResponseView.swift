@@ -52,6 +52,70 @@ struct EnvelopeChart: View {
     }
 }
 
+/// Magnitude response of each channel in dB against frequency on a log axis, with the wave solver's
+/// crossover marked.
+struct SpectrumChart: View {
+    let summary: ResponseSummary
+    var crossover: Double?
+    static let range = (low: -60.0, high: 0.0)
+
+    var body: some View {
+        Canvas { context, size in
+            let left: CGFloat = 36
+            let bottom: CGFloat = 18
+            let plot = CGRect(x: left, y: 4, width: size.width - left - 8, height: size.height - bottom - 4)
+            let frequencies = ResponseSummary.spectrumFrequencies
+            let span = log2(frequencies.last! / frequencies[0])
+            func x(_ f: Double) -> CGFloat {
+                plot.minX + CGFloat(log2(f / frequencies[0]) / span) * plot.width
+            }
+            func y(_ level: Double) -> CGFloat {
+                let clamped = min(max(level, Self.range.low), Self.range.high)
+                return plot.minY + CGFloat((Self.range.high - clamped) / (Self.range.high - Self.range.low))
+                    * plot.height
+            }
+            var grid = Path()
+            for db in stride(from: Self.range.high, through: Self.range.low, by: -20) {
+                grid.move(to: CGPoint(x: plot.minX, y: y(db)))
+                grid.addLine(to: CGPoint(x: plot.maxX, y: y(db)))
+                context.draw(
+                    Text("\(Int(db)) dB").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: plot.minX - 4, y: y(db)), anchor: .trailing)
+            }
+            for (f, label) in [(31.5, "31"), (125, "125"), (500, "500"), (2000, "2k"), (8000, "8k")] {
+                grid.move(to: CGPoint(x: x(f), y: plot.minY))
+                grid.addLine(to: CGPoint(x: x(f), y: plot.maxY))
+                context.draw(
+                    Text("\(label) Hz").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: x(f), y: plot.maxY + 9))
+            }
+            context.stroke(grid, with: .color(.secondary.opacity(0.25)), lineWidth: 0.5)
+            if let crossover {
+                var line = Path()
+                line.move(to: CGPoint(x: x(crossover), y: plot.minY))
+                line.addLine(to: CGPoint(x: x(crossover), y: plot.maxY))
+                context.stroke(
+                    line, with: .color(.orange.opacity(0.7)), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                context.draw(
+                    Text("wave solver below").font(.caption2).foregroundStyle(.orange),
+                    at: CGPoint(x: x(crossover) - 4, y: plot.minY + 6), anchor: .trailing)
+            }
+            for (c, channel) in summary.channels.enumerated() {
+                var path = Path()
+                for (i, level) in channel.spectrum.enumerated() {
+                    let point = CGPoint(x: x(frequencies[i]), y: y(level))
+                    if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(
+                    path, with: .color(EnvelopeChart.colors[c % EnvelopeChart.colors.count].opacity(0.8)),
+                    lineWidth: 1)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Magnitude response in decibels against frequency")
+    }
+}
+
 /// Octave-band decay: statistical estimates beside the measured T30 of each channel.
 struct DecayTable: View {
     let summary: ResponseSummary

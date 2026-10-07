@@ -308,7 +308,8 @@ extension WaveSolver {
     /// says how many of the runs used the GPU.
     func responses(
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], frames: Int,
-        fftLength: Int, weight: (Double) -> Double, stop: @Sendable () -> Bool
+        fftLength: Int, progress: GenerationProgress? = nil, weight: (Double) -> Double,
+        stop: @Sendable () -> Bool
     ) -> (channels: [[Float]], gpuRuns: Int)? {
         let steps = fftLength / decimation
         let dt = timeStep
@@ -323,13 +324,15 @@ extension WaveSolver {
         // Walls absorb differently in each octave band: one run per group of bands with the same
         // impedances, each kept only in its own bands. The band weights sum to one, so together they
         // cover the spectrum once.
-        for group in bandGroups {
+        let groups = bandGroups
+        for group in groups {
             var solver = self
             solver.impedanceBands = group
             guard let run = solver.run(source: source, receivers: receivers, steps: steps, stop: stop) else {
                 return nil
             }
             if run.onGPU { gpuRuns += 1 }
+            progress?.advance(by: 1 / Double(groups.count))
             for (r, samples) in run.signals.enumerated() {
                 let p = fft.forward(samples)
                 for k in 1..<half {
