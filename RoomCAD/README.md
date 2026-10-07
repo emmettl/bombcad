@@ -5,7 +5,8 @@ model and response files. See the [roadmap](../docs/roomcad-roadmap.md) for what
 
 | Module | Contents |
 |---|---|
-| RoomCAD | The document app: plan and section drawings, inspector, generation, WAV export |
+| RoomCAD | The document app: plan and section drawings, inspector, generation, auditioning, WAV export |
+| Audition | Dry clips (bundled, generated or chosen), FFT convolution previews and loudness matching |
 | RoomDocument | The versioned `.roomcad` format and response summaries |
 | AcousticCore | Rectangular rooms, octave-band materials, air absorption, image sources, rendering, decay analysis |
 | ImpulseResponseKit | Response metadata, 32-bit float WAV reading and writing, common-gain conditioning |

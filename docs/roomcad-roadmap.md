@@ -272,7 +272,10 @@ Progress (October 2026): items 1–3 and 5 are implemented, and the acceptance c
 
 Without scattering, the rendered decay in the 250 Hz–8 kHz bands is 20–70% longer than
 Eyring's estimate. The decay matches what specular reflection predicts, but M4's scattering is
-needed before the reverb sounds like a real room. Items 4 (late tail) and 6 (preview) are not done.
+needed before the reverb sounds like a real room. Item 6 (preview) is implemented in the RoomCAD
+app. It has a dry clip, a live wet/dry balance and optional loudness matching, and it plays through
+two synchronized players; see [RoomCAD app and documents](roomcad-app.md#the-window). Item 4 (late
+tail) is not done.
 
 ### M3 — Establish a trustworthy low-frequency wave solver
 

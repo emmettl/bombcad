@@ -95,3 +95,34 @@ final class RealFFT {
         return (0..<signal.count).map { Float(output[$0]) }
     }
 }
+
+/// Linear convolution by FFT, accumulated in double precision.
+public enum Convolution {
+    /// The full convolution of `signal` with `response`: `signal.count + response.count - 1` samples.
+    public static func convolve(_ signal: [Float], _ response: [Float]) -> [Float] {
+        guard !signal.isEmpty, !response.isEmpty else { return [] }
+        let count = signal.count + response.count - 1
+        var length = 2
+        while length < count { length <<= 1 }
+        let fft = RealFFT(length: length)
+        func padded(_ values: [Float]) -> [Double] {
+            var result = [Double](repeating: 0, count: length)
+            for (i, value) in values.enumerated() { result[i] = Double(value) }
+            return result
+        }
+        let a = fft.forward(padded(signal))
+        let b = fft.forward(padded(response))
+        var real = [Double](repeating: 0, count: length / 2)
+        var imag = [Double](repeating: 0, count: length / 2)
+        // Packed element 0 holds two independent real terms; the rest are complex products. Each forward
+        // transform carries a factor of 2, so halve the product to keep one.
+        real[0] = a.real[0] * b.real[0] / 2
+        imag[0] = a.imag[0] * b.imag[0] / 2
+        for k in 1..<(length / 2) {
+            real[k] = (a.real[k] * b.real[k] - a.imag[k] * b.imag[k]) / 2
+            imag[k] = (a.real[k] * b.imag[k] + a.imag[k] * b.real[k]) / 2
+        }
+        let output = fft.inverse(real: real, imag: imag)
+        return (0..<count).map { Float(output[$0]) }
+    }
+}

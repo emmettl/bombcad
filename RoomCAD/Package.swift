@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "AcousticCore", targets: ["AcousticCore"]),
         .library(name: "ImpulseResponseKit", targets: ["ImpulseResponseKit"]),
         .library(name: "RoomDocument", targets: ["RoomDocument"]),
+        .library(name: "Audition", targets: ["Audition"]),
         .executable(name: "RoomCAD", targets: ["RoomCAD"]),
         .executable(name: "acousticbench", targets: ["acousticbench"]),
     ],
@@ -20,10 +21,14 @@ let package = Package(
             dependencies: [
                 "AcousticCore", "ImpulseResponseKit", .product(name: "DocumentKit", package: "SimulationKit"),
             ]),
+        // Bundled dry recordings are listed, with their credits, in Clips/clips.json.
+        .target(
+            name: "Audition", dependencies: ["AcousticCore", "ImpulseResponseKit"],
+            resources: [.copy("Clips")]),
         .executableTarget(
             name: "RoomCAD",
             dependencies: [
-                "AcousticCore", "ImpulseResponseKit", "RoomDocument",
+                "AcousticCore", "ImpulseResponseKit", "RoomDocument", "Audition",
                 .product(name: "DocumentKit", package: "SimulationKit"),
             ]),
         .executableTarget(name: "acousticbench", dependencies: ["AcousticCore", "ImpulseResponseKit"]),
@@ -35,6 +40,7 @@ let package = Package(
                 "RoomDocument", "AcousticCore", "ImpulseResponseKit",
                 .product(name: "DocumentKit", package: "SimulationKit"),
             ]),
+        .testTarget(name: "AuditionTests", dependencies: ["Audition", "AcousticCore", "ImpulseResponseKit"]),
         .testTarget(name: "RoomCADTests", dependencies: ["RoomCAD", "RoomDocument", "AcousticCore"]),
     ],
     swiftLanguageModes: [.v6]

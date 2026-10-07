@@ -9,6 +9,7 @@ struct RoomEditorView: View {
     @Binding var document: RoomCADFile
     let fileURL: URL?
     @State private var editor = RoomEditor()
+    @State private var player = AuditionPlayer()
 
     private var project: RoomProject { document.project }
 
@@ -44,6 +45,7 @@ struct RoomEditorView: View {
                     .disabled(project.result == nil)
             }
         }
+        .onDisappear { player.stop() }
         .task(id: project.result?.response.metadata.frameCount) {
             if editor.summary == nil { editor.summarize(project.result) }
         }
@@ -75,6 +77,9 @@ struct RoomEditorView: View {
                 status
                 Spacer()
             }
+            AuditionBar(
+                player: player, sampleRate: project.settings.sampleRate, play: audition,
+                busy: editor.isGenerating || validationMessage != nil)
             if let message = validationMessage ?? editor.message {
                 Label(message, systemImage: "exclamationmark.circle").foregroundStyle(.red).font(.callout)
             }
@@ -116,9 +121,19 @@ struct RoomEditorView: View {
         }
     }
 
-    private func generate() {
+    private func generate(thenPlay: Bool = false) {
         editor.generate(project.settings) { result in
             document.project.result = result
+            // Keep listening across changes: replay with the new room.
+            if thenPlay || player.isPlaying || player.isPreparing { player.play(result) }
+        }
+    }
+
+    private func audition() {
+        if project.isResultCurrent, let result = project.result {
+            player.play(result)
+        } else {
+            generate(thenPlay: true)
         }
     }
 

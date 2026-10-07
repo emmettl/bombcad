@@ -49,6 +49,18 @@ document is opened from Finder.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
   - The response is marked out of date once any input that affects it changes. Export settings don't
     count, since they are applied on export.
+- **Audition.** Play a dry clip through the room.
+  - Play generates the response first if it is missing or out of date.
+  - During playback, a newly generated response replaces the old one.
+  - The first receiver is heard on the left and the second on the right; a single receiver is heard
+    on both.
+  - A slider balances the dry and wet sound while it plays.
+  - **Match loudness** gives the two equal energy, so switching between them compares the room
+    rather than the level. Without it, levels are physical: the dry sound is the source heard 1 m
+    away in open air. Either way, one common gain keeps the mix below 0.9 full scale.
+  - Clips are bundled recordings (with their credits shown), generated test signals (a pink-noise
+    burst and clicks) or any audio file you choose. Files are mixed to mono, converted to the
+    response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
   beside it.
 
@@ -107,6 +119,13 @@ saved again.
   - responses too large to retain;
   - export conditioning on a copy, with one common gain and shift;
   - the response summary.
+- **AuditionTests:**
+  - FFT convolution against direct convolution;
+  - repeatable test signals;
+  - files mixed to mono and resampled, keeping pitch;
+  - preview channel mapping and padding;
+  - loudness matching to equal energy;
+  - mixes below the ceiling.
 - **RoomCADTests:**
   - background generation and its delivery;
   - invalid settings;
@@ -124,7 +143,9 @@ and toolbars do not render offscreen.
 - Undo has not been checked; SwiftUI may not register document edits with the undo manager.
 - Inspector fields accept invalid values. The window reports them and disables **Generate** rather
   than preventing them.
-- There is no auditioning preview (roadmap M2 item 6) and no late tail.
+- There is no late tail, and true-stereo (four-path) auditioning is not supported.
+- Playback has not been heard: the mixing is tested offline, but the audio engine and controls are
+  unverified by ear and by eye.
 - There are no material presets, since sourced absorption data is roadmap M5.
 - Only rectangular rooms are supported, and there is no 3D view.
 - Generation blocks one core per document and is not shared between windows.
