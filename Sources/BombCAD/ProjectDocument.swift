@@ -111,6 +111,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     static let writableContentTypes: [UTType] = [.bombCADProject]
 
     var scenario: Scenario
+    var savedRuns: [SavedSimulationRun] = []
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -143,6 +144,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
 
     @MainActor
     init(model: SimulationModel) {
+        savedRuns = model.savedRuns
         scenario = model.settings.scenario
         runSettings = ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -187,6 +189,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try view.validate()
             viewSettings = view
         }
+        savedRuns = try SavedRunStore.read(archive)
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -220,6 +223,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try viewSettings.validate()
             files["view.json"] = try ProjectArchive.encodeJSON(viewSettings)
         }
+        try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.
         return try ProjectArchive(manifest: manifest, files: files)
     }
@@ -228,7 +232,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         try makeArchive().fileWrapper()
     }
 
-    private static func validate(_ scenario: Scenario) throws {
+    static func validate(_ scenario: Scenario) throws {
         guard
             [scenario.domainSize.x, scenario.domainSize.y, scenario.domainSize.z].allSatisfy({
                 $0.isFinite && $0 > 0
@@ -258,7 +262,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     }
 
     /// Check before Grid performs Float-to-Int conversion and allocation-size arithmetic.
-    private static func validateGrid(_ scenario: Scenario, resolution: Resolution) throws {
+    static func validateGrid(_ scenario: Scenario, resolution: Resolution) throws {
         let maximumCells = 128_000_000
         var cells = 1
         for extent in [scenario.domainSize.x, scenario.domainSize.y, scenario.domainSize.z] {

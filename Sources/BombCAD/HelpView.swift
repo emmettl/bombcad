@@ -44,6 +44,10 @@ private enum HelpTopic: String, CaseIterable, Identifiable {
                     "Start with a coarse grid to explore a layout. Finer grids use more GPU memory and take longer. Sharpen shocks refines the air near the shock; Afterburning and hot air adds charge physics at extra cost. Playback Speed controls playback, and Stop after sets the run duration."
                 ),
                 (
+                    "Compare simulation runs",
+                    "Complete a stable run, then choose Keep Run… beside the chart and give it a unique name. Compare opens retained runs with pressure or deflection overlays and peak differences from a reference run. Matching gauges must have the same name and position. Saved runs keep their inputs and full pressure samples across resets, edits and reopening. Structural deflection is recorded every 1 ms of simulation time; its recorded peak can miss faster motion. Rename by pressing Return in a run’s name field, export its CSV, or remove it and use Undo last removal. Keeping results adds them to the project; ordinary simulation progress does not."
+                ),
+                (
                     "About the model",
                     "BombCAD is an experimental study of simulation numerics and performance, not a design tool. Results depend on grid resolution, material assumptions and supports. Peak pressures can be under-resolved, and collapse and debris have not been validated against tests."
                 ),

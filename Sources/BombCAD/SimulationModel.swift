@@ -160,6 +160,11 @@ final class SimulationModel {
     }
     /// Simulated time at which the run stops, in seconds.
     var duration: Double
+    private(set) var savedRuns: [SavedSimulationRun] = []
+    @ObservationIgnored private var loadedRunSettings: ProjectRunSettings?
+    @ObservationIgnored private var completedRunSettings: ProjectRunSettings?
+    private static let structureSampleInterval = 0.001
+    @ObservationIgnored private var nextStructureSampleTime = structureSampleInterval
     /// The block or wall being edited, which the view outlines.
     var selection: EditSelection?
     var inspectedImportID: UUID?
@@ -224,6 +229,7 @@ final class SimulationModel {
         }
         if let document {
             settings.scenario = scenario
+            savedRuns = document.savedRuns
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -266,6 +272,12 @@ final class SimulationModel {
         if time >= duration - 1e-9 {
             rebuild()
         }
+        completedRunSettings = nil
+        if structureHistory.isEmpty, time == 0, let summary = structureSummary {
+            structureHistory = [
+                StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
+            ]
+        }
         isRunning = true
         restartPacing()
         pump()
@@ -292,6 +304,7 @@ final class SimulationModel {
 
     /// Replaces the layout with one loaded from a file.
     func open(_ scenario: Scenario) {
+        savedRuns = []
         projectArchive = nil
         projectDocumentID = UUID()
         adopt(scenario)
@@ -304,6 +317,7 @@ final class SimulationModel {
         isRunning = false
         renderSettings = RenderSettings()
         adopt(document.scenario)
+        savedRuns = document.savedRuns
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -746,6 +760,78 @@ final class SimulationModel {
         return lines.joined(separator: "\n") + "\n"
     }
 
+    var canKeepRun: Bool {
+        guard let completed = completedRunSettings else { return false }
+        var current = ProjectRunSettings(model: self)
+        current.duration = completed.duration
+        return !isRunning && !batchInFlight && !rebuildPending && !isPreparingImports
+            && errorMessage == nil && stepCount > 0 && current == completed
+            && settings.scenario == scenario && savedRuns.count < SavedSimulationRun.maximumRuns
+    }
+
+    func keepRun(named name: String) throws {
+        guard canKeepRun, let solver, let inputs = completedRunSettings else {
+            throw ProjectFileError.invalid("Complete a stable run before keeping its results.")
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !savedRuns.contains(where: { $0.name.localizedCaseInsensitiveCompare(trimmed) == .orderedSame })
+        else {
+            throw ProjectFileError.invalid("Choose a unique name for this run.")
+        }
+        let keys = SavedSimulationRun.Gauge.keys(Array(scenario.gauges.prefix(BlastSolver.maxGauges)))
+        let gauges = zip(keys, solver.gaugeHistories).map { key, history in
+            SavedSimulationRun.Gauge(
+                key: key,
+                points: history.map {
+                    .init(
+                        time: $0.time,
+                        value: (Double($0.pressure) - Double(scenario.atmosphere.pressure)) / 1000)
+                })
+        }
+        let response = structureSummary.map { summary in
+            SavedSimulationRun.Structure(
+                points: structureHistory.map {
+                    .init(time: $0.time / 1000, value: $0.deflection)
+                }, failedFraction: Double(summary.erodedFraction),
+                maximumDamage: Double(summary.maxDamage))
+        }
+        let run = SavedSimulationRun(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+                ?? "development",
+            deviceName: device?.name ?? "Unknown Metal device", scenario: scenario, settings: inputs,
+            inputSHA256: try SavedSimulationRun.fingerprint(scenario, settings: inputs),
+            elapsedTime: time, stepCount: stepCount, gauges: gauges, structure: response)
+        try run.validate()
+        // Reject an oversized capture before it can make the document unsavable.
+        var document = ProjectDocument(model: self)
+        document.savedRuns.append(run)
+        _ = try document.makeArchive()
+        savedRuns.append(run)
+    }
+
+    func renameRun(id: UUID, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 120,
+            !savedRuns.contains(where: {
+                $0.id != id && $0.name.localizedCaseInsensitiveCompare(trimmed) == .orderedSame
+            }),
+            let index = savedRuns.firstIndex(where: { $0.id == id })
+        else { return }
+        savedRuns[index].name = trimmed
+    }
+
+    func removeRun(id: UUID) { savedRuns.removeAll { $0.id == id } }
+
+    func restoreRun(_ run: SavedSimulationRun) {
+        guard savedRuns.count < SavedSimulationRun.maximumRuns,
+            !savedRuns.contains(where: {
+                $0.id == run.id || $0.name.localizedCaseInsensitiveCompare(run.name) == .orderedSame
+            })
+        else { return }
+        savedRuns.append(run)
+    }
+
     // MARK: - Building
 
     private func requestRebuild() {
@@ -766,6 +852,8 @@ final class SimulationModel {
     }
 
     private func rebuild() {
+        completedRunSettings = nil
+        loadedRunSettings = nil
         isRunning = false
         rebuildPending = false
         guard !importsNeedResampling else { return }
@@ -805,12 +893,14 @@ final class SimulationModel {
             errorMessage = "\(error)"
         }
 
+        loadedRunSettings = solver == nil ? nil : ProjectRunSettings(model: self)
         self.scenario = scenario
         self.grid = solver?.grid
         memoryFootprint = solver?.memoryFootprint ?? 0
         structureSummary = solver?.bodySummary()
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
+        nextStructureSampleTime = Self.structureSampleInterval
         chargeIsBlocked = scenario.chargeIsBlocked
         time = 0
         stepCount = 0
@@ -839,6 +929,7 @@ final class SimulationModel {
             let wall = (ContinuousClock.now - paceOriginWall).seconds
             limit = min(duration, paceOriginTime + wall / speed.rawValue)
         }
+        if structureSummary != nil { limit = min(limit, nextStructureSampleTime) }
         let remaining = limit - solver.time
         guard remaining > 1e-9 else {
             if solver.time >= duration - 1e-9 {
@@ -905,7 +996,9 @@ final class SimulationModel {
             errorMessage = "The solution became unstable. Reset, or try a smaller charge or a finer grid."
             isRunning = false
         }
-        if (now - lastTracePublication).seconds > 0.1 || !isRunning {
+        if (now - lastTracePublication).seconds > 0.1 || !isRunning
+            || (structureSummary != nil && time >= nextStructureSampleTime - 1e-9)
+        {
             publishTraces()
         }
         if rebuildPending {
@@ -921,6 +1014,10 @@ final class SimulationModel {
     private func finish() {
         isRunning = false
         publishTraces()
+        if errorMessage == nil, var inputs = loadedRunSettings {
+            inputs.duration = duration
+            completedRunSettings = inputs
+        }
     }
 
     /// Copies the gauge histories into chart-sized traces, keeping the extremes of each bucket.
@@ -929,12 +1026,16 @@ final class SimulationModel {
         lastTracePublication = .now
         structureSummary = solver.bodySummary()
         if let summary = structureSummary, !summary.hasBlownUp,
+            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9,
             structureHistory.last?.time != solver.time * 1000
         {
             structureHistory.append(
                 StructureSample(
                     id: structureHistory.count, time: solver.time * 1000,
                     deflection: Double(summary.maxDisplacement) * 1000))
+            nextStructureSampleTime =
+                (floor(solver.time / Self.structureSampleInterval + 1e-6) + 1)
+                * Self.structureSampleInterval
         }
         if structureSummary?.hasBlownUp == true {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."

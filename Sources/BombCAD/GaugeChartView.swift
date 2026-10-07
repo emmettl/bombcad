@@ -8,6 +8,9 @@ struct GaugeChartView: View {
     @State private var showsStructure = false
     @State private var export: ResultsDocument?
     @State private var exportError: String?
+    @State private var isNamingRun = false
+    @State private var isComparingRuns = false
+    @State private var runName = ""
 
     private var hasStructure: Bool { model.structureSummary != nil }
     private var plotsStructure: Bool { showsStructure && hasStructure }
@@ -34,6 +37,17 @@ struct GaugeChartView: View {
                 } else {
                     pressureReadout
                 }
+                HStack {
+                    Button("Keep Run…") {
+                        var number = model.savedRuns.count + 1
+                        while model.savedRuns.contains(where: { $0.name == "Run \(number)" }) { number += 1 }
+                        runName = "Run \(number)"
+                        isNamingRun = true
+                    }.disabled(!model.canKeepRun)
+                        .help("Keep a completed run with its inputs and full measurement histories")
+                    Button("Compare (\(model.savedRuns.count))…") { isComparingRuns = true }
+                        .disabled(model.savedRuns.isEmpty)
+                }.controlSize(.small)
                 Button("Export CSV…", systemImage: "square.and.arrow.up") {
                     export = ResultsDocument(text: model.resultsCSV())
                 }
@@ -44,6 +58,20 @@ struct GaugeChartView: View {
             .frame(width: 230)
         }
         .padding(12)
+        .sheet(isPresented: $isComparingRuns) { RunComparisonView(model: model) }
+        .alert("Keep completed run", isPresented: $isNamingRun) {
+            TextField("Run name", text: $runName)
+            Button("Keep") {
+                do { try model.keepRun(named: runName) } catch { exportError = error.localizedDescription }
+            }
+            .disabled(
+                runName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || runName.count > 120)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "Keep up to \(SavedSimulationRun.maximumRuns) named runs in this project. Results are saved when you choose Keep."
+            )
+        }
         .fileExporter(
             isPresented: Binding(get: { export != nil }, set: { if !$0 { export = nil } }), document: export,
             contentType: .commaSeparatedText, defaultFilename: "BombCAD results"
@@ -53,7 +81,7 @@ struct GaugeChartView: View {
             }
         }
         .alert(
-            "Export failed",
+            "Results error",
             isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
         ) {
             Button("OK") { exportError = nil }
