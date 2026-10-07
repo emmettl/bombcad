@@ -183,3 +183,55 @@ struct ParallelGenerationTests {
         #expect(Date().timeIntervalSince(start) < 2)
     }
 }
+
+@Suite("Rays beyond the order limit")
+struct OrderLimitTests {
+    let room = ShoeboxRoom(size: [5, 4, 3], material: .uniform(0.25, scattering: 0.3, name: "Test"))
+    let source = RoomPoint(
+        id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, name: "S", position: [1.3, 1.1, 1.2])
+    let receiver = RoomPoint(
+        id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, name: "R", position: [2.2, 3.3, 0.9])
+
+    @Test("Rays carry exactly the specular energy of the images the order limit omits")
+    func incoherentEnergy() {
+        let specular = ShoeboxRoom(size: room.size, material: .uniform(0.25, name: "Specular"))
+        var tracer = DiffuseRayTracer(
+            room: specular, source: source.position, atmosphere: .standard, airAbsorption: false,
+            rayCount: 20_000,
+            seed: 1)
+        tracer.specularOrderLimit = 4
+        let rays = tracer.trace(receivers: [receiver.position], duration: 0.2)[0][4]
+        let model = ImageSourceModel(
+            room: specular, source: source.position, atmosphere: .standard, airAbsorption: false)
+        var images = [Double](repeating: 0, count: rays.count)
+        model.forEachArrival(at: receiver.position, duration: 0.2, maximumOrder: 300) { delay, order, gains in
+            let bin = Int(delay / DiffuseRayTracer.binWidth)
+            if order > 4, bin < images.count { images[bin] += gains[4] * gains[4] }
+        }
+        for window in [20..<60, 60..<120, 120..<195] {
+            let ratio = rays[window].reduce(0, +) / images[window].reduce(0, +)
+            #expect(abs(10 * log10(ratio)) < 0.5, "\(window) ms")
+        }
+    }
+
+    @Test("A low order limit plus rays matches a high one in a room that scatters")
+    func hybrid() throws {
+        func response(_ order: Int) throws -> [Float] {
+            try RoomResponseGenerator.generate(
+                RoomResponseSettings(
+                    room: room, source: source, receivers: [receiver], airAbsorption: false, duration: 0.3,
+                    maximumReflectionOrder: order), cancellation: CancellationFlag()
+            ).response.channels[0]
+        }
+        let full = try response(100)
+        let hybrid = try response(4)
+        for band in [3, 5] {
+            let window = Int(0.05 * 48_000)..<Int(0.25 * 48_000)
+            let a = DecayAnalysis.octaveBand(full, sampleRate: 48_000, band: band)[window]
+            let b = DecayAnalysis.octaveBand(hybrid, sampleRate: 48_000, band: band)[window]
+            let ratio =
+                b.reduce(0) { $0 + Double($1) * Double($1) } / a.reduce(0) { $0 + Double($1) * Double($1) }
+            #expect(abs(10 * log10(ratio)) < 1.5, "band \(band)")
+        }
+    }
+}

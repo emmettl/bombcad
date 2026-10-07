@@ -58,9 +58,11 @@ living room takes 0.9 s, the tiled bathroom 1.0 s and the stone church 1.25 s.
 Two limits bound the work, and both are explicit settings:
 
 - **Duration.** Arrivals later than the duration are omitted.
-- **Maximum reflection order.** Reflections above it are omitted. When this removes an arrival within
-  the duration, the diagnostics record `orderLimitedAfter`, the earliest such delay. The response is
-  incomplete from that time. No late tail is synthesized.
+- **Maximum reflection order.** Image sources above it are omitted, and the diagnostics record
+  `orderLimitedAfter`, the earliest such delay. The ray tracer then carries those specular paths, as
+  rays with more reflections than the limit, so no energy is lost. They become part of the energy
+  envelope rendered as the diffuse tail, which is the usual hybrid of image sources for early
+  reflections and ray tracing later.
 
 Settings that would need more than 40 million image sources per receiver are rejected.
 
@@ -250,7 +252,15 @@ half-cosine taper to the end of every channel.
   spread of free path lengths (below), and at least 3% shorter than without scattering. In that small,
   absorbent room the difference is only about 8%, and single bands vary by a few percent between
   random realizations.
-- Without scattering, nothing is traced and the response does not depend on the ray count or seed.
+- Without scattering, and with an order limit that omits nothing, nothing is traced and the response
+  does not depend on the ray count or seed.
+- Beyond the order limit, rays carry the omitted images' incoherent energy within 0.5 dB in every
+  window.
+- In a room that scatters (s = 0.3), image sources to order 4 plus rays match image sources to order
+  100 within 1.5 dB from 50 to 250 ms; within 0.6 dB at three positions in a release build. Without
+  scattering, the gap depends on the listener's position: from −5.4 to +1.5 dB at three positions. An
+  ideal mirror box's image sources add coherently with fixed phases, which incoherent rays cannot
+  reproduce, but real rooms scatter enough to break that coherence.
 - The same seed reproduces a response exactly. Another seed keeps the traced energy within 5%. The
   rendered 1 kHz band energy of a 0.2 s response stays within 1.5 dB, a random realization's
   variation, much like that between nearby points in a real room.
@@ -353,7 +363,9 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 - **Filter artefacts.** The zero-phase band filters and high-pass can put small pre-echoes ahead of
   an arrival whose band gains differ. The high-pass also spreads about 3 × 10⁻⁴ of each arrival's
   energy around it.
-- **No late tail.** Responses end at the duration, which is a hard cut unless a fade-out is applied.
+- **Hard end.** Responses end at the duration, which is a hard cut unless a fade-out is applied.
+- **Incoherent late specular energy.** Specular reflections beyond the order limit are rendered as an
+  incoherent envelope, which misses an ideal mirror box's coherent interference (above).
 - **Materials.** Presets give published random-incidence absorption from 125 Hz, extended to 63 Hz
   and, where missing, to 8 kHz (see [the app's presets](roomcad-app.md#material-presets)). The bench's
   α = 0.2 is illustrative.

@@ -172,8 +172,9 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     /// sparse and the geometrical model is approximate.
     public var schroederFrequency: Double?
     public var generationSeconds: Double
-    /// Per receiver: the fraction of the response's energy from 500 Hz to 4 kHz that was scattered at
-    /// least once. Nil for responses made before scattering was modelled.
+    /// Per receiver: the fraction of the response's energy from 500 Hz to 4 kHz that the ray tracer
+    /// carried: scattered at least once, or specular beyond the order limit. Nil for responses made before
+    /// scattering was modelled.
     public var scatteredFraction: [Double]?
     /// Rays traced for the scattered energy; zero when no surface scatters.
     public var diffuseRays: Int?
@@ -192,10 +193,10 @@ public struct RoomResponse: Sendable {
     public var settings: RoomResponseSettings
     public var diagnostics: RoomResponseDiagnostics
 
-    public static let generatorName = "RoomCAD hybrid model 3"
+    public static let generatorName = "RoomCAD hybrid model 4"
     /// Generators whose saved responses can still be read; only the current one is up to date.
     public static let readableGenerators: Set<String> = [
-        "RoomCAD image-source model 1", "RoomCAD hybrid model 2", generatorName,
+        "RoomCAD image-source model 1", "RoomCAD hybrid model 2", "RoomCAD hybrid model 3", generatorName,
     ]
 
     public static let assumptions = [
@@ -211,8 +212,8 @@ public struct RoomResponse: Sendable {
         "Omnidirectional point source; receivers omnidirectional or ideal first-order microphones.",
         "Optionally, below a crossover, a finite-difference wave solver replaces the geometrical model, with "
             + "locally reacting walls of frequency-independent impedance from the low-band absorption.",
-        "Arrivals after the duration and reflections above the maximum order are omitted; no late tail is "
-            + "synthesized.",
+        "Arrivals after the duration are omitted. Specular reflections above the maximum order are carried "
+            + "by the ray tracer as an energy envelope.",
         "Zero-phase band filters can spread small pre-echoes ahead of an arrival whose band gains differ.",
         "A zero-phase high-pass at the low-frequency cutoff, if set, removes the sub-audio offset that real, "
             + "positive reflection coefficients accumulate.",
@@ -309,9 +310,15 @@ public enum RoomResponseGenerator {
             airAbsorption: settings.airAbsorption)
         let frames = Int((settings.duration * Double(settings.sampleRate)).rounded(.up))
         let includeDirect = settings.content == .complete
-        let tracer = DiffuseRayTracer(
+        var tracer = DiffuseRayTracer(
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
+        // Where the order limit may omit specular reflections within the duration, rays carry them on.
+        if Double(settings.maximumReflectionOrder) * settings.room.size.min() < settings.duration
+            * settings.atmosphere.soundSpeed
+        {
+            tracer.specularOrderLimit = settings.maximumReflectionOrder
+        }
         let diffuse = tracer.trace(
             receivers: settings.receivers.map { ($0.position, $0.microphone ?? .omni) },
             duration: settings.duration,
@@ -415,7 +422,8 @@ public enum RoomResponseGenerator {
             orderLimitedAfter: orderLimitedAfter, sabineReverberationTime: sabine,
             eyringReverberationTime: eyring, schroederFrequency: schroeder,
             generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
-            diffuseRays: settings.room.scatters ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
+            diffuseRays: settings.room.scatters || tracer.specularOrderLimit < Int.max
+                ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
             waveCells: wave?.cells, waveSeconds: wave?.seconds, waveNote: waveNote)
 
         let metadata = ResponseMetadata(

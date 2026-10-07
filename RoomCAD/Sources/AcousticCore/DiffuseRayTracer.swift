@@ -1,8 +1,8 @@
 import Foundation
 import simd
 
-/// The energy that reaches each receiver after at least one diffuse (scattered) reflection, by tracing
-/// rays from the source.
+/// The energy that reaches each receiver after at least one diffuse (scattered) reflection, or after
+/// more specular reflections than the image sources cover, by tracing rays from the source.
 ///
 /// At every reflection a ray loses `alpha` of its energy; of the rest, a fraction `s` leaves in a
 /// Lambert (cosine) distribution and `1 - s` specularly. Paths that never scatter are the image
@@ -21,6 +21,9 @@ struct DiffuseRayTracer {
     let airAbsorption: Bool
     let rayCount: Int
     let seed: UInt64
+    /// Specular paths with more reflections than this are beyond the image sources, so rays carry them
+    /// too; by default rays carry only scattered energy.
+    var specularOrderLimit = Int.max
 
     /// Width of the energy histogram's bins, in seconds.
     static let binWidth = 0.001
@@ -56,7 +59,7 @@ struct DiffuseRayTracer {
         var energy = Array(
             repeating: Array(repeating: [Double](repeating: 0, count: bins), count: bands),
             count: receivers.count)
-        guard rayCount > 0, room.scatters else { return energy }
+        guard rayCount > 0, room.scatters || specularOrderLimit < Int.max else { return energy }
         let rayCount = tracedRays
 
         let c = atmosphere.soundSpeed
@@ -93,6 +96,7 @@ struct DiffuseRayTracer {
                 var position = source
                 var travelled = 0.0
                 var scattered = false
+                var reflections = 0
                 for b in 0..<bands { weights[b] = 1 / Double(rayCount) }
 
                 while travelled < reach {
@@ -108,7 +112,7 @@ struct DiffuseRayTracer {
                         }
                     }
                     let segment = min(hit, reach - travelled)
-                    if scattered {
+                    if scattered || reflections > specularOrderLimit {
                         for (r, (receiver, microphone)) in receivers.enumerated() {
                             // Chord of the segment through the receiver's sphere.
                             let offset = position - receiver
@@ -136,6 +140,7 @@ struct DiffuseRayTracer {
                     travelled += segment
                     guard segment == hit else { break }
                     position += direction * hit
+                    reflections += 1
                     // Keep exactly on the wall so the next step starts inside the room.
                     position[axis] = direction[axis] > 0 ? room.size[axis] : 0
 

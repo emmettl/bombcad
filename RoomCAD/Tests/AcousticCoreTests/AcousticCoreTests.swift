@@ -193,8 +193,10 @@ struct AcousticCoreTests {
         let complete = try RoomResponseGenerator.generate(settings).response.channels[0]
         settings.content = .reflectionsOnly
         let reflections = try RoomResponseGenerator.generate(settings).response
+        // The direct sound alone, from the same points in an anechoic room. (A reflection order of 0 would
+        // not do: rays carry everything above the order limit.)
         settings.content = .complete
-        settings.maximumReflectionOrder = 0
+        settings.room = ShoeboxRoom(size: size, material: .anechoic)
         let direct = try RoomResponseGenerator.generate(settings).response.channels[0]
         let difference = zip(complete, zip(reflections.channels[0], direct)).map { $0 - $1.0 - $1.1 }
         #expect(difference.allSatisfy { abs($0) < 1e-6 })

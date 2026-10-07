@@ -102,8 +102,8 @@ struct DiagnosticsList: View {
                 if (d.diffuseRays ?? 0) > 0 {
                     Text(
                         String(
-                            format: "Specular reflections above order %d are omitted after %.2f s; "
-                                + "scattered energy is traced to the end.",
+                            format: "Specular reflections above order %d, from %.2f s, are carried by the "
+                                + "ray tracer.",
                             result.settings.maximumReflectionOrder, limited))
                 } else {
                     Label(
@@ -130,7 +130,7 @@ struct DiagnosticsList: View {
             }
             if let scattered = d.scatteredFraction, let rays = d.diffuseRays, rays > 0 {
                 Text(
-                    "Scattered energy, 500 Hz–4 kHz: "
+                    "Ray-traced energy (scattered, or beyond the order limit), 500 Hz–4 kHz: "
                         + scattered.map { String(format: "%.0f%%", $0 * 100) }.joined(separator: " / ")
                         + " (\(rays.formatted()) rays)")
             } else {
