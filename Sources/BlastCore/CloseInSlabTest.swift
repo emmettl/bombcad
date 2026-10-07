@@ -47,7 +47,9 @@ public enum CloseInSlabTest {
         Test(
             name: "S1-S3", charge: 2.0, standoff: 1.0, lightTopMat: false, deflection: nil, damagedTop: 0,
             damagedBottom: 0, perforated: false, nearGauge: 2.5e6...3.6e6, farGauge: 0.47e6...0.58e6,
-            remark: "calibration shots: minor cracks only; the text gives 2.5 and 0.5 MPa at G1 and G3, its Figure 9 peaks of 3.3-3.6 and 0.47-0.58"),
+            remark:
+                "calibration shots: minor cracks only; the text gives 2.5 and 0.5 MPa at G1 and G3, its Figure 9 peaks of 3.3-3.6 and 0.47-0.58"
+        ),
         Test(
             name: "P1", charge: 1.74, standoff: 1.0, lightTopMat: true, deflection: 0, damagedTop: 0,
             damagedBottom: 0, perforated: false, nearGauge: 2.01e6...2.01e6, farGauge: nil,
@@ -81,7 +83,8 @@ public enum CloseInSlabTest {
     /// C25/30 at the 25 MPa the papers give, 2,300 kg/m³ and 20 mm aggregate, strengthening with
     /// strain rate; B500 bars, 500 MPa at yield and 575 at ultimate.
     public static func material() -> StructureMaterial {
-        let steel = SteelProperties(yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.15)
+        let steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.15)
         var material = StructureMaterial.concrete(
             name: "C25/30", compressiveStrength: 25e6, density: 2300, steel: steel)
         material.aggregateSize = 0.02
@@ -90,12 +93,15 @@ public enum CloseInSlabTest {
     }
 
     public static func scenario(_ test: Test, elementSize: Float = 0.025) -> Scenario {
-        var model = StructureModel(solids: [slab], material: material(), elementSize: elementSize, fixedBase: false)
+        var model = StructureModel(
+            solids: [slab], material: material(), elementSize: elementSize, fixedBase: false)
         // Bars 30 mm in, to the centre of the outer layer and the inner one about a bar further.
         let bottom: Float = 113.1e-6 / 0.15
         let top: Float = test.lightTopMat ? 78.5e-6 / 0.3 : bottom
-        model.addMat(to: slab, thicknessAxis: 2, areaPerMetre: bottom, depth: 0.042, faces: (low: true, high: false))
-        model.addMat(to: slab, thicknessAxis: 2, areaPerMetre: top, depth: 0.042, faces: (low: false, high: true))
+        model.addMat(
+            to: slab, thicknessAxis: 2, areaPerMetre: bottom, depth: 0.042, faces: (low: true, high: false))
+        model.addMat(
+            to: slab, thicknessAxis: 2, areaPerMetre: top, depth: 0.042, faces: (low: false, high: true))
         let c = centre
         let boxes = [
             // The supporting blocks, under the slab's ends to the bolt lines.
@@ -147,8 +153,10 @@ public enum CloseInSlabTest {
     }
 
     public static func run(
-        device: MTLDevice, test: Test, cellSize: Float = 0.05, elementSize: Float = 0.025, duration: Double = 0.3,
-        refinement: Int = 1, mappedCharge: Bool = true, afterburning: Bool = false, heldLengthwise: Bool = true,
+        device: MTLDevice, test: Test, cellSize: Float = 0.05, elementSize: Float = 0.025,
+        duration: Double = 0.3,
+        refinement: Int = 1, mappedCharge: Bool = true, afterburning: Bool = false,
+        heldLengthwise: Bool = true,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
@@ -161,16 +169,21 @@ public enum CloseInSlabTest {
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         let h = structure.model.elementSize
-        func index(_ value: Float, _ axis: Int) -> Int { Int(((value - structure.origin[axis]) / h).rounded()) }
+        func index(_ value: Float, _ axis: Int) -> Int {
+            Int(((value - structure.origin[axis]) / h).rounded())
+        }
         let mid = (index(slab.min.z, 2) + index(slab.max.z, 2)) / 2
-        let topLayer = (0...structure.ez).last { k in structure.storedNode(index(centre.x, 0), 0, k) != nil } ?? 0
+        let topLayer =
+            (0...structure.ez).last { k in structure.storedNode(index(centre.x, 0), 0, k) != nil } ?? 0
         let middleJ = index(centre.y, 1)
         structure.mutateNodes { nodes in
             for j in 0...structure.ey {
                 for i in 0...structure.ex {
                     let x = structure.origin.x + Float(i) * h
                     // The ends rest on the blocks behind the bolt lines.
-                    if x <= boltLines[0] + 1e-4 || x >= boltLines[1] - 1e-4, let n = structure.storedNode(i, j, 0) {
+                    if x <= boltLines[0] + 1e-4 || x >= boltLines[1] - 1e-4,
+                        let n = structure.storedNode(i, j, 0)
+                    {
                         nodes[n].restsOnSupport = true
                     }
                     for bolt in boltLines where abs(x - bolt) <= h + 1e-4 {
@@ -229,7 +242,8 @@ public enum CloseInSlabTest {
         return Result(
             history: history, peak: history.map(\.y).max() ?? 0,
             permanent: tail.reduce(0) { $0 + $1.y } / Float(max(tail.count, 1)),
-            damagedTop: Float(top) / Float(max(columns, 1)), damagedBottom: Float(bottom) / Float(max(columns, 1)),
+            damagedTop: Float(top) / Float(max(columns, 1)),
+            damagedBottom: Float(bottom) / Float(max(columns, 1)),
             perforated: through,
             gaugePeaks: zip(scenario.gauges, solver.gaugeHistories).map { gauge, samples in
                 (gauge.name, (samples.map(\.pressure).max() ?? ambient) - ambient)

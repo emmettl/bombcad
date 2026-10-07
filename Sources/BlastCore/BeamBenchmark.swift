@@ -161,7 +161,9 @@ public enum BeamBenchmark {
             var plateNodes: [Int] = []
             for j in 0...solver.ey {
                 for centre in loads {
-                    for i in (centre - plate)...(centre + plate) { plateNodes.append(solver.nodeIndex(i, j, solver.ez)) }
+                    for i in (centre - plate)...(centre + plate) {
+                        plateNodes.append(solver.nodeIndex(i, j, solver.ez))
+                    }
                 }
             }
             solver.mutateNodes { nodes in

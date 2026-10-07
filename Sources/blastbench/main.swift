@@ -129,7 +129,9 @@ func applyRateOptions(_ material: inout StructureMaterial) {
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
     if option("tension-law") == "mc2010" { material.tensionRateLaw = .modelCode2010 }
     if option("tension-law") == "malvar" { material.tensionRateLaw = .malvarRoss }
-    if let exponent = option("fracture-rate").flatMap({ Float($0) }) { material.fractureRateExponent = exponent }
+    if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
+        material.fractureRateExponent = exponent
+    }
 }
 
 func applyRateOptions(_ model: inout StructureModel) {
@@ -760,7 +762,9 @@ func runBeam() throws {
         }
         results.append((layers, result))
         if let residual = result.residual {
-            print("  unloaded from \(format(Double(result.curve.last?.x ?? 0) * 1000, 1)) mm: \(format(Double(residual) * 1000, 1)) mm left")
+            print(
+                "  unloaded from \(format(Double(result.curve.last?.x ?? 0) * 1000, 1)) mm: \(format(Double(residual) * 1000, 1)) mm left"
+            )
         }
         print(
             pad("\(layers)", 8) + pad("\(result.elementCount)", 10)
@@ -787,9 +791,12 @@ func runBeam() throws {
 /// A 1 kg charge burst in the air at each scaled distance above rigid ground, against the
 /// Kingery-Bulmash reflected peak and impulse under it (the surface-burst curves at W / 1.8).
 func runCloseAir() throws {
-    let distances = option("z").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [0.3, 0.5, 0.75, 1]
+    let distances =
+        option("z").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [0.3, 0.5, 0.75, 1]
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.02
-    print("1 kg TNT burst in the air above rigid ground, reflected square on below it; cells \(format(Double(cellSize), 3)) m")
+    print(
+        "1 kg TNT burst in the air above rigid ground, reflected square on below it; cells \(format(Double(cellSize), 3)) m"
+    )
     print(pad("Z", 6) + pad("K-B peak", 12) + pad("model", 14) + pad("K-B impulse", 14) + pad("model", 16))
     for z in distances {
         let height = z
@@ -802,7 +809,8 @@ func runCloseAir() throws {
                     "ground",
                     // In the air cell against the ground, refined or not: a cell further up misses
                     // the momentum the gas still carries towards it.
-                    at: SIMD3(size / 2, size / 2, (option("gauge-cells").flatMap { Float($0) } ?? 0.25) * cellSize))
+                    at: SIMD3(
+                        size / 2, size / 2, (option("gauge-cells").flatMap { Float($0) } ?? 0.25) * cellSize))
             ])
         scenario.reflectiveFaces = .ground
         let solver = try makeAirSolver(scenario, cellSize: cellSize)
@@ -818,13 +826,19 @@ func runCloseAir() throws {
         guard let point = KingeryBulmash.point(at: Double(height) / cbrt(w)) else { continue }
         if flag("field") {
             let cell = solver.nearestFluidCell(to: scenario.gauges[0].position)
-            print("  field at the gauge: peak \(format(Double(solver.peakOverpressure(cell.i, cell.j, cell.k)) / 1e6, 1)) MPa, impulse \(format(Double(solver.impulse(cell.i, cell.j, cell.k)), 0)) Pa s; \(samples.count) samples")
+            print(
+                "  field at the gauge: peak \(format(Double(solver.peakOverpressure(cell.i, cell.j, cell.k)) / 1e6, 1)) MPa, impulse \(format(Double(solver.impulse(cell.i, cell.j, cell.k)), 0)) Pa s; \(samples.count) samples"
+            )
         }
         print(
             pad(format(Double(z), 2), 6) + pad("\(format(point.reflectedPressure / 1e6, 1)) MPa", 12)
-                + pad("\(format(Double(peak) / 1e6, 1)) (\(format(Double(peak) / point.reflectedPressure * 100, 0))%)", 14)
+                + pad(
+                    "\(format(Double(peak) / 1e6, 1)) (\(format(Double(peak) / point.reflectedPressure * 100, 0))%)",
+                    14)
                 + pad("\(format(point.reflectedImpulse(mass: w), 0)) Pa s", 14)
-                + pad("\(format(Double(impulse), 0)) (\(format(Double(impulse) / point.reflectedImpulse(mass: w) * 100, 0))%)", 16))
+                + pad(
+                    "\(format(Double(impulse), 0)) (\(format(Double(impulse) / point.reflectedImpulse(mass: w) * 100, 0))%)",
+                    16))
     }
 }
 
@@ -852,14 +866,18 @@ func failureProbe(at time: Double) -> (StructureSolver, Double) -> Void {
         }
         print("  failed / bare elements along the span at \(format(now * 1000, 0)) ms:")
         for bin in bins.keys.sorted() {
-            print("    x \(format(Double(bin) * 0.2, 1))-\(format(Double(bin + 1) * 0.2, 1)) m: \(bins[bin]!.eroded) / \(bins[bin]!.bare)")
+            print(
+                "    x \(format(Double(bin) * 0.2, 1))-\(format(Double(bin + 1) * 0.2, 1)) m: \(bins[bin]!.eroded) / \(bins[bin]!.bare)"
+            )
         }
         let c = CloseInSlabTest.centre
         let j = Int(((c.y - structure.origin.y) / h).rounded())
         for bolt in [Float(1.4), 5.4] {
             let i = Int(((bolt - structure.origin.x) / h).rounded())
             let k = structure.ez / 2
-            print("    bolt line \(format(Double(bolt), 1)) m: node displaced \(structure.displacement(i, j, k))")
+            print(
+                "    bolt line \(format(Double(bolt), 1)) m: node displaced \(structure.displacement(i, j, k))"
+            )
         }
     }
 }
@@ -888,7 +906,8 @@ func spallProbe() -> (StructureSolver, Double) -> Void {
         }
         let bottom = structure.node(i, j, 0).velocity.z
         let middle = structure.node(i, j, top / 2).velocity.z
-        print("      bottom face \(format(Double(bottom), 1)) m/s, mid-depth \(format(Double(middle), 1)) m/s")
+        print(
+            "      bottom face \(format(Double(bottom), 1)) m/s, mid-depth \(format(Double(middle), 1)) m/s")
     }
 }
 
@@ -913,7 +932,9 @@ func runCloseIn() throws {
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
-                if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
+                if let dowel = option("dowel").flatMap({ Float($0) }) {
+                    scenario.structure?.material.dowelFactor = dowel
+                }
                 if let rupture = option("rupture").flatMap({ Float($0) }) {
                     scenario.structure?.material.steel?.ruptureStrain = rupture
                 }
@@ -929,18 +950,31 @@ func runCloseIn() throws {
                     fflush(stdout)
                 } : nil,
             inspect: flag("spall") ? spallProbe() : flag("where") ? failureProbe(at: duration * 0.99) : nil)
-        print("\(test.name): \(format(Double(test.charge), 2)) kg TNT at \(format(Double(test.standoff), 1)) m; \(test.remark)")
+        print(
+            "\(test.name): \(format(Double(test.charge), 2)) kg TNT at \(format(Double(test.standoff), 1)) m; \(test.remark)"
+        )
         print("                      measured        model")
         print(
-            "  permanent (mm)      " + pad(mm(test.deflection), 15) + "  \(mm(result.permanent)) (peak \(mm(result.peak)))")
-        print("  spalled, top        " + pad(percent(test.damagedTop), 15) + "  \(percent(result.damagedTop))")
-        print("  spalled, bottom     " + pad(percent(test.damagedBottom), 15) + "  \(percent(result.damagedBottom))")
-        print("  perforated          " + pad(test.perforated ? "yes" : "no", 15) + "  \(result.perforated ? "yes" : "no")")
+            "  permanent (mm)      " + pad(mm(test.deflection), 15)
+                + "  \(mm(result.permanent)) (peak \(mm(result.peak)))")
+        print(
+            "  spalled, top        " + pad(percent(test.damagedTop), 15) + "  \(percent(result.damagedTop))")
+        print(
+            "  spalled, bottom     " + pad(percent(test.damagedBottom), 15)
+                + "  \(percent(result.damagedBottom))")
+        print(
+            "  perforated          " + pad(test.perforated ? "yes" : "no", 15)
+                + "  \(result.perforated ? "yes" : "no")")
         let measured = [test.nearGauge, test.nearGauge, test.farGauge, test.farGauge, nil, nil]
         for ((name, pressure), range) in zip(result.gaugePeaks, measured) {
-            let text = range.map { $0.lowerBound == $0.upperBound
-                ? format(Double($0.lowerBound) / 1e6, 2) : "\(format(Double($0.lowerBound) / 1e6, 2))-\(format(Double($0.upperBound) / 1e6, 2))" } ?? "-"
-            print("  \(pad(name + " (MPa)", 18))  " + pad(text, 15) + "  \(format(Double(pressure) / 1e6, 2))")
+            let text =
+                range.map {
+                    $0.lowerBound == $0.upperBound
+                        ? format(Double($0.lowerBound) / 1e6, 2)
+                        : "\(format(Double($0.lowerBound) / 1e6, 2))-\(format(Double($0.upperBound) / 1e6, 2))"
+                } ?? "-"
+            print(
+                "  \(pad(name + " (MPa)", 18))  " + pad(text, 15) + "  \(format(Double(pressure) / 1e6, 2))")
         }
         print("  impulse at the slab's centre: \(format(Double(result.gaugeImpulses.last ?? 0), 0)) Pa s")
         print("  slab's momentum at 5 ms: \(format(Double(result.impulse), 0)) N s")
@@ -960,7 +994,9 @@ func runImpact() throws {
             + pad("failed", 8) + pad("run time", 10))
     if flag("ando") {
         // Ando et al. (2000): beams without stirrups, struck once each by 300 kg.
-        print(pad("test", 8) + pad("speed", 8) + pad("measured", 22) + pad("model", 20) + pad("failed", 8) + "  remark")
+        print(
+            pad("test", 8) + pad("speed", 8) + pad("measured", 22) + pad("model", 20) + pad("failed", 8)
+                + "  remark")
         for test in ImpactBenchmark.shearTests where names?.contains(test.name) ?? true {
             let result = try ImpactBenchmark.run(
                 device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.15)
@@ -968,10 +1004,14 @@ func runImpact() throws {
                 if flag("no-rate") { model.material.rateDependent = false }
                 applyRateOptions(&model)
             }
-            let measured = test.broken ? "broken" : test.residual.map { "whole, \(format(Double($0) * 1000)) mm left" } ?? "whole"
+            let measured =
+                test.broken
+                ? "broken" : test.residual.map { "whole, \(format(Double($0) * 1000)) mm left" } ?? "whole"
             print(
                 pad(test.name, 8) + pad("\(format(Double(test.speed), 0)) m/s", 8) + pad(measured, 22)
-                    + pad("\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 20)
+                    + pad(
+                        "\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm",
+                        20)
                     + pad("\(result.summary.erodedElements)", 8) + "  " + test.remark)
             if flag("history") {
                 // Mid-span displacement every 5 ms, in mm.
@@ -984,17 +1024,26 @@ func runImpact() throws {
         return
     }
     if let size = option("beams").flatMap({ Float($0) }) {
-        print(pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("beams", 18) + pad("reaction", 18) + pad("sheared", 9) + pad("removed", 9))
+        print(
+            pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("beams", 18) + pad("reaction", 18)
+                + pad("sheared", 9) + pad("removed", 9))
         for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
             let result = try ImpactBenchmark.runBeams(
-                device: device, test: test, size: size, duration: duration, sectionShear: !flag("no-section-shear"))
+                device: device, test: test, size: size, duration: duration,
+                sectionShear: !flag("no-section-shear"))
             let measured =
-                test.peak.map { "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm" }
+                test.peak.map {
+                    "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm"
+                }
                 ?? "failed"
             print(
                 pad(test.name, 8) + pad("\(Int(test.weight)) kg", 8) + pad(measured, 18)
-                    + pad("\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 18)
-                    + pad("\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN", 18)
+                    + pad(
+                        "\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm",
+                        18)
+                    + pad(
+                        "\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN",
+                        18)
                     + pad("\(result.sheared)", 9) + pad("\(result.removed)", 9))
         }
         return
@@ -1011,8 +1060,11 @@ func runImpact() throws {
             ?? "failed"
         print(
             pad(test.name, 8) + pad("\(Int(test.weight)) kg", 8) + pad(measured, 18)
-                + pad("\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 18)
-                + pad("\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN", 18)
+                + pad(
+                    "\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm", 18
+                )
+                + pad(
+                    "\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN", 18)
                 + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
     }
     print(

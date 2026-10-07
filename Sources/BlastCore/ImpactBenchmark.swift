@@ -54,7 +54,8 @@ public enum ImpactBenchmark {
             residual: 0.0005, reaction: 327e3,
             remark: ""),
         Test(
-            name: "SS0b-1", stirrupSpacing: nil, weight: 600, concreteStrength: 50.1e6, peak: nil, residual: nil,
+            name: "SS0b-1", stirrupSpacing: nil, weight: 600, concreteStrength: 50.1e6, peak: nil,
+            residual: nil,
             reaction: 399e3,
             remark: "punched through: a shear plug, the bars exposed and bent"),
         Test(
@@ -76,7 +77,8 @@ public enum ImpactBenchmark {
     /// MPa, 630 MPa at ultimate, 195 GPa. The D-6 stirrups (605 MPa) are taken with the bars'
     /// curve.
     public static func material(_ test: Test) -> StructureMaterial {
-        var steel = SteelProperties(yieldStress: 464e6, ultimateStress: 630e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        var steel = SteelProperties(
+            yieldStress: 464e6, ultimateStress: 630e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
         steel.youngsModulus = 195e9
         var material = StructureMaterial.concrete(
             name: "Saatci beam", compressiveStrength: test.concreteStrength, density: 2437, steel: steel)
@@ -108,7 +110,8 @@ public enum ImpactBenchmark {
         Specimen(
             width: width, depth: depth, length: length, span: span,
             bars: [(barArea, barDepth), (barArea, depth - barDepth)],
-            stirrups: test.stirrupSpacing.map { (2 * 38.71e-6, $0) }, plate: plate, bearingLength: bearingLength,
+            stirrups: test.stirrupSpacing.map { (2 * 38.71e-6, $0) }, plate: plate,
+            bearingLength: bearingLength,
             material: material(test))
     }
 
@@ -142,7 +145,9 @@ public enum ImpactBenchmark {
             bands.append(
                 ReinforcementLayer(
                     region: beam,
-                    ratio: SIMD3(0, stirrups.legs / (s.depth * stirrups.spacing), stirrups.legs / (s.width * stirrups.spacing))))
+                    ratio: SIMD3(
+                        0, stirrups.legs / (s.depth * stirrups.spacing),
+                        stirrups.legs / (s.width * stirrups.spacing))))
         }
         model.reinforcement = bands
         return model
@@ -177,7 +182,8 @@ public enum ImpactBenchmark {
     /// `run(device:test:)` does. With `bounce`, the weight leaves the plate once the plate stops
     /// going down, as a real one does; without it, it stays on.
     public static func run(
-        device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float, elementsThroughDepth: Int = 16,
+        device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float,
+        elementsThroughDepth: Int = 16,
         duration: Double = 0.2, bounce: Bool = true, adjust: (inout StructureModel) -> Void = { _ in }
     ) throws -> Result {
         let length = specimen.length
@@ -257,7 +263,8 @@ public enum ImpactBenchmark {
                         if solver.storedNode(i, j, 0) != nil, solver.displacement(i, j, 0).z == 0 {
                             reaction[side] += solver.nodalForce(i, j, 0).z
                         }
-                        if solver.storedNode(i, j, beamTop) != nil, solver.displacement(i, j, beamTop).z == 0 {
+                        if solver.storedNode(i, j, beamTop) != nil, solver.displacement(i, j, beamTop).z == 0
+                        {
                             reaction[side] += solver.nodalForce(i, j, beamTop).z
                         }
                     }
@@ -266,7 +273,8 @@ public enum ImpactBenchmark {
             reactions.append(reaction)
         }
         let elapsed = ContinuousClock.now - start
-        let window = max(1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
+        let window = max(
+            1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
         var peakReaction: Float = 0
         if reactions.count >= window {
             for end in window...reactions.count {
@@ -336,16 +344,19 @@ public enum ImpactBenchmark {
             reactions.append(SIMD2(supports.map { $0.reduce(Float(0)) { $0 + solver.nodalForce($1).z } }))
         }
         let elapsed = ContinuousClock.now - start
-        let window = max(1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
+        let window = max(
+            1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
         var peakReaction: Float = 0
         if reactions.count >= window {
             for end in window...reactions.count {
-                peakReaction = max(peakReaction, abs(reactions[(end - window)..<end].reduce(.zero, +) / Float(window)).max())
+                peakReaction = max(
+                    peakReaction, abs(reactions[(end - window)..<end].reduce(.zero, +) / Float(window)).max())
             }
         }
         let tail = history.filter { Double($0.x) >= duration - 0.03 }
         return BeamResult(
-            peak: history.map(\.y).max() ?? 0, residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)),
+            peak: history.map(\.y).max() ?? 0,
+            residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)),
             peakReaction: peakReaction,
             sheared: (0..<solver.beamCount).filter { solver.beamHasShearFailed($0) }.count,
             removed: (0..<solver.beamCount).filter { solver.beamFlag($0) != .active }.count,
@@ -374,23 +385,30 @@ public enum ImpactBenchmark {
     }
 
     public static let shearTests: [ShearTest] = [
-        ShearTest(name: "A36-1", heavyBars: true, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
-                  remark: "flexural cracks only"),
-        ShearTest(name: "A36-3", heavyBars: true, shearSpanRatio: 3.6, speed: 3, broken: false, residual: nil,
-                  remark: "a severe diagonal crack from the load to the support"),
-        ShearTest(name: "A36-5", heavyBars: true, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
-                  remark: "split into three by diagonal cracks"),
-        ShearTest(name: "B36-1", heavyBars: false, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
-                  remark: "flexural cracks only"),
-        ShearTest(name: "B36-4", heavyBars: false, shearSpanRatio: 3.6, speed: 4, broken: false, residual: 0.0226,
-                  remark: "bent, flexure cracks only"),
-        ShearTest(name: "B36-5", heavyBars: false, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
-                  remark: "broken by a wide diagonal crack"),
+        ShearTest(
+            name: "A36-1", heavyBars: true, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
+            remark: "flexural cracks only"),
+        ShearTest(
+            name: "A36-3", heavyBars: true, shearSpanRatio: 3.6, speed: 3, broken: false, residual: nil,
+            remark: "a severe diagonal crack from the load to the support"),
+        ShearTest(
+            name: "A36-5", heavyBars: true, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
+            remark: "split into three by diagonal cracks"),
+        ShearTest(
+            name: "B36-1", heavyBars: false, shearSpanRatio: 3.6, speed: 1, broken: false, residual: nil,
+            remark: "flexural cracks only"),
+        ShearTest(
+            name: "B36-4", heavyBars: false, shearSpanRatio: 3.6, speed: 4, broken: false, residual: 0.0226,
+            remark: "bent, flexure cracks only"),
+        ShearTest(
+            name: "B36-5", heavyBars: false, shearSpanRatio: 3.6, speed: 5, broken: true, residual: nil,
+            remark: "broken by a wide diagonal crack"),
     ]
 
     public static func specimen(_ test: ShearTest) -> Specimen {
         let span = 2 * test.shearSpanRatio * 0.208
-        var steel = SteelProperties(yieldStress: 393e6, ultimateStress: 560e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        var steel = SteelProperties(
+            yieldStress: 393e6, ultimateStress: 560e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
         steel.youngsModulus = 200e9
         var material = StructureMaterial.concrete(
             name: "Ando beam", compressiveStrength: 33e6, density: 2350, steel: steel)

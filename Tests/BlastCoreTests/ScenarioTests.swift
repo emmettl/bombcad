@@ -235,11 +235,15 @@ struct BlastValidationTests {
         let samples = try #require(solver.gaugeHistories.first)
         var impulse = 0.0
         for (a, b) in zip(samples, samples.dropFirst()) {
-            impulse += (b.time - a.time) * Double(max(0.5 * (a.pressure + b.pressure) - scenario.atmosphere.pressure, 0))
+            impulse +=
+                (b.time - a.time)
+                * Double(max(0.5 * (a.pressure + b.pressure) - scenario.atmosphere.pressure, 0))
         }
         let mass = 1.0 / 1.8
-        let reference = try #require(KingeryBulmash.point(at: Double(height) / cbrt(mass))).reflectedImpulse(mass: mass)
-        #expect(abs(impulse - reference) / reference < 0.1, "impulse \(impulse) Pa s against \(reference) Pa s")
+        let reference = try #require(KingeryBulmash.point(at: Double(height) / cbrt(mass))).reflectedImpulse(
+            mass: mass)
+        #expect(
+            abs(impulse - reference) / reference < 0.1, "impulse \(impulse) Pa s against \(reference) Pa s")
     }
 
     @Test("The Kingery-Bulmash polynomials reproduce Swisdak's tables and the IATG examples")

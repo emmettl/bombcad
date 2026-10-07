@@ -702,7 +702,8 @@ struct ConcreteModelTests {
         return plateau.reduce(0, +) / Float(plateau.count)
     }
 
-    @Test("Concrete loaded quickly is stronger, by the published rate laws", arguments: TensionRateLaw.allCases)
+    @Test(
+        "Concrete loaded quickly is stronger, by the published rate laws", arguments: TensionRateLaw.allCases)
     func rateStrengthening(law: TensionRateLaw) throws {
         var material = Self.concrete()
         material.rateDependent = true
@@ -897,7 +898,9 @@ struct ImpactBenchmarkTests {
         try #require(ImpactBenchmark.tests.first { $0.name == name })
     }
 
-    @Test("Solid elements: the light drop's peak, the heavy drop's survival, and the beam without stirrups broken")
+    @Test(
+        "Solid elements: the light drop's peak, the heavy drop's survival, and the beam without stirrups broken"
+    )
     func solids() throws {
         // Twelve elements through the depth; 16 and 24 give much the same (docs/validation.md).
         let light = try ImpactBenchmark.run(device: device, test: test("SS1a-1"), elementsThroughDepth: 12)
@@ -907,12 +910,14 @@ struct ImpactBenchmarkTests {
         // With stirrups the heavy drop is survived, its peak a little short of the test's.
         let heavy = try ImpactBenchmark.run(device: device, test: test("SS2b-1"), elementsThroughDepth: 12)
         let heavyMeasured = try #require(try test("SS2b-1").peak)
-        #expect(heavy.peak > 0.75 * heavyMeasured && heavy.peak < 1.1 * heavyMeasured, "SS2b-1: \(heavy.peak) m")
+        #expect(
+            heavy.peak > 0.75 * heavyMeasured && heavy.peak < 1.1 * heavyMeasured, "SS2b-1: \(heavy.peak) m")
         #expect(heavy.summary.erodedElements == 0)
         // Without stirrups, it breaks along diagonal cracks. (So, under the light drop, does SS0a-1,
         // which the test beam survived: see docs/validation.md.)
         let broken = try ImpactBenchmark.run(device: device, test: test("SS0b-1"), elementsThroughDepth: 12)
-        #expect(broken.summary.erodedElements > 100, "SS0b-1: \(broken.summary.erodedElements) elements failed")
+        #expect(
+            broken.summary.erodedElements > 100, "SS0b-1: \(broken.summary.erodedElements) elements failed")
     }
 
     @Test("Ando's beam without stirrups bends at 4 m/s and breaks in shear at 5 m/s, as the tests did")
@@ -1001,7 +1006,8 @@ struct BareBarTests {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
         let h: Float = 0.05
         let column = Box(min: SIMD3(0, 0, 1), max: SIMD3(h, h, 1 + 10 * h))
-        var steel = SteelProperties(yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.2, ruptureStrain: 3)
+        var steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.2, ruptureStrain: 3)
         steel.youngsModulus = 200e9
         var model = StructureModel(
             solids: [column], material: .concrete(name: "C30", compressiveStrength: 30e6, steel: steel),
