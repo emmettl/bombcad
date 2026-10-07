@@ -77,7 +77,7 @@ the current editor and warns when selected runs use different solver revisions. 
 disclosure shows charge, grid options, materials, supports and reinforcement counts.
 
 `SavedSimulationRun.solverVersion` is the explicit numerical contract (`blast-solver-1` initially).
-Advance it when solver defaults, equations or numerical interpretation change. Development
+The horizontal support-connection extension advances it to `blast-solver-2`. Advance it when solver defaults, equations or numerical interpretation change. Development
 executables without bundle metadata report app version `development`; the revision is not a
 Git commit or binary hash. Device/OS metadata supports interpretation rather than a promise of
 bit-for-bit reproducibility across builds or hardware.

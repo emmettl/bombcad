@@ -1,3 +1,4 @@
+import BlastCore
 import Charts
 import SwiftUI
 
@@ -194,7 +195,14 @@ struct RunComparisonView: View {
                             Text(
                                 "\(body.solids.count) structural regions · \(body.openings.count) openings · \(body.supports.count) support regions · \(body.reinforcement.count) reinforcement layers"
                             )
-                            Text("Ground restraint: \(body.fixedBase ? "on" : "off")")
+                            Text(
+                                "Base: "
+                                    + (body.fixedBase ? connectionTitle(body.baseAnchorage) : "Unrestrained"))
+                            ForEach(body.supports.indices, id: \.self) { index in
+                                Text(
+                                    "Support \(index + 1): "
+                                        + connectionTitle(body.anchorage(ofSupport: index)))
+                            }
                         }
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
@@ -301,6 +309,11 @@ struct RunComparisonView: View {
                 .font(.caption).foregroundStyle(.secondary)
             }
         }.padding(.top, 8)
+    }
+
+    private func connectionTitle(_ law: Anchorage?) -> String {
+        if law == nil { return "Clamped" }
+        return BaseConnection.allCases.first { $0.anchorage == law }?.title ?? "Custom connection"
     }
 
     private func metric(_ title: String, _ value: Double, _ reference: Double?, _ unit: String) -> some View {

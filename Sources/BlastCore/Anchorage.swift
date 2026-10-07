@@ -160,3 +160,92 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         }
     }
 }
+
+// The same law layout consumed by both Metal node kernels.
+struct AnchorageParameters {
+    var stiffnessAndTension: SIMD4<Float>
+    var failureAndFriction: SIMD4<Float>
+
+    init(_ law: Anchorage, material: StructureMaterial, elementSize: Float) {
+        let stiffness = law.stiffness(material: material, elementSize: elementSize)
+        stiffnessAndTension = SIMD4(
+            stiffness.normal, stiffness.shear, law.tensileStrength, law.tensionPlateau)
+        failureAndFriction = SIMD4(law.tensionOpening, law.cohesion, law.cohesionSlip, law.friction)
+    }
+}
+
+extension Anchorage {
+    /// Reject invalid laws before they reach a GPU, including laws loaded from a document.
+    public func validate() throws {
+        let values = [tensileStrength, tensionPlateau, tensionOpening, cohesion, cohesionSlip, friction]
+        guard values.allSatisfy({ $0.isFinite && $0 >= 0 }),
+            tensionOpening >= tensionPlateau,
+            normalStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,
+            shearStiffness.map({ $0.isFinite && $0 > 0 }) ?? true
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "Connection values must be finite and nonnegative, stiffness must be positive, and final opening cannot precede the strength plateau."
+            )
+        }
+    }
+}
+
+extension StructureModel {
+    /// Nil entries retain ideal clamping. Finite region connections are horizontal bearings.
+    public func anchorage(ofSupport index: Int) -> Anchorage? {
+        supportAnchorages.indices.contains(index) ? supportAnchorages[index] : nil
+    }
+
+    public mutating func setAnchorage(_ law: Anchorage?, ofSupport index: Int) {
+        guard supports.indices.contains(index) else { return }
+        while supportAnchorages.count <= index { supportAnchorages.append(nil) }
+        supportAnchorages[index] = law
+    }
+
+    public mutating func removeSupport(at index: Int) {
+        guard supports.indices.contains(index) else { return }
+        supports.remove(at: index)
+        if supportAnchorages.indices.contains(index) { supportAnchorages.remove(at: index) }
+    }
+
+    func containsSupport(_ index: Int, at point: SIMD3<Float>) -> Bool {
+        let slack = 1e-3 * elementSize
+        let box = supports[index]
+        return (0..<3).allSatisfy { point[$0] >= box.min[$0] - slack && point[$0] <= box.max[$0] + slack }
+    }
+
+    func isClampedBySupport(at point: SIMD3<Float>) -> Bool {
+        supports.indices.contains { anchorage(ofSupport: $0) == nil && containsSupport($0, at: point) }
+    }
+
+    /// An ideal clamp takes precedence, followed by the last finite support, then the ground.
+    func connection(at point: SIMD3<Float>) -> Anchorage? {
+        guard !isClampedBySupport(at: point) else { return nil }
+        if let index = finiteSupportIndex(at: point) { return anchorage(ofSupport: index) }
+        return fixedBase && abs(point.z) < 1e-4 ? baseAnchorage : nil
+    }
+
+    func finiteSupportIndex(at point: SIMD3<Float>) -> Int? {
+        guard !isClampedBySupport(at: point) else { return nil }
+        return supports.indices.reversed().first {
+            anchorage(ofSupport: $0) != nil && containsSupport($0, at: point)
+        }
+    }
+
+    func validateAnchorages() throws {
+        guard supportAnchorages.count <= supports.count else {
+            throw ImportedMesh.ImportError.invalid("A connection references a missing support region.")
+        }
+        try baseAnchorage?.validate()
+        for law in supportAnchorages.compactMap({ $0 }) { try law.validate() }
+    }
+
+    var connectionStiffness: (normal: Float, shear: Float)? {
+        let laws = (fixedBase ? [baseAnchorage].compactMap { $0 } : []) + supportAnchorages.compactMap { $0 }
+        guard !laws.isEmpty else { return nil }
+        return laws.reduce((normal: Float(0), shear: Float(0))) { result, law in
+            let value = law.stiffness(material: material, elementSize: elementSize)
+            return (max(result.normal, value.normal), max(result.shear, value.shear))
+        }
+    }
+}

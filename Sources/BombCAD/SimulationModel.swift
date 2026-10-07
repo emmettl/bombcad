@@ -744,8 +744,33 @@ final class SimulationModel {
         }
         editStructure { body in
             body.fixedBase = fixed
-            if let imported { body.supports = imported.supports(fixedBase: fixed) }
+            if let imported {
+                body.supports = imported.supports(fixedBase: fixed)
+                body.supportAnchorages = fixed && body.baseAnchorage != nil ? [body.baseAnchorage] : []
+            }
         }
+    }
+
+    func setBaseAnchorage(_ law: Anchorage?) {
+        let imported = settings.scenario.importedModels?.first {
+            $0.behavior == .deformable && $0.canRegenerate(settings.scenario.structure)
+        }
+        editStructure { body in
+            body.baseAnchorage = law
+            if imported != nil {
+                body.supportAnchorages = law == nil || !body.fixedBase ? [] : [law]
+            }
+        }
+    }
+
+    func supportBearingArea(at index: Int) -> Float? {
+        guard runtimeInputsMatch, !hasPendingGPUWork, !isRunning, let solver else { return nil }
+        return (solver.structure?.supportBearingArea(at: index) ?? 0)
+            + (solver.shells?.supportBearingArea(at: index) ?? 0)
+    }
+
+    func setSupportAnchorage(_ law: Anchorage?, at index: Int) {
+        editStructure { $0.setAnchorage(law, ofSupport: index) }
     }
 
     func addSupport() {
@@ -763,8 +788,7 @@ final class SimulationModel {
 
     func removeSupport(at index: Int) {
         editStructure { body in
-            guard body.supports.indices.contains(index) else { return }
-            body.supports.remove(at: index)
+            body.removeSupport(at: index)
         }
         selection = nil
     }

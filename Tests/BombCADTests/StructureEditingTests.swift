@@ -171,6 +171,43 @@ struct StructuralEditorWorkflowTests {
         #expect(try ProjectDocument(archive: ProjectDocument(model: model).makeArchive()).scenario == edited)
     }
 
+    @Test("Custom base connections stay linked, regenerate and undo; region laws persist after detachment")
+    func connectionEditing() throws {
+        let model = try model()
+        model.setFixedBase(true)
+        model.recordEdit()
+        let clamped = model.settings.scenario
+        var joint = Anchorage.constructionJoint
+        joint.normalStiffness = 2e9
+        joint.friction = 0.4
+        model.setBaseAnchorage(joint)
+        let linked = model.settings.scenario
+        #expect(linked.importedModels?.first?.isAttached == true)
+        #expect(linked.structure?.baseAnchorage == joint)
+        #expect(linked.structure?.anchorage(ofSupport: 0) == joint)
+        let fine = try linked.resamplingImports(cellSize: 0.125)
+        #expect(fine.structure?.baseAnchorage == joint)
+        #expect(fine.structure?.anchorage(ofSupport: 0) == joint)
+        model.undo()
+        #expect(model.settings.scenario == clamped)
+        model.redo()
+        #expect(model.settings.scenario == linked)
+        model.addSupport()
+        model.setSupportAnchorage(.resting(friction: 0.25), at: 1)
+        #expect(model.settings.scenario.importedModels?.first?.isAttached == false)
+        let detached = model.settings.scenario
+        #expect(try detached.resamplingImports(cellSize: 0.125) == detached)
+        let restored = try ProjectDocument(archive: ProjectDocument(model: model).makeArchive())
+        #expect(restored.scenario == detached)
+        model.removeSupport(at: 0)
+        #expect(model.settings.scenario.structure?.anchorage(ofSupport: 0) == .resting(friction: 0.25))
+        let beforeInvalid = model.settings.scenario
+        var invalid = joint
+        invalid.friction = -1
+        model.setSupportAnchorage(invalid, at: 0)
+        #expect(model.settings.scenario == beforeInvalid)
+    }
+
     @Test("Ground restraint can stay source-managed; custom support and part reinforcement detach")
     func supportAndReinforcement() throws {
         let model = try model()

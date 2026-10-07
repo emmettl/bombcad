@@ -455,7 +455,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var fixedBase: Bool
     /// With `fixedBase`, ties the base to the ground by a connection that can deform, open,
     /// slide and fail (see `Anchorage`) instead of clamping it. Nil clamps it. Support regions
-    /// stay clamped.
+    /// have independent connection laws.
     public var baseAnchorage: Anchorage?
     public var reinforcement: [ReinforcementLayer] = []
     /// Bars at 45 degrees to the lattice (see `InclinedBars`).
@@ -491,6 +491,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Regions in which the structure is held still: nodes inside any of them do not move
     /// (beyond the ground plane, which `fixedBase` holds). For walls built into rigid scenery.
     public var supports: [Box] = []
+    /// Per-region horizontal bearing laws. Missing or nil entries clamp the region.
+    public var supportAnchorages: [Anchorage?] = []
     /// Where two materials meet, the elements on the weaker one's side carry only this bond
     /// across the boundary: tensile strength (Pa) and fracture energy (J/m²), as of mortar on
     /// concrete, so that infill can come away from its frame. Nil bonds them as one body.
@@ -1118,6 +1120,44 @@ extension StructureMaterial {
 }
 
 extension StructureModel {
+    private enum CodingKeys: String, CodingKey {
+        case solids, openings, material, elementSize, fixedBase, baseAnchorage
+        case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
+        case elementKind, shellLayers, supports, supportAnchorages, crackAxes, secondCracks
+        case bareBars, crackSlip, bondSlip, crackShearStiffness, solidElementKind
+        case shellElementSize, interfaceBond, unitJoints, shellSectionShear
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(solids, forKey: .solids)
+        try container.encode(openings, forKey: .openings)
+        try container.encode(material, forKey: .material)
+        try container.encode(elementSize, forKey: .elementSize)
+        try container.encode(fixedBase, forKey: .fixedBase)
+        try container.encodeIfPresent(baseAnchorage, forKey: .baseAnchorage)
+        try container.encode(reinforcement, forKey: .reinforcement)
+        try container.encode(inclinedBars, forKey: .inclinedBars)
+        try container.encode(solidReinforcement, forKey: .solidReinforcement)
+        try container.encode(solidMaterial, forKey: .solidMaterial)
+        try container.encode(solidSourceParts, forKey: .solidSourceParts)
+        try container.encode(elementKind, forKey: .elementKind)
+        try container.encode(shellLayers, forKey: .shellLayers)
+        try container.encode(supports, forKey: .supports)
+        try container.encode(crackAxes, forKey: .crackAxes)
+        try container.encode(secondCracks, forKey: .secondCracks)
+        try container.encode(bareBars, forKey: .bareBars)
+        try container.encode(crackSlip, forKey: .crackSlip)
+        try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
+        try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
+        try container.encode(solidElementKind, forKey: .solidElementKind)
+        try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
+        try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
+        try container.encode(unitJoints, forKey: .unitJoints)
+        try container.encode(shellSectionShear, forKey: .shellSectionShear)
+        if !supportAnchorages.isEmpty { try container.encode(supportAnchorages, forKey: .supportAnchorages) }
+    }
+
     /// Decodes a structure saved by any version: properties added since it was saved take
     /// their standard values.
     public init(from decoder: any Decoder) throws {
@@ -1138,6 +1178,7 @@ extension StructureModel {
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
+        supportAnchorages = try container.decodeIfPresent([Anchorage?].self, forKey: .supportAnchorages) ?? []
         crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
@@ -1149,5 +1190,6 @@ extension StructureModel {
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
         shellSectionShear = try container.decodeIfPresent(Bool.self, forKey: .shellSectionShear) ?? false
+        try validateAnchorages()
     }
 }

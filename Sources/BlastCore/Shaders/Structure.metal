@@ -220,6 +220,7 @@ constant uint maxMaterials = 8;
 // Set when the pipeline is built: true for a structure of one material, which lets the compiler
 // fold the per-element lookup away.
 constant bool singleMaterial [[function_constant(0)]];
+constant bool finiteConnections [[function_constant(1)]];
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
@@ -2307,11 +2308,10 @@ float3 anchorTraction(thread float4 &state, float3 displacement, float rise, flo
 // slip y, wear) and (the force the connection put on the node in the last substep, the largest
 // opening so far). The area is zero for nodes without a connection. Updates the state and
 // returns the force on the node.
-float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u) {
+float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u, AnchorLaw law) {
     float4 stored = anchors[2 * index];
     float area = stored.x;
     float4 state = float4(stored.yzw, anchors[2 * index + 1].w);
-    AnchorLaw law = anchorLaw(u);
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
     float3 force = -area * anchorTraction(state, float3(node.displacement), node.velocity.z, damper, law);
     anchors[2 * index] = float4(area, state.xyz);
@@ -2340,6 +2340,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            device float4 *slips [[buffer(18)]],
                            const device float4 *slipSupport [[buffer(19)]],
                            const device float4 *barForces [[buffer(20)]],
+                           const device AnchorLaw *anchorLaws [[buffer(21)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2416,9 +2417,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (u.bondSlip != 0) {
         relaxSlip(threadIndex, tid, node.flags, slips, slipSupport, barForces, flags, cellElement, dt, u);
     }
-    bool anchoredNode = u.anchored != 0 && anchors[2 * threadIndex].x > 0.0f;
+    bool anchoredNode = finiteConnections && u.anchored != 0 && anchors[2 * threadIndex].x > 0.0f;
     if (anchoredNode) {
-        force += anchorForce(anchors, threadIndex, node, u);
+        force += anchorForce(anchors, threadIndex, node, u, anchorLaws[threadIndex]);
     }
 
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));

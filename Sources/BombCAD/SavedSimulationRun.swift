@@ -4,7 +4,7 @@ import DocumentKit
 import Foundation
 
 struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
-    static let solverVersion = "blast-solver-1"
+    static let solverVersion = "blast-solver-2"
     static let maximumRuns = 16
     static let maximumSamples = 500_000
 

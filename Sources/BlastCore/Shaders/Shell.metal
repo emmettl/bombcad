@@ -1657,6 +1657,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device float4 *anchorPoints [[buffer(21)]],
                        device float4 *anchorState [[buffer(22)]],
                        device float4 *anchorForces [[buffer(23)]],
+                       const device AnchorLaw *anchorLaws [[buffer(24)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1696,10 +1697,10 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     // A node on a connected base: the connection acts at points of its footprint (through a
     // wall's thickness, or over a column's section), each moving with the node's rotation, so
     // that the base can open at its heel while it bears at its toe.
-    bool anchoredNode = u.anchored != 0 && anchorStart[n + 1] > anchorStart[n];
+    bool anchoredNode = finiteConnections && u.anchored != 0 && anchorStart[n + 1] > anchorStart[n];
     if (anchoredNode) {
-        AnchorLaw law = anchorLaw(u);
         for (uint f = anchorStart[n]; f < anchorStart[n + 1]; ++f) {
+            AnchorLaw law = anchorLaws[f];
             float4 point = anchorPoints[f];
             float3 arm = float3(point.xy, 0.0f);
             float3 turn = rotationOffset(node.rotation, arm);

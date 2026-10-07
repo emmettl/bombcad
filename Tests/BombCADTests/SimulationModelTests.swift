@@ -242,7 +242,9 @@ struct SimulationModelTests {
         model.select(.blastWall)
         model.settings.chargeMass = 500
         model.settingsChanged()
-        try await waitUntil { model.structureSummary != nil && model.time == 0 && model.traces.count == 3 }
+        try await waitUntil {
+            model.experimentIsReady && model.structureSummary != nil && model.traces.count == 3
+        }
         #expect(model.structureSummary?.erodedElements == 0)
         #expect(model.structureSubsteps > 0)
 
@@ -463,7 +465,9 @@ struct SimulationModelTests {
         let model = try await makeModel()
         model.select(.blastWall)
         model.settingsChanged()
-        try await waitUntil { model.structureSummary != nil && model.time == 0 && model.traces.count == 3 }
+        try await waitUntil {
+            model.experimentIsReady && model.structureSummary != nil && model.traces.count == 3
+        }
         model.speed = .unlimited
         model.duration = 0.02
         model.run()
