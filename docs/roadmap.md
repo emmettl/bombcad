@@ -28,7 +28,8 @@ it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
-| 9 | The app's interface has not been reviewed by eye                        | Layout or interaction problems may exist                      | Below |
+| 9 | Ground restraints are permanent; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
 and its rendering is checked through offscreen snapshots, but its panels, text fields and file
@@ -139,6 +140,47 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    fine three to five times faster in the open. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
+13. **Freestanding objects and supports.** Independent rigid bodies for parked cars and
+   interior furniture, with gravity, friction, lift-off and collisions, coupled to the blast.
+   Start with the staged checks below. Separately, make structural support assumptions visible
+   and add connections with finite stiffness and strength where anchorage failure matters.
+
+### Freestanding objects and supports
+
+The current fixed base represents an intact attachment to a rigid foundation. Disabling it
+does not supply a realistic friction model: ground contact prevents penetration and damps
+horizontal velocity. Cars and furniture need independent motion and contact forces limited
+by their actual ground reactions. This is planned work, not an implemented or validated
+vehicle model.
+
+1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
+   gravity, rotational inertia and contact properties, with backward-compatible persistence.
+   Keep rendering geometry separate from simple collision shapes. Implement translation,
+   rotation, gravity, unilateral ground contact and static/sliding friction. Verify rest under
+   gravity, the sliding threshold, response to prescribed linear and angular impulses, and
+   rocking and tipping without artificial energy gain; check timestep convergence.
+2. **One box coupled to the air.** Integrate surface pressure into force and torque, and
+   update moving boundaries on the coarse and refined air grids. Handle exposed air cells,
+   moving-wall velocity and motion beyond the initial coupling region. Check gas conservation,
+   momentum exchange and sensitivity to air resolution and timestep before adding scenes.
+3. **One simplified car.** Use a rigid body with four tyre contact locations and an explicit
+   all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
+   contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
+   rocking and tipping; distinguish these mechanical checks from validation against a blast
+   experiment. Crushing, wheel rotation and fragmentation are later extensions.
+4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
+   structures and other objects, using spatial filtering. Expose placement, duplication,
+   properties, animated poses and displacement/speed/tipping results in the app. Progress
+   from a row of cars to a populated car park and a furnished room, with explicit friction
+   and support assumptions. Benchmark each against identical geometry held stationary,
+   reporting air-grid cost separately from motion, coupling and contact; include a crowded
+   collision case. Do not promise a throughput target before these measurements.
+
+Structural anchorage is a separate extension: retain ideal fixed supports as an explicit
+option, then add connections that can deform, open and fail under tension or shear, with
+contact and friction after separation. Compare fixed and finite-strength supports on a
+freestanding wall or column before pursuing detailed footing and soil behaviour. Rigid-body
+motion alone does not address foundation failure or deformable-object breakup.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2
