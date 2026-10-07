@@ -14,6 +14,9 @@ enum Main {
                 exit(Snapshot.write(to: URL(fileURLWithPath: arguments[flag + 1])) ? 0 : 1)
             }
         }
+        // Open a new room at launch, as document apps did before iCloud, instead of the Open panel.
+        // Restored windows and documents opened from Finder still take precedence.
+        UserDefaults.standard.register(defaults: ["NSShowAppCentricOpenPanelInsteadOfUntitledFile": false])
         RoomCADApp.main()
     }
 }

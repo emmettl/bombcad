@@ -23,6 +23,9 @@ make roomcad-app
 The second command builds `RoomCAD/dist/RoomCAD.app`, ad-hoc signed. That bundle declares the
 `.roomcad` document type. It is not notarized, and RoomCAD has no release process yet.
 
+RoomCAD opens a new room at launch rather than the Open panel, unless macOS restores windows or a
+document is opened from Finder.
+
 ## The window
 
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
