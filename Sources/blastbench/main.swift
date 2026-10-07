@@ -14,7 +14,7 @@ import simd
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
-//   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1]
+//   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
@@ -1092,7 +1092,7 @@ func runShearBeam() throws {
         let slice = option("slice").flatMap { Float($0) }.map { $0 / 1000 }
         let result = try ShearBeamBenchmark.run(
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
-            crackAxes: chosenCrackAxes()
+            crackAxes: chosenCrackAxes(), mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
         ) { material in
             if let dowel { material.dowelFactor = dowel }
             // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
@@ -1108,6 +1108,14 @@ func runShearBeam() throws {
                 + pad("\(format(Double(result.peak / ShearBeamBenchmark.measuredPeak) * 100, 0))%", 9)
                 + pad("\(format(Double(result.peakDeflection) * 1000)) mm", 9)
                 + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
+    }
+    // `--map 9` draws the cracks through the middle of the width at 9 mm of deflection.
+    for (layers, result) in results where !result.crackMap.isEmpty {
+        print(
+            "\nCracks open past 0.1% strain, \(layers) layers, at \(option("map") ?? "") mm "
+                + "(\(format(Double(result.mapLoad) / 1000, 0)) kN): | vertical, / and \\ inclined, - horizontal"
+        )
+        for line in result.crackMap { print(line) }
     }
     print("\nMid-span load (kN) against deflection:")
     print(

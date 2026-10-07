@@ -713,6 +713,38 @@ public final class StructureSolver {
         return summary
     }
 
+    /// Concrete's cracks in the slice of elements at lattice row `j`, top row first, one character an
+    /// element: `.` none open past `threshold` (a strain), else the crack plane's direction in
+    /// the x–z plane (`|` vertical, `-` horizontal, `/` and `\\` inclined), and a space where
+    /// there is no element (`x` where one has been removed). A diagnostic.
+    public func crackMap(row j: Int, threshold: Float = 1e-3) -> [String] {
+        (0..<ez).reversed().map { k in
+            String(
+                (0..<ex).map { i -> Character in
+                    guard let n = compactIndex(i, j, k) else { return " " }
+                    if flag(i, j, k) != .active && flag(i, j, k) != .bare { return "x" }
+                    let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+                    let history = SIMD3(
+                        (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) })
+                    let widest =
+                        history.x >= history.y && history.x >= history.z
+                        ? 0 : (history.y >= history.z ? 1 : 2)
+                    guard history[widest] > threshold else { return "." }
+                    let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
+                    var axis = SIMD3<Float>.zero
+                    axis[widest] = 1
+                    let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
+                    let normal =
+                        simd_length(rotation.vector) > 0.5 ? simd_normalize(rotation).act(axis) : axis
+                    let angle = atan2(normal.z, normal.x) * 180 / .pi  // of the normal from x
+                    let folded = angle < -90 ? angle + 180 : (angle > 90 ? angle - 180 : angle)
+                    if abs(folded) < 22.5 { return "|" }
+                    if abs(folded) > 67.5 { return "-" }
+                    return folded > 0 ? "\\" : "/"
+                })
+        }
+    }
+
     /// Total linear momentum of the body in kg m/s.
     public func momentum() -> SIMD3<Double> {
         var total = SIMD3<Double>.zero

@@ -87,7 +87,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    [air-blast model](air-blast-model.md#dissociating-air).)
 4. **Shear in concrete.** A member that failed in shear under a blast, to judge a sectional
    check for shells; a sectional check that works under impact, where the present one breaks
-   every beam; and solid elements that fail in shear on coarse meshes. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
+   cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
+   [the concrete model](concrete-model.md#limitations)). (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)

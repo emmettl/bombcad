@@ -747,9 +747,30 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    neither interlock nor dowel action accounts for it, nor the strut's crushing: cracked
    concrete made weaker in compression by the tension across it, 1 / (0.8 + 170 ε₁) of its
    strength as in the modified compression field theory (Vecchio and Collins, 1986), left the
-   12-element beam's peak at 456 kN and its curve within 1%. That leaves the crack band itself
-   as the likely cause, unable on coarse elements to turn through the compression zone (stress
-   locking); curing that would need cracks that follow their own path through the mesh. Beams check each section's shear
+   12-element beam's peak at 456 kN and its curve within 1%.
+
+   The cracks themselves show the difference (`blastbench shear --map 8.5` draws them through
+   the middle of the width). On 24 elements through the depth the beam cracks as the tests do,
+   in discrete bands two to four elements wide and 115–140 mm apart, many of them inclined, the
+   inclined ones reaching a third of the depth from the top. On 12 elements (46 mm) cracks that
+   far apart are two elements apart, which the lattice cannot separate: the whole tension zone
+   cracks as one field, vertical in the middle and inclined towards the supports in bands up to
+   ten elements wide, which reach as high as the fine mesh's cracks but as a smeared field. With
+   no discrete diagonal crack there is none to run through the compression zone.
+
+   Crack tracking was tried for this (kept on the branch `experiment/crack-tracking`): within
+   one to three elements of a crack, an element might crack only where a neighbouring crack's
+   plane passed through it, after M. Cervera and M. Chiumenti (2006) and M. Cervera, L. Pelà,
+   R. Clemente and P. Roca (2010). It narrowed the cracks in the middle of the span but left
+   the inclined bands, which grow from flexural cracks turning, and the peak at 455–460 kN for
+   every radius; and it stiffened the cracked beam (167 kN at 2 mm against 153), since the
+   blocked elements beside a crack, tied to smeared bars that cannot slip, carried tension of
+   several times the concrete's strength. Without bond slip, so that concrete between cracks
+   can shed its tension to the bars, tracked cracks do not suit reinforced concrete on this
+   lattice. A plain concrete beam 200 mm deep notched to half its depth, which forms one crack,
+   peaks at 2.22, 1.96 and 1.91 kN on 25, 12.5 and 6.25 mm elements, with or without tracking:
+   the crack band holds roughly, 16% strong at eight elements through the depth, so how a single
+   crack advances accounts for part of the coarse beam's excess at most. Beams check each section's shear
    instead (see the [shell model](shell-model.md#materials)). Dowel
    action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
