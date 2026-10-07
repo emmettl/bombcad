@@ -120,6 +120,16 @@ the ground over its share of the base (a quarter of each element face it touches
   times compression, then slides. Opening takes the cohesion away as it takes the tension, and
   sliding wears both away over a given slip.
 
+Support regions can also carry independent `Anchorage` laws (`supportAnchorages`, aligned
+with `supports`; null entries retain ideal clamping). Finite connections act on exposed lower
+solid faces or lower wall/vertical-column footprint points selected by each region. The law
+uses each point’s reference height as a stationary horizontal bearing plane. Regions select
+initial attachment points; they do not bound the bearing plane after sliding or separation.
+Side-facing joints, finite footing contact extents and connections between moving components
+are not represented. Ideal support clamps take precedence over finite laws; among finite
+regions the last region wins. See [editing supports](structural-editing.md#restraints) for the
+app controls, active bearing-area diagnostics and save/undo behavior.
+
 Shells and beams have one node through a wall's thickness or a column's section, so there the
 connection acts at points of the footprint instead: nine through the thickness at each node on
 a wall's base, over half of each element edge it ends, and nine by nine over a column's

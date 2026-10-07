@@ -279,6 +279,11 @@ volume changes with temporally integrated wall motion and equal/opposite pressur
 It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
 It also compares event-split integration for constant translation of axis-aligned boxes,
 recording the integration method and actual temporal evaluation count in each result.
+Midpoint and event-split results also record the six open face areas integrated over time
+(m² s). For axis-aligned constant translation, crossing events split the area into quadratic
+pieces integrated exactly by the Gaussian reference. These areas still need a gas flux to
+determine transported mass, momentum and energy; the adaptive rotated reference does not
+yet report face integrals.
 Rotated translation and rotation use an adaptive reference checked against endpoint volume
 changes and coarse/fine quadrature. The 48-case report includes volume tolerances and error
 indicators. This reference does not certify force impulses or detect every brief grazing event.
@@ -290,6 +295,17 @@ separation bounds to investigate intervals whose samples could miss a complete e
 work in prescribed fractional volumes. The CPU transport reference conserves extensive mass,
 momentum and energy for supplied transfers; it does not yet derive face fluxes or choose a
 stable timestep, and is separate from the air solver.
+`--fractional-remap` writes `.build/fractional-remap.json`, deriving conservative adjacent
+transfers from a translating box's fractional volumes and sampled face openings. The network
+limits outgoing volume to each donor's old gas inventory. This is remapping, not physical
+air fluxes; dry relays and insufficient transit capacity are rejected.
+`--fractional-substeps` writes `.build/fractional-substeps.json`, automatically bisecting
+prescribed motion intervals when the remap exceeds a cell's gas-volume capacity. Passing
+0.02 m³ through transit cells of 0.004, 0.001 and 0.00025 m³ takes 8, 32 and 128 steps,
+preserving mass, momentum, energy and uniform pressure to floating-point precision.
+The controller has bounded refinement and returns a complete result only on success.
+This capacity limit is separate from acoustic timestep stability; face openings still need
+time-integrated treatment before fractional blast coupling.
 
 ## Headline results
 
