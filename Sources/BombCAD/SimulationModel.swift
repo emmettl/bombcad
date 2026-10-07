@@ -254,7 +254,13 @@ final class SimulationModel {
             errorMessage = "This Mac has no Metal device."
         }
         settledInputs = currentInputs
-        rebuild()
+        // Autosave can capture the chosen grid before retained-source sampling finishes.
+        // Resume that work when opening a new document session, before building a solver.
+        if importsNeedResampling {
+            settingsChanged()
+        } else {
+            rebuild()
+        }
     }
 
     private static func defaultDuration(for scenario: Scenario) -> Double {

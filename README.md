@@ -76,6 +76,9 @@ stiffness and strength. Deformable imports require a layout without an existing 
 use solid elements at the air cell size, and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
+**Help → Importing models** provides an offline walkthrough of scale, placement, feature-size
+warnings, material assignment, repair, and saving or reopening imported sources.
+
 Repository-only [importer sample files](Samples/Importer/README.md) cover named parts,
 STL components, units, cavities, thin features, narrow gaps, and the repair workflow.
 They are not bundled with the app.
