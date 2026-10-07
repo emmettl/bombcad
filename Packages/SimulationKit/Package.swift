@@ -7,11 +7,13 @@ let package = Package(
     products: [
         .library(name: "SceneModel", targets: ["SceneModel"]),
         .library(name: "SceneView", targets: ["SceneView"]),
+        .library(name: "DocumentKit", targets: ["DocumentKit"]),
     ],
     targets: [
         .target(name: "SceneModel"),
         .target(name: "SceneView", dependencies: ["SceneModel"]),
-        .testTarget(name: "SimulationKitTests", dependencies: ["SceneModel", "SceneView"]),
+        .target(name: "DocumentKit"),
+        .testTarget(name: "SimulationKitTests", dependencies: ["SceneModel", "SceneView", "DocumentKit"]),
     ],
     swiftLanguageModes: [.v6]
 )

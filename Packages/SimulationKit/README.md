@@ -7,6 +7,7 @@ independently and has no dependency on BlastCore, Metal, SwiftUI or either app.
 |---|---|
 | SceneModel | Axis-aligned `Box` bounds and uniform Cartesian `Grid`, in metres with z up |
 | SceneView | `OrbitCamera`, bounds framing, view rays, ground picking, orbit, pan and zoom |
+| DocumentKit | Versioned project packages, embedded assets, checksums and bounded readers |
 
 Consume the package with `.package(path: "Packages/SimulationKit")` (adjust the relative path
 for the consuming manifest), then add the required `.product` dependencies to each target.
@@ -20,6 +21,9 @@ knowledge of charges or structures. `Box` keeps its original Codable representat
 The root BombCAD package remains the app package. Shared shaders, import readers, audio and
 structural modules have not been extracted. Add those when a second consumer establishes
 the required interface rather than creating empty targets ahead of it.
+
+DocumentKit uses Foundation and CryptoKit but has no application or solver dependency. Payload
+schemas and interpretation belong to the consuming app. See [the save format](../../../docs/save-files.md).
 
 ```sh
 swift test --package-path Packages/SimulationKit

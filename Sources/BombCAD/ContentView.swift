@@ -7,6 +7,8 @@ struct ContentView: View {
     @State private var isOpening = false
     @State private var isSaving = false
     @State private var fileError: String?
+    @State private var isExportingJSON = false
+    @State private var saveSnapshot: ProjectDocument?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -39,10 +41,14 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
-                Button("Open Layout…", systemImage: "folder") { isOpening = true }
-                    .help("Open a saved layout")
-                Button("Save Layout…", systemImage: "square.and.arrow.down") { isSaving = true }
-                    .help("Save this layout to a file")
+                Button("Open Project…", systemImage: "folder") { isOpening = true }
+                    .help("Open a BombCAD project or JSON layout")
+                Button("Save Project…", systemImage: "square.and.arrow.down") {
+                    saveSnapshot = ProjectDocument(model: model)
+                    isSaving = true
+                }
+                .help("Save geometry, simulation settings and camera in a BombCAD project")
+                Button("Export Layout JSON…", systemImage: "doc.text") { isExportingJSON = true }
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -59,32 +65,45 @@ struct ContentView: View {
             }
         }
         .onChange(of: model.settings) { model.settingsChanged() }
-        .fileImporter(isPresented: $isOpening, allowedContentTypes: [.json]) { result in
-            do {
-                let url = try result.get()
-                let accessing = url.startAccessingSecurityScopedResource()
-                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-                model.open(try JSONDecoder().decode(Scenario.self, from: Data(contentsOf: url)))
-            } catch {
-                fileError = "That file is not a BombCAD layout: \(error.localizedDescription)"
+        .fileImporter(isPresented: $isOpening, allowedContentTypes: [.bombCADProject, .json]) { result in
+            do { try openProject(at: result.get()) } catch {
+                fileError = "Could not open the project: \(error.localizedDescription)"
             }
         }
         .fileExporter(
-            isPresented: $isSaving, document: ScenarioDocument(scenario: model.settings.scenario),
+            isPresented: $isSaving, document: saveSnapshot,
+            contentType: .bombCADProject, defaultFilename: model.settings.scenario.name
+        ) { result in
+            if case .failure(let error) = result {
+                fileError = "Could not save the project: \(error.localizedDescription)"
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingJSON, document: ScenarioDocument(scenario: model.settings.scenario),
             contentType: .json, defaultFilename: model.settings.scenario.name
         ) { result in
             if case .failure(let error) = result {
-                fileError = "Could not save the layout: \(error.localizedDescription)"
+                fileError = "Could not export the layout: \(error.localizedDescription)"
+            }
+        }
+        .onOpenURL { url in
+            do { try openProject(at: url) } catch {
+                fileError = "Could not open the project: \(error.localizedDescription)"
             }
         }
         .alert(
-            "Layout file",
+            "Project file",
             isPresented: Binding(get: { fileError != nil }, set: { if !$0 { fileError = nil } })
         ) {
             Button("OK") { fileError = nil }
         } message: {
             Text(fileError ?? "")
         }
+    }
+    private func openProject(at url: URL) throws {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        model.open(try ProjectDocument.read(from: url))
     }
 }
 

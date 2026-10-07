@@ -61,8 +61,11 @@ block by block with its mortar joints, and the internal-explosion test
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
-pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). The toolbar opens and saves layouts as JSON and lets you move
-the charge, or the selected gauge, by clicking the ground. Gauge and deflection histories export
+pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). You can move
+the charge, or the selected gauge, by clicking the ground. Save Project writes a `.bombcad`
+document containing the scene, simulation settings and camera; Open Project also accepts JSON
+layouts. Export Layout JSON saves just the scene. See [Save files](docs/save-files.md).
+Gauge and deflection histories export
 as CSV from beside the chart.
 
 ```bash
@@ -149,6 +152,7 @@ Collapse and debris have not been compared with anything.
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |
+| [Save files](docs/save-files.md)            | Versioned project packages, assets and persisted settings       |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
 

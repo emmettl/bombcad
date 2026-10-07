@@ -1,5 +1,6 @@
 import BlastCore
 import BlastRender
+import DocumentKit
 import Foundation
 import Metal
 import Observation
@@ -147,6 +148,8 @@ struct SimulationStats {
 @Observable
 final class SimulationModel {
     var settings = SimulationSettings()
+    @ObservationIgnored var projectArchive: ProjectArchive?
+    var projectDocumentID = UUID()
     var renderSettings = RenderSettings()
     var camera: OrbitCamera
     var speed = PlaybackSpeed.x100 {
@@ -256,13 +259,43 @@ final class SimulationModel {
 
     /// Switches to a built-in layout, adopting its charge, camera and duration.
     func select(_ preset: ScenarioPreset) {
+        projectArchive = nil
+        projectDocumentID = UUID()
         settings.preset = preset
         adopt(preset.scenario)
     }
 
     /// Replaces the layout with one loaded from a file.
     func open(_ scenario: Scenario) {
+        projectArchive = nil
+        projectDocumentID = UUID()
         adopt(scenario)
+        settingsChanged()
+    }
+
+    /// Restores a project at time zero, including numerical settings and view preferences.
+    func open(_ document: ProjectDocument) {
+        rebuildTask?.cancel()
+        isRunning = false
+        renderSettings = RenderSettings()
+        adopt(document.scenario)
+        projectArchive = document.archive
+        projectDocumentID = document.documentID
+        if let run = document.runSettings {
+            settings.resolution = Resolution(rawValue: run.resolution)!
+            settings.detailedCharge = run.detailedCharge
+            settings.sharpShocks = run.sharpShocks
+            settings.solidElementSize = run.solidElementSize
+            duration = run.duration
+        }
+        if let view = document.viewSettings {
+            camera = view.camera
+            renderSettings = view.rendering
+        }
+        undoStack.removeAll()
+        redoStack.removeAll()
+        settledScenario = settings.scenario
+        isPlacingCharge = false
         settingsChanged()
     }
 

@@ -5,6 +5,10 @@ Status: October 2026. The initial shared-package extraction is implemented:
 BombCAD consumes it with compatibility aliases. RoomCAD, its solver and Driftbox integration
 remain proposed work.
 
+The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` exporter
+persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
+Importer asset/part integration and a complete document lifecycle remain follow-up work.
+
 ## Goal
 
 Design a room, choose its surface materials, place a sound source and receivers, and generate
@@ -27,6 +31,7 @@ existing sources; this document does not prescribe a migration of the current ch
 |---|---|---|
 | SceneModel | Geometry, transforms, openings and shared scene identifiers | Both apps |
 | SceneView | Shared camera, bounds framing and viewport mathematics; implemented first | Both apps |
+| DocumentKit | Versioned document containers and asset handling; foundation implemented | Both apps |
 | GeometryImport | File readers, source meshes, parts, transforms and geometric diagnostics | Both apps |
 | MetalSupport | Reusable device, buffer, shader-loading and dispatch utilities | Both solvers and rendering |
 | SceneRender | Camera, selection, geometry and generic field rendering | Both apps |
@@ -71,10 +76,10 @@ reinforcement assignments reference the same parts through separate property set
 
 ## Save-file design proposal
 
-Agree the document contract before the 0.2 importer release. Current main saves a JSON-encoded
-Scenario, rather than a complete project with solver settings. The importer work adds source
+Agree the document contract before the 0.2 importer release. The previous save path encoded
+only a Scenario as JSON; the new foundation also saves run and view settings. The importer work adds source
 meshes, part assignments and derived volumes to saved scenarios. Preserve support for those
-legacy files while introducing an explicitly versioned project document.
+files with a simple JSON reader; extensive legacy migrations are not a priority.
 
 ### Container and ownership
 
@@ -148,7 +153,8 @@ explicit contracts, not automatic dumps of live GPU or UI objects.
 
 Done when: imported projects reopen on another Mac without their original source files, all
 authoritative edits and reproducibility settings survive saving, and legacy layouts still open.
-The choice of a package container and its extensions remains a proposal until implementation.
+The `.bombcad` package container is implemented; `.roomcad` and the richer scene/asset schema
+remain planned.
 
 ## Milestones
 

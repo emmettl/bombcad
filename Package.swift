@@ -25,10 +25,18 @@ let package = Package(
                 "BlastCore",
                 .product(name: "SceneView", package: "SimulationKit"),
             ], resources: [.copy("Shaders")]),
-        .executableTarget(name: "BombCAD", dependencies: ["BlastCore", "BlastRender"]),
+        .executableTarget(
+            name: "BombCAD",
+            dependencies: [
+                "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "SimulationKit"),
+            ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
         .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"]),
-        .testTarget(name: "BombCADTests", dependencies: ["BombCAD", "BlastCore"]),
+        .testTarget(
+            name: "BombCADTests",
+            dependencies: [
+                "BombCAD", "BlastCore", .product(name: "DocumentKit", package: "SimulationKit"),
+            ]),
     ],
     swiftLanguageModes: [.v6]
 )
