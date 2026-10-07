@@ -17,6 +17,8 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary_directory/RoomCAD" "$app/Contents/MacOS/RoomCAD"
 cp Support/Info.plist "$app/Contents/Info.plist"
+# The icon is drawn by Scripts/make-icon.swift.
+cp Support/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 # The MIT licence asks for its notice to travel with every copy.
 cp ../LICENSE "$app/Contents/Resources/LICENSE"
 # Resource bundles, such as the bundled dry recordings. SwiftPM's accessor looks in the app's Resources

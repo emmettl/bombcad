@@ -6,6 +6,8 @@
 	<string>RoomCAD</string>
 	<key>CFBundleExecutable</key>
 	<string>RoomCAD</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>dev.roomcad.RoomCAD</string>
 	<key>CFBundleName</key>

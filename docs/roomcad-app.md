@@ -20,7 +20,9 @@ swift run -c release --package-path RoomCAD RoomCAD
 make roomcad-app
 ```
 
-The second command builds `RoomCAD/dist/RoomCAD.app`, ad-hoc signed. That bundle declares the
+The second command builds `RoomCAD/dist/RoomCAD.app`, ad-hoc signed. Its icon (a room in plan, with
+a source's wavefronts and one path reflecting off a wall to a listener) is drawn by
+`RoomCAD/Scripts/make-icon.swift`; `make roomcad-icon` redraws `RoomCAD/Support/AppIcon.icns`. That bundle declares the
 `.roomcad` document type. It is not notarized, and RoomCAD has no release process yet.
 
 RoomCAD opens a new room at launch rather than the Open panel, unless macOS restores windows or a
