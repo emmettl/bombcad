@@ -116,7 +116,7 @@ public final class StructureSolver {
     private let jointed: [Bool]
     /// Index into `materials` of every element's material in the low four bits of one byte each;
     /// bits 4 to 6 mark the mortar joints the element holds, across x, y and z.
-    private let materialIndexBuffer: MTLBuffer
+    let materialIndexBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
     /// Lattice indices of the nodes that belong to at least one element, in ascending order.
