@@ -1,7 +1,22 @@
 import AppKit
 import SwiftUI
 
+/// `BombCAD run …` runs a project without a window (see `HeadlessRun`); anything else opens the app.
 @main
+enum BombCADMain {
+    static func main() {
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        guard arguments.first == "run" else {
+            BombCADApp.main()
+            return
+        }
+        Task { @MainActor in
+            exit(await HeadlessRun.main(Array(arguments.dropFirst())))
+        }
+        dispatchMain()
+    }
+}
+
 struct BombCADApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 

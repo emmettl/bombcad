@@ -82,6 +82,40 @@ executables without bundle metadata report app version `development`; the revisi
 Git commit or binary hash. Device/OS metadata supports interpretation rather than a promise of
 bit-for-bit reproducibility across builds or hardware.
 
+## Headless runs
+
+`BombCAD run` runs a saved project without a window, for scripts, CI and other Macs:
+
+```bash
+swift run -c release BombCAD run Example.bombcad --out Example-run.bombcad --csv run.csv
+```
+
+It drives the same simulation model as the app and its sweeps. Without a structure, a run gives
+the same answer to the last bit as the same case swept in the app, on any Mac. With one it does
+not quite: the app sizes its batches of steps to the GPU's speed, and each batch caps the air's
+step by the previous batch's, so the steps differ from run to run, even on one Mac. Three runs
+of the concrete box on the medium grid took 2,225 to 2,309 steps, with front-wall peaks of
+1,091 to 1,094 kPa. (`blastbench` steps in fixed batches, and repeats exactly.) The command prints a summary: steps, simulated and wall time,
+the Metal device, each gauge's peak and the structure's largest deflection.
+
+| Option | Effect |
+|---|---|
+| `--name <name>` | The saved run's name; by default the first free of "Headless run", "Headless run 2", … |
+| `--out <new.bombcad>` | Writes a copy of the project, inputs unchanged, with the run added to its saved runs |
+| `--csv <file>` | Writes the gauge and deflection histories, as Export CSV does |
+| `--resolution coarse\|medium\|fine` | Runs on another air grid, resampling attached imports as a grid sweep case does |
+| `--mass <kg>` | Changes the primary charge, as a mass sweep case does |
+| `--duration <s>` | Changes the simulated duration |
+| `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
+| `--frame-interval <ms>` | Milliseconds of simulated time between the USD file's frames, 1 by default |
+
+The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
+file. With `--out`, the project must have room for another run (16 at most). A legacy layout
+JSON can be run too; it gets the default settings of a new project. The exit status is 0 on
+success, 1 if the run fails (an unstable solution, an air grid too large for the GPU, a bad
+project) and 2 for a usage error. The same command works inside a built app, as
+`BombCAD.app/Contents/MacOS/BombCAD run …`.
+
 ## Project storage
 
 ```text
@@ -107,7 +141,7 @@ index, and JSON layout export continues to omit this project-level result collec
 ## Verification
 
 ```sh
-swift test --filter 'SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
+swift test --filter 'HeadlessRun|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
 ```
 
 Tests cover actual Metal runs, explicit change tracking, stable historical inputs, fixed-time
