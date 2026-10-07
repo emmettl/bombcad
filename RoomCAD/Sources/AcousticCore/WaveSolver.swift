@@ -20,6 +20,8 @@ struct WaveSolver {
     /// Highest frequency the solver must resolve accurately: the top of the crossover's transition.
     let topFrequency: Double
     let atmosphere: Atmosphere
+    /// Open areas, given the impedance of air (ξ = 1).
+    let openings: [Opening]
 
     /// Grid points per wavelength at `topFrequency`.
     static let pointsPerWavelength = 10.0
@@ -34,8 +36,12 @@ struct WaveSolver {
     let decimation: Int
     var timeStep: Double { Double(decimation) / Double(sampleRate) }
 
-    init(room: ShoeboxRoom, sampleRate: Int, topFrequency: Double, atmosphere: Atmosphere) {
+    init(
+        room: ShoeboxRoom, sampleRate: Int, topFrequency: Double, atmosphere: Atmosphere,
+        openings: [Opening] = []
+    ) {
         self.room = room
+        self.openings = openings
         self.sampleRate = sampleRate
         self.topFrequency = topFrequency
         self.atmosphere = atmosphere
@@ -123,12 +129,27 @@ struct WaveSolver {
         // ux[i] is the face between cells i and i + 1 along x (the last is unused); likewise y and z.
         let index = { (i: Int, j: Int, k: Int) in i + nx * (j + ny * k) }
 
-        // Semi-implicit wall terms β = c dt / (2 ξ d) for each wall.
-        let xi = Surface.allCases.map { impedance($0) }
-        let beta = [
-            c * dt / (2 * xi[0] * dx), c * dt / (2 * xi[1] * dx), c * dt / (2 * xi[2] * dy),
-            c * dt / (2 * xi[3] * dy), c * dt / (2 * xi[4] * dz), c * dt / (2 * xi[5] * dz),
-        ].map { $0.isFinite ? Float($0) : 0 }
+        // Semi-implicit wall terms β = c dt / (2 ξ d), for each boundary face: the wall's impedance, or air's
+        // where the face's centre lies in an opening.
+        func faces(_ surface: Surface, _ first: Int, _ second: Int) -> [Float] {
+            let xi = impedance(surface)
+            let (a, b) = surface.planeAxes
+            let depth = spacing[surface.normalAxis]
+            let open = openings.filter { $0.surface == surface }
+            return (0..<(first * second)).map { index in
+                let point = SIMD2(
+                    (Double(index % first) + 0.5) * spacing[a], (Double(index / first) + 0.5) * spacing[b])
+                let face = open.contains { $0.contains(point) } ? 1 : xi
+                let beta = c * dt / (2 * face * depth)
+                return beta.isFinite ? Float(beta) : 0
+            }
+        }
+        let west = faces(.west, ny, nz)
+        let east = faces(.east, ny, nz)
+        let south = faces(.south, nx, nz)
+        let north = faces(.north, nx, nz)
+        let floor = faces(.floor, nx, ny)
+        let ceiling = faces(.ceiling, nx, ny)
 
         // Trilinear weights of a point on the cell-centre lattice.
         func weights(_ point: SIMD3<Double>) -> [(Int, Float)] {
@@ -203,12 +224,12 @@ struct WaveSolver {
                             let at = row + i
                             var divergence: Float = 0
                             var wall: Float = 0
-                            if i > 0 { divergence -= bx * ux[at - 1] } else { wall += beta[0] }
-                            if i < nx - 1 { divergence += bx * ux[at] } else { wall += beta[1] }
-                            if j > 0 { divergence -= by * uy[at - nx] } else { wall += beta[2] }
-                            if j < ny - 1 { divergence += by * uy[at] } else { wall += beta[3] }
-                            if k > 0 { divergence -= bz * uz[at - plane] } else { wall += beta[4] }
-                            if k < nz - 1 { divergence += bz * uz[at] } else { wall += beta[5] }
+                            if i > 0 { divergence -= bx * ux[at - 1] } else { wall += west[j + ny * k] }
+                            if i < nx - 1 { divergence += bx * ux[at] } else { wall += east[j + ny * k] }
+                            if j > 0 { divergence -= by * uy[at - nx] } else { wall += south[i + nx * k] }
+                            if j < ny - 1 { divergence += by * uy[at] } else { wall += north[i + nx * k] }
+                            if k > 0 { divergence -= bz * uz[at - plane] } else { wall += floor[i + nx * j] }
+                            if k < nz - 1 { divergence += bz * uz[at] } else { wall += ceiling[i + nx * j] }
                             p[at] = ((1 - wall) * p[at] - divergence) / (1 + wall)
                         }
                         guard j > 0, j < ny - 1, k > 0, k < nz - 1 else {

@@ -42,6 +42,9 @@ document is opened from Finder.
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
+  - openings: open doors, windows or hatches on any surface, by name, surface, centre and size (see
+    [Openings](room-acoustics-model.md#openings)). They are drawn as green gaps in the walls or as
+    dashed outlines;
   - each receiver's microphone: pattern, azimuth and elevation, with **Arrange First Two as a Stereo
     Pair** for A–B, XY, ORTF, NOS or Blumlein (see
     [Microphones](room-acoustics-model.md#microphones)). Directional microphones show their aim as an
@@ -169,7 +172,7 @@ Example.roomcad/
   results/response.json   # optional: its description, settings and diagnostics
 ```
 
-`scene.json` holds the room's size in metres (z up) and each surface's material. A material has a
+`scene.json` holds the room's size in metres (z up), each surface's material, and any openings. A material has a
 name, a reference and eight octave-band absorption coefficients. The file also holds the source and
 receivers, each with a UUID, name and position.
 
@@ -255,5 +258,5 @@ offscreen.
   unverified by ear and by eye.
 - Most material presets have no published scattering, so most room presets' scattering is
   illustrative.
-- Only rectangular rooms are supported, and there is no 3D view.
+- Only rectangular rooms, with rectangular openings, are supported, and there is no 3D view.
 - Generation uses several cores per document, and documents generating at once share them.

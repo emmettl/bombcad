@@ -24,6 +24,8 @@ struct DiffuseRayTracer {
     /// Specular paths with more reflections than this are beyond the image sources, so rays carry them
     /// too; by default rays carry only scattered energy.
     var specularOrderLimit = Int.max
+    /// Open areas; a ray reaching one leaves the room.
+    var openings: [Opening] = []
 
     /// Width of the energy histogram's bins, in seconds.
     static let binWidth = 0.001
@@ -59,7 +61,9 @@ struct DiffuseRayTracer {
         var energy = Array(
             repeating: Array(repeating: [Double](repeating: 0, count: bins), count: bands),
             count: receivers.count)
-        guard rayCount > 0, room.scatters || specularOrderLimit < Int.max else { return energy }
+        guard rayCount > 0, room.scatters || specularOrderLimit < Int.max || !openings.isEmpty else {
+            return energy
+        }
         let rayCount = tracedRays
 
         let c = atmosphere.soundSpeed
@@ -72,6 +76,7 @@ struct DiffuseRayTracer {
             ? OctaveBands.centres.map { 2 * atmosphere.amplitudeAttenuationPerMetre(frequency: $0) }
             : Array(repeating: 0, count: bands)
         let materials = Surface.allCases.map { room[$0] }
+        let openingsBySurface = Surface.allCases.map { surface in openings.filter { $0.surface == surface } }
         var random = SplitMix(seed: seed)
         let rotation = randomRotation(&random)
         let golden = Double.pi * (3 - 5.0.squareRoot())
@@ -145,6 +150,12 @@ struct DiffuseRayTracer {
                     position[axis] = direction[axis] > 0 ? room.size[axis] : 0
 
                     let surface = 2 * axis + (direction[axis] > 0 ? 1 : 0)
+                    if !openingsBySurface[surface].isEmpty {
+                        let (a, b) = Surface.allCases[surface].planeAxes
+                        let point = SIMD2(position[a], position[b])
+                        // Out through the opening.
+                        if openingsBySurface[surface].contains(where: { $0.contains(point) }) { break }
+                    }
                     let material = materials[surface]
                     var mean = 0.0
                     for b in 0..<bands {

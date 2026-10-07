@@ -97,6 +97,27 @@ The ray directions and the tail's detail come from `randomSeed`, so a response i
 A surface with s = 0 in every band leaves the response exactly as the image sources alone give it, and
 no rays are traced.
 
+## Openings
+
+An opening is a rectangle on one surface, such as an open door, window or hatch, given by its centre
+and size along that surface's two axes. Sound reaching it leaves the room. Each model treats it
+differently:
+
+- **Ray tracer.** Exact: a ray that reaches an opening is gone.
+- **Image sources and estimates.** Image sources, and the Sabine and Eyring estimates, treat the open
+  share f of the surface as absorption, α' = α(1 − f) + f. This is the usual statistical
+  approximation, and rays carry everything beyond the order limit exactly anyway.
+- **Wave solver.** Boundary faces whose centres lie in an opening take the impedance of air, ξ = 1.
+  At low frequencies a real opening smaller than the wavelength reflects part of the sound, so this
+  overstates its absorption there. With a 2 × 2.5 m opening in a 5 × 4 × 3 m room, the 63 Hz decay
+  fell from 0.90 s to 0.60 s, against about 0.71 s from Sabine.
+
+Tests check the absorption formula and its effect on Sabine's absorption area. A wall wholly open
+matches, for rays, a wall that absorbs everything (within 5%). An open door shortens the decay in both
+the geometrical model and the wave solver. Openings must lie within their surface, and older settings
+load with none. Openings are drawn in the plan and section as green gaps in a wall seen edge-on, or
+dashed outlines facing the view.
+
 ## Microphones
 
 A receiver can be a first-order microphone aimed by azimuth and elevation. Its gain is
@@ -345,8 +366,8 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 
 ## Limitations
 
-- **Geometry.** Only rectangular rooms, with one material per surface, are supported. There are no
-  openings, no furniture and no coupled spaces.
+- **Geometry.** Only rectangular rooms, with one material per surface and rectangular openings, are
+  supported. There is no furniture and there are no coupled spaces.
 - **Scattering.** Published scattering values exist only for a few surfaces (seven presets). Others
   are inputs, and the starter room's are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
   exaggerated (above).

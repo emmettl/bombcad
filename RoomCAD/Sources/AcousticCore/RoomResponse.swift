@@ -50,6 +50,8 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
     public var lowFrequencyModel: Bool
     /// Crossover between the wave solver and the geometrical model in Hz; nil chooses it from the room.
     public var crossoverFrequency: Double?
+    /// Open areas in the room's surfaces, through which sound leaves.
+    public var openings: [Opening]
 
     /// Upper bound on the estimated number of image sources per receiver.
     public static let maximumImageCount = 40_000_000
@@ -61,7 +63,7 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         airAbsorption: Bool = true, sampleRate: Int = 48_000, duration: Double = 1,
         maximumReflectionOrder: Int = 60, content: ResponseMetadata.Content = .complete,
         lowFrequencyCutoff: Double = 20, diffuseRays: Int = 40_000, randomSeed: UInt64 = 1,
-        lowFrequencyModel: Bool = false, crossoverFrequency: Double? = nil
+        lowFrequencyModel: Bool = false, crossoverFrequency: Double? = nil, openings: [Opening] = []
     ) {
         self.room = room
         self.source = source
@@ -77,11 +79,13 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
         self.randomSeed = randomSeed
         self.lowFrequencyModel = lowFrequencyModel
         self.crossoverFrequency = crossoverFrequency
+        self.openings = openings
     }
 
     enum CodingKeys: String, CodingKey {
         case room, source, receivers, atmosphere, airAbsorption, sampleRate, duration, maximumReflectionOrder
-        case content, lowFrequencyCutoff, diffuseRays, randomSeed, lowFrequencyModel, crossoverFrequency
+        case content, lowFrequencyCutoff, diffuseRays, randomSeed, lowFrequencyModel, crossoverFrequency,
+            openings
     }
 
     /// Settings saved before scattering existed decode with its defaults.
@@ -101,7 +105,8 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
             diffuseRays: try c.decodeIfPresent(Int.self, forKey: .diffuseRays) ?? 40_000,
             randomSeed: try c.decodeIfPresent(UInt64.self, forKey: .randomSeed) ?? 1,
             lowFrequencyModel: try c.decodeIfPresent(Bool.self, forKey: .lowFrequencyModel) ?? false,
-            crossoverFrequency: try c.decodeIfPresent(Double.self, forKey: .crossoverFrequency))
+            crossoverFrequency: try c.decodeIfPresent(Double.self, forKey: .crossoverFrequency),
+            openings: try c.decodeIfPresent([Opening].self, forKey: .openings) ?? [])
     }
 
     /// Estimated image sources per receiver within the duration and order limits.
@@ -138,6 +143,7 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
             throw AcousticError.invalid("A response needs between 1 and 16 receivers.")
         }
         for receiver in receivers { try receiver.microphone?.validate() }
+        for opening in openings { try opening.validate(in: room) }
         for point in [source] + receivers where !room.contains(point.position) {
             throw AcousticError.invalid("\(point.name) is not inside the room.")
         }
@@ -305,14 +311,18 @@ public enum RoomResponseGenerator {
             return cancellation.isCancelled
         }
         func check() throws { if cancelled() { throw CancellationError() } }
+        // Image sources and statistical estimates treat openings as absorption; rays and the wave solver
+        // place them exactly.
+        let effectiveRoom = settings.room.withOpenings(settings.openings)
         let model = ImageSourceModel(
-            room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
+            room: effectiveRoom, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption)
         let frames = Int((settings.duration * Double(settings.sampleRate)).rounded(.up))
         let includeDirect = settings.content == .complete
         var tracer = DiffuseRayTracer(
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
+        tracer.openings = settings.openings
         // Where the order limit may omit specular reflections within the duration, rays carry them on.
         if Double(settings.maximumReflectionOrder) * settings.room.size.min() < settings.duration
             * settings.atmosphere.soundSpeed
@@ -372,9 +382,9 @@ public enum RoomResponseGenerator {
         let scatteredFraction = rendered.map(\.scatteredFraction)
 
         let c = settings.atmosphere.soundSpeed
-        let sabine = settings.room.sabineReverberationTime(
+        let sabine = effectiveRoom.sabineReverberationTime(
             atmosphere: settings.atmosphere, airAbsorption: settings.airAbsorption)
-        let eyring = settings.room.eyringReverberationTime(
+        let eyring = effectiveRoom.eyringReverberationTime(
             atmosphere: settings.atmosphere, airAbsorption: settings.airAbsorption)
         var schroeder: Double?
         if let t500 = sabine[3], let t1000 = sabine[4] {
@@ -484,7 +494,7 @@ struct WavePlan {
             WaveSolver(
                 room: settings.room, sampleRate: settings.sampleRate,
                 topFrequency: crossover * 2.squareRoot(),
-                atmosphere: settings.atmosphere)
+                atmosphere: settings.atmosphere, openings: settings.openings)
         }
         if let chosen = settings.crossoverFrequency {
             crossover = chosen

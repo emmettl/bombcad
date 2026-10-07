@@ -32,6 +32,30 @@ extension Binding where Value == SIMD3<Double> {
     }
 }
 
+extension Binding where Value == SIMD2<Double> {
+    func component(_ index: Int) -> Binding<Double> {
+        Binding<Double>(get: { wrappedValue[index] }, set: { wrappedValue[index] = $0 })
+    }
+}
+
+/// Edits an opening's surface, position and size, in the surface's own axes.
+struct OpeningEditor: View {
+    @Binding var opening: Opening
+    static let axisNames = ["x", "y", "z"]
+
+    var body: some View {
+        let (a, b) = opening.surface.planeAxes
+        TextField("Name", text: $opening.name).endsEditingOnSubmit()
+        Picker("Surface", selection: $opening.surface) {
+            ForEach(Surface.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+        }
+        NumberField(title: "Centre \(Self.axisNames[a])", value: $opening.centre.component(0), unit: "m")
+        NumberField(title: "Centre \(Self.axisNames[b])", value: $opening.centre.component(1), unit: "m")
+        NumberField(title: "Size along \(Self.axisNames[a])", value: $opening.size.component(0), unit: "m")
+        NumberField(title: "Size along \(Self.axisNames[b])", value: $opening.size.component(1), unit: "m")
+    }
+}
+
 /// Edits a point's name and position.
 struct PointEditor: View {
     @Binding var point: RoomPoint
@@ -230,6 +254,16 @@ struct RoomInspector: View {
                 Button("Add Receiver") { addReceiver() }
                     .disabled(project.settings.receivers.count >= 16)
             }
+            Section("Openings") {
+                ForEach(settings.openings) { $opening in
+                    OpeningEditor(opening: $opening)
+                    Button("Remove \(opening.name)", role: .destructive) {
+                        project.settings.openings.removeAll { $0.id == opening.id }
+                    }
+                }
+                Button("Add Opening") { addOpening() }
+                    .help("An open door or window: sound reaching it leaves the room")
+            }
             Section("Simulation") {
                 Picker("Sample rate", selection: settings.sampleRate) {
                     ForEach([44_100, 48_000, 96_000], id: \.self) {
@@ -319,6 +353,17 @@ struct RoomInspector: View {
                 "\(preset.summary). The size, every surface, the source and listener positions, the duration "
                     + "and the reflection order change. This can't be undone.")
         }
+    }
+
+    /// A door-sized opening in the middle of the north wall, or smaller if the wall is.
+    private func addOpening() {
+        let size = project.settings.room.size
+        let width = min(0.9, size.x * 0.8)
+        let height = min(2.0, size.z * 0.8)
+        project.settings.openings.append(
+            Opening(
+                name: "Opening \(project.settings.openings.count + 1)", surface: .north,
+                centre: [size.x / 2, height / 2], size: [width, height]))
     }
 
     private func addReceiver() {

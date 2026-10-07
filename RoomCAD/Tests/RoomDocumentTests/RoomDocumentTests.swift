@@ -204,6 +204,10 @@ struct RoomDocumentScatteringTests {
         project.settings.room.north.scattering = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
         project.settings.diffuseRays = 12_345
         project.settings.randomSeed = 77
+        project.settings.openings = [Opening(name: "Door", surface: .north, centre: [2, 1], size: [0.9, 2])]
+        project.settings.lowFrequencyModel = true
+        project.settings.crossoverFrequency = 120
+        project.settings.receivers[0].microphone = Microphone(pattern: .cardioid, azimuth: 30, elevation: -5)
         let loaded = try RoomProject(
             archive: ProjectArchive(fileWrapper: project.makeArchive().fileWrapper()))
         #expect(loaded.settings == project.settings)

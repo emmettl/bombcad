@@ -96,6 +96,8 @@ public struct RoomProject: Equatable, Sendable {
         var room: ShoeboxRoom
         var source: RoomPoint
         var receivers: [RoomPoint]
+        /// Absent in documents saved before openings existed.
+        var openings: [Opening]? = nil
     }
 
     struct Settings: Codable, Equatable {
@@ -180,7 +182,9 @@ public struct RoomProject: Equatable, Sendable {
         try settings.validate()
         try export.validate()
         var files = preserved
-        let scene = Scene(room: settings.room, source: settings.source, receivers: settings.receivers)
+        let scene = Scene(
+            room: settings.room, source: settings.source, receivers: settings.receivers,
+            openings: settings.openings.isEmpty ? nil : settings.openings)
         files["scene.json"] = try ProjectArchive.encodeJSON(scene)
         files["settings.json"] = try ProjectArchive.encodeJSON(
             Settings(

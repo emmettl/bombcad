@@ -170,6 +170,8 @@ struct RoomDrawing: View {
         context.stroke(grid, with: .color(.secondary.opacity(0.2)), lineWidth: 0.5)
         context.stroke(Path(rect), with: .color(.primary.opacity(0.8)), lineWidth: 2)
 
+        drawOpenings(in: &context, layout: layout, rect: rect)
+
         let (hName, vName) = projection.axisNames
         let width = String(format: "%.2f m", settings.room.size[h])
         let height = String(format: "%.2f m", settings.room.size[v])
@@ -257,5 +259,46 @@ struct RoomDrawing: View {
         context.draw(
             Text(settings.source.name).font(.caption.bold()).foregroundStyle(Self.sourceColor),
             at: sourceLabel)
+    }
+
+    static let openingColor = Color.green
+
+    /// Openings in walls seen edge-on show as gaps in the outline; those facing the view, as dashed
+    /// outlines.
+    private func drawOpenings(in context: inout GraphicsContext, layout: RoomLayout, rect: CGRect) {
+        let (h, v) = projection.axes
+        for opening in settings.openings {
+            let (a, b) = opening.surface.planeAxes
+            let normal = opening.surface.normalAxis
+            let lowSide = [Surface.west, .south, .floor].contains(opening.surface)
+            // The opening's box in room coordinates.
+            var low = SIMD3<Double>(repeating: 0)
+            var high = SIMD3<Double>(repeating: 0)
+            low[a] = opening.centre.x - opening.size.x / 2
+            high[a] = opening.centre.x + opening.size.x / 2
+            low[b] = opening.centre.y - opening.size.y / 2
+            high[b] = opening.centre.y + opening.size.y / 2
+            low[normal] = lowSide ? 0 : settings.room.size[normal]
+            high[normal] = low[normal]
+            let p0 = layout.point(low)
+            let p1 = layout.point(high)
+            if normal == h || normal == v {
+                // Edge-on: a thick segment along the wall.
+                var path = Path()
+                path.move(to: p0)
+                path.addLine(to: p1)
+                context.stroke(path, with: .color(.white), lineWidth: 4)
+                context.stroke(
+                    path, with: .color(Self.openingColor), style: StrokeStyle(lineWidth: 4, dash: [3, 2]))
+            } else {
+                let box = CGRect(
+                    x: min(p0.x, p1.x), y: min(p0.y, p1.y), width: abs(p1.x - p0.x), height: abs(p1.y - p0.y))
+                context.fill(Path(box), with: .color(Self.openingColor.opacity(0.12)))
+                context.stroke(
+                    Path(box), with: .color(Self.openingColor),
+                    style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+            }
+            _ = rect
+        }
     }
 }
