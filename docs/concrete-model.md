@@ -765,15 +765,17 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    bends rather than slides.
    Pushed slowly at mid-span to 80 mm and released (`blastbench slab --unload`), a 50 mm strip
    of the slab recovers 18 and 16 mm on 8 and 16 elements through the thickness, where its
-   cracked section (EI about 4.6 × 10⁵ N m² for the full width) would recover about 12 mm; Janney's
-   beam, so treated, recovers what its section predicts. So the excess is there without any
-   dynamics. It is not in the hinge: the strain through the depth over the 50 mm either side of
-   mid-span barely changes on release (4.0% to 3.9% at the bottom, −1.5% to −1.2% at the top).
-   It is in the cracked spans beside it, which unload about 1.4 times too softly. Hourglass
-   control does not cause it (quartered, the slab springs back 32 mm, the halves turning back
-   rigidly about the supports), nor the bars' band (shared exactly between the two rows it
-   straddles). In the blast the slab then swings about a mean some 22 mm below its peak, where the
-   specimen settled about 13 mm below, and its swing dies away more slowly. In the chamber the
+   cracked section would recover about 12 mm; but `--hinge` shows why, and that it is no guide
+   to the blast: under the concentrated push the strip splits along its bars 150 mm from
+   mid-span (cracks of 21% and 86% just above them), its upper part bending on alone. In the
+   blast it does not split (`blastbench slab --hinge` prints the sections after 80 ms): the
+   hinge at mid-span, its top crushed by about 1% at the peak, is left in tension through its
+   whole depth (+0.3% at the top), the two halves having swung back about the bars, which is
+   the mechanism of step 8. Its bottom crack closes, against bars that yielded 5% in tension and
+   now carry little in compression, by more than a hinge whose cracked faces jam would let it.
+   Hourglass control is not the cause (quartered, the strip springs back 32 mm). In the blast
+   the slab swings about a mean some 22 mm below its peak, where the specimen settled about
+   13 mm below, and its swing dies away more slowly. In the chamber the
    roof is pulled back by arching thrust in its restrained edge, which closes every hinge (see
    [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber)).
 6. **Confined strength is capped** at about five times the unconfined strength; above it only

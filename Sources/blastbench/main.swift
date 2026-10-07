@@ -1156,7 +1156,7 @@ func runSlab() throws {
                 hinge: flag("hinge")
                     ? { label, rows in
                         print("  \(label):")
-                        for row in rows.reversed() { print("    " + row) }
+                        for row in rows { print("    " + row) }
                     } : nil)
             print(
                 "\(strength.rawValue): pushed to \(format(Double(result.reached) * 1000, 1)) mm with "
@@ -1215,7 +1215,14 @@ func runSlab() throws {
             flag("held-bearings") ? .bearings(width: 0.0254, holdDown: true) : .lines
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
-            crackAxes: chosenCrackAxes(), adjust: { applyRateOptions(&$0) })
+            crackAxes: chosenCrackAxes(), adjust: { applyRateOptions(&$0) },
+            inspect: flag("hinge")
+                ? { solver in
+                    for offset in [Float(0), 0.15] {
+                        print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
+                        for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
+                    }
+                } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
