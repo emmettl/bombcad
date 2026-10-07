@@ -10,12 +10,13 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine] [--mass <kg TNT>]
-                           [--duration <seconds>]
+                           [--duration <seconds>] [--usd <scene.usda> [--frame-interval <ms>]]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
-        histories. --resolution and --mass change the inputs as a sweep case would; the project
-        itself is never modified.
+        histories. --usd writes the scene for rendering elsewhere, with the structure's surface
+        every --frame-interval milliseconds of simulated time (1 by default). --resolution and
+        --mass change the inputs as a sweep case would; the project itself is never modified.
         """
 
     struct Options: Equatable {
@@ -26,6 +27,9 @@ enum HeadlessRun {
         var resolution: Resolution?
         var mass: Float?
         var duration: Double?
+        var usd: URL?
+        /// Whole milliseconds of simulated time between frames of `usd`.
+        var frameInterval = 1
 
         static func parse(_ arguments: [String]) throws -> Options {
             var positional: [String] = []
@@ -35,7 +39,10 @@ enum HeadlessRun {
                 let argument = arguments[index]
                 if argument.hasPrefix("--") {
                     let key = String(argument.dropFirst(2))
-                    guard ["name", "out", "csv", "resolution", "mass", "duration"].contains(key) else {
+                    guard
+                        ["name", "out", "csv", "resolution", "mass", "duration", "usd", "frame-interval"]
+                            .contains(key)
+                    else {
                         throw ProjectFileError.invalid("Unknown option \(argument).")
                     }
                     guard index + 1 < arguments.count, values[key] == nil else {
@@ -69,7 +76,21 @@ enum HeadlessRun {
                 }
                 options.duration = duration
             }
-            for url in [options.out, options.csv].compactMap({ $0 })
+            options.usd = values["usd"].map { URL(filePath: $0) }
+            if let text = values["frame-interval"] {
+                guard options.usd != nil else {
+                    throw ProjectFileError.invalid("--frame-interval needs --usd.")
+                }
+                guard let interval = Int(text), interval > 0 else {
+                    throw ProjectFileError.invalid(
+                        "The frame interval must be a whole number of milliseconds.")
+                }
+                options.frameInterval = interval
+            }
+            if let usd = options.usd, usd.pathExtension != "usda" {
+                throw ProjectFileError.invalid("The USD scene must end in .usda.")
+            }
+            for url in [options.out, options.csv, options.usd].compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
                 throw ProjectFileError.invalid("\(url.path) already exists; choose a new path.")
             }
@@ -130,10 +151,38 @@ enum HeadlessRun {
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
+        let scene = try options.usd.map { url in
+            try USDSceneWriter(
+                url: url, scenario: inputs.scenario,
+                frameInterval: Double(options.frameInterval) * SimulationModel.structureSampleInterval,
+                camera: .init(
+                    eye: model.camera.eye, target: model.camera.target,
+                    verticalFieldOfView: model.camera.fieldOfView))
+        }
+        defer { scene?.discard() }
+        var exportError: Error?
+        if let scene {
+            // Frames fall on the structural samples, where the run loop stops anyway, so exporting
+            // does not change the run.
+            model.onStructureSample = { solver in
+                // The last sample, at the end of the run, can fall between frames.
+                let frame = (solver.time / scene.frameInterval).rounded()
+                guard exportError == nil, abs(solver.time - frame * scene.frameInterval) < 1e-6,
+                    Int(frame) == scene.frameCount
+                else { return }
+                do {
+                    try scene.append(solver.structureSurface())
+                } catch {
+                    exportError = error
+                }
+            }
+        }
         model.run()
         try await waitUntil(model) { !model.isRunning && !model.hasPendingGPUWork }
+        if let exportError { throw exportError }
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
+        try scene?.finish()
 
         if let out = options.out {
             // The project's own inputs, with the new run among its saved ones.

@@ -17,7 +17,8 @@ struct HeadlessRunOptionTests {
         for arguments in [
             [], ["a", "b"], ["a", "--bogus", "1"], ["a", "--mass"], ["a", "--mass", "1", "--mass", "2"],
             ["a", "--resolution", "huge"], ["a", "--mass", "lots"], ["a", "--duration", "0"],
-            ["a", "--out", "result.json"],
+            ["a", "--out", "result.json"], ["a", "--frame-interval", "2"], ["a", "--usd", "scene.usdc"],
+            ["a", "--usd", "scene.usda", "--frame-interval", "0.5"],
         ] {
             #expect(throws: ProjectFileError.self) { try HeadlessRun.Options.parse(arguments) }
         }
@@ -107,6 +108,33 @@ struct HeadlessRunTests {
         #expect(written.savedRuns.last == run)
         let csv = try String(contentsOf: folder.appending(path: "out.csv"), encoding: .utf8)
         #expect(csv == run.csv())
+    }
+
+    @Test("A structural run exports its surface every frame interval")
+    func usdExport() async throws {
+        let kept = try SavedRunTests().fixture()
+        var document = ProjectDocument(scenario: kept.scenario)
+        document.runSettings = kept.settings
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "in.bombcad")
+        try write(document, to: project)
+        let scene = folder.appending(path: "scene.usda")
+        let run = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([project.path, "--usd", scene.path, "--frame-interval", "2"]))
+        #expect(run.elapsedTime >= 0.01 - 1e-9 && run.structure != nil)
+        // 0, 2, … 10 ms.
+        let text = try String(contentsOf: scene, encoding: .utf8)
+        #expect(text.contains("endTimeCode = 5\n") && text.contains("simulatedSecondsPerFrame = 0.002"))
+        let points = try #require(text.range(of: "points.timeSamples"))
+        #expect(
+            text[points.upperBound...].contains("\n            5: [(")
+                && !text[points.upperBound...].contains("\n            6: "))
+        #expect(text.contains("def Camera \"Camera\""))
+        #expect(
+            try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() == [
+                "in.bombcad", "scene.usda",
+            ])
     }
 
     @Test("A project with no room for another run is refused before running")

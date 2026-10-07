@@ -375,6 +375,23 @@ two collapsing over several seconds.
 ### Usability, in parallel
 
 - Review the app on screen and fix what is found.
+- **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
+  Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
+  [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,
+  only gauge and deflection histories, so the frames would be written during the run, most
+  simply as an option of [`BombCAD run`](run-comparison.md#headless-runs) at a chosen frame
+  rate. In two steps:
+  1. **Geometry as USD**, in its text form (`.usda`), which needs no library: the blocks and
+     ground once, the structure's surface with its points sampled per frame and failed elements
+     dropped, and the charge and gauges as markers. (Done: `BombCAD run --usd`, with the
+     project's view as a camera; see [Exporting a run for rendering](usd-export.md). Not yet
+     opened in Blender.)
+  2. **The blast as OpenVDB volumes**, one file per frame, from the overpressure the renderer
+     already ray-marches (the solver's visualisation volume). Blender reads volumes only as VDB,
+     so this needs either the OpenVDB library (a large C++ dependency) or a small writer of our
+     own for dense float grids. The size wants watching: a medium grid is 8.4 million cells, about
+     34 MB a frame before VDB's sparseness, so a few gigabytes for a 0.17 s event at 1,000 frames
+     a second of simulated time.
 
 ## Things tried and set aside
 
