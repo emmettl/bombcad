@@ -9,7 +9,8 @@ and 5: a rectangular-room image-source model with octave-band absorption, air at
 stereo 32-bit float WAV export with a JSON description. Driftbox's own convolver plays the exported
 files. See [Room-acoustics model](room-acoustics-model.md). A first RoomCAD app with versioned `.roomcad`
 documents is also implemented (M1 items 3 and 4); see [RoomCAD app and documents](roomcad-app.md).
-The wave solver and the Driftbox rack effect remain proposed work.
+A wave solver for low frequencies (M3) and broadband hybrid responses (M4 items 1–4) are implemented
+too. The Driftbox rack effect remains proposed work.
 
 The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
@@ -300,8 +301,10 @@ Progress (October 2026): a CPU FDTD solver is implemented in `AcousticCore`, wit
 impedance walls and a calibrated source. Rigid-room modes are within 0.25% of the analytical values,
 and free-field level within 0.03 dB with no timing offset. Axial decay between absorbing walls is
 within 6% of theory. The crossover's top is resolved at 10 points per wavelength, and work is
-budgeted. It runs on the CPU rather than the GPU, and a fuller benchmark report (phase and directional
-error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
+budgeted. Walls take each octave band's own impedance, one run per group of bands that agree. A Metal
+version runs the same scheme on the GPU, matching the CPU to single precision at about 3.6 × 10⁹ cell
+updates a second, so every preset, the stone church included, now gets a wave part. A fuller benchmark
+report (phase and directional error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
 
 ### M4 — Generate broadband hybrid room responses
 
@@ -330,12 +333,13 @@ between its Eyring and Sabine times instead of 50–70% longer. See
 
 Items 2–4 are implemented with the M3 solver:
 
-- **Crossover.** An automatic crossover at twice the Schroeder frequency, within 80–250 Hz and the
-  budget.
+- **Crossover.** An automatic crossover at three times the Schroeder frequency, within 80–500 Hz on
+  the GPU (80–250 Hz on the CPU) and the budget.
 - **Alignment.** Time origins and gain conventions are aligned by deconvolving the source against free
   field.
-- **Blending.** Complementary zero-phase crossovers sum to one. The two models agree within 1.5 dB at
-  the crossover across the presets, except for an apparent seat dip in the chamber hall.
+- **Blending.** Complementary zero-phase crossovers sum to one. Below the crossover the two models
+  agree within 2.3 dB across the presets, except at 63 Hz in the L-shaped room (diffraction round the
+  corner) and the stone church (the floor's boundary gain).
 
 Item 5 (comparison with measured rooms) and item 6's validated band are not done.
 

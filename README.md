@@ -273,6 +273,8 @@ complete box surface; those loads are geometry identities, not ground-pressure p
 `--motion-geometry` writes `.build/rigid-box-motion-geometry.json`, comparing endpoint cell
 volume changes with temporally integrated wall motion and equal/opposite pressure work.
 It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
+It also compares event-split integration for constant translation of axis-aligned boxes,
+recording the integration method and actual temporal evaluation count in each result.
 
 ## Headline results
 

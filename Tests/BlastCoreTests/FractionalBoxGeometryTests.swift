@@ -5,6 +5,28 @@ import simd
 
 @Suite("Fractional rigid-box geometry")
 struct FractionalBoxGeometryTests {
+    @Test("Event-split translation conserves volume and work for crossings in either direction")
+    func eventSplitTranslation() throws {
+        let body = try RigidBoxBody(mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(1, 1, 1))
+        for velocity in [SIMD3<Double>(2, 1.7, 0.6), SIMD3(-2, -1.7, -0.6), .zero] {
+            for lower in [SIMD3<Double>(1.35, 1.35, 1.35), SIMD3(0.55, 0.55, 0.55)] {
+                let r = try TranslatingBoxCellSweep.integrate(
+                    body: body, velocity: velocity, lower: lower,
+                    cellSize: 0.1, duration: 0.12, pressure: 101325)
+                #expect(abs(r.sweptVolume - r.volumeChange) < 1e-12)
+                #expect(abs(r.gasWork - 101325 * r.volumeChange) < 1e-8)
+                #expect(abs(r.gasWork + r.bodyWork) < 1e-8)
+            }
+        }
+        let rotated = try RigidBoxBody(
+            mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(1, 1, 1),
+            orientation: simd_quatd(angle: 0.37, axis: SIMD3(0, 0, 1)))
+        #expect(throws: TranslatingBoxCellSweep.Failure.self) {
+            try TranslatingBoxCellSweep.integrate(
+                body: rotated, velocity: SIMD3(1, 0, 0), lower: .zero,
+                cellSize: 0.2, duration: 0.01, pressure: 101325)
+        }
+    }
     @Test("Moving-wall pressure work is equal and opposite for gas and body")
     func pressureWork() throws {
         let body = try RigidBoxBody(
@@ -33,6 +55,10 @@ struct FractionalBoxGeometryTests {
         for r in results {
             #expect(abs(r.workBalanceResidual) < 1e-8)
             #expect(abs(r.gasPressureWork - 101325 * r.sweptVolume) < 1e-8)
+            if r.integration == .eventSplitGauss {
+                #expect(abs(r.volumeResidual) < 1e-12)
+                #expect(abs(r.gasPressureWork - r.endpointPressureWork) < 1e-8)
+            }
             if r.kind == "ground-gap-opening" {
                 #expect(abs(r.volumeResidual) < 1e-12)
                 #expect(r.gasPressureWork < 0 && r.bodyPressureWork > 0)
@@ -40,7 +66,9 @@ struct FractionalBoxGeometryTests {
             }
         }
         for h in [0.1, 0.05] {
-            let crossing = results.filter { $0.kind == "translation-crossing" && $0.cellSize == h }
+            let crossing = results.filter {
+                $0.kind == "translation-crossing" && $0.cellSize == h && $0.integration == .midpoint
+            }
             #expect(abs(crossing[2].volumeResidual) < abs(crossing[1].volumeResidual))
             #expect(abs(crossing[1].volumeResidual) < abs(crossing[0].volumeResidual))
             #expect(abs(crossing[2].volumeResidual) > 1e-8)

@@ -17,7 +17,7 @@ do {
         try encoder.encode(results).write(to: output, options: .atomic)
         for r in results {
             print(
-                "\(r.kind) dx \(r.cellSize) samples \(r.temporalSamples): volume residual \(r.volumeResidual) m³, work balance \(r.workBalanceResidual) J"
+                "\(r.kind) \(r.integration.rawValue) dx \(r.cellSize) samples \(r.temporalSamples): volume residual \(r.volumeResidual) m³, work balance \(r.workBalanceResidual) J"
             )
         }
         print("Wrote \(output.path)")

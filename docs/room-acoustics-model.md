@@ -194,10 +194,15 @@ fill the room, at least 10 per wavelength at the top of the crossover's transiti
   resampling.
 - **Walls.** Walls are locally reacting, with a real normalized impedance ξ, treated semi-implicitly
   so any ξ > 0 is stable. Published coefficients are random-incidence values, so ξ is found by
-  inverting Paris's statistical absorption, α = (8/ξ)[1 + 1/(1 + ξ) − (2/ξ) ln(1 + ξ)]. The value is
-  averaged over the bands the solver covers, and is at most about 0.951 for a real impedance. Using
+  inverting Paris's statistical absorption, α = (8/ξ)[1 + 1/(1 + ξ) − (2/ξ) ln(1 + ξ)], which is at
+  most about 0.951 for a real impedance. Using
   the normal-incidence relation instead made the walls absorb about half as much again at α = 0.3, and
   left the wave part 1.5–5.6 dB too quiet at the crossover.
+- **Frequency-dependent walls.** Each octave band below the crossover's top gets the impedance its own
+  absorption gives. Bands whose impedances agree on every boundary share a run, so a room of
+  frequency-independent materials needs one run and one with several distinct bands needs one per band.
+  Each run's spectrum is kept only in its own bands, through the same octave weights the geometrical
+  model uses, which sum to one.
 - **Source and calibration.** The source injects volume velocity, a Gaussian derivative with no net
   volume. Each receiver's spectrum, taken at its exact sample times, is divided by the free-field
   pressure 1 m away, ρ·j2πf·Q(f)/4π. That gives the geometrical model's units and time origin.
@@ -207,11 +212,19 @@ fill the room, at least 10 per wavelength at the top of the crossover's transiti
 - **Blending.** The two models are blended with complementary zero-phase half-cosine crossovers
   (±0.5 octave), which sum to one.
 
-`WavePlan` chooses the crossover: twice the Schroeder frequency, between 80 and 250 Hz, lowered until
-the work fits a budget of 4 × 10⁹ cell updates. Work grows as frequency to the fourth power. If even
-60 Hz doesn't fit, the solver is skipped with a note: the stone church's modes are dense above about
-60 Hz anyway. A fixed crossover from 40 to 500 Hz can be set instead. The solver runs on the CPU's
-cores; small grids use one thread.
+`WavePlan` chooses the crossover: three times the Schroeder frequency, where modes have become dense,
+between 80 and 500 Hz (250 Hz without a GPU). It is lowered until the work, counting every run, fits a
+budget of 1.5 × 10¹⁰ cell updates on the GPU or 4 × 10⁹ on the CPU (half that for a floor plan, whose
+masked grid costs about twice as much per cell). Work grows as frequency to the fourth power. If even
+60 Hz doesn't fit, as in a 120 × 80 × 30 m hangar, the solver is skipped with a note. A fixed crossover
+from 40 to 500 Hz can be set instead.
+
+`MetalWaveSolver` runs the same scheme on the GPU in single precision, as Metal compute kernels
+compiled when first used: one for velocity, one for pressure with the walls, and two for the source and
+receivers, 128 steps to a command buffer. Box and plan share one layout, in which every cell carries
+its six faces' wall coefficients, so the GPU has no separate plan path. It reaches about 3.6 × 10⁹ cell
+updates a second on large grids, limited by memory bandwidth. Without a GPU the CPU solver runs as
+before, on the CPU's cores, with small grids on one thread.
 
 Tests check the solver against theory:
 
@@ -224,19 +237,32 @@ Tests check the solver against theory:
   reflection coefficient gives (6% in a release build).
 - Far from the source, a cardioid facing it hears it within 10% of an omni. Facing away, or side-on as
   a figure of eight, it hears under 3%.
+- With absorption 0.2 in the 63 Hz band and 0.6 above, the first axial mode (43 Hz) and the third
+  (129 Hz) each decay within 10% of the rate their own band's impedance gives.
+- The GPU and CPU solvers agree to within 10⁻¹⁰ of the energy, in a box and in an L-shaped plan with a
+  door, for omni and cardioid receivers.
 - The impedance inversion reproduces the absorption, and rooms over budget skip the solver.
 
-Across the presets, the two models' energy just below the crossover agrees within 1.5 dB, except in the
-chamber music hall (−4.3 dB). There the listener sits over a large absorbent floor of seats, where
-sound passing over the seats cancels at low frequencies, the "seat dip" known from concert halls. Only
-the wave model can show this, so the difference is probably physical, but it has not been checked
-against a measurement. Generation with the solver takes 0.7–5.5 s for the presets.
+On an M-series Mac the presets' crossovers run from 69 Hz (stone church) to 457 Hz (vocal booth), with
+one to four runs, and generation with the solver takes 1.4–5.3 s in a release build. Every preset now
+gets a wave part; before the GPU solver, the halls and the church were skipped.
+
+In octave bands below the crossover, the two models' energy at the first listener agrees within 2.3 dB,
+the size of the modal variation from point to point, with two exceptions at 63 Hz:
+
+- The L-shaped living room is 7.4 dB louder in the wave model. The listener is round the corner from
+  the source, and at 63 Hz (5.4 m) sound diffracts round it, which the geometrical model leaves out.
+- The stone church is 3.9 dB louder. Source and listener are both within about a quarter wavelength of
+  the floor, which raises the level near a boundary (the Waterhouse effect); the diffuse tail assumes
+  a uniform field.
+
+Both are probably physical, but neither has been checked against a measurement.
 
 Limitations of the solver:
 
-- The wall impedance is real and the same at every frequency below the crossover.
+- The wall impedance is real, and constant within each octave band.
 - There is no air absorption, which is negligible there.
-- It models a bare box: no furniture, scattering or openings.
+- It models bare walls: no furniture or scattering. Openings are walls of ξ = 1.
 - The grid's dispersion grows towards the top frequency.
 
 ## Rendering
@@ -426,7 +452,8 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 - **Materials.** Presets give published random-incidence absorption from 125 Hz, extended to 63 Hz
   and, where missing, to 8 kHz (see [the app's presets](roomcad-app.md#material-presets)). The bench's
   α = 0.2 is illustrative.
-- **Performance.** Generation runs on the CPU's cores, but not on the GPU.
+- **Performance.** The wave solver runs on the GPU; image sources and ray tracing run on the CPU's
+  cores.
 
 ## Future work
 
@@ -434,7 +461,6 @@ The roadmap orders the work as follows:
 
 - a bounded, labelled late tail if auditioning needs one (M2 item 4);
 - more sourced scattering data (M5);
-- frequency-dependent wall impedance and a GPU wave solver, for higher crossovers and larger rooms;
 - comparison with measured room responses (M4 item 5).
 
 The ray tracer and image sources could run on the GPU.

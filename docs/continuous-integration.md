@@ -13,7 +13,8 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 | [Check](../.github/workflows/check.yml) | Every push to `main`, or by hand | `make check`: lint, tests, release-script tests, build |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC, or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
-Both run only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
+A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
+ones are dropped, so every run finishes and at most one waits. Both run only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
 for hellomini-builds, so a BombCAD job can share the GPU with theirs; the nightly run is timed
 to miss Scrimply's, which takes the mini from about 01:30 to 04:30 UTC. A time flagged slower
 may be another job on the machine: check the Actions tabs of those repositories before looking

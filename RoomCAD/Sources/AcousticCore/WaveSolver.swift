@@ -22,6 +22,13 @@ struct WaveSolver {
     let atmosphere: Atmosphere
     /// Open areas, given the impedance of air (ξ = 1).
     let openings: [Opening]
+    /// Octave bands whose mean absorption sets each wall's impedance; nil means all the bands the solver
+    /// covers. `responses` runs once per group of bands with the same impedances.
+    var impedanceBands: [Int]?
+    /// Where to run: the GPU when there is one, or the CPU.
+    var engine = Engine.automatic
+
+    enum Engine: Sendable { case automatic, cpu }
 
     /// Grid points per wavelength at `topFrequency`.
     static let pointsPerWavelength = 10.0
@@ -75,7 +82,9 @@ struct WaveSolver {
     }
 
     func impedance(material: SurfaceMaterial) -> Double {
-        let bands = OctaveBands.centres.indices.filter { OctaveBands.centres[$0] <= topFrequency * 1.2 }
+        let bands =
+            impedanceBands
+            ?? OctaveBands.centres.indices.filter { OctaveBands.centres[$0] <= topFrequency * 1.2 }
         let absorption = material.absorption
         let alpha = bands.map { absorption[$0] }.reduce(0, +) / Double(max(bands.count, 1))
         guard alpha > 0 else { return .infinity }
@@ -298,44 +307,90 @@ extension WaveSolver {
         fftLength: Int, weight: (Double) -> Double, stop: @Sendable () -> Bool
     ) -> [[Float]]? {
         let steps = fftLength / decimation
-        guard
-            let recorded = simulate(source: source, receivers: receivers, steps: steps, stop: stop)
-        else { return nil }
         let dt = timeStep
         let fft = RealFFT(length: steps)
         let half = steps / 2
         // The injected volume velocity at its sample times, (n + 1/2) dt.
         let q = fft.forward((0..<steps).map { pulse((Double($0) + 0.5) * dt) })
         let audio = RealFFT(length: fftLength)
-        return recorded.map { samples in
-            let p = fft.forward(samples)
-            var real = [Double](repeating: 0, count: fftLength / 2)
-            var imag = [Double](repeating: 0, count: fftLength / 2)
-            for k in 1..<half {
-                let f = Double(k) / (Double(steps) * dt)
-                let w = weight(f)
-                guard w > 0 else { continue }
-                // Pressure was recorded at (n + 1) dt and the pulse injected at (n + 1/2) dt.
-                let pPhase = -2 * Double.pi * Double(k) / Double(steps)
-                let qPhase = -Double.pi * Double(k) / Double(steps)
-                let pr = p.real[k] * cos(pPhase) - p.imag[k] * sin(pPhase)
-                let pi = p.real[k] * sin(pPhase) + p.imag[k] * cos(pPhase)
-                let qr = q.real[k] * cos(qPhase) - q.imag[k] * sin(qPhase)
-                let qi = q.real[k] * sin(qPhase) + q.imag[k] * cos(qPhase)
-                // Free-field pressure 1 m away, without the travel time: j 2πf Q / 4π (ρ = 1).
-                let scale = 2 * Double.pi * f / (4 * Double.pi)
-                let rr = -qi * scale
-                let ri = qr * scale
-                let norm = rr * rr + ri * ri
-                guard norm > 1e-30 else { continue }
-                // H = P / reference, in the audio FFT's forward scaling (vDSP scales by 2).
-                real[k] = 2 * w * (pr * rr + pi * ri) / norm
-                imag[k] = 2 * w * (pi * rr - pr * ri) / norm
+        var real = Array(repeating: [Double](repeating: 0, count: fftLength / 2), count: receivers.count)
+        var imag = real
+        // Walls absorb differently in each octave band: one run per group of bands with the same
+        // impedances, each kept only in its own bands. The band weights sum to one, so together they
+        // cover the spectrum once.
+        for group in bandGroups {
+            var solver = self
+            solver.impedanceBands = group
+            guard let recorded = solver.run(source: source, receivers: receivers, steps: steps, stop: stop)
+            else {
+                return nil
             }
-            let signal = audio.inverse(real: real, imag: imag)
+            for (r, samples) in recorded.enumerated() {
+                let p = fft.forward(samples)
+                for k in 1..<half {
+                    let f = Double(k) / (Double(steps) * dt)
+                    let w = weight(f) * group.reduce(0) { $0 + OctaveBands.weight(band: $1, frequency: f) }
+                    guard w > 0 else { continue }
+                    // Pressure was recorded at (n + 1) dt and the pulse injected at (n + 1/2) dt.
+                    let pPhase = -2 * Double.pi * Double(k) / Double(steps)
+                    let qPhase = -Double.pi * Double(k) / Double(steps)
+                    let pr = p.real[k] * cos(pPhase) - p.imag[k] * sin(pPhase)
+                    let pi = p.real[k] * sin(pPhase) + p.imag[k] * cos(pPhase)
+                    let qr = q.real[k] * cos(qPhase) - q.imag[k] * sin(qPhase)
+                    let qi = q.real[k] * sin(qPhase) + q.imag[k] * cos(qPhase)
+                    // Free-field pressure 1 m away, without the travel time: j 2πf Q / 4π (ρ = 1).
+                    let scale = 2 * Double.pi * f / (4 * Double.pi)
+                    let rr = -qi * scale
+                    let ri = qr * scale
+                    let norm = rr * rr + ri * ri
+                    guard norm > 1e-30 else { continue }
+                    // H = P / reference, in the audio FFT's forward scaling (vDSP scales by 2).
+                    real[r][k] += 2 * w * (pr * rr + pi * ri) / norm
+                    imag[r][k] += 2 * w * (pi * rr - pr * ri) / norm
+                }
+            }
+        }
+        return receivers.indices.map { r in
+            let signal = audio.inverse(real: real[r], imag: imag[r])
             return (0..<frames).map { Float(signal[$0]) }
         }
     }
+
+    /// Simulates on the GPU when there is one and the engine allows it, otherwise on the CPU.
+    func run(
+        source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
+        stop: @Sendable () -> Bool
+    ) -> [[Double]]? {
+        if engine == .automatic, let gpu = MetalWaveSolver.shared {
+            return gpu.simulate(self, source: source, receivers: receivers, steps: steps, stop: stop)
+        }
+        return simulate(source: source, receivers: receivers, steps: steps, stop: stop)
+    }
+
+    /// Whether `run` will use the GPU.
+    var usesGPU: Bool { engine == .automatic && MetalWaveSolver.shared != nil }
+
+    /// The octave bands below the crossover's top, grouped by the impedances their absorption gives every
+    /// boundary.
+    var bandGroups: [[Int]] {
+        let included = OctaveBands.centres.indices.filter { band in
+            band == 0 || OctaveBands.crossovers[band - 1] / 2.squareRoot() < topFrequency
+        }
+        var groups: [(key: [Double], bands: [Int])] = []
+        for band in included {
+            var solver = self
+            solver.impedanceBands = [band]
+            let materials = Surface.allCases.map { room[$0] } + (room.plan?.walls ?? [])
+            let key = materials.map { solver.impedance(material: $0) }
+            if let index = groups.firstIndex(where: { $0.key == key }) {
+                groups[index].bands.append(band)
+            } else {
+                groups.append((key, [band]))
+            }
+        }
+        return groups.map(\.bands)
+    }
+
 }
 
 extension WaveSolver {
