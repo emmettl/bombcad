@@ -89,7 +89,7 @@ struct IFCImportTests {
     func openSurface() {
         let id = "0OfZwWc8j9QP5uX8xPTxDH"
         let obj = "g \(id)\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"
-        #expect(throws: ImportedMesh.ImportError.self) {
+        #expect(throws: IFCImporter.ElementFailure.self) {
             try IFCImporter.decodeOBJ(
                 Data(obj.utf8),
                 metadata: [id: .init(id: id, name: "Open wall", ifcClass: "IfcWall", storey: "Ground")])
@@ -130,7 +130,8 @@ struct IFCImportTests {
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(loader.error == nil)
-        #expect(loader.result?.inspection.validatedMesh?.buildingElements?.count == 7)
+        #expect(loader.result?.building?.defaultIDs.count == 8)
+        #expect(loader.result?.inspection == nil)
         loader.load(fixture)
         loader.cancel()
         try await Task.sleep(for: .milliseconds(300))

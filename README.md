@@ -90,7 +90,12 @@ their STEP counterparts are references for future support.
 
 IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**.
 Physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors
-and windows are included; spaces, furnishings, proxy/site markers and other types are excluded.
+and windows can be chosen; spaces, furnishings, proxy/site markers and other types are excluded.
+Before geometry conversion, choose exact elements using building, storey, type and text filters
+and inclusion checkboxes. Filters only change the list; Include/Exclude matching changes the
+import. Up to 1,024 supported elements can be chosen from a 20,000-entry decomposition inventory.
+Choose IFC elements in the preview or source inspector to revise choices from retained IFC bytes.
+Each subset is rebased to its own bounds; review placement after changing choices.
 The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
 of these. Source units and world placements are converted to metres, Z up, then rebased from
 large coordinates before Float conversion. The original coordinate origin remains recorded.
@@ -100,13 +105,18 @@ conforming without creating faces, and coordinates are canonicalised at 0.1 micr
 Touching and overlapping elements produce a union of occupied cells; overlaps count once and
 use the first sorted GlobalId for selection. Element diagnostics do not certify gaps between
 separate elements. Geometry omissions, converter diagnostics and unsupported material metadata
-remain explicit import notes. Structural materials, supports and connections are not inferred.
+remain explicit import notes. IFC completeness and exported reports list intentional exclusions,
+unsupported types, missing converted geometry, complete grid losses and overlapping cell ownership
+separately. Inventory follows the decomposition tree; uncontained products may be absent. Invalid
+selected solids block conversion with their name and GlobalId; excluding one is an explicit action.
+Undetermined converter units block import to prevent incorrect scale. Structural materials, supports and connections are not inferred.
 
 Projects retain original IFC bytes and converted sources; reopening and grid resampling need
-neither the original file nor the converter. Version 2 source assets hold IFC element metadata,
+neither the original file nor the converter. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
 while OBJ/STL assets retain version 1. See the repository-only
 [whole-building IFC fixture](Samples/Importer/Buildings/README.md) for a small house, matching
-raw OBJ reference, expected grid behaviour and reproducible provenance. IFCZIP/IFCXML and
+raw OBJ reference, a two-storey duplex, structural beams, an imperial column, a unit-failure case,
+expected behaviour and reproducible provenance. IFCZIP/IFCXML and
 conversion to deformable shells or beams are outside this first milestone.
 
 The importer retains each source mesh, its units/orientation and placement in the saved layout.

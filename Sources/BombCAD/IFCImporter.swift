@@ -29,51 +29,78 @@ enum IFCImporter {
             .appendingPathComponent(".build/ifc-converter/IfcConvert")
         return FileManager.default.isExecutableFile(atPath: local.path) ? local : nil
     }
-    static func convert(_ data: Data, converter: URL? = converterURL) async throws -> ImportedMesh {
+    struct Prepared: Sendable {
+        var data: Data
+        var inventory: [Element]
+        var metadataLog: String
+        var defaultIDs: Set<String> { Set(inventory.filter(\.supported).map(\.id)) }
+    }
+    static func prepare(_ data: Data, converter: URL? = converterURL) async throws -> Prepared {
         guard data.count <= 20_000_000 else {
             throw ImportedMesh.ImportError.invalid(
                 "IFC exceeds the 20 MB limit. Export a smaller building or subset.")
         }
-        guard let converter else {
+        let converter = try requireConverter(converter)
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let input = folder.appendingPathComponent("source.ifc")
+        let xml = folder.appendingPathComponent("metadata.xml")
+        try data.write(to: input)
+        let log = try await run(converter, arguments: [input.path, xml.path, "-y"], folder: folder)
+        try Task.checkCancellation()
+        let inventory = try decodeMetadata(try boundedData(xml))
+        try Task.checkCancellation()
+        guard inventory.contains(where: \.supported) else {
             throw ImportedMesh.ImportError.invalid(
-                "The IFC converter is unavailable. Build BombCAD.app with Scripts/build-app.sh, or run python3 Scripts/prepare-ifc-converter.py before swift run."
-            )
+                "No supported physical elements were found in the IFC decomposition tree.")
         }
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "bombcad-ifc-" + UUID().uuidString)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return Prepared(data: data, inventory: inventory, metadataLog: log)
+    }
+    static func convert(_ data: Data, converter: URL? = converterURL) async throws -> ImportedMesh {
+        let prepared = try await prepare(data, converter: converter)
+        return try await convert(prepared, includedIDs: prepared.defaultIDs, converter: converter)
+    }
+    static func convert(_ prepared: Prepared, includedIDs: Set<String>, converter: URL? = converterURL)
+        async throws -> ImportedMesh
+    {
+        try Task.checkCancellation()
+        guard !includedIDs.isEmpty, includedIDs.count <= 1024, includedIDs.isSubset(of: prepared.defaultIDs)
+        else {
+            throw ImportedMesh.ImportError.invalid("Choose between 1 and 1,024 supported IFC elements.")
+        }
+        let converter = try requireConverter(converter)
+        let folder = try temporaryFolder()
         defer { try? FileManager.default.removeItem(at: folder) }
         let input = folder.appendingPathComponent("source.ifc")
         let obj = folder.appendingPathComponent("geometry.obj")
-        let xml = folder.appendingPathComponent("metadata.xml")
-        try data.write(to: input)
-        var notes: [String] = []
-        let metadataLog = try await run(converter, arguments: [input.path, xml.path, "-y"], folder: folder)
+        try prepared.data.write(to: input)
+        // Exact GUID filtering never implicitly includes descendants. Openings are still subtracted
+        // by the converter, even though opening entities are not imported as solid obstacles.
         let geometryLog = try await run(
             converter,
             arguments: [
-                input.path, obj.path, "-y", "--use-element-guids", "--weld-vertices", "--include", "entities",
-            ] + physicalTypes, folder: folder)
-        let parser = Metadata()
-        let document = XMLParser(data: try boundedData(xml))
-        document.delegate = parser
-        document.shouldResolveExternalEntities = false
-        guard document.parse(), parser.issue == nil else {
+                input.path, obj.path, "-y", "-v", "--use-element-guids", "--weld-vertices", "--include",
+                "attribute", "GlobalId",
+            ] + includedIDs.sorted(), folder: folder)
+        guard !geometryLog.contains("Unable to detect unit information") else {
             throw ImportedMesh.ImportError.invalid(
-                "IFC metadata could not be read: \(parser.issue ?? document.parserError?.localizedDescription ?? "invalid XML")"
+                "IFC units could not be determined by the converter. Review project/context and unit definitions in your CAD tool, then re-export. Geometry is blocked to avoid importing it at the wrong scale."
             )
         }
-        let geometry = try decodeOBJ(try boundedData(obj), metadata: parser.elements)
+        let chosen = prepared.inventory.filter { includedIDs.contains($0.id) }
+        let geometry = try decodeOBJ(
+            try boundedData(obj), metadata: Dictionary(uniqueKeysWithValues: chosen.map { ($0.id, $0) }))
         let present = Set(geometry.elements.map(\.globalID))
-        let missing = parser.elements.values.filter {
-            supportedClass($0.ifcClass) && !present.contains($0.id)
-        }
+        let missing = chosen.filter { !present.contains($0.id) }
+        var notes: [String] = []
         if !missing.isEmpty {
             notes.append(
-                "IFC elements without converted geometry (including assembly containers): "
-                    + missing.sorted { $0.id < $1.id }.prefix(10).map(\.name).joined(separator: ", ")
-                    + ". Review the source against this import.")
+                "Selected IFC elements without converted geometry: "
+                    + missing.prefix(10).map(\.name).joined(separator: ", ")
+                    + ". Containers may have geometry only in their children; other omissions may be conversion failures. Review completeness before applying."
+            )
         }
+        let metadataLog = prepared.metadataLog
         let lines = (metadataLog + geometryLog).split(whereSeparator: \.isNewline).map(String.init)
         let errors = lines.indices.filter { lines[$0].contains("[Error]") }
         if !errors.isEmpty
@@ -93,13 +120,18 @@ enum IFCImporter {
                     + String(Array(Set(messages)).sorted().joined(separator: "; ").prefix(1800)))
         }
         notes.append(
+            "Inventory follows the IFC decomposition tree. Uncontained products may be absent; compare this import with the source CAD model."
+        )
+        notes.append(
             "Converted coordinates are rebased and canonicalised at 0.1 micrometre; existing edge junctions are split into conforming triangles; all resulting element solids are revalidated. This is independent of the air-grid resolution."
         )
         notes.append(
-            "IFC converted to metres, Z up. Included physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors and windows. Spaces, furnishings, site/proxy markers and other types are excluded. Material properties are not mapped."
+            "IFC converted to metres, Z up. Only explicitly chosen supported elements were converted. Spaces, furnishings, site/proxy markers and other unsupported types are excluded. Material properties are not mapped."
         )
         return try ImportedMesh(
-            buildingElements: geometry.elements, notes: notes, origin: geometry.origin, sourceData: data)
+            buildingElements: geometry.elements, notes: notes, origin: geometry.origin,
+            sourceData: prepared.data,
+            selection: .init(inventory: prepared.inventory, includedIDs: includedIDs))
     }
 
     private static func boundedData(_ url: URL) throws -> Data {
@@ -153,48 +185,92 @@ enum IFCImporter {
         return text
     }
 
-    struct Element {
-        var id: String
-        var name: String
-        var ifcClass: String
-        var storey: String?
+    private static func requireConverter(_ converter: URL?) throws -> URL {
+        guard let converter else {
+            throw ImportedMesh.ImportError.invalid(
+                "The IFC converter is unavailable. Build BombCAD.app with Scripts/build-app.sh, or run python3 Scripts/prepare-ifc-converter.py before swift run."
+            )
+        }
+        return converter
+    }
+    private static func temporaryFolder() throws -> URL {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "bombcad-ifc-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+    typealias Element = ImportedMesh.BuildingSourceElement
+    static func decodeMetadata(_ data: Data) throws -> [Element] {
+        let parser = Metadata()
+        let document = XMLParser(data: data)
+        document.delegate = parser
+        document.shouldResolveExternalEntities = false
+        guard document.parse(), parser.issue == nil else {
+            throw ImportedMesh.ImportError.invalid(
+                "IFC metadata could not be read: \(parser.issue ?? document.parserError?.localizedDescription ?? "invalid XML")"
+            )
+        }
+        return parser.elements.values.sorted { $0.id < $1.id }
     }
     private final class Metadata: NSObject, XMLParserDelegate {
         var elements: [String: Element] = [:]
         var issue: String?
         private var depth = 0
         private var decomposition = false
-        private var storeys: [(Int, String)] = []
+        private var buildings: [(Int, String, String)] = []
+        private var storeys: [(Int, String, String)] = []
+        private var parents: [(Int, String)] = []
         func parser(
             _ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
             attributes: [String: String]
         ) {
             depth += 1
-            guard depth < 128, elements.count <= 4096 else {
+            guard depth < 128, elements.count < 20_000 else {
                 issue = "metadata exceeds its limits"
                 parser.abortParsing()
                 return
             }
             if name == "decomposition" { decomposition = true }
-            guard decomposition else { return }
+            guard decomposition, let id = attributes["id"] else { return }
+            guard id.count == 22,
+                id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "$") })
+            else {
+                issue = "invalid IFC GlobalId"
+                parser.abortParsing()
+                return
+            }
+            let label = String((attributes["Name"] ?? name).prefix(200))
+            if name == "IfcBuilding" {
+                buildings.append((depth, id, label))
+                return
+            }
             if name == "IfcBuildingStorey" {
-                storeys.append((depth, String((attributes["Name"] ?? "Unnamed storey").prefix(200))))
+                storeys.append((depth, id, label))
+                return
             }
-            if let id = attributes["id"], IFCImporter.supportedClass(name) {
-                guard elements[id] == nil else {
-                    issue = "duplicate IFC GlobalId"
-                    parser.abortParsing()
-                    return
-                }
-                elements[id] = Element(
-                    id: id, name: String((attributes["Name"] ?? name).prefix(200)), ifcClass: name,
-                    storey: storeys.last?.1)
+            guard !["IfcProject", "IfcSite"].contains(name), !name.hasSuffix("Type"),
+                !["IfcProperty", "IfcQuantity", "IfcElementQuantity", "IfcMaterial"].contains(
+                    where: name.hasPrefix)
+            else { return }
+            guard elements[id] == nil else {
+                issue = "duplicate IFC GlobalId"
+                parser.abortParsing()
+                return
             }
+            if let parent = parents.last?.1 { elements[parent]?.hasChildren = true }
+            elements[id] = Element(
+                id: id, name: label, ifcClass: name,
+                buildingID: buildings.last?.1, building: buildings.last?.2,
+                storeyID: storeys.last?.1, storey: storeys.last?.2,
+                supported: IFCImporter.supportedClass(name))
+            parents.append((depth, id))
         }
         func parser(
             _ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?
         ) {
             if storeys.last?.0 == depth { storeys.removeLast() }
+            if buildings.last?.0 == depth { buildings.removeLast() }
+            if parents.last?.0 == depth { parents.removeLast() }
             if name == "decomposition" { decomposition = false }
             depth -= 1
         }
@@ -205,6 +281,12 @@ enum IFCImporter {
             issue = "external XML entities are unsupported"
             parser.abortParsing()
         }
+    }
+    struct ElementFailure: LocalizedError {
+        var id: String
+        var name: String
+        var reason: String
+        var errorDescription: String? { "IFC element \(name) (\(id)) is not a valid closed solid: \(reason)" }
     }
     static func decodeOBJ(_ data: Data, metadata: [String: Element]) throws -> (
         elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>
@@ -271,9 +353,7 @@ enum IFCImporter {
                         globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey,
                         mesh: mesh))
             } catch is CancellationError { throw CancellationError() } catch {
-                throw ImportedMesh.ImportError.invalid(
-                    "IFC element \(info.name) (\(id)) is not a valid closed solid: \(error.localizedDescription)"
-                )
+                throw ElementFailure(id: id, name: info.name, reason: error.localizedDescription)
             }
         }
         return (elements, origin)

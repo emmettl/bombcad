@@ -110,7 +110,11 @@ struct ImportPartsView: View {
         }.frame(height: min(200, CGFloat(max(filtered.count, 1)) * 52))
         Toggle("Isolate selected parts", isOn: $isolate).disabled(selectedIDs.isEmpty)
         if deformable { Toggle("Colour simulation by material", isOn: $colourByMaterial) }
-        Text("Isolation only changes the preview. All parts will import.").font(.caption).foregroundStyle(
+        Text(
+            parts.contains { $0.ifcGlobalID != nil }
+                ? "Isolation only changes the preview. All chosen IFC parts will import."
+                : "Isolation only changes the preview. All parts will import."
+        ).font(.caption).foregroundStyle(
             .secondary)
         if let selected {
             Text("Selected: \(selected.name)").font(.subheadline.bold())

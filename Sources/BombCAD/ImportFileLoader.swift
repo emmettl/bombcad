@@ -7,7 +7,8 @@ final class ImportFileLoader {
     struct Loaded: Identifiable {
         var id = UUID()
         var filename: String
-        var inspection: ImportedMesh.Inspection
+        var inspection: ImportedMesh.Inspection?
+        var building: IFCImporter.Prepared?
     }
     private(set) var result: Loaded?
     private(set) var error: String?
@@ -33,7 +34,7 @@ final class ImportFileLoader {
         task = Task {
             guard !Task.isCancelled else { return }
             let reading = Task.detached(priority: .userInitiated) {
-                () -> Result<ImportedMesh.Inspection, Error> in
+                () -> Result<(ImportedMesh.Inspection?, IFCImporter.Prepared?), Error> in
                 do {
                     try Task.checkCancellation()
                     let accessing = url.startAccessingSecurityScopedResource()
@@ -59,9 +60,10 @@ final class ImportFileLoader {
                     }
                     try Task.checkCancellation()
                     if url.pathExtension.lowercased() == "ifc" {
-                        return .success(try await IFCImporter.convert(data).inspection)
+                        return .success((nil, try await IFCImporter.prepare(data)))
                     }
-                    return .success(try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension))
+                    return .success(
+                        (try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension), nil))
                 } catch { return .failure(error) }
             }
             let outcome = await withTaskCancellationHandler(
@@ -70,7 +72,8 @@ final class ImportFileLoader {
             isLoading = false
             task = nil
             switch outcome {
-            case .success(let inspection): result = Loaded(filename: filename, inspection: inspection)
+            case .success(let value):
+                result = Loaded(filename: filename, inspection: value.0, building: value.1)
             case .failure(let failure):
                 error = failure.localizedDescription
                 failureID = UUID()

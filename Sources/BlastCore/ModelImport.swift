@@ -15,8 +15,10 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
     public private(set) var buildingNotes: [String]?
     public private(set) var buildingOrigin: SIMD3<Double>?
     public private(set) var buildingSourceData: Data?
+    public private(set) var buildingSelection: BuildingSelection?
     private enum CodingKeys: String, CodingKey {
-        case triangles, faceLabels, buildingElements, buildingNotes, buildingOrigin, buildingSourceData
+        case triangles, faceLabels, buildingElements, buildingNotes, buildingOrigin, buildingSourceData,
+            buildingSelection
     }
     public var bounds: Box {
         let points = triangles.flatMap { [$0.a, $0.b, $0.c] }
@@ -268,7 +270,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
             }
             return try ImportedMesh(
                 buildingElements: moved, notes: buildingNotes ?? [], origin: buildingOrigin,
-                sourceData: buildingSourceData)
+                sourceData: buildingSourceData, selection: buildingSelection)
         }
         let low = triangles.flatMap { [rotate($0.a), rotate($0.b), rotate($0.c)] }.reduce(
             SIMD3<Float>(repeating: .infinity), simd_min)
@@ -328,6 +330,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         /// Aligned to boxes. Absent in layouts saved before source part ownership was retained.
         public var boxPartIDs: [Int]? = nil
         public var sourceNotes: [String]? = nil
+        public var buildingSampling: [BuildingSampling]? = nil
         public var warnings: [String] {
             var messages = [
                 "Geometry is sampled at cell centres. Highlighted regions are approximate diagnostics, not a mesh convergence check. Inspect the overlay and compare finer grids."
@@ -655,7 +658,8 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                 buildingElements: elements,
                 notes: container.decodeIfPresent([String].self, forKey: .buildingNotes) ?? [],
                 origin: container.decodeIfPresent(SIMD3<Double>.self, forKey: .buildingOrigin),
-                sourceData: container.decodeIfPresent(Data.self, forKey: .buildingSourceData))
+                sourceData: container.decodeIfPresent(Data.self, forKey: .buildingSourceData),
+                selection: container.decodeIfPresent(BuildingSelection.self, forKey: .buildingSelection))
             return
         }
         triangles = try container.decode([Triangle].self, forKey: .triangles)
@@ -676,6 +680,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
             try container.encodeIfPresent(buildingNotes, forKey: .buildingNotes)
             try container.encodeIfPresent(buildingOrigin, forKey: .buildingOrigin)
             try container.encodeIfPresent(buildingSourceData, forKey: .buildingSourceData)
+            try container.encodeIfPresent(buildingSelection, forKey: .buildingSelection)
         } else {
             try container.encode(triangles, forKey: .triangles)
             try container.encodeIfPresent(faceLabels, forKey: .faceLabels)
@@ -684,7 +689,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
 
     public init(
         buildingElements elements: [BuildingElement], notes: [String] = [], origin: SIMD3<Double>? = nil,
-        sourceData: Data? = nil
+        sourceData: Data? = nil, selection: BuildingSelection? = nil
     ) throws {
         guard !elements.isEmpty, elements.count <= 1024,
             Set(elements.map(\.globalID)).count == elements.count,
@@ -721,6 +726,8 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         guard Set(parts.map(\.id)).count == parts.count else {
             throw ImportError.invalid("IFC element identifiers collide; cannot preserve part ownership.")
         }
+        if let selection { try selection.validate(converted: Set(sorted.map(\.globalID))) }
+        buildingSelection = selection
         buildingElements = sorted
         buildingNotes = notes
         buildingOrigin = origin

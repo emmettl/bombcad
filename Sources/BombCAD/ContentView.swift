@@ -149,7 +149,13 @@ struct ContentView: View {
                 get: { model.inspectedImport }, set: { if $0 == nil { model.inspectedImportID = nil } }),
             onDismiss: { sourceInspectorVisible = false }
         ) { imported in
-            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
+            if imported.source.buildingSourceData != nil {
+                IFCImportFlow(
+                    mesh: imported.source, filename: imported.name, existing: imported, model: model)
+            } else {
+                ModelImportView(
+                    mesh: imported.source, filename: imported.name, existing: imported, model: model)
+            }
         }
         .sheet(
             item: Binding(
@@ -157,10 +163,12 @@ struct ContentView: View {
                 set: { if $0 == nil { importLoader.dismissResult() } }),
             onDismiss: { importLoader.presentationDismissed() }
         ) { loaded in
-            if let mesh = loaded.inspection.validatedMesh {
+            if let building = loaded.building {
+                IFCImportFlow(prepared: building, filename: loaded.filename, model: model)
+            } else if let mesh = loaded.inspection?.validatedMesh {
                 ModelImportView(mesh: mesh, filename: loaded.filename, model: model)
-            } else {
-                ImportRecoveryView(filename: loaded.filename, inspection: loaded.inspection) { url in
+            } else if let inspection = loaded.inspection {
+                ImportRecoveryView(filename: loaded.filename, inspection: inspection) { url in
                     importLoader.retryAfterDismissal(url)
                 }
             }

@@ -180,13 +180,13 @@ struct ImportUsabilityTests {
         let loader = ImportFileLoader()
         loader.load(invalid)
         try await waitUntil { !loader.isLoading }
-        #expect(loader.result?.inspection.validatedMesh == nil)
-        #expect(loader.result?.inspection.issues.isEmpty == false)
+        #expect(loader.result?.inspection?.validatedMesh == nil)
+        #expect(loader.result?.inspection?.issues.isEmpty == false)
         loader.retryAfterDismissal(valid)
         #expect(loader.result == nil && !loader.isLoading)
         loader.presentationDismissed()
         try await waitUntil { !loader.isLoading }
-        #expect(loader.result?.inspection.validatedMesh?.parts.count == 1)
+        #expect(loader.result?.inspection?.validatedMesh?.parts.count == 1)
         #expect(loader.error == nil)
     }
     @Test("Folders disguised as model files fail without entering a blocked read")

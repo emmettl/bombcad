@@ -61,6 +61,46 @@ struct ImportedBuildingTests {
         #expect(restored.parts == source.parts)
         #expect(try ImportedMesh(buildingElements: [a, b]).parts.map(\.id) == source.parts.map(\.id))
     }
+    @Test("Sampling reports distinguish vanished thin elements from full and partial overlap")
+    func samplingLosses() throws {
+        let large = try element(1, mesh: cube())
+        let covered = try element(2, mesh: cube(size: 0.5, corner: SIMD3(repeating: 0.25)))
+        let partial = try element(3, mesh: cube(corner: SIMD3(0.75, 0, 0)))
+        let thin = try element(4, mesh: cube(size: 0.05, corner: SIMD3(2, 0, 0)))
+        let source = try ImportedMesh(buildingElements: [thin, covered, partial, large])
+        let medium = try source.preview(cellSize: 0.25, domain: SIMD3(repeating: 4))
+        let samples = try #require(medium.buildingSampling)
+        #expect(samples.first { $0.id == covered.globalID }?.status == "Fully covered by other elements")
+        #expect(samples.first { $0.id == partial.globalID }?.status == "Partly overlaps other elements")
+        #expect(samples.first { $0.id == thin.globalID }?.status == "No solid cells on this grid")
+        #expect(samples.reduce(0) { $0 + $1.assignedCells } == medium.occupiedCells)
+        #expect(medium.warnings.contains { $0.contains("sampling losses") })
+        let fine = try source.preview(cellSize: 0.025, domain: SIMD3(repeating: 4))
+        #expect(fine.buildingSampling?.first { $0.id == thin.globalID }?.sampledCells == 8)
+        let restored = try JSONDecoder().decode(ImportedMesh.Preview.self, from: JSONEncoder().encode(medium))
+        #expect(restored.buildingSampling == samples)
+    }
+    @Test("Inconsistent saved selection cannot claim excluded geometry was converted")
+    func selectionGuards() throws {
+        let a = try element(1, mesh: cube())
+        let b = try element(2, mesh: cube())
+        let inventory = [a, b].map {
+            ImportedMesh.BuildingSourceElement(id: $0.globalID, name: $0.name, ifcClass: $0.ifcClass)
+        }
+        let selection = ImportedMesh.BuildingSelection(inventory: inventory, includedIDs: [a.globalID])
+        #expect(throws: ImportedMesh.ImportError.self) {
+            try ImportedMesh(buildingElements: [b], selection: selection)
+        }
+        let valid = try ImportedMesh(buildingElements: [a], selection: selection)
+        #expect(
+            try JSONDecoder().decode(ImportedMesh.self, from: JSONEncoder().encode(valid)).buildingSelection
+                == selection)
+        var invalid = selection
+        invalid.inventory.append(inventory[0])
+        #expect(throws: ImportedMesh.ImportError.self) {
+            try ImportedMesh(buildingElements: [a], selection: invalid)
+        }
+    }
     @Test("Rigid-only installation, duplicate GUIDs and nested building sources are guarded")
     func guards() throws {
         let a = try element(1, mesh: cube())
