@@ -453,6 +453,7 @@ public final class StructureSolver {
     public func reset() {
         time = 0
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
+        failedAtCheckpoint = nil
         memset(contactForceBuffer.contents(), 0, contactForceBuffer.length)
         let h = model.elementSize
         let cells = ex * ey * ez
@@ -767,6 +768,12 @@ public final class StructureSolver {
 
     /// True once any element has failed since the last reset.
     public var hasFailed: Bool { failureGateBuffer.contents().load(as: UInt32.self) != 0 }
+    /// Whether something had failed as of the coupled solver's last checkpoint, which then
+    /// stands in for `hasFailed` in deciding what to encode, so that contact and debris join at
+    /// a step that does not depend on how the steps were batched. Nil on its own.
+    var failedAtCheckpoint: Bool?
+    /// What decides whether contact and debris loading are encoded.
+    var encodesAsFailed: Bool { failedAtCheckpoint ?? hasFailed }
 
     /// Removes elements by hand, as if they had reached their failure strain.
     public func erode(where shouldErode: (_ i: Int, _ j: Int, _ k: Int) -> Bool) {
@@ -868,12 +875,13 @@ public final class StructureSolver {
         let group = MTLSize(width: elementPipeline.threadExecutionWidth, height: 1, depth: 1)
 
         // Until something has failed there is nothing to collide, so the contact kernels are
-        // left out; they join in from the first batch encoded after a failure.
-        let encodeContact = contactMode == .always || (contactMode == .afterFailure && hasFailed)
+        // left out; they join in from the first batch encoded after a failure (coupled to the
+        // air, from its first checkpoint after one).
+        let encodeContact = contactMode == .always || (contactMode == .afterFailure && encodesAsFailed)
 
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
-        if uniforms.debrisLoading != 0, hasFailed, let fluid, let area = fluid.debrisArea {
+        if uniforms.debrisLoading != 0, encodesAsFailed, let fluid, let area = fluid.debrisArea {
             encoder.setComputePipelineState(debrisAreaPipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(flagBuffer, offset: 0, index: 1)

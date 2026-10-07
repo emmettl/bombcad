@@ -289,7 +289,8 @@ the two sides of a face disagreed on whether it was a wall.
 
 When a deformable structure is present, the air is frozen (its sweeps are skipped) once either
 no cell is more than 2 kPa from ambient pressure, or five acoustic crossing times of the domain
-have passed. The structure then advances alone at its own time step. The second condition
+have passed, as checked every 64 steps (so that when it happens depends only on the step count,
+not on how the steps were batched). The structure then advances alone at its own time step. The second condition
 exists because a collapsing structure keeps disturbing the air near it through the moving solid
 mask, so the pressure test alone may never be met. The threshold is not lower because the
 winds left behind by a blast die away slowly: a second after a 50 kg charge, some cells were

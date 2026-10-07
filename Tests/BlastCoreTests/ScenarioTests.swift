@@ -60,7 +60,8 @@ struct ScenarioTests {
 
         solver.advance(steps: 10)
         for history in solver.gaugeHistories {
-            #expect(history.count == 10)
+            // Before each step, and the state the steps end in.
+            #expect(history.count == 11)
             #expect(history.first?.time == 0)
             #expect(zip(history, history.dropFirst()).allSatisfy { $0.time < $1.time })
         }

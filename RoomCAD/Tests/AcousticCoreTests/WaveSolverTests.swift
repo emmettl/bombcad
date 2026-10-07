@@ -111,11 +111,15 @@ struct WaveSolverTests {
             source: [0.2, 1.5, 1.25], receivers: [([3.8, 1.5, 1.25], .omni)], steps: 16_384, stop: { false })
         let signal = try #require(result)[0]
         let c = Atmosphere.standard.soundSpeed
-        let mode = c / 8
-        let rate = 1 / solver.timeStep
-        let band = RealFFT.zeroPhaseFilter(signal.map { Float($0) }, sampleRate: rate) {
-            exp(-pow(($0 - mode) / 5, 2))
-        }
+        let slope = decayRate(signal.map { Float($0) }, sampleRate: 1 / solver.timeStep, mode: c / 8)
+        let expected = axialDecayRate(impedance: solver.impedance(.west), length: 4)
+        #expect(abs(slope / expected - 1) < 0.1, "\(slope) dB/s against \(expected) dB/s")
+    }
+
+    /// Decay in dB/s of the mode at `mode` Hz from 50 to 350 ms, by a line fitted to its energy in windows
+    /// one period long.
+    private func decayRate(_ signal: [Float], sampleRate rate: Double, mode: Double) -> Double {
+        let band = RealFFT.zeroPhaseFilter(signal, sampleRate: rate) { exp(-pow(($0 - mode) / 5, 2)) }
         let window = Int(rate / mode)
         var points: [(Double, Double)] = []
         var start = Int(0.05 * rate)
@@ -126,14 +130,78 @@ struct WaveSolverTests {
         let n = Double(points.count)
         let sx = points.reduce(0) { $0 + $1.0 }
         let sy = points.reduce(0) { $0 + $1.1 }
-        let slope =
-            (n * points.reduce(0) { $0 + $1.0 * $1.1 } - sx * sy)
+        return
+            -(n * points.reduce(0) { $0 + $1.0 * $1.1 } - sx * sy)
             / (n * points.reduce(0) { $0 + $1.0 * $1.0 } - sx * sx)
-        // Normal incidence: the reflection coefficient of the solver's impedance, twice per round trip.
-        let xi = solver.impedance(.west)
+    }
+
+    /// Decay in dB/s of an axial mode between two walls `length` apart with normalized impedance ξ: the
+    /// normal-incidence reflection coefficient, twice per round trip.
+    private func axialDecayRate(impedance xi: Double, length: Double) -> Double {
         let reflection = (xi - 1) / (xi + 1)
-        let expected = -20 * log10(reflection * reflection) / (2 * 4 / c)
-        #expect(abs(-slope / expected - 1) < 0.1, "\(-slope) dB/s against \(expected) dB/s")
+        return -20 * log10(reflection * reflection) / (2 * length / Atmosphere.standard.soundSpeed)
+    }
+
+    @Test("Walls take each octave band's own absorption, and bands with the same impedances share a run")
+    func bandGroups() throws {
+        let plaster = WaveSolver(
+            room: ShoeboxRoom(size: [4, 3, 2.5], material: .uniform(0.2, name: "Plaster")),
+            sampleRate: 48_000,
+            topFrequency: 300, atmosphere: .standard)
+        // Up to the 500 Hz band, whose transition starts at 250 Hz.
+        #expect(plaster.bandGroups == [[0, 1, 2, 3]])
+
+        var room = ShoeboxRoom(size: [4, 2.2, 1.8], material: .rigid)
+        let absorber = SurfaceMaterial(
+            name: "Panel", absorption: [0.2, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6], reference: "Test")
+        room.west = absorber
+        room.east = absorber
+        let solver = WaveSolver(room: room, sampleRate: 48_000, topFrequency: 200, atmosphere: .standard)
+        #expect(solver.bandGroups == [[0], [1, 2]])
+        // The first axial mode lies in the 63 Hz band and the third in the 125 Hz band; nothing else is
+        // within 25 Hz of either on the y and z centre lines.
+        let fftLength = 1 << 18
+        let result = solver.responses(
+            source: [0.2, 1.1, 0.9], receivers: [([3.8, 1.1, 0.9], .omni)], frames: 24_000,
+            fftLength: fftLength, weight: { OctaveBands.rise($0, crossover: 20) }, stop: { false })
+        let signal = try #require(result)[0]
+        let c = Atmosphere.standard.soundSpeed
+        for (band, mode) in [(0, c / 8), (1, 3 * c / 8)] {
+            var single = solver
+            single.impedanceBands = [band]
+            let expected = axialDecayRate(impedance: single.impedance(.west), length: 4)
+            let slope = decayRate(signal, sampleRate: 48_000, mode: mode)
+            #expect(abs(slope / expected - 1) < 0.1, "\(mode) Hz: \(slope) dB/s against \(expected) dB/s")
+        }
+    }
+
+    @Test(
+        "The GPU solver matches the CPU solver in a box and in a floor plan with an opening",
+        .enabled(if: MetalWaveSolver.shared != nil))
+    func gpuMatchesCPU() throws {
+        var box = ShoeboxRoom(size: [3.2, 2.6, 2.4], material: .uniform(0.1, name: "Plaster"))
+        box.floor = .uniform(0.4, name: "Carpet")
+        var lShape = ShoeboxRoom(size: [6, 5, 2.5], material: .uniform(0.15, name: "Plaster"))
+        lShape.plan = .lShape([6, 5], notch: [3, 2.5], material: .uniform(0.2, name: "Wall"))
+        let door = Opening(name: "Door", surface: .south, wall: 0, centre: [1.5, 1], size: [0.9, 2])
+        let receivers: [(position: SIMD3<Double>, microphone: Microphone)] = [
+            ([2.5, 1, 1.2], .omni), ([1, 2, 1.5], Microphone(pattern: .cardioid, azimuth: 45)),
+        ]
+        for (room, openings) in [(box, []), (lShape, [door])] {
+            var solver = WaveSolver(
+                room: room, sampleRate: 48_000, topFrequency: 200, atmosphere: .standard, openings: openings)
+            #expect(solver.usesGPU)
+            let gpu = try #require(
+                solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: 2048) { false })
+            solver.engine = .cpu
+            let cpu = try #require(
+                solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: 2048) { false })
+            for (g, c) in zip(gpu, cpu) {
+                let difference = zip(g, c).reduce(0) { $0 + ($1.0 - $1.1) * ($1.0 - $1.1) }
+                // Single precision on the GPU.
+                #expect(difference < 1e-10 * c.reduce(0) { $0 + $1 * $1 })
+            }
+        }
     }
 
     @Test("Rooms too large for the budget skip the wave solver and say why; settings default to off")
@@ -143,15 +211,25 @@ struct WaveSolverTests {
             source: RoomPoint(name: "S", position: [4, 7, 2]),
             receivers: [RoomPoint(name: "R", position: [18, 7, 1.2])],
             duration: 8, lowFrequencyModel: true)
-        #expect(WavePlan(settings: church, schroeder: 59, fftLength: 1 << 19) == nil)
+        // A church fits on the GPU, with a crossover lowered to fit the budget.
+        if MetalWaveSolver.shared != nil {
+            let plan = try #require(WavePlan(settings: church, schroeder: 59, fftLength: 1 << 19))
+            #expect(plan.crossover < 177)
+        }
+        var hangar = church
+        hangar.room = ShoeboxRoom(size: [120, 80, 30], material: .uniform(0.05, name: "Steel"))
+        #expect(WavePlan(settings: hangar, schroeder: 30, fftLength: 1 << 19) == nil)
         let small = RoomResponseSettings(
             room: ShoeboxRoom(size: [5, 4, 3], material: .uniform(0.2, name: "Plaster")),
             source: RoomPoint(name: "S", position: [1, 1, 1]),
             receivers: [RoomPoint(name: "R", position: [3, 2, 1.2])],
             duration: 1, lowFrequencyModel: true)
         let plan = try #require(WavePlan(settings: small, schroeder: 200, fftLength: 1 << 16))
-        #expect(plan.crossover == 250)
-        #expect(plan.solver.cost(duration: Double(1 << 16) / 48_000) <= WavePlan.budget)
+        // Three times the Schroeder frequency, capped for the engine, within the engine's budget.
+        let gpu = plan.solver.usesGPU
+        #expect(plan.crossover <= (gpu ? 500 : 250))
+        let cost = plan.solver.cost(duration: Double(1 << 16) / 48_000) * Double(plan.solver.bandGroups.count)
+        #expect(cost <= (gpu ? WavePlan.gpuBudget : WavePlan.cpuBudget))
         #expect(
             !RoomResponseSettings(room: small.room, source: small.source, receivers: small.receivers)
                 .lowFrequencyModel)

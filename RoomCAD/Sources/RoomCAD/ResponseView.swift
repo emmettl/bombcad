@@ -123,9 +123,10 @@ struct DiagnosticsList: View {
             if let crossover = d.waveCrossover {
                 Text(
                     String(
-                        format: "Wave solver below %.0f Hz: %@ cells, %.1f s.", crossover,
-                        (d.waveCells ?? 0).formatted(),
-                        d.waveSeconds ?? 0))
+                        format: "Wave solver below %.0f Hz: %@ cells, %d %@ on the %@, %.1f s.", crossover,
+                        (d.waveCells ?? 0).formatted(), d.waveRuns ?? 1,
+                        (d.waveRuns ?? 1) == 1 ? "run" : "runs",
+                        d.waveOnGPU == true ? "GPU" : "CPU", d.waveSeconds ?? 0))
             } else if let note = d.waveNote {
                 Text("Wave solver skipped: \(note)")
             }

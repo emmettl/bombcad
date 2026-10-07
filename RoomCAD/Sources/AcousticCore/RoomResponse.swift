@@ -189,6 +189,9 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     /// The wave solver's grid cells and the time it took, if it was used.
     public var waveCells: Int?
     public var waveSeconds: Double?
+    /// Whether it ran on the GPU, and how many runs the walls' frequency-dependent absorption needed.
+    public var waveOnGPU: Bool?
+    public var waveRuns: Int?
     /// Why the wave solver was not used although asked for, if so.
     public var waveNote: String?
     /// In a room with a floor plan, the wall reflections and total reflections the image sources reached.
@@ -202,11 +205,11 @@ public struct RoomResponse: Sendable {
     public var settings: RoomResponseSettings
     public var diagnostics: RoomResponseDiagnostics
 
-    public static let generatorName = "RoomCAD hybrid model 5"
+    public static let generatorName = "RoomCAD hybrid model 6"
     /// Generators whose saved responses can still be read; only the current one is up to date.
     public static let readableGenerators: Set<String> = [
         "RoomCAD image-source model 1", "RoomCAD hybrid model 2", "RoomCAD hybrid model 3",
-        "RoomCAD hybrid model 4",
+        "RoomCAD hybrid model 4", "RoomCAD hybrid model 5",
         generatorName,
     ]
 
@@ -222,7 +225,8 @@ public struct RoomResponse: Sendable {
             + "ISO 9613-1 at each band centre, so it is underestimated above about 11 kHz.",
         "Omnidirectional point source; receivers omnidirectional or ideal first-order microphones.",
         "Optionally, below a crossover, a finite-difference wave solver replaces the geometrical model, with "
-            + "locally reacting walls of frequency-independent impedance from the low-band absorption.",
+            + "locally reacting walls of real impedance from each octave band's absorption, one run per group "
+            + "of bands with the same impedances.",
         "Arrivals after the duration are omitted. Specular reflections above the maximum order are carried "
             + "by the ray tracer as an energy envelope.",
         "Zero-phase band filters can spread small pre-echoes ahead of an arrival whose band gains differ.",
@@ -424,7 +428,7 @@ public enum RoomResponseGenerator {
         }
 
         // Below the crossover, replace the geometrical response with the wave solver's.
-        var wave: (crossover: Double, cells: Int, seconds: Double)?
+        var wave: (crossover: Double, cells: Int, seconds: Double, gpu: Bool, runs: Int)?
         var waveNote: String?
         if settings.lowFrequencyModel {
             let waveStart = Date()
@@ -452,7 +456,10 @@ public enum RoomResponseGenerator {
                         channels[index] = zip(high, low[index]).map { $0 + $1 }
                     }
                     let cells = plan.solver.cells
-                    wave = (crossover, cells.x * cells.y * cells.z, Date().timeIntervalSince(waveStart))
+                    wave = (
+                        crossover, cells.x * cells.y * cells.z, Date().timeIntervalSince(waveStart),
+                        plan.solver.usesGPU, plan.solver.bandGroups.count
+                    )
                 }
             } else {
                 waveNote = "The room is too large or the response too long for the wave solver's budget."
@@ -466,7 +473,8 @@ public enum RoomResponseGenerator {
             generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
             diffuseRays: settings.room.scatters || tracer.specularOrderLimit < Int.max
                 ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
-            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveNote: waveNote,
+            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveOnGPU: wave?.gpu, waveRuns: wave?.runs,
+            waveNote: waveNote,
             planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
 
         let metadata = ResponseMetadata(
@@ -517,8 +525,9 @@ struct WavePlan {
     let crossover: Double
     let solver: WaveSolver
 
-    /// Cell updates allowed: a few seconds on the CPU.
-    static let budget = 4e9
+    /// Cell updates allowed, counting every band group's run: a few seconds on the GPU or the CPU.
+    static let gpuBudget = 1.5e10
+    static let cpuBudget = 4e9
 
     /// Nil if even the lowest useful crossover is too much work.
     init?(settings: RoomResponseSettings, schroeder: Double?, fftLength: Int) {
@@ -529,19 +538,25 @@ struct WavePlan {
                 topFrequency: crossover * 2.squareRoot(),
                 atmosphere: settings.atmosphere, openings: settings.openings)
         }
+        func cost(_ solver: WaveSolver) -> Double {
+            solver.cost(duration: span) * Double(solver.bandGroups.count)
+        }
         if let chosen = settings.crossoverFrequency {
             crossover = chosen
             self.solver = solver(chosen)
             return
         }
-        // Twice the Schroeder frequency, where modes stop being sparse, within 80 to 250 Hz.
-        var f = min(max(2 * (schroeder ?? 125), 80), 250)
-        var candidate = solver(f)
-        // A floor plan's masked grid costs about twice as much per cell.
-        let budget = settings.room.plan == nil ? Self.budget : Self.budget / 2
+        var candidate = solver(250)
+        let gpu = candidate.usesGPU
+        // A floor plan's masked grid costs about twice as much per cell on the CPU.
+        let budget = gpu ? Self.gpuBudget : Self.cpuBudget / (settings.room.plan == nil ? 1 : 2)
+        // Three times the Schroeder frequency, where modes have become dense, within 80 to 500 Hz on the GPU
+        // (250 Hz on the CPU).
+        var f = min(max(3 * (schroeder ?? 125), 80), gpu ? 500 : 250)
+        candidate = solver(f)
         // Work grows as the fourth power of frequency; lower the crossover until it fits.
-        while candidate.cost(duration: span) > budget {
-            f *= 0.97 * pow(budget / candidate.cost(duration: span), 0.25)
+        while cost(candidate) > budget {
+            f *= 0.97 * pow(budget / cost(candidate), 0.25)
             guard f >= 60 else { return nil }
             candidate = solver(f)
         }

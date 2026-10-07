@@ -113,7 +113,7 @@ script before an archive is written.
     stays in use.
   - The result shows each channel's peak envelope in dB.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
-  - It shows arrival counts and generation time, the wave solver's crossover, grid and time, the
+  - It shows arrival counts and generation time, the wave solver's crossover, grid, runs, engine (GPU or CPU) and time, the
     Schroeder frequency, and the share of energy from 500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.
