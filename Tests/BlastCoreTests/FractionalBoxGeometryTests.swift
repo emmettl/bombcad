@@ -109,6 +109,12 @@ struct FractionalBoxGeometryTests {
     func movingVolumes() throws {
         let results = try ExperimentalRigidBoxMotionStudy.run()
         for r in results {
+            if r.integration == .adaptiveGauss {
+                #expect(try #require(r.faceAreaTimeErrorEstimate) <= #require(r.faceAreaTimeTolerance))
+            }
+            let areas = try #require(r.integratedOpenFaceAreas)
+            #expect(areas.count == 6)
+            #expect(areas.allSatisfy { $0 >= -1e-15 && $0 <= r.cellSize * r.cellSize * r.duration + 1e-15 })
             #expect(abs(r.workBalanceResidual) < 1e-8)
             #expect(abs(r.gasPressureWork - 101325 * r.sweptVolume) < 1e-8)
             if r.integration == .eventSplitGauss {

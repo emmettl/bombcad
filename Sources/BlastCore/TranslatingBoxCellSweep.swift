@@ -10,6 +10,9 @@ enum TranslatingBoxCellSweep {
         let sweptVolume: Double
         let gasWork: Double
         let bodyWork: Double
+        /// Integral of open area over time, in m² s; ordered -x,+x,-y,+y,-z,+z.
+        /// A flux or velocity is still needed to turn these into transported gas volumes.
+        let integratedOpenFaceAreas: [Double]
         let intervals: Int
         var evaluations: Int { 2 * intervals }
     }
@@ -53,11 +56,14 @@ enum TranslatingBoxCellSweep {
         var swept = 0.0
         var gasWork = 0.0
         var bodyWork = 0.0
+        var integratedOpenFaceAreas = [Double](repeating: 0, count: 6)
         for n in 0..<(times.count - 1) {
             let midpoint = (times[n] + times[n + 1]) / 2
             let weight = (times[n + 1] - times[n]) / 2
             for time in [midpoint - weight / sqrt(3.0), midpoint + weight / sqrt(3.0)] {
                 let current = try geometry(at: time)
+                let faces = current.openFacePatches(lower: lower, cellSize: h)
+                for side in 0..<6 { integratedOpenFaceAreas[side] += weight * faces[side].area }
                 for wall in current.wallPatches(lower: lower, cellSize: h) {
                     swept += weight * wall.sweptVolumeRate { _ in velocity }
                     gasWork +=
@@ -70,6 +76,7 @@ enum TranslatingBoxCellSweep {
         }
         return Result(
             volumeChange: (final - initial) * h * h * h, sweptVolume: swept,
-            gasWork: gasWork, bodyWork: bodyWork, intervals: times.count - 1)
+            gasWork: gasWork, bodyWork: bodyWork,
+            integratedOpenFaceAreas: integratedOpenFaceAreas, intervals: times.count - 1)
     }
 }

@@ -232,6 +232,7 @@ public final class ShellSolver {
     private let fibreGeometryBuffer: MTLBuffer
     private let fibreStateBuffer: MTLBuffer
     private let fibreForceBuffer: MTLBuffer
+    private let fibreLawBuffer: MTLBuffer
     private let fibreCount: Int
     /// The connection's stiffnesses per unit area, when the base has one.
     private let anchorStiffness: (normal: Float, shear: Float)?
@@ -308,7 +309,12 @@ public final class ShellSolver {
         elementPipeline = try pipeline("shellElements")
         beamPipeline = try pipeline("beamElements")
         debrisAreaPipeline = try pipeline("shellDebrisAreas")
-        nodePipeline = try pipeline("shellNodes")
+        // Keep the general connection law out of kernels for ordinary clamped/free bodies.
+        let nodeConstants = MTLFunctionConstantValues()
+        var connected = model.connectionStiffness != nil
+        nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
+        let nodeFunction = try library.makeFunction(name: "shellNodes", constantValues: nodeConstants)
+        nodePipeline = try device.makeComputePipelineState(function: nodeFunction)
         tiePipeline = try pipeline("shellTies")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 
@@ -448,11 +454,19 @@ public final class ShellSolver {
         // being clamped.
         var fibreStarts: [UInt32] = [0]
         var fibreGeometry: [SIMD4<Float>] = []
-        if let anchorage = model.baseAnchorage, model.fixedBase {
-            anchorStiffness = anchorage.stiffness(material: model.material, elementSize: model.elementSize)
-            for list in mesh.baseFibres(across: Self.fibresAcross) {
+        try model.validateAnchorages()
+        var fibreLaws: [AnchorageParameters] = []
+        if let stiffness = model.connectionStiffness {
+            anchorStiffness = stiffness
+            let lists = mesh.baseFibres(across: Self.fibresAcross) { model.connection(at: $0) != nil }
+            for (n, list) in lists.enumerated() {
                 let area = list.reduce(0) { $0 + $1.z }
                 fibreGeometry += list.map { SIMD4($0.x, $0.y, $0.z, area) }
+                if let law = model.connection(at: mesh.positions[n]) {
+                    fibreLaws += Array(
+                        repeating: AnchorageParameters(
+                            law, material: model.material, elementSize: model.elementSize), count: list.count)
+                }
                 fibreStarts.append(UInt32(fibreGeometry.count))
             }
         } else {
@@ -473,6 +487,14 @@ public final class ShellSolver {
         fibreGeometryBuffer = fibreGeometryStorage
         fibreStateBuffer = try buffer(fibreCount * 16, "shell anchor state")
         fibreForceBuffer = try buffer(fibreCount * 16, "shell anchor forces")
+        let lawStorage = try buffer(
+            max(fibreCount, 1) * MemoryLayout<AnchorageParameters>.stride, "shell connection laws")
+        fibreLaws.withUnsafeBytes { bytes in
+            if let base = bytes.baseAddress, !bytes.isEmpty {
+                lawStorage.contents().copyMemory(from: base, byteCount: bytes.count)
+            }
+        }
+        fibreLawBuffer = lawStorage
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
         let tiePairs = tieBuffer.contents().bindMemory(
@@ -566,11 +588,8 @@ public final class ShellSolver {
                     if fibreCount == 0 || starts[n + 1] == starts[n] { nodes[n].isClamped = true }
                 }
             }
-            let slack = 1e-3 * model.elementSize
             for n in nodes.indices
-            where model.supports.contains(where: {
-                all(mesh.positions[n] .>= $0.min - slack) && all(mesh.positions[n] .<= $0.max + slack)
-            }) {
+            where model.isClampedBySupport(at: mesh.positions[n]) {
                 nodes[n].isClamped = true
             }
             // A tied node's mass and inertia move with the node it is tied to.
@@ -594,7 +613,7 @@ public final class ShellSolver {
     /// The connection's state after the last step, or nil when the base is clamped or free. Its
     /// counts are of points of the footprint rather than nodes.
     public func anchorSummary() -> StructureSolver.AnchorSummary? {
-        guard let anchorStiffness, let anchorage = model.baseAnchorage, fibreCount > 0 else { return nil }
+        guard anchorStiffness != nil, fibreCount > 0 else { return nil }
         let starts = fibreStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodeCount + 1)
         let points = fibreGeometryBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
         let states = fibreStateBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
@@ -605,12 +624,18 @@ public final class ShellSolver {
         var loads: [(SIMD3<Float>, SIMD3<Float>)] = []
         mutateNodes { nodes in
             for n in 0..<nodeCount {
+                guard let anchorage = model.connection(at: mesh.positions[n]), !nodes[n].isClamped,
+                    nodes[n].flags & 384 == 0
+                else {
+                    continue
+                }
+                let stiffness = anchorage.stiffness(material: model.material, elementSize: model.elementSize)
                 for f in Int(starts[n])..<Int(starts[n + 1]) {
                     let arm = SIMD3(points[f].x, points[f].y, 0)
                     let position = mesh.positions[n] + arm
                     let force = SIMD3(forces[f].x, forces[f].y, forces[f].z)
                     let remaining = anchorage.remaining(
-                        peak: states[f].w, wear: states[f].z, normalStiffness: anchorStiffness.normal)
+                        peak: states[f].w, wear: states[f].z, normalStiffness: stiffness.normal)
                     let moved = nodes[n].displacement + nodes[n].rotation.act(arm) - arm
                     summary.nodes += 1
                     if remaining <= 0 { summary.separated += 1 }
@@ -618,6 +643,7 @@ public final class ShellSolver {
                     summary.reaction += force
                     summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(states[f].x, states[f].y)))
                     summary.maxOpening = max(summary.maxOpening, moved.z)
+                    summary.maxSettlement = max(summary.maxSettlement, -forces[f].w)
                     area += points[f].z
                     centre += points[f].z * position
                     loads.append((position, force))
@@ -629,6 +655,23 @@ public final class ShellSolver {
         centre /= area
         summary.moment = loads.reduce(.zero) { $0 + simd_cross($1.0 - centre, $1.1) }
         return summary
+    }
+
+    /// Actual bearing area of finite support footprint points, excluding held or slave nodes.
+    /// Read only while the GPU is idle.
+    public func supportBearingArea(at support: Int) -> Float {
+        guard fibreCount > 0, model.supports.indices.contains(support) else { return 0 }
+        let starts = fibreStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodeCount + 1)
+        let points = fibreGeometryBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
+        var area: Float = 0
+        mutateNodes { nodes in
+            for n in nodes.indices where !nodes[n].isClamped && nodes[n].flags & 384 == 0 {
+                if model.finiteSupportIndex(at: mesh.positions[n]) == support {
+                    for f in Int(starts[n])..<Int(starts[n + 1]) { area += points[f].z }
+                }
+            }
+        }
+        return area
     }
 
     public func node(_ index: Int) -> ShellNode {
@@ -1014,6 +1057,7 @@ public final class ShellSolver {
             encoder.setBuffer(fibreGeometryBuffer, offset: 0, index: 21)
             encoder.setBuffer(fibreStateBuffer, offset: 0, index: 22)
             encoder.setBuffer(fibreForceBuffer, offset: 0, index: 23)
+            encoder.setBuffer(fibreLawBuffer, offset: 0, index: 24)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if !mesh.ties.isEmpty {
@@ -1080,8 +1124,8 @@ public final class ShellSolver {
     private func makeUniforms(fluid: StructureSolver.FluidBinding?) -> ShellUniforms {
         var uniforms = ShellUniforms()
         uniforms.crackSlip = model.crackSlip ? 1 : 0
+        if fibreCount > 0 { uniforms.anchored = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage, fibreCount > 0 {
-            uniforms.anchored = 1
             uniforms.anchorNormalStiffness = anchorStiffness.normal
             uniforms.anchorShearStiffness = anchorStiffness.shear
             uniforms.anchorTension = anchorage.tensileStrength

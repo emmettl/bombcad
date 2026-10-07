@@ -477,6 +477,116 @@ fluxes or choose a timestep. Tiny positive states in an algebraic test do not es
 small-cell stability. Next, derive geometry-consistent face transfers and introduce a checked
 small-volume treatment before connecting fractional transport to blast coupling.
 
+Geometry-linked adjacent transfers are now implemented as a capacity-network reference.
+Contracting and expanding gas cells supply the volume constraints; each cell's outgoing
+volume is bounded by its old inventory. Positive shared face openings define the graph.
+Residual network paths can revise earlier transfers to preserve a later cell's only escape
+route, avoiding the failures of greedy routing. Initially dry cells can receive gas but cannot
+relay it in the same frozen-donor update. Disconnected paths, insufficient transit inventory
+and significant total-volume imbalance are rejected. Roundoff excess at a saturated donor
+is adjusted on both sides of a transfer, with endpoint volume residuals checked afterward.
+
+`--fractional-remap` compares a 0.01 m translation of the 0.8 m box on 0.2, 0.1 and 0.05 m
+grids. Fractions within 0.000000000001 of dry/full are canonicalised as geometric roundoff.
+Connectivity uses the maximum open area at start, midpoint and endpoint; this does not
+provide a time-integrated face capacity. The three plans contain 102, 572 and 3046 transfers.
+Mass and energy changes stay below one part in a trillion, momentum changes below
+0.00000000000001 N s, and maximum relative pressure departure below 0.000000000002.
+All donors stay within their old-volume limit; some reach it exactly on the finer grids.
+These are uniform-state remapping checks, not a blast-convergence result.
+
+Six planner tests cover moving-box geometry on all three grids, rerouting a contested exit,
+dry/blocked paths, volume imbalance and small transit cells, alongside the six gas-accounting
+tests. A 0.001 m³ transit cell cannot pass a 0.02 m³ displacement in one update, but forty
+smaller prescribed steps preserve mass, energy and uniform pressure.
+
+Automatic capacity-limited motion substeps are now implemented in the isolated CPU reference.
+The controller queries prescribed endpoint volumes and interval face connectivity, retries an
+unroutable interval by bisection, and recomputes donor inventories after each accepted step.
+Refinement depth and total substeps are bounded. It returns a complete result only on success;
+invalid geometry and volume imbalance propagate immediately. It cannot resolve disconnected
+or permanently dry relay paths simply by refining time.
+
+`--fractional-substeps` passes a 0.02 m³ displacement through transit cells of 0.004, 0.001
+and 0.00025 m³. It automatically accepts 8, 32 and 128 steps after 7, 31 and 127 rejected
+intervals, keeping every donor within its old gas inventory. Relative mass/energy changes
+remain below 0.000000000000002, momentum changes below 0.000000000000001 N s and relative
+pressure errors below 0.000000000000001. Three controller tests check automatic refinement,
+budget exhaustion and invalid geometry, with all fifteen transport/planner/controller tests
+passing. This is a capacity-controlled remap, not an acoustic stability controller or a
+physical flux update. Next, add time-integrated face apertures and physical gas fluxes,
+including small-cell acoustic stability treatment, before enabling fractional blast coupling.
+
+Time-integrated open face areas are now available for axis-aligned constant translation in
+the event-split geometry reference. Box-face/cell-face crossings partition time so that each
+open area is a quadratic polynomial within an interval; two-point Gaussian quadrature
+integrates it exactly up to floating-point geometry error. The six area integrals (m² s)
+are included in `--motion-geometry` for midpoint and event-split results. Eight midpoint samples differ from the event-split
+face integral by 4.17% of the full-face area-time on the 0.1 and 0.05 m crossing cases.
+Three analytical tests check shared-face agreement, quadratic overlap and a brief closure
+missed by endpoint/midpoint samples; all sixteen geometry tests pass.
+
+An area-time integral alone is not a transported gas volume: a numerical flux must be
+integrated with the aperture, preserving the timing of openings as states evolve. The
+capacity remapper still uses its supplied connectivity graph.
+
+The adaptive rotated-motion reference now also integrates all six open face areas.
+Its interval refinement includes the largest per-face discrepancy between coarse/fine
+Gaussian quadrature and endpoint-inclusive Simpson estimates. A separate area-time tolerance
+defaults to one part in 100 million of the full-face area-time; the report records this
+tolerance and the sum of interval error indicators. Existing separation bounds still
+investigate intervals whose quadrature could miss a brief encounter. These are numerical
+error indicators, not certified bounds or a complete grazing-event detector.
+
+Three additional tests verify an analytical rotating-box secant integral, agreement across
+a shared face, a brief closure with zero pressure (so face refinement is independent of
+force checks), and explicit failure when the refinement budget is insufficient. All nineteen
+geometry tests pass. The 48-case motion report now includes face integrals in every result;
+all six adaptive rotated cases satisfy their face-area tolerance, using 45–621 temporal
+evaluations. Next, use this geometry in a conservative physical gas-flux reference, including
+wall work and small-cell acoustic timestep control.
+
+An isolated first-order ideal-gas Euler flux reference is now implemented for stationary
+positive fractional volumes. Paired internal or periodic interfaces use the Rusanov flux,
+including pressure in momentum and enthalpy in energy, and exchange the same extensive
+packet with opposite signs. The acoustic timestep is bounded by `0.4 * volume / sum(area *
+maximum normal wave speed)` for every cell; the configurable CFL is restricted to at most
+0.5. Oversized steps are rejected before updating, and nonpositive mass/internal energy
+is rejected afterward without floors. This introduces a direct acoustic small-cell limit,
+separate from remap inventory limits; it does not eliminate small-cell stiffness.
+
+`--fractional-flux` evolves an eight-cell periodic pressure pulse for 0.5 ms. Reducing one
+cell from 0.001 to 0.00025 to 0.0000625 m³ requires 10, 35 and 138 acoustic steps.
+Relative mass and energy departures stay below 0.000000000000001, total momentum changes
+below 0.000000000000001 N s, and all gas states remain positive. These cases change the
+domain volume and measure timestep cost and budgets, not spatial convergence. Four flux
+tests cover analytical momentum/enthalpy transport, uniform moving gas on unequal volumes,
+pressure-driven conservative flow and volume-scaled timestep rejection.
+
+This remains separate from the app solver and from the moving-box remapper. Boundary wall
+loads, moving-wall work, chronological aperture/flux integration and closure/opening cells
+still need to be combined consistently. Next, establish a closed stationary-wall pressure
+budget, then couple prescribed piston motion before a freely moving rigid box.
+
+Stationary reflecting slip walls are now included in the isolated Euler flux reference.
+A mirrored normal velocity supplies the Rusanov wall traction; wall mass and total-energy
+fluxes are exactly zero. Each wall impulse is recorded opposite to the gas momentum update,
+and its acoustic rate participates in the cell timestep limit. A resting six-wall box
+preserves its gas state and recovers pressure-times-area loads. Tangential slip transfers
+no tangential momentum. The approximate traction can become tensile for strongly separating
+gas; such updates fail explicitly rather than clipping the load. This wall law is not yet
+suitable for all rarefactions or moving-piston conditions.
+
+`--fractional-walls` applies an end-cell pressure pulse in a closed eight-cell tube for
+0.5 ms. The three volume cases require 11, 38 and 141 steps, with gas-plus-wall momentum
+residuals below 0.000000000000001 N s and relative mass/energy changes below
+0.000000000000001. Reducing the end cell also reduces the initial pulse energy, so response
+differences are not a convergence result. Four wall tests cover uniform-pressure balance,
+closed-pulse impulse accounting, tangential slip, invalid geometry, excessive timesteps and
+tensile-traction rejection; the four existing flux tests also pass. Next, improve the wall
+Riemann treatment for expansion and establish prescribed-piston volume/work consistency
+before coupling freely moving bodies.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
@@ -514,9 +624,19 @@ wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars t
 within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
 resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
 [structural model](structural-model.md#base-connections). Shells and columns of beam elements
-have them too, at points across their footprint, and give the wall the same answers. Still
-open: footings, soil and foundation rotation; connections for support regions; and a measured
-case.
+have them too, at points across their footprint, and give the wall the same answers. A base
+can also stand on soil, as a Winkler bed that settles, turns and yields past its bearing
+capacity, checked against settlement, rotation and the overturning moment of a footing whose
+toe crushes the soil.
+
+The app now edits base and per-support horizontal bearing connections, including custom
+strength, opening, slip, friction, bearing capacity and stiffness. Independent raised-bearing
+reactions, lift-off, clamp precedence, imported-source refinement, save/reopen and undo are
+checked. Finite support regions select initial lower-face/footprint points and use stationary
+horizontal bearing planes; they do not model a footing's finite contact extents. See
+[structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
+and moving-component connections; bounded footings, and soil with mass, radiation damping and
+layers; and a measured connection case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2
@@ -541,14 +661,17 @@ two collapsing over several seconds.
   1. **Geometry as USD**, in its text form (`.usda`), which needs no library: the blocks and
      ground once, the structure's surface with its points sampled per frame and failed elements
      dropped, and the charge and gauges as markers. (Done: `BombCAD run --usd`, with the
-     project's view as a camera; see [Exporting a run for rendering](usd-export.md). Not yet
-     opened in Blender.)
+     project's view as a camera, and checked in Blender 5.2; see
+     [Exporting a run for rendering](usd-export.md).)
   2. **The blast as OpenVDB volumes**, one file per frame, from the overpressure the renderer
      already ray-marches (the solver's visualisation volume). Blender reads volumes only as VDB,
      so this needs either the OpenVDB library (a large C++ dependency) or a small writer of our
      own for dense float grids. The size wants watching: a medium grid is 8.4 million cells, about
      34 MB a frame before VDB's sparseness, so a few gigabytes for a 0.17 s event at 1,000 frames
      a second of simulated time.
+     (Done: `BombCAD run --vdb`, with a writer of our own, checked against OpenVDB through
+     macOS's USD; overpressure and the pressure gradient, about 14 MB a frame on the medium
+     street grid. See [Exporting a run for rendering](usd-export.md#the-air).)
 
 ## Things tried and set aside
 

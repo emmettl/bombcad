@@ -95,7 +95,7 @@ struct StructureUniforms {
     // of keeping `shearRetention` of the concrete's.
     uint crackShearStiffness;
     // Bond lost where bars have yielded (Model Code 2010): the plastic strain at the bars'
-    // ultimate strength, and the exponent b of the reduction. Zero range: no reduction.
+    // ultimate strength, and the exponent b = (2 - f_u / f_y)^2. Zero range: no reduction.
     float bondYieldRange;
     float bondYieldExponent;
 };
@@ -220,6 +220,7 @@ constant uint maxMaterials = 8;
 // Set when the pipeline is built: true for a structure of one material, which lets the compiler
 // fold the per-element lookup away.
 constant bool singleMaterial [[function_constant(0)]];
+constant bool finiteConnections [[function_constant(1)]];
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
@@ -1490,7 +1491,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             material[j][j] += ratio[j] * stress / root;
             barForce[j] = ratio[j] * stress / root * u.h * u.h;
             // Bars that have yielded hold less well (Model Code 2010, 6.1.1.3):
-            // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate.
+            // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate,
+            // b = (2 - f_u / f_y)^2.
             if (u.bondSlip != 0 && u.bondYieldRange > 0.0f && plastic[j] > 0.0f) {
                 float a = min(plastic[j] / u.bondYieldRange, 1.0f);
                 bondLeft[j] = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));
@@ -2240,11 +2242,14 @@ struct AnchorLaw {
     float cohesion;      // Pa
     float cohesionSlip;  // m of sliding over which cohesion is lost
     float friction;
+    float bearing;       // Pa the ground bears before it yields and settles; 0: without limit
+    float unused[3];     // to 48 bytes, as `AnchorageParameters`
 };
 
 AnchorLaw anchorLaw(constant StructureUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
-                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction};
+                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
+                     {0.0f, 0.0f, 0.0f}};
 }
 
 // Fraction of an anchorage's tensile strength left once it has opened by `peak`: all of it to
@@ -2261,20 +2266,31 @@ float anchorEnvelope(float peak, AnchorLaw law) {
 // The traction (shear x, shear y, normal; normal positive in tension) a point of the joint
 // carries when its side of the joint has moved by `displacement` and rises at `rise` m/s.
 // `damper` (Pa s/m) damps the bearing as contacts are. `state` is (slip x, slip y, wear, largest
-// opening so far), wear being the fraction of the strength that sliding has rubbed away; it is
-// updated.
-float3 anchorTraction(thread float4 &state, float3 displacement, float rise, float damper, AnchorLaw law) {
+// opening so far), wear being the fraction of the strength that sliding has rubbed away; and
+// `settlement` how far the ground has yielded under it (negative, down). Both are updated.
+float3 anchorTraction(thread float4 &state, thread float &settlement, float3 displacement, float rise, float damper,
+                      AnchorLaw law) {
     float2 slip = state.xy;
     float wear = state.z;
     float peak = state.w;
-    float opening = displacement.z;
+    // Opening from where the ground has settled to.
+    float opening = displacement.z - settlement;
 
     // Across the joint: a stiff bearing in compression, damped; in tension, elastic to the
     // strength, then the envelope, unloading towards the origin. Sliding wears the tension as it
     // wears the cohesion.
     float normal;
     if (opening <= 0.0f) {
-        normal = min(law.kn * opening + damper * rise, 0.0f);
+        // Ground that bears no more than `bearing` yields, and the base settles for good.
+        float bearing = law.kn * opening;
+        if (law.bearing > 0.0f && bearing < -law.bearing) {
+            settlement = displacement.z + law.bearing / law.kn;
+            bearing = -law.bearing;
+        }
+        normal = min(bearing + damper * rise, 0.0f);
+        if (law.bearing > 0.0f) {
+            normal = max(normal, -law.bearing);
+        }
     } else if (law.tension > 0.0f) {
         peak = max(peak, opening);
         float onset = law.tension / law.kn;
@@ -2303,19 +2319,20 @@ float3 anchorTraction(thread float4 &state, float3 displacement, float rise, flo
     return float3(shear, normal);
 }
 
-// A lattice node's connection to the ground: two float4 per node, (tributary area, slip x,
-// slip y, wear) and (the force the connection put on the node in the last substep, the largest
-// opening so far). The area is zero for nodes without a connection. Updates the state and
-// returns the force on the node.
-float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u) {
-    float4 stored = anchors[2 * index];
+// A lattice node's connection to the ground: three float4 per node, (tributary area, slip x,
+// slip y, wear), (the force the connection put on the node in the last substep, the largest
+// opening so far) and (the ground's settlement, unused). The area is zero for nodes without a
+// connection. Updates the state and returns the force on the node.
+float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u, AnchorLaw law) {
+    float4 stored = anchors[3 * index];
     float area = stored.x;
-    float4 state = float4(stored.yzw, anchors[2 * index + 1].w);
-    AnchorLaw law = anchorLaw(u);
+    float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
+    float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 force = -area * anchorTraction(state, float3(node.displacement), node.velocity.z, damper, law);
-    anchors[2 * index] = float4(area, state.xyz);
-    anchors[2 * index + 1] = float4(force, state.w);
+    float3 force = -area * anchorTraction(state, settlement, float3(node.displacement), node.velocity.z, damper, law);
+    anchors[3 * index] = float4(area, state.xyz);
+    anchors[3 * index + 1] = float4(force, state.w);
+    anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);
     return force;
 }
 
@@ -2340,6 +2357,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            device float4 *slips [[buffer(18)]],
                            const device float4 *slipSupport [[buffer(19)]],
                            const device float4 *barForces [[buffer(20)]],
+                           const device AnchorLaw *anchorLaws [[buffer(21)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2416,9 +2434,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (u.bondSlip != 0) {
         relaxSlip(threadIndex, tid, node.flags, slips, slipSupport, barForces, flags, cellElement, dt, u);
     }
-    bool anchoredNode = u.anchored != 0 && anchors[2 * threadIndex].x > 0.0f;
+    bool anchoredNode = finiteConnections && u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f;
     if (anchoredNode) {
-        force += anchorForce(anchors, threadIndex, node, u);
+        force += anchorForce(anchors, threadIndex, node, u, anchorLaws[threadIndex]);
     }
 
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));

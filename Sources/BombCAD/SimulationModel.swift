@@ -164,9 +164,18 @@ final class SimulationModel {
     @ObservationIgnored private var loadedRunSettings: ProjectRunSettings?
     @ObservationIgnored private var completedRunSettings: ProjectRunSettings?
     static let structureSampleInterval = 0.001
-    /// Called with the solver at each structural sample, every `structureSampleInterval` of
-    /// simulated time from time zero, while no batch is in flight.
-    @ObservationIgnored var onStructureSample: ((BlastSolver) -> Void)?
+    /// Called with the solver every `structureSampleInterval` of simulated time from time zero,
+    /// while no batch is in flight. A run with a structure stops there anyway to sample it; one
+    /// without stops there only while this is set.
+    @ObservationIgnored var onSample: ((BlastSolver) -> Void)?
+    /// How often `onSample` is called in a run without a structure, a whole number of
+    /// `structureSampleInterval`s: each sample stops the run, so the fewer the better.
+    @ObservationIgnored var airSampleInterval = structureSampleInterval
+    @ObservationIgnored private var lastSampleTime: Double?
+    private var samples: Bool { structureSummary != nil || onSample != nil }
+    private var sampleInterval: Double {
+        structureSummary != nil ? Self.structureSampleInterval : airSampleInterval
+    }
     @ObservationIgnored private var nextStructureSampleTime = structureSampleInterval
     /// The block or wall being edited, which the view outlines.
     var selection: EditSelection?
@@ -254,7 +263,13 @@ final class SimulationModel {
             errorMessage = "This Mac has no Metal device."
         }
         settledInputs = currentInputs
-        rebuild()
+        // Autosave can capture the chosen grid before retained-source sampling finishes.
+        // Resume that work when opening a new document session, before building a solver.
+        if importsNeedResampling {
+            settingsChanged()
+        } else {
+            rebuild()
+        }
     }
 
     private static func defaultDuration(for scenario: Scenario) -> Double {
@@ -282,11 +297,16 @@ final class SimulationModel {
             rebuild()
         }
         completedRunSettings = nil
-        if structureHistory.isEmpty, time == 0, let summary = structureSummary {
-            structureHistory = [
-                StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
-            ]
-            if let solver { onStructureSample?(solver) }
+        if time == 0, lastSampleTime == nil {
+            if structureHistory.isEmpty, let summary = structureSummary {
+                structureHistory = [
+                    StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
+                ]
+            }
+            if let solver, samples {
+                lastSampleTime = 0
+                onSample?(solver)
+            }
         }
         isRunning = true
         restartPacing()
@@ -744,8 +764,33 @@ final class SimulationModel {
         }
         editStructure { body in
             body.fixedBase = fixed
-            if let imported { body.supports = imported.supports(fixedBase: fixed) }
+            if let imported {
+                body.supports = imported.supports(fixedBase: fixed)
+                body.supportAnchorages = fixed && body.baseAnchorage != nil ? [body.baseAnchorage] : []
+            }
         }
+    }
+
+    func setBaseAnchorage(_ law: Anchorage?) {
+        let imported = settings.scenario.importedModels?.first {
+            $0.behavior == .deformable && $0.canRegenerate(settings.scenario.structure)
+        }
+        editStructure { body in
+            body.baseAnchorage = law
+            if imported != nil {
+                body.supportAnchorages = law == nil || !body.fixedBase ? [] : [law]
+            }
+        }
+    }
+
+    func supportBearingArea(at index: Int) -> Float? {
+        guard runtimeInputsMatch, !hasPendingGPUWork, !isRunning, let solver else { return nil }
+        return (solver.structure?.supportBearingArea(at: index) ?? 0)
+            + (solver.shells?.supportBearingArea(at: index) ?? 0)
+    }
+
+    func setSupportAnchorage(_ law: Anchorage?, at index: Int) {
+        editStructure { $0.setAnchorage(law, ofSupport: index) }
     }
 
     func addSupport() {
@@ -763,8 +808,7 @@ final class SimulationModel {
 
     func removeSupport(at index: Int) {
         editStructure { body in
-            guard body.supports.indices.contains(index) else { return }
-            body.supports.remove(at: index)
+            body.removeSupport(at: index)
         }
         selection = nil
     }
@@ -980,7 +1024,8 @@ final class SimulationModel {
         structureSummary = solver?.bodySummary()
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
-        nextStructureSampleTime = Self.structureSampleInterval
+        nextStructureSampleTime = sampleInterval
+        lastSampleTime = nil
         chargeIsBlocked = scenario.chargeIsBlocked
         time = 0
         stepCount = 0
@@ -1009,7 +1054,7 @@ final class SimulationModel {
             let wall = (ContinuousClock.now - paceOriginWall).seconds
             limit = min(duration, paceOriginTime + wall / speed.rawValue)
         }
-        if structureSummary != nil { limit = min(limit, nextStructureSampleTime) }
+        if samples { limit = min(limit, nextStructureSampleTime) }
         let remaining = limit - solver.time
         guard remaining > 1e-9 else {
             if solver.time >= duration - 1e-9 {
@@ -1077,7 +1122,7 @@ final class SimulationModel {
             isRunning = false
         }
         if (now - lastTracePublication).seconds > 0.1 || !isRunning
-            || (structureSummary != nil && time >= nextStructureSampleTime - 1e-9)
+            || (samples && time >= nextStructureSampleTime - 1e-9)
         {
             publishTraces()
         }
@@ -1105,18 +1150,19 @@ final class SimulationModel {
         guard let solver else { return }
         lastTracePublication = .now
         structureSummary = solver.bodySummary()
-        if let summary = structureSummary, !summary.hasBlownUp,
-            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9,
-            structureHistory.last?.time != solver.time * 1000
+        if samples, structureSummary?.hasBlownUp != true, lastSampleTime != solver.time,
+            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
         {
-            structureHistory.append(
-                StructureSample(
-                    id: structureHistory.count, time: solver.time * 1000,
-                    deflection: Double(summary.maxDisplacement) * 1000))
+            if let summary = structureSummary, structureHistory.last?.time != solver.time * 1000 {
+                structureHistory.append(
+                    StructureSample(
+                        id: structureHistory.count, time: solver.time * 1000,
+                        deflection: Double(summary.maxDisplacement) * 1000))
+            }
             nextStructureSampleTime =
-                (floor(solver.time / Self.structureSampleInterval + 1e-6) + 1)
-                * Self.structureSampleInterval
-            onStructureSample?(solver)
+                (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
+            lastSampleTime = solver.time
+            onSample?(solver)
         }
         if structureSummary?.hasBlownUp == true {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."

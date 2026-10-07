@@ -16,7 +16,8 @@ import Foundation
 /// rupture is judged in its own element, its strain spread along it by the slip.
 ///
 /// Where bars have yielded they hold less well: the Model Code scales the bond by
-/// Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = 2 − f_u / f_y (§6.1.1.3),
+/// Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = (2 − f_u / f_y)² (its
+/// equations 6.1-5 and 6.1-6, as quoted by Santos and Henriques, 2015),
 /// taken here with a the bars' plastic strain over that at their ultimate strength, from the
 /// mean over the elements around each node (`yieldedBondLoss`).
 ///

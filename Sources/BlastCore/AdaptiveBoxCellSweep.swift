@@ -16,6 +16,9 @@ enum AdaptiveBoxCellSweep {
         let angularImpulse: SIMD3<Double>
         let impulseErrorEstimate: Double
         let angularErrorEstimate: Double
+        let integratedOpenFaceAreas: [Double]
+        let faceAreaTimeErrorEstimate: Double
+        let faceAreaTimeTolerance: Double
     }
     private struct Interval {
         let low: Double
@@ -24,12 +27,14 @@ enum AdaptiveBoxCellSweep {
         let error: Double
         let impulseError: Double
         let angularError: Double
+        let faceError: Double
         let priority: Double
     }
     static func integrate(
         body: RigidBoxBody, velocity: SIMD3<Double>, spin: SIMD3<Double>, lower: SIMD3<Double>,
         cellSize h: Double, duration: Double, pressure: Double, volumeTolerance: Double,
-        maximumIntervals: Int = 4096, impulseTolerance: Double = 1e-8, angularTolerance: Double = 1e-8
+        maximumIntervals: Int = 4096, impulseTolerance: Double = 1e-8, angularTolerance: Double = 1e-8,
+        faceAreaTimeTolerance: Double? = nil
     ) throws -> Result {
         precondition(h.isFinite && h > 0 && duration.isFinite && duration > 0 && pressure.isFinite)
         precondition(volumeTolerance.isFinite && volumeTolerance > 0 && maximumIntervals > 0)
@@ -37,6 +42,8 @@ enum AdaptiveBoxCellSweep {
             impulseTolerance.isFinite && impulseTolerance > 0 && angularTolerance.isFinite
                 && angularTolerance > 0)
         precondition((0..<3).allSatisfy { velocity[$0].isFinite && spin[$0].isFinite && lower[$0].isFinite })
+        let faceTolerance = faceAreaTimeTolerance ?? h * h * duration * 1e-8
+        precondition(faceTolerance.isFinite && faceTolerance > 0)
         let speed = simd_length(spin)
         func pose(_ time: Double) throws -> RigidBoxBody {
             let turn =
@@ -66,6 +73,8 @@ enum AdaptiveBoxCellSweep {
                     velocity + simd_cross(spin, point - current.position)
                 }
                 let geometry = FractionalBoxGeometry(current)
+                let faces = geometry.openFacePatches(lower: lower, cellSize: h)
+                for side in 0..<6 { value[9 + side] += weight * faces[side].area }
                 occupied = occupied || geometry.solidVolumeFraction(lower: lower, cellSize: h) > 1e-14
                 for wall in geometry.wallPatches(lower: lower, cellSize: h) {
                     occupied = true
@@ -93,11 +102,14 @@ enum AdaptiveBoxCellSweep {
             let change = end - start
             let error = abs(fine[0] - change) + abs(fine[0] - coarse.value[0])
             let difference = fine - coarse.value
-            func loads(_ time: Double) throws -> SIMD16<Double> {
+            func endpointValues(_ time: Double) throws -> SIMD16<Double> {
                 evaluations += 1
                 let current = try pose(time)
                 var value = SIMD16<Double>.zero
-                for wall in FractionalBoxGeometry(current).wallPatches(lower: lower, cellSize: h) {
+                let geometry = FractionalBoxGeometry(current)
+                let faces = geometry.openFacePatches(lower: lower, cellSize: h)
+                for side in 0..<6 { value[9 + side] = faces[side].area }
+                for wall in geometry.wallPatches(lower: lower, cellSize: h) {
                     let load = wall.pressureLoad(about: current.position) { _ in pressure }
                     for axis in 0..<3 {
                         value[3 + axis] += load.force[axis]
@@ -108,7 +120,9 @@ enum AdaptiveBoxCellSweep {
             }
             // Endpoint-inclusive comparison detects a force jump at the end of an otherwise
             // occupied interval, which Gaussian nodes alone can sample on only one side.
-            let endpointEstimate = try (loads(low) + 4 * loads(middle) + loads(high)) * ((high - low) / 6)
+            let endpointEstimate =
+                try (endpointValues(low) + 4 * endpointValues(middle) + endpointValues(high))
+                * ((high - low) / 6)
             let endpointDifference = fine - endpointEstimate
             let impulseError = max(
                 simd_length(SIMD3(difference[3], difference[4], difference[5])),
@@ -116,8 +130,10 @@ enum AdaptiveBoxCellSweep {
             let angularError = max(
                 simd_length(SIMD3(difference[6], difference[7], difference[8])),
                 simd_length(SIMD3(endpointDifference[6], endpointDifference[7], endpointDifference[8])))
+            let faceError = (9..<15).map { max(abs(difference[$0]), abs(endpointDifference[$0])) }.max()!
             var priority = max(
-                error / volumeTolerance, max(impulseError / impulseTolerance, angularError / angularTolerance)
+                max(error / volumeTolerance, faceError / faceTolerance),
+                max(impulseError / impulseTolerance, angularError / angularTolerance)
             )
             if maximumSpeed > 0 && !coarse.occupied
                 && !left.occupied
@@ -131,7 +147,8 @@ enum AdaptiveBoxCellSweep {
             }
             return Interval(
                 low: low, high: high, value: fine,
-                error: error, impulseError: impulseError, angularError: angularError, priority: priority)
+                error: error, impulseError: impulseError, angularError: angularError,
+                faceError: faceError, priority: priority)
         }
         // These excursion limits reduce undersampling but do not prove that arbitrarily
         // brief grazing contacts are detected or certify force-impulse accuracy.
@@ -167,7 +184,10 @@ enum AdaptiveBoxCellSweep {
             linearImpulse: SIMD3(value[3], value[4], value[5]),
             angularImpulse: SIMD3(value[6], value[7], value[8]),
             impulseErrorEstimate: intervals.reduce(0) { $0 + $1.impulseError },
-            angularErrorEstimate: intervals.reduce(0) { $0 + $1.angularError })
+            angularErrorEstimate: intervals.reduce(0) { $0 + $1.angularError },
+            integratedOpenFaceAreas: (9..<15).map { value[$0] },
+            faceAreaTimeErrorEstimate: intervals.reduce(0) { $0 + $1.faceError },
+            faceAreaTimeTolerance: faceTolerance)
     }
 
     /// Separating-axis bound at the midpoint, inflated by maximum corner travel.

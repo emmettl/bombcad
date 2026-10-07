@@ -76,6 +76,9 @@ stiffness and strength. Deformable imports require a layout without an existing 
 use solid elements at the air cell size, and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
+**Help → Importing models** provides an offline walkthrough of scale, placement, feature-size
+warnings, material assignment, repair, and saving or reopening imported sources.
+
 Repository-only [importer sample files](Samples/Importer/README.md) cover named parts,
 STL components, units, cavities, thin features, narrow gaps, and the repair workflow.
 They are not bundled with the app.
@@ -223,8 +226,9 @@ or friction alone (see [base connections](docs/structural-model.md#base-connecti
 
 `BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
 keeps the result as a saved run, for scripts and other Macs; see
-[headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` to write the scene and the
-structure over time for rendering elsewhere ([USD export](docs/usd-export.md)).
+[headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` and `--vdb Example.volumes` to
+write the scene, the structure and the blast over time for rendering elsewhere
+([USD export](docs/usd-export.md)).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
@@ -275,6 +279,12 @@ volume changes with temporally integrated wall motion and equal/opposite pressur
 It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
 It also compares event-split integration for constant translation of axis-aligned boxes,
 recording the integration method and actual temporal evaluation count in each result.
+All results also record the six open face areas integrated over time
+(m² s). For axis-aligned constant translation, crossing events split the area into quadratic
+pieces integrated exactly by the Gaussian reference. These areas still need a gas flux to
+determine transported mass, momentum and energy. The adaptive rotated reference checks
+coarse/fine Gaussian and endpoint-inclusive estimates of each face integral, with a separate
+area-time tolerance and error indicator. These indicators are not certified error bounds.
 Rotated translation and rotation use an adaptive reference checked against endpoint volume
 changes and coarse/fine quadrature. The 48-case report includes volume tolerances and error
 indicators. This reference does not certify force impulses or detect every brief grazing event.
@@ -286,6 +296,29 @@ separation bounds to investigate intervals whose samples could miss a complete e
 work in prescribed fractional volumes. The CPU transport reference conserves extensive mass,
 momentum and energy for supplied transfers; it does not yet derive face fluxes or choose a
 stable timestep, and is separate from the air solver.
+`--fractional-remap` writes `.build/fractional-remap.json`, deriving conservative adjacent
+transfers from a translating box's fractional volumes and sampled face openings. The network
+limits outgoing volume to each donor's old gas inventory. This is remapping, not physical
+air fluxes; dry relays and insufficient transit capacity are rejected.
+`--fractional-substeps` writes `.build/fractional-substeps.json`, automatically bisecting
+prescribed motion intervals when the remap exceeds a cell's gas-volume capacity. Passing
+0.02 m³ through transit cells of 0.004, 0.001 and 0.00025 m³ takes 8, 32 and 128 steps,
+preserving mass, momentum, energy and uniform pressure to floating-point precision.
+The controller has bounded refinement and returns a complete result only on success.
+This capacity limit is separate from acoustic timestep stability; physical face fluxes still
+need integration with the moving apertures before fractional blast coupling.
+`--fractional-flux` writes `.build/fractional-flux.json`, a CPU-only periodic pressure-pulse
+study using a first-order ideal-gas Rusanov flux in stationary positive gas volumes. Each
+interface exchanges equal/opposite mass, momentum and total energy. The timestep is limited
+by each cell's volume divided by its summed face acoustic rates; oversized steps and
+nonphysical states are rejected. Smaller cells require 10, 35 and 138 steps over 0.5 ms
+in this study. Moving geometry, wall pressure work and time-varying apertures are not yet
+coupled to this flux reference.
+`--fractional-walls` writes `.build/fractional-walls.json`, replacing the periodic endpoints
+with reflecting stationary slip walls. The report includes accumulated wall impulse and
+the gas-plus-wall momentum residual; no mass or energy crosses a fixed wall. Its three
+pressure-pulse cases require 11, 38 and 141 steps over 0.5 ms. The approximate wall flux
+rejects tensile numerical traction; moving walls and piston work remain separate work.
 
 ## Headline results
 
@@ -355,7 +388,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
-| [USD export](docs/usd-export.md) | Writing a run's geometry over time as USD, for rendering in Blender and elsewhere |
+| [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |

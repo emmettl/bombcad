@@ -56,8 +56,8 @@ Write the results out in standard formats and let an existing renderer do the wo
 
 Blender's Cycles renderer uses the hardware (MetalRT) by default on M3 and newer since Blender
 4.0, and already handles materials, smoke and fire, motion blur and denoising. An exporter is days
-of work; the renderer it saves is months. BombCAD now has the first half, the geometry: see
-[Exporting a run for rendering](usd-export.md).
+of work; the renderer it saves is months. BombCAD now has both, the geometry and the volumes:
+see [Exporting a run for rendering](usd-export.md).
 
 ## Pitfalls
 

@@ -26,6 +26,8 @@ public final class USDSceneWriter {
 
     public let url: URL
     private let camera: Camera?
+    private let volumeFields: [String]
+    private var volumes: [(frame: Int, path: String)] = []
     public let frameInterval: Double
     private let scenario: Scenario
     private let playbackRate: Double
@@ -34,6 +36,7 @@ public final class USDSceneWriter {
     private var frames = 0
     private var lastQuads: [Int32]?
     private var lastMaterial: [Int32]?
+    private var lastRubble: [Bool]?
     private var lastDamage: [Float]?
     private var materials: [StructureSurface.Material] = []
     private var hasBody = false
@@ -46,7 +49,8 @@ public final class USDSceneWriter {
     ///   - frameInterval: simulated seconds between frames.
     ///   - playbackRate: frames per second when the scene is played back.
     public init(
-        url: URL, scenario: Scenario, frameInterval: Double, playbackRate: Double = 24, camera: Camera? = nil
+        url: URL, scenario: Scenario, frameInterval: Double, playbackRate: Double = 24, camera: Camera? = nil,
+        volumeFields: [String] = []
     ) throws {
         guard frameInterval > 0, frameInterval.isFinite, playbackRate > 0, playbackRate.isFinite else {
             throw CocoaError(
@@ -57,10 +61,11 @@ public final class USDSceneWriter {
         self.frameInterval = frameInterval
         self.playbackRate = playbackRate
         self.camera = camera
+        self.volumeFields = volumeFields
         parts = url.deletingLastPathComponent().appending(
             path: ".\(url.lastPathComponent).parts-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: parts, withIntermediateDirectories: false)
-        for name in ["points", "extent", "counts", "indices", "damage", "material"] {
+        for name in ["points", "extent", "counts", "indices", "damage", "material", "rubble"] {
             let file = parts.appending(path: name)
             FileManager.default.createFile(atPath: file.path, contents: nil)
             streams[name] = try FileHandle(forWritingTo: file)
@@ -79,9 +84,12 @@ public final class USDSceneWriter {
         finished = true
     }
 
-    /// Adds the next frame, `frameInterval` after the last; `surface` is nil without a body.
-    public func append(_ surface: StructureSurface?) throws {
+    /// Adds the next frame, `frameInterval` after the last; `surface` is nil without a body, and
+    /// `volume` the asset path of the frame's OpenVDB file, holding the grids named in
+    /// `volumeFields`, if it has one.
+    public func append(_ surface: StructureSurface?, volume: String? = nil) throws {
         defer { frames += 1 }
+        if let volume { volumes.append((frames, volume)) }
         guard let surface else { return }
         hasBody = true
         materials = surface.materials
@@ -127,6 +135,13 @@ public final class USDSceneWriter {
             text.append("],\n")
             try write(&text, to: "material")
             lastMaterial = surface.material
+        }
+        if surface.rubble != lastRubble {
+            text.append(frame + "[")
+            text.append(surface.rubble.map { $0 ? "true" : "false" }.joined(separator: ", "))
+            text.append("],\n")
+            try write(&text, to: "rubble")
+            lastRubble = surface.rubble
         }
         if surface.damage != lastDamage {
             text.append(frame + "[")
@@ -229,6 +244,7 @@ public final class USDSceneWriter {
                 to: &text)
         }
         if let camera { appendCamera(camera, to: &text) }
+        if !volumes.isEmpty, !volumeFields.isEmpty { appendVolume(to: &text) }
         try flush()
 
         if hasBody {
@@ -246,6 +262,9 @@ public final class USDSceneWriter {
                         int[] primvars:material (
                             interpolation = "uniform"
                         )
+                        bool[] primvars:rubble (
+                            interpolation = "uniform"
+                        )
 
                 """)
             try timeSamples("float3[] extent", "extent")
@@ -253,6 +272,7 @@ public final class USDSceneWriter {
             try timeSamples("int[] faceVertexIndices", "indices")
             try timeSamples("float[] primvars:damage", "damage")
             try timeSamples("int[] primvars:material", "material")
+            try timeSamples("bool[] primvars:rubble", "rubble")
             try timeSamples("point3f[] points", "points")
             text.append("    }\n")
         }
@@ -314,6 +334,28 @@ public final class USDSceneWriter {
         )
         text.append(colour)
         text.append("]\n        custom uniform string bombcad:label = \(quoted(label))\n    }\n\n")
+    }
+
+    /// The air: a Volume whose fields read the frames' OpenVDB files.
+    private func appendVolume(to text: inout Text) {
+        let domain = scenario.domainSize
+        text.append("    def Volume \"Blast\"\n    {\n        float3[] extent = [(0, 0, 0), ")
+        text.append(domain)
+        text.append("]\n")
+        for field in volumeFields {
+            text.append("        rel field:\(field) = </Scene/Blast/\(field)>\n")
+        }
+        for field in volumeFields {
+            text.append(
+                "\n        def OpenVDBAsset \"\(field)\"\n        {\n            token fieldName = \"\(field)\"\n"
+            )
+            text.append("            asset filePath.timeSamples = {\n")
+            for (frame, path) in volumes {
+                text.append("                \(frame): @\(path)@,\n")
+            }
+            text.append("            }\n        }\n")
+        }
+        text.append("    }\n\n")
     }
 
     /// USD cameras look down their local -Z with +Y up; the matrix's rows are the camera's axes

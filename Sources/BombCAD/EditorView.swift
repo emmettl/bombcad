@@ -182,33 +182,55 @@ struct EditorView: View {
             if !solids.isEmpty {
                 Section {
                     Toggle(
-                        "Fix nodes on the ground",
+                        "Restrain the base on the ground",
                         isOn: Binding(
                             get: { model.settings.scenario.structure?.fixedBase ?? false },
                             set: { model.setFixedBase($0) }))
                     if model.settings.scenario.structure?.fixedBase == true {
-                        Picker(
-                            "Base connection",
-                            selection: Binding(
-                                get: { BaseConnection(model.settings.scenario.structure?.baseAnchorage) },
-                                set: { choice in model.editStructure { $0.baseAnchorage = choice.anchorage } }
-                            )
-                        ) {
-                            ForEach(BaseConnection.allCases, id: \.self) { Text($0.title).tag($0) }
-                        }
+                        AnchorageEditor(
+                            title: "Base connection",
+                            law: Binding(
+                                get: { model.settings.scenario.structure?.baseAnchorage },
+                                set: { model.setBaseAnchorage($0) }))
                     }
                     ForEach(supports.indices, id: \.self) { index in
                         BoxRow(
                             title: "Support \(index + 1)", box: supportBinding(index), step: 0.125,
                             isSelected: model.selection == .support(index),
                             select: { toggle(.support(index)) }, remove: { model.removeSupport(at: index) })
+                        if model.selection == .support(index) {
+                            AnchorageEditor(
+                                title: "Support connection",
+                                law: Binding(
+                                    get: { model.settings.scenario.structure?.anchorage(ofSupport: index) },
+                                    set: { model.setSupportAnchorage($0, at: index) }))
+                            if model.settings.scenario.structure?.anchorage(ofSupport: index) != nil,
+                                let area = model.supportBearingArea(at: index)
+                            {
+                                if area > 0 {
+                                    Text(
+                                        "Connected bearing area: \(area, format: .number.precision(.fractionLength(0...4))) m²"
+                                    )
+                                    .font(.caption).foregroundStyle(.secondary)
+                                } else {
+                                    Text(
+                                        "No active bearing points in this region. Move or resize the strip, check overlapping clamps, or choose Clamped."
+                                    )
+                                    .font(.caption).foregroundStyle(.orange)
+                                }
+                            }
+                            Text(
+                                "Finite connections act on exposed lower faces of solids and lower edges of walls or vertical columns within this region. Keep the region a thin horizontal strip. It selects initial bearing points; the bearing plane extends horizontally after separation. A region on a vertical face or a horizontal shell slab needs an ideal clamp."
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     Button("Add Support", systemImage: "plus") { model.addSupport() }
                 } header: {
                     Text("Structural supports")
                 } footer: {
                     Text(
-                        "Nodes inside support regions are held still. Add Support places a strip at the base of the selected part or region; edit its corner and size to locate the restraint. The base connection ties the nodes on the ground to it: clamped, or by starter bars, a construction joint or friction alone, which can open, slide and fail."
+                        "Clamped support regions hold their nodes still and override finite connections where they overlap. The last finite region wins over earlier finite regions. Finite connections can open, slide and fail, retaining bearing and friction after separation. Add Support places a strip at the selected part’s base; select it to choose a connection. Ground restraint and support regions are independent."
                     )
                 }
             }

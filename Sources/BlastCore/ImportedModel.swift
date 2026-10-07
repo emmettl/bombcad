@@ -88,6 +88,8 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
             && body.inclinedBars.isEmpty && body.solidReinforcement.count == body.solids.count
             && body.solidReinforcement.allSatisfy { $0 == .none }
             && body.supports == supports(fixedBase: body.fixedBase)
+            && (body.supportAnchorages.isEmpty
+                || body.supportAnchorages == (body.fixedBase ? [body.baseAnchorage] : []))
     }
 }
 
@@ -116,6 +118,8 @@ extension Scenario {
                 body.elementSize = cellSize
                 body.solidReinforcement = Array(repeating: .none, count: body.solids.count)
                 body.supports = updated.supports(fixedBase: body.fixedBase)
+                body.supportAnchorages =
+                    body.fixedBase && body.baseAnchorage != nil ? [body.baseAnchorage] : []
                 guard body.materials.count <= StructureModel.maxMaterials else {
                     throw ImportedMesh.ImportError.invalid(
                         "The regenerated body exceeds the \(StructureModel.maxMaterials)-material solver limit. Reuse materials or reset part assignments before refining."
@@ -183,6 +187,7 @@ extension Scenario {
             body.elementSize = imported.preview.cellSize
             body.solidReinforcement = Array(repeating: .none, count: body.solids.count)
             body.supports = imported.supports(fixedBase: fixedBase)
+            body.supportAnchorages = fixedBase && body.baseAnchorage != nil ? [body.baseAnchorage] : []
             guard body.materials.count <= StructureModel.maxMaterials else {
                 throw ImportedMesh.ImportError.invalid(
                     "The body exceeds the \(StructureModel.maxMaterials)-material solver limit, including its default. Reuse materials or reset part assignments."

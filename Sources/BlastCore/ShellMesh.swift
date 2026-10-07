@@ -506,10 +506,11 @@ struct ShellMesh {
     /// column's, `across` × `across` over its section. The points run from face to face with the
     /// trapezoid rule's weights, so that a base rocking on its toe bears at the face, as solid
     /// elements' corner nodes do. Nodes of neither carry none.
-    func baseFibres(across: Int) -> [[SIMD4<Float>]] {
+    func baseFibres(across: Int, selecting: (SIMD3<Float>) -> Bool = { abs($0.z) < 1e-4 }) -> [[SIMD4<Float>]]
+    {
         var fibres = [[SIMD4<Float>]](repeating: [], count: positions.count)
         let intervals = Float(across - 1)
-        func onGround(_ node: UInt32) -> Bool { abs(positions[Int(node)].z) < 1e-4 }
+        func onGround(_ node: UInt32) -> Bool { selecting(positions[Int(node)]) }
         // Position from -1/2 to 1/2 and weight, summing to one, of point k.
         func point(_ k: Int) -> (offset: Float, weight: Float) {
             (Float(k) / intervals - 0.5, (k == 0 || k == across - 1 ? 0.5 : 1) / intervals)
@@ -520,7 +521,11 @@ struct ShellMesh {
             let edge = (element.axis + 1) % 3 == 2 ? element.size.y : element.size.x
             var normal = SIMD2<Float>.zero
             normal[element.axis] = 1
-            for corner in 0..<4 where onGround(element.nodes[corner]) {
+            let bottom = (0..<4).map { positions[Int(element.nodes[$0])].z }.min()!
+            for corner in 0..<4
+            where onGround(element.nodes[corner])
+                && abs(positions[Int(element.nodes[corner])].z - bottom) < 1e-4
+            {
                 for k in 0..<across {
                     let (fraction, weight) = point(k)
                     let offset: SIMD2<Float> = fraction * element.thickness * normal
@@ -530,7 +535,9 @@ struct ShellMesh {
             }
         }
         for beam in beams where beam.axis == 2 {
-            for end in 0..<2 where onGround(beam.nodes[end]) {
+            let bottom = min(positions[Int(beam.nodes[0])].z, positions[Int(beam.nodes[1])].z)
+            for end in 0..<2
+            where onGround(beam.nodes[end]) && abs(positions[Int(beam.nodes[end])].z - bottom) < 1e-4 {
                 for i in 0..<across {
                     for j in 0..<across {
                         let (u, wu) = point(i)

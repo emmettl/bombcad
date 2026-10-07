@@ -18,7 +18,7 @@ enum FractionalGasTransport {
                 mass, mass * velocity.x, mass * velocity.y, mass * velocity.z,
                 volume * pressure / (gamma - 1) + 0.5 * mass * simd_length_squared(velocity), 0, 0, 0)
         }
-        fileprivate init(volume: Double, amount: SIMD8<Double>) {
+        init(volume: Double, amount: SIMD8<Double>) {
             self.volume = volume
             self.amount = amount
         }

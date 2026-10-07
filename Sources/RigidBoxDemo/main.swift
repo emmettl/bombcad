@@ -7,6 +7,55 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--fractional-flux") || arguments.contains("--fractional-walls") {
+        let reflectingWalls = arguments.contains("--fractional-walls")
+        let results = try ExperimentalFractionalFluxStudy.run(reflectingWalls: reflectingWalls)
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? (reflectingWalls ? ".build/fractional-walls.json" : ".build/fractional-flux.json"))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Smallest volume \(r.smallestVolume) m³: \(r.steps) steps, energy change \(r.relativeEnergyChange), peak speed \(r.maximumSpeed) m/s"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--fractional-substeps") {
+        let results = try ExperimentalFractionalSubstepStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-substeps.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Transit volume \(r.transitVolume) m³: \(r.acceptedSteps) steps, \(r.rejectedIntervals) retries, pressure error \(r.maximumRelativePressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--fractional-remap") {
+        let results = try ExperimentalFractionalRemapStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-remap.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "dx \(r.cellSize): \(r.transferCount) transfers, mass change \(r.relativeMassChange), pressure error \(r.maximumRelativePressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--fractional-gas") {
         let results = try ExperimentalFractionalGasStudy.run()
         let output = URL(

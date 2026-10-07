@@ -20,6 +20,10 @@ public enum ExperimentalRigidBoxMotionStudy {
         public let bodyPressureWork: Double
         public let workBalanceResidual: Double
         public let endpointPressureWork: Double
+        /// Open face area integrated over time, in m² s (-x,+x,-y,+y,-z,+z).
+        public let integratedOpenFaceAreas: [Double]?
+        public let faceAreaTimeErrorEstimate: Double?
+        public let faceAreaTimeTolerance: Double?
     }
 
     public static func run() throws -> [Result] {
@@ -76,7 +80,9 @@ public enum ExperimentalRigidBoxMotionStudy {
                 volumeResidual: sweep.sweptVolume - sweep.volumeChange,
                 gasPressureWork: sweep.gasWork, bodyPressureWork: sweep.bodyWork,
                 workBalanceResidual: sweep.gasWork + sweep.bodyWork,
-                endpointPressureWork: pressure * sweep.volumeChange)
+                endpointPressureWork: pressure * sweep.volumeChange,
+                integratedOpenFaceAreas: sweep.integratedOpenFaceAreas,
+                faceAreaTimeErrorEstimate: nil, faceAreaTimeTolerance: nil)
         }
         if adaptive {
             let tolerance = h * h * h * 1e-9
@@ -91,7 +97,10 @@ public enum ExperimentalRigidBoxMotionStudy {
                 volumeResidual: sweep.sweptVolume - sweep.volumeChange,
                 gasPressureWork: sweep.gasWork, bodyPressureWork: sweep.bodyWork,
                 workBalanceResidual: sweep.gasWork + sweep.bodyWork,
-                endpointPressureWork: pressure * sweep.volumeChange)
+                endpointPressureWork: pressure * sweep.volumeChange,
+                integratedOpenFaceAreas: sweep.integratedOpenFaceAreas,
+                faceAreaTimeErrorEstimate: sweep.faceAreaTimeErrorEstimate,
+                faceAreaTimeTolerance: sweep.faceAreaTimeTolerance)
         }
         let initial = FractionalBoxGeometry(try body(at: 0)).solidVolumeFraction(lower: lower, cellSize: h)
         let final = FractionalBoxGeometry(try body(at: duration)).solidVolumeFraction(
@@ -100,10 +109,13 @@ public enum ExperimentalRigidBoxMotionStudy {
         var swept = 0.0
         var gasWork = 0.0
         var bodyWork = 0.0
+        var integratedOpenFaceAreas = [Double](repeating: 0, count: 6)
         let dt = duration / Double(samples)
         for n in 0..<samples {
             let current = try body(at: (Double(n) + 0.5) * dt)
             let geometry = FractionalBoxGeometry(current)
+            let faces = geometry.openFacePatches(lower: lower, cellSize: h)
+            for side in 0..<6 { integratedOpenFaceAreas[side] += dt * faces[side].area }
             func wallVelocity(_ point: SIMD3<Double>) -> SIMD3<Double> {
                 velocity + simd_cross(spin, point - current.position)
             }
@@ -120,6 +132,7 @@ public enum ExperimentalRigidBoxMotionStudy {
             kind: kind, cellSize: h, temporalSamples: samples, duration: duration,
             solidVolumeChange: change, sweptVolume: swept, volumeResidual: swept - change,
             gasPressureWork: gasWork, bodyPressureWork: bodyWork, workBalanceResidual: gasWork + bodyWork,
-            endpointPressureWork: pressure * change)
+            endpointPressureWork: pressure * change, integratedOpenFaceAreas: integratedOpenFaceAreas,
+            faceAreaTimeErrorEstimate: nil, faceAreaTimeTolerance: nil)
     }
 }
