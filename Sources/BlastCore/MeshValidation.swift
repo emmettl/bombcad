@@ -29,10 +29,17 @@ enum MeshValidation {
                 edges[edge, default: []].append(Use(face: index, direction: forward ? 1 : -1))
             }
         }
-        guard edges.values.allSatisfy({ $0.count == 2 }) else {
-            throw ImportedMesh.ImportError.invalid(
-                "The mesh has open or non-manifold edges. Export a watertight, triangulated solid; open surfaces cannot reliably block the blast."
-            )
+        let badEdges = edges.filter { $0.value.count != 2 }
+        if !badEdges.isEmpty {
+            let indices = Array(Set(badEdges.values.flatMap { $0.map(\.face) })).sorted()
+            let points = badEdges.keys.flatMap { [$0.a, $0.b] }
+            let bounds = Box(
+                min: points.reduce(SIMD3(repeating: .infinity), simd_min),
+                max: points.reduce(SIMD3(repeating: -.infinity), simd_max))
+            throw ImportedMesh.ImportError.geometry(
+                message:
+                    "The mesh has \(badEdges.count) open or non-manifold edges. Stitch open edges, remove duplicate faces, or Boolean-union touching solids in your CAD tool, then export a watertight, triangulated solid. Open surfaces cannot reliably block the blast.",
+                triangleIndices: indices, bounds: bounds)
         }
         var neighbours = Array(repeating: [(face: Int, factor: Int)](), count: triangles.count)
         for uses in edges.values {
@@ -57,9 +64,10 @@ enum MeshValidation {
                 }
             }
             guard seen.count == incident.count else {
-                throw ImportedMesh.ImportError.invalid(
-                    "The mesh has a non-manifold vertex where separate surfaces touch. Separate the solids or Boolean-union them in your CAD tool, then export a watertight mesh."
-                )
+                throw ImportedMesh.ImportError.geometry(
+                    message:
+                        "The mesh has a non-manifold vertex where separate surfaces touch. Separate the solids or Boolean-union them in your CAD tool, then export a watertight mesh.",
+                    triangleIndices: incident.sorted(), bounds: Box(min: vertex, max: vertex))
             }
         }
         var orientation = Array(repeating: 0, count: triangles.count)
@@ -188,9 +196,11 @@ enum MeshValidation {
                         let region = String(
                             format: "(%.4g, %.4g, %.4g)–(%.4g, %.4g, %.4g)",
                             low.x, low.y, low.z, high.x, high.y, high.z)
-                        throw ImportedMesh.ImportError.invalid(
-                            "Source triangles \(i + 1) and \(j + 1) intersect or touch ambiguously near \(region) in \(coordinateUnits). Boolean-union overlapping solids or repair self-intersections in your CAD tool, then export again. Separate nested shells are supported as cavities."
-                        )
+                        throw ImportedMesh.ImportError.geometry(
+                            message:
+                                "Source triangles \(i + 1) and \(j + 1) intersect or touch ambiguously near \(region) in \(coordinateUnits). Boolean-union overlapping solids or repair self-intersections in your CAD tool, then export again. Separate nested shells are supported as cavities.",
+                            triangleIndices: [i, j],
+                            bounds: Box(min: SIMD3<Float>(low), max: SIMD3<Float>(high)))
                     }
                 }
             }

@@ -20,13 +20,19 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
     }
     public enum ImportError: LocalizedError {
         case invalid(String)
+        case geometry(message: String, triangleIndices: [Int], bounds: Box)
         public var errorDescription: String? {
             switch self {
             case .invalid(let reason): reason
+            case .geometry(let message, _, _): message
             }
         }
     }
     public init(data: Data, fileExtension: String) throws {
+        try self.init(data: data, fileExtension: fileExtension, validating: true)
+    }
+    private init(data: Data, fileExtension: String, validating: Bool) throws {
+        try Task.checkCancellation()
         guard data.count <= 20_000_000 else { throw ImportError.invalid("Model exceeds the 20 MB limit.") }
         var result: [Triangle] = []
         var labels: [FaceLabel]? = nil
@@ -38,7 +44,12 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
             labels = []
             var objectName: String?
             var groupName: String?
-            for line in source.split(whereSeparator: \.isNewline) {
+            for (lineIndex, line) in source.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(
+                of: "\r", with: "\n"
+            ).split(separator: "\n", omittingEmptySubsequences: false)
+                .enumerated()
+            {
+                if lineIndex % 256 == 0 { try Task.checkCancellation() }
                 let fields = line.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
                     .split(whereSeparator: \.isWhitespace)
                 guard let first = fields.first else { continue }
@@ -55,18 +66,20 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                 } else if first == "v" {
                     guard fields.count >= 4, let x = Float(fields[1]), let y = Float(fields[2]),
                         let z = Float(fields[3])
-                    else { throw ImportError.invalid("Invalid OBJ vertex.") }
+                    else { throw ImportError.invalid("Invalid OBJ vertex at line \(lineIndex + 1).") }
                     vertices.append(SIMD3(x, y, z))
                 } else if first == "f" {
                     guard fields.count >= 4 else {
-                        throw ImportError.invalid("OBJ face needs at least three vertices.")
+                        throw ImportError.invalid(
+                            "OBJ face at line \(lineIndex + 1) needs at least three vertices.")
                     }
                     let indices = try fields.dropFirst().map { field -> Int in
                         guard let token = field.split(separator: "/").first, let raw = Int(token), raw != 0
-                        else { throw ImportError.invalid("Invalid OBJ face index.") }
+                        else { throw ImportError.invalid("Invalid OBJ face index at line \(lineIndex + 1).") }
                         let index = raw > 0 ? raw - 1 : vertices.count + raw
                         guard vertices.indices.contains(index) else {
-                            throw ImportError.invalid("OBJ face references a missing vertex.")
+                            throw ImportError.invalid(
+                                "OBJ face at line \(lineIndex + 1) references a missing vertex.")
                         }
                         return index
                     }
@@ -115,6 +128,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                         Float(bitPattern: uint(offset + 8)))
                 }
                 for n in 0..<Int(uint(80)) {
+                    if n % 256 == 0 { try Task.checkCancellation() }
                     let offset = 84 + n * 50 + 12
                     result.append(Triangle(a: point(offset), b: point(offset + 12), c: point(offset + 24)))
                 }
@@ -123,7 +137,8 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                     throw ImportError.invalid("Invalid STL file.")
                 }
                 var points: [SIMD3<Float>] = []
-                for line in source.split(whereSeparator: \.isNewline) {
+                for (lineIndex, line) in source.split(whereSeparator: \.isNewline).enumerated() {
+                    if lineIndex % 256 == 0 { try Task.checkCancellation() }
                     let fields = line.split(whereSeparator: \.isWhitespace)
                     if fields.first == "vertex" {
                         guard fields.count == 4, let x = Float(fields[1]), let y = Float(fields[2]),
@@ -143,15 +158,77 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         guard !result.isEmpty, result.count <= 100_000 else {
             throw ImportError.invalid("Models must have between 1 and 100,000 triangles.")
         }
-        for t in result {
-            guard [t.a, t.b, t.c].allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }),
-                simd_length_squared(simd_cross(t.b - t.a, t.c - t.a)) > 1e-20
-            else { throw ImportError.invalid("Model contains non-finite or degenerate triangles.") }
+        if validating {
+            for t in result {
+                guard [t.a, t.b, t.c].allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }),
+                    simd_length_squared(simd_cross(t.b - t.a, t.c - t.a)) > 1e-20
+                else { throw ImportError.invalid("Model contains non-finite or degenerate triangles.") }
+            }
         }
         triangles = result
         faceLabels = labels
-        try validateGeometry()
-        parts = try MeshParts.make(triangles, labels: labels)
+        if validating {
+            try validateGeometry()
+            parts = try MeshParts.make(triangles, labels: labels)
+        }
+    }
+    /// Invalid geometry is available only as inspection data, never as an importable mesh.
+    public struct Inspection: Sendable {
+        public var triangles: [Triangle]
+        public var validatedMesh: ImportedMesh?
+        public var issues: [InspectionIssue]
+        public var omittedTriangles: Int
+    }
+    public struct InspectionIssue: Sendable, Hashable, Identifiable {
+        public var message: String
+        public var triangleIndices: [Int]
+        public var bounds: Box?
+        public var id: Self { self }
+    }
+    public static func inspect(data: Data, fileExtension: String) throws -> Inspection {
+        var candidate = try ImportedMesh(data: data, fileExtension: fileExtension, validating: false)
+        do {
+            let bad = candidate.triangles.indices.filter { n in
+                let t = candidate.triangles[n]
+                return
+                    !([t.a, t.b, t.c].allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }
+                    && simd_length_squared(simd_cross(t.b - t.a, t.c - t.a)) > 1e-20)
+            }
+            if !bad.isEmpty {
+                let points = bad.flatMap { n in
+                    [candidate.triangles[n].a, candidate.triangles[n].b, candidate.triangles[n].c]
+                }
+                .filter { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }
+                let message =
+                    "Model contains \(bad.count) non-finite or degenerate triangles. Repair the source and export again."
+                if points.isEmpty { throw ImportError.invalid(message) }
+                throw ImportError.geometry(
+                    message: message, triangleIndices: bad,
+                    bounds: Box(
+                        min: points.reduce(SIMD3(repeating: .infinity), simd_min),
+                        max: points.reduce(SIMD3(repeating: -.infinity), simd_max)))
+            }
+            try candidate.validateGeometry()
+            candidate.parts = try MeshParts.make(candidate.triangles, labels: candidate.faceLabels)
+            return Inspection(
+                triangles: candidate.triangles, validatedMesh: candidate, issues: [], omittedTriangles: 0)
+        } catch is CancellationError { throw CancellationError() } catch {
+            let visible = candidate.triangles.filter { t in
+                [t.a, t.b, t.c].allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }
+                    && simd_length_squared(
+                        simd_cross(
+                            SIMD3<Double>(t.b) - SIMD3<Double>(t.a), SIMD3<Double>(t.c) - SIMD3<Double>(t.a)))
+                        > 0
+            }
+            var issue = InspectionIssue(message: error.localizedDescription, triangleIndices: [], bounds: nil)
+            if case ImportError.geometry(let message, let indices, let bounds) = error {
+                issue = InspectionIssue(message: message, triangleIndices: indices, bounds: bounds)
+            }
+            // Preserve indices for highlighting; omit non-finite triangles only in the renderer.
+            return Inspection(
+                triangles: candidate.triangles, validatedMesh: nil, issues: [issue],
+                omittedTriangles: candidate.triangles.count - visible.count)
+        }
     }
     private func validateGeometry(coordinateUnits: String = "source units") throws {
         try MeshValidation.validate(triangles, coordinateUnits: coordinateUnits)
@@ -184,6 +261,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         public var bounds: Box
         public var axis: Int?
         public var minimumSize: Float?
+        public var partIDs: [Int]? = nil
         public var id: Self { self }
         public var title: String {
             switch kind {
@@ -275,8 +353,12 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         }
         var diagnostics: [Diagnostic] = []
         var truncated = false
-        func add(_ kind: Diagnostic.Kind, _ region: Box, axis: Int? = nil, minimum: Float? = nil) {
-            var issue = Diagnostic(kind: kind, bounds: region, axis: axis, minimumSize: minimum)
+        func add(
+            _ kind: Diagnostic.Kind, _ region: Box, axis: Int? = nil, minimum: Float? = nil,
+            owners: [Int] = []
+        ) {
+            var issue = Diagnostic(
+                kind: kind, bounds: region, axis: axis, minimumSize: minimum, partIDs: owners)
             // Adjacent scan samples form an approximate affected region. Merge to a fixed point.
             var n = 0
             while n < diagnostics.count {
@@ -291,6 +373,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                     if let value = old.minimumSize {
                         issue.minimumSize = min(value, issue.minimumSize ?? value)
                     }
+                    issue.partIDs = Array(Set((issue.partIDs ?? []) + (old.partIDs ?? []))).sorted()
                     diagnostics.remove(at: n)
                     n = 0
                 } else {
@@ -303,7 +386,9 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         // semantics. Half-open projected edges count a diagonal once; signed events cancel tangencies.
         let orientations = try MeshValidation.orientations(triangles)
         let partIDs = trianglePartIDs
-        func intersections(axis: Int, first: Float, second: Float) throws -> (hits: [Float], owners: [Int]) {
+        func intersections(axis: Int, first: Float, second: Float) throws -> (
+            hits: [Float], owners: [Int], boundaries: [Int]
+        ) {
             let j = (axis + 1) % 3
             let k = (axis + 2) % 3
             var hits: [(position: Double, sign: Int, part: Int)] = []
@@ -381,7 +466,7 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                 }
             }
             guard active.isEmpty else { throw ImportError.invalid("Unclosed source part crossings.") }
-            return (unique, owners)
+            return (unique, owners, crossingParts)
         }
         var occupied = Set<SIMD3<Int>>()
         var thin = 0
@@ -419,7 +504,14 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                         where hits[n + 1] - hits[n] < 2 * h {
                             gaps += 1
                             add(
-                                .gap, region(hits[n], hits[n + 1]), axis: axis, minimum: hits[n + 1] - hits[n]
+                                .gap, region(hits[n], hits[n + 1]), axis: axis,
+                                minimum: hits[n + 1] - hits[n],
+                                owners: Array(
+                                    Set([
+                                        crossings.owners[(n - 1) / 2], crossings.owners[(n + 1) / 2],
+                                        crossings.boundaries[n], crossings.boundaries[n + 1],
+                                    ])
+                                ).sorted()
                             )
                         }
                     }
@@ -429,7 +521,14 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                         let b = hits[n + 1]
                         if b - a < 2 * h {
                             thin += 1
-                            add(.thin, region(a, b), axis: axis, minimum: b - a)
+                            add(
+                                .thin, region(a, b), axis: axis, minimum: b - a,
+                                owners: Array(
+                                    Set([
+                                        crossings.owners[n / 2], crossings.boundaries[n],
+                                        crossings.boundaries[n + 1],
+                                    ])
+                                ).sorted())
                         }
                         guard axis == 0 else { continue }
                         let first = max(low.x, Int(ceil(a / h - 0.5)))
@@ -501,7 +600,8 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                 missed += 1
                 add(
                     .missing,
-                    Box(min: simd_min(t.a, simd_min(t.b, t.c)), max: simd_max(t.a, simd_max(t.b, t.c))))
+                    Box(min: simd_min(t.a, simd_min(t.b, t.c)), max: simd_max(t.a, simd_max(t.b, t.c))),
+                    owners: [partIDs[index]])
             }
         }
         return Preview(

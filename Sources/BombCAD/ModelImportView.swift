@@ -1,6 +1,7 @@
 import BlastCore
 import BlastRender
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ModelImportView: View {
     let mesh: ImportedMesh
@@ -16,6 +17,9 @@ struct ModelImportView: View {
     @State private var material = StructureMaterial.reinforcedConcrete
     @State private var partMaterials: [Int: StructureMaterial] = [:]
     @State private var selectedPartID: Int?
+    @State private var selectedPartIDs: Set<Int> = []
+    @State private var isolate = false
+    @State private var colourByMaterial = false
     @State private var error: String?
     @State private var acknowledged = false
     @State private var resolution = Resolution.medium
@@ -23,6 +27,15 @@ struct ModelImportView: View {
     @State private var sourceBounds: Box?
     @State private var initialized = false
     @State private var previewModel: ImportPreviewModel
+    @State private var study = ImportResolutionStudy()
+    @State private var profiles = ImportProfileStore()
+    @State private var selectedProfile: UUID?
+    @State private var profileName = ""
+    @State private var profileMessage: String?
+    @State private var exporting = false
+    @State private var geometryExpanded = true
+    @State private var behaviorExpanded = true
+    @State private var partsExpanded = true
     init(mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel) {
         self.mesh = mesh
         self.filename = filename
@@ -40,170 +53,170 @@ struct ModelImportView: View {
     private var isPreviewCurrent: Bool { previewModel.isCurrent && previewModel.request == currentRequest }
     private var h: Float { resolution.cellSize }
     private var applyTitle: String { existing == nil ? "Import" : "Apply" }
+    private var size: SIMD3<Float>? {
+        try? ImportPlacement.size(sourceBounds: sourceBounds ?? mesh.bounds, scale: scale, yUp: yUp)
+    }
+    private var memory: ImportMemoryEstimate {
+        ImportMemoryEstimate(
+            domain: domainSize, cellSize: h, detailed: model.settings.detailedCharge,
+            refined: model.settings.sharpShocks,
+            budget: Double(model.device?.recommendedMaxWorkingSetSize ?? 8_000_000_000) * 0.7)
+    }
+    private var materialCount: Int {
+        let active = Set(preview?.boxPartIDs ?? [])
+        return Set([material] + active.compactMap { partMaterials[$0] }).count
+    }
+    private var blocker: String? {
+        if !canApply {
+            return
+                "This source is detached or has local geometry/support edits. Detach from the sidebar to keep independent edits, or undo them before applying."
+        }
+        if let placementError = previewModel.placementError {
+            return "Placement checks unavailable for the staged layout: \(placementError)"
+        }
+        if !memory.fits {
+            return
+                "This grid exceeds the available air-memory budget. Choose a coarser grid or a smaller domain."
+        }
+        if deformable && materialCount > StructureModel.maxMaterials {
+            return
+                "\(materialCount) materials exceed the solver limit of \(StructureModel.maxMaterials). Reuse a material or reset selected parts to the default."
+        }
+        if isPreviewCurrent && preview?.occupiedCells == 0 {
+            return "No occupied cells remain. Preview a finer grid or correct the source units."
+        }
+        return nil
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("\(existing == nil ? "Import" : "Update") \(filename)").font(.title2)
-            ScrollView {
-                Form {
-                    Section("Geometry") {
-                        Text(
-                            "OBJ polygons must be triangulated or convex. Texture and visual material files are ignored."
-                        ).font(.caption)
-                        Text(
-                            "Nested shells are treated as cavities. Boolean-union contained solid parts before export if they should fill material."
-                        ).font(.caption)
-                        Picker("Source units", selection: $scale) {
-                            Text("Metres").tag(Float(1.0))
-                            Text("Centimetres").tag(Float(0.01))
-                            Text("Millimetres").tag(Float(0.001))
-                            Text("Feet").tag(Float(0.3048))
-                            Text("Inches").tag(Float(0.0254))
-                        }
-                        Toggle("Y is the source up axis", isOn: $yUp)
-                        ForEach(0..<3, id: \.self) { axis in
-                            TextField(
-                                "Corner \(["X", "Y", "Z"][axis]) (m)",
-                                value: Binding(get: { corner[axis] }, set: { corner[axis] = $0 }),
-                                format: .number.precision(.fractionLength(0...4)))
-                        }
-                        Text("The model’s lowest corner is placed here. Simulation Z points upward.").font(
-                            .caption)
-                        HStack {
-                            Button("Centre horizontally") { place(.center) }
-                            Button("Place on ground") { place(.ground) }
-                            Button("Expand domain to fit") { place(.expand) }
-                        }.controlSize(.small)
-                        Text(
-                            "Domain: \(domainSize.x, format:.number.precision(.fractionLength(0...4))) × \(domainSize.y, format:.number.precision(.fractionLength(0...4))) × \(domainSize.z, format:.number.precision(.fractionLength(0...4))) m"
-                        ).font(.caption)
-                        if domainSize != model.settings.scenario.domainSize {
-                            Text(
-                                "Domain expansion is pending until \(applyTitle); existing geometry stays inside the domain."
-                            ).font(.caption).foregroundStyle(.orange)
-                            Button("Undo domain expansion") {
-                                domainSize = model.settings.scenario.domainSize
+            HStack {
+                Text("\(existing == nil ? "Import" : "Update") \(filename)").font(.title2)
+                Spacer()
+                Button("Export import report…") { exporting = true }.disabled(!isPreviewCurrent)
+            }
+            HStack(alignment: .top, spacing: 16) {
+                ScrollView {
+                    Form {
+                        Section {
+                            DisclosureGroup("Units & placement", isExpanded: $geometryExpanded) {
+                                geometryControls
                             }
                         }
-                    }
-                    Section("Behavior") {
-                        Toggle("Deformable solid", isOn: $deformable).disabled(
-                            existing != nil
-                                || model.settings.scenario.structure != nil
-                                    && existing?.behavior != .deformable
-                        )
-                        if model.settings.scenario.structure != nil && existing?.behavior != .deformable {
-                            Text(
-                                "A deformable structure already exists. Import into an empty layout to create a new deformable body."
-                            ).font(.caption)
-                        }
-                        if existing != nil {
-                            Text("The retained model keeps its rigid or deformable behavior.").font(.caption)
-                        }
-                        if deformable {
-                            Picker("Material preset", selection: $material) {
-                                ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
-                                if !StructureMaterial.presets.contains(material) {
-                                    Text("Custom: \(material.name)").tag(material)
-                                }
+                        Section {
+                            DisclosureGroup("Behavior & default material", isExpanded: $behaviorExpanded) {
+                                behaviorControls
                             }
-                            MaterialEditor(material: $material)
-                            Toggle("Fix nodes at the model’s base", isOn: $fixedBase)
-                            Text(
-                                "Uses solid elements at the selected air cell size, with no reinforcement. Support and connection assumptions need review before running."
-                            ).font(.caption)
-                        } else {
-                            Text(
-                                "Rigid geometry reflects the blast and does not deform. Structural material properties have no effect on rigid obstacles."
-                            ).font(.caption)
                         }
+                        Section {
+                            DisclosureGroup("Parts (\(mesh.parts.count))", isExpanded: $partsExpanded) {
+                                ImportPartsView(
+                                    parts: mesh.parts, preview: preview, previewIsCurrent: isPreviewCurrent,
+                                    deformable: deformable, defaultMaterial: material, editable: canApply,
+                                    focusedID: $selectedPartID, selectedIDs: $selectedPartIDs,
+                                    assignments: $partMaterials,
+                                    isolate: $isolate, colourByMaterial: $colourByMaterial)
+                            }
+                        }
+                        Section { DisclosureGroup("Reusable import profiles") { profileControls } }
+                    }.formStyle(.grouped)
+                }.frame(width: 365)
+                VStack(alignment: .leading, spacing: 8) {
+                    if let size {
+                        Text(
+                            "Model size: \(size.x, format: .number.precision(.fractionLength(0...4))) × \(size.y, format: .number.precision(.fractionLength(0...4))) × \(size.z, format: .number.precision(.fractionLength(0...4))) m"
+                        ).font(.headline)
                     }
-                    Section("Parts (\(mesh.parts.count))") {
-                        ImportPartsView(
-                            parts: mesh.parts, preview: preview, previewIsCurrent: isPreviewCurrent,
-                            deformable: deformable, defaultMaterial: material, editable: canApply,
-                            selectedID: $selectedPartID, assignments: $partMaterials)
-                    }
-                    Section("Simulation preview") {
+                    HStack {
                         Picker("Grid", selection: $resolution) {
                             ForEach(Resolution.allCases) { Text($0.title).tag($0) }
-                        }
+                        }.frame(maxWidth: 240)
+                        Button(study.isRunning ? "Stop comparison" : "Compare grids") {
+                            if study.isRunning {
+                                study.cancel()
+                            } else if let mesh = previewModel.transformedMesh, let preview, isPreviewCurrent {
+                                study.compare(mesh: mesh, baseline: preview, domain: domainSize)
+                            }
+                        }.disabled(!isPreviewCurrent)
+                    }
+                    Text(memory.description + (memory.fits ? "" : " · exceeds budget")).font(.caption)
+                        .foregroundStyle(memory.fits ? Color.secondary : .red)
+                    Text(
+                        "Apply uses this air grid for the whole layout and regenerates other attached imports."
+                    ).font(.caption).foregroundStyle(.secondary)
+                    if busy {
+                        ProgressView("Updating preview…")
+                    } else if isPreviewCurrent, let preview {
                         Text(
-                            "Applying uses this air grid for the layout. Source meshes are retained and regenerated on grid changes. Finer grids cost more memory and simulation time."
+                            "Preview up to date · \(preview.occupiedCells) occupied cells · \(preview.boxes.count) regions"
                         ).font(.caption)
-                        Text(
-                            "Air cells: \(h, format:.number.precision(.fractionLength(0...4))) m · \(mesh.triangles.count) triangles"
-                        )
-                        if busy {
-                            ProgressView("Updating preview…")
-                        } else if isPreviewCurrent {
-                            Label("Preview up to date", systemImage: "checkmark.circle").foregroundStyle(
-                                .secondary)
-                        }
-                        Text(
-                            "Preview updates automatically after a brief pause. \(applyTitle) changes the simulation."
-                        ).font(.caption).foregroundStyle(.secondary)
-                        if !canApply {
-                            Text(
-                                "This source is detached or the structure has local edits. The preview samples the retained source; local geometry edits are not shown or overwritten. Applying is disabled."
-                            ).foregroundStyle(.orange)
-                        }
-                        if let message = error ?? previewModel.error {
-                            Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
-                            if previewModel.error != nil {
-                                Button("Retry preview") { schedulePreview(immediately: true) }
-                            }
-                        }
-                        if let preview {
-                            Text("\(preview.occupiedCells) occupied cells · \(preview.boxes.count) regions")
-                            Text(
-                                "Dimensions: \(preview.bounds.size.x, format:.number.precision(.fractionLength(0...4))) × \(preview.bounds.size.y, format:.number.precision(.fractionLength(0...4))) × \(preview.bounds.size.z, format:.number.precision(.fractionLength(0...4))) m"
-                            )
-                            if !isPreviewCurrent {
-                                Text(
-                                    "Showing the previous preview; it does not represent your latest settings."
-                                ).font(.caption).foregroundStyle(.orange)
-                            }
-                            if let transformedMesh = previewModel.transformedMesh {
-                                ImportComparisonView(
-                                    mesh: transformedMesh, preview: preview,
-                                    placement: previewModel.placementReport, selectedPartID: selectedPartID,
-                                    canRefine: resolution != .fine,
-                                    refine: { previewFiner() }
-                                )
-                                .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
-                            }
-                            ForEach(preview.warnings, id: \.self) { warning in
-                                Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(
-                                    .orange)
-                            }
-                            if let placement = previewModel.placementReport {
-                                ForEach(placement.warnings, id: \.self) {
-                                    Text($0).font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                            Toggle("I have reviewed the geometry and placement warnings", isOn: $acknowledged)
-                                .disabled(
-                                    !isPreviewCurrent)
+                    }
+                    if let message = error ?? previewModel.error {
+                        Label(message, systemImage: "exclamationmark.triangle").font(.caption)
+                            .foregroundStyle(.red)
+                        if previewModel.error != nil {
+                            Button("Retry preview") { schedulePreview(immediately: true) }
                         }
                     }
-                }.formStyle(.grouped)
+                    if let preview, let transformedMesh = previewModel.transformedMesh {
+                        if !isPreviewCurrent {
+                            Text("Previous preview; latest settings are not shown yet.").font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        ImportComparisonView(
+                            mesh: transformedMesh, preview: preview, placement: previewModel.placementReport,
+                            selectedPartID: selectedPartID, selectedPartIDs: selectedPartIDs,
+                            isolate: isolate,
+                            colourByMaterial: colourByMaterial && deformable, defaultMaterial: material,
+                            partMaterials: partMaterials,
+                            comparisons: study.rows, comparing: study.isRunning, domain: domainSize,
+                            detailed: model.settings.detailedCharge, refined: model.settings.sharpShocks,
+                            memoryBudget: memory.budget,
+                            chooseGrid: { value in
+                                if let r = Resolution.allCases.first(where: { $0.cellSize == value }) {
+                                    resolution = r
+                                }
+                            },
+                            canRefine: resolution != .fine, refine: { previewFiner() }
+                        )
+                        .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
+                    } else {
+                        ContentUnavailableView(
+                            "Preview unavailable", systemImage: "cube.transparent",
+                            description: Text(
+                                "Check source units and placement. Use Expand domain to fit if the model lies outside the domain."
+                            )
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+            Divider()
+            if let blocker { Text(blocker).font(.caption).foregroundStyle(.red) }
             HStack {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Toggle("I reviewed the geometry and placement warnings", isOn: $acknowledged).disabled(
+                    !isPreviewCurrent
+                ).font(.caption)
                 Spacer()
                 Button(applyTitle) { commit() }.disabled(
-                    !isPreviewCurrent || preview?.occupiedCells == 0 || !acknowledged || busy || !canApply
+                    !isPreviewCurrent || (preview?.occupiedCells ?? 0) == 0 || !acknowledged || busy
+                        || blocker != nil
                 )
                 .keyboardShortcut(.defaultAction)
             }
-        }.padding(20).frame(width: 760, height: 820)
-            .onChange(of: scale) { schedulePreview() }
-            .onChange(of: yUp) { schedulePreview() }
-            .onChange(of: corner) { schedulePreview() }
+        }.padding(20).frame(width: 1120, height: 780)
+            .onChange(of: scale) { schedulePreview() }.onChange(of: yUp) { schedulePreview() }
+            .onChange(of: corner) { schedulePreview() }.onChange(of: resolution) { schedulePreview() }
+            .onChange(of: domainSize) { schedulePreview() }.onChange(of: deformable) { schedulePreview() }
+            .onChange(of: fixedBase) { schedulePreview() }.onChange(of: model.settings.scenario) {
+                schedulePreview()
+            }
             .onAppear {
                 sourceBounds = mesh.bounds
                 domainSize = model.settings.scenario.domainSize
                 resolution = model.settings.resolution
+                profileName = String(
+                    URL(fileURLWithPath: filename).deletingPathExtension().lastPathComponent.prefix(80))
                 if let existing {
                     scale = existing.scale
                     yUp = existing.yUp
@@ -218,17 +231,181 @@ struct ModelImportView: View {
                 initialized = true
                 schedulePreview()
             }
-            .onChange(of: resolution) { schedulePreview() }
-            .onChange(of: domainSize) { schedulePreview() }
-            .onChange(of: deformable) { schedulePreview() }
-            .onChange(of: fixedBase) { schedulePreview() }
-            .onChange(of: model.settings.scenario) { schedulePreview() }
-            .onDisappear { previewModel.cancel() }
+            .onDisappear {
+                previewModel.cancel()
+                study.cancel()
+            }
+            .fileExporter(
+                isPresented: $exporting, document: ImportReportDocument(text: report),
+                contentType: .plainText,
+                defaultFilename: "\(filename)-import.txt"
+            ) { result in
+                if case .failure(let error) = result { self.error = error.localizedDescription }
+            }
+    }
+    @ViewBuilder private var geometryControls: some View {
+        Text(
+            "Nested shells describe cavities. OBJ polygons must be triangulated or convex; visual material files are ignored."
+        ).font(.caption)
+        Picker("Source units", selection: $scale) {
+            Text("Metres").tag(Float(1))
+            Text("Centimetres").tag(Float(0.01))
+            Text("Millimetres").tag(Float(0.001))
+            Text("Feet").tag(Float(0.3048))
+            Text("Inches").tag(Float(0.0254))
+            if ![Float(1), 0.01, 0.001, 0.3048, 0.0254].contains(scale) {
+                Text("Custom scale \(scale)").tag(scale)
+            }
+        }
+        Toggle("Y is the source up axis", isOn: $yUp)
+        if let size {
+            let longest = max(size.x, max(size.y, size.z))
+            if longest < h * 2 {
+                Text(
+                    "The entire model is smaller than two air cells. Check source units; a small intended model may need a finer grid."
+                ).font(.caption).foregroundStyle(.orange)
+            } else if longest > max(domainSize.x, max(domainSize.y, domainSize.z)) * 4 {
+                Text(
+                    "This export is much larger than the domain. Check its units before expanding the domain."
+                ).font(.caption).foregroundStyle(.orange)
+            }
+            if longest < h * 2 || longest > max(domainSize.x, max(domainSize.y, domainSize.z)) * 4 {
+                HStack {
+                    Button("Try metres") { scale = 1 }
+                    Button("Try millimetres") { scale = 0.001 }
+                }.controlSize(.small)
+                Text("Unit corrections are your choice; they are never applied automatically.").font(.caption)
+            }
+        }
+        ForEach(0..<3, id: \.self) { axis in
+            TextField(
+                "Corner \(["X","Y","Z"][axis]) (m)",
+                value: Binding(get: { corner[axis] }, set: { corner[axis] = $0 }),
+                format: .number.precision(.fractionLength(0...4)))
+        }
+        Text("The lowest corner is placed here; simulation Z points upward.").font(.caption)
+        HStack {
+            Button("Centre") { place(.center) }
+            Button("On ground") { place(.ground) }
+        }.controlSize(.small)
+        Button("Expand domain to fit") { place(.expand) }.controlSize(.small)
+        Text(
+            "Domain: \(domainSize.x, format: .number.precision(.fractionLength(0...3))) × \(domainSize.y, format: .number.precision(.fractionLength(0...3))) × \(domainSize.z, format: .number.precision(.fractionLength(0...3))) m"
+        ).font(.caption)
+        if domainSize != model.settings.scenario.domainSize {
+            Text("Expansion is staged until \(applyTitle).").font(.caption).foregroundStyle(.orange)
+            Button("Undo expansion") { domainSize = model.settings.scenario.domainSize }
+        }
+    }
+    @ViewBuilder private var behaviorControls: some View {
+        Toggle("Deformable solid", isOn: $deformable).disabled(
+            existing != nil || model.settings.scenario.structure != nil && existing?.behavior != .deformable)
+        if model.settings.scenario.structure != nil && existing?.behavior != .deformable {
+            Text("A structure already exists. Use an empty layout for a new deformable body.").font(.caption)
+        }
+        if deformable {
+            Picker("Default material", selection: $material) {
+                ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
+                if !StructureMaterial.presets.contains(material) {
+                    Text("Custom: \(material.name)").tag(material)
+                }
+            }
+            DisclosureGroup("Advanced default properties") { MaterialEditor(material: $material) }
+            Toggle("Fix nodes at the model’s base", isOn: $fixedBase)
+            Text(
+                "Solid elements use the air grid. Imports start without reinforcement. Review support and connection assumptions."
+            ).font(.caption)
+        } else {
+            Text("Rigid obstacles reflect the blast and do not deform. Structural materials have no effect.")
+                .font(.caption)
+        }
+    }
+    @ViewBuilder private var profileControls: some View {
+        Picker("Saved profile", selection: $selectedProfile) {
+            Text("Select a profile").tag(Optional<UUID>.none)
+            ForEach(profiles.profiles) { Text($0.name).tag(Optional($0.id)) }
+        }
+        HStack {
+            Button("Load profile") { loadProfile() }.disabled(selectedProfile == nil)
+            Button("Delete") {
+                if let selectedProfile {
+                    profiles.remove(id: selectedProfile)
+                    self.selectedProfile = nil
+                }
+            }.disabled(selectedProfile == nil)
+        }.controlSize(.small)
+        TextField("Profile name", text: $profileName)
+        Button("Save / update profile") { saveProfile() }.disabled(
+            profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        Text(
+            "Saves units, up axis, behavior, support choice, default material and overrides matched by part name. Placement and grid stay specific to this session."
+        ).font(.caption)
+        if let profileMessage { Text(profileMessage).font(.caption) }
+    }
+    private func saveProfile() {
+        do {
+            let named = Dictionary(
+                uniqueKeysWithValues: mesh.parts.compactMap { part in
+                    partMaterials[part.id].map { (part.name, $0) }
+                })
+            try profiles.save(
+                ImportProfile(
+                    name: profileName, scale: scale, yUp: yUp, deformable: deformable,
+                    fixedBase: fixedBase, material: material, namedMaterials: named))
+            selectedProfile =
+                profiles.profiles.first {
+                    $0.name.caseInsensitiveCompare(
+                        profileName.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+                }?.id
+            error = nil
+            profileMessage = "Profile saved."
+        } catch { self.error = error.localizedDescription }
+    }
+    private func loadProfile() {
+        guard let profile = profiles.profiles.first(where: { $0.id == selectedProfile }) else { return }
+        scale = profile.scale
+        yUp = profile.yUp
+        fixedBase = profile.fixedBase
+        material = profile.material
+        if existing == nil && (model.settings.scenario.structure == nil || !profile.deformable) {
+            deformable = profile.deformable
+        }
+        partMaterials = profile.assignments(for: mesh.parts)
+        profileName = profile.name
+        profileMessage =
+            "Loaded profile; matched \(partMaterials.count) of \(profile.namedMaterials.count) named overrides. Settings are staged until \(applyTitle)."
+        schedulePreview()
+    }
+    private var report: String {
+        var text =
+            "BombCAD import report\nFile: \(filename)\nScale: \(scale), Y-up: \(yUp)\nCorner (m): \(corner)\nGrid: \(h) m\n\(memory.description)\n\n"
+        for part in mesh.parts {
+            text +=
+                "Part: \(part.name) · \(partMaterials[part.id]?.name ?? "Model default: " + material.name)\n"
+        }
+        for issue in preview?.diagnostics ?? [] {
+            let names = mesh.parts.filter { (issue.partIDs ?? []).contains($0.id) }.map(\.name).joined(
+                separator: ", ")
+            text += "\n\(issue.title): \(issue.detail)\nAffected parts: \(names)\n"
+        }
+        for warning in preview?.warnings ?? [] { text += warning + "\n" }
+        for issue in previewModel.placementReport?.issues ?? [] {
+            text += "\n\(issue.title): \(issue.detail)\n"
+        }
+        if let placementError = previewModel.placementError {
+            text += "\nPlacement checks unavailable: \(placementError)\n"
+        }
+        for row in study.rows {
+            text +=
+                "\nGrid \(row.cellSize) m: \(row.preview?.occupiedCells.description ?? row.error ?? "unavailable") cells\n"
+        }
+        return text
     }
     private func schedulePreview(immediately: Bool = false) {
         guard initialized else { return }
         acknowledged = false
         error = nil
+        study.cancel(clear: true)
         previewModel.update(currentRequest, delay: immediately ? .zero : .milliseconds(350))
     }
     private func previewFiner() {
@@ -263,7 +440,7 @@ struct ModelImportView: View {
     }
     private var canApply: Bool { existing?.canRegenerate(model.settings.scenario.structure) ?? true }
     private func commit() {
-        guard let preview, canApply, isPreviewCurrent, acknowledged, !busy else { return }
+        guard let preview, canApply, isPreviewCurrent, acknowledged, !busy, blocker == nil else { return }
         do {
             let imported = ImportedModel(
                 id: existing?.id ?? UUID(), name: filename, source: mesh, scale: Float(scale), yUp: yUp,

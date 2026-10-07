@@ -10,10 +10,9 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var isImportingJSON = false
     @State private var isImporting = false
-    @State private var importMesh: ImportedMesh?
-    @State private var importName = ""
-    @State private var showImport = false
-    @State private var readingImport = false
+    @State private var importLoader = ImportFileLoader()
+    @State private var dropTargeted = false
+    @State private var sourceInspectorVisible = false
     @State private var fileError: String?
     @State private var isExportingJSON = false
 
@@ -24,6 +23,35 @@ struct ContentView: View {
             Divider()
             VStack(spacing: 0) {
                 MetalView(model: model)
+                    .dropDestination(for: URL.self) { urls, _ in
+                        guard urls.count == 1, !importLoader.isLoading, importLoader.result == nil,
+                            model.inspectedImport == nil
+                        else { return false }
+                        importLoader.load(urls[0])
+                        return true
+                    } isTargeted: {
+                        dropTargeted = $0
+                    }
+                    .overlay {
+                        if dropTargeted {
+                            RoundedRectangle(cornerRadius: 12).stroke(.blue, lineWidth: 3)
+                                .overlay {
+                                    Text("Drop an OBJ or STL model").font(.title2).padding().background(
+                                        .regularMaterial, in: .rect(cornerRadius: 8))
+                                }
+                                .padding(12).allowsHitTesting(false)
+                        }
+                    }
+                    .overlay(alignment: .top) {
+                        if importLoader.isLoading {
+                            HStack {
+                                ProgressView().controlSize(.small)
+                                Text("Reading and checking \(importLoader.filename)…")
+                                Button("Cancel checking") { importLoader.cancel() }.keyboardShortcut(
+                                    .cancelAction)
+                            }.padding(12).background(.regularMaterial, in: .rect(cornerRadius: 8)).padding(12)
+                        }
+                    }
                     .overlay(alignment: .topLeading) { StatusOverlay(model: model).padding(12) }
                     .overlay(alignment: .bottomLeading) {
                         ImportSelectionHint(model: model).padding(12).allowsHitTesting(false)
@@ -68,9 +96,11 @@ struct ContentView: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 Button("Export Layout JSON…", systemImage: "doc.text") { isExportingJSON = true }
-                Button(readingImport ? "Checking Model…" : "Import Model…", systemImage: "cube.box") {
+                Button(importLoader.isLoading ? "Checking Model…" : "Import Model…", systemImage: "cube.box")
+                {
                     isImporting = true
-                }.disabled(readingImport)
+                }.disabled(importLoader.isLoading)
+                    .help("Open one OBJ or STL model, or drop it into the viewport.")
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -108,39 +138,34 @@ struct ContentView: View {
             ]
         ) { result in
             guard case .success(let url) = result else { return }
-            readingImport = true
-            Task {
-                let outcome = await Task.detached(priority: .userInitiated) {
-                    () -> Result<ImportedMesh, Error> in
-                    Result {
-                        let accessing = url.startAccessingSecurityScopedResource()
-                        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-                        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                        guard size <= 20_000_000 else {
-                            throw ImportedMesh.ImportError.invalid("Model exceeds the 20 MB limit.")
-                        }
-                        return try ImportedMesh(data: Data(contentsOf: url), fileExtension: url.pathExtension)
-                    }
-                }.value
-                readingImport = false
-                switch outcome {
-                case .success(let mesh):
-                    importMesh = mesh
-                    importName = url.lastPathComponent
-                    showImport = true
-                case .failure(let error): fileError = error.localizedDescription
-                }
-            }
+            importLoader.load(url)
         }
+        .onChange(of: importLoader.failureID) { if let error = importLoader.error { fileError = error } }
         .sheet(
             item: Binding(
-                get: { model.inspectedImport }, set: { if $0 == nil { model.inspectedImportID = nil } })
+                get: { model.inspectedImport }, set: { if $0 == nil { model.inspectedImportID = nil } }),
+            onDismiss: { sourceInspectorVisible = false }
         ) { imported in
             ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
         }
-        .sheet(isPresented: $showImport) {
-            if let importMesh { ModelImportView(mesh: importMesh, filename: importName, model: model) }
+        .sheet(
+            item: Binding(
+                get: { model.inspectedImport == nil && !sourceInspectorVisible ? importLoader.result : nil },
+                set: { if $0 == nil { importLoader.dismissResult() } }),
+            onDismiss: { importLoader.presentationDismissed() }
+        ) { loaded in
+            if let mesh = loaded.inspection.validatedMesh {
+                ModelImportView(mesh: mesh, filename: loaded.filename, model: model)
+            } else {
+                ImportRecoveryView(filename: loaded.filename, inspection: loaded.inspection) { url in
+                    importLoader.retryAfterDismissal(url)
+                }
+            }
         }
+        .onChange(of: model.inspectedImportID) {
+            if model.inspectedImportID != nil { sourceInspectorVisible = true }
+        }
+        .onDisappear { importLoader.cancel() }
         .fileExporter(
             isPresented: $isExportingJSON, document: ScenarioDocument(scenario: model.settings.scenario),
             contentType: .json, defaultFilename: model.settings.scenario.name

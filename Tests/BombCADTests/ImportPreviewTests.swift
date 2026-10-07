@@ -112,6 +112,53 @@ struct ImportPreviewTests {
                 == true)
     }
 
+    @Test("Placement uses other imports resampled at the staged grid without mutating the live scene")
+    func stagedContext() async throws {
+        let large = try source()
+        let tiny = try large.transformed(scale: 0.1, yUp: false, corner: SIMD3(2, 0, 0))
+        struct Raw: Encodable { var triangles: [ImportedMesh.Triangle] }
+        let combined = try JSONDecoder().decode(
+            ImportedMesh.self, from: JSONEncoder().encode(Raw(triangles: large.triangles + tiny.triangles)))
+        let other = ImportedModel(
+            name: "Other", source: combined, scale: 1, yUp: false, corner: .zero, behavior: .rigid,
+            preview: try combined.preview(cellSize: 0.5, domain: SIMD3(repeating: 4)))
+        var scene = Scenario(
+            name: "Context", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(repeating: 3.5)))
+        try scene.installImport(other, material: .plainConcrete, fixedBase: false)
+        let model = ImportPreviewModel(source: large)
+        let input = ImportPreviewRequest(
+            scale: 1, yUp: false, corner: SIMD3(2, 0, 0.125), cellSize: 0.125, domain: scene.domainSize,
+            scene: scene)
+        model.update(input, delay: .zero)
+        try await waitUntil { model.isCurrent }
+        #expect(model.placementError == nil)
+        #expect(model.placementReport?.issues.contains { $0.kind == .floating } == false)
+        #expect(scene.importedModels?.first?.preview.cellSize == 0.5)
+        #expect(scene.importedModels?.first?.preview.occupiedCells == 8)
+    }
+    @Test("Unresampleable foreign edits block placement readiness but preserve a valid source preview")
+    func stagedContextFailure() async throws {
+        let mesh = try source()
+        let other = ImportedModel(
+            name: "Edited body", source: mesh, scale: 1, yUp: false, corner: .zero,
+            behavior: .deformable, preview: try mesh.preview(cellSize: 0.5, domain: SIMD3(repeating: 4)))
+        var scene = Scenario(
+            name: "Context", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(repeating: 3.5)))
+        try scene.installImport(other, material: .plainConcrete, fixedBase: false)
+        scene.structure?.openings = [Box(min: .zero, max: SIMD3(repeating: 0.5))]
+        let model = ImportPreviewModel(source: mesh)
+        model.update(
+            ImportPreviewRequest(
+                scale: 1, yUp: false, corner: SIMD3(2, 0, 0), cellSize: 0.125,
+                domain: scene.domainSize, scene: scene), delay: .zero)
+        try await waitUntil { model.isCurrent }
+        #expect(model.preview?.occupiedCells == 512)
+        #expect(model.placementReport == nil)
+        #expect(model.placementError?.contains("Edited body") == true)
+        #expect(model.error == nil)
+    }
     @Test("Closing cancels queued work and a subsequent preview can start again")
     func cancelAndRestart() async throws {
         let model = ImportPreviewModel(source: try source())

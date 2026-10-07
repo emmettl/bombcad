@@ -3,124 +3,249 @@ import SceneKit
 import SwiftUI
 import simd
 
-/// Interactive 3D inspection of source surfaces, sampled solids and spatial diagnostics.
+/// The canvas stays fixed; diagnostics and grid comparisons scroll beneath it.
 struct ImportComparisonView: View {
     let mesh: ImportedMesh
     let preview: ImportedMesh.Preview
     var placement: ImportPlacementReport? = nil
     var selectedPartID: Int? = nil
+    var selectedPartIDs: Set<Int> = []
+    var isolate = false
+    var colourByMaterial = false
+    var defaultMaterial = StructureMaterial.reinforcedConcrete
+    var partMaterials: [Int: StructureMaterial] = [:]
+    var comparisons: [ImportResolutionStudy.Row] = []
+    var comparing = false
+    var domain = SIMD3<Float>(64, 64, 32)
+    var detailed = false
+    var refined = false
+    var memoryBudget = 8_000_000_000.0
+    var chooseGrid: (Float) -> Void = { _ in }
     let canRefine: Bool
     let refine: () -> Void
     @State private var showSource = true
     @State private var showSimulation = true
     @State private var showIssues = true
     @State private var showContext = true
+    @State private var showReference = true
+    @State private var warningsForSelected = false
     @State private var selected: ImportFocus?
     @State private var resetRequest = 0
+    private var diagnostics: [ImportedMesh.Diagnostic] {
+        guard warningsForSelected, !selectedPartIDs.isEmpty else { return preview.diagnostics }
+        return preview.diagnostics.filter { !selectedPartIDs.isDisjoint(with: $0.partIDs ?? []) }
+    }
+    private var placementIssues: [ImportPlacementReport.Issue] {
+        let issues = placement?.issues ?? []
+        guard warningsForSelected, !selectedPartIDs.isEmpty, let ids = preview.boxPartIDs else {
+            return issues
+        }
+        let boxes = preview.boxes.enumerated().compactMap { n, box in
+            ids.indices.contains(n) && selectedPartIDs.contains(ids[n]) ? box : nil
+        }
+        return issues.filter { issue in
+            boxes.contains { all($0.min .<= issue.bounds.max) && all(issue.bounds.min .<= $0.max) }
+        }
+    }
+    private var palette: ImportMaterialPalette {
+        ImportMaterialPalette(parts: mesh.parts, defaultMaterial: defaultMaterial, assignments: partMaterials)
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Toggle("Source", isOn: $showSource)
                 Toggle("Simulation", isOn: $showSimulation)
-                Toggle("Affected regions", isOn: $showIssues)
-                if placement != nil {
-                    Toggle("Context", isOn: $showContext).help(
-                        "Show surrounding geometry and a ground reference.")
-                }
+                Toggle("Warnings", isOn: $showIssues)
+                if placement != nil { Toggle("Context", isOn: $showContext) }
+                Toggle("Scale grid", isOn: $showReference)
                 Spacer()
                 Button("Reset view") {
                     selected = nil
                     resetRequest += 1
                 }.controlSize(.small)
-            }.toggleStyle(.checkbox)
+            }.toggleStyle(.checkbox).font(.caption)
             ImportSceneView(
                 mesh: mesh, preview: preview, placement: placement, showSource: showSource,
-                showSimulation: showSimulation,
-                showIssues: showIssues, showContext: showContext, selected: selected,
-                selectedPartID: selectedPartID,
-                resetRequest: resetRequest
+                showSimulation: showSimulation, showIssues: showIssues, showContext: showContext,
+                selected: selected, selectedPartID: selectedPartID,
+                selectedPartIDs: selectedPartIDs, isolate: isolate, colourByMaterial: colourByMaterial,
+                defaultMaterial: defaultMaterial, partMaterials: partMaterials, showReference: showReference,
+                diagnostics: diagnostics, placementIssues: placementIssues, resetRequest: resetRequest
             )
-            .frame(height: 300).clipShape(.rect(cornerRadius: 8))
+            .frame(height: 310).clipShape(.rect(cornerRadius: 8))
             .accessibilityLabel(
-                "3D geometry comparison. Cyan source surface, blue simulation volumes, orange thin features and gaps, red potentially missing surfaces."
+                "3D source and simulation comparison. Selected parts are green; orange resolution risks and overlaps, red missing geometry or blocked charges, purple connectivity issues."
             )
             Text(
-                "Drag to orbit · scroll to zoom. Cyan: source · blue: simulation · orange: resolution/overlap risks · purple: contact/connectivity · red: missing surfaces or blocked charges."
+                "Drag to orbit · scroll to zoom. Scale grid: \(ImportReferenceGrid.step(for: preview.bounds), format: .number.precision(.fractionLength(0...3))) m spacing. Green: selected · orange: risks · red: geometry loss/charge · purple: contact."
             ).font(.caption).foregroundStyle(.secondary)
-            if !preview.diagnostics.isEmpty || preview.diagnosticsTruncated {
-                HStack {
-                    Text("Affected regions (approximate)").font(.headline)
-                    Spacer()
-                    Button("Preview finer grid", action: refine).disabled(!canRefine)
-                }
-                if !canRefine {
-                    Text(
-                        "Fine is the smallest available grid (0.125 m); highlighted features may still be unresolved."
-                    ).font(.caption).foregroundStyle(.orange)
-                }
-                if let selected {
-                    Text("Selected: \(selected.title). \(selected.detail)").font(.caption).foregroundStyle(
-                        selected.color)
-                }
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 6) {
-                        warningGroup(
-                            "Potential geometry loss",
-                            issues: preview.diagnostics.filter { $0.kind == .missing })
-                        warningGroup(
-                            "Resolution risks", issues: preview.diagnostics.filter { $0.kind != .missing })
-                    }
-                }.frame(maxHeight: 190)
-                Text(
-                    "Select a region to focus it. Highlights are approximate; compare finer grids before trusting results."
-                ).font(.caption).foregroundStyle(.secondary)
+            if isolate {
+                Text("Isolated preview · all parts will import.").font(.caption).foregroundStyle(.secondary)
             }
-            if let placement {
-                Text(
-                    "Placement checks · \(placement.componentCount) sampled component\(placement.componentCount == 1 ? "" : "s")"
-                ).font(.headline)
-                if placement.issues.isEmpty {
-                    Text("No placement issues found in the checked volumes.").font(.caption).foregroundStyle(
-                        .secondary)
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 6) {
-                            ForEach(placement.issues) { issue in
-                                focusButton(.placement(issue))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if colourByMaterial {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], alignment: .leading) {
+                            ForEach(Array(palette.materials.enumerated()), id: \.offset) { n, material in
+                                HStack {
+                                    Circle().fill(Color(nsColor: ImportMaterialPalette.color(n))).frame(
+                                        width: 10, height: 10)
+                                    Text(material.name).font(.caption)
+                                }
                             }
                         }
-                    }.frame(maxHeight: 190)
-                }
-                if placement.checksIncomplete {
-                    Text("Placement highlighting is incomplete; some checks reached their limit.").font(
-                        .caption
-                    ).foregroundStyle(.orange)
-                }
+                    }
+                    if comparing { ProgressView("Comparing all three grids…") }
+                    if !comparisons.isEmpty { comparisonRows }
+                    HStack {
+                        Text("Warnings to review").font(.headline)
+                        Spacer()
+                        Picker("Warning scope", selection: $warningsForSelected) {
+                            Text("All parts").tag(false)
+                            Text("Selected parts").tag(true)
+                        }.labelsHidden().frame(width: 140).disabled(selectedPartIDs.isEmpty)
+                    }
+                    if warningsForSelected {
+                        Text(
+                            "Geometry warnings use source part IDs; placement filtering uses overlapping sampled regions."
+                        ).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let selected {
+                        Text("Selected: \(selected.title). \(selected.detail)").font(.caption)
+                            .foregroundStyle(selected.color)
+                    }
+                    if !diagnostics.isEmpty {
+                        HStack {
+                            Text("Affected geometry (approximate)").font(.subheadline.bold())
+                            Spacer()
+                            Button("Preview finer grid", action: refine).disabled(!canRefine)
+                        }
+                        recommendation
+                        warningGroup(
+                            "Potential geometry loss", issues: diagnostics.filter { $0.kind == .missing })
+                        warningGroup("Resolution risks", issues: diagnostics.filter { $0.kind != .missing })
+                    } else {
+                        Text("No localized geometry warnings in this scope.").font(.caption)
+                    }
+                    if let placement {
+                        Text("Placement · \(placement.componentCount) sampled components").font(
+                            .subheadline.bold())
+                        if placementIssues.isEmpty {
+                            Text("No placement issues in the checked scope.").font(.caption)
+                        }
+                        ForEach(placementIssues) { focusButton(.placement($0)) }
+                        if placement.checksIncomplete {
+                            Text("Placement checks reached a limit; highlighting is incomplete.").font(
+                                .caption
+                            ).foregroundStyle(.orange)
+                        }
+                    }
+                    Text("Whole-model notes").font(.caption.bold())
+                    ForEach(preview.warnings, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
+                    ForEach(placement?.warnings ?? [], id: \.self) {
+                        Text($0).font(.caption).foregroundStyle(.secondary)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }.frame(maxHeight: .infinity)
+        }.onChange(of: preview) { focusPart() }.onChange(of: placement) { focusPart() }
+            .onChange(of: selectedPartID) { focusPart() }.onChange(of: selectedPartIDs) {
+                if selectedPartIDs.isEmpty { warningsForSelected = false }
+                focusPart()
             }
-            if let selected, case .placement = selected {
-                Text("Selected: \(selected.title). \(selected.detail)").font(.caption).foregroundStyle(
-                    selected.color)
+            .onChange(of: warningsForSelected) { selected = nil }
+            .onChange(of: isolate) {
+                if isolate { warningsForSelected = true }
+                focusPart()
             }
-        }.onChange(of: preview) { focusPart() }.onChange(of: placement) {
-            selected = nil
-            focusPart()
+            .onAppear { focusPart() }
+    }
+    @ViewBuilder private var recommendation: some View {
+        if let minimum = diagnostics.compactMap(\.minimumSize).min() {
+            let candidates: [Float] = [0.5, 0.25, 0.125]
+            if let h = candidates.first(where: { 2 * $0 <= minimum }) {
+                Text(
+                    "Smallest measured feature/gap: \(minimum, format: .number.precision(.fractionLength(0...4))) m. A \(h) m grid provides at least two cells across that measured dimension."
+                ).font(.caption)
+                Button("Preview suggested \(h) m grid") { chooseGrid(h) }
+            } else {
+                Text(
+                    "The smallest measured dimension is \(minimum, format: .number.precision(.fractionLength(0...4))) m; even the finest grid cannot give it two cells. Simplify/enlarge the feature or review the source before relying on it."
+                ).font(.caption).foregroundStyle(.orange)
+            }
         }
-        .onChange(of: selectedPartID) { focusPart() }.onAppear { focusPart() }
+        Text(
+            "These sampled measurements do not guarantee resolution of every feature. Compare grids; costs are shown before Apply."
+        ).font(.caption).foregroundStyle(.secondary)
+    }
+    @ViewBuilder private var comparisonRows: some View {
+        Text("Grid comparison · sampled volume").font(.subheadline.bold())
+        let reference = Float(preview.occupiedCells) * pow(preview.cellSize, 3)
+        let finest = comparisons.filter { $0.preview != nil }.min { $0.cellSize < $1.cellSize }
+        let finestCounts = finest?.counts() ?? [:]
+        ForEach(comparisons) { row in
+            let rowCounts = row.counts()
+            let memory = ImportMemoryEstimate(
+                domain: domain, cellSize: row.cellSize, detailed: detailed, refined: refined,
+                budget: memoryBudget)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text("\(row.cellSize, format: .number.precision(.fractionLength(0...3))) m").bold()
+                    if let volume = row.volume {
+                        Text(
+                            "\(row.preview?.occupiedCells ?? 0) cells · \(volume, format: .number.precision(.fractionLength(0...4))) m³"
+                        )
+                        if reference > 0 {
+                            Text(String(format: "%+.1f%%", 100 * (volume - reference) / reference))
+                        }
+                    }
+                    Spacer()
+                    Button("Use grid") { chooseGrid(row.cellSize) }.disabled(row.preview == nil)
+                        .accessibilityLabel("Use \(row.cellSize) m grid")
+                }.font(.caption)
+                Text(memory.description + (memory.fits ? "" : " · exceeds budget")).font(.caption)
+                    .foregroundStyle(memory.fits ? Color.secondary : .red)
+                if let error = row.error { Text(error).font(.caption).foregroundStyle(.orange) }
+                if let finest, row.preview != nil {
+                    let restored = finestCounts.keys.filter {
+                        finestCounts[$0, default: 0] > 0 && rowCounts[$0, default: 0] == 0
+                    }
+                    if !restored.isEmpty {
+                        Text(
+                            "Absent here, present at \(finest.cellSize) m: "
+                                + mesh.parts.filter { restored.contains($0.id) }.prefix(12).map(\.name)
+                                .joined(separator: ", ")
+                                + (restored.count > 12 ? " (plus \(restored.count - 12) more)" : "")
+                        ).font(.caption).foregroundStyle(.orange)
+                    }
+                }
+            }.padding(6).background(.quaternary.opacity(0.3), in: .rect(cornerRadius: 6))
+        }
+        Text(
+            "Percent changes are relative to the currently chosen grid. A stable volume does not prove the geometry is accurate."
+        ).font(.caption).foregroundStyle(.secondary)
     }
     private func focusPart() {
-        if let part = mesh.parts.first(where: { $0.id == selectedPartID }) {
-            selected = .part(id: part.id, bounds: mesh.bounds(of: part), name: part.name)
-        } else {
-            selected = nil
+        let parts = mesh.parts.filter {
+            selectedPartIDs.contains($0.id) || (selectedPartIDs.isEmpty && $0.id == selectedPartID)
         }
+        guard let first = parts.first else {
+            selected = nil
+            return
+        }
+        let bounds = parts.dropFirst().reduce(mesh.bounds(of: first)) { b, part in
+            let other = mesh.bounds(of: part)
+            return Box(min: simd_min(b.min, other.min), max: simd_max(b.max, other.max))
+        }
+        selected = .part(
+            id: selectedPartID ?? first.id, bounds: bounds,
+            name: parts.count == 1 ? first.name : "\(parts.count) selected parts")
     }
     @ViewBuilder private func warningGroup(_ title: String, issues: [ImportedMesh.Diagnostic]) -> some View {
         if !issues.isEmpty {
             Text("\(title) (\(issues.count))").font(.subheadline.bold()).padding(.top, 4)
-            ForEach(issues) { issue in focusButton(.geometry(issue)) }
+            ForEach(issues) { focusButton(.geometry($0)) }
         }
     }
-
     private func focusButton(_ focus: ImportFocus) -> some View {
         Button {
             selected = selected == focus ? nil : focus
@@ -135,7 +260,43 @@ struct ImportComparisonView: View {
                     selected == focus ? Color.accentColor.opacity(0.2) : .clear, in: .rect(cornerRadius: 6))
         }.buttonStyle(.plain)
     }
+}
 
+struct ImportMaterialPalette {
+    var materials: [StructureMaterial]
+    var indices: [Int: Int]
+    init(
+        parts: [ImportedMesh.Part], defaultMaterial: StructureMaterial, assignments: [Int: StructureMaterial]
+    ) {
+        materials = [defaultMaterial]
+        indices = [:]
+        for part in parts {
+            let material = assignments[part.id] ?? defaultMaterial
+            if let index = materials.firstIndex(of: material) {
+                indices[part.id] = index
+            } else {
+                indices[part.id] = materials.count
+                materials.append(material)
+            }
+        }
+    }
+    static func color(_ n: Int) -> NSColor {
+        let colors: [NSColor] = [
+            .systemBlue, .systemOrange, .systemPurple, .systemPink, .systemYellow, .systemTeal, .systemIndigo,
+            .systemBrown,
+        ]
+        return colors[n % colors.count]
+    }
+}
+
+enum ImportReferenceGrid {
+    static func step(for bounds: Box) -> Float {
+        let size = max(bounds.size.x, bounds.size.y)
+        guard size.isFinite, size > 24 else { return 1 }
+        let raw = size / 16
+        let power = pow(Float(10), floor(log10(raw)))
+        return [Float(1), 2, 5, 10].map { $0 * power }.first { $0 >= raw } ?? power * 10
+    }
 }
 
 private enum ImportFocus: Equatable {
@@ -182,6 +343,14 @@ private struct ImportSceneView: NSViewRepresentable {
     let showContext: Bool
     let selected: ImportFocus?
     let selectedPartID: Int?
+    let selectedPartIDs: Set<Int>
+    let isolate: Bool
+    let colourByMaterial: Bool
+    let defaultMaterial: StructureMaterial
+    let partMaterials: [Int: StructureMaterial]
+    let showReference: Bool
+    let diagnostics: [ImportedMesh.Diagnostic]
+    let placementIssues: [ImportPlacementReport.Issue]
     let resetRequest: Int
     final class Coordinator {
         var mesh: ImportedMesh?
@@ -189,6 +358,13 @@ private struct ImportSceneView: NSViewRepresentable {
         var placement: ImportPlacementReport?
         var selected: ImportFocus?
         var partID: Int?
+        var selectedIDs: Set<Int> = []
+        var isolate = false
+        var colourByMaterial = false
+        var defaultMaterial: StructureMaterial?
+        var partMaterials: [Int: StructureMaterial] = [:]
+        var diagnostics: [ImportedMesh.Diagnostic] = []
+        var placementIssues: [ImportPlacementReport.Issue] = []
         var resetRequest = -1
         let camera = SCNNode()
         let source = SCNNode()
@@ -196,6 +372,7 @@ private struct ImportSceneView: NSViewRepresentable {
         let issues = SCNNode()
         let surroundings = SCNNode()
         let ground = SCNNode()
+        let reference = SCNNode()
         let part = SCNNode()
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -212,6 +389,7 @@ private struct ImportSceneView: NSViewRepresentable {
         view.scene?.rootNode.addChildNode(context.coordinator.issues)
         view.scene?.rootNode.addChildNode(context.coordinator.surroundings)
         view.scene?.rootNode.addChildNode(context.coordinator.ground)
+        view.scene?.rootNode.addChildNode(context.coordinator.reference)
         view.scene?.rootNode.addChildNode(context.coordinator.part)
         view.pointOfView = context.coordinator.camera
         view.defaultCameraController.worldUp = SCNVector3(0, 0, 1)
@@ -219,11 +397,24 @@ private struct ImportSceneView: NSViewRepresentable {
     }
     func updateNSView(_ view: SCNView, context: Context) {
         let c = context.coordinator
-        let changed = c.mesh != mesh || c.preview != preview || c.placement != placement
+        let geometryChanged = c.mesh != mesh || c.preview?.bounds != preview.bounds
+        let changed =
+            c.mesh != mesh || c.preview != preview || c.placement != placement
+            || c.selectedIDs != selectedPartIDs || c.isolate != isolate
+            || c.colourByMaterial != colourByMaterial
+            || c.defaultMaterial != defaultMaterial || c.partMaterials != partMaterials
+            || c.diagnostics != diagnostics || c.placementIssues != placementIssues
         if changed {
             c.mesh = mesh
             c.preview = preview
             c.placement = placement
+            c.selectedIDs = selectedPartIDs
+            c.isolate = isolate
+            c.colourByMaterial = colourByMaterial
+            c.defaultMaterial = defaultMaterial
+            c.partMaterials = partMaterials
+            c.diagnostics = diagnostics
+            c.placementIssues = placementIssues
             c.surroundings.geometry = boxGeometry(placement?.contextVolumes ?? [])
             c.surroundings.geometry?.materials = [material(.lightGray, alpha: 0.35, wire: true)]
             c.surroundings.renderingOrder = 19
@@ -236,11 +427,32 @@ private struct ImportSceneView: NSViewRepresentable {
             c.ground.geometry?.materials = [floor]
             c.ground.position = SCNVector3((b.min.x + b.max.x) * 0.5, (b.min.y + b.max.y) * 0.5, 0)
             c.ground.renderingOrder = -10
-            c.source.geometry = sourceGeometry()
-            c.simulation.geometry = boxGeometry(preview.boxes)
-            c.simulation.geometry?.materials = [material(.systemBlue, alpha: 0.45)]
+            c.reference.geometry = referenceGeometry()
+            let gridMaterial = material(.lightGray, alpha: 0.35)
+            gridMaterial.writesToDepthBuffer = false
+            c.reference.geometry?.materials = [gridMaterial]
+            c.reference.renderingOrder = 10
+            let visibleParts = mesh.parts.filter {
+                !isolate || selectedPartIDs.isEmpty || selectedPartIDs.contains($0.id)
+            }
+            c.source.geometry = sourceGeometry(indices: visibleParts.flatMap(\.triangleIndices))
+            for node in c.simulation.childNodes { node.removeFromParentNode() }
+            c.simulation.geometry = nil
+            let owners = preview.boxPartIDs ?? Array(repeating: 0, count: preview.boxes.count)
+            let palette = ImportMaterialPalette(
+                parts: mesh.parts, defaultMaterial: defaultMaterial, assignments: partMaterials)
+            var groups: [Int: [Box]] = [:]
+            for (n, box) in preview.boxes.enumerated() where owners.indices.contains(n) {
+                if isolate && !selectedPartIDs.isEmpty && !selectedPartIDs.contains(owners[n]) { continue }
+                groups[colourByMaterial ? palette.indices[owners[n], default: 0] : 0, default: []].append(box)
+            }
+            for index in groups.keys.sorted() {
+                let node = SCNNode(geometry: boxGeometry(groups[index]!))
+                node.geometry?.materials = [material(ImportMaterialPalette.color(index), alpha: 0.45)]
+                c.simulation.addChildNode(node)
+            }
             for node in c.issues.childNodes { node.removeFromParentNode() }
-            for issue in preview.diagnostics {
+            for issue in diagnostics {
                 let node = SCNNode(
                     geometry: boxGeometry([issue.bounds], minimumExtent: preview.cellSize * 0.15))
                 node.geometry?.materials = [
@@ -249,7 +461,7 @@ private struct ImportSceneView: NSViewRepresentable {
                 node.renderingOrder = 20
                 c.issues.addChildNode(node)
             }
-            for issue in placement?.issues ?? [] {
+            for issue in placementIssues {
                 let node = SCNNode(
                     geometry: boxGeometry([issue.bounds], minimumExtent: preview.cellSize * 0.15))
                 node.geometry?.materials = [
@@ -267,16 +479,20 @@ private struct ImportSceneView: NSViewRepresentable {
         c.issues.isHidden = !showIssues
         c.surroundings.isHidden = !showContext || placement == nil
         c.ground.isHidden = !showContext || placement == nil
+        c.reference.isHidden = !showReference
         if changed || c.partID != selectedPartID {
             c.partID = selectedPartID
             c.part.geometry = nil
-            if let part = mesh.parts.first(where: { $0.id == selectedPartID }) {
-                c.part.geometry = sourceGeometry(indices: part.triangleIndices)
+            let selectedParts = mesh.parts.filter {
+                selectedPartIDs.contains($0.id) || (selectedPartIDs.isEmpty && $0.id == selectedPartID)
+            }
+            if !selectedParts.isEmpty {
+                c.part.geometry = sourceGeometry(indices: selectedParts.flatMap(\.triangleIndices))
                 c.part.geometry?.materials = [material(.systemGreen, alpha: 1, wire: true)]
                 c.part.renderingOrder = 30
             }
         }
-        if changed || c.selected != selected || c.resetRequest != resetRequest {
+        if geometryChanged || c.selected != selected || c.resetRequest != resetRequest {
             c.selected = selected
             c.resetRequest = resetRequest
             var b = selected?.bounds ?? preview.bounds
@@ -330,6 +546,28 @@ private struct ImportSceneView: NSViewRepresentable {
             elements: [SCNGeometryElement(indices: indices, primitiveType: .triangles)])
         g.materials = [material(.cyan, alpha: 0.8, wire: true)]
         return g
+    }
+    private func referenceGeometry() -> SCNGeometry {
+        let b = preview.bounds
+        let step = ImportReferenceGrid.step(for: b)
+        let low = SIMD2(floor(b.min.x / step) - 1, floor(b.min.y / step) - 1) * step
+        let high = SIMD2(ceil(b.max.x / step) + 1, ceil(b.max.y / step) + 1) * step
+        var vertices: [SCNVector3] = []
+        let xCount = min(64, Int(((high.x - low.x) / step).rounded()))
+        let yCount = min(64, Int(((high.y - low.y) / step).rounded()))
+        for i in 0...max(xCount, 0) {
+            let x = low.x + Float(i) * step
+            vertices += [SCNVector3(x, low.y, 0.001), SCNVector3(x, high.y, 0.001)]
+        }
+        for j in 0...max(yCount, 0) {
+            let y = low.y + Float(j) * step
+            vertices += [SCNVector3(low.x, y, 0.001), SCNVector3(high.x, y, 0.001)]
+        }
+        return SCNGeometry(
+            sources: [SCNGeometrySource(vertices: vertices)],
+            elements: [
+                SCNGeometryElement(indices: (0..<vertices.count).map(UInt32.init), primitiveType: .line)
+            ])
     }
     private func boxGeometry(_ boxes: [Box], minimumExtent: Float = 0) -> SCNGeometry {
         var vertices: [SCNVector3] = []

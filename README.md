@@ -87,11 +87,44 @@ continues to take priority. Viewport selection uses the initial layout, so reset
 the simulation before selecting a model. Detached geometry remains independently editable and
 its retained source is accessible from the sidebar.
 
+The import inspector keeps its 3D preview visible beside independently scrolling, collapsible
+controls. Detailed material properties live under Advanced. Dimensions in metres remain visible
+while units and placement change; unusually small or large models offer explicit unit corrections.
+A labelled reference grid helps judge scale. Corrections are never applied automatically.
+
+Drop one local OBJ/STL file into the viewport or use Import Model. Reading and geometry checking
+run in the background with a Cancel checking action; cancelled or superseded work cannot open a
+stale result. Rejected geometry opens a separate inspection view with red defect surfaces, source
+triangle numbers, repair guidance, and a text repair report. Collapsed/non-finite triangles remain
+blocked even when they cannot be drawn. Choose repaired file retries validation after the inspection
+closes; invalid inspection data cannot enter the simulation. Syntax errors report OBJ line numbers.
+
 The source inspector includes a searchable Parts browser. OBJ object and group names label
 complete connected shells; STL components and unnamed sources receive stable component names.
 Face groups within one shell do not define separate material volumes. Select a part to highlight
 its source surface in green and focus the preview; the browser reports its sampled solid cells.
 A shell with no cells may represent a cavity or a feature lost at the selected resolution.
+
+Part checkboxes support multi-selection, Select matching, and bulk material assignment/reset.
+Copy and paste a material between selections. Isolate selected parts and material colours affect
+only the preview; every source part still imports. The model default remains linked to parts
+without an override. Geometry warnings can be filtered by source part IDs, including cavity
+boundaries; placement filtering uses overlapping sampled regions.
+
+Compare grids samples coarse, medium and fine without changing the chosen grid or live layout.
+The table shows cells, sampled volume changes, parts absent at one grid but present at a finer
+one, and estimated air-memory cost. Measured thin features/gaps suggest a grid when two cells
+fit across the smallest sampled dimension; unresolved finest-grid features are called out.
+Stable volume or a suggested grid is not a completeness or convergence guarantee. Checks can
+be cancelled, and changes to source placement/units invalidate comparisons. Apply is blocked
+when estimated air memory or active material counts exceed their limits. Export import report
+records all warnings and assignments, regardless of the current warning filter.
+
+Reusable import profiles save units, up axis, behavior, base support choice, default material and
+part overrides matched by name. Loading a profile is explicit, reports matched overrides, and
+stages settings until Apply. Placement, domain and grid stay specific to the current import.
+Existing imports retain their rigid/deformable behavior. Profiles can be updated or removed;
+up to 20 are stored locally.
 
 For deformable imports, each part can use the model's default material or a custom preset with
 editable properties. Assignments are saved against source part IDs and survive grid, unit,
