@@ -221,6 +221,10 @@ swift run -c release blastbench slab --sensitivity
 compares a freestanding wall on a clamped base with one on starter bars, a construction joint
 or friction alone (see [base connections](docs/structural-model.md#base-connections)).
 
+`BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
+keeps the result as a saved run, for scripts and other Macs; see
+[headless runs](docs/run-comparison.md#headless-runs).
+
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
 holding, sliding, lift-off, rocking and tipping, with playback and a time slider. It records
