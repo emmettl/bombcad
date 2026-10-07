@@ -307,6 +307,13 @@ preserving mass, momentum, energy and uniform pressure to floating-point precisi
 The controller has bounded refinement and returns a complete result only on success.
 This capacity limit is separate from acoustic timestep stability; physical face fluxes still
 need integration with the moving apertures before fractional blast coupling.
+`--fractional-flux` writes `.build/fractional-flux.json`, a CPU-only periodic pressure-pulse
+study using a first-order ideal-gas Rusanov flux in stationary positive gas volumes. Each
+interface exchanges equal/opposite mass, momentum and total energy. The timestep is limited
+by each cell's volume divided by its summed face acoustic rates; oversized steps and
+nonphysical states are rejected. Smaller cells require 10, 35 and 138 steps over 0.5 ms
+in this study. Moving geometry, wall pressure work and time-varying apertures are not yet
+coupled to this flux reference.
 
 ## Headline results
 

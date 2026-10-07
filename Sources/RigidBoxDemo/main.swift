@@ -7,6 +7,22 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--fractional-flux") {
+        let results = try ExperimentalFractionalFluxStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-flux.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Smallest volume \(r.smallestVolume) m³: \(r.steps) steps, energy change \(r.relativeEnergyChange), peak speed \(r.maximumSpeed) m/s"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--fractional-substeps") {
         let results = try ExperimentalFractionalSubstepStudy.run()
         let output = URL(

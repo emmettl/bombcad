@@ -546,6 +546,28 @@ all six adaptive rotated cases satisfy their face-area tolerance, using 45–621
 evaluations. Next, use this geometry in a conservative physical gas-flux reference, including
 wall work and small-cell acoustic timestep control.
 
+An isolated first-order ideal-gas Euler flux reference is now implemented for stationary
+positive fractional volumes. Paired internal or periodic interfaces use the Rusanov flux,
+including pressure in momentum and enthalpy in energy, and exchange the same extensive
+packet with opposite signs. The acoustic timestep is bounded by `0.4 * volume / sum(area *
+maximum normal wave speed)` for every cell; the configurable CFL is restricted to at most
+0.5. Oversized steps are rejected before updating, and nonpositive mass/internal energy
+is rejected afterward without floors. This introduces a direct acoustic small-cell limit,
+separate from remap inventory limits; it does not eliminate small-cell stiffness.
+
+`--fractional-flux` evolves an eight-cell periodic pressure pulse for 0.5 ms. Reducing one
+cell from 0.001 to 0.00025 to 0.0000625 m³ requires 10, 35 and 138 acoustic steps.
+Relative mass and energy departures stay below 0.000000000000001, total momentum changes
+below 0.000000000000001 N s, and all gas states remain positive. These cases change the
+domain volume and measure timestep cost and budgets, not spatial convergence. Four flux
+tests cover analytical momentum/enthalpy transport, uniform moving gas on unequal volumes,
+pressure-driven conservative flow and volume-scaled timestep rejection.
+
+This remains separate from the app solver and from the moving-box remapper. Boundary wall
+loads, moving-wall work, chronological aperture/flux integration and closure/opening cells
+still need to be combined consistently. Next, establish a closed stationary-wall pressure
+budget, then couple prescribed piston motion before a freely moving rigid box.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
