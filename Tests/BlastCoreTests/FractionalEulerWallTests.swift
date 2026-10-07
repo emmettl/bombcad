@@ -5,7 +5,7 @@ import simd
 
 @Suite("Stationary fractional Euler walls")
 struct FractionalEulerWallTests {
-    @Test("Invalid wall geometry, excessive steps and tensile numerical traction fail explicitly")
+    @Test("Invalid walls and excessive steps fail; separating gas gives positive traction")
     func invalidWall() throws {
         let cell = FractionalGasTransport.Cell(volume: 1, density: 1, pressure: 1)
         let wall = FractionalEulerFlux.Wall(cell: 0, normal: SIMD3(1, 0, 0), area: 1)
@@ -19,9 +19,16 @@ struct FractionalEulerWallTests {
         }
         let separating = FractionalGasTransport.Cell(
             volume: 1, density: 1, velocity: SIMD3(-2, 0, 0), pressure: 1)
-        #expect(throws: FractionalEulerFlux.Failure.self) {
-            try FractionalEulerFlux.advanceWithWalls([separating], faces: [], walls: [wall], duration: 0.001)
-        }
+        let result = try FractionalEulerFlux.advanceWithWalls(
+            [separating], faces: [], walls: [wall], duration: 0.001)
+        #expect(result.wallImpulses[0].x > 0 && result.wallImpulses[0].x < 0.001)
+        #expect(result.cells[0].amount[4] == separating.amount[4])
+        let vacuumGap = FractionalGasTransport.Cell(
+            volume: 1, density: 1, velocity: SIMD3(-7, 0, 0), pressure: 1)
+        let unloaded = try FractionalEulerFlux.advanceWithWalls(
+            [vacuumGap], faces: [], walls: [wall], duration: 0.001)
+        #expect(unloaded.wallImpulses[0] == .zero)
+        #expect(unloaded.cells[0].amount == vacuumGap.amount)
     }
     @Test("Six closed walls preserve resting gas and report pressure times area impulse")
     func restingBox() throws {

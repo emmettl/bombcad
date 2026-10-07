@@ -1,7 +1,7 @@
 import simd
 
 /// First-order ideal-gas Rusanov flux for stationary positive fractional volumes.
-/// Faces are paired internal/periodic interfaces; stationary walls reflect normal velocity.
+/// Faces are paired internal/periodic interfaces; stationary walls use exact planar wall pressure.
 /// Moving geometry requires additional terms. This reference is separate from the app's air solver.
 enum FractionalEulerFlux {
     enum Failure: Error { case invalidFace, invalidWall, invalidStep, unstableStep }
@@ -47,7 +47,7 @@ enum FractionalEulerFlux {
                 (0..<3).allSatisfy({ wall.normal[$0].isFinite }),
                 abs(simd_length_squared(wall.normal) - 1) < 1e-12
             else { throw Failure.invalidWall }
-            let rate = wall.area * signal(cells[wall.cell], cells[wall.cell], normal: wall.normal)
+            let rate = try wall.area * wallState(cells[wall.cell], normal: wall.normal).signalSpeed
             guard rate.isFinite else { throw Failure.invalidWall }
             rates[wall.cell] += rate
         }
@@ -88,13 +88,7 @@ enum FractionalEulerFlux {
                 continue
             }
             let cell = cells[wall.cell]
-            let density = cell.amount[0] / cell.volume
-            let speed = simd_dot(cell.velocity, wall.normal)
-            let waveSpeed = signal(cell, cell, normal: wall.normal)
-            // Rusanov interface with a mirrored normal velocity: zero mass/energy flux,
-            // normal momentum flux p + rho*u_n² + rho*s*u_n. Do not clip tensile traction.
-            let traction = cell.pressure() + density * speed * speed + density * waveSpeed * speed
-            guard traction.isFinite && traction >= 0 else { throw Failure.invalidWall }
+            let traction = try wallState(cell, normal: wall.normal).pressure
             let impulse = duration * wall.area * traction * wall.normal
             amounts[wall.cell] -= SIMD8(0, impulse.x, impulse.y, impulse.z, 0, 0, 0, 0)
             wallImpulses.append(impulse)
@@ -107,6 +101,14 @@ enum FractionalEulerFlux {
             cells: try FractionalGasTransport.advance(
                 updated, newVolumes: updated.map(\.volume), transfers: []),
             wallImpulses: wallImpulses)
+    }
+
+    private static func wallState(
+        _ cell: FractionalGasTransport.Cell, normal: SIMD3<Double>
+    ) throws -> IdealGasWallRiemann.Result {
+        try IdealGasWallRiemann.solve(
+            density: cell.amount[0] / cell.volume, pressure: cell.pressure(),
+            normalVelocity: simd_dot(cell.velocity, normal))
     }
 
     private static func signal(

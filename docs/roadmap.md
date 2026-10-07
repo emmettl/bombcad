@@ -569,13 +569,13 @@ still need to be combined consistently. Next, establish a closed stationary-wall
 budget, then couple prescribed piston motion before a freely moving rigid box.
 
 Stationary reflecting slip walls are now included in the isolated Euler flux reference.
-A mirrored normal velocity supplies the Rusanov wall traction; wall mass and total-energy
+Initially a mirrored normal velocity supplied the Rusanov wall traction; wall mass and total-energy
 fluxes are exactly zero. Each wall impulse is recorded opposite to the gas momentum update,
 and its acoustic rate participates in the cell timestep limit. A resting six-wall box
 preserves its gas state and recovers pressure-times-area loads. Tangential slip transfers
-no tangential momentum. The approximate traction can become tensile for strongly separating
-gas; such updates fail explicitly rather than clipping the load. This wall law is not yet
-suitable for all rarefactions or moving-piston conditions.
+no tangential momentum. The initial approximate traction could become tensile for strongly
+separating gas; such updates failed explicitly rather than clipping the load. That initial
+wall law was unsuitable for all rarefactions or moving-piston conditions.
 
 `--fractional-walls` applies an end-cell pressure pulse in a closed eight-cell tube for
 0.5 ms. The three volume cases require 11, 38 and 141 steps, with gas-plus-wall momentum
@@ -583,8 +583,24 @@ residuals below 0.000000000000001 N s and relative mass/energy changes below
 0.000000000000001. Reducing the end cell also reduces the initial pulse energy, so response
 differences are not a convergence result. Four wall tests cover uniform-pressure balance,
 closed-pulse impulse accounting, tangential slip, invalid geometry, excessive timesteps and
-tensile-traction rejection; the four existing flux tests also pass. Next, improve the wall
-Riemann treatment for expansion and establish prescribed-piston volume/work consistency
+tensile-traction rejection; the four existing flux tests also pass.
+
+The wall pressure now uses the exact planar ideal-gas shock and rarefaction relations for
+a uniform incident state, with normal velocity measured relative to the wall. Compression
+inverts the shock pressure/velocity relation analytically; expansion uses the rarefaction
+invariant and reaches zero pressure at vacuum onset. This replaces the tensile Rusanov
+traction failure. The wall timestep rate includes the compressive shock speed. These
+relations follow the [Clawpack Euler reference](https://www.clawpack.org/riemann_book/html/Euler.html).
+
+`--wall-pressure` records eight incident normal Mach numbers from -6 to +3. At Mach -2,
+wall pressure is 0.0279936 times incident pressure; Mach -6 forms a vacuum gap with zero
+wall load. Three analytical tests cover shock jump relations, the expansion invariant and
+vacuum, and the weak-wave acoustic limit. The existing wall test now verifies positive
+expansion traction and a zero-load vacuum update instead of tensile-traction rejection.
+All eleven wall-pressure/wall/flux tests pass. The closed-tube study retains 11, 38 and
+141 steps, with mass/energy and gas-plus-wall momentum budgets within floating-point
+precision. The exact local wall law does not make the first-order spatial flux exact or
+add moving geometry. Next, establish prescribed-piston volume and pressure-work consistency
 before coupling freely moving bodies.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of

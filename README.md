@@ -317,8 +317,12 @@ coupled to this flux reference.
 `--fractional-walls` writes `.build/fractional-walls.json`, replacing the periodic endpoints
 with reflecting stationary slip walls. The report includes accumulated wall impulse and
 the gas-plus-wall momentum residual; no mass or energy crosses a fixed wall. Its three
-pressure-pulse cases require 11, 38 and 141 steps over 0.5 ms. The approximate wall flux
-rejects tensile numerical traction; moving walls and piston work remain separate work.
+pressure-pulse cases require 11, 38 and 141 steps over 0.5 ms. Wall pressure now uses the
+exact planar ideal-gas shock/rarefaction relations, including zero load at vacuum onset.
+Moving walls and piston work remain separate work.
+`--wall-pressure` writes `.build/wall-pressure.json`, checking incident normal Mach numbers
+from -6 to +3 against the wall law. Positive velocity points toward the wall. The acoustic
+wall timestep rate includes the compressive shock speed.
 
 ## Headline results
 
