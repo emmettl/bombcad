@@ -1,8 +1,9 @@
 import simd
 
-/// First-order ideal-gas Rusanov flux for stationary positive fractional volumes.
-/// Faces are paired internal/periodic interfaces; stationary walls use exact planar wall pressure.
-/// Moving geometry requires additional terms. This reference is separate from the app's air solver.
+/// First-order ideal-gas Rusanov flux for positive fractional volumes.
+/// Faces are paired internal/periodic interfaces; planar walls use exact local wall pressure.
+/// Constant-area planar walls may move within an interval of fixed cell topology.
+/// This reference is separate from the app's air solver.
 enum FractionalEulerFlux {
     enum Failure: Error { case invalidFace, invalidWall, invalidStep, unstableStep }
     struct Face {
@@ -15,11 +16,20 @@ enum FractionalEulerFlux {
         let cell: Int
         let normal: SIMD3<Double>  // Unit normal outward from the gas.
         let area: Double
+        let velocity: SIMD3<Double>
+        init(cell: Int, normal: SIMD3<Double>, area: Double, velocity: SIMD3<Double> = .zero) {
+            self.cell = cell
+            self.normal = normal
+            self.area = area
+            self.velocity = velocity
+        }
     }
     struct Result {
         let cells: [FractionalGasTransport.Cell]
         /// Equal and opposite to the gas impulse, ordered like the supplied walls.
         let wallImpulses: [SIMD3<Double>]
+        /// Work delivered to each prescribed wall, opposite to gas energy change.
+        let wallWork: [Double]
     }
     private static let gamma = 1.4
 
@@ -29,6 +39,7 @@ enum FractionalEulerFlux {
         guard cfl.isFinite && cfl > 0 && cfl <= 0.5 else { throw Failure.invalidStep }
         _ = try FractionalGasTransport.advance(cells, newVolumes: cells.map(\.volume), transfers: [])
         var rates = [Double](repeating: 0, count: cells.count)
+        var volumeRates = [Double](repeating: 0, count: cells.count)
         for face in faces {
             guard cells.indices.contains(face.a), cells.indices.contains(face.b), face.a != face.b,
                 face.area.isFinite && face.area >= 0,
@@ -45,14 +56,20 @@ enum FractionalEulerFlux {
             guard cells.indices.contains(wall.cell), cells[wall.cell].volume > 0,
                 wall.area.isFinite && wall.area >= 0,
                 (0..<3).allSatisfy({ wall.normal[$0].isFinite }),
+                (0..<3).allSatisfy({ wall.velocity[$0].isFinite }),
                 abs(simd_length_squared(wall.normal) - 1) < 1e-12
             else { throw Failure.invalidWall }
-            let rate = try wall.area * wallState(cells[wall.cell], normal: wall.normal).signalSpeed
+            let normalSpeed = simd_dot(wall.velocity, wall.normal)
+            let rate =
+                try wall.area * (wallState(cells[wall.cell], wall: wall).signalSpeed + abs(normalSpeed))
             guard rate.isFinite else { throw Failure.invalidWall }
             rates[wall.cell] += rate
+            volumeRates[wall.cell] += wall.area * normalSpeed
         }
         return cells.indices.reduce(Double.infinity) { limit, n in
-            rates[n] > 0 ? min(limit, cfl * cells[n].volume / rates[n]) : limit
+            let acoustic = rates[n] > 0 ? cfl * cells[n].volume / rates[n] : .infinity
+            let geometric = volumeRates[n] < 0 ? cfl * cells[n].volume / -volumeRates[n] : .infinity
+            return min(limit, acoustic, geometric)
         }
     }
 
@@ -82,33 +99,39 @@ enum FractionalEulerFlux {
             amounts[face.b] += packet
         }
         var wallImpulses: [SIMD3<Double>] = []
+        var wallWork: [Double] = []
+        var volumes = cells.map(\.volume)
         for wall in walls {
             if wall.area == 0 {
                 wallImpulses.append(.zero)
+                wallWork.append(0)
                 continue
             }
             let cell = cells[wall.cell]
-            let traction = try wallState(cell, normal: wall.normal).pressure
+            let traction = try wallState(cell, wall: wall).pressure
             let impulse = duration * wall.area * traction * wall.normal
-            amounts[wall.cell] -= SIMD8(0, impulse.x, impulse.y, impulse.z, 0, 0, 0, 0)
+            let work = simd_dot(impulse, wall.velocity)
+            volumes[wall.cell] += duration * wall.area * simd_dot(wall.velocity, wall.normal)
+            amounts[wall.cell] -= SIMD8(0, impulse.x, impulse.y, impulse.z, work, 0, 0, 0)
             wallImpulses.append(impulse)
+            wallWork.append(work)
         }
         let updated = cells.indices.map {
-            FractionalGasTransport.Cell(volume: cells[$0].volume, amount: amounts[$0])
+            FractionalGasTransport.Cell(volume: volumes[$0], amount: amounts[$0])
         }
         // Reject a nonphysical state transactionally, without density or pressure floors.
         return Result(
             cells: try FractionalGasTransport.advance(
                 updated, newVolumes: updated.map(\.volume), transfers: []),
-            wallImpulses: wallImpulses)
+            wallImpulses: wallImpulses, wallWork: wallWork)
     }
 
     private static func wallState(
-        _ cell: FractionalGasTransport.Cell, normal: SIMD3<Double>
+        _ cell: FractionalGasTransport.Cell, wall: Wall
     ) throws -> IdealGasWallRiemann.Result {
         try IdealGasWallRiemann.solve(
             density: cell.amount[0] / cell.volume, pressure: cell.pressure(),
-            normalVelocity: simd_dot(cell.velocity, normal))
+            normalVelocity: simd_dot(cell.velocity - wall.velocity, wall.normal))
     }
 
     private static func signal(

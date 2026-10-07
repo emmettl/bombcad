@@ -7,7 +7,7 @@ enum IdealGasWallRiemann {
     enum Failure: Error { case invalidState }
     struct Result {
         let pressure: Double
-        /// Conservative acoustic/shock rate for the stationary wall timestep reference.
+        /// Acoustic/shock rate relative to the wall; wall travel is added by the timestep reference.
         let signalSpeed: Double
         let vacuum: Bool
     }

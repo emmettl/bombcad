@@ -7,6 +7,22 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--piston") {
+        let results = try ExperimentalPistonStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/piston.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Piston \(r.pistonVelocity) m/s: \(r.steps) steps, energy residual \(r.energyBudgetResidual) J, pressure error \(r.relativeQuasiStaticPressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--wall-pressure") {
         let results = try ExperimentalWallPressureStudy.run()
         let output = URL(

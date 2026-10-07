@@ -312,17 +312,23 @@ study using a first-order ideal-gas Rusanov flux in stationary positive gas volu
 interface exchanges equal/opposite mass, momentum and total energy. The timestep is limited
 by each cell's volume divided by its summed face acoustic rates; oversized steps and
 nonphysical states are rejected. Smaller cells require 10, 35 and 138 steps over 0.5 ms
-in this study. Moving geometry, wall pressure work and time-varying apertures are not yet
-coupled to this flux reference.
+in this study. This periodic study uses stationary volumes; the wall and piston references
+below add boundary impulse and pressure work.
 `--fractional-walls` writes `.build/fractional-walls.json`, replacing the periodic endpoints
 with reflecting stationary slip walls. The report includes accumulated wall impulse and
 the gas-plus-wall momentum residual; no mass or energy crosses a fixed wall. Its three
 pressure-pulse cases require 11, 38 and 141 steps over 0.5 ms. Wall pressure now uses the
 exact planar ideal-gas shock/rarefaction relations, including zero load at vacuum onset.
-Moving walls and piston work remain separate work.
+Prescribed moving walls are exercised by the piston reference below.
 `--wall-pressure` writes `.build/wall-pressure.json`, checking incident normal Mach numbers
 from -6 to +3 against the wall law. Positive velocity points toward the wall. The acoustic
 wall timestep rate includes the compressive shock speed.
+`--piston` writes `.build/piston.json`, prescribing constant-speed planar motion at one
+end of a closed four-cell tube. The same wall velocity changes gas volume and supplies
+equal/opposite pressure work and impulse. Six cases compress or expand total volume by
+10% at 0.25, 0.5 and 1 m/s, checking conservation and approach to the quasi-static
+adiabatic pressure. This reference keeps constant wall area and fixed cell topology;
+cell crossings and general time-varying apertures remain to be coupled.
 
 ## Headline results
 

@@ -603,6 +603,28 @@ precision. The exact local wall law does not make the first-order spatial flux e
 add moving geometry. Next, establish prescribed-piston volume and pressure-work consistency
 before coupling freely moving bodies.
 
+Prescribed planar piston motion is now implemented within intervals of fixed cell topology.
+Each wall has a constant velocity: its swept volume is `area * normal velocity * dt`,
+its impulse uses the wall pressure from relative gas/wall normal velocity, and its work
+is the dot product of that impulse with wall velocity. Gas momentum and energy receive
+the opposite impulse/work, while no mass crosses the wall. Acoustic timestep rates include
+wall travel, and a separate contraction limit prevents a cell from closing in one step.
+No independent endpoint-volume input is needed for this planar reference.
+
+`--piston` compresses or expands a closed four-cell tube by 10% at 0.25, 0.5 and 1 m/s.
+The six cases take 676–3519 steps. Swept-volume residuals stay below 0.00000000000000001 m³,
+relative mass changes below 0.000000000000001, and gas-plus-wall energy residuals below
+0.00000000001 J. Impulse budgets remain balanced. Mean pressure approaches the quasi-static
+adiabatic value as speed decreases; at 0.25 m/s the relative departure is below 0.000005
+for compression and expansion. This is a low-speed limiting check, not a spatial-convergence
+result. Three piston tests cover signed volume/work exchange, a comoving translating cavity,
+and the complete closed-tube pressure/budget study. The existing wall/flux checks also pass.
+
+This reference assumes constant wall area and normal within a step, stationary internal
+faces and no cell topology changes. Next, combine physical flux/work with chronological
+cell-crossing geometry and face apertures, including gas transfer when cells open or close,
+before coupling a freely moving rigid box.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
