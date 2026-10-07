@@ -115,6 +115,8 @@ struct StepControl {
     float maxOverpressure;  // largest |overpressure| anywhere after the previous step
     uint activeTiles;       // tiles swept in the last step
     uint tileSweeps;        // tiles swept, summed over the batch's steps
+    uint halted;            // 1 once a step has stopped short of the time limit; the rest do nothing
+    float lastStep;         // the last step that advanced, before any clipping to the time limit
 };
 
 // The gas's equation of state. An ideal gas has p = (gamma - 1) times the internal energy per
@@ -577,14 +579,28 @@ static inline void storeFlux(device float *registers, uint slot, Flux f, uint ax
 }
 
 // One-dimensional MUSCL-Hancock update of one cell along `u.axis`.
-static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst, const device uchar *mask,
+static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, const device uchar *mask,
                              device float *peak, device float *impulse, const device StepControl &control,
                              device atomic_uint *maxSpeed, constant SolverUniforms &u,
                              const device float *wallVelocity, device uchar *tileFlags,
-                             const device float2 *speciesSrc, device float2 *speciesDst,
+                             device float2 *speciesSrc, device float2 *speciesDst,
                              const device int *patchOfTile, device float *coarseFlux,
                              device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
+    if (control.dt <= 0.0f) {
+        // A step that does nothing (past the time limit) swaps the two buffers' cells, solid
+        // ones included, as the host swaps the buffers: the air is then exactly as if the step
+        // had never been encoded.
+        Cell held = dst[index];
+        dst[index] = src[index];
+        src[index] = held;
+        if (u.afterburnEnergy > 0.0f) {
+            float2 species = speciesDst[index];
+            speciesDst[index] = speciesSrc[index];
+            speciesSrc[index] = species;
+        }
+        return;
+    }
     if (mask[index] != 0) {
         return;
     }
@@ -774,7 +790,7 @@ static inline void sweepCell(int3 cell, const device Cell *src, device Cell *dst
 }
 
 // Sweeps every cell.
-kernel void sweep(const device Cell *src [[buffer(0)]],
+kernel void sweep(device Cell *src [[buffer(0)]],
                   device Cell *dst [[buffer(1)]],
                   const device uchar *mask [[buffer(2)]],
                   device float *peak [[buffer(3)]],
@@ -784,7 +800,7 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
                   constant SolverUniforms &u [[buffer(7)]],
                   const device float *wallVelocity [[buffer(8)]],
                   device uchar *tileFlags [[buffer(10)]],
-                  const device float2 *speciesSrc [[buffer(11)]],
+                  device float2 *speciesSrc [[buffer(11)]],
                   device float2 *speciesDst [[buffer(12)]],
                   const device int *patchOfTile [[buffer(13)]],
                   device float *coarseFlux [[buffer(14)]],
@@ -801,7 +817,7 @@ kernel void sweep(const device Cell *src [[buffer(0)]],
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
 // a column of the tile through z.
-kernel void sweepTiles(const device Cell *src [[buffer(0)]],
+kernel void sweepTiles(device Cell *src [[buffer(0)]],
                        device Cell *dst [[buffer(1)]],
                        const device uchar *mask [[buffer(2)]],
                        device float *peak [[buffer(3)]],
@@ -812,7 +828,7 @@ kernel void sweepTiles(const device Cell *src [[buffer(0)]],
                        const device float *wallVelocity [[buffer(8)]],
                        const device uint *tiles [[buffer(9)]],
                        device uchar *tileFlags [[buffer(10)]],
-                       const device float2 *speciesSrc [[buffer(11)]],
+                       device float2 *speciesSrc [[buffer(11)]],
                        device float2 *speciesDst [[buffer(12)]],
                        const device int *patchOfTile [[buffer(13)]],
                        device float *coarseFlux [[buffer(14)]],
@@ -908,21 +924,36 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
         control.activeTiles = count;
         control.tileSweeps += count;
     }
-    float fastest = as_type<float>(atomic_exchange_explicit(maxSpeed, 0u, memory_order_relaxed));
+    float fastest = as_type<float>(atomic_load_explicit(maxSpeed, memory_order_relaxed));
     float dt = u.cfl * u.dx / max(fastest, 1e-6f);
     if (u.maxStep > 0.0f) {
         dt = min(dt, u.maxStep);
     }
     if (u.forcedStep > 0.0f) {
         dt = u.forcedStep;
-    } else {
-        control.maxOverpressure = as_type<float>(atomic_exchange_explicit(maxSpeed + 1, 0u, memory_order_relaxed));
     }
-    float remaining = max(control.timeLimit - control.batchTime, 0.0f);
-    dt = min(dt, remaining);
+    // Only a batch's first step is clipped to the time limit, where the time left is exactly
+    // what the host worked out. A later step that would come within a thousandth of it stops
+    // the batch instead, so that rounding in the batch's own clock never decides how long a
+    // step is, and the steps come out the same however they are batched.
+    float unclipped = dt;
+    if (control.stepIndex == 0) {
+        dt = min(dt, max(control.timeLimit, 0.0f));
+    } else if (control.halted != 0 || control.batchTime + dt >= 0.999f * control.timeLimit) {
+        control.halted = control.batchTime < control.timeLimit ? 1u : control.halted;
+        dt = 0.0f;
+    }
+    // A step that does nothing leaves the limits for the next step as they are.
+    if (dt > 0.0f) {
+        control.lastStep = unclipped;
+        atomic_store_explicit(maxSpeed, 0u, memory_order_relaxed);
+        if (u.forcedStep == 0.0f) {
+            control.maxOverpressure = as_type<float>(atomic_exchange_explicit(maxSpeed + 1, 0u, memory_order_relaxed));
+        }
+    }
 
     uint row = control.stepIndex * (u.gaugeCount + 1);
-    gaugeLog[row] = control.batchTime;
+    gaugeLog[row] = dt;
     for (uint g = 0; g < u.gaugeCount; ++g) {
         Cell c = state[gaugeCells[g]];
         // Where the gauge's cell is refined, the fine cell holding the gauge's point.

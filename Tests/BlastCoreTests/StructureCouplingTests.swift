@@ -134,6 +134,53 @@ struct StructureCouplingTests {
         #expect(structure.summary().maxDisplacement == 0)
     }
 
+    /// The wall breached by 500 kg, run to 40 ms in batches of the given sizes, stopping at every
+    /// 5 ms on the way as the app does to sample the structure, with the air frozen at 30 ms.
+    private func breachedWall(batches sizes: [Int]) throws -> BlastSolver {
+        var scenario = ScenarioPreset.blastWall.scenario
+        scenario.charge.mass = 500
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let crossing = Double(simd_length(solver.grid.size)) / 340
+        solver.configuration.airSleepCrossings = Float(0.03 / crossing)
+        let end = 0.04
+        var next = 0.005
+        var batch = 0
+        while solver.time < end - 1e-9, batch < 10_000 {
+            if solver.time >= next - 1e-9 { next += 0.005 }
+            let commandBuffer = try #require(
+                solver.encodeBatch(steps: sizes[batch % sizes.count], timeLimit: min(next, end)))
+            commandBuffer.commit()
+            commandBuffer.waitUntilCompleted()
+            #expect(solver.completeBatch().isStable)
+            batch += 1
+        }
+        return solver
+    }
+
+    @Test("A coupled run comes out the same to the last bit however its steps are batched")
+    func batchingDoesNotMatter() throws {
+        let steady = try breachedWall(batches: [64])
+        let ragged = try breachedWall(batches: [1, 7, 3, 29, 2, 64, 13])
+        #expect(steady.airIsAsleep && ragged.airIsAsleep)
+        #expect(try #require(steady.structure).hasFailed)
+        #expect(steady.stepCount == ragged.stepCount)
+        #expect(steady.time == ragged.time)
+        #expect(steady.gaugeHistories == ragged.gaugeHistories)
+        #expect(steady.bodySummary() == ragged.bodySummary())
+        var differing = 0
+        for k in 0..<steady.grid.nz {
+            for j in 0..<steady.grid.ny {
+                for i in 0..<steady.grid.nx
+                where steady.peakOverpressure(i, j, k) != ragged.peakOverpressure(i, j, k)
+                    || steady.impulse(i, j, k) != ragged.impulse(i, j, k)
+                {
+                    differing += 1
+                }
+            }
+        }
+        #expect(differing == 0, "\(differing) cells differ")
+    }
+
     // MARK: Two-way coupling
 
     /// A shock tube whose far half is sealed off by a wall clamped to the ground.

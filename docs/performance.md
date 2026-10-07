@@ -202,10 +202,12 @@ The same building in 32 × 32 × 16 m of air, 100 kg at 8 m, 96 ms simulated.
 | 0.125 m       | 8.4 M     | 13 s        | 141×                  |
 
 The structure sets the pace: refining the air from 0.5 m to 0.25 m costs almost nothing extra.
-Each air step is followed by 5 to 15 structural substeps. Only the substeps the last batch's
-air step suggests are encoded (a quarter more, plus one), and the air step is capped on the
-GPU to what they cover; encoding enough for still air, as before, left about two-thirds of them
-idle while the hot gas kept the air's step short, and cost 10%.
+Each air step is followed by 5 to 15 structural substeps. Only the substeps the air's recent
+step suggests are encoded (a quarter more, plus one), and the air step is capped on the GPU to
+what they cover; encoding enough for still air, as before, left about two-thirds of them idle
+while the hot gas kept the air's step short, and cost 10%. The count is set every 64 steps,
+from the step before, and batches end at those checkpoints, so that it (and so the air's step)
+depends only on the step count: a run repeats exactly however the app happens to batch it.
 
 **With shells.** The same building meshed with [shell elements](shell-model.md) of 250 mm
 (3,724 elements; `--shells 0.25`), measured in one session in which another program was also
@@ -324,7 +326,7 @@ and a kernel to write the dispatch sizes, for at most those 3%; it has not been 
 | Air solved everywhere at one resolution           | Adaptive refinement                                    |
 | Air solved before the blast reaches it            | Done: still air is skipped, 1.6–1.7× faster on the street scene |
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
-| Idle substep dispatches in coupled runs           | Now sized from the last batch; worth about 3%, too little for indirect dispatch (below) |
+| Idle substep dispatches in coupled runs           | Now sized every 64 steps; worth about 3%, too little for indirect dispatch (below) |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
 
 Shells and the skipping of still air are done. Adaptive refinement is the one left that would

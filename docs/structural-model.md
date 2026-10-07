@@ -359,9 +359,10 @@ shock, and the drag and pressure-gradient push on loose debris.
    eight (or sixteen) nothing of the kind happens. Debris more than a few metres
    from the structure leaves the air's mask.
 5. **Collapse is chaotic, though repeatable.** A run is repeated exactly, to the last bit, on
-   the same machine, but a collapse amplifies small differences, so a slightly different input
-   (a charge a centimetre away, a different batching of steps, a change to the model) gives a
-   different pattern of debris. The two-storey frame shows it: across this project's versions
+   the same machine, however its steps are batched (everything that changes what a step
+   encodes is decided at checkpoints 64 steps apart), but a collapse amplifies small
+   differences, so a slightly different input (a charge a centimetre away, a time limit at a
+   different moment, a change to the model) gives a different pattern of debris. The two-storey frame shows it: across this project's versions
    its upper floor has sometimes stayed up at 3 s and sometimes fallen, as changes to the
    concrete model that barely alter its first second tipped the collapse one way or the
    other; since bars resist sliding across cracks it stands at its old 250 kg charge, and

@@ -198,6 +198,8 @@ struct StepControl {
     var maxOverpressure: Float = .greatestFiniteMagnitude
     var activeTiles: UInt32 = 0
     var tileSweeps: UInt32 = 0
+    var halted: UInt32 = 0
+    var lastStep: Float = 0
 }
 
 /// Pressure history recorded at a gauge cell, one sample per solver step.
@@ -344,6 +346,9 @@ public struct BatchResult: Sendable {
     public var sweptFraction: Double = 1
     /// Tiles refined at the end of the batch (0 when the air is not refined).
     public var refinedTiles = 0
+    /// True when the batch stopped just short of its time limit, leaving the last step up to it
+    /// for another batch; its unused steps did nothing.
+    public var stoppedShort = false
 }
 
 public enum BlastError: Error, CustomStringConvertible {
