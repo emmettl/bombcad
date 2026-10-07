@@ -318,11 +318,7 @@ public final class StructureSolver {
         let averagesCrushing = materials.contains { Self.crushRadius(of: $0, elementSize: h) > 0 }
         let crushLength = averagesCrushing ? elements * 16 : 16
         let materialIndex = try buffer(elements, "structure material indices")
-        elementMaterials.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress, !bytes.isEmpty {
-                materialIndex.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        materialIndex.copy(elementMaterials)
         materialIndexBuffer = materialIndex
         crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
         let spreadsRupture = materials.contains { Self.barReach(of: $0, elementSize: h) > 0 }
@@ -384,11 +380,7 @@ public final class StructureSolver {
         }
         func indexBuffer(_ indices: [UInt32], _ label: String) throws -> MTLBuffer {
             let result = try buffer(indices.count * MemoryLayout<UInt32>.stride, label)
-            indices.withUnsafeBytes { bytes in
-                if let base = bytes.baseAddress, !bytes.isEmpty {
-                    result.contents().copyMemory(from: base, byteCount: bytes.count)
-                }
-            }
+            result.copy(indices)
             return result
         }
         densestSteel = densest
@@ -511,11 +503,7 @@ public final class StructureSolver {
             return buffer
         }
         slipSupportBuffer = try buffer(support.count * 16, "slip support")
-        support.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress {
-                slipSupportBuffer.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        slipSupportBuffer.copy(support)
         slipBuffer = try buffer(3 * nodeCount * 16, "bar slip")
         barForceBuffer = try buffer(max(elementCount, 1) * 32, "bar forces")
     }

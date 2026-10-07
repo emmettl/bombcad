@@ -43,16 +43,22 @@ credentials are only tried on submission.
 
 1. runs `make check` (strict formatting lint, the test suite, the release-script tests and a
    build);
-2. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
+2. runs `make release-smoke`: `blastbench` built in release, run for a few seconds on solid and
+   shell elements, bars that slip and base connections. The test suite builds for debugging, and
+   Swift 6.4's optimiser once miscompiled the solvers' initialisers (`withUnsafeBytes`, which
+   rethrows, inlined into an initialiser that throws, handed back a corrupt error from a closure
+   that cannot throw), so that every structure crashed in a release build only (see
+   `BufferCopy.swift`);
+3. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
    app's version matches the source, that both shader bundles and the licence text are inside
    it and that it is arm64;
-3. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
+4. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
    (the shaders are compiled at run time by Metal's own compiler service, which needs none);
-4. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
+5. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
    `dist/notarization.json`; it stops unless the status is `Accepted`;
-5. staples the ticket, validates it, re-verifies the signature and asks Gatekeeper to assess
+6. staples the ticket, validates it, re-verifies the signature and asks Gatekeeper to assess
    the app;
-6. only then writes the release archive, its checksum and a manifest:
+7. only then writes the release archive, its checksum and a manifest:
 
 ```text
 dist/BombCAD-0.1.0-macos-arm64.zip
