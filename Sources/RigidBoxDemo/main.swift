@@ -7,6 +7,22 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--fractional-substeps") {
+        let results = try ExperimentalFractionalSubstepStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-substeps.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Transit volume \(r.transitVolume) m³: \(r.acceptedSteps) steps, \(r.rejectedIntervals) retries, pressure error \(r.maximumRelativePressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--fractional-remap") {
         let results = try ExperimentalFractionalRemapStudy.run()
         let output = URL(

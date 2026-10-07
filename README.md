@@ -294,6 +294,13 @@ stable timestep, and is separate from the air solver.
 transfers from a translating box's fractional volumes and sampled face openings. The network
 limits outgoing volume to each donor's old gas inventory. This is remapping, not physical
 air fluxes; dry relays and insufficient transit capacity are rejected.
+`--fractional-substeps` writes `.build/fractional-substeps.json`, automatically bisecting
+prescribed motion intervals when the remap exceeds a cell's gas-volume capacity. Passing
+0.02 m³ through transit cells of 0.004, 0.001 and 0.00025 m³ takes 8, 32 and 128 steps,
+preserving mass, momentum, energy and uniform pressure to floating-point precision.
+The controller has bounded refinement and returns a complete result only on success.
+This capacity limit is separate from acoustic timestep stability; face openings still need
+time-integrated treatment before fractional blast coupling.
 
 ## Headline results
 

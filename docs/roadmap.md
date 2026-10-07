@@ -498,10 +498,24 @@ These are uniform-state remapping checks, not a blast-convergence result.
 Six planner tests cover moving-box geometry on all three grids, rerouting a contested exit,
 dry/blocked paths, volume imbalance and small transit cells, alongside the six gas-accounting
 tests. A 0.001 m³ transit cell cannot pass a 0.02 m³ displacement in one update, but forty
-smaller prescribed steps preserve mass, energy and uniform pressure. This demonstrates a
-bounded substep approach rather than automatic stability control. Next, compute conservative
-motion substeps from geometry and capacity limits, then add time-integrated face apertures
-and physical gas fluxes before enabling fractional blast coupling.
+smaller prescribed steps preserve mass, energy and uniform pressure.
+
+Automatic capacity-limited motion substeps are now implemented in the isolated CPU reference.
+The controller queries prescribed endpoint volumes and interval face connectivity, retries an
+unroutable interval by bisection, and recomputes donor inventories after each accepted step.
+Refinement depth and total substeps are bounded. It returns a complete result only on success;
+invalid geometry and volume imbalance propagate immediately. It cannot resolve disconnected
+or permanently dry relay paths simply by refining time.
+
+`--fractional-substeps` passes a 0.02 m³ displacement through transit cells of 0.004, 0.001
+and 0.00025 m³. It automatically accepts 8, 32 and 128 steps after 7, 31 and 127 rejected
+intervals, keeping every donor within its old gas inventory. Relative mass/energy changes
+remain below 0.000000000000002, momentum changes below 0.000000000000001 N s and relative
+pressure errors below 0.000000000000001. Three controller tests check automatic refinement,
+budget exhaustion and invalid geometry, with all fifteen transport/planner/controller tests
+passing. This is a capacity-controlled remap, not an acoustic stability controller or a
+physical flux update. Next, add time-integrated face apertures and physical gas fluxes,
+including small-cell acoustic stability treatment, before enabling fractional blast coupling.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
