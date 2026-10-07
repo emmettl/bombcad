@@ -63,6 +63,7 @@ struct ShellUniforms {
     uint fluidRefine;
     uint fluidBlocksX;
     uint fluidBlocksY;
+    uint crackSlip;  // 1: shear past a crack's interlock slides it for good, and it rides up
 };
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
@@ -198,7 +199,7 @@ constant uint shellTied = 128u;
 constant uint shellOnSolid = 256u;
 
 // State of one layer at one of the four in-plane points (or one fibre of a beam), as stored:
-// 20 bytes. The strain-rate average and the frozen tensile factor need only half precision.
+// 40 bytes. The strain-rate average and the frozen tensile factor need only half precision.
 struct ShellLayerStore {
     packed_float2 crack;  // concrete: largest tensile strain across the planes normal to the
                           // element's axes; von Mises: plastic strain along them
@@ -207,6 +208,9 @@ struct ShellLayerStore {
     half rate;            // running average of the effective strain rate
     half crackingFactor;  // tensile rate factor frozen when the layer first cracked
     packed_float2 residual;  // concrete: opening each crack keeps once closed, as a strain
+    // Concrete: what its cracks have slid for good, as shear strains: through the thickness
+    // across the planes normal to x and y, and in-plane (a beam fibre: its two shears).
+    packed_float3 slip;
 };
 
 // The same, as worked on, with the layer's damage for display (0 sound, 1 failing).
@@ -216,6 +220,7 @@ struct ShellLayer {
     float rate;
     float crackingFactor;
     float2 residual;
+    float3 slip;
     float display;
 };
 
@@ -226,6 +231,7 @@ static inline ShellLayer loadLayer(const device ShellLayerStore &stored) {
     layer.rate = float(stored.rate);
     layer.crackingFactor = float(stored.crackingFactor);
     layer.residual = float2(stored.residual);
+    layer.slip = float3(stored.slip);
     layer.display = 0.0f;
     return layer;
 }
@@ -236,6 +242,7 @@ static inline void storeLayer(device ShellLayerStore &stored, thread const Shell
     stored.rate = half(min(layer.rate, 60000.0f));
     stored.crackingFactor = half(layer.crackingFactor);
     stored.residual = layer.residual;
+    stored.slip = layer.slip;
 }
 
 // One bar layer, one direction, at one in-plane point.
@@ -364,6 +371,17 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
 
     float2 residual = float2(settledResidual(state.residual.x, history.x, uniaxial.x, tensionFactor, m),
                              settledResidual(state.residual.y, history.y, uniaxial.y, tensionFactor, m));
+    // A crack that has slid cannot close: it keeps `crackDilatancy` times its slip open (see the
+    // solid elements), the plane normal to x sliding in-plane and through the thickness across x.
+    if (u.crackSlip != 0 && m.crackDilatancy > 0.0f) {
+        float2 across = float2(length(float2(state.slip.z, state.slip.x)), length(float2(state.slip.z, state.slip.y)));
+        for (int j = 0; j < 2; ++j) {
+            if (history[j] > onset) {
+                float held = min(m.crackDilatancy * across[j], min(uniaxial[j], 0.9f * history[j]));
+                residual[j] = max(residual[j], held);
+            }
+        }
+    }
     state.residual = residual;
     float2 squeeze = residual - uniaxial;
     float2 crush = max(state.crush, squeeze);
@@ -390,7 +408,11 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
     float opened = crack - onset;
     float width = max(opened, 0.0f) * m.crackBand;
     float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
-    float inPlane = m.mu * 2.0f * strain.z;
+    // With `crackSlip`, the shear is that of the strain less what the cracks have slid by for good;
+    // what interlock and dowels cannot hold, they slide by (see the solid elements).
+    bool slides = u.crackSlip != 0;
+    float3 slip = slides ? state.slip : float3(0.0f);
+    float inPlane = m.mu * (2.0f * strain.z - slip.z);
     // Bars across a crack add dowel action to the interlock: those along the axis the crack
     // lies across, sliding by the shear strain over the element's length.
     float debonded = debondedLength(m, u);
@@ -398,10 +420,14 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
         int across = history.x >= history.y ? 0 : 1;
         float slide = fabs(2.0f * strain.z) * lengths[across] / max(debonded, lengths[across]);
         float limit = interlock + barShear(crossing[across], slide, m);
-        inPlane = clamp(m.shearRetention * inPlane, -limit, limit);
+        float trial = m.shearRetention * inPlane;
+        inPlane = clamp(trial, -limit, limit);
+        if (slides && trial != inPlane) {
+            slip.z += (trial - inPlane) / (m.shearRetention * m.mu);
+        }
     }
     for (int j = 0; j < 2; ++j) {
-        float stress = u.shearFactor * m.mu * transverse[j];
+        float stress = u.shearFactor * m.mu * (transverse[j] - slip[j]);
         float across = history[j] - onset;
         float slide = fabs(transverse[j]) * lengths[j] / max(debonded, lengths[j]);
         if (((sheared >> j) & 1u) != 0u) {
@@ -417,9 +443,16 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
             float w = across * m.crackBand;
             float limit = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * w)
                 + barShear(crossing[j], slide, m);
-            stress = clamp(m.shearRetention * stress, -limit, limit);
+            float trial = m.shearRetention * stress;
+            stress = clamp(trial, -limit, limit);
+            if (slides && trial != stress) {
+                slip[j] += (trial - stress) / (m.shearRetention * u.shearFactor * m.mu);
+            }
         }
         shear[j] = stress;
+    }
+    if (slides) {
+        state.slip = slip;
     }
 
     outcome.torn = float2(history.x >= m.erosionStrain ? 1.0f : 0.0f, history.y >= m.erosionStrain ? 1.0f : 0.0f);
@@ -1191,6 +1224,11 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
     history = max(history, axial);
     state.crack.x = history;
     float residual = settledResidual(state.residual.x, history, axial, tensionFactor, m);
+    // A crack that has slid cannot close (see the shells).
+    if (u.crackSlip != 0 && m.crackDilatancy > 0.0f && history > onset) {
+        float held = min(m.crackDilatancy * length(state.slip.xy), min(axial, 0.9f * history));
+        residual = max(residual, held);
+    }
     state.residual.x = residual;
     float squeeze = residual - axial;
     float crush = max(state.crush.x, squeeze);
@@ -1207,7 +1245,9 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
         crushed = clamp((squeeze - limits.x) / (limits.y - limits.x), 0.0f, 1.0f);
         pulverised = squeeze >= limits.y + m.crushErosion * (limits.y - limits.x);
     }
-    shearStress = u.shearFactor * m.mu * shear;
+    bool slides = u.crackSlip != 0;
+    float2 slip = slides ? state.slip.xy : float2(0.0f);
+    shearStress = u.shearFactor * m.mu * (shear - slip);
     float opened = history - onset;
     if (opened > 0.0f) {
         float width = opened * m.crackBand;
@@ -1216,8 +1256,16 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
             + barShear(crossing, slide, m);
         float carried = m.shearRetention * length(shearStress);
         if (carried > 0.0f) {
+            float2 trial = m.shearRetention * shearStress;
             shearStress *= min(carried, limit) / length(shearStress);
+            // What interlock and dowels cannot hold, the crack slides by for good.
+            if (slides && carried > limit) {
+                slip += (trial - shearStress) / (m.shearRetention * u.shearFactor * m.mu);
+            }
         }
+    }
+    if (slides) {
+        state.slip.xy = slip;
     }
     // Once the section has failed in shear, only its stirrups carry shear across it.
     shearStress = clamp(shearStress, -cap, cap);

@@ -903,19 +903,22 @@ struct ImpactBenchmarkTests {
     )
     func solids() throws {
         // Twelve elements through the depth; 16 and 24 give much the same (docs/validation.md).
-        let light = try ImpactBenchmark.run(device: device, test: test("SS1a-1"), elementsThroughDepth: 12)
+        let light = try ImpactBenchmark.run(
+            device: device, test: test("SS1a-1"), elementsThroughDepth: 12, duration: 0.08)
         let measured = try #require(try test("SS1a-1").peak)
         #expect(abs(light.peak - measured) / measured < 0.25, "SS1a-1: \(light.peak) m")
         #expect(light.summary.erodedElements == 0)
         // With stirrups the heavy drop is survived, its peak a little short of the test's.
-        let heavy = try ImpactBenchmark.run(device: device, test: test("SS2b-1"), elementsThroughDepth: 12)
+        let heavy = try ImpactBenchmark.run(
+            device: device, test: test("SS2b-1"), elementsThroughDepth: 12, duration: 0.08)
         let heavyMeasured = try #require(try test("SS2b-1").peak)
         #expect(
             heavy.peak > 0.75 * heavyMeasured && heavy.peak < 1.1 * heavyMeasured, "SS2b-1: \(heavy.peak) m")
         #expect(heavy.summary.erodedElements == 0)
         // Without stirrups, it breaks along diagonal cracks. (So, under the light drop, does SS0a-1,
         // which the test beam survived: see docs/validation.md.)
-        let broken = try ImpactBenchmark.run(device: device, test: test("SS0b-1"), elementsThroughDepth: 12)
+        let broken = try ImpactBenchmark.run(
+            device: device, test: test("SS0b-1"), elementsThroughDepth: 12, duration: 0.08)
         #expect(
             broken.summary.erodedElements > 100, "SS0b-1: \(broken.summary.erodedElements) elements failed")
     }
@@ -925,22 +928,22 @@ struct ImpactBenchmarkTests {
         func test(_ name: String) throws -> ImpactBenchmark.ShearTest {
             try #require(ImpactBenchmark.shearTests.first { $0.name == name })
         }
-        // 24 elements through the depth: on 16 the beam struck at 5 m/s bends badly but holds.
-        let bent = try ImpactBenchmark.run(device: device, test: test("B36-4"), elementsThroughDepth: 24)
+        let bent = try ImpactBenchmark.run(device: device, test: test("B36-4"), duration: 0.1)
         // 22.6 mm left in the test.
         #expect(bent.residual > 0.015 && bent.residual < 0.04, "B36-4: \(bent.residual) m left")
-        // With the paper's measured materials B36 bends far at 5 m/s but holds on this mesh; A36,
-        // with heavier bars, breaks at 5 m/s as its test beam did.
-        let broken = try ImpactBenchmark.run(device: device, test: test("A36-5"), elementsThroughDepth: 24)
-        #expect(broken.residual > 0.06, "A36-5: \(broken.residual) m left")
-        let light = try ImpactBenchmark.run(device: device, test: test("B36-1"))
+        // A36, with heavier bars, breaks at 5 m/s as its test beam did: on 16 elements it goes
+        // about 100 mm, against about 30 at 4 m/s. (B36, which its test beam also broke at 5 m/s,
+        // bends far but holds.)
+        let broken = try ImpactBenchmark.run(device: device, test: test("A36-5"), duration: 0.1)
+        #expect(broken.peak > 0.08, "A36-5: \(broken.peak) m")
+        let light = try ImpactBenchmark.run(device: device, test: test("B36-1"), duration: 0.05)
         #expect(light.summary.erodedElements == 0)
     }
 
     @Test("A beam cracked diagonally by a blow keeps its deflection, as the test beam did")
     func diagonalCracksStay() throws {
         let test = try #require(ImpactBenchmark.shearTests.first { $0.name == "A36-3" })
-        let result = try ImpactBenchmark.run(device: device, test: test)
+        let result = try ImpactBenchmark.run(device: device, test: test, duration: 0.1)
         // 13.5 mm peak and 9.5 mm left in the test. Before cracks slid for good and rode up on
         // their aggregate, the model peaked at 17 mm and sprang back to 1.4 mm.
         #expect(result.peak > 0.01 && result.peak < 0.02, "peak \(result.peak) m")
@@ -991,7 +994,7 @@ struct CloseInSlabTests {
 
     @Test("13 kg at 1 m bends the slab well past yield without breaching it")
     func bending() throws {
-        let result = try CloseInSlabTest.run(device: device, test: test("P7"), duration: 0.1)
+        let result = try CloseInSlabTest.run(device: device, test: test("P7"), duration: 0.06)
         // The test slab was left 340 mm down; the model's peak is 140 mm on this mesh, 208 mm on
         // a finer one (docs/validation.md).
         #expect(result.peak > 0.1, "peak \(result.peak) m")

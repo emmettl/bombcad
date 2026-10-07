@@ -79,7 +79,7 @@ section, each with the uniaxial law along the beam and shear across it.
 a shell of area A, and (L² + w² + d²) / 12 for a beam, so that rotation never limits the time
 step, which is half the time a compression wave takes to cross the shortest element side or beam.
 On the GPU a shell's four in-plane points run in four adjacent threads, whose forces are summed
-across the quad, and each layer's state is 28 bytes (20 before each crack's residual opening
+across the quad, and each layer's state is 40 bytes (20 before each crack's residual opening, 28 before its slips
 was stored). Together with less work in the material
 laws, that took the three-storey building's structure, run on its own, from 9.6 to 6.6 times
 slower than real time, and the single-storey building's from 2.5 to 1.2 times.
@@ -115,6 +115,13 @@ A beam's fibres crack across the beam, from their axial strain or the principal 
 stress with shear, and are confined by the column's ties: half the tie ratio times the bars'
 yield stress, as lateral pressure. Shear across a cracked fibre is carried by interlock and by
 the dowel action of the bars along the beam.
+
+As in the solid elements, what interlock and dowels cannot hold, a crack in a layer or fibre
+slides by for good, and a crack that has slid keeps half its slip open (`crackSlip`,
+`crackDilatancy`; see [Shear across cracks](concrete-model.md#shear-across-cracks)), each layer
+storing its three slips. On the slab benchmark and on Saatci's beams as beam elements the
+difference is under a millimetre; the eight-storey frame at 500 kg sways 0.3 m where it swayed
+0.6 m, and the layouts' other outcomes are unchanged.
 
 The solid elements' bars also resist sliding by kinking: their tension, leaning along the
 slide, given as a term of its own. Shells and beams need none. A shell that slides across a
@@ -371,7 +378,7 @@ Model Code's tensile strain-rate law:
 
 | Layout | 500 kg | 1,000 kg | 2,000 kg | 4,000 kg (the layouts' charge) |
 |---|---|---|---|---|
-| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.6 m and stands; 9 elements removed | The first floor punches off its columns and drops; the rest stands | The same | Every floor punches off its columns and pancakes; the columns are left standing bare |
+| Eight-storey frame (28 m; 3 × 2 bays of 6 m, flat slabs on 450 mm columns) | Sways 0.3 m and stands; 6 elements removed | The first floor punches off its columns and drops; the rest stands | The same | Every floor punches off its columns and pancakes; the columns are left standing bare |
 | Twelve-storey tower (42 m; 20 m square, a 6 m core of 300 mm walls, twelve perimeter columns) | Loses its front column; the core and floors bridge it | The lowest floor drops at the front; the rest stands | The same | The floors punch off their columns and pancake; the core breaks and goes over; the columns are left standing bare |
 
 Under Malvar and Ross's law the frame at 4,000 kg lost only its two lowest floors, and at

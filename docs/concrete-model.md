@@ -773,6 +773,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    whole depth (+0.3% at the top), the two halves having swung back about the bars, which is
    the mechanism of step 8. Its bottom crack closes, against bars that yielded 5% in tension and
    now carry little in compression, by more than a hinge whose cracked faces jam would let it.
+   Holding a crack open by its yielded bars' plastic stretch, so that it cannot close past it,
+   left the slab 68 mm down against 66: the hinge turns back about the bars, so the crack at
+   their level need not close, and with no bars at the top and its concrete crushed nothing in
+   the section resists the turn. What differs from the specimen is then how much the halves
+   store at the peak to drive it, which tension stiffening (step 16) did not change either.
    Hourglass control is not the cause (quartered, the strip springs back 32 mm). In the blast
    the slab swings about a mean some 22 mm below its peak, where the specimen settled about
    13 mm below, and its swing dies away more slowly. In the chamber the

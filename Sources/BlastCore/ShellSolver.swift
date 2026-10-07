@@ -52,6 +52,7 @@ struct ShellUniforms {
     var fluidRefine: UInt32 = 0
     var fluidBlocksX: UInt32 = 0
     var fluidBlocksY: UInt32 = 0
+    var crackSlip: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -247,7 +248,7 @@ public final class ShellSolver {
     private static let maxLoadPoints = 256
     /// Gauss-Legendre points and weights through the thickness, from -1 to 1.
     private let thicknessRule: [SIMD2<Float>]
-    private static let layerStride = 28
+    private static let layerStride = 40
     private static let barStride = 36
 
     public init(
@@ -943,6 +944,7 @@ public final class ShellSolver {
 
     private func makeUniforms(fluid: StructureSolver.FluidBinding?) -> ShellUniforms {
         var uniforms = ShellUniforms()
+        uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.elementCount = UInt32(elementCount)
         uniforms.beamCount = UInt32(beamCount)
         uniforms.elementSize = model.elementSize
