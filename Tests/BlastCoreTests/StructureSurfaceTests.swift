@@ -70,6 +70,7 @@ struct StructureSurfaceTests {
         let rubble = 0.6 * h
         #expect(abs(volume(broken) - (0.25 - h * h * h + rubble * rubble * rubble)) < 1e-4)
         #expect(broken.damage.filter { $0 == 1 }.count == 6)
+        #expect(broken.rubble.filter { $0 }.count == 6 && !surface.rubble.contains(true))
     }
 
     @Test("Shells become closed boxes their thickness through")

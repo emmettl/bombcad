@@ -568,6 +568,63 @@ loads, moving-wall work, chronological aperture/flux integration and closure/ope
 still need to be combined consistently. Next, establish a closed stationary-wall pressure
 budget, then couple prescribed piston motion before a freely moving rigid box.
 
+Stationary reflecting slip walls are now included in the isolated Euler flux reference.
+Initially a mirrored normal velocity supplied the Rusanov wall traction; wall mass and total-energy
+fluxes are exactly zero. Each wall impulse is recorded opposite to the gas momentum update,
+and its acoustic rate participates in the cell timestep limit. A resting six-wall box
+preserves its gas state and recovers pressure-times-area loads. Tangential slip transfers
+no tangential momentum. The initial approximate traction could become tensile for strongly
+separating gas; such updates failed explicitly rather than clipping the load. That initial
+wall law was unsuitable for all rarefactions or moving-piston conditions.
+
+`--fractional-walls` applies an end-cell pressure pulse in a closed eight-cell tube for
+0.5 ms. The three volume cases require 11, 38 and 141 steps, with gas-plus-wall momentum
+residuals below 0.000000000000001 N s and relative mass/energy changes below
+0.000000000000001. Reducing the end cell also reduces the initial pulse energy, so response
+differences are not a convergence result. Four wall tests cover uniform-pressure balance,
+closed-pulse impulse accounting, tangential slip, invalid geometry, excessive timesteps and
+tensile-traction rejection; the four existing flux tests also pass.
+
+The wall pressure now uses the exact planar ideal-gas shock and rarefaction relations for
+a uniform incident state, with normal velocity measured relative to the wall. Compression
+inverts the shock pressure/velocity relation analytically; expansion uses the rarefaction
+invariant and reaches zero pressure at vacuum onset. This replaces the tensile Rusanov
+traction failure. The wall timestep rate includes the compressive shock speed. These
+relations follow the [Clawpack Euler reference](https://www.clawpack.org/riemann_book/html/Euler.html).
+
+`--wall-pressure` records eight incident normal Mach numbers from -6 to +3. At Mach -2,
+wall pressure is 0.0279936 times incident pressure; Mach -6 forms a vacuum gap with zero
+wall load. Three analytical tests cover shock jump relations, the expansion invariant and
+vacuum, and the weak-wave acoustic limit. The existing wall test now verifies positive
+expansion traction and a zero-load vacuum update instead of tensile-traction rejection.
+All eleven wall-pressure/wall/flux tests pass. The closed-tube study retains 11, 38 and
+141 steps, with mass/energy and gas-plus-wall momentum budgets within floating-point
+precision. The exact local wall law does not make the first-order spatial flux exact or
+add moving geometry. Next, establish prescribed-piston volume and pressure-work consistency
+before coupling freely moving bodies.
+
+Prescribed planar piston motion is now implemented within intervals of fixed cell topology.
+Each wall has a constant velocity: its swept volume is `area * normal velocity * dt`,
+its impulse uses the wall pressure from relative gas/wall normal velocity, and its work
+is the dot product of that impulse with wall velocity. Gas momentum and energy receive
+the opposite impulse/work, while no mass crosses the wall. Acoustic timestep rates include
+wall travel, and a separate contraction limit prevents a cell from closing in one step.
+No independent endpoint-volume input is needed for this planar reference.
+
+`--piston` compresses or expands a closed four-cell tube by 10% at 0.25, 0.5 and 1 m/s.
+The six cases take 676–3519 steps. Swept-volume residuals stay below 0.00000000000000001 m³,
+relative mass changes below 0.000000000000001, and gas-plus-wall energy residuals below
+0.00000000001 J. Impulse budgets remain balanced. Mean pressure approaches the quasi-static
+adiabatic value as speed decreases; at 0.25 m/s the relative departure is below 0.000005
+for compression and expansion. This is a low-speed limiting check, not a spatial-convergence
+result. Three piston tests cover signed volume/work exchange, a comoving translating cavity,
+and the complete closed-tube pressure/budget study. The existing wall/flux checks also pass.
+
+This reference assumes constant wall area and normal within a step, stationary internal
+faces and no cell topology changes. Next, combine physical flux/work with chronological
+cell-crossing geometry and face apertures, including gas transfer when cells open or close,
+before coupling a freely moving rigid box.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
@@ -642,8 +699,8 @@ two collapsing over several seconds.
   1. **Geometry as USD**, in its text form (`.usda`), which needs no library: the blocks and
      ground once, the structure's surface with its points sampled per frame and failed elements
      dropped, and the charge and gauges as markers. (Done: `BombCAD run --usd`, with the
-     project's view as a camera; see [Exporting a run for rendering](usd-export.md). Not yet
-     opened in Blender.)
+     project's view as a camera, and checked in Blender 5.2; see
+     [Exporting a run for rendering](usd-export.md).)
   2. **The blast as OpenVDB volumes**, one file per frame, from the overpressure the renderer
      already ray-marches (the solver's visualisation volume). Blender reads volumes only as VDB,
      so this needs either the OpenVDB library (a large C++ dependency) or a small writer of our

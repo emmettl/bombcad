@@ -14,10 +14,13 @@ public struct StructureSurface: Sendable, Equatable {
     public var points: [SIMD3<Float>] = []
     /// Four indices into `points` per face, counter-clockwise seen from outside.
     public var quads: [Int32] = []
-    /// Per face: its element's damage, 0 (sound) to 1, and 1 for rubble.
+    /// Per face: its element's damage index, 0 when sound and 1 at the point of failure. It goes on
+    /// rising past 1 until the element is removed, as the app's colours do not show; 1 for rubble.
     public var damage: [Float] = []
     /// Per face: an index into `materials`.
     public var material: [Int32] = []
+    /// Per face: whether it belongs to a lump of rubble standing for a failed element.
+    public var rubble: [Bool] = []
     public var materials: [Material] = []
     public var faceCount: Int { quads.count / 4 }
 
@@ -39,14 +42,17 @@ public struct StructureSurface: Sendable, Equatable {
         return Int32(materials.count - 1)
     }
 
-    mutating func appendFace(_ indices: [Int32], damage: Float, material: Int32) {
+    mutating func appendFace(_ indices: [Int32], damage: Float, material: Int32, rubble: Bool = false) {
         quads.append(contentsOf: indices)
         self.damage.append(damage)
         self.material.append(material)
+        self.rubble.append(rubble)
     }
 
     /// Appends a box of eight corners, each face turned away from the box's middle.
-    mutating func appendBox(_ corners: [SIMD3<Float>], faces: [[Int]], damage: Float, material: Int32) {
+    mutating func appendBox(
+        _ corners: [SIMD3<Float>], faces: [[Int]], damage: Float, material: Int32, rubble: Bool = false
+    ) {
         let base = Int32(points.count)
         points.append(contentsOf: corners)
         let middle = corners.reduce(SIMD3<Float>.zero, +) / 8
@@ -56,7 +62,7 @@ public struct StructureSurface: Sendable, Equatable {
             let outward = dot(normal, (p[0] + p[1] + p[2] + p[3]) / 4 - middle) >= 0
             appendFace(
                 (outward ? face : face.reversed()).map { base + Int32($0) }, damage: damage,
-                material: material)
+                material: material, rubble: rubble)
         }
     }
 }
@@ -136,7 +142,8 @@ extension StructureSolver {
                 let centre = bits.map { position(cell &+ $0) }.reduce(SIMD3<Float>.zero, +) / 8
                 let corners = bits.map { centre + (SIMD3<Float>($0) - 0.5) * (0.6 * h) }
                 surface.appendBox(
-                    corners, faces: StructureSurface.bitCubeFaces, damage: 1, material: material)
+                    corners, faces: StructureSurface.bitCubeFaces, damage: 1, material: material, rubble: true
+                )
             default:
                 continue
             }
@@ -187,7 +194,8 @@ extension ShellSolver {
                         c == 1 || c == 2 ? 0.5 : -0.5, c >= 2 ? 0.5 : -0.5, corner < 4 ? -0.5 : 0.5)
                     return centre + offset * size
                 }
-                surface.appendBox(corners, faces: StructureSurface.shellFaces, damage: 1, material: material)
+                surface.appendBox(
+                    corners, faces: StructureSurface.shellFaces, damage: 1, material: material, rubble: true)
             }
         }
 

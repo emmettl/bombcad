@@ -6,11 +6,34 @@ import ImpulseResponseKit
 // exports stereo 32-bit float WAV files for auditioning in a convolution engine.
 //
 //   acousticbench [--out DIRECTORY]
+//   acousticbench --presets   (times every preset, for the performance budgets)
+//   acousticbench --bras-cr2 [--update-fixture] [--reuse-simulation]   (comparison with a measured room; see MeasuredRoom)
 
 let arguments = CommandLine.arguments
 var outputDirectory = URL(fileURLWithPath: "roomcad-reference")
 if let flag = arguments.firstIndex(of: "--out"), flag + 1 < arguments.count {
     outputDirectory = URL(fileURLWithPath: arguments[flag + 1])
+}
+
+if arguments.contains("--presets") {
+    do {
+        try PresetTiming.run()
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("acousticbench: \(error.localizedDescription)\n".utf8))
+        exit(1)
+    }
+}
+
+if arguments.contains("--bras-cr2") {
+    do {
+        if arguments.contains("--update-fixture") { try MeasuredRoom.updateFixture() }
+        try MeasuredRoom.run(reuse: arguments.contains("--reuse-simulation"))
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("acousticbench: \(error.localizedDescription)\n".utf8))
+        exit(1)
+    }
 }
 
 func format(_ value: Double?, _ digits: Int = 3) -> String {

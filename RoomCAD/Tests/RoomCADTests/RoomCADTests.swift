@@ -277,3 +277,11 @@ func waveEngines() {
     #expect(DiagnosticsList.engines(runs: 1, gpu: 0) == "1 run on the CPU")
     #expect(DiagnosticsList.engines(runs: 3, gpu: 1) == "3 runs, 1 on the GPU and 2 on the CPU")
 }
+
+@Test("Generation progress reads as the stage and a percentage")
+@MainActor
+func progressText() {
+    #expect(RoomEditor.describe((nil, 0)) == nil)
+    #expect(RoomEditor.describe((.rays, 0.404)) == "Tracing rays 40%")
+    #expect(RoomEditor.describe((.waveSolver, 1)) == "Wave solver 100%")
+}

@@ -309,3 +309,23 @@ struct WaveMetadataTests {
         #expect(result.response.metadata.model.hasPrefix("Finite-difference wave solver below 100 Hz"))
     }
 }
+
+@Test("Generation reports each stage and finishes every one it starts")
+func generationProgress() throws {
+    var settings = RoomResponseSettings(
+        room: ShoeboxRoom(size: [4, 3, 2.5], material: .uniform(0.3, name: "Plaster")),
+        source: RoomPoint(name: "S", position: [1, 1, 1.2]),
+        receivers: [RoomPoint(name: "R", position: [3, 2, 1.2])], duration: 0.2, diffuseRays: 1_000,
+        lowFrequencyModel: true, crossoverFrequency: 80)
+    settings.room[.floor].scattering = Array(repeating: 0.3, count: OctaveBands.count)
+    let progress = GenerationProgress()
+    _ = try RoomResponseGenerator.generate(settings, progress: progress)
+    // The wave solver runs last.
+    #expect(progress.current.stage == .waveSolver)
+    #expect(abs(progress.current.fraction - 1) < 1e-9)
+    settings.lowFrequencyModel = false
+    let geometrical = GenerationProgress()
+    _ = try RoomResponseGenerator.generate(settings, progress: geometrical)
+    #expect(geometrical.current.stage == .reflections)
+    #expect(abs(geometrical.current.fraction - 1) < 1e-9)
+}

@@ -172,6 +172,27 @@ struct RoomDocumentTests {
         #expect(summary.channels.allSatisfy { $0.reverberationTime[3...].allSatisfy { $0 != nil } })
     }
 
+    @Test("The summary's spectrum is flat for the direct sound alone and peaks at 0 dB")
+    func spectrum() throws {
+        var settings = Self.settings
+        settings.room = ShoeboxRoom(size: settings.room.size, material: .anechoic)
+        settings.airAbsorption = false
+        settings.duration = 0.1
+        let summary = ResponseSummary(try RoomResponseGenerator.generate(settings))
+        #expect(
+            summary.channels.allSatisfy { $0.spectrum.count == ResponseSummary.spectrumFrequencies.count })
+        #expect(summary.channels.flatMap(\.spectrum).max() == 0)
+        // Clear of the ripple from the 20 Hz high-pass's tail, cut by the short response, and below the
+        // renderer's 0.9 × Nyquist cutoff.
+        let band = ResponseSummary.spectrumFrequencies.indices.filter {
+            (300...10_000).contains(ResponseSummary.spectrumFrequencies[$0])
+        }
+        for channel in summary.channels {
+            let levels = band.map { channel.spectrum[$0] }
+            #expect(levels.max()! - levels.min()! < 0.2, "\(channel.name): \(levels)")
+        }
+    }
+
     @Test("A saved document reopens from disk after being moved")
     func onDisk() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

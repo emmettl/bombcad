@@ -204,8 +204,18 @@ Progress (October 2026):
   and documented in [Room-acoustics model](room-acoustics-model.md#output). The defaults are
   48 kHz, one channel per receiver, emission at frame 0, a common gain only, and both complete and
   reflections-only content.
-- **Still open.** Fixed performance budgets and a measured reference room are not yet chosen. The
-  acousticbench reference room is illustrative.
+- **Measured reference room (item 5).** This is the seminar room CR2 of the BRAS database; see
+  [RoomCAD against a measured room](roomcad-validation.md). The acousticbench reference room remains
+  illustrative.
+- **Performance budgets (item 5).** On a Mac Studio (M4 Max, 14 cores, 36 GB):
+  - each room preset generates within 6 s with the wave solver, while no other app is loading the GPU
+    (1.4–5.3 s measured);
+  - while another app kept the GPU busy, the slowest preset took 10.4 s, with runs moving to the CPU
+    as needed;
+  - peak memory for all ten presets in one process is 310 MB.
+
+  `acousticbench --presets` measures these. The measured-room comparison takes about 6 minutes.
+  Preview CPU use while auditioning is not yet measured.
 
 ### M1 — Create the shared foundation and RoomCAD scaffold
 
@@ -237,7 +247,9 @@ Items 1, 2, 5 and 6 are not done:
 
 - **Item 1.** The 2D drawings need no shared camera.
 - **Item 2.** Rendering is not shared yet.
-- **Item 5.** AcousticCore uses Accelerate, not Metal.
+- **Item 5.** AcousticCore's wave solver uses Metal through its own small kernels, compiled when
+  first used. Nothing is shared with BombCAD's Metal code yet, since a shared utility would serve
+  one user only.
 - **Item 6.** GeometryImport extraction waits for imported rooms.
 
 There are no shared shader resources yet.
@@ -276,7 +288,8 @@ Eyring's estimate. The decay matches what specular reflection predicts, but M4's
 needed before the reverb sounds like a real room. Item 6 (preview) is implemented in the RoomCAD
 app. It has a dry clip, a live wet/dry balance and optional loudness matching, and it plays through
 two synchronized players; see [RoomCAD app and documents](roomcad-app.md#the-window). Item 4 (late
-tail) is not done.
+tail) is no longer needed: rays carry every reflection beyond the image sources' order, so finite order
+does not truncate the decay.
 
 ### M3 — Establish a trustworthy low-frequency wave solver
 
@@ -341,7 +354,20 @@ Items 2–4 are implemented with the M3 solver:
   agree within 2.3 dB across the presets, except at 63 Hz in the L-shaped room (diffraction round the
   corner) and the stone church (the floor's boundary gain).
 
-Item 5 (comparison with measured rooms) and item 6's validated band are not done.
+Item 5 is done for one measured room: [RoomCAD against a measured room](roomcad-validation.md)
+compares ten measured responses in a 145 m³ seminar room from the BRAS database.
+
+- **Reverberation.** With published absorption data, reverberation time from 250 Hz to 2 kHz is
+  within 12%, and clarity and definition within about one just-noticeable difference.
+- **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
+  frequencies within about 1.5%.
+- **Early reflections.** These follow the measured pattern at each position.
+- **Low-frequency decay.** The wave solver's decay at 63–125 Hz is 18–32% too long, because its
+  locally reacting walls absorb nothing at grazing incidence.
+
+Larger measured rooms need geometry beyond vertical walls, and listening comparisons are not done.
+Item 6's validated band is not done: the comparison suggests the wave solver is trustworthy for
+modal structure but not yet for low-frequency decay.
 
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 
@@ -358,10 +384,24 @@ Done when: a user can build, save, reopen, audition and export a room without ed
 and can see the output's frequency coverage and modelling assumptions.
 
 Progress (October 2026): the RoomCAD app covers saving, reopening, auditioning and export without
-code. Item 2 has started: 90 absorption and 7 scattering presets come from the annex of Vorländer's
-*Auralization*, via pyroomacoustics. Bands outside the published range are extended and labelled in
-each material's reference. Most surfaces still need scattering values. See
-[RoomCAD app and documents](roomcad-app.md#material-presets).
+code.
+
+- **Item 1.** Rooms are boxes or floor plans with vertical walls (L, T, trapezoid or any outline),
+  with openings such as doors and windows. Each backend's supported geometry is documented in
+  [Room-acoustics model](room-acoustics-model.md). Connected spaces are not modelled.
+- **Item 2.** This has started: 90 absorption and 7 scattering presets come from the annex of
+  Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
+  and labelled in each material's reference. Most surfaces still need scattering values. See
+  [RoomCAD app and documents](roomcad-app.md#material-presets).
+- **Item 3.** The app shows each channel's envelope, spectrum and octave-band decay. It also shows
+  the generation's stage and progress while it runs, the wave solver's crossover and engine, and T30
+  only where the band's decay reaches −35 dB. An early-arrivals view and a memory estimate are not
+  done.
+- **Item 4.** There are ten whole-room presets, and regeneration runs in the background and is
+  cancelled when the room changes. Responses are kept with their settings and marked stale when the
+  settings change. Preview and export use the same quality.
+- **Item 5.** Testing on screen has been done only by the user, who confirmed that the window,
+  audition, waveform and space bar work. The app is otherwise checked by offscreen snapshots.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 

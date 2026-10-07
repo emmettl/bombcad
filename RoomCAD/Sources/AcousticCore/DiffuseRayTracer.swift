@@ -57,7 +57,7 @@ struct DiffuseRayTracer {
 
     func trace(
         receivers: [(position: SIMD3<Double>, microphone: Microphone)], duration: Double,
-        stop: @Sendable () -> Bool = { false }
+        stop: @Sendable () -> Bool = { false }, progress: GenerationProgress? = nil
     ) -> [[[Double]]] {
         let bands = OctaveBands.count
         let bins = Int((duration / Self.binWidth).rounded(.up))
@@ -235,6 +235,7 @@ struct DiffuseRayTracer {
         let results = ChunkResults<[[[Double]]]>(count: chunks)
         DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
             results.store(traceChunk(chunk), at: chunk)
+            progress?.advance(by: 1 / Double(chunks))
         }
         for part in results.values {
             for r in part.indices {
