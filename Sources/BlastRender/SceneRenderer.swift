@@ -77,7 +77,7 @@ private struct MeshUniforms {
 /// A frame takes two passes: the scene and the structure's mesh go into an offscreen colour and
 /// depth target, then the blast wave is ray-marched over them into the destination.
 public final class SceneRenderer {
-    public static let maxBoxes = 64
+    public static let maxBoxes = 2048
     public static let pixelFormat = MTLPixelFormat.bgra8Unorm
     private static let depthFormat = MTLPixelFormat.depth32Float
     private static let nearPlane: Float = 0.5

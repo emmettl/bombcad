@@ -87,6 +87,9 @@ struct SidebarView: View {
                 Section("Structure") {
                     Picker("Material", selection: $model.settings.material) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
+                        if !StructureMaterial.presets.contains(model.settings.material) {
+                            Text("Custom: \(model.settings.material.name)").tag(model.settings.material)
+                        }
                     }
                     LabeledContent("Elements", value: "\(summary.activeElements + summary.erodedElements)")
                     LabeledContent(

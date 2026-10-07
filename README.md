@@ -67,6 +67,23 @@ document containing the scene, simulation settings and camera. Named projects au
 project has its own window, and closing an edited untitled project asks whether to save.
 BombCAD → Settings (⌘,) sets defaults for new projects and playback windows.
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](docs/save-files.md).
+
+**Import Model…** reads watertight OBJ or STL geometry. Confirm source units, up axis and
+placement, then prepare a preview of the actual occupied simulation volumes. Imports can be
+rigid obstacles, or a new deformable solid body with a material preset and editable density,
+stiffness and strength. Deformable imports require a layout without an existing structure,
+use solid elements at the air cell size, and start without reinforcement. Fixing the base
+holds nodes at the imported body's lowest plane; review that assumption before running.
+
+The importer warns about thin features and potentially missing surfaces. Review these warnings
+before importing. They persist in saved layouts and the editor also warns about features below
+two air cells. Imported geometry is sampled once: changing the air resolution later cannot
+restore discarded walls or openings; re-import the original at a finer resolution. Compare
+resolutions to assess accuracy. Textures and OBJ visual materials are ignored; export triangulated
+faces or convex polygons. Open/non-manifold meshes are rejected. Intersecting or overlapping
+solids should be repaired before export. Limits are 20 MB, 100,000 triangles, 2 million sampled
+cells, and 2,048 coalesced regions; a scanline-work budget also limits expensive previews.
+
 Gauge and deflection histories export
 as CSV from beside the chart.
 

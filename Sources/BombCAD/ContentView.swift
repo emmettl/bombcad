@@ -2,12 +2,18 @@ import AppKit
 import BlastCore
 import BlastRender
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Bindable var model: SimulationModel
     @Environment(\.newDocument) private var newDocument
     @Environment(\.openWindow) private var openWindow
     @State private var isImportingJSON = false
+    @State private var isImporting = false
+    @State private var importMesh: ImportedMesh?
+    @State private var importName = ""
+    @State private var showImport = false
+    @State private var readingImport = false
     @State private var fileError: String?
     @State private var isExportingJSON = false
 
@@ -59,6 +65,9 @@ struct ContentView: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 Button("Export Layout JSON…", systemImage: "doc.text") { isExportingJSON = true }
+                Button(readingImport ? "Reading Model…" : "Import Model…", systemImage: "cube.box") {
+                    isImporting = true
+                }.disabled(readingImport)
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -87,6 +96,40 @@ struct ContentView: View {
             } catch {
                 fileError = "Could not import the layout: \(error.localizedDescription)"
             }
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [
+                UTType(filenameExtension: "obj") ?? .data, UTType(filenameExtension: "stl") ?? .data,
+            ]
+        ) { result in
+            guard case .success(let url) = result else { return }
+            readingImport = true
+            Task {
+                let outcome = await Task.detached(priority: .userInitiated) {
+                    () -> Result<ImportedMesh, Error> in
+                    Result {
+                        let accessing = url.startAccessingSecurityScopedResource()
+                        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+                        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                        guard size <= 20_000_000 else {
+                            throw ImportedMesh.ImportError.invalid("Model exceeds the 20 MB limit.")
+                        }
+                        return try ImportedMesh(data: Data(contentsOf: url), fileExtension: url.pathExtension)
+                    }
+                }.value
+                readingImport = false
+                switch outcome {
+                case .success(let mesh):
+                    importMesh = mesh
+                    importName = url.lastPathComponent
+                    showImport = true
+                case .failure(let error): fileError = error.localizedDescription
+                }
+            }
+        }
+        .sheet(isPresented: $showImport) {
+            if let importMesh { ModelImportView(mesh: importMesh, filename: importName, model: model) }
         }
         .fileExporter(
             isPresented: $isExportingJSON, document: ScenarioDocument(scenario: model.settings.scenario),

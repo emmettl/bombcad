@@ -18,6 +18,28 @@ struct EditorView: View {
                 }
             }
 
+            Section("Resolution warnings") {
+                ForEach(model.settings.scenario.importNotes ?? [], id: \.self) { note in
+                    Label(note, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(
+                        .orange)
+                }
+                let h = model.settings.resolution.cellSize
+                let thin = (model.settings.scenario.boxes + solids).filter { box in
+                    (0..<3).contains { box.size[$0] < 2 * h }
+                }.count
+                if thin > 0 {
+                    Label(
+                        "\(thin) regions have a dimension below two air cells (\(2 * h, format: .number) m). Thin walls or small gaps may be under-resolved. Imported voxel regions can also reflect the sampling grid rather than individual features.",
+                        systemImage: "exclamationmark.triangle"
+                    ).font(.caption).foregroundStyle(.orange)
+                }
+                if thin == 0 && (model.settings.scenario.importNotes ?? []).isEmpty {
+                    Text(
+                        "Air cells: \(h, format: .number) m. Features and gaps smaller than a cell can disappear; compare finer grids before trusting results."
+                    ).font(.caption)
+                }
+            }
+
             Section {
                 ForEach(model.settings.scenario.boxes.indices, id: \.self) { index in
                     BoxRow(
@@ -41,6 +63,9 @@ struct EditorView: View {
                     if model.selection == .solid(index) {
                         Picker("Material", selection: materialBinding(index)) {
                             ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
+                            if !StructureMaterial.presets.contains(materialBinding(index).wrappedValue) {
+                                Text("Custom").tag(materialBinding(index).wrappedValue)
+                            }
                         }
                         .font(.callout)
                         .padding(.leading, 18)
@@ -54,6 +79,9 @@ struct EditorView: View {
                         .help(
                             "Mesh this piece with solid elements (where stress through the thickness matters, "
                                 + "near a charge) or shells; the two kinds are tied where they meet.")
+                        DisclosureGroup("Material properties") {
+                            MaterialEditor(material: materialBinding(index))
+                        }
                         ReinforcementEditor(spec: reinforcementBinding(index))
                     }
                 }
@@ -68,6 +96,12 @@ struct EditorView: View {
                     Button("Add Opening", systemImage: "plus") { model.addOpening() }
                     Picker("Main material", selection: $model.settings.material) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
+                        if !StructureMaterial.presets.contains(model.settings.material) {
+                            Text("Custom: \(model.settings.material.name)").tag(model.settings.material)
+                        }
+                    }
+                    DisclosureGroup("Main material properties") {
+                        MaterialEditor(material: $model.settings.material)
                     }
                     Picker("Elements", selection: $model.settings.elementKind) {
                         Text("Solid").tag(ElementKind.solid)

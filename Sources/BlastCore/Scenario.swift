@@ -45,6 +45,8 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// Extent of the simulated volume in metres; its origin is at a ground-level corner.
     public var domainSize: SIMD3<Float>
     public var boxes: [Box]
+    /// Import diagnostics persist with the layout: voxelisation cannot recover lost geometry.
+    public var importNotes: [String]?
     public var charge: Charge
     /// Further charges, fired at the same moment as `charge`. (Optional so that layouts saved
     /// before it existed still open.)

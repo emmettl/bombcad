@@ -418,6 +418,10 @@ final class SimulationModel {
 
     /// Adds a rigid block in the middle of the domain.
     func addBlock() {
+        guard settings.scenario.boxes.count < SceneRenderer.maxBoxes else {
+            errorMessage = "The layout has reached the 2,048 rigid region limit."
+            return
+        }
         let centre = settings.scenario.domainSize / 2
         settings.scenario.boxes.append(
             Box(x: (centre.x - 3)...(centre.x + 3), y: (centre.y - 3)...(centre.y + 3), height: 9))
