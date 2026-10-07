@@ -89,7 +89,8 @@ public final class ExperimentalRigidBoxSimulation {
                 next.applyImpulse(impulses.linear)
                 next.applyAngularImpulse(impulses.angular)
                 let centre = next.position
-                let contacts = next.advanceWithGround(by: result.elapsed, ground: definition.ground, gravity: gravity)
+                let contacts = next.advanceWithGround(
+                    by: result.elapsed, ground: definition.ground, gravity: gravity)
                 try air.updateExperimentalBox(next)
                 for contact in contacts {
                     let impulse = SIMD3(contact.tangent.x, contact.tangent.y, contact.normal)

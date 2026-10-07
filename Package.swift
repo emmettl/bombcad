@@ -32,7 +32,8 @@ let package = Package(
                 "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "SimulationKit"),
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
-        .executableTarget(name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
+        .executableTarget(
+            name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
         .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"]),
         .testTarget(
             name: "BombCADTests",
