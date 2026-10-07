@@ -13,8 +13,8 @@ struct RoomPresetTests {
 
     @Test("Every preset gives valid settings with published absorption on every surface")
     func valid() throws {
-        #expect(RoomPresets.all.count == 8)
-        #expect(Set(RoomPresets.all.map(\.id)).count == 8)
+        #expect(RoomPresets.all.count == 10)
+        #expect(Set(RoomPresets.all.map(\.id)).count == 10)
         for preset in RoomPresets.all {
             let settings = preset.applied(to: base)
             try settings.validate()

@@ -34,7 +34,8 @@ document is opened from Finder.
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
   stay 5 cm inside the walls.
 - **Inspector.** Edits everything that affects the response:
-  - room dimensions;
+  - room dimensions, or with **Shape** a floor plan (L, T or trapezoid to start from). Its corners
+    can be edited as numbers or dragged by their handles in the plan view, which numbers its walls;
   - each surface's absorption and scattering, either one value for all bands or band by band, with the
     material's name and reference;
   - whole rooms from **Load Room Preset…** (see below);
@@ -42,7 +43,8 @@ document is opened from Finder.
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
-  - openings: open doors, windows or hatches on any surface, by name, surface, centre and size (see
+  - openings: open doors, windows or hatches on any surface, or any numbered wall of a plan, by name,
+    place, centre and size (see
     [Openings](room-acoustics-model.md#openings)). They are drawn as green gaps in the walls or as
     dashed outlines;
   - each receiver's microphone: pattern, azimuth and elevation, with **Arrange First Two as a Stereo
@@ -113,6 +115,8 @@ document is opened from Finder.
 | Concrete hall | 24 × 16 × 5 m | Bare rough concrete, like an empty car park level |
 | Chamber music hall | 28 × 18 × 11 m | Audience in upholstered seats, wooden linings, hard ceiling |
 | Stone church | 36 × 14 × 16 m | Limestone walls and vault, wooden pews over the floor |
+| L-shaped living room | 8 × 6 × 2.6 m L | Carpet, plastered walls; the listener round the corner |
+| Fan-shaped hall | 16 → 10 m wide, 20 m deep, 8 m high | Stage at the narrow end, audience seating, wooden walls |
 
 Every surface's absorption comes from the published table below. Scattering comes from a published
 set where one fits: theatre audience in the hall, and rows of desks in the office and classroom.
@@ -258,5 +262,5 @@ offscreen.
   unverified by ear and by eye.
 - Most material presets have no published scattering, so most room presets' scattering is
   illustrative.
-- Only rectangular rooms, with rectangular openings, are supported, and there is no 3D view.
+- Rooms are boxes or floor plans with vertical walls, and there is no 3D view.
 - Generation uses several cores per document, and documents generating at once share them.

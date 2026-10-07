@@ -26,6 +26,9 @@ struct DiffuseRayTracer {
     var specularOrderLimit = Int.max
     /// Open areas; a ray reaching one leaves the room.
     var openings: [Opening] = []
+    /// In a room with a floor plan, specular paths with more wall reflections than this are beyond the
+    /// image sources too.
+    var specularWallLimit = Int.max
 
     /// Width of the energy histogram's bins, in seconds.
     static let binWidth = 0.001
@@ -61,7 +64,11 @@ struct DiffuseRayTracer {
         var energy = Array(
             repeating: Array(repeating: [Double](repeating: 0, count: bins), count: bands),
             count: receivers.count)
-        guard rayCount > 0, room.scatters || specularOrderLimit < Int.max || !openings.isEmpty, !stop() else {
+        guard
+            rayCount > 0,
+            room.scatters || specularOrderLimit < Int.max || specularWallLimit < Int.max || !openings.isEmpty,
+            !stop()
+        else {
             return energy
         }
         let rayCount = tracedRays
@@ -76,7 +83,13 @@ struct DiffuseRayTracer {
             ? OctaveBands.centres.map { 2 * atmosphere.amplitudeAttenuationPerMetre(frequency: $0) }
             : Array(repeating: 0, count: bands)
         let materials = Surface.allCases.map { room[$0] }
-        let openingsBySurface = Surface.allCases.map { surface in openings.filter { $0.surface == surface } }
+        let openingsBySurface = Surface.allCases.map { surface in
+            openings.filter { $0.surface == surface && $0.wall == nil }
+        }
+        let plan = room.plan
+        let openingsByWall = plan.map { plan in
+            plan.corners.indices.map { wall in openings.filter { $0.wall == wall } }
+        }
         var random = SplitMix(seed: seed)
         let rotation = randomRotation(&random)
         let golden = Double.pi * (3 - 5.0.squareRoot())
@@ -102,22 +115,45 @@ struct DiffuseRayTracer {
                 var travelled = 0.0
                 var scattered = false
                 var reflections = 0
+                var wallReflections = 0
+                // The plan wall last reflected from, which the ray cannot meet again straight away.
+                var lastWall = -1
                 for b in 0..<bands { weights[b] = 1 / Double(rayCount) }
 
                 while travelled < reach {
-                    // The nearest wall along the ray.
+                    // The nearest boundary along the ray: a box face, or a plan wall, floor or ceiling.
                     var hit = Double.infinity
                     var axis = 0
-                    for a in 0..<3 where direction[a] != 0 {
-                        let wall = direction[a] > 0 ? room.size[a] : 0
-                        let t = (wall - position[a]) / direction[a]
-                        if t < hit {
-                            hit = max(0, t)
-                            axis = a
+                    var planWall = -1
+                    if let plan {
+                        if direction.z != 0 {
+                            hit = max(0, ((direction.z > 0 ? room.size.z : 0) - position.z) / direction.z)
+                            axis = 2
+                        }
+                        let flat = SIMD2(position.x, position.y)
+                        let heading = SIMD2(direction.x, direction.y)
+                        if heading != .zero {
+                            for wall in plan.corners.indices where wall != lastWall {
+                                if let t = raySegment(flat, heading, plan.start(wall), plan.end(wall)),
+                                    t < hit
+                                {
+                                    hit = t
+                                    planWall = wall
+                                }
+                            }
+                        }
+                    } else {
+                        for a in 0..<3 where direction[a] != 0 {
+                            let wall = direction[a] > 0 ? room.size[a] : 0
+                            let t = (wall - position[a]) / direction[a]
+                            if t < hit {
+                                hit = max(0, t)
+                                axis = a
+                            }
                         }
                     }
                     let segment = min(hit, reach - travelled)
-                    if scattered || reflections > specularOrderLimit {
+                    if scattered || reflections > specularOrderLimit || wallReflections > specularWallLimit {
                         for (r, (receiver, microphone)) in receivers.enumerated() {
                             // Chord of the segment through the receiver's sphere.
                             let offset = position - receiver
@@ -146,6 +182,30 @@ struct DiffuseRayTracer {
                     guard segment == hit else { break }
                     position += direction * hit
                     reflections += 1
+                    if let plan, planWall >= 0 {
+                        // A plan wall: out through an opening, or reflected about the wall's normal.
+                        let start = plan.start(planWall)
+                        let along = simd_dot(
+                            SIMD2(position.x, position.y) - start, simd_normalize(plan.end(planWall) - start))
+                        if openingsByWall![planWall].contains(where: { $0.contains([along, position.z]) }) {
+                            break
+                        }
+                        let material = plan.walls[planWall]
+                        let flatNormal = plan.inwardNormal(planWall)
+                        let normal = SIMD3(flatNormal.x, flatNormal.y, 0)
+                        let diffuse = reflect(material: material, weights: &weights, random: &random)
+                        if diffuse {
+                            scattered = true
+                            direction = lambert(aroundAny: normal, &random)
+                        } else {
+                            direction -= 2 * simd_dot(direction, normal) * normal
+                        }
+                        wallReflections += 1
+                        lastWall = planWall
+                        if (weights.max() ?? 0) * Double(rayCount) < 1e-15 { break }
+                        continue
+                    }
+                    lastWall = -1
                     // Keep exactly on the wall so the next step starts inside the room.
                     position[axis] = direction[axis] > 0 ? room.size[axis] : 0
 
@@ -156,26 +216,7 @@ struct DiffuseRayTracer {
                         // Out through the opening.
                         if openingsBySurface[surface].contains(where: { $0.contains(point) }) { break }
                     }
-                    let material = materials[surface]
-                    var mean = 0.0
-                    for b in 0..<bands {
-                        weights[b] *= 1 - material.absorption[b]
-                        mean += material.scattering[b]
-                    }
-                    mean /= Double(bands)
-                    let diffuse: Bool
-                    if mean <= 0 {
-                        diffuse = false
-                    } else if mean >= 1 {
-                        diffuse = true
-                    } else {
-                        let p = min(max(mean, 0.05), 0.95)
-                        diffuse = random.nextUnit() < p
-                        for b in 0..<bands {
-                            weights[b] *=
-                                diffuse ? material.scattering[b] / p : (1 - material.scattering[b]) / (1 - p)
-                        }
-                    }
+                    let diffuse = reflect(material: materials[surface], weights: &weights, random: &random)
                     var normal = SIMD3<Double>(0, 0, 0)
                     normal[axis] = direction[axis] > 0 ? -1 : 1
                     if diffuse {
@@ -203,6 +244,36 @@ struct DiffuseRayTracer {
             }
         }
         return energy
+    }
+
+    /// Absorbs at a reflection and chooses, with importance weights, whether it scatters.
+    private func reflect(material: SurfaceMaterial, weights: inout [Double], random: inout SplitMix) -> Bool {
+        var mean = 0.0
+        for b in weights.indices {
+            weights[b] *= 1 - material.absorption[b]
+            mean += material.scattering[b]
+        }
+        mean /= Double(weights.count)
+        if mean <= 0 { return false }
+        if mean >= 1 { return true }
+        let p = min(max(mean, 0.05), 0.95)
+        let diffuse = random.nextUnit() < p
+        for b in weights.indices {
+            weights[b] *= diffuse ? material.scattering[b] / p : (1 - material.scattering[b]) / (1 - p)
+        }
+        return diffuse
+    }
+
+    /// A cosine-weighted direction around any unit normal.
+    private func lambert(aroundAny normal: SIMD3<Double>, _ random: inout SplitMix) -> SIMD3<Double> {
+        let u = random.nextUnit()
+        let angle = 2 * Double.pi * random.nextUnit()
+        let sine = u.squareRoot()
+        let cosine = (1 - u).squareRoot()
+        let helper: SIMD3<Double> = abs(normal.z) < 0.9 ? [0, 0, 1] : [1, 0, 0]
+        let t1 = simd_normalize(simd_cross(normal, helper))
+        let t2 = simd_cross(normal, t1)
+        return t1 * (sine * cos(angle)) + t2 * (sine * sin(angle)) + normal * cosine
     }
 
     /// A direction in the hemisphere around `normal`, cosine weighted.
@@ -234,7 +305,7 @@ struct DiffuseRayTracer {
     /// Volume of the part of a sphere inside the room: exact when the sphere is wholly inside, otherwise
     /// by counting points on a grid.
     func insideVolume(of centre: SIMD3<Double>, radius: Double) -> Double {
-        if all(centre .>= radius) && all(centre .<= room.size - radius) {
+        if room.contains(centre) && room.clearance(centre) >= radius {
             return 4 / 3 * Double.pi * radius * radius * radius
         }
         let steps = 48
@@ -245,7 +316,7 @@ struct DiffuseRayTracer {
                     let offset = (SIMD3(Double(i), Double(j), Double(k)) + 0.5) / Double(steps) * 2 - 1
                     guard simd_length_squared(offset) <= 1 else { continue }
                     let point = centre + offset * radius
-                    if all(point .>= 0) && all(point .<= room.size) { inside += 1 }
+                    if room.contains(point) { inside += 1 }
                 }
             }
         }

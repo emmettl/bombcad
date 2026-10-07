@@ -71,8 +71,12 @@ struct WaveSolver {
     /// statistical absorption α = (8/ξ)[1 + 1/(1 + ξ) - (2/ξ) ln(1 + ξ)], which reaches at most about
     /// 0.951 (at ξ ≈ 1.567); higher coefficients are limited to that.
     func impedance(_ surface: Surface) -> Double {
+        impedance(material: room[surface])
+    }
+
+    func impedance(material: SurfaceMaterial) -> Double {
         let bands = OctaveBands.centres.indices.filter { OctaveBands.centres[$0] <= topFrequency * 1.2 }
-        let absorption = room[surface].absorption
+        let absorption = material.absorption
         let alpha = bands.map { absorption[$0] }.reduce(0, +) / Double(max(bands.count, 1))
         guard alpha > 0 else { return .infinity }
         return Self.impedance(forStatisticalAbsorption: alpha)
@@ -113,6 +117,9 @@ struct WaveSolver {
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
         stop: @Sendable () -> Bool
     ) -> [[Double]]? {
+        if room.plan != nil {
+            return simulatePlan(source: source, receivers: receivers, steps: steps, stop: stop)
+        }
         let nx = cells.x
         let ny = cells.y
         let nz = cells.z
@@ -327,6 +334,201 @@ extension WaveSolver {
             }
             let signal = audio.inverse(real: real, imag: imag)
             return (0..<frames).map { Float(signal[$0]) }
+        }
+    }
+}
+
+extension WaveSolver {
+    /// The same scheme for a room with a floor plan: cells whose centres lie inside the plan are simulated,
+    /// and every face between a simulated cell and one that is not, or the floor or ceiling, is a wall
+    /// with the impedance of the nearest plan wall (or air, in an opening): a staircase approximation of
+    /// walls that are not aligned with the grid.
+    func simulatePlan(
+        source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
+        stop: @Sendable () -> Bool
+    ) -> [[Double]]? {
+        let plan = room.plan!
+        let nx = cells.x
+        let ny = cells.y
+        let nz = cells.z
+        let count = nx * ny * nz
+        let plane = nx * ny
+        let c = atmosphere.soundSpeed
+        let dt = timeStep
+        let index = { (i: Int, j: Int, k: Int) in i + nx * (j + ny * k) }
+        let centre = { (i: Int, j: Int) in SIMD2((Double(i) + 0.5) * spacing.x, (Double(j) + 0.5) * spacing.y)
+        }
+        var inside = [Bool](repeating: false, count: plane)
+        for j in 0..<ny { for i in 0..<nx { inside[i + nx * j] = plan.contains(centre(i, j)) } }
+        let active = { (i: Int, j: Int) in i >= 0 && i < nx && j >= 0 && j < ny && inside[i + nx * j] }
+
+        // β = c dt / (2 ξ d) on each boundary face of each simulated cell; -1 marks a face to a neighbour.
+        let wallImpedance = plan.walls.map { impedance(material: $0) }
+        func beta(_ xi: Double, _ depth: Double) -> Float {
+            let value = c * dt / (2 * xi * depth)
+            return value.isFinite ? Float(value) : 0
+        }
+        func wallFace(_ point: SIMD2<Double>, height: Double, depth: Double) -> Float {
+            let wall = plan.nearestWall(point)
+            let start = plan.start(wall)
+            let along = simd_dot(point - start, simd_normalize(plan.end(wall) - start))
+            let open = openings.contains { $0.wall == wall && $0.contains([along, height]) }
+            return beta(open ? 1 : wallImpedance[wall], depth)
+        }
+        let floorXi = impedance(.floor)
+        let ceilingXi = impedance(.ceiling)
+        func levelFace(_ surface: Surface, _ point: SIMD2<Double>) -> Float {
+            let open = openings.contains { $0.wall == nil && $0.surface == surface && $0.contains(point) }
+            return beta(open ? 1 : (surface == .floor ? floorXi : ceilingXi), spacing.z)
+        }
+        var faces = Array(repeating: [Float](repeating: -1, count: count), count: 6)
+        for k in 0..<nz {
+            let height = (Double(k) + 0.5) * spacing.z
+            for j in 0..<ny {
+                for i in 0..<nx where inside[i + nx * j] {
+                    let at = index(i, j, k)
+                    let here = centre(i, j)
+                    if !active(i - 1, j) {
+                        faces[0][at] = wallFace(here - [spacing.x / 2, 0], height: height, depth: spacing.x)
+                    }
+                    if !active(i + 1, j) {
+                        faces[1][at] = wallFace(here + [spacing.x / 2, 0], height: height, depth: spacing.x)
+                    }
+                    if !active(i, j - 1) {
+                        faces[2][at] = wallFace(here - [0, spacing.y / 2], height: height, depth: spacing.y)
+                    }
+                    if !active(i, j + 1) {
+                        faces[3][at] = wallFace(here + [0, spacing.y / 2], height: height, depth: spacing.y)
+                    }
+                    if k == 0 { faces[4][at] = levelFace(.floor, here) }
+                    if k == nz - 1 { faces[5][at] = levelFace(.ceiling, here) }
+                }
+            }
+        }
+
+        let p = UnsafeMutablePointer<Float>.allocate(capacity: count)
+        let ux = UnsafeMutablePointer<Float>.allocate(capacity: count)
+        let uy = UnsafeMutablePointer<Float>.allocate(capacity: count)
+        let uz = UnsafeMutablePointer<Float>.allocate(capacity: count)
+        for field in [p, ux, uy, uz] { field.initialize(repeating: 0, count: count) }
+        defer { for field in [p, ux, uy, uz] { field.deallocate() } }
+
+        // Trilinear weights over simulated cells only, renormalized.
+        func weights(_ point: SIMD3<Double>) -> [(Int, Float)] {
+            let g = point / spacing - 0.5
+            let base = SIMD3<Int>(
+                min(max(Int(g.x.rounded(.down)), 0), nx - 2), min(max(Int(g.y.rounded(.down)), 0), ny - 2),
+                min(max(Int(g.z.rounded(.down)), 0), nz - 2))
+            let f = simd_clamp(g - SIMD3<Double>(base), SIMD3(repeating: 0), SIMD3(repeating: 1))
+            var result: [(Int, Double)] = []
+            for corner in 0..<8 {
+                let o = SIMD3<Int>(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1)
+                guard inside[(base.x + o.x) + nx * (base.y + o.y)] else { continue }
+                let w = (o.x == 1 ? f.x : 1 - f.x) * (o.y == 1 ? f.y : 1 - f.y) * (o.z == 1 ? f.z : 1 - f.z)
+                result.append((index(base.x + o.x, base.y + o.y, base.z + o.z), w))
+            }
+            let total = result.reduce(0) { $0 + $1.1 }
+            guard total > 0 else {
+                // Fall back to the nearest simulated cell in the same layer.
+                let k = min(max(Int(point.z / spacing.z), 0), nz - 1)
+                let nearest = (0..<plane).filter { inside[$0] }.min {
+                    simd_distance(centre($0 % nx, $0 / nx), [point.x, point.y])
+                        < simd_distance(centre($1 % nx, $1 / nx), [point.x, point.y])
+                }!
+                return [(nearest + plane * k, 1)]
+            }
+            return result.map { ($0.0, Float($0.1 / total)) }
+        }
+        let cellVolume = spacing.x * spacing.y * spacing.z
+        let sourceWeights = weights(source)
+        let receiverWeights = receivers.map { weights($0.position) }
+        let receiverCells = receivers.map { receiver -> SIMD3<Int> in
+            let g = receiver.position / spacing
+            return SIMD3(
+                min(max(Int(g.x), 1), nx - 2), min(max(Int(g.y), 1), ny - 2), min(max(Int(g.z), 1), nz - 2))
+        }
+        var pressure = Array(repeating: [Double](repeating: 0, count: steps), count: receivers.count)
+        var velocity = Array(repeating: [Double](repeating: 0, count: steps + 1), count: receivers.count)
+        let slabs = count < 4_096 ? 1 : min(nz, 16)
+        func forEachSlab(_ body: (Int) -> Void) {
+            if slabs == 1 {
+                body(0)
+            } else {
+                DispatchQueue.concurrentPerform(iterations: slabs, execute: body)
+            }
+        }
+        let kx = Float(dt / spacing.x)
+        let ky = Float(dt / spacing.y)
+        let kz = Float(dt / spacing.z)
+        let bx = Float(c * c * dt / spacing.x)
+        let by = Float(c * c * dt / spacing.y)
+        let bz = Float(c * c * dt / spacing.z)
+        let (west, east, south, north, floor, ceiling) = (
+            faces[0], faces[1], faces[2], faces[3], faces[4], faces[5]
+        )
+
+        for n in 0..<steps {
+            if n % 64 == 0, stop() { return nil }
+            // Velocity on faces between two simulated cells; others stay zero and are walls.
+            forEachSlab { slab in
+                for k in (slab * nz / slabs)..<((slab + 1) * nz / slabs) {
+                    for j in 0..<ny {
+                        let row = nx * (j + ny * k)
+                        let flat = nx * j
+                        for i in 0..<nx where inside[flat + i] {
+                            let at = row + i
+                            if i < nx - 1, inside[flat + i + 1] { ux[at] -= kx * (p[at + 1] - p[at]) }
+                            if j < ny - 1, inside[flat + i + nx] { uy[at] -= ky * (p[at + nx] - p[at]) }
+                            if k < nz - 1 { uz[at] -= kz * (p[at + plane] - p[at]) }
+                        }
+                    }
+                }
+            }
+            forEachSlab { slab in
+                for k in (slab * nz / slabs)..<((slab + 1) * nz / slabs) {
+                    for j in 0..<ny {
+                        let row = nx * (j + ny * k)
+                        for i in 0..<nx where inside[nx * j + i] {
+                            let at = row + i
+                            var divergence: Float = 0
+                            var wall: Float = 0
+                            if west[at] < 0 { divergence -= bx * ux[at - 1] } else { wall += west[at] }
+                            if east[at] < 0 { divergence += bx * ux[at] } else { wall += east[at] }
+                            if south[at] < 0 { divergence -= by * uy[at - nx] } else { wall += south[at] }
+                            if north[at] < 0 { divergence += by * uy[at] } else { wall += north[at] }
+                            if floor[at] < 0 { divergence -= bz * uz[at - plane] } else { wall += floor[at] }
+                            if ceiling[at] < 0 { divergence += bz * uz[at] } else { wall += ceiling[at] }
+                            p[at] = ((1 - wall) * p[at] - divergence) / (1 + wall)
+                        }
+                    }
+                }
+            }
+            let q = pulse((Double(n) + 0.5) * dt)
+            for (cell, w) in sourceWeights { p[cell] += Float(c * c * dt * q / cellVolume) * w }
+            for (r, receiver) in receivers.enumerated() {
+                var value = 0.0
+                for (cell, w) in receiverWeights[r] { value += Double(p[cell]) * Double(w) }
+                pressure[r][n] = value
+                if !receiver.microphone.isOmni {
+                    let cell = receiverCells[r]
+                    let at = index(cell.x, cell.y, cell.z)
+                    let u = SIMD3<Double>(
+                        Double(ux[at - 1] + ux[at]) / 2, Double(uy[at - nx] + uy[at]) / 2,
+                        Double(uz[at - plane] + uz[at]) / 2)
+                    velocity[r][n + 1] = simd_dot(u, receiver.microphone.axis)
+                }
+            }
+        }
+        return receivers.indices.map { r in
+            let microphone = receivers[r].microphone
+            guard !microphone.isOmni else { return pressure[r] }
+            let a = microphone.pattern.omniShare
+            return (0..<steps).map { n in
+                let v =
+                    n + 2 <= steps
+                    ? (velocity[r][n + 1] + velocity[r][min(n + 2, steps)]) / 2 : velocity[r][n + 1]
+                return a * pressure[r][n] - (1 - a) * c * v
+            }
         }
     }
 }

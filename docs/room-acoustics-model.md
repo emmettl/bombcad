@@ -97,6 +97,41 @@ The ray directions and the tail's detail come from `randomSeed`, so a response i
 A surface with s = 0 in every band leaves the response exactly as the image sources alone give it, and
 no rays are traced.
 
+## Floor plans
+
+A room can have any floor plan with vertical walls between a flat floor and a flat ceiling: corners
+listed anticlockwise, one material per wall. That covers L- and T-shaped rooms, alcoves, angled walls
+and fan-shaped halls. Corners lie within the room's length and width, which become the plan's
+bounding box. Walls may not cross, and the source and receivers must be inside the plan.
+
+- **Image sources.** Because the walls are vertical, a path's plan and its height separate. Images in
+  plan come from reflecting across walls that face them, and floor and ceiling images combine with
+  them as in a box. A plan image is valid for a receiver only if, traced back from the receiver, its
+  path crosses each mirroring wall within the wall itself and no other wall blocks any leg. That is
+  what hides reflections round the corner of an L. Images grow level by level up to the wall order
+  that fits 100,000 images, and total order to at most ten floor and ceiling reflections beyond that.
+- **Rays.** Rays carry every other specular path, with more wall reflections or more reflections in
+  total, as well as scattered energy. They meet the walls by general segment intersection, reflect
+  about each wall's normal, and scatter in a Lambert distribution around it.
+- **Wave solver.** Cells whose centres lie inside the plan are simulated. Each face between a
+  simulated cell and one that is not is a wall with the nearest wall's impedance, or air in an
+  opening: a staircase approximation of walls not aligned with the grid. The masked grid costs about
+  twice as much per cell, so plans get half the work budget.
+- **Openings.** Openings can be in a numbered wall, located by distance along it and height, as well
+  as in the floor or ceiling.
+
+Tests check the floor-plan code against the box and against geometry:
+
+- A rectangular plan reproduces the box's image-source arrivals within 10⁻¹² in delay and gain. It
+  reproduces the box's scattered energy within 3%, and its wave field to within rounding.
+- In an L, a receiver round the corner gets no direct sound but does get reflections, and one in sight
+  gets the direct sound exactly.
+- In a rigid, fully scattering L, rays arrive at 4πc/V within 5% in both arms.
+- Crossed walls, clockwise corners and points outside the plan are rejected.
+
+An L (8 × 6 m less 4 × 3 m), a T and a fan-shaped hall decay within about 10% of their Eyring estimates
+at 1 kHz.
+
 ## Openings
 
 An opening is a rectangle on one surface, such as an open door, window or hatch, given by its centre
@@ -366,8 +401,9 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 
 ## Limitations
 
-- **Geometry.** Only rectangular rooms, with one material per surface and rectangular openings, are
-  supported. There is no furniture and there are no coupled spaces.
+- **Geometry.** Rooms are boxes or floor plans with vertical walls and a flat floor and ceiling.
+  Sloping ceilings, curved walls, furniture and coupled spaces are not modelled. A floor plan's image
+  sources reach only modest orders, with rays carrying the rest.
 - **Scattering.** Published scattering values exist only for a few surfaces (seven presets). Others
   are inputs, and the starter room's are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
   exaggerated (above).

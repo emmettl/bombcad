@@ -15,6 +15,9 @@ public struct RoomPreset: Identifiable, Sendable {
     var source: SIMD2<Double> = [0.25, 0.45]
     var listener: SIMD2<Double> = [0.65, 0.55]
     var sourceHeight = 1.5
+    /// For a room that is not rectangular, its corners in metres, anticlockwise; every wall takes the
+    /// north wall's material.
+    var planCorners: [SIMD2<Double>]? = nil
 
     enum Scattering: Sendable {
         /// A published scattering preset, by ID.
@@ -61,7 +64,9 @@ public struct RoomPreset: Identifiable, Sendable {
         var result = settings
         var room = ShoeboxRoom(size: size, material: .rigid)
         for surface in Surface.allCases { room[surface] = material(surface) }
+        if let planCorners { room.plan = FloorPlan(corners: planCorners, material: material(.north)) }
         result.room = room
+        result.openings = []
         result.source.position = [source.x * size.x, source.y * size.y, min(sourceHeight, 0.6 * size.z)]
         let centre = SIMD3(listener.x * size.x, listener.y * size.y, min(1.2, 0.5 * size.z))
         let spread = min(0.6, 0.15 * size.y)
@@ -106,6 +111,20 @@ public enum RoomPresets {
                 .south: ("hard_surface", RoomPreset.furnished),
                 .north: ("curtains_cotton_0.5", RoomPreset.plainWalls),
             ]),
+        RoomPreset(
+            id: "l-shaped-living-room", name: "L-shaped living room",
+            summary:
+                "8 × 6 × 2.6 m L: carpet, plastered walls and ceiling; listener round the corner from the source",
+            size: [8, 6, 2.6],
+            surfaces: [
+                .floor: ("carpet_tufted_9m", RoomPreset.furnished),
+                .ceiling: ("hard_surface", RoomPreset.plainWalls),
+                .west: ("hard_surface", RoomPreset.furnished), .east: ("hard_surface", RoomPreset.furnished),
+                .south: ("hard_surface", RoomPreset.furnished),
+                .north: ("hard_surface", RoomPreset.furnished),
+            ],
+            source: [0.8, 0.25], listener: [0.2, 0.75],
+            planCorners: FloorPlan.lShape([8, 6], notch: [4, 3], material: .rigid).corners),
         RoomPreset(
             id: "office", name: "Office",
             summary: "6 × 5 × 2.8 m: carpet tiles, suspended tile ceiling, plasterboard, a glazed wall",
@@ -174,6 +193,19 @@ public enum RoomPresets {
                 .south: ("wooden_lining", RoomPreset.ornate), .north: ("wooden_lining", RoomPreset.ornate),
             ],
             source: [0.1, 0.5], listener: [0.55, 0.5], sourceHeight: 2),
+        RoomPreset(
+            id: "fan-shaped-hall", name: "Fan-shaped hall",
+            summary:
+                "16 to 10 m wide, 20 m deep, 8 m high: stage at the narrow end, audience seating, wooden walls",
+            size: [16, 20, 8],
+            surfaces: [
+                .floor: ("audience_upholstered_chairs_1", .published("theatre_audience")),
+                .ceiling: ("hard_surface", RoomPreset.ornate),
+                .west: ("wooden_lining", RoomPreset.ornate), .east: ("wooden_lining", RoomPreset.ornate),
+                .south: ("wooden_lining", RoomPreset.ornate), .north: ("wooden_lining", RoomPreset.ornate),
+            ],
+            source: [0.5, 0.88], listener: [0.5, 0.4], sourceHeight: 2,
+            planCorners: FloorPlan.trapezoid(width: 16, depth: 20, narrowTo: 10, material: .rigid).corners),
         RoomPreset(
             id: "stone-church", name: "Stone church",
             summary: "36 × 14 × 16 m: limestone walls and vault, wooden pews over the floor",

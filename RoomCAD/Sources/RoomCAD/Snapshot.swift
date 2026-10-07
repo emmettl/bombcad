@@ -9,11 +9,13 @@ import SwiftUI
 enum Snapshot {
     static func write(to url: URL) -> Bool {
         do {
-            var settings = StereoPair.ortf.arranged(in: RoomProject.starter)
-            // Show an opening of each kind: a door in a wall and a hatch in the ceiling.
+            // The L-shaped living room, with a door in one wall and a hatch in the ceiling, and an ORTF pair.
+            var settings = StereoPair.ortf.arranged(
+                in: RoomPresets.all.first { $0.id == "l-shaped-living-room" }!.applied(
+                    to: RoomProject.starter))
             settings.openings = [
-                Opening(name: "Door", surface: .north, centre: [1.2, 1], size: [0.9, 2]),
-                Opening(name: "Hatch", surface: .ceiling, centre: [4.5, 1], size: [0.8, 0.8]),
+                Opening(name: "Door", surface: .north, wall: 5, centre: [2, 1], size: [0.9, 2]),
+                Opening(name: "Hatch", surface: .ceiling, centre: [6, 1.5], size: [0.8, 0.8]),
             ]
             let result = try RoomResponseGenerator.generate(settings)
             let player = AuditionPlayer()

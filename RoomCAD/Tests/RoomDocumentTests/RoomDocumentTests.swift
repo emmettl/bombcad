@@ -235,4 +235,18 @@ struct RoomDocumentScatteringTests {
         #expect(loaded.result != nil)
         #expect(!loaded.isResultCurrent)
     }
+
+    @Test("A floor plan and openings in its walls survive saving")
+    func floorPlan() throws {
+        let preset = try #require(RoomPresets.all.first { $0.id == "l-shaped-living-room" })
+        var project = RoomProject(settings: preset.applied(to: RoomDocumentTests.settings))
+        project.settings.openings = [
+            Opening(name: "Door", surface: .north, wall: 5, centre: [2, 1], size: [0.9, 2])
+        ]
+        try project.settings.validate()
+        let loaded = try RoomProject(
+            archive: ProjectArchive(fileWrapper: project.makeArchive().fileWrapper()))
+        #expect(loaded.settings == project.settings)
+        #expect(loaded.settings.room.plan?.corners.count == 6)
+    }
 }

@@ -152,7 +152,7 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
             throw AcousticError.invalid(
                 "\(receiver.name) must be at least \(Self.minimumSeparation) m from the source.")
         }
-        guard estimatedImageCount <= Double(Self.maximumImageCount) else {
+        guard room.plan != nil || estimatedImageCount <= Double(Self.maximumImageCount) else {
             throw AcousticError.invalid(
                 "About \(Int(estimatedImageCount)) image sources per receiver; shorten the duration or "
                     + "lower the maximum reflection order.")
@@ -191,6 +191,9 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     public var waveSeconds: Double?
     /// Why the wave solver was not used although asked for, if so.
     public var waveNote: String?
+    /// In a room with a floor plan, the wall reflections and total reflections the image sources reached.
+    public var planWallOrder: Int?
+    public var planTotalOrder: Int?
 }
 
 /// A generated response together with the settings that produced it.
@@ -199,10 +202,12 @@ public struct RoomResponse: Sendable {
     public var settings: RoomResponseSettings
     public var diagnostics: RoomResponseDiagnostics
 
-    public static let generatorName = "RoomCAD hybrid model 4"
+    public static let generatorName = "RoomCAD hybrid model 5"
     /// Generators whose saved responses can still be read; only the current one is up to date.
     public static let readableGenerators: Set<String> = [
-        "RoomCAD image-source model 1", "RoomCAD hybrid model 2", "RoomCAD hybrid model 3", generatorName,
+        "RoomCAD image-source model 1", "RoomCAD hybrid model 2", "RoomCAD hybrid model 3",
+        "RoomCAD hybrid model 4",
+        generatorName,
     ]
 
     public static let assumptions = [
@@ -323,9 +328,25 @@ public enum RoomResponseGenerator {
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
             airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
         tracer.openings = settings.openings
+        // A floor plan's image sources reach the wall order that fits their budget, and a few floor and
+        // ceiling reflections beyond; rays carry every other specular path.
+        let reach = settings.duration * settings.atmosphere.soundSpeed
+        var planImages: (images: [PlanImageSources.Image], wallOrder: Int, totalOrder: Int)?
+        if let plan = effectiveRoom.plan {
+            let generated = PlanImageSources(
+                room: effectiveRoom, plan: plan, source: settings.source.position
+            )
+            .images(maximumOrder: settings.maximumReflectionOrder, reach: reach)
+            let total = min(
+                settings.maximumReflectionOrder, generated.order + PlanImageSources.verticalAllowance)
+            planImages = (generated.images, generated.order, total)
+            tracer.specularWallLimit = generated.order
+            tracer.specularOrderLimit = total
+        }
         // Where the order limit may omit specular reflections within the duration, rays carry them on.
-        if Double(settings.maximumReflectionOrder) * settings.room.size.min() < settings.duration
-            * settings.atmosphere.soundSpeed
+        if planImages == nil,
+            Double(settings.maximumReflectionOrder) * settings.room.size.min() < settings.duration
+                * settings.atmosphere.soundSpeed
         {
             tracer.specularOrderLimit = settings.maximumReflectionOrder
         }
@@ -351,15 +372,26 @@ public enum RoomResponseGenerator {
                 sampleRate: settings.sampleRate, frames: frames,
                 lowFrequencyCutoff: settings.lowFrequencyCutoff)
             var specularEnergy = 0.0
-            let summary = model.forEachArrival(
-                at: settings.receivers[index].position,
-                microphone: settings.receivers[index].microphone ?? .omni,
-                duration: settings.duration, maximumOrder: settings.maximumReflectionOrder,
-                includeDirect: includeDirect, stop: cancelled
-            ) { delay, _, gains in
+            let receiver = settings.receivers[index]
+            let add = { (delay: Double, _: Int, gains: [Double]) in
                 renderer.add(delay: delay, gains: gains)
                 for b in reported { specularEnergy += gains[b] * gains[b] }
             }
+            let summary =
+                if let planImages {
+                    model.forEachPlanArrival(
+                        at: receiver.position, images: planImages.images, wallOrder: planImages.wallOrder,
+                        microphone: receiver.microphone ?? .omni, duration: settings.duration,
+                        maximumOrder: planImages.totalOrder, includeDirect: includeDirect, stop: cancelled,
+                        add)
+                } else {
+                    model.forEachArrival(
+                        at: receiver.position, microphone: receiver.microphone ?? .omni,
+                        duration: settings.duration,
+                        maximumOrder: settings.maximumReflectionOrder, includeDirect: includeDirect,
+                        stop: cancelled,
+                        add)
+                }
             guard !cancelled() else { return }
             let diffuseEnergy = DiffuseTail.render(
                 diffuse[index], into: &renderer, roomVolume: settings.room.volume,
@@ -434,7 +466,8 @@ public enum RoomResponseGenerator {
             generationSeconds: Date().timeIntervalSince(start), scatteredFraction: scatteredFraction,
             diffuseRays: settings.room.scatters || tracer.specularOrderLimit < Int.max
                 ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
-            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveNote: waveNote)
+            waveCells: wave?.cells, waveSeconds: wave?.seconds, waveNote: waveNote,
+            planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
 
         let metadata = ResponseMetadata(
             sampleRate: settings.sampleRate, frameCount: frames,
@@ -504,9 +537,11 @@ struct WavePlan {
         // Twice the Schroeder frequency, where modes stop being sparse, within 80 to 250 Hz.
         var f = min(max(2 * (schroeder ?? 125), 80), 250)
         var candidate = solver(f)
+        // A floor plan's masked grid costs about twice as much per cell.
+        let budget = settings.room.plan == nil ? Self.budget : Self.budget / 2
         // Work grows as the fourth power of frequency; lower the crossover until it fits.
-        while candidate.cost(duration: span) > Self.budget {
-            f *= 0.97 * pow(Self.budget / candidate.cost(duration: span), 0.25)
+        while candidate.cost(duration: span) > budget {
+            f *= 0.97 * pow(budget / candidate.cost(duration: span), 0.25)
             guard f >= 60 else { return nil }
             candidate = solver(f)
         }

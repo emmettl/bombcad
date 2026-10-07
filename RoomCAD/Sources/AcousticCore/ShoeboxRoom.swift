@@ -93,11 +93,16 @@ public struct SurfaceMaterial: Codable, Equatable, Sendable {
     }
 }
 
-/// A rectangular room with one material per surface.
+/// A room: a rectangular box with one material per surface, or, with a `plan`, any floor plan with
+/// vertical walls between a flat floor and ceiling.
 public struct ShoeboxRoom: Codable, Equatable, Sendable {
-    /// Interior dimensions in metres.
+    /// Interior dimensions in metres; with a plan, its bounding box and the height.
     public var size: SIMD3<Double>
-    public var west, east, south, north, floor, ceiling: SurfaceMaterial
+    /// Box walls, unused when there is a plan.
+    public var west, east, south, north: SurfaceMaterial
+    public var floor, ceiling: SurfaceMaterial
+    /// A floor plan with its own walls, or nil for a box. Its corners lie within `[0, size.x] × [0, size.y]`.
+    public var plan: FloorPlan?
 
     public init(size: SIMD3<Double>, material: SurfaceMaterial) {
         self.size = size
@@ -129,7 +134,7 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
         }
     }
 
-    public var volume: Double { size.x * size.y * size.z }
+    public var volume: Double { (plan?.area ?? size.x * size.y) * size.z }
 
     public func area(_ surface: Surface) -> Double {
         switch surface {
@@ -139,14 +144,22 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
         }
     }
 
-    public var surfaceArea: Double { Surface.allCases.reduce(0) { $0 + area($1) } }
+    public var surfaceArea: Double { boundaries.reduce(0) { $0 + $1.area } }
 
     /// Whether any surface scatters in any band.
-    public var scatters: Bool { Surface.allCases.contains { self[$0].scatters } }
+    public var scatters: Bool { boundaries.contains { $0.material.scatters } }
 
     /// Whether a point lies strictly inside the room.
     public func contains(_ point: SIMD3<Double>) -> Bool {
-        all(point .> 0) && all(point .< size)
+        guard all(point .> 0) && all(point .< size) else { return false }
+        return plan?.contains([point.x, point.y]) ?? true
+    }
+
+    /// Shortest distance from a point inside the room to its boundary.
+    public func clearance(_ point: SIMD3<Double>) -> Double {
+        let vertical = min(point.z, size.z - point.z)
+        guard let plan else { return min(vertical, point.x, point.y, size.x - point.x, size.y - point.y) }
+        return min(vertical, plan.distanceToWalls([point.x, point.y]))
     }
 
     func validate() throws {
@@ -154,12 +167,19 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
             throw AcousticError.invalid("Room dimensions must be between 0.5 m and 500 m.")
         }
         for surface in Surface.allCases { try self[surface].validate() }
+        if let plan {
+            try plan.validate()
+            let (low, high) = plan.bounds
+            guard all(low .>= -1e-9), high.x <= size.x + 1e-9, high.y <= size.y + 1e-9 else {
+                throw AcousticError.invalid("The floor plan must lie within the room's length and width.")
+            }
+        }
     }
 
     /// Sabine reverberation time per band in seconds, or nil where nothing absorbs.
     public func sabineReverberationTime(atmosphere: Atmosphere, airAbsorption: Bool) -> [Double?] {
         statisticalDecay(atmosphere: atmosphere, airAbsorption: airAbsorption) { band in
-            Surface.allCases.reduce(0) { $0 + area($1) * self[$1].absorption[band] }
+            boundaries.reduce(0) { $0 + $1.area * $1.material.absorption[band] }
         }
     }
 
@@ -167,7 +187,7 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
     public func eyringReverberationTime(atmosphere: Atmosphere, airAbsorption: Bool) -> [Double?] {
         statisticalDecay(atmosphere: atmosphere, airAbsorption: airAbsorption) { band in
             let total = surfaceArea
-            let mean = Surface.allCases.reduce(0) { $0 + area($1) * self[$1].absorption[band] } / total
+            let mean = boundaries.reduce(0) { $0 + $1.area * $1.material.absorption[band] } / total
             return mean >= 1 ? .infinity : -total * log(1 - mean)
         }
     }

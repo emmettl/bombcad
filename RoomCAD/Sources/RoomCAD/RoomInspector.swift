@@ -38,21 +38,47 @@ extension Binding where Value == SIMD2<Double> {
     }
 }
 
-/// Edits an opening's surface, position and size, in the surface's own axes.
+/// Edits an opening's surface, position and size, in the surface's own axes; in a room with a floor
+/// plan, along its wall and up.
 struct OpeningEditor: View {
     @Binding var opening: Opening
+    /// The number of plan walls, if the room has a plan.
+    let walls: Int?
     static let axisNames = ["x", "y", "z"]
 
+    /// "floor", "ceiling", a box surface's name, or "wall-n".
+    private var place: Binding<String> {
+        Binding(
+            get: { opening.wall.map { "wall-\($0)" } ?? opening.surface.rawValue },
+            set: { value in
+                if value.hasPrefix("wall-"), let wall = Int(value.dropFirst(5)) {
+                    opening.wall = wall
+                } else if let surface = Surface(rawValue: value) {
+                    opening.wall = nil
+                    opening.surface = surface
+                }
+            })
+    }
+
     var body: some View {
-        let (a, b) = opening.surface.planeAxes
         TextField("Name", text: $opening.name).endsEditingOnSubmit()
-        Picker("Surface", selection: $opening.surface) {
-            ForEach(Surface.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+        Picker("In", selection: place) {
+            if let walls {
+                Text("Floor").tag(Surface.floor.rawValue)
+                Text("Ceiling").tag(Surface.ceiling.rawValue)
+                ForEach(0..<walls, id: \.self) { Text("Wall \($0 + 1)").tag("wall-\($0)") }
+            } else {
+                ForEach(Surface.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0.rawValue) }
+            }
         }
-        NumberField(title: "Centre \(Self.axisNames[a])", value: $opening.centre.component(0), unit: "m")
-        NumberField(title: "Centre \(Self.axisNames[b])", value: $opening.centre.component(1), unit: "m")
-        NumberField(title: "Size along \(Self.axisNames[a])", value: $opening.size.component(0), unit: "m")
-        NumberField(title: "Size along \(Self.axisNames[b])", value: $opening.size.component(1), unit: "m")
+        let names: (String, String) =
+            opening.wall != nil
+            ? ("along the wall", "height")
+            : (Self.axisNames[opening.surface.planeAxes.0], Self.axisNames[opening.surface.planeAxes.1])
+        NumberField(title: "Centre, \(names.0)", value: $opening.centre.component(0), unit: "m")
+        NumberField(title: "Centre, \(names.1)", value: $opening.centre.component(1), unit: "m")
+        NumberField(title: "Size, \(names.0)", value: $opening.size.component(0), unit: "m")
+        NumberField(title: "Size, \(names.1)", value: $opening.size.component(1), unit: "m")
     }
 }
 
@@ -106,7 +132,7 @@ struct MicrophoneEditor: View {
 
 /// Edits a surface's octave-band absorption and scattering.
 struct MaterialEditor: View {
-    let surface: Surface
+    let title: String
     @Binding var material: SurfaceMaterial
 
     /// The mean of `values`; setting it sets every band.
@@ -145,7 +171,7 @@ struct MaterialEditor: View {
             }
         } label: {
             HStack(spacing: 6) {
-                NumberField(title: surface.rawValue.capitalized, value: mean(\.absorption))
+                NumberField(title: title, value: mean(\.absorption))
                     .help(
                         "Mean absorption coefficient; editing it sets every band. Expand for scattering and each band."
                     )
@@ -215,17 +241,81 @@ struct RoomInspector: View {
                     }
                 }
                 .help("Replace the room, its surfaces and the positions with a furnished example")
-                NumberField(title: "Length (x)", value: settings.room.size.component(0), unit: "m")
-                NumberField(title: "Width (y)", value: settings.room.size.component(1), unit: "m")
+                Menu("Shape: \(shapeName)") {
+                    Button("Rectangle") { setShape(nil) }
+                    Button("L-Shape") {
+                        let size = project.settings.room.size
+                        setShape(
+                            .lShape(
+                                [size.x, size.y], notch: [size.x / 2, size.y / 2], material: wallMaterial))
+                    }
+                    Button("T-Shape") {
+                        let size = project.settings.room.size
+                        setShape(
+                            .tShape(
+                                [size.x, size.y], stem: size.x * 0.4, bar: size.y * 0.4,
+                                material: wallMaterial))
+                    }
+                    Button("Trapezoid") {
+                        let size = project.settings.room.size
+                        setShape(
+                            .trapezoid(
+                                width: size.x, depth: size.y, narrowTo: size.x * 0.6, material: wallMaterial))
+                    }
+                }
+                .help("A floor plan with vertical walls; drag its corners in the plan view")
+                if project.settings.room.plan == nil {
+                    NumberField(title: "Length (x)", value: settings.room.size.component(0), unit: "m")
+                    NumberField(title: "Width (y)", value: settings.room.size.component(1), unit: "m")
+                } else {
+                    LabeledContent("Length × width") {
+                        Text(
+                            String(
+                                format: "%.2f × %.2f m, from the corners", project.settings.room.size.x,
+                                project.settings.room.size.y)
+                        )
+                        .foregroundStyle(.secondary)
+                    }
+                    DisclosureGroup("Corners") {
+                        ForEach(project.settings.room.plan!.corners.indices, id: \.self) { index in
+                            HStack {
+                                NumberField(
+                                    title: "Corner \(index + 1) x", value: corner(index, 0), unit: "m")
+                                NumberField(title: "y", value: corner(index, 1), unit: "m")
+                            }
+                        }
+                        HStack {
+                            Button("Add Corner") { addCorner() }
+                            Button("Remove Last Corner") { removeCorner() }
+                                .disabled(project.settings.room.plan!.corners.count <= 3)
+                        }
+                    }
+                }
                 NumberField(title: "Height (z)", value: settings.room.size.component(2), unit: "m")
             }
             Section("Surface absorption") {
-                ForEach(Surface.allCases, id: \.self) { surface in
-                    MaterialEditor(surface: surface, material: settings.room[surface])
+                if project.settings.room.plan == nil {
+                    ForEach(Surface.allCases, id: \.self) { surface in
+                        MaterialEditor(title: surface.rawValue.capitalized, material: settings.room[surface])
+                    }
+                } else {
+                    MaterialEditor(title: "Floor", material: settings.room.floor)
+                    MaterialEditor(title: "Ceiling", material: settings.room.ceiling)
+                    ForEach(project.settings.room.plan!.walls.indices, id: \.self) { index in
+                        MaterialEditor(
+                            title: "Wall \(index + 1)",
+                            material: Binding(
+                                get: { project.settings.room.plan?.walls[index] ?? .rigid },
+                                set: { project.settings.room.plan?.walls[index] = $0 }))
+                    }
                 }
                 Button("Set All Surfaces Like the Floor") {
                     for surface in Surface.allCases {
                         project.settings.room[surface] = project.settings.room.floor
+                    }
+                    if let count = project.settings.room.plan?.walls.count {
+                        project.settings.room.plan?.walls = Array(
+                            repeating: project.settings.room.floor, count: count)
                     }
                 }
             }
@@ -256,7 +346,7 @@ struct RoomInspector: View {
             }
             Section("Openings") {
                 ForEach(settings.openings) { $opening in
-                    OpeningEditor(opening: $opening)
+                    OpeningEditor(opening: $opening, walls: project.settings.room.plan?.corners.count)
                     Button("Remove \(opening.name)", role: .destructive) {
                         project.settings.openings.removeAll { $0.id == opening.id }
                     }
@@ -355,11 +445,70 @@ struct RoomInspector: View {
         }
     }
 
+    private var shapeName: String {
+        guard let plan = project.settings.room.plan else { return "Rectangle" }
+        return "\(plan.corners.count) walls"
+    }
+
+    /// The material new walls take: the north wall's, or the first plan wall's.
+    private var wallMaterial: SurfaceMaterial {
+        project.settings.room.plan?.walls.first ?? project.settings.room.north
+    }
+
+    private func setShape(_ plan: FloorPlan?) {
+        project.settings.room.plan = plan
+        // Openings in walls belong to one kind of room or the other.
+        project.settings.openings.removeAll {
+            [.west, .east, .south, .north].contains($0.surface) || $0.wall != nil
+        }
+    }
+
+    /// A corner coordinate; corners stay at or above zero, and the room grows to hold them.
+    private func corner(_ index: Int, _ axis: Int) -> Binding<Double> {
+        Binding(
+            get: { project.settings.room.plan?.corners[index][axis] ?? 0 },
+            set: { value in
+                project.settings.room.plan?.corners[index][axis] = max(0, value)
+                fitRoomToPlan()
+            })
+    }
+
+    private func fitRoomToPlan() {
+        guard let (_, high) = project.settings.room.plan?.bounds else { return }
+        project.settings.room.size.x = max(high.x, 0.5)
+        project.settings.room.size.y = max(high.y, 0.5)
+    }
+
+    /// A new corner halfway along the last wall.
+    private func addCorner() {
+        guard let plan = project.settings.room.plan else { return }
+        let last = plan.count - 1
+        project.settings.room.plan?.corners.append((plan.start(last) + plan.end(last)) / 2)
+        project.settings.room.plan?.walls.append(plan.walls[last])
+    }
+
+    private func removeCorner() {
+        project.settings.room.plan?.corners.removeLast()
+        project.settings.room.plan?.walls.removeLast()
+        let count = project.settings.room.plan?.corners.count ?? 0
+        project.settings.openings.removeAll { ($0.wall ?? -1) >= count }
+        fitRoomToPlan()
+    }
+
     /// A door-sized opening in the middle of the north wall, or smaller if the wall is.
     private func addOpening() {
         let size = project.settings.room.size
         let width = min(0.9, size.x * 0.8)
         let height = min(2.0, size.z * 0.8)
+        if let plan = project.settings.room.plan {
+            // In the plan's first wall.
+            let width = min(0.9, plan.length(0) * 0.8)
+            project.settings.openings.append(
+                Opening(
+                    name: "Opening \(project.settings.openings.count + 1)", surface: .north, wall: 0,
+                    centre: [plan.length(0) / 2, height / 2], size: [width, height]))
+            return
+        }
         project.settings.openings.append(
             Opening(
                 name: "Opening \(project.settings.openings.count + 1)", surface: .north,

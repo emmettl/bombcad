@@ -98,7 +98,11 @@ struct DiagnosticsList: View {
             Text(
                 "\(d.arrivals.map { $0.formatted() }.joined(separator: " / ")) arrivals, generated in "
                     + String(format: "%.1f s", d.generationSeconds))
-            if let limited = d.orderLimitedAfter.compactMap({ $0 }).min() {
+            if let wallOrder = d.planWallOrder, let totalOrder = d.planTotalOrder {
+                Text(
+                    "Image sources reach \(wallOrder) wall and \(totalOrder) total reflections; the ray tracer "
+                        + "carries every later specular reflection.")
+            } else if let limited = d.orderLimitedAfter.compactMap({ $0 }).min() {
                 if (d.diffuseRays ?? 0) > 0 {
                     Text(
                         String(
