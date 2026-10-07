@@ -517,6 +517,22 @@ passing. This is a capacity-controlled remap, not an acoustic stability controll
 physical flux update. Next, add time-integrated face apertures and physical gas fluxes,
 including small-cell acoustic stability treatment, before enabling fractional blast coupling.
 
+Time-integrated open face areas are now available for axis-aligned constant translation in
+the event-split geometry reference. Box-face/cell-face crossings partition time so that each
+open area is a quadratic polynomial within an interval; two-point Gaussian quadrature
+integrates it exactly up to floating-point geometry error. The six area integrals (m² s)
+are included in `--motion-geometry` for midpoint and event-split results. The adaptive
+rotated sweep does not yet report them. Eight midpoint samples differ from the event-split
+face integral by 4.17% of the full-face area-time on the 0.1 and 0.05 m crossing cases.
+Three analytical tests check shared-face agreement, quadratic overlap and a brief closure
+missed by endpoint/midpoint samples; all sixteen geometry tests pass.
+
+An area-time integral alone is not a transported gas volume: a numerical flux must be
+integrated with the aperture, preserving the timing of openings as states evolve. The
+capacity remapper still uses its supplied connectivity graph. Next, extend temporal face
+quadrature to rotated motion and use it in a conservative physical flux reference with
+wall work and small-cell acoustic timestep control.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
