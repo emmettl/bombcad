@@ -5,6 +5,38 @@ import simd
 
 @Suite("Fractional rigid-box geometry")
 struct FractionalBoxGeometryTests {
+    @Test("Adaptive rotated sweeps meet volume tolerance and fail at a refinement limit")
+    func adaptiveSweep() throws {
+        let body = try RigidBoxBody(
+            mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(2.095, 2, 2),
+            orientation: simd_quatd(angle: 0.11, axis: simd_normalize(SIMD3(1, 2, 3))))
+        let lower = SIMD3<Double>(2.475, 1.9, 1.9)
+        let spin = 4 * simd_normalize(SIMD3<Double>(1, 2, 3))
+        let r = try AdaptiveBoxCellSweep.integrate(
+            body: body, velocity: .zero, spin: spin,
+            lower: lower, cellSize: 0.2, duration: 0.02, pressure: 101325, volumeTolerance: 1e-12)
+        #expect(abs(r.sweptVolume - r.volumeChange) <= 1e-12)
+        #expect(r.errorEstimate <= 1e-12)
+        #expect(abs(r.gasWork + r.bodyWork) < 1e-8)
+        #expect(abs(r.gasWork - 101325 * r.volumeChange) < 2e-7)
+        let offset = SIMD3<Double>(0.1, 0.05, -0.07)
+        let shifted = try RigidBoxBody(
+            mass: 2, size: SIMD3(0.8, 0.6, 0.4),
+            position: body.position + body.orientation.act(offset), orientation: body.orientation,
+            centreOfMass: offset, inertia: SIMD3(repeating: 0.2))
+        let combined = try AdaptiveBoxCellSweep.integrate(
+            body: shifted, velocity: SIMD3(0.6, -0.3, 0.2),
+            spin: SIMD3(0.3, 0.4, 1.1), lower: lower, cellSize: 0.2, duration: 0.02,
+            pressure: 101325, volumeTolerance: 1e-12)
+        #expect(abs(combined.sweptVolume - combined.volumeChange) <= 1e-12)
+        #expect(abs(combined.gasWork + combined.bodyWork) < 1e-8)
+        #expect(throws: AdaptiveBoxCellSweep.Failure.self) {
+            try AdaptiveBoxCellSweep.integrate(
+                body: body, velocity: .zero, spin: spin,
+                lower: lower, cellSize: 0.2, duration: 0.02, pressure: 101325,
+                volumeTolerance: 1e-30, maximumIntervals: 2)
+        }
+    }
     @Test("Event-split translation conserves volume and work for crossings in either direction")
     func eventSplitTranslation() throws {
         let body = try RigidBoxBody(mass: 2, size: SIMD3(repeating: 0.8), position: SIMD3(1, 1, 1))
@@ -58,6 +90,12 @@ struct FractionalBoxGeometryTests {
             if r.integration == .eventSplitGauss {
                 #expect(abs(r.volumeResidual) < 1e-12)
                 #expect(abs(r.gasPressureWork - r.endpointPressureWork) < 1e-8)
+            }
+            if r.integration == .adaptiveGauss {
+                let tolerance = try #require(r.volumeTolerance)
+                #expect(try #require(r.quadratureVolumeError) <= tolerance)
+                #expect(abs(r.volumeResidual) <= tolerance + 1e-15)
+                #expect(abs(r.gasPressureWork - r.endpointPressureWork) <= 101325 * tolerance + 1e-8)
             }
             if r.kind == "ground-gap-opening" {
                 #expect(abs(r.volumeResidual) < 1e-12)

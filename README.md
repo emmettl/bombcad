@@ -275,6 +275,9 @@ volume changes with temporally integrated wall motion and equal/opposite pressur
 It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
 It also compares event-split integration for constant translation of axis-aligned boxes,
 recording the integration method and actual temporal evaluation count in each result.
+Rotated translation and rotation use an adaptive reference checked against endpoint volume
+changes and coarse/fine quadrature. The 48-case report includes volume tolerances and error
+indicators. This reference does not certify force impulses or detect every brief grazing event.
 
 ## Headline results
 

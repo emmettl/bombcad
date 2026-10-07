@@ -392,9 +392,31 @@ equal and opposite to body work. Eleven tests include diagonal translation, reve
 stationary geometry and rejection of unsupported orientations.
 
 This removes the demonstrated translation-crossing error without correcting an already
-computed flux after the fact. Next, extend event/space-time treatment to rotated boxes and
-rotation, then design conservative fractional gas transport and small-volume stabilization.
+computed flux after the fact. Rotated motion needs the broader space-time reference below,
+before conservative fractional gas transport and small-volume stabilization.
 The reference remains separate from the air solver and does not change the blast demo.
+
+An adaptive reference now supports arbitrary initial pose, constant world spin and constant
+centre-of-mass velocity. It checks endpoint solid-volume changes against integrated wall
+motion, compares coarse/fine Gaussian quadrature, and refines the interval with the largest
+combined error indicator until the summed indicator meets the requested tolerance. Initial
+subdivision limits wall travel and angular excursion; a refinement limit causes an explicit
+failure rather than returning an unchecked result. No flux is corrected to force agreement.
+
+The motion report now contains 48 cases, including rotated translation and six adaptive
+comparisons with tolerances of one billionth of a full cell's volume. All six meet their
+reported tolerance and constant-pressure work checks. Smooth rotation uses 12–30 temporal
+geometry evaluations, while rotated translation uses 258–312 (including evaluations discarded
+during refinement). On 0.05 m air, rotated translation's volume residual falls from
+0.00000000687 m³ with 128 midpoint samples to 0.00000000000000150 m³ adaptively.
+Twelve tests include combined translation/rotation with an offset centre of mass and failure
+at a refinement limit.
+
+This is a numerical reference, not a complete rotating-wall event detector. Volume checks and
+excursion limits do not prove detection of arbitrarily brief grazing contacts or certify
+force-impulse accuracy. Those stress cases and consistent space-time force/transport checks
+remain necessary before coupling fractional gas volumes into the solver. Small-volume
+stabilization and the blast-convergence study also remain open.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
