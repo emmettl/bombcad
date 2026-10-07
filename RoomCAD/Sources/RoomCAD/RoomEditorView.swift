@@ -46,6 +46,10 @@ struct RoomEditorView: View {
             }
         }
         .onDisappear { player.stop() }
+        // Show the clip through the current room as soon as there is one.
+        .task(id: project.result?.settings) {
+            if let result = project.result { player.prepare(result) }
+        }
         .task(id: project.result?.response.metadata.frameCount) {
             if editor.summary == nil { editor.summarize(project.result) }
         }
@@ -78,7 +82,8 @@ struct RoomEditorView: View {
                 Spacer()
             }
             AuditionBar(
-                player: player, sampleRate: project.settings.sampleRate, play: audition,
+                player: player, sampleRate: project.settings.sampleRate, result: project.result,
+                play: audition,
                 busy: editor.isGenerating || validationMessage != nil)
             if let message = validationMessage ?? editor.message {
                 Label(message, systemImage: "exclamationmark.circle").foregroundStyle(.red).font(.callout)
@@ -124,14 +129,14 @@ struct RoomEditorView: View {
     private func generate(thenPlay: Bool = false) {
         editor.generate(project.settings) { result in
             document.project.result = result
-            // Keep listening across changes: replay with the new room.
-            if thenPlay || player.isPlaying || player.isPreparing { player.play(result) }
+            // Keeps playing, from the same point, with the new room.
+            player.prepare(result, thenPlay: thenPlay)
         }
     }
 
     private func audition() {
         if project.isResultCurrent, let result = project.result {
-            player.play(result)
+            player.prepare(result, thenPlay: true)
         } else {
             generate(thenPlay: true)
         }

@@ -11,7 +11,12 @@ enum Snapshot {
         do {
             let settings = RoomProject.starter
             let result = try RoomResponseGenerator.generate(settings)
-            let view = SnapshotView(settings: settings, result: result, summary: ResponseSummary(result))
+            let player = AuditionPlayer()
+            try player.prepareImmediately(result)
+            player.wetMix = 0.7
+            player.seek(to: 1.5)
+            let view = SnapshotView(
+                settings: settings, result: result, summary: ResponseSummary(result), player: player)
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2
             guard let image = renderer.cgImage else { throw CocoaError(.fileWriteUnknown) }
@@ -33,6 +38,7 @@ private struct SnapshotView: View {
     let settings: RoomResponseSettings
     let result: RoomResponse
     let summary: ResponseSummary
+    let player: AuditionPlayer
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -44,6 +50,12 @@ private struct SnapshotView: View {
                     }
                     .frame(width: 480, height: 320)
                 }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Audition: \(player.clip?.name ?? "—"), 70% wet").font(.caption.bold()).foregroundStyle(
+                    .secondary)
+                AuditionWaveform(player: player).frame(width: 960, height: 96)
+                Text(player.clip?.credit ?? "").font(.caption).foregroundStyle(.secondary)
             }
             HStack(alignment: .top, spacing: 16) {
                 EnvelopeChart(summary: summary).frame(width: 560, height: 240)

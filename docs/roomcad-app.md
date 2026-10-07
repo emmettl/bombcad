@@ -54,7 +54,14 @@ document is opened from Finder.
   - During playback, a newly generated response replaces the old one.
   - The first receiver is heard on the left and the second on the right; a single receiver is heard
     on both.
-  - A slider balances the dry and wet sound while it plays.
+  - A waveform strip shows the clip, and once a response exists, the clip dry and through the room
+    on one time axis. Both lanes are drawn at the levels played, scaled together.
+  - A red playhead follows playback. Click or drag the strip to move it; while you drag, the playhead
+    follows silently, and playback continues from where you release it.
+  - **Play/Pause** resumes from the playhead, and the back button returns it to the start.
+  - Changing the room, the loudness matching or looping keeps the position. Choosing another clip
+    starts it from the beginning.
+  - A slider balances the dry and wet sound while it plays; the lanes fade to match.
   - **Match loudness** gives the two equal energy, so switching between them compares the room
     rather than the level. Without it, levels are physical: the dry sound is the source heard 1 m
     away in open air. Either way, one common gain keeps the mix below 0.9 full scale.
@@ -129,6 +136,14 @@ saved again.
   - preview channel mapping and padding;
   - loudness matching to equal energy;
   - mixes below the ceiling.
+- **Audition display:** waveform overviews, and playback position after a seek, with and without
+  looping.
+- **AuditionPlayerTests:**
+  - a clip shown alone until it is prepared;
+  - duplicate preparation requests joined;
+  - seeking clamped to the clip;
+  - choosing a clip resets the playhead;
+  - matching changes the wet level only.
 - **RoomCADTests:**
   - background generation and its delivery;
   - invalid settings;
@@ -136,10 +151,11 @@ saved again.
   - the mapping between drawing and room coordinates, including clamping.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
-`RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen, with a generated
-response's envelope, decay table and diagnostics. That was used to check the drawing code. It caught
-overlapping labels where receivers coincide in one projection; labels now move apart. Form controls
-and toolbars do not render offscreen.
+`RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen. It also renders
+the audition waveform with its playhead, and a generated response's envelope, decay table and
+diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
+coincide in one projection; labels now move apart. Form controls and toolbars do not render
+offscreen.
 
 ## Limitations
 

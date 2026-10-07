@@ -1,28 +1,33 @@
+import AcousticCore
 import AppKit
 import Audition
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Clip choice, transport and wet/dry balance for hearing the room.
+/// Clip choice, transport, waveform and wet/dry balance for hearing the room.
 struct AuditionBar: View {
     @Bindable var player: AuditionPlayer
     let sampleRate: Int
+    /// The response the clip is played through, if any.
+    let result: RoomResponse?
     /// Starts playback, generating a response first if needed.
     let play: () -> Void
     let busy: Bool
 
+    private var active: Bool { player.isPlaying || player.isPreparing }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
                 Button {
-                    player.isPlaying || player.isPreparing ? player.stop() : play()
+                    active ? player.pause() : play()
                 } label: {
-                    Label(
-                        player.isPlaying || player.isPreparing ? "Stop" : "Play",
-                        systemImage: player.isPlaying || player.isPreparing ? "stop.fill" : "play.fill")
+                    Label(active ? "Pause" : "Play", systemImage: active ? "pause.fill" : "play.fill")
                 }
                 .disabled(busy && !player.isPlaying)
                 .help("Play the clip through the room, generating the response first if it is out of date")
+                Button("Back to Start", systemImage: "backward.end.fill") { player.seek(to: 0) }
+                    .labelStyle(.iconOnly)
 
                 Picker("Clip", selection: $player.clipID) {
                     ForEach(player.clips) { clip in Text(clip.name).tag(Optional(clip.id)) }
@@ -43,6 +48,8 @@ struct AuditionBar: View {
                 Toggle("Loop", isOn: $player.loops)
             }
             .controlSize(.small)
+            AuditionWaveform(player: player)
+                .frame(height: player.wetOverview == nil ? 56 : 96)
             if let message = player.message {
                 Text(message).font(.caption).foregroundStyle(.red)
             } else if let clip = player.clip {
@@ -51,9 +58,7 @@ struct AuditionBar: View {
         }
         .onAppear { player.prepareClips(sampleRate: sampleRate) }
         .onChange(of: sampleRate) { player.prepareClips(sampleRate: sampleRate) }
-        .onChange(of: player.clipID) {
-            if player.isPlaying { play() }
-        }
+        .onChange(of: player.clipID) { player.clipSelected(result) }
     }
 
     private func chooseFile() {

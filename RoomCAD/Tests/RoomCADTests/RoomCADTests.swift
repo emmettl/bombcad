@@ -91,3 +91,68 @@ struct RoomCADTests {
         #expect(abs(raised.z - 2.5) < 0.006 && raised.y == 4.5)
     }
 }
+
+@MainActor
+@Suite("RoomCAD audition player")
+struct AuditionPlayerTests {
+    @Test("A chosen clip is shown alone until a response is prepared, then dry and wet span clip and tail")
+    func preparing() async throws {
+        let player = AuditionPlayer()
+        player.prepareClips(sampleRate: 48_000)
+        let clip = try #require(player.clip)
+        #expect(player.dryOverview?.duration == clip.duration)
+        #expect(player.wetOverview == nil)
+
+        let result = try RoomResponseGenerator.generate(RoomCADTests.settings)
+        player.prepare(result)
+        // A second request for the same room joins the first.
+        player.prepare(result, thenPlay: false)
+        #expect(player.isPreparing)
+        await player.preparationFinished()
+        #expect(!player.isPreparing)
+        #expect(!player.isPlaying)
+        let expected = clip.duration + Double(result.response.frameCount - 1) / 48_000
+        #expect(abs((player.wetOverview?.duration ?? 0) - expected) < 1e-9)
+        #expect(player.dryOverview?.duration == player.wetOverview?.duration)
+    }
+
+    @Test("Seeking while paused moves the playhead within the clip")
+    func seeking() throws {
+        let player = AuditionPlayer()
+        try player.prepareImmediately(try RoomResponseGenerator.generate(RoomCADTests.settings))
+        player.seek(to: 1.25)
+        #expect(player.playhead == 1.25)
+        #expect(player.currentTime() == 1.25)
+        player.seek(to: 1_000)
+        #expect(player.playhead == player.duration)
+        player.seek(to: -3)
+        #expect(player.playhead == 0)
+    }
+
+    @Test("Choosing another clip resets the playhead and shows that clip")
+    func choosingClips() async throws {
+        let player = AuditionPlayer()
+        let result = try RoomResponseGenerator.generate(RoomCADTests.settings)
+        try player.prepareImmediately(result)
+        player.seek(to: 2)
+        let other = try #require(player.clips.first { $0.id == "noise-burst" })
+        player.clipID = other.id
+        player.clipSelected(result)
+        #expect(player.playhead == 0)
+        #expect(player.dryOverview?.duration == other.duration)
+        await player.preparationFinished()
+        #expect(player.wetOverview != nil)
+        #expect(!player.isPlaying)
+    }
+
+    @Test("Switching loudness matching changes the wet lane's level, not its length")
+    func matching() throws {
+        let player = AuditionPlayer()
+        try player.prepareImmediately(try RoomResponseGenerator.generate(RoomCADTests.settings))
+        let matched = try #require(player.wetOverview)
+        player.matchLoudness = false
+        let physical = try #require(player.wetOverview)
+        #expect(matched.duration == physical.duration)
+        #expect(matched.maximum != physical.maximum)
+    }
+}

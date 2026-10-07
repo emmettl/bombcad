@@ -133,3 +133,47 @@ struct AuditionTests {
         #expect(abs(pizzicato.duration - 11.25) < 0.01)
     }
 }
+
+@Suite("Audition display")
+struct AuditionDisplayTests {
+    @Test("Overviews keep each bucket's extremes across channels")
+    func overview() {
+        let left: [Float] = [0, 0.5, -0.2, 0, 0, 0, 0.1, -0.9]
+        let right: [Float] = [0, -0.6, 0, 0, 0.3, 0, 0, 0]
+        let overview = WaveformOverview([left, right], sampleRate: 4, buckets: 2, gain: 2)
+        #expect(overview.duration == 2)
+        #expect(overview.maximum == [1.0, 0.6])
+        #expect(overview.minimum == [-1.2, -1.8])
+        // More buckets than samples gives one per sample.
+        #expect(WaveformOverview([[1, -1]], sampleRate: 2, buckets: 50).maximum.count == 2)
+        #expect(WaveformOverview([[]], sampleRate: 2, buckets: 50).duration == 0)
+    }
+
+    @Test("Playback position runs on from a seek and wraps only when looping")
+    func position() {
+        #expect(PlaybackPosition.frame(start: 30, elapsed: 50, length: 100, loops: true) == 80)
+        #expect(PlaybackPosition.frame(start: 30, elapsed: 90, length: 100, loops: true) == 20)
+        #expect(PlaybackPosition.frame(start: 30, elapsed: 290, length: 100, loops: true) == 20)
+        #expect(PlaybackPosition.frame(start: 30, elapsed: 90, length: 100, loops: false) == 100)
+        // Before the scheduled start, the player reports negative time.
+        #expect(PlaybackPosition.frame(start: 30, elapsed: -2_000, length: 100, loops: true) == 30)
+    }
+
+    @Test("Played overviews show the wet lane at its matched or physical level")
+    func playedLevels() throws {
+        let clip = DryClip.noiseBurst(sampleRate: 48_000)
+        let ir = try ImpulseResponse(
+            channels: [[0.1, 0, 0.05]],
+            metadata: ResponseMetadata(
+                sampleRate: 48_000, frameCount: 3,
+                channels: [.init(name: "R", sourceID: UUID(), receiverID: UUID())],
+                content: .complete, gainConvention: "Test", usableBand: .init(lowerHz: 20, upperHz: 20_000),
+                model: "Test", assumptions: [], generator: "Tests"))
+        let preview = try AuditionPreview(clip: clip, response: ir)
+        let physical = preview.overviews(buckets: 100, matchLoudness: false)
+        let matched = preview.overviews(buckets: 100, matchLoudness: true)
+        #expect(physical.wet.maximum.max()! < physical.dry.maximum.max()! / 5)
+        #expect(matched.wet.maximum.max()! > physical.wet.maximum.max()! * 5)
+        #expect(physical.dry.duration == preview.duration)
+    }
+}
