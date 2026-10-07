@@ -89,7 +89,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    check for shells; a sectional check that works under impact, where the present one breaks
    every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
    cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
-   [the concrete model](concrete-model.md#limitations)). (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   [the concrete model](concrete-model.md#limitations)). Bars that slip, now an option, give
+   discrete cracks at the Model Code's spacing on any mesh and a mesh-independent shear beam,
+   but 42–47% strong, and the slab's peak 18% low, so the shear across discrete cracks comes next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)

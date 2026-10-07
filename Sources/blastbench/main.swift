@@ -114,6 +114,19 @@ func chosenCrackAxes() -> CrackAxes {
     }
 }
 
+/// `--bond pullout`, `--bond splitting` or `--bond confined`: bars that slip in their concrete
+/// by the Model Code's law for those conditions (see `BondSlip`), of `diameter` metres unless
+/// `--bar` gives it in millimetres; nil, perfect bond, without the option.
+func chosenBondSlip(diameter: Float) -> BondSlip? {
+    let bar = option("bar").flatMap { Float($0) }.map { $0 / 1000 } ?? diameter
+    switch option("bond") {
+    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar)
+    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar)
+    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar)
+    default: return nil
+    }
+}
+
 /// The air model `--air thermal` or `--air dissociating` asks for, or nil for the default.
 func chosenAirModel() -> AirModel? {
     switch option("air") {
@@ -756,7 +769,8 @@ func runBeam() throws {
         let result = try BeamBenchmark.run(
             device: device, elementsThroughDepth: layers,
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
-            unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes()
+            unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
+            bondSlip: chosenBondSlip(diameter: 0.019)
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
@@ -1092,7 +1106,8 @@ func runShearBeam() throws {
         let slice = option("slice").flatMap { Float($0) }.map { $0 / 1000 }
         let result = try ShearBeamBenchmark.run(
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
-            crackAxes: chosenCrackAxes(), mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
+            crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
+            mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
         ) { material in
             if let dowel { material.dowelFactor = dowel }
             // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
@@ -1224,7 +1239,8 @@ func runSlab() throws {
             flag("held-bearings") ? .bearings(width: 0.0254, holdDown: true) : .lines
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
-            crackAxes: chosenCrackAxes(), adjust: { applyRateOptions(&$0) },
+            crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
+            adjust: { applyRateOptions(&$0) },
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {

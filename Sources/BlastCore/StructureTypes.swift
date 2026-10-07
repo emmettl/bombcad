@@ -518,6 +518,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether shear that a crack's interlock and dowels cannot hold slides it for good, as a
     /// masonry joint slides, instead of springing back when the load comes off.
     public var crackSlip = true
+    /// Bars that slip in their concrete, by the Model Code's bond-slip law (see `BondSlip`); nil
+    /// bonds them perfectly. Solid elements' bars along the lattice axes only.
+    public var bondSlip: BondSlip?
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -940,6 +943,13 @@ struct StructureUniforms {
     var anchorCohesion: Float = 0
     var anchorCohesionSlip: Float = 0
     var anchorFriction: Float = 0
+    var bondSlip: UInt32 = 0
+    var bondPeak: Float = 0
+    var bondResidual: Float = 0
+    var bondS1: Float = 0
+    var bondS2: Float = 0
+    var bondS3: Float = 0
+    var bondAlpha: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1125,6 +1135,7 @@ extension StructureModel {
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
+        bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
