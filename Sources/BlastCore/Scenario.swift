@@ -1,32 +1,6 @@
 import Metal
 import simd
 
-/// Axis-aligned rigid block, in metres. Buildings sit on the ground plane z = 0.
-public struct Box: Sendable, Hashable, Codable {
-    public var min: SIMD3<Float>
-    public var max: SIMD3<Float>
-
-    public init(min: SIMD3<Float>, max: SIMD3<Float>) {
-        self.min = min
-        self.max = max
-    }
-
-    /// A block with the given footprint, rising from the ground to `height`.
-    public init(x: ClosedRange<Float>, y: ClosedRange<Float>, height: Float) {
-        self.init(
-            min: SIMD3(x.lowerBound, y.lowerBound, 0), max: SIMD3(x.upperBound, y.upperBound, height))
-    }
-
-    public func contains(_ point: SIMD3<Float>) -> Bool {
-        all(point .>= min) && all(point .< max)
-    }
-
-    public var size: SIMD3<Float> {
-        get { max - min }
-        set { max = min + newValue }
-    }
-}
-
 /// Energy source, modelled as a sphere of hot compressed gas (the "bursting balloon" model).
 public struct Charge: Sendable, Hashable, Codable {
     /// Conventional energy of one kilogram of TNT in joules.

@@ -148,6 +148,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
+| [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
 
@@ -157,6 +158,7 @@ Each model document lists its sources, its limitations and the work that would a
 
 | Target        | Contents                                                             |
 |---------------|----------------------------------------------------------------------|
+| `SceneModel` / `SceneView` | Shared geometry and camera in [SimulationKit](Packages/SimulationKit/README.md) |
 | `BlastCore`   | Air and structural solvers, materials, scenarios, benchmark data     |
 | `BlastRender` | Scene renderer, orbit camera, offscreen snapshots                    |
 | `BombCAD`     | SwiftUI app with the layout editor                                   |
