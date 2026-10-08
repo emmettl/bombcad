@@ -162,15 +162,15 @@ struct TranslatingBoxSpaceTimeGeometry {
                     mass: body.mass, size: body.size, position: body.position + time * velocity,
                     orientation: body.orientation, centreOfMass: body.centreOfMass, inertia: body.inertia))
         }
-        let initial = try (1 - geometry(0).solidVolumeFraction(lower: lower, cellSize: h)) * volume
-        let final = try (1 - geometry(duration).solidVolumeFraction(lower: lower, cellSize: h)) * volume
+        let initial = try geometry(0).gasVolume(lower: lower, cellSize: h)
+        let final = try geometry(duration).gasVolume(lower: lower, cellSize: h)
         var volumeTime = 0.0
         for interval in 0..<(events.count - 1) {
             let midpoint = (events[interval] + events[interval + 1]) / 2
             let weight = (events[interval + 1] - events[interval]) / 2
             for time in [midpoint - weight / sqrt(3.0), midpoint + weight / sqrt(3.0)] {
                 let current = try geometry(time)
-                volumeTime += weight * volume * (1 - current.solidVolumeFraction(lower: lower, cellSize: h))
+                volumeTime += weight * current.gasVolume(lower: lower, cellSize: h)
                 let open = current.openFacePatches(lower: lower, cellSize: h)
                 for side in 0..<6 {
                     let area = weight * open[side].area

@@ -7,6 +7,24 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--moving-groups") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-groups.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingGroupsStudy.Result] = []
+        _ = try ExperimentalMovingGroupsStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation), \(r.transition): dry→wet \(r.dryToWetCells), wet→dry \(r.wetToDryCells), pressure error \(r.maximumRelativePressureError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--translating-box-geometry") {
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })

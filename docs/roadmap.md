@@ -1200,13 +1200,54 @@ transient occupancy, rotated closure, motion reversal, offset-centre torque, coi
 stationary contact and rejected configurations. The four release study reports also pass
 the conservation and transition checks; strict formatting and diff checks are clean.
 
-Next, build moving connected groups with valid old gas inventories and a conservative
-wet/dry transition policy. The event-integrated apertures and first moments must support
-uniform gas preservation, positivity, and paired volume/impulse/work exchange without
-counting wall displacement twice through remapping. Then add a nonuniform prescribed-box
-transport benchmark. Coupled free-body velocity, rotation, ground contact and gas angular
-momentum remain subsequent gates. Ordinary simulations are unchanged, and stable kernels
-remain candidates for separately reviewed shared extraction.
+Moving interval groups now use time-averaged gas volumes and aperture/first-moment measures
+for support geometry, including members that are initially or finally dry. After geometric
+closure checks, adjacent support groups are merged until both old and final gas capacities
+exceed 0.25 nominal cell volume (maximum 64 members). Actual extensive group states are
+summed exclusively from old gas inventories; geometric unit-state placeholders never become
+physical inventories. A newly exposed cell with no connected old support is rejected.
+Accepted packets scatter in proportion to final wet volumes, giving a largest wet member
+the floating-point remainder and exactly zero to final dry members.
+
+One frozen-state Rusanov/local wall update now uses these averaged areas. The existing Euler
+reference checks acoustic/contraction CFL and state positivity; computed wall displacement
+must match endpoint group volumes before those geometric volumes are used for scattering.
+No second remap flux is added. Each outer opening receives a prescribed reservoir buffer;
+its paired inventory change is reported in the global mass/momentum/energy budget. Pressure
+impulses, work and area/time-weighted application locations retain the paired body loads.
+
+Rotated crossings exposed cancellation in almost-solid cells and almost-blocked faces.
+Thin gas volume now uses the existing positive tetrahedral quadrature, and thin open faces
+use disjoint positive polygons classified by the first violated solid plane. This preserves
+emerging gas corners below the precision of full-volume subtraction; an independent
+tetrahedron/triangle test checks their volume, area and centroid. The original clipping
+tolerances and unsupported near-parallel/grazing configurations still apply. Crossing times
+use complete corner containment, rather than a gas-fraction threshold that would delay a
+rotated corner's first appearance.
+
+`--moving-groups` completes eight single-interval cases: two grids, aligned/0.23-radian boxes,
+and opening/closing windows. Aligned windows contain simultaneous dry→wet and wet→dry counts
+of 9 on 0.2 m grids and 49 on 0.1 m grids; each rotated window crosses one selected cell.
+Opening/closing windows coincide in the aligned geometry. Initial durations are 4 microseconds;
+the finer rotated opening rejects one trial and rebuilds geometry for 2 microseconds.
+The accepted minimum group capacity exceeds 0.25 at both endpoints, with two members at most.
+Numerical comoving gas preserves density and pressure within `6e-15` relative and velocity
+within `5e-11` m/s, including newly exposed members. Swept-volume residuals are below `2e-15`
+of a nominal cell. Budget residuals are below `1e-14` kg, `4e-14` N s and `3e-9` J;
+`W - v·I` is below `3e-16` J. Uniform-pressure net body impulse/work are below `1e-11`
+in SI units. These are numerical conservation/constant-state checks, not nonuniform moving
+wave accuracy measurements.
+All 61 CPU-only tests in 12 suites pass, including conservative endpoint scatter, rejected
+unsupported groups and inconsistent volumes, the thin tetrahedral corner, nonuniform static
+pressure budgets and finer-grid CFL retry. Both geometry and moving-group release reports
+pass their conservation/transition checks; formatting and diff checks are clean.
+
+Next, repeat moving group construction and conservative scatter over a sustained prescribed
+trajectory, checking the cumulative budgets and every active-set transition. Then establish
+nonuniform moving-load accuracy under grid and timestep refinement. Group homogenization
+does not preserve gas angular momentum. Coupled free-body velocity, rotation, ground contact
+and gas angular momentum remain subsequent gates. Ordinary simulations are unchanged, and
+stable kernels remain candidates for separately reviewed shared extraction.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.

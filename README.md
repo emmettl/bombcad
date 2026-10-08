@@ -486,8 +486,19 @@ and whole-box pressure impulse/torque/work, including wet/dry and transient inte
 An exact uniform Euler-trace probe supplies gas moving with the box and matching outer
 inflow/outflow. It verifies conservation identities without evolving gas states or choosing
 states for newly exposed cells. Near-parallel plane triples are rejected; contacts at the
-geometry/time tolerances are not certified. Rotation during motion and moving connected
-groups remain subsequent work.
+geometry/time tolerances are not certified. Rotation during motion remains subsequent work.
+
+`swift run -c release rigidboxdemo --moving-groups` writes `.build/moving-groups.json`.
+Eight short intervals straddle cells becoming wet or dry on aligned/rotated 0.2/0.1 m
+grids. Groups cover gas present at any time in the interval and must have at least
+0.25 nominal cell volume at both endpoints. Existing gas inventories feed paired
+Rusanov and moving-wall fluxes; accepted group packets scatter to final wet members,
+with empty final members receiving zero. Prescribed outer reservoirs supply matching
+comoving gas and report their inventory exchange. An excessive acoustic timestep is
+rejected and the interval geometry rebuilt. Thin corner volumes and face measures
+are integrated directly to avoid cancellation. This verifies a single numerical
+interval; sustained motion, nonuniform moving-load convergence and gas angular
+momentum transport still need separate checks.
 
 ## Headline results
 
