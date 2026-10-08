@@ -324,7 +324,8 @@ saved again.
   - invalid settings;
   - cancellation, and a newer generation replacing one in progress;
   - the mapping between drawing and room coordinates, including clamping;
-  - the wording of generation progress and of the wave solver's engines.
+  - the wording of generation progress and of the wave solver's engines;
+  - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
 `RoomCAD --snapshot FILE.png [PRESET]` renders the starter room's plan and section offscreen, or a

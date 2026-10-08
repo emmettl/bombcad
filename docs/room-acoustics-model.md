@@ -687,8 +687,9 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 ## Limitations
 
 - **Geometry.** Rooms are boxes, floor plans with vertical walls, or closed meshes of flat faces.
-  Curved walls are approximated by flat faces. Pillars, furniture and ornament are not modelled as
-  objects, and nothing yet stands in for the sound they scatter. Coupled spaces work only as one mesh.
+  Curved walls are approximated by flat faces. Pillars, furniture and ornament can stand as fitted
+  zones, boxes of statistically scattering objects; their density must be estimated, and they scatter
+  equally in every band and direction. Coupled spaces work only as one mesh.
   A floor plan's or mesh's image sources reach only modest orders, with rays carrying the rest.
 - **Meshes in the app.** A mesh comes from a preset or a measured scene. The app shows it and edits
   its materials, but it cannot edit its shape. Openings in a mesh are open faces, not rectangles.
@@ -724,8 +725,8 @@ The roadmap orders the work as follows:
 - more sourced scattering data (M5);
 - wave-solver walls that also absorb at grazing incidence, such as extended-reaction or
   frequency-dependent complex impedances, checked against the measured room;
-- a way to stand in for the scattering of pillars, ornament and seating in a simplified hall, which
-  the chamber music hall's comparison shows is needed;
+- fitted zones that follow a raked floor or a wall, rather than boxes, and sourced densities for
+  common furnishings;
 - the remaining BRAS auditorium, CR4, built from solids.
 
 A synthetic late tail (M2 item 4) is no longer needed: rays carry every reflection beyond the image

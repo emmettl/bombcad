@@ -339,8 +339,8 @@ probe.
 - **Two rooms.** Both are rectangular in essence. BRAS's CR4, an auditorium with a raked floor,
   rising side galleries and a fan-shaped plan, could be built from solids in the same way but has not
   been.
-- **Large objects.** Pillars, ornament and chairs are not modelled as objects, and no scattering
-  coefficient stands in for them yet.
+- **Large objects.** The chamber music hall's chairs are modelled as fitted zones, with an estimated
+  surface area each. Its pillars and ornament are not modelled.
 - **The source.** It is treated as omnidirectional, at each driver's height. Its directivity, the
   size of its drivers, and the crossover's phase are not modelled.
 - **Geometry.** It is simplified, as listed above, and wall materials are averaged by area.

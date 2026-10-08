@@ -423,7 +423,13 @@ code.
 - **Item 2.** This has started: 90 absorption and 7 scattering presets come from the annex of
   Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
   and labelled in each material's reference. Most surfaces still need scattering values. See
-  [RoomCAD app and documents](roomcad-app.md#material-presets).
+  [RoomCAD app and documents](roomcad-app.md#material-presets). Objects too many or too small to
+  model as surfaces, such as chairs, desks, pews and ornament, can be added as fitted zones, with
+  their density and absorption stated (see
+  [Fitted zones](room-acoustics-model.md#fitted-zones)). **Match Reverberation Time** fits the
+  absorption to measured times by simulating the room, since Eyring's formula misjudges rooms that are
+  not diffuse. PTB's absorption database was considered but not bundled: it is compiled from
+  manufacturers' data without an open licence.
 - **Item 3.** This is done. The app shows each channel's envelope, spectrum, early arrivals (an
   energy-time curve above 500 Hz) and octave-band decay. It also shows:
   - the generation's stage and progress while it runs;
