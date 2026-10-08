@@ -497,7 +497,7 @@ Collapse and debris have not been compared with anything.
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
-| [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |
+| [RoomCAD](https://github.com/emmettl/RoomCAD)   | Independent room acoustics app, impulse responses and convolution reverb   |
 | [Save files](docs/save-files.md)            | Versioned project packages, assets and persisted settings       |
 | [Data wanted](docs/data-wanted.md)          | Sources that need fetching by hand, and what each would add     |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |

@@ -1,31 +1,14 @@
-# RoomCAD
+# RoomCAD has moved
 
-Offline impulse responses of rooms, for convolution reverb: a macOS document app, the acoustic
-model and response files. See the [roadmap](../docs/roomcad-roadmap.md) for what is planned.
+RoomCAD is now an independent repository: [emmettl/RoomCAD](https://github.com/emmettl/RoomCAD).
+Its app, acoustic backend, auditioning, fixtures, documentation and release tools live there.
+CAD foundations and response interchange are exact tagged dependencies in
+[ContinuumKit](https://github.com/emmettl/ContinuumKit).
 
-| Module | Contents |
-|---|---|
-| RoomCAD | The document app: plan and section drawings, inspector, generation, auditioning, WAV export |
-| Audition | Dry clips (bundled, generated or chosen), FFT convolution previews and loudness matching |
-| RoomDocument | The versioned `.roomcad` format and response summaries |
-| AcousticCore | Rectangular rooms, octave-band materials, air absorption, image sources, rendering, decay analysis |
-| ImpulseResponseKit | Response metadata, 32-bit float WAV reading and writing, common-gain conditioning |
-| acousticbench | Analytical checks and a reference room exported as stereo WAV |
+Clone the standalone repository and run `make check` or `make app` from its root.
+The former `make roomcad-*` targets are retired here. RoomCAD has its own physical
+Mac mini CI runner; BombCAD's checks cover BombCAD.
 
-```bash
-swift run -c release --package-path RoomCAD RoomCAD
-```
-
-```bash
-swift test --package-path RoomCAD
-```
-
-```bash
-swift run -c release --package-path RoomCAD acousticbench --out roomcad-reference
-```
-
-The app and its documents are described in [RoomCAD app and documents](../docs/roomcad-app.md),
-and the model, its checks and its limitations in
-[Room-acoustics model](../docs/room-acoustics-model.md). The package uses the shared ContinuumKit
-for its document container and depends on nothing in BombCAD. Third-party data and recordings are
-credited in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+History is preserved in both repositories; the standalone repository records the
+source hashes and rewritten commit map. The previous signed RoomCAD 0.1.0 download
+remains at [the original release](https://github.com/emmettl/bombcad/releases/tag/roomcad-v0.1.0).
