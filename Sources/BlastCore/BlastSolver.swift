@@ -38,6 +38,29 @@ public final class BlastSolver {
     public var hasBody: Bool { !bodies.isEmpty }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
+    public var couplingStatistics: CouplingStatistics {
+        let cells = couplingRegion.map { $0.dims.x * $0.dims.y * $0.dims.z } ?? 0
+        return CouplingStatistics(
+            layout: "dense", denseCells: cells, capacityCells: cells, activeTiles: 0, tileCapacity: 0,
+            bytes: (occupancyBuffer?.length ?? 0) + (combinedOccupancyBuffer?.length ?? 0)
+                + (debrisExchangeBuffer?.length ?? 0) + (debrisAreaBuffer?.length ?? 0)
+                + (hasBody ? wallVelocityBuffer.length : 0))
+    }
+
+    /// Measures only repeated boundary composition/remasking on the current geometry.
+    /// For benchmark drivers: does not advance time; run on a separate, stationary fixture.
+    public func measureCouplingGPU(repetitions: Int) throws -> Double {
+        precondition(!batchInFlight && repetitions > 0)
+        guard let command = commandQueue.makeCommandBuffer(),
+            let encoder = command.makeComputeCommandEncoder()
+        else { throw BlastError.allocationFailed("coupling benchmark") }
+        for _ in 0..<repetitions { encodeRemask(encoder) }
+        encoder.endEncoding()
+        command.commit()
+        command.waitUntilCompleted()
+        if let error = command.error { throw error }
+        return (command.gpuEndTime - command.gpuStartTime) / Double(repetitions)
+    }
     public var interObjectContactDetected: Bool {
         interactionBuffer?.contents().load(as: UInt32.self) != nil
             && interactionBuffer!.contents().load(as: UInt32.self) != 0
