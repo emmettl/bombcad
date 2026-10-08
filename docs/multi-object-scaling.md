@@ -60,6 +60,28 @@ below `1e-5`. Refinement counts and swept fractions are retained.
 layouts explicitly. Reports retain the device, OS, source revision and timing method.
 Raw reports belong under `Benchmarks/MultiObjectScaling`.
 
+The [complete M4 Max report](../Benchmarks/MultiObjectScaling/m4-max.json) contains all
+48 cases at source revision `682edba10847ddb8e06f91e41d457a01490ffd82`. Every coarse
+pressure comparison is exactly equal. The initial [dense baseline](../Benchmarks/MultiObjectScaling/dense-baseline.json)
+is retained at `e3dec96334fa6a12afc4bf595d0951fde014eb77`; its measurements were
+sequential, while the final comparison uses interleaved layouts.
+
+For sixteen bodies at 28 m spacing, using decimal MB and the automatic choice:
+
+| Observation | Dense | Automatic |
+| --- | ---: | ---: |
+| Coarse coupling buffers | 37.35 MB | 29.02 MB |
+| Entire solver, coarse air | 75.62 MB | 67.29 MB |
+| Boundary GPU median, coarse air | 0.577 ms | 0.522 ms |
+| Eight-step GPU batch, coarse air | 77.01 ms | 75.28 ms |
+| Boundary GPU median, refined air | 0.890 ms | 0.941 ms |
+| Eight-step GPU batch, refined air | 77.82 ms | 73.35 ms |
+
+Coupling storage falls by 22.3% in this case; total coarse solver storage falls by
+11.0%. Timings are observations from this hardware and run, not portable performance
+guarantees. The report retains five samples for each boundary timing. Compact
+arrangements keep dense storage where forced tiling would allocate more.
+
 Boundary timing and whole-batch timing answer different questions. Air sweeps,
 mechanical substeps and fine-level work can dominate. Compact storage does not
 guarantee a faster run for every refinement setting. Forced tiled storage can also
@@ -92,3 +114,5 @@ TNT equivalent. The structural details are illustrative and uncalibrated.
 
 Open the supplied layout in BombCAD. Begin with coarse air and a short run when
 inspecting resources; finer or longer studies need their own resolution checks.
+
+![Initial sixteen-building neighborhood rendered by BombCAD](neighborhood.png)

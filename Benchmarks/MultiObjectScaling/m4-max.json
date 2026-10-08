@@ -1,0 +1,1405 @@
+{
+  "cellSizeM": 0.5,
+  "device": "Apple M4 Max",
+  "observations": [
+    {
+      "batchGPUS": 0.011950041633099318,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 917280,
+        "capacityCells": 11466,
+        "denseCells": 11466,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 3.2166673918254673e-05,
+      "couplingGPUSamplesS": [
+        3.1739589758217335e-05,
+        3.2166673918254673e-05,
+        3.2234369427897036e-05,
+        3.242187085561454e-05,
+        3.1911462428979576e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 3987672,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5714285714285714
+    },
+    {
+      "batchGPUS": 0.008254833286628127,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 308,
+        "bytes": 3446472,
+        "capacityCells": 43008,
+        "denseCells": 11466,
+        "layout": "tiled",
+        "tileCapacity": 672
+      },
+      "couplingGPUMedianS": 6.717187352478504e-05,
+      "couplingGPUSamplesS": [
+        6.845312600489706e-05,
+        6.717187352478504e-05,
+        6.717187352478504e-05,
+        6.702603423036635e-05,
+        6.671875598840415e-05
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 6516864,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.7142857142857143
+    },
+    {
+      "batchGPUS": 0.006552333361469209,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 917280,
+        "capacityCells": 11466,
+        "denseCells": 11466,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 3.2072915928438306e-05,
+      "couplingGPUSamplesS": [
+        3.2083335099741817e-05,
+        3.1958334147930145e-05,
+        3.2072915928438306e-05,
+        3.2177093089558184e-05,
+        3.189583367202431e-05
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 3987672,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5714285714285714
+    },
+    {
+      "batchGPUS": 0.008155791671015322,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 917280,
+        "capacityCells": 11466,
+        "denseCells": 11466,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 6.714061601087451e-05,
+      "couplingGPUSamplesS": [
+        6.663020758423954e-05,
+        6.889582436997443e-05,
+        6.714061601087451e-05,
+        6.708332512062043e-05,
+        7.031249697320163e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 20704872,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5714285714285714
+    },
+    {
+      "batchGPUS": 0.009021583362482488,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 308,
+        "bytes": 3446472,
+        "capacityCells": 43008,
+        "denseCells": 11466,
+        "layout": "tiled",
+        "tileCapacity": 672
+      },
+      "couplingGPUMedianS": 9.527604561299086e-05,
+      "couplingGPUSamplesS": [
+        0.00010550521255936474,
+        0.00010715625830926001,
+        9.527604561299086e-05,
+        9.5015624538064e-05,
+        9.518751176074147e-05
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 23234064,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.7142857142857143
+    },
+    {
+      "batchGPUS": 0.007548250025138259,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 917280,
+        "capacityCells": 11466,
+        "denseCells": 11466,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 6.734374619554728e-05,
+      "couplingGPUSamplesS": [
+        6.930729432497174e-05,
+        6.857291737105697e-05,
+        6.734374619554728e-05,
+        6.71093730488792e-05,
+        6.695833872072399e-05
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 20704872,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5714285714285714
+    },
+    {
+      "batchGPUS": 0.006822000024840236,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 1616160,
+        "capacityCells": 20202,
+        "denseCells": 20202,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 1.9255210645496845e-05,
+      "couplingGPUSamplesS": [
+        1.9255210645496845e-05,
+        1.9609375158324838e-05,
+        1.915625762194395e-05,
+        1.920312934089452e-05,
+        1.9718747353181243e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 8889048,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.36363636363636365
+    },
+    {
+      "batchGPUS": 0.007679875008761883,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 308,
+        "bytes": 3451080,
+        "capacityCells": 43008,
+        "denseCells": 20202,
+        "layout": "tiled",
+        "tileCapacity": 672
+      },
+      "couplingGPUMedianS": 3.823958104476333e-05,
+      "couplingGPUSamplesS": [
+        3.823958104476333e-05,
+        3.856771218124777e-05,
+        3.7953126593492925e-05,
+        3.807290340773761e-05,
+        6.270312587730587e-05
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 10723968,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.3305785123966942
+    },
+    {
+      "batchGPUS": 0.006759791634976864,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 1616160,
+        "capacityCells": 20202,
+        "denseCells": 20202,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 1.9484374206513166e-05,
+      "couplingGPUSamplesS": [
+        1.9046885427087545e-05,
+        1.9484374206513166e-05,
+        1.950519799720496e-05,
+        1.9005208741873503e-05,
+        1.9546874682419002e-05
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 8889048,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.36363636363636365
+    },
+    {
+      "batchGPUS": 0.008508875034749508,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 1616160,
+        "capacityCells": 20202,
+        "denseCells": 20202,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 7.021354394964874e-05,
+      "couplingGPUSamplesS": [
+        6.957812001928687e-05,
+        6.930729432497174e-05,
+        7.181770342867821e-05,
+        7.021354394964874e-05,
+        7.02187535353005e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 25612008,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.36363636363636365
+    },
+    {
+      "batchGPUS": 0.007971125072799623,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 308,
+        "bytes": 3451080,
+        "capacityCells": 43008,
+        "denseCells": 20202,
+        "layout": "tiled",
+        "tileCapacity": 672
+      },
+      "couplingGPUMedianS": 9.603124635759741e-05,
+      "couplingGPUSamplesS": [
+        9.55885334406048e-05,
+        9.569792018737644e-05,
+        0.00018834896036423743,
+        9.603124635759741e-05,
+        0.00011276040459051728
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 27446928,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.3305785123966942
+    },
+    {
+      "batchGPUS": 0.008134750067256391,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 1616160,
+        "capacityCells": 20202,
+        "denseCells": 20202,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 6.934895645827055e-05,
+      "couplingGPUSamplesS": [
+        6.947397196199745e-05,
+        6.933855183888227e-05,
+        6.934895645827055e-05,
+        6.874479004181921e-05,
+        7.009896216914058e-05
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 25612008,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.36363636363636365
+    },
+    {
+      "batchGPUS": 0.017574416706338525,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2009280,
+        "capacityCells": 25116,
+        "denseCells": 25116,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 3.767186717595905e-05,
+      "couplingGPUSamplesS": [
+        3.6781246308237314e-05,
+        3.667187411338091e-05,
+        3.7791673094034195e-05,
+        3.7828125641681254e-05,
+        3.767186717595905e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 5301192,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.01799012499395758,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 600,
+        "bytes": 4020360,
+        "capacityCells": 50176,
+        "denseCells": 25116,
+        "layout": "tiled",
+        "tileCapacity": 784
+      },
+      "couplingGPUMedianS": 5.767187394667417e-05,
+      "couplingGPUSamplesS": [
+        5.653125117532909e-05,
+        5.636978312395513e-05,
+        5.7859375374391675e-05,
+        5.767187394667417e-05,
+        6.315625796560198e-05
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 7312272,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.017144708312116563,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2009280,
+        "capacityCells": 25116,
+        "denseCells": 25116,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 3.6859375541098416e-05,
+      "couplingGPUSamplesS": [
+        3.6734374589286745e-05,
+        3.677084168884903e-05,
+        3.6859375541098416e-05,
+        3.781249688472599e-05,
+        3.784375439863652e-05
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 5301192,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.01875462499447167,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2009280,
+        "capacityCells": 25116,
+        "denseCells": 25116,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00010884374205488712,
+      "couplingGPUSamplesS": [
+        0.00010809896048158407,
+        0.00010792187822517008,
+        0.00010884374205488712,
+        0.00012548438098747283,
+        0.00010923438821919262
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 22018392,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.018565375008620322,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 600,
+        "bytes": 4020360,
+        "capacityCells": 50176,
+        "denseCells": 25116,
+        "layout": "tiled",
+        "tileCapacity": 784
+      },
+      "couplingGPUMedianS": 0.0001416614541085437,
+      "couplingGPUSamplesS": [
+        0.00014056250802241266,
+        0.0001416614541085437,
+        0.00013995313202030957,
+        0.00014246354112401605,
+        0.0001418072934029624
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 24029472,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.017293249955400825,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2009280,
+        "capacityCells": 25116,
+        "denseCells": 25116,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00010844270582310855,
+      "couplingGPUSamplesS": [
+        0.00010813541302923113,
+        0.00010844270582310855,
+        0.00010753126116469502,
+        0.00011005728447344154,
+        0.00010883333743549883
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 22018392,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.01807937491685152,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6002880,
+        "capacityCells": 75036,
+        "denseCells": 75036,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 5.101562419440597e-05,
+      "couplingGPUSamplesS": [
+        5.057813541498035e-05,
+        5.028645682614297e-05,
+        5.195834091864526e-05,
+        5.116667307447642e-05,
+        5.101562419440597e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 13497288,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.017997374990954995,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 672,
+        "bytes": 7181352,
+        "capacityCells": 89600,
+        "denseCells": 75036,
+        "layout": "tiled",
+        "tileCapacity": 1400
+      },
+      "couplingGPUMedianS": 7.560937956441194e-05,
+      "couplingGPUSamplesS": [
+        7.478646875824779e-05,
+        7.545312109868973e-05,
+        7.573436596430838e-05,
+        7.560937956441194e-05,
+        7.58541573304683e-05
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 14675760,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.628099173553719
+    },
+    {
+      "batchGPUS": 0.01737566664814949,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6002880,
+        "capacityCells": 75036,
+        "denseCells": 75036,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 5.129686906002462e-05,
+      "couplingGPUSamplesS": [
+        5.07343647768721e-05,
+        5.129686906002462e-05,
+        7.05156271578744e-05,
+        5.134896491654217e-05,
+        5.121354479342699e-05
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 13497288,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.019100124947726727,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6002880,
+        "capacityCells": 75036,
+        "denseCells": 75036,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0001246458268724382,
+      "couplingGPUSamplesS": [
+        0.0001246458268724382,
+        0.00012331249308772385,
+        0.0001233854127349332,
+        0.00020390625286381692,
+        0.00012507813517004251
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 30220248,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.0178870833478868,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 672,
+        "bytes": 7181352,
+        "capacityCells": 89600,
+        "denseCells": 75036,
+        "layout": "tiled",
+        "tileCapacity": 1400
+      },
+      "couplingGPUMedianS": 0.00016177604265976697,
+      "couplingGPUSamplesS": [
+        0.0001614739594515413,
+        0.00016059374320320785,
+        0.0001653749932302162,
+        0.00016178125224541873,
+        0.00016177604265976697
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 31398720,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.628099173553719
+    },
+    {
+      "batchGPUS": 0.01956770836841315,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6002880,
+        "capacityCells": 75036,
+        "denseCells": 75036,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00012398436956573278,
+      "couplingGPUSamplesS": [
+        0.00012398436956573278,
+        0.00012435938697308302,
+        0.00012331771722529083,
+        0.00012367709132377058,
+        0.00012608854740392417
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 30220248,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.03315841674339026,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 4951440,
+        "capacityCells": 61893,
+        "denseCells": 61893,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 8.639063162263483e-05,
+      "couplingGPUSamplesS": [
+        8.639063162263483e-05,
+        8.642187458463013e-05,
+        8.584374154452235e-05,
+        8.629687363281846e-05,
+        8.977083780337125e-05
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 11678800,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.033666249946691096,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 1200,
+        "bytes": 8204808,
+        "capacityCells": 102400,
+        "denseCells": 61893,
+        "layout": "tiled",
+        "tileCapacity": 1600
+      },
+      "couplingGPUMedianS": 0.000135015623527579,
+      "couplingGPUSamplesS": [
+        0.00013485937961377203,
+        0.000135015623527579,
+        0.00013487499381881207,
+        0.00022382290626410395,
+        0.00013510417193174362
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 14932168,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.94
+    },
+    {
+      "batchGPUS": 0.034543749992735684,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 4951440,
+        "capacityCells": 61893,
+        "denseCells": 61893,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 8.65676993271336e-05,
+      "couplingGPUSamplesS": [
+        8.631250238977373e-05,
+        8.65676993271336e-05,
+        8.615625847596675e-05,
+        8.729688124731183e-05,
+        0.00010581250535324216
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 11678800,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.03339262504596263,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 4951440,
+        "capacityCells": 61893,
+        "denseCells": 61893,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00023729688837192953,
+      "couplingGPUSamplesS": [
+        0.00023959374811965972,
+        0.00023729688837192953,
+        0.000232197911827825,
+        0.0003176510363118723,
+        0.00023411979782395065
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 28400080,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.033886375022120774,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 1200,
+        "bytes": 8204808,
+        "capacityCells": 102400,
+        "denseCells": 61893,
+        "layout": "tiled",
+        "tileCapacity": 1600
+      },
+      "couplingGPUMedianS": 0.00031872915860731155,
+      "couplingGPUSamplesS": [
+        0.0003200625069439411,
+        0.00033401561086066067,
+        0.0003158854233333841,
+        0.00031244271667674184,
+        0.00031872915860731155
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 31653448,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.94
+    },
+    {
+      "batchGPUS": 0.03277900000102818,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 4951440,
+        "capacityCells": 61893,
+        "denseCells": 61893,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00023474478803109378,
+      "couplingGPUSamplesS": [
+        0.00023441667144652456,
+        0.00023723437334410846,
+        0.00023474478803109378,
+        0.00023602083092555404,
+        0.00023346875968854874
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 28400080,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.036435124929994345,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 18396560,
+        "capacityCells": 229957,
+        "denseCells": 229957,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00017723438213579357,
+      "couplingGPUSamplesS": [
+        0.00017723438213579357,
+        0.00017625000327825546,
+        0.00017766667588148266,
+        0.0001758593862177804,
+        0.00017860416846815497
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 38198352,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.03449424996506423,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 1316,
+        "bytes": 14367944,
+        "capacityCells": 179200,
+        "denseCells": 229957,
+        "layout": "tiled",
+        "tileCapacity": 2800
+      },
+      "couplingGPUMedianS": 0.0001784895866876468,
+      "couplingGPUSamplesS": [
+        0.00018005206948146224,
+        0.00017951562767848372,
+        0.00017818750347942114,
+        0.0001784895866876468,
+        0.00017842187662608922
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 34169736,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.4691358024691358
+    },
+    {
+      "batchGPUS": 0.03462983330246061,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 1316,
+        "bytes": 14367944,
+        "capacityCells": 179200,
+        "denseCells": 229957,
+        "layout": "tiled",
+        "tileCapacity": 2800
+      },
+      "couplingGPUMedianS": 0.00017915625358000398,
+      "couplingGPUSamplesS": [
+        0.00018015624664258212,
+        0.00017814063176047057,
+        0.0001785781205398962,
+        0.00018781250400934368,
+        0.00017915625358000398
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 34169736,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.4691358024691358
+    },
+    {
+      "batchGPUS": 0.036316208308562636,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 18396560,
+        "capacityCells": 229957,
+        "denseCells": 229957,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0003336510417284444,
+      "couplingGPUSamplesS": [
+        0.0003336510417284444,
+        0.0003464531328063458,
+        0.00032933334296103567,
+        0.00032891145383473486,
+        0.00033882811840157956
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 54937552,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.03626104164868593,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 1316,
+        "bytes": 14367944,
+        "capacityCells": 179200,
+        "denseCells": 229957,
+        "layout": "tiled",
+        "tileCapacity": 2800
+      },
+      "couplingGPUMedianS": 0.0003627083351602778,
+      "couplingGPUSamplesS": [
+        0.0003627083351602778,
+        0.00038004686939530075,
+        0.00036039062251802534,
+        0.000447395839728415,
+        0.00036125000042375177
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 50908936,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.4691358024691358
+    },
+    {
+      "batchGPUS": 0.03617695835418999,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 1316,
+        "bytes": 14367944,
+        "capacityCells": 179200,
+        "denseCells": 229957,
+        "layout": "tiled",
+        "tileCapacity": 2800
+      },
+      "couplingGPUMedianS": 0.00035943750117439777,
+      "couplingGPUSamplesS": [
+        0.00035943750117439777,
+        0.00035921875678468496,
+        0.0003617343754740432,
+        0.0003774427023017779,
+        0.00035869791463483125
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 50908936,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.4691358024691358
+    },
+    {
+      "batchGPUS": 0.07040125003550202,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 9091680,
+        "capacityCells": 113646,
+        "denseCells": 113646,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0002123176964232698,
+      "couplingGPUSamplesS": [
+        0.00021513020328711718,
+        0.00021496874978765845,
+        0.0002105625026160851,
+        0.00021097916760481894,
+        0.0002123176964232698
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 20748152,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07124666671734303,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 2320,
+        "bytes": 13866120,
+        "capacityCells": 173056,
+        "denseCells": 113646,
+        "layout": "tiled",
+        "tileCapacity": 2704
+      },
+      "couplingGPUMedianS": 0.00033416667429264635,
+      "couplingGPUSamplesS": [
+        0.000410624998039566,
+        0.00031948438845574856,
+        0.000405578117351979,
+        0.00033416667429264635,
+        0.0003139166656183079
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 25522592,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07149450003635138,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 9091680,
+        "capacityCells": 113646,
+        "denseCells": 113646,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00021483853925019503,
+      "couplingGPUSamplesS": [
+        0.00022665625147055835,
+        0.00021483853925019503,
+        0.00020996874081902206,
+        0.00021622396889142692,
+        0.0002100468846037984
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 20748152,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.06865216663572937,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 9091680,
+        "capacityCells": 113646,
+        "denseCells": 113646,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0004927343688905239,
+      "couplingGPUSamplesS": [
+        0.0005785781249869615,
+        0.0004927343688905239,
+        0.0005765468813478947,
+        0.00048728125693742186,
+        0.0004856718733208254
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 37474952,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07038712501525879,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 2320,
+        "bytes": 13866120,
+        "capacityCells": 173056,
+        "denseCells": 113646,
+        "layout": "tiled",
+        "tileCapacity": 2704
+      },
+      "couplingGPUMedianS": 0.0006546562508447096,
+      "couplingGPUSamplesS": [
+        0.0006475260452134535,
+        0.0006734999915352091,
+        0.0006513020780403167,
+        0.000675218747346662,
+        0.0006546562508447096
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 42249392,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07062945840880275,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 9091680,
+        "capacityCells": 113646,
+        "denseCells": 113646,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0005041874974267557,
+      "couplingGPUSamplesS": [
+        0.00048539062845520675,
+        0.0005117604159750044,
+        0.0004848229145864025,
+        0.0005041874974267557,
+        0.0005601145967375487
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 37474952,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07700737495906651,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 37346400,
+        "capacityCells": 466830,
+        "denseCells": 466830,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0005771406140411273,
+      "couplingGPUSamplesS": [
+        0.0005757968756370246,
+        0.0005763229128206149,
+        0.0005934687505941838,
+        0.000601562496740371,
+        0.0005771406140411273
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 75618680,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07504491659346968,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 2688,
+        "bytes": 29021352,
+        "capacityCells": 361984,
+        "denseCells": 466830,
+        "layout": "tiled",
+        "tileCapacity": 5656
+      },
+      "couplingGPUMedianS": 0.000521541660418734,
+      "couplingGPUSamplesS": [
+        0.0006340989493764937,
+        0.0005187083297641948,
+        0.0005308854160830379,
+        0.0005163958412595093,
+        0.000521541660418734
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 67293632,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5168
+    },
+    {
+      "batchGPUS": 0.07527674990706146,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 2688,
+        "bytes": 29021352,
+        "capacityCells": 361984,
+        "denseCells": 466830,
+        "layout": "tiled",
+        "tileCapacity": 5656
+      },
+      "couplingGPUMedianS": 0.0005218333244556561,
+      "couplingGPUSamplesS": [
+        0.0005218333244556561,
+        0.0006092968687880784,
+        0.0005204062617849559,
+        0.000616578123299405,
+        0.0005196562560740858
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 1,
+      "solverBytes": 67293632,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5168
+    },
+    {
+      "batchGPUS": 0.07782370829954743,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 37346400,
+        "capacityCells": 466830,
+        "denseCells": 466830,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.000889843751792796,
+      "couplingGPUSamplesS": [
+        0.0009539531165501103,
+        0.0008675364661030471,
+        0.000889843751792796,
+        0.0008908645831979811,
+        0.0008650260424474254
+      ],
+      "layout": "dense",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 92381960,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 1
+    },
+    {
+      "batchGPUS": 0.07486237492412329,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 2688,
+        "bytes": 29021352,
+        "capacityCells": 361984,
+        "denseCells": 466830,
+        "layout": "tiled",
+        "tileCapacity": 5656
+      },
+      "couplingGPUMedianS": 0.0008632083336124197,
+      "couplingGPUSamplesS": [
+        0.0008635468693682924,
+        0.0008586406329413876,
+        0.0009439114510314539,
+        0.0008622656314400956,
+        0.0008632083336124197
+      ],
+      "layout": "tiled",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 84056912,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5168
+    },
+    {
+      "batchGPUS": 0.07334566675126553,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 2688,
+        "bytes": 29021352,
+        "capacityCells": 361984,
+        "denseCells": 466830,
+        "layout": "tiled",
+        "tileCapacity": 5656
+      },
+      "couplingGPUMedianS": 0.0009407968755112961,
+      "couplingGPUSamplesS": [
+        0.0008895468636183068,
+        0.0009407968755112961,
+        0.0008775000023888424,
+        0.0009901406156131998,
+        0.0009455781109863892
+      ],
+      "layout": "automatic",
+      "maxRelativePressureError": 0,
+      "refinedPatches": 0,
+      "refinement": 2,
+      "solverBytes": 84056912,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8,
+      "sweptFraction": 0.5168
+    }
+  ],
+  "repetitionsPerTimingSample": 8,
+  "schemaVersion": 1,
+  "sourceRevision": "682edba10847ddb8e06f91e41d457a01490ffd82",
+  "system": "Version 27.0.1 (Build 26A434)",
+  "timingOrder": "interleaved layouts, rotated each round",
+  "timingSamples": 5,
+  "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0"
+}
