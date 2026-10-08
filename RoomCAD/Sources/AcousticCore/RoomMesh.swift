@@ -5,8 +5,9 @@ import simd
 /// seating, stages and balconies are faces like any other.
 ///
 /// Each face's corners run anticlockwise seen from inside the room, so its normal (Newell's) points into
-/// the room. The faces must close the room: every edge is shared by exactly two faces, in opposite
-/// directions. Corners lie within `[0, size]` of the room that holds the mesh.
+/// the room. The faces must close the room, so their areas, as vectors along their normals, sum to zero;
+/// faces may meet at T-junctions, as `Solid` leaves them. Corners lie within `[0, size]` of the room that
+/// holds the mesh.
 public struct RoomMesh: Codable, Equatable, Sendable {
     public struct Face: Codable, Equatable, Sendable {
         /// Indices into `vertices`, anticlockwise seen from inside.
@@ -85,7 +86,8 @@ public struct RoomMesh: Codable, Equatable, Sendable {
         guard vertices.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else {
             throw AcousticError.invalid("The room's mesh has a corner that is not a finite point.")
         }
-        var edges: [SIMD2<Int>: Int] = [:]
+        var flux = SIMD3<Double>(repeating: 0)
+        var total = 0.0
         for (index, face) in faces.enumerated() {
             let name = "Face \(index + 1) of the room's mesh"
             guard face.corners.count >= 3, face.corners.allSatisfy(vertices.indices.contains),
@@ -102,14 +104,13 @@ public struct RoomMesh: Codable, Equatable, Sendable {
                 throw AcousticError.invalid(
                     "\(name) is not flat: a corner is \(Int(flatness * 100)) cm off its plane.")
             }
-            for i in face.corners.indices {
-                edges[SIMD2(face.corners[i], face.corners[(i + 1) % face.corners.count]), default: 0] += 1
-            }
+            flux += normal * area
+            total += area
         }
-        for (edge, count) in edges where count != 1 || edges[SIMD2(edge.y, edge.x)] != 1 {
+        guard simd_length(flux) < 1e-6 * total else {
             throw AcousticError.invalid(
-                "The room's mesh is not closed: the edge between corners \(edge.x + 1) and \(edge.y + 1) "
-                    + "should be shared by exactly two faces running opposite ways.")
+                "The room's mesh is not closed: its faces leave a gap of about "
+                    + "\(String(format: "%.2g", simd_length(flux))) m².")
         }
         guard signedVolume > 0.25 else {
             throw AcousticError.invalid(
@@ -186,6 +187,10 @@ final class MeshGeometry: @unchecked Sendable {
 
     let mesh: RoomMesh
     let faces: [Face]
+    /// Faces grouped by the plane they lie in, and each face's group: a wall cut into pieces is one plane
+    /// for the image sources.
+    private(set) var planes: [(normal: SIMD3<Double>, offset: Double, faces: [Int])] = []
+    private(set) var planeOfFace: [Int] = []
     private(set) var nodes: [Node] = []
     private var order: [Int] = []
 
@@ -224,6 +229,17 @@ final class MeshGeometry: @unchecked Sendable {
         order = Array(faces.indices)
         nodes.reserveCapacity(2 * faces.count)
         _ = build(0, faces.count)
+        for (index, face) in faces.enumerated() {
+            if let group = planes.firstIndex(where: {
+                simd_dot($0.normal, face.normal) > 1 - 1e-9 && abs($0.offset - face.offset) < 1e-5
+            }) {
+                planes[group].faces.append(index)
+                planeOfFace.append(group)
+            } else {
+                planes.append((face.normal, face.offset, [index]))
+                planeOfFace.append(planes.count - 1)
+            }
+        }
     }
 
     private func build(_ first: Int, _ count: Int) -> Int {
