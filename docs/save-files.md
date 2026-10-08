@@ -16,7 +16,7 @@ Example.bombcad/
   results/               # Optional retained files; no simulation results are generated here yet
 ```
 
-The Foundation-only `DocumentKit` target in SimulationKit handles the container. It depends on
+The Foundation-only `DocumentKit` target in ContinuumKit handles the container. It depends on
 neither BlastCore nor either app. BombCAD's `ProjectDocument` owns its scene and settings codecs
 and uses SwiftUI DocumentGroup/FileDocument for coordinated saves, autosave, document windows and
 close/quit handling. FileDocument supports directory
@@ -139,7 +139,7 @@ offers reuse. WAV impulse responses remain standalone exports, not project docum
 ## Checks
 
 ```sh
-swift test --package-path Packages/SimulationKit
+swift test --package-path /path/to/ContinuumKit
 swift test --filter 'AppPreferencesTests|ProjectSessionTests|ProjectDocumentTests|ImportedProjectTests|SimulationModelTests'
 ```
 
