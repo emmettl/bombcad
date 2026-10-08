@@ -8,6 +8,10 @@ The [long-term vision](long-term-vision.md) describes the broader ambition of ex
 It is a product direction rather than a delivery commitment; the validation priorities here
 remain the immediate focus.
 
+The [multiple-object scene architecture](multiple-object-scene.md) defines the first scene
+requirements and minimum candidate ContinuumKit contracts supporting that vision. It keeps
+application ownership, shared extraction and new numerical capabilities as separate steps.
+
 A separate [RoomCAD and convolution reverb roadmap](https://github.com/emmettl/RoomCAD/blob/main/docs/roomcad-roadmap.md) covers shared SwiftPM
 modules, acoustic impulse-response generation, WAV export and potential Driftbox rack
 integration, with milestones and acceptance checks. It does not replace the blast-model work

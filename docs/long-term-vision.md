@@ -12,6 +12,9 @@ current models cover that range, a delivery schedule or a replacement for the ex
 [roadmap](roadmap.md). Improving the evidence behind the present models remains the
 immediate priority.
 
+The [multiple-object scene architecture](multiple-object-scene.md) develops the initial
+scene requirements and the boundary between BombCAD and ContinuumKit.
+
 ## The experience
 
 A user should be able to construct or import an environment, choose a supported event,
