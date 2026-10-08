@@ -397,3 +397,76 @@ struct WaveDecayTests {
             })
     }
 }
+
+@Suite("Wave solver accuracy")
+struct WaveAccuracyTests {
+    @Test("The dispersion relation gives the second-order error along an axis, and less on diagonals")
+    func dispersion() throws {
+        let h = 0.1
+        let c = 343.0
+        let dt = 0.5 * h / c
+        let f = c / (20 * h)
+        let along = try #require(
+            WaveAccuracy.phaseVelocityError(
+                frequency: f, direction: [1, 0, 0], spacing: SIMD3(repeating: h), timeStep: dt, soundSpeed: c)
+        )
+        // ε ≈ -(kh)² (1 - ν²) / 24 for Courant number ν = c dt / h, to second order.
+        let kh = 2 * Double.pi * f * h / c
+        let expected = -kh * kh * (1 - 0.25) / 24
+        #expect(abs(along / expected - 1) < 0.02, "\(along) against \(expected)")
+        let diagonal = try #require(
+            WaveAccuracy.phaseVelocityError(
+                frequency: f, direction: [1, 1, 1], spacing: SIMD3(repeating: h), timeStep: dt, soundSpeed: c)
+        )
+        #expect(diagonal < 0 && abs(diagonal) < abs(along) / 2)
+        // Above the grid's cut-off there is no travelling wave.
+        #expect(
+            WaveAccuracy.phaseVelocityError(
+                frequency: c / (1.5 * h), direction: [1, 0, 0], spacing: SIMD3(repeating: h), timeStep: dt,
+                soundSpeed: c) == nil)
+    }
+
+    @Test("Below the crossover the grid's phase velocity is within 1% of the speed of sound")
+    func crossover() throws {
+        for (size, crossover) in [(SIMD3<Double>(5, 4, 3), 300.0), ([30, 20, 12], 90), ([3, 2, 2.4], 500)] {
+            let grid = WaveAccuracy.grid(
+                room: ShoeboxRoom(size: size, material: .rigid), sampleRate: 48_000, crossover: crossover,
+                atmosphere: .standard)
+            let error = try #require(
+                WaveAccuracy.worstPhaseVelocityError(
+                    frequency: crossover, spacing: grid.spacing, timeStep: grid.timeStep,
+                    soundSpeed: Atmosphere.standard.soundSpeed))
+            #expect(error < 0 && error > -0.01, "\(error) at \(crossover) Hz")
+        }
+    }
+
+    @Test(
+        "Long runs stay bounded with rigid walls and die away with absorbing ones, on either engine",
+        arguments: [false, true])
+    func stability(gpu: Bool) throws {
+        if gpu, MetalWaveSolver.shared == nil { return }
+        for material in [SurfaceMaterial.rigid, .anechoic] {
+            var solver = WaveSolver(
+                room: ShoeboxRoom(size: [2.2, 1.7, 1.3], material: material), sampleRate: 48_000,
+                topFrequency: 150,
+                atmosphere: .standard)
+            solver.engine = gpu ? .automatic : .cpu
+            let steps = 50_000
+            let run = try #require(
+                solver.run(source: [0.4, 0.5, 0.3], receivers: [([1.8, 1.2, 1.0], .omni)], steps: steps) {
+                    false
+                })
+            let signal = run.signals[0]
+            let finite = signal.allSatisfy { $0.isFinite }
+            #expect(finite)
+            let early = signal[..<10_000].map(abs).max()!
+            let late = signal[(steps - 10_000)...].map(abs).max()!
+            if material == .rigid {
+                // Lossless: the field keeps ringing at the same strength.
+                #expect(late < 1.5 * early && late > 0.2 * early, "\(late) against \(early)")
+            } else {
+                #expect(late < 1e-6 * early, "\(late) against \(early)")
+            }
+        }
+    }
+}

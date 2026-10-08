@@ -191,6 +191,13 @@ struct DiagnosticsList: View {
                         (d.waveCells ?? 0).formatted(),
                         Self.engines(runs: d.waveRuns ?? 1, gpu: d.waveGPURuns ?? 0),
                         d.waveSeconds ?? 0))
+                if let dispersion = d.waveDispersion {
+                    Text(
+                        String(
+                            format:
+                                "Its waves travel within %.1f%% of the speed of sound there, so its modes are "
+                                + "at most that much low.", abs(dispersion) * 100))
+                }
                 if let bare = Self.bareDecay(d) {
                     Text("Its decay is matched to Eyring's estimate; bare walls gave \(bare).")
                 }

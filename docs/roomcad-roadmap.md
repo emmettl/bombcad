@@ -320,7 +320,11 @@ updates a second, so every preset, the stone church included, now gets a wave pa
 seminar room showed the bare solver's low-frequency decay to be about 30% too long, because its locally
 reacting walls take only half as much energy from modes that graze them. Each band's response is now
 damped to Eyring's diffuse decay, measured by probes spread through the room; the modal structure is
-kept. A fuller benchmark report (phase and directional error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
+kept. `acousticbench --wave-accuracy` is the benchmark report. Below the crossover, amplitude is within
+0.36 dB over 5 m along an axis and the body diagonal. Phase lag matches Yee's dispersion relation, and
+phase velocity and mode frequencies are within 1% (0.76% at a 250 Hz crossover along an axis). Long
+runs on either engine are stable and passive. See
+[Room-acoustics model](room-acoustics-model.md#accuracy). See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
 
 ### M4 — Generate broadband hybrid room responses
 
@@ -372,7 +376,9 @@ compares ten measured responses in a 145 m³ seminar room from the BRAS database
   about 10% at 63 Hz and 2% at 125 Hz.
 
 Larger measured rooms need geometry beyond vertical walls, and listening comparisons are not done.
-Item 6's validated band is not done.
+Item 6 is done: every export's metadata keeps the settings, random seed and crossover. It also states
+the usable band, and, with the wave solver, its phase-velocity error at the crossover and that its decay
+was matched to Eyring's.
 
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 
