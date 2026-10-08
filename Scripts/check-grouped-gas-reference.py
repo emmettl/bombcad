@@ -7,13 +7,13 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCES = [
-    "RigidBoxBody", "FractionalBoxGeometry", "FractionalGasTransport", "FractionalEulerFlux",
+    "NormalShockReflection", "ExperimentalWallReflectionStudy", "RigidBoxBody", "FractionalBoxGeometry", "FractionalGasTransport", "FractionalEulerFlux",
     "IdealGasWallRiemann", "ConnectedGasGroups", "ExperimentalConnectedGasStudy",
     "ExperimentalConnectedLoadStudy", "LimitedGroupedGasFlux", "LimitedTubeFlux",
     "ExperimentalPistonWaveStudy", "PlanarPistonWave", "PrescribedPistonTube",
 ]
 TESTS = [
-    "SurfaceWallLoadTests", "LimitedGroupedGasFluxTests", "FractionalEulerFluxTests", "FractionalEulerWallTests",
+    "NormalShockReflectionTests", "SurfaceWallLoadTests", "LimitedGroupedGasFluxTests", "FractionalEulerFluxTests", "FractionalEulerWallTests",
     "IdealGasWallRiemannTests", "GasQuadratureTests", "ConnectedLoadStudyTests", "LimitedTubeFluxTests",
 ]
 

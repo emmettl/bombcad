@@ -33,6 +33,9 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case finishConsumer(UUID, Double)
     /// Worker to app: the session's result, as JSON in the payload.
     case fragments(UUID)
+    /// Worker to app, for a live session after each frame: the particles' positions and speeds
+    /// in the payload (see `FragmentLive.payload`), and the impacts new since the last.
+    case live(UUID, LiveFrameHeader)
 
     static let cancelled = "cancelled"
 }
@@ -55,6 +58,14 @@ struct ConsumerSession: Codable, Equatable, Sendable {
     var id: UUID
     var spec: FragmentSpec
     var scene: FragmentScene
+    /// Send the particles back after each frame, to draw them.
+    var live = false
+}
+
+struct LiveFrameHeader: Codable, Equatable, Sendable {
+    var time: Double
+    var fragmentCount: Int
+    var impacts: [FragmentImpact]
 }
 
 /// A message and its payload.

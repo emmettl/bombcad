@@ -148,8 +148,11 @@ public struct FragmentConsumer: Sendable {
     private var last: AirSlice?
     /// The air's speed a tracer may ride, for the regions asked for.
     private let tracerSpeed: Float
+    /// Whether every frame's positions are kept, for an export; a live view needs only the last.
+    private let keepsFrames: Bool
 
-    public init(spec: FragmentSpec, scene: FragmentScene) {
+    public init(spec: FragmentSpec, scene: FragmentScene, keepsFrames: Bool = true) {
+        self.keepsFrames = keepsFrames
         cloud = FragmentCloud(spec: spec, scene: scene)
         // The blast wind close to a charge can pass 2 km/s.
         tracerSpeed = spec.tracers > 0 ? 2500 : 0
@@ -159,7 +162,7 @@ public struct FragmentConsumer: Sendable {
         if let last { cloud.advance(from: last, to: slice) }
         last = slice
         frame += 1
-        frames.append(cloud.particles.map(\.position))
+        if keepsFrames { frames.append(cloud.particles.map(\.position)) }
     }
 
     public var report: ConsumerReport {

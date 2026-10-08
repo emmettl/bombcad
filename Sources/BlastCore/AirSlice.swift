@@ -134,14 +134,14 @@ extension BlastSolver {
 extension AirSlice {
     /// Everything but the samples, for sending ahead of them.
     public struct Header: Codable, Sendable, Equatable {
-        var time: Double
-        var cellSize: Float
-        var grid: SIMD3<Int32>
-        var first: SIMD3<Int32>
-        var counts: SIMD3<Int32>
-        var stride: Int32
-        var ambientDensity: Float
-        var ambientPressure: Float
+        public var time: Double
+        public var cellSize: Float
+        public var grid: SIMD3<Int32>
+        public var first: SIMD3<Int32>
+        public var counts: SIMD3<Int32>
+        public var stride: Int32
+        public var ambientDensity: Float
+        public var ambientPressure: Float
     }
 
     public var header: Header {

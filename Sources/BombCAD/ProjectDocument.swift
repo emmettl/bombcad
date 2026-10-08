@@ -112,6 +112,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
 
     var scenario: Scenario
     var savedRuns: [SavedSimulationRun] = []
+    /// A cased charge's fragments to fly alongside each run, saved as `fragments.json`.
+    var fragments: FragmentSpec?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -145,6 +147,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     @MainActor
     init(model: SimulationModel) {
         savedRuns = model.savedRuns
+        fragments = model.fragmentSpec
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -190,6 +193,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             viewSettings = view
         }
         savedRuns = try SavedRunStore.read(archive)
+        if let data = archive.files["fragments.json"] {
+            let spec = try JSONDecoder().decode(FragmentSpec.self, from: data)
+            try spec.validate()
+            fragments = spec
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -222,6 +230,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         if let viewSettings {
             try viewSettings.validate()
             files["view.json"] = try ProjectArchive.encodeJSON(viewSettings)
+        }
+        if let fragments {
+            try fragments.validate()
+            files["fragments.json"] = try ProjectArchive.encodeJSON(fragments)
+        } else {
+            files.removeValue(forKey: "fragments.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.
