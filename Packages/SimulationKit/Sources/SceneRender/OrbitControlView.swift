@@ -12,14 +12,29 @@ public protocol OrbitControlling: AnyObject {
     /// A press that may start dragging something in the scene instead of the camera; true to take the
     /// drag. By default the camera orbits.
     func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool
-    /// The pointer moved during a drag taken by `beginDrag`; `vertical` while Option is held.
-    func drag(ndc: SIMD2<Float>, aspectRatio: Float, vertical: Bool)
+    /// The pointer moved during a drag taken by `beginDrag`, with the keys held.
+    func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers)
     func endDrag()
+}
+
+/// Keys held during a drag: Option for `vertical`, Command for `resize`.
+public struct DragModifiers: OptionSet, Sendable {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+
+    public static let vertical = DragModifiers(rawValue: 1)
+    public static let resize = DragModifiers(rawValue: 2)
+
+    public init(_ flags: NSEvent.ModifierFlags) {
+        self.init()
+        if flags.contains(.option) { insert(.vertical) }
+        if flags.contains(.command) { insert(.resize) }
+    }
 }
 
 extension OrbitControlling {
     public func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool { false }
-    public func drag(ndc: SIMD2<Float>, aspectRatio: Float, vertical: Bool) {}
+    public func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {}
     public func endDrag() {}
 }
 
@@ -70,7 +85,7 @@ public final class OrbitControlView: MTKView {
         dragged = true
         if draggingObject {
             controller?.drag(
-                ndc: ndc(event), aspectRatio: aspectRatio, vertical: event.modifierFlags.contains(.option))
+                ndc: ndc(event), aspectRatio: aspectRatio, modifiers: DragModifiers(event.modifierFlags))
         } else if event.modifierFlags.contains(.shift) {
             pan(event)
         } else {

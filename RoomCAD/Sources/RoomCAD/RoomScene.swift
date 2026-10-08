@@ -16,6 +16,7 @@ struct RoomScene {
         case source
         case receiver(Int)
         case zone(Int)
+        case opening(Int)
 
         var pick: Int32 {
             switch self {
@@ -23,6 +24,7 @@ struct RoomScene {
             case .source: 10_000
             case .receiver(let index): 10_001 + Int32(index)
             case .zone(let index): 20_000 + Int32(index)
+            case .opening(let index): 30_000 + Int32(index)
             }
         }
 
@@ -31,7 +33,8 @@ struct RoomScene {
             case 0..<10_000: self = .surface(Int(pick))
             case 10_000: self = .source
             case 10_001..<20_000: self = .receiver(Int(pick) - 10_001)
-            case 20_000...: self = .zone(Int(pick) - 20_000)
+            case 20_000..<30_000: self = .zone(Int(pick) - 20_000)
+            case 30_000...: self = .opening(Int(pick) - 30_000)
             default: return nil
             }
         }
@@ -102,9 +105,11 @@ struct RoomScene {
             }
         }
         for (a, b) in mesh.outlineEdges() { scene.addLine(point(a), point(b), colour: Self.edgeColour) }
-        for opening in settings.openings {
+        for (index, opening) in settings.openings.enumerated() {
             if let corners = Self.corners(of: opening, in: room) {
-                scene.addPolygon(corners.map(point), colour: Self.openingColour, translucent: true)
+                scene.addPolygon(
+                    corners.map(point), colour: Self.openingColour, pick: Item.opening(index).pick,
+                    translucent: true)
                 for i in corners.indices {
                     scene.addLine(
                         point(corners[i]), point(corners[(i + 1) % corners.count]),
@@ -186,6 +191,12 @@ struct RoomScene {
             guard index < settings.receivers.count else { return "" }
             let receiver = settings.receivers[index]
             return "Receiver \(receiver.name), \(receiver.microphone?.summary ?? "omnidirectional")"
+        case .opening(let index):
+            guard index < settings.openings.count else { return "" }
+            let opening = settings.openings[index]
+            func metres(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }
+            return
+                "\(opening.name): \(metres(opening.size.x)) × \(metres(opening.size.y)) m, open to the outside"
         case .zone(let index):
             guard let zone = settings.room.fittings?[index] else { return "" }
             return

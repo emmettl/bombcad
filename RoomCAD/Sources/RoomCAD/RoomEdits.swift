@@ -45,7 +45,7 @@ extension RoomResponseSettings {
         switch item {
         case .source: source.position
         case .receiver(let index): index < receivers.count ? receivers[index].position : nil
-        case .surface, .zone: nil
+        case .surface, .zone, .opening: nil
         }
     }
 
@@ -112,4 +112,126 @@ extension RoomResponseSettings {
         }
         return result
     }
+}
+
+/// The plane an opening lies in: a point on it, two axes along it matching the opening's coordinates,
+/// and how far those run.
+struct OpeningFrame {
+    var origin: SIMD3<Double>
+    var u: SIMD3<Double>
+    var v: SIMD3<Double>
+    var extent: SIMD2<Double>
+
+    var normal: SIMD3<Double> { simd_normalize(simd_cross(u, v)) }
+
+    /// A point's coordinates in the plane.
+    func coordinates(_ point: SIMD3<Double>) -> SIMD2<Double> {
+        SIMD2(simd_dot(point - origin, u), simd_dot(point - origin, v))
+    }
+}
+
+extension RoomResponseSettings {
+    /// The smallest a zone or opening may be made, in metres along each side.
+    static let smallestSide = 0.1
+
+    func frame(of opening: Opening) -> OpeningFrame? {
+        if let wall = opening.wall {
+            guard let plan = room.plan, wall < plan.corners.count else { return nil }
+            let start = plan.start(wall)
+            let along = simd_normalize(plan.end(wall) - start)
+            return OpeningFrame(
+                origin: SIMD3(start.x, start.y, 0), u: SIMD3(along.x, along.y, 0), v: [0, 0, 1],
+                extent: [plan.length(wall), room.size.z])
+        }
+        let (a, b) = opening.surface.planeAxes
+        let normal = opening.surface.normalAxis
+        var origin = SIMD3<Double>(repeating: 0)
+        if ![Surface.west, .south, .floor].contains(opening.surface) { origin[normal] = room.size[normal] }
+        var u = SIMD3<Double>(repeating: 0)
+        var v = SIMD3<Double>(repeating: 0)
+        u[a] = 1
+        v[b] = 1
+        return OpeningFrame(origin: origin, u: u, v: v, extent: [room.size[a], room.size[b]])
+    }
+
+    /// These settings with opening `index` centred at `centre`, kept within its surface.
+    func movingOpening(_ index: Int, to centre: SIMD2<Double>) -> RoomResponseSettings {
+        guard index < openings.count, let frame = frame(of: openings[index]) else { return self }
+        var result = self
+        let half = openings[index].size / 2
+        let low = half
+        let high = simd_max(frame.extent - half, low)
+        result.openings[index].centre = (simd_clamp(centre, low, high) * 100).rounded(.toNearestOrEven) / 100
+        return result
+    }
+
+    /// These settings with the corner of opening `index` nearest `point` moved to it, within its
+    /// surface and no smaller than `smallestSide`.
+    func resizingOpening(_ index: Int, toward point: SIMD2<Double>) -> RoomResponseSettings {
+        guard index < openings.count, let frame = frame(of: openings[index]) else { return self }
+        let opening = openings[index]
+        let p = (simd_clamp(point, .zero, frame.extent) * 100).rounded(.toNearestOrEven) / 100
+        var low = opening.centre - opening.size / 2
+        var high = opening.centre + opening.size / 2
+        for axis in 0..<2 {
+            if abs(p[axis] - low[axis]) < abs(p[axis] - high[axis]) {
+                low[axis] = min(p[axis], high[axis] - Self.smallestSide)
+            } else {
+                high[axis] = max(p[axis], low[axis] + Self.smallestSide)
+            }
+        }
+        var result = self
+        result.openings[index].centre = (low + high) / 2
+        result.openings[index].size = high - low
+        return result
+    }
+
+    /// These settings with zone `zone` replaced, if the new one lies within the room and overlaps no
+    /// other zone; otherwise unchanged.
+    func replacingZone(_ index: Int, with zone: FittingZone) -> RoomResponseSettings {
+        guard let zones = room.fittings, index < zones.count, all(zone.low .>= -1e-9),
+            all(zone.high .<= room.size + 1e-9), all(zone.high - zone.low .>= Self.smallestSide - 1e-9)
+        else { return self }
+        for (other, existing) in zones.enumerated() where other != index {
+            if all(zone.low .< existing.high - 1e-9) && all(existing.low .< zone.high - 1e-9) { return self }
+        }
+        var result = self
+        result.room.fittings![index] = zone
+        return result
+    }
+
+    /// These settings with zone `index` moved by `offset`, as far as it can go within the room.
+    func movingZone(_ index: Int, by offset: SIMD3<Double>) -> RoomResponseSettings {
+        guard let zone = room.fittings?[safe: index] else { return self }
+        let shift = simd_clamp(offset, -zone.low, room.size - zone.high)
+        var moved = zone
+        moved.low = ((zone.low + shift) * 100).rounded(.toNearestOrEven) / 100
+        moved.high = moved.low + (zone.high - zone.low)
+        return replacingZone(index, with: moved)
+    }
+
+    /// These settings with the corner of zone `index`'s footprint nearest `point` moved to it, or with
+    /// `vertical`, its top moved to `point`'s height; within the room and no smaller than
+    /// `smallestSide`.
+    func resizingZone(_ index: Int, toward point: SIMD3<Double>, vertical: Bool) -> RoomResponseSettings {
+        guard let zone = room.fittings?[safe: index] else { return self }
+        let p = (simd_clamp(point, .zero, room.size) * 100).rounded(.toNearestOrEven) / 100
+        var resized = zone
+        if vertical {
+            resized.high.z = max(p.z, zone.low.z + Self.smallestSide)
+        } else {
+            for axis in 0..<2 {
+                if abs(p[axis] - zone.low[axis]) < abs(p[axis] - zone.high[axis]) {
+                    resized.low[axis] = min(p[axis], zone.high[axis] - Self.smallestSide)
+                } else {
+                    resized.high[axis] = max(p[axis], zone.low[axis] + Self.smallestSide)
+                }
+            }
+        }
+        return replacingZone(index, with: resized)
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

@@ -456,9 +456,10 @@ code.
   RoomCAD's 3D view uses all of it to draw any room as a cutaway coloured by material, with
   openings, fitted zones, the source and the receivers, and to select them with a click. In the view,
   a selected surface's material can be chosen from the published presets, and the source and
-  receivers dragged, across the room or with Option up and down. The controls let an app take a drag
-  for an object instead of the camera; BombCAD keeps orbiting. Still to do: editing zones, openings
-  and shapes in the view. BombCAD's blast renderer remains its own.
+  receivers dragged, across the room or with Option up and down. Fitted zones and openings move and,
+  with Command, resize by dragging, held within the room or their surface. The controls let an app
+  take a drag for an object instead of the camera, with Option and Command passed on; BombCAD keeps
+  orbiting. Still to do: editing the room's shape in the view. BombCAD's blast renderer remains its own.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 

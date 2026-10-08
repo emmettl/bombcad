@@ -86,38 +86,99 @@ final class RoomViewport: OrbitControlling {
         onEdit(settings)
     }
 
-    /// A press on the source or a receiver selects it and drags it.
+    /// Where an item is held while dragged: a point's centre, the middle of a zone's top, or an
+    /// opening's centre. Surfaces are not dragged.
+    func anchor(of item: RoomScene.Item, in settings: RoomResponseSettings) -> SIMD3<Double>? {
+        switch item {
+        case .source, .receiver: return settings.position(of: item)
+        case .zone(let index):
+            guard let zone = settings.room.fittings?[safe: index] else { return nil }
+            return SIMD3((zone.low.x + zone.high.x) / 2, (zone.low.y + zone.high.y) / 2, zone.high.z)
+        case .opening(let index):
+            guard let opening = settings.openings[safe: index], let frame = settings.frame(of: opening) else {
+                return nil
+            }
+            return frame.origin + frame.u * opening.centre.x + frame.v * opening.centre.y
+        case .surface: return nil
+        }
+    }
+
+    /// The plane an item moves in: horizontal through its anchor, an opening's own surface, or, with
+    /// `vertical`, upright through the anchor and facing the camera.
+    private func plane(
+        for item: RoomScene.Item, anchor: SIMD3<Double>, vertical: Bool,
+        ray: (origin: SIMD3<Float>, direction: SIMD3<Float>)
+    ) -> SIMD3<Double>? {
+        if case .opening(let index) = item {
+            return shown.flatMap { $0.openings[safe: index] }.flatMap { shown?.frame(of: $0)?.normal }
+        }
+        guard vertical else { return [0, 0, 1] }
+        let forward = SIMD3<Double>(SIMD3<Float>(ray.direction.x, ray.direction.y, 0))
+        return simd_length(forward) > 1e-6 ? simd_normalize(forward) : nil
+    }
+
+    /// A press on the source, a receiver, a zone or an opening selects it and drags it.
     func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool {
         let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
         guard let shown,
             let item = scene?.geometry.pick(origin: ray.origin, direction: ray.direction).flatMap(
                 RoomScene.Item.init),
-            let position = shown.position(of: item)
+            let anchor = anchor(of: item, in: shown),
+            let normal = plane(for: item, anchor: anchor, vertical: false, ray: ray)
         else { return false }
         select(item)
-        let hit = Self.intersect(ray, withPlaneThrough: position, normal: [0, 0, 1]) ?? position
-        dragging = (item, position - hit)
+        let hit = Self.intersect(ray, withPlaneThrough: anchor, normal: normal) ?? anchor
+        dragging = (item, anchor - hit)
         return true
     }
 
-    /// Moves the dragged point across the horizontal plane through it, or, with Option, up and down a
-    /// vertical plane facing the camera. Moves that would leave the room are ignored.
-    func drag(ndc: SIMD2<Float>, aspectRatio: Float, vertical: Bool) {
-        guard let dragging, let shown, let position = shown.position(of: dragging.item) else { return }
+    /// Moves or, with `resize`, reshapes what is being dragged, following the pointer across the plane
+    /// it moves in. Points and zones move across the room at their height, or with `vertical` up and
+    /// down; a zone's footprint corner or, with `vertical`, its top follows a resize. An opening moves
+    /// over its surface, and a resize moves its nearest corner. Changes that would leave the room, or
+    /// make a zone overlap another, are ignored.
+    func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {
+        guard let dragging, let shown, let anchor = anchor(of: dragging.item, in: shown) else { return }
         let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
-        var target = position
-        if vertical {
-            let forward = SIMD3<Double>(SIMD3<Float>(ray.direction.x, ray.direction.y, 0))
-            guard simd_length(forward) > 1e-6,
-                let hit = Self.intersect(ray, withPlaneThrough: position, normal: simd_normalize(forward))
-            else { return }
-            target.z = hit.z
-        } else {
-            guard let hit = Self.intersect(ray, withPlaneThrough: position, normal: [0, 0, 1]) else { return }
-            target.x = hit.x + dragging.grab.x
-            target.y = hit.y + dragging.grab.y
+        let vertical = modifiers.contains(.vertical)
+        guard let normal = plane(for: dragging.item, anchor: anchor, vertical: vertical, ray: ray),
+            let hit = Self.intersect(ray, withPlaneThrough: anchor, normal: normal)
+        else { return }
+        switch dragging.item {
+        case .source, .receiver:
+            var target = anchor
+            if vertical {
+                target.z = hit.z
+            } else {
+                target.x = hit.x + dragging.grab.x
+                target.y = hit.y + dragging.grab.y
+            }
+            edit(shown.moving(dragging.item, to: target))
+        case .zone(let index):
+            if modifiers.contains(.resize) {
+                edit(shown.resizingZone(index, toward: hit, vertical: vertical))
+            } else if vertical {
+                edit(shown.movingZone(index, by: [0, 0, hit.z - anchor.z]))
+            } else {
+                let target = hit + dragging.grab
+                edit(shown.movingZone(index, by: [target.x - anchor.x, target.y - anchor.y, 0]))
+            }
+        case .opening(let index):
+            guard let opening = shown.openings[safe: index], let frame = shown.frame(of: opening) else {
+                return
+            }
+            let point = frame.coordinates(hit)
+            if modifiers.contains(.resize) {
+                edit(shown.resizingOpening(index, toward: point))
+            } else {
+                edit(
+                    shown.movingOpening(
+                        index,
+                        to: point + frame.coordinates(anchor + dragging.grab) - frame.coordinates(anchor)))
+            }
+        case .surface:
+            break
         }
-        edit(shown.moving(dragging.item, to: target))
     }
 
     func endDrag() { dragging = nil }
@@ -165,6 +226,7 @@ extension RoomScene {
         case .source: true
         case .receiver(let index): index < settings.receivers.count
         case .zone(let index): index < (settings.room.fittings?.count ?? 0)
+        case .opening(let index): index < settings.openings.count
         }
     }
 }
@@ -187,8 +249,8 @@ struct RoomView3D: View {
                 HStack(spacing: 8) {
                     Text(
                         viewport.caption
-                            ?? "Drag to orbit, shift-drag to pan, pinch to zoom; click to select; drag the source or a "
-                            + "receiver to move it, with Option to raise or lower it"
+                            ?? "Drag to orbit, shift-drag to pan, pinch to zoom; click to select. Drag a point, zone or "
+                            + "opening to move it, with Option to raise or lower it, or with Command to resize it"
                     )
                     .font(.caption)
                     .foregroundStyle(viewport.caption == nil ? .secondary : .primary)

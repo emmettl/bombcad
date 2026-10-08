@@ -89,7 +89,14 @@ script before an archive is written.
     absorption, keeping its scattering;
   - dragging the source or a receiver moves it across the room at its height, and with Option held,
     up and down. Positions snap to centimetres, and a move that would take a point outside the room,
-    or within 5 cm of a surface, is ignored.
+    or within 5 cm of a surface, is ignored;
+  - dragging a fitted zone moves it across the room, or with Option up and down. Command-dragging
+    resizes it: its footprint's nearest corner follows the pointer, or with Option its top. A zone
+    stays within the room, is never smaller than 10 cm a side, and is never moved or grown into
+    another zone;
+  - dragging an opening slides it over its wall, floor or ceiling, held within the surface, and
+    Command-dragging moves its nearest corner. Zones and openings, though translucent, can be clicked
+    from either side, so a ceiling hatch can be reached from above, through the ceiling.
 
   The view frames the room when it opens and when the room's size changes: from a three-quarter view
   above, as close as it can be with every corner within the middle 85% of the view. Everything else
@@ -357,6 +364,8 @@ saved again.
     outside a smaller room moved inside, clear of every surface;
   - editing in 3D: surfaces numbered alike for boxes, plans and meshes, a material landing on the
     surface chosen, and the source dragged across the room, raised with Option, and kept inside;
+    zones moved to the wall and no further, refused where they would overlap, and resized from the
+    nearest corner or the top; openings held within their surface; and both dragged in the view;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.

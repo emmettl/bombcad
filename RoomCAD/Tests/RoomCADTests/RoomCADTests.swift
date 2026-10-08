@@ -355,12 +355,17 @@ func roomScene() throws {
     #expect(door.allSatisfy { abs($0.y - (settings.room.size.y - 0.01)) < 1e-12 })
 
     // From above the middle of the room, through the ceiling, which is seen from behind: the seating
-    // zone is translucent, so the floor is hit.
+    // zone, translucent but selectable, is hit before the floor.
     let viewport = RoomViewport()
     viewport.show(settings)
     let size = SIMD3<Float>(settings.room.size)
     viewport.camera = OrbitCamera(
         target: SIMD3(size.x * 0.55, size.y * 0.5, 0), distance: 20, azimuth: 0, elevation: 1.55)
+    viewport.click(ndc: [0, 0], aspectRatio: 1)
+    #expect(viewport.selected == .zone(0))
+    #expect(viewport.caption?.hasPrefix("Seating: ") == true)
+    // Beside the zone, the floor.
+    viewport.camera.target = SIMD3(size.x * 0.1, size.y * 0.5, 0)
     viewport.click(ndc: [0, 0], aspectRatio: 1)
     #expect(viewport.selected == .surface(4))
     #expect(viewport.caption?.hasPrefix("Floor: ") == true)
@@ -423,17 +428,17 @@ func dragPoint() throws {
     #expect(!viewport.beginDrag(ndc: [0, -0.95], aspectRatio: 1))
     #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
     #expect(viewport.selected == .source)
-    viewport.drag(ndc: [0.15, 0], aspectRatio: 1, vertical: false)
+    viewport.drag(ndc: [0.15, 0], aspectRatio: 1, modifiers: [])
     let moved = try #require(edits.last).source.position
     #expect(moved.z == settings.source.position.z)
     #expect(simd_distance(moved, settings.source.position) > 0.1)
-    viewport.drag(ndc: [0.15, 0.2], aspectRatio: 1, vertical: true)
+    viewport.drag(ndc: [0.15, 0.2], aspectRatio: 1, modifiers: .vertical)
     let raised = try #require(edits.last).source.position
     #expect(raised.x == moved.x && raised.y == moved.y && raised.z > moved.z)
     // Far beyond the walls: the move is refused and the source stays inside.
     let count = edits.count
-    viewport.drag(ndc: [0.99, -0.99], aspectRatio: 1, vertical: false)
-    viewport.drag(ndc: [-0.99, 0.99], aspectRatio: 1, vertical: true)
+    viewport.drag(ndc: [0.99, -0.99], aspectRatio: 1, modifiers: [])
+    viewport.drag(ndc: [-0.99, 0.99], aspectRatio: 1, modifiers: .vertical)
     viewport.endDrag()
     for edit in edits[count...] { #expect(edit.room.contains(edit.source.position)) }
     #expect(settings.moving(.source, to: [-1, 1, 1]) == settings)
@@ -488,4 +493,83 @@ func importModel() throws {
     }
     #expect(simd_distance(placed.source.position, placed.receivers[0].position) > 0.5)
     try placed.validate()
+}
+
+@Test("Zones move and resize within the room without overlapping; openings stay within their surface")
+func zoneAndOpeningEdits() throws {
+    var settings = RoomProject.starter
+    let size = settings.room.size
+    settings.room.fittings = [
+        FittingZone(
+            name: "A", low: [1, 1, 0], high: [2, 2, 1], density: 0.5,
+            absorption: Array(repeating: 0, count: 8)),
+        FittingZone(
+            name: "B", low: [3, 1, 0], high: [4, 2, 1], density: 0.5,
+            absorption: Array(repeating: 0, count: 8)),
+    ]
+    settings.openings = [Opening(name: "Door", surface: .north, centre: [1, 1], size: [0.9, 2])]
+    // Moving stops at the walls, and keeps the zone's size.
+    let moved = settings.movingZone(0, by: [-5, 0.5, 0]).room.fittings![0]
+    #expect(moved.low == [0, 1.5, 0] && moved.high == [1, 2.5, 1])
+    // A move onto the other zone is refused.
+    #expect(settings.movingZone(0, by: [1.5, 0, 0]) == settings)
+    // Touching is allowed.
+    #expect(settings.movingZone(0, by: [1, 0, 0]).room.fittings![0].high.x == 3)
+    // Resizing moves the nearest footprint corner, or the top.
+    let wider = settings.resizingZone(0, toward: [0.5, 2.7, 0.3], vertical: false).room.fittings![0]
+    #expect(wider.low == [0.5, 1, 0] && wider.high == [2, 2.7, 1])
+    #expect(
+        settings.resizingZone(0, toward: [1.5, 1.5, 9], vertical: true).room.fittings![0].high.z == size.z)
+    // Never smaller than 10 cm.
+    let thin = settings.resizingZone(0, toward: [1.99, 1.5, 0], vertical: false).room.fittings![0]
+    #expect(abs(thin.high.x - thin.low.x - 0.1) < 1e-9 || abs(thin.high.x - 1.99) < 1e-9)
+    // An opening moves over its wall, held inside it, and resizes from its nearest corner.
+    let slid = settings.movingOpening(0, to: [100, -3]).openings[0]
+    #expect(slid.centre == [size.x - 0.45, 1])
+    let taller = settings.resizingOpening(0, toward: [1.6, 2.2]).openings[0]
+    #expect(abs(taller.centre.x - (0.55 + 1.6) / 2) < 1e-9 && abs(taller.size.y - 2.2) < 1e-9)
+    try settings.movingOpening(0, to: [100, -3]).validate()
+}
+
+@MainActor
+@Test("Dragging a zone moves it, Command-dragging resizes it, and an opening slides along its wall")
+func dragZoneAndOpening() throws {
+    var settings = RoomProject.starter
+    let size = settings.room.size
+    settings.room.fittings = [
+        FittingZone(
+            name: "Rug", low: [1, 1, 0], high: [2.5, 2, 0.2], density: 0.5,
+            absorption: Array(repeating: 0, count: 8))
+    ]
+    settings.openings = [Opening(name: "Window", surface: .ceiling, centre: [3, 2], size: [1, 1])]
+    let viewport = RoomViewport()
+    var edits: [RoomResponseSettings] = []
+    viewport.onEdit = { edits.append($0) }
+    viewport.show(settings)
+    // Looking straight down on the rug.
+    viewport.camera = OrbitCamera(target: [1.75, 1.5, 0.2], distance: 6, azimuth: 0, elevation: 1.55)
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
+    #expect(viewport.selected == .zone(0))
+    viewport.drag(ndc: [0.1, 0], aspectRatio: 1, modifiers: [])
+    let moved = try #require(edits.last?.room.fittings?.first)
+    #expect(moved.low.z == 0 && simd_distance(moved.high - moved.low, [1.5, 1, 0.2]) < 1e-9)
+    #expect(moved.low != [1, 1, 0])
+    viewport.drag(ndc: [0.3, 0.3], aspectRatio: 1, modifiers: .resize)
+    let resized = try #require(edits.last?.room.fittings?.first)
+    #expect(simd_distance(resized.high - resized.low, [1.5, 1, 0.2]) > 0.05)
+    viewport.endDrag()
+    // From above, through the ceiling, which is seen from behind: the ceiling window, selectable from
+    // either side, slides over the ceiling and resizes from its nearest corner.
+    viewport.camera = OrbitCamera(target: [3, 2, Float(size.z)], distance: 3, azimuth: 0, elevation: 1.55)
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
+    #expect(viewport.selected == .opening(0))
+    viewport.drag(ndc: [0.2, 0.1], aspectRatio: 1, modifiers: [])
+    let slid = try #require(edits.last?.openings.first)
+    #expect(slid.centre != [3, 2] && slid.size == [1, 1])
+    // Well outside the window, beyond one of its corners.
+    viewport.drag(ndc: [0.9, 0.9], aspectRatio: 1, modifiers: .resize)
+    let grown = try #require(edits.last?.openings.first)
+    #expect(grown.size.x > 1 && grown.size.y > 1)
+    viewport.endDrag()
+    try #require(edits.last).validate()
 }
