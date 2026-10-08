@@ -24,7 +24,7 @@ cp Support/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp LICENSE "$app/Contents/Resources/LICENSE"
 # The shaders, compiled at run time. SwiftPM's resource accessor looks for its bundles in the
 # app's Resources directory first; nothing may sit at the app's root, or signing fails.
-for bundle in BombCAD_BlastCore.bundle BombCAD_BlastRender.bundle SimulationKit_SceneRender.bundle; do
+for bundle in BombCAD_BlastCore.bundle BombCAD_BlastRender.bundle ContinuumKit_SceneRender.bundle; do
   cp -R "$binary_directory/$bundle" "$app/Contents/Resources/$bundle"
 done
 # The IFC translator is a separate, checksum-pinned native helper, never a runtime download.
