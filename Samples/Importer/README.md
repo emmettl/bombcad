@@ -1,8 +1,11 @@
 # Importer samples
 
 Small, hand-authored geometry for trying BombCAD’s importer and material editor.
-These files live in the repository only; they are not bundled with the app. They
-use no textures, external material files, or third-party assets.
+These hand-authored files live in the repository only; they are not bundled with the app. They
+use no textures or external material files. The separate [RealCAD collection](RealCAD/README.md)
+contains attributed third-party STL/STEP export pairs with pinned provenance and licence notices.
+The [Buildings collection](Buildings/README.md) adds a real whole-building IFC house and its
+matching raw OBJ reference, with current importer expectations and licence/provenance records.
 
 Start with **Open ground**, choose **Import Model…** (or drop one file onto the
 viewport), and confirm the settings below. All files use **metres / Z up** except
