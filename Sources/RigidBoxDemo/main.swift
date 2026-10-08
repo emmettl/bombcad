@@ -7,6 +7,52 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--piston-crossings") {
+        let results = try ExperimentalPistonCrossingStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/piston-crossings.json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "dx \(r.cellLength), piston \(r.pistonVelocity): \(r.gridCrossings) crossings, \(r.remeshes) repartitions, \(r.steps) steps, energy residual \(r.energyBudgetResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--piston") {
+        let results = try ExperimentalPistonStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/piston.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Piston \(r.pistonVelocity) m/s: \(r.steps) steps, energy residual \(r.energyBudgetResidual) J, pressure error \(r.relativeQuasiStaticPressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--wall-pressure") {
+        let results = try ExperimentalWallPressureStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/wall-pressure.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print("Normal Mach \(r.normalMach): wall pressure ratio \(r.pressureRatio), vacuum \(r.vacuum)")
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--fractional-flux") || arguments.contains("--fractional-walls") {
         let reflectingWalls = arguments.contains("--fractional-walls")
         let results = try ExperimentalFractionalFluxStudy.run(reflectingWalls: reflectingWalls)

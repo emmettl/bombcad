@@ -80,6 +80,7 @@ def release(args):
     if archive.exists():
         raise ValueError(f"Archive already exists: {archive.name}. Move it aside explicitly before retrying.")
     run("make", "check")
+    run("make", "release-smoke")
     run("make", "app", "CONFIGURATION=release")
     if run("git", "status", "--porcelain", capture=True).strip():
         raise ValueError("The build changed the source checkout; review and commit the changes before releasing.")

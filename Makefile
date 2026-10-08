@@ -1,4 +1,4 @@
-.PHONY: build app run test roomcad-test roomcad-validate roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
+.PHONY: build app run test release-smoke roomcad-test roomcad-validate roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -16,6 +16,17 @@ run: app
 
 test:
 	swift test
+
+# The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
+# that slip and base connections. `swift test` builds for debugging, and the optimiser has
+# miscompiled code that ran correctly there.
+release-smoke:
+	swift build -c release --product blastbench
+	.build/release/blastbench shear --layers 12
+	.build/release/blastbench shear --layers 12 --bond pullout
+	.build/release/blastbench slab --shells 1
+	.build/release/blastbench anchorage --standoff 25 --bases clamped,dowelled,soil --time 0.05
+	.build/release/blastbench anchorage --shells --standoff 25 --bases clamped,soil --time 0.05
 
 roomcad-test:
 	swift test --package-path RoomCAD

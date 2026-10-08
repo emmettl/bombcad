@@ -193,6 +193,13 @@ lattice axes the body has bars along: the crack spacing once its normal is withi
 an axis, the element size when it lies square to all of them, and a blend between. Bending and
 shear cracks, whose normals lie along or close to the bars, are as they were.
 
+A crack's width, from which its aggregate interlock is read (see
+[Shear across cracks](#shear-across-cracks)), is its strain over the same ℓ. It used to be read
+over the crack spacing for every plane, so that a split along the bars of a beam on 25 mm
+elements was taken as four times as wide as it was, and held together by a fraction of the
+interlock it had: Saatci's beam without stirrups split along its bars under a drop it survived
+(see [Validation](validation.md#beams-struck-by-a-falling-weight)).
+
 ## Compression and confinement
 
 Compression follows, for a compressive strain ε with peak strain ε_c and strength f_c,
@@ -270,7 +277,7 @@ transmit shear, from the modified compression field theory:
 v = 0.18 √f_c / (0.31 + 24 w / (a + 16))    (MPa, mm)
 
 where a is the largest aggregate size (16 mm by default) and w is the crack width, taken as the
-crack strain times the band width ℓ. A hairline crack carries about 0.58 √f_c, close to the
+crack strain times its plane's band width ℓ (see [Cracking](#cracking)). A hairline crack carries about 0.58 √f_c, close to the
 tensile strength; a 1 mm crack carries about 30% of that.
 
 **A crack's shear stiffness** (an option, `StructureModel.crackShearStiffness`). A quarter of
@@ -430,13 +437,15 @@ on 10 mm elements), its bars yield over 0.20 m of its length with the bond lost 
 0.15 m without: with hardening from 500 to only 575 MPa, yield spreads some 16 mm / Ω_y either
 side of a crack, under one element on coarser meshes.
 
-**The structural tests** (`--bond pullout` on `blastbench beam`, `shear` and `slab`):
+**The structural tests** (`--bond pullout` on `blastbench beam`, `shear`, `slab` and `impact`):
 
 | Test | Perfect bond | With slip |
 |---|---|---|
 | Janney's beam, 12 elements through | 41.6 kN m (100%), fails at 51 mm | 44.3 kN m (107%), fails at 42 mm, as the test did |
 | Vecchio and Shim's OA1, 12 / 24 through | 456 / 367 kN (137% / 111%) | 472 / 489 kN (142% / 147%); splitting bond 490 kN on 12 |
 | The contest slab, 8 through | 104 mm (97%), 65 mm left | 88 mm (82%), 53 mm left |
+| Saatci's SS0a-1 (light drop, no stirrups), 16 / 24 through | 16.8 / 19.7 mm, 279 / 1,935 elements removed | splitting bond: 12.0 / 11.0 mm, none removed (9.3 mm measured) |
+| Saatci's heavy drops with stirrups, 16 through | 31.5–37.5 mm | splitting bond: 30.0–32.2 mm (35.3–39.5 measured) |
 
 With slip the shear beam cracks as the test did on both meshes, in flexure–shear cracks about
 200 mm apart that lean towards the load as they climb (`--map`), and its strength no longer
@@ -452,8 +461,10 @@ spread over the crack spacing, as without it, the slab reaches 98 mm (91%). Its 
 95 elements; with slip, the cracks stand about seven elements (90 mm) apart, as the Model Code
 puts them for bars in the concrete around them in bending, over a zone a fifth shorter, and the
 concrete between them still carries tension at blast rates. Whether the test slab cracked so is
-not known. So the option stays off until the shear across discrete cracks, and the slab, are
-understood.
+not known. Under impact, slip lets Saatci's beam without stirrups come through the light drop
+whole, as the test beam did, where perfectly bonded it splits along its bars, and still breaks
+it under the heavy drop, as in the test; but it stiffens the beams with stirrups by a fifth under the heavy drops. So
+the option stays off until the shear across discrete cracks, and the slab, are understood.
 
 ## Strain-rate effects
 
@@ -489,8 +500,8 @@ The factor raises strength without changing stiffness. Two details matter:
   stirrups a quarter too stiff on every mesh and the close-in slabs' spall needing 17–21 MPa,
   where spalling tests find 10–15. The fib Model Code 2010's (1.3 times at 5 per second, 2.9 at
   100) brings the beams within −5% to +15%, the contest slab from 93% to 97% of its peak and
-  the close-in slab further down; but under it a beam without stirrups breaks, splitting along
-  its bars, under a drop the test beam survived (see
+  the close-in slab further down; but under it a beam without stirrups loses elements, and on
+  fine meshes splits along its bars, under a drop the test beam survived (see
   [Validation](validation.md#beams-struck-by-a-falling-weight)). The Model Code's is the
   default; it errs, there, towards damage.
 
@@ -802,6 +813,17 @@ matter.
    reclosing to within about 7%. Saatci's beams are left 12–14 mm down against 18 mm (7 mm
    before), the chamber's roof 15 mm up against 7 mm; the contest slab, Janney's beam and
    Vecchio and Shim's OA1, which bend or fail as their cracks first slide, are unchanged.
+26. **Each crack's width over its own band** (see Cracking). Step 24 softened a crack that no
+   bar crosses over its own element, but its width, which sets its aggregate interlock, was
+   still read over the crack spacing: a split along the bars of a beam without stirrups was
+   taken as four to six times as wide as it was. Rerunning every test on the defaults of the
+   time found Saatci's beam without stirrups still broken under the light drop it survived,
+   split along its bars. With the width read over the crack's own band it comes through on 16
+   elements (16.8 mm against 9.3, where it had broken at 22.4 mm), though it still splits on
+   24. Ando's beams without stirrups, struck at 3–6 m/s, come within 18% of the measured peaks
+   on average on 16 elements, where they had gone 44% too far (58% on 24, from 108%), but
+   spring back to about half the measured residual. The beams with stirrups, the contest slab, OA1, the chamber and the close-in slabs
+   are unchanged; Janney's beam holds where it had failed at 52 mm on 24 elements.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so

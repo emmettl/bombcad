@@ -16,7 +16,7 @@ import simd
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
 //               [--bond pullout|splitting|confined] [--crack-shear]   (also on beam and slab)
-//   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1]
+//   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map]
@@ -1021,6 +1021,8 @@ func runImpact() throws {
             ) { model in
                 if flag("no-rate") { model.material.rateDependent = false }
                 applyRateOptions(&model)
+            } inspect: { solver in
+                if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
             }
             let numbers =
                 "\(test.peak.map { format(Double($0) * 1000) } ?? "-") / \(test.residual.map { format(Double($0) * 1000) } ?? "-")"
@@ -1071,7 +1073,12 @@ func runImpact() throws {
             device: device, test: test, elementsThroughDepth: layers, duration: duration
         ) { model in
             if flag("no-rate") { model.material.rateDependent = false }
+            // `--bond`: the No. 30 bars slip.
+            if let bond = chosenBondSlip(diameter: 0.0299) { model.bondSlip = bond }
             applyRateOptions(&model)
+        } inspect: { solver in
+            // `--map`: the cracks left in the middle row of elements, top row first.
+            if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
         }
         let measured =
             test.peak.map { "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm" }

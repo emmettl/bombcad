@@ -440,14 +440,8 @@ public final class ShellSolver {
         }
         let tiedStartStorage = try buffer(tiedStarts.count * 4, "shell tied starts")
         let tiedStorage = try buffer(tiedEntries.count * 4, "shell tied nodes")
-        tiedStarts.withUnsafeBytes {
-            tiedStartStorage.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count)
-        }
-        tiedEntries.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress, !bytes.isEmpty {
-                tiedStorage.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        tiedStartStorage.copy(tiedStarts)
+        tiedStorage.copy(tiedEntries)
         tiedStartBuffer = tiedStartStorage
 
         // A connected base: the nodes on the ground carry points of their footprint instead of
@@ -475,25 +469,15 @@ public final class ShellSolver {
         fibreCount = fibreGeometry.count
         let fibreStartStorage = try buffer(fibreStarts.count * 4, "shell anchor starts")
         let fibreGeometryStorage = try buffer(fibreCount * 16, "shell anchor points")
-        fibreStarts.withUnsafeBytes {
-            fibreStartStorage.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count)
-        }
-        fibreGeometry.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress, !bytes.isEmpty {
-                fibreGeometryStorage.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        fibreStartStorage.copy(fibreStarts)
+        fibreGeometryStorage.copy(fibreGeometry)
         fibreStartBuffer = fibreStartStorage
         fibreGeometryBuffer = fibreGeometryStorage
         fibreStateBuffer = try buffer(fibreCount * 16, "shell anchor state")
         fibreForceBuffer = try buffer(fibreCount * 16, "shell anchor forces")
         let lawStorage = try buffer(
             max(fibreCount, 1) * MemoryLayout<AnchorageParameters>.stride, "shell connection laws")
-        fibreLaws.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress, !bytes.isEmpty {
-                lawStorage.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        lawStorage.copy(fibreLaws)
         fibreLawBuffer = lawStorage
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
@@ -502,14 +486,8 @@ public final class ShellSolver {
         for (n, tie) in mesh.ties.enumerated() { tiePairs[n] = SIMD2(tie.slave, tie.master) }
         incidenceStartBuffer = try buffer(starts.count * 4, "shell incidence starts")
         incidenceBuffer = try buffer(entries.count * 4, "shell incidence")
-        starts.withUnsafeBytes {
-            incidenceStartBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count)
-        }
-        entries.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress, !bytes.isEmpty {
-                incidenceBuffer.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        incidenceStartBuffer.copy(starts)
+        incidenceBuffer.copy(entries)
         reset()
         if let anchorStiffness, fibreCount > 0 {
             let starts = fibreStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodes + 1)

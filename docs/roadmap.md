@@ -20,7 +20,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 15% under light drops and −5% to +15% under heavy ones, and Ando's beams without stirrups break at the speed the tests did, while Saatci's without stirrups breaks under a drop it survived; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 15% under light drops and −5% to +15% under heavy ones, and Ando's beams without stirrups peak within 18% on average on 16 elements (58% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -65,8 +65,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    test did, 11–12% strong on fine meshes and 37% strong on coarse ones; see
    [Validation](validation.md#a-beam-failing-in-shear). And Saatci's drop-weight impacts on
    beams with and without stirrups (2007): light drops within 10%, heavy ones within −8% to
-   +16% with the Model Code's tensile strain-rate law, the beam without stirrups broken only by the
-   heavy drop as in the tests; beams' sectional shear check fails every beam under impact; see
+   +16% with the Model Code's tensile strain-rate law, the beam without stirrups broken by the
+   heavy drop as in the tests and damaged by the light one, which it survived; beams' sectional shear check fails every beam under impact; see
    [Validation](validation.md#beams-struck-by-a-falling-weight). And Chiquito et al.'s
    full-scale slabs under 2–15 kg at 0.5 and 1 m (2023): the load within about a tenth of the
    empirical impulse, but the slab a third as far down as measured, barely spalled, not punched
@@ -106,7 +106,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    with it, where spalling tests find 10–15 MPa. (Done: the fib Model Code 2010's law, now the
    default, which brings the impacts within −5% to +15% and the contest slab to 96–103%; but
    under it the beam without stirrups breaks under the light drop it survived, split along its
-   bars, so the shear such a beam carries across cracks at these rates is still open.) Which strengthening is the material's
+   bars. Read over each crack's own band, the split's width was found four to six times too
+   wide; corrected, the beam comes through on 16 elements and still splits on 24, and with bars
+   that slip it comes through whole on both. So the bond between bars and concrete under
+   impact, and the shear such a beam carries across cracks at these rates, are still open.) Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
@@ -569,13 +572,13 @@ still need to be combined consistently. Next, establish a closed stationary-wall
 budget, then couple prescribed piston motion before a freely moving rigid box.
 
 Stationary reflecting slip walls are now included in the isolated Euler flux reference.
-A mirrored normal velocity supplies the Rusanov wall traction; wall mass and total-energy
+Initially a mirrored normal velocity supplied the Rusanov wall traction; wall mass and total-energy
 fluxes are exactly zero. Each wall impulse is recorded opposite to the gas momentum update,
 and its acoustic rate participates in the cell timestep limit. A resting six-wall box
 preserves its gas state and recovers pressure-times-area loads. Tangential slip transfers
-no tangential momentum. The approximate traction can become tensile for strongly separating
-gas; such updates fail explicitly rather than clipping the load. This wall law is not yet
-suitable for all rarefactions or moving-piston conditions.
+no tangential momentum. The initial approximate traction could become tensile for strongly
+separating gas; such updates failed explicitly rather than clipping the load. That initial
+wall law was unsuitable for all rarefactions or moving-piston conditions.
 
 `--fractional-walls` applies an end-cell pressure pulse in a closed eight-cell tube for
 0.5 ms. The three volume cases require 11, 38 and 141 steps, with gas-plus-wall momentum
@@ -583,9 +586,73 @@ residuals below 0.000000000000001 N s and relative mass/energy changes below
 0.000000000000001. Reducing the end cell also reduces the initial pulse energy, so response
 differences are not a convergence result. Four wall tests cover uniform-pressure balance,
 closed-pulse impulse accounting, tangential slip, invalid geometry, excessive timesteps and
-tensile-traction rejection; the four existing flux tests also pass. Next, improve the wall
-Riemann treatment for expansion and establish prescribed-piston volume/work consistency
+tensile-traction rejection; the four existing flux tests also pass.
+
+The wall pressure now uses the exact planar ideal-gas shock and rarefaction relations for
+a uniform incident state, with normal velocity measured relative to the wall. Compression
+inverts the shock pressure/velocity relation analytically; expansion uses the rarefaction
+invariant and reaches zero pressure at vacuum onset. This replaces the tensile Rusanov
+traction failure. The wall timestep rate includes the compressive shock speed. These
+relations follow the [Clawpack Euler reference](https://www.clawpack.org/riemann_book/html/Euler.html).
+
+`--wall-pressure` records eight incident normal Mach numbers from -6 to +3. At Mach -2,
+wall pressure is 0.0279936 times incident pressure; Mach -6 forms a vacuum gap with zero
+wall load. Three analytical tests cover shock jump relations, the expansion invariant and
+vacuum, and the weak-wave acoustic limit. The existing wall test now verifies positive
+expansion traction and a zero-load vacuum update instead of tensile-traction rejection.
+All eleven wall-pressure/wall/flux tests pass. The closed-tube study retains 11, 38 and
+141 steps, with mass/energy and gas-plus-wall momentum budgets within floating-point
+precision. The exact local wall law does not make the first-order spatial flux exact or
+add moving geometry. Next, establish prescribed-piston volume and pressure-work consistency
 before coupling freely moving bodies.
+
+Prescribed planar piston motion is now implemented within intervals of fixed cell topology.
+Each wall has a constant velocity: its swept volume is `area * normal velocity * dt`,
+its impulse uses the wall pressure from relative gas/wall normal velocity, and its work
+is the dot product of that impulse with wall velocity. Gas momentum and energy receive
+the opposite impulse/work, while no mass crosses the wall. Acoustic timestep rates include
+wall travel, and a separate contraction limit prevents a cell from closing in one step.
+No independent endpoint-volume input is needed for this planar reference.
+
+`--piston` compresses or expands a closed four-cell tube by 10% at 0.25, 0.5 and 1 m/s.
+The six cases take 676–3519 steps. Swept-volume residuals stay below 0.00000000000000001 m³,
+relative mass changes below 0.000000000000001, and gas-plus-wall energy residuals below
+0.00000000001 J. Impulse budgets remain balanced. Mean pressure approaches the quasi-static
+adiabatic value as speed decreases; at 0.25 m/s the relative departure is below 0.000005
+for compression and expansion. This is a low-speed limiting check, not a spatial-convergence
+result. Three piston tests cover signed volume/work exchange, a comoving translating cavity,
+and the complete closed-tube pressure/budget study. The existing wall/flux checks also pass.
+
+This reference assumes constant wall area and normal within a step, stationary internal
+faces and no cell topology changes. Next, combine physical flux/work with chronological
+cell-crossing geometry and face apertures, including gas transfer when cells open or close,
+before coupling a freely moving rigid box.
+
+The planar piston can now cross grid cells in a standalone one-dimensional tube reference.
+Time intervals split at grid boundaries and at quarter-cell merge/split thresholds. Before
+an end cell closes, it is joined to its neighbour; expansion creates a separate end cell
+once it reaches one quarter of a full cell. Internal faces are rebuilt for each acoustic
+step, and the physical flux and pressure-work update uses the current control volumes.
+This avoids the vanishing acoustic timestep of an unmerged closing cell.
+
+At topology changes, ordered volume overlaps conservatively rebin each donor's extensive
+state. The last overlap receives the donor's remaining packet, keeping its complete mass,
+momentum and energy inventory. Only endpoint geometric roundoff is normalised away; a
+significant total-volume mismatch fails. Merging nonuniform gas mixes states and changes
+spatial diffusion, so this is a small-cell treatment to test, not an accuracy validation.
+
+`--piston-crossings` compresses a 0.655 m tube to 0.355 m and expands it back with prescribed
+1 m/s motion. The 0.1 m grid crosses three boundaries and repartitions three times; the
+0.05 m grid crosses/repartitions six times. The four cases take 7822–17732 acoustic steps,
+with relative mass departures below 0.00000000000001, gas-plus-wall energy residuals below
+0.00000000001 J and momentum residuals below 0.000000000000001 N s. Gas remains positive.
+Three tests cover complete compression/expansion crossings, conservative nonuniform merging
+and uniform splitting, invalid geometry and bounded-work failure.
+
+General rotating boxes, transient face openings and arbitrary cut-cell adjacency are still
+outside this tube reference. Next, test spatial and temporal sensitivity of the merge policy,
+then combine swept box geometry and chronological aperture fluxes with conservative topology
+changes before enabling freely moving bodies in the blast solver.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.

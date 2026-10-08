@@ -990,6 +990,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // own fracture energy. The other planes keep the unit's.
         float3 planeFactor = float3(tensionFactor);
         float3 planeSoftening = float3(m.crackSoftening);
+        // The length each plane's opening is smeared over, from which its crack width is read.
+        float3 planeBand = float3(m.crackBand);
         for (int j = 0; j < 3; ++j) {
             if (((joints >> j) & 1u) != 0u) {
                 planeFactor[j] *= m.jointStrength;
@@ -1096,6 +1098,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     float crossed = ((u.barAxes & 1u) != 0u ? normal.x : 0.0f)
                         + ((u.barAxes & 2u) != 0u ? normal.y : 0.0f) + ((u.barAxes & 4u) != 0u ? normal.z : 0.0f);
                     planeSoftening[i] = mix(m.crackSofteningAlone, m.crackSoftening, min(2.0f * crossed, 1.0f));
+                    planeBand[i] = mix(u.h, m.crackBand, min(2.0f * crossed, 1.0f));
                 }
             }
         }
@@ -1238,7 +1241,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float3 opening = history - planeOnset;
             float opened = max(opening[a], opening[b]);
             if (opened > 0.0f) {
-                float width = opened * m.crackBand;
+                // Its width as the crack's own: one gathered in a row of elements is as wide as
+                // its opening over that row, not over the crack spacing.
+                float band = opening[a] >= opening[b] ? planeBand[a] : planeBand[b];
+                float width = opened * band;
                 float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
                 // The crack's shear stiffness: a fixed share of the concrete's, or, measured on
                 // cracks in plain concrete by Walraven and Reinhardt (1981), k = 1.8 w^-0.8 +
@@ -1250,7 +1256,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     float cube = m.compressiveStrength / 0.8e6f;
                     float stiffness = 1e9f * (1.8f * pow(millimetres, -0.8f)
                                               + max(0.234f * pow(millimetres, -0.707f) - 0.20f, 0.0f) * cube);
-                    retention = 1.0f / (1.0f + m.mu / (stiffness * m.crackBand));
+                    retention = 1.0f / (1.0f + m.mu / (stiffness * band));
                 }
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
