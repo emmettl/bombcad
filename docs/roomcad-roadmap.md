@@ -450,9 +450,11 @@ code.
   - the orbit, pan, zoom and click controls, moved from BombCAD, which now uses them from there.
 
   RoomCAD's 3D view uses all of it to draw any room as a cutaway coloured by material, with
-  openings, fitted zones, the source and the receivers, and to select them with a click. Still to
-  do: editing in the view itself, such as dragging points or choosing a surface's material there;
-  BombCAD's blast renderer remains its own.
+  openings, fitted zones, the source and the receivers, and to select them with a click. In the view,
+  a selected surface's material can be chosen from the published presets, and the source and
+  receivers dragged, across the room or with Option up and down. The controls let an app take a drag
+  for an object instead of the camera; BombCAD keeps orbiting. Still to do: editing zones, openings
+  and shapes in the view. BombCAD's blast renderer remains its own.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 

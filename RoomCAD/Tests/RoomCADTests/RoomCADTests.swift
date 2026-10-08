@@ -384,3 +384,58 @@ func roomScene() throws {
         #expect(abs(clip.x / clip.w) <= 0.85 && abs(clip.y / clip.w) <= 0.85)
     }
 }
+
+@Test("Surfaces are numbered alike for boxes, plans and meshes, and a material set on one lands there")
+func surfaceMaterials() throws {
+    let carpet = SurfaceMaterial.uniform(0.3, name: "Carpet")
+    let box = RoomProject.starter
+    let plan = try #require(RoomPresets.all.first { $0.id == "l-shaped-living-room" }).applied(to: box)
+    let hall = try #require(RoomPresets.all.first { $0.id == "raked-auditorium" }).applied(to: box)
+    for settings in [box, plan, hall] {
+        let count = RoomScene.surfaces(of: settings.room).mesh.materials.count
+        for index in 0..<count {
+            #expect(
+                settings.surfaceMaterial(index) == RoomScene.surfaces(of: settings.room).mesh.materials[index]
+            )
+        }
+        #expect(settings.surfaceMaterial(count) == nil)
+        let edited = settings.settingSurfaceMaterial(count - 1, to: carpet)
+        #expect(edited.surfaceMaterial(count - 1) == carpet)
+        #expect(RoomScene.surfaces(of: edited.room).mesh.materials[count - 1] == carpet)
+        #expect(edited.surfaceMaterial(0) == settings.surfaceMaterial(0))
+    }
+    // The box's last surface is the ceiling; the plan's, its ceiling after the walls and floor.
+    #expect(box.settingSurfaceMaterial(5, to: carpet).room.ceiling == carpet)
+    #expect(plan.settingSurfaceMaterial(7, to: carpet).room.ceiling == carpet)
+}
+
+@MainActor
+@Test("Dragging the source moves it across the room at its height, or with Option up and down, never out")
+func dragPoint() throws {
+    let settings = RoomProject.starter
+    let viewport = RoomViewport()
+    var edits: [RoomResponseSettings] = []
+    viewport.onEdit = { edits.append($0) }
+    viewport.show(settings)
+    let source = SIMD3<Float>(settings.source.position)
+    viewport.camera = OrbitCamera(target: source, distance: 4, azimuth: 0.3, elevation: 0.6)
+    // A press on the floor is not a drag.
+    #expect(!viewport.beginDrag(ndc: [0, -0.95], aspectRatio: 1))
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
+    #expect(viewport.selected == .source)
+    viewport.drag(ndc: [0.15, 0], aspectRatio: 1, vertical: false)
+    let moved = try #require(edits.last).source.position
+    #expect(moved.z == settings.source.position.z)
+    #expect(simd_distance(moved, settings.source.position) > 0.1)
+    viewport.drag(ndc: [0.15, 0.2], aspectRatio: 1, vertical: true)
+    let raised = try #require(edits.last).source.position
+    #expect(raised.x == moved.x && raised.y == moved.y && raised.z > moved.z)
+    // Far beyond the walls: the move is refused and the source stays inside.
+    let count = edits.count
+    viewport.drag(ndc: [0.99, -0.99], aspectRatio: 1, vertical: false)
+    viewport.drag(ndc: [-0.99, 0.99], aspectRatio: 1, vertical: true)
+    viewport.endDrag()
+    for edit in edits[count...] { #expect(edit.room.contains(edit.source.position)) }
+    #expect(settings.moving(.source, to: [-1, 1, 1]) == settings)
+    #expect(settings.moving(.source, to: [1.234, 1.5, 1.2]).source.position == [1.23, 1.5, 1.2])
+}

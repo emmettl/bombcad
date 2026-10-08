@@ -9,10 +9,23 @@ public protocol OrbitControlling: AnyObject {
     /// A press and release without movement, at a point in normalised device coordinates (x right and
     /// y up, both from -1 to 1).
     func click(ndc: SIMD2<Float>, aspectRatio: Float)
+    /// A press that may start dragging something in the scene instead of the camera; true to take the
+    /// drag. By default the camera orbits.
+    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool
+    /// The pointer moved during a drag taken by `beginDrag`; `vertical` while Option is held.
+    func drag(ndc: SIMD2<Float>, aspectRatio: Float, vertical: Bool)
+    func endDrag()
+}
+
+extension OrbitControlling {
+    public func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool { false }
+    public func drag(ndc: SIMD2<Float>, aspectRatio: Float, vertical: Bool) {}
+    public func endDrag() {}
 }
 
 /// A Metal view with camera controls: drag or two-finger scroll to orbit, shift-drag or right-drag
-/// to pan, pinch or mouse wheel to zoom, and click to pick. A view that does not redraw continuously
+/// to pan, pinch or mouse wheel to zoom, and click to pick. A press on something the controller takes
+/// drags that instead of the camera. A view that does not redraw continuously
 /// asks for a redraw after each change.
 public final class OrbitControlView: MTKView {
     public weak var controller: (any OrbitControlling)?
@@ -20,23 +33,45 @@ public final class OrbitControlView: MTKView {
     public override var acceptsFirstResponder: Bool { true }
 
     private var dragged = false
+    /// Whether the controller took the current drag.
+    private var draggingObject = false
+
+    private func ndc(_ event: NSEvent) -> SIMD2<Float> {
+        let point = convert(event.locationInWindow, from: nil)
+        return SIMD2(Float(2 * point.x / bounds.width - 1), Float(2 * point.y / bounds.height - 1))
+    }
+
+    private var aspectRatio: Float { Float(bounds.width / max(bounds.height, 1)) }
 
     public override func mouseDown(with event: NSEvent) {
         dragged = false
+        draggingObject =
+            bounds.width > 0 && bounds.height > 0
+            && controller?.beginDrag(ndc: ndc(event), aspectRatio: aspectRatio) == true
     }
 
     public override func mouseUp(with event: NSEvent) {
+        if draggingObject {
+            draggingObject = false
+            controller?.endDrag()
+            // A press on an object without movement still selects it.
+            if dragged {
+                changed()
+                return
+            }
+        }
         // A press and release without movement is a click on the scene.
         guard !dragged, bounds.width > 0, bounds.height > 0 else { return }
-        let point = convert(event.locationInWindow, from: nil)
-        let ndc = SIMD2(Float(2 * point.x / bounds.width - 1), Float(2 * point.y / bounds.height - 1))
-        controller?.click(ndc: ndc, aspectRatio: Float(bounds.width / bounds.height))
+        controller?.click(ndc: ndc(event), aspectRatio: aspectRatio)
         changed()
     }
 
     public override func mouseDragged(with event: NSEvent) {
         dragged = true
-        if event.modifierFlags.contains(.shift) {
+        if draggingObject {
+            controller?.drag(
+                ndc: ndc(event), aspectRatio: aspectRatio, vertical: event.modifierFlags.contains(.option))
+        } else if event.modifierFlags.contains(.shift) {
             pan(event)
         } else {
             controller?.camera.orbit(

@@ -84,11 +84,16 @@ script before an archive is written.
   - drag to orbit, shift-drag or right-drag to pan, and pinch or scroll to zoom; **Reset View**
     frames the room again;
   - a click selects a surface, zone, source or receiver, highlights it in orange, and names it in a
-    caption: a surface's material, area, and absorption and scattering at 1 kHz.
+    caption: a surface's material, area, and absorption and scattering at 1 kHz;
+  - with a surface selected, **Material** beside the caption gives it a published material's
+    absorption, keeping its scattering;
+  - dragging the source or a receiver moves it across the room at its height, and with Option held,
+    up and down. Positions snap to centimetres, and a move that would take a point outside the room,
+    or within 5 cm of a surface, is ignored.
 
   The view frames the room when it opens and when the room's size changes: from a three-quarter view
-  above, as close as it can be with every corner within the middle 85% of the view. Editing is done in the
-  inspector as before. The camera controls and renderer are shared with BombCAD (see
+  above, as close as it can be with every corner within the middle 85% of the view. Everything else
+  is edited in the inspector. The camera controls and renderer are shared with BombCAD (see
   [the roadmap](roomcad-roadmap.md#architecture-and-sharing)).
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
@@ -343,6 +348,8 @@ saved again.
   - the wording of generation progress and of the wave solver's engines;
   - the 3D scene: its triangles cover the room's surfaces once, openings lie on their wall, and a
     click from above selects the floor, and on the source the source;
+  - editing in 3D: surfaces numbered alike for boxes, plans and meshes, a material landing on the
+    surface chosen, and the source dragged across the room, raised with Option, and kept inside;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.

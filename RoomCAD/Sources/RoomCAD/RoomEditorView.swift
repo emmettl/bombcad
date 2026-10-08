@@ -49,7 +49,7 @@ struct RoomEditorView: View {
                             drawing(.elevation)
                         }
                     case .threeD:
-                        RoomView3D(settings: project.settings)
+                        RoomView3D(settings: $document.project.settings)
                     }
                 }
                 .frame(minHeight: 260)

@@ -22,6 +22,10 @@ final class RoomViewport: OrbitControlling {
     @ObservationIgnored private var shown: RoomResponseSettings?
     /// The room size the camera was last framed for.
     @ObservationIgnored private var framedSize: SIMD3<Double>?
+    /// Receives settings edited in the view: a point dragged, or a surface's material chosen.
+    @ObservationIgnored var onEdit: (RoomResponseSettings) -> Void = { _ in }
+    /// The point being dragged, and where on it it was grabbed.
+    @ObservationIgnored private var dragging: (item: RoomScene.Item, grab: SIMD3<Double>)?
 
     /// Shows `settings`' room, framing the camera on it the first time and whenever its size changes.
     func show(_ settings: RoomResponseSettings) {
@@ -75,6 +79,77 @@ final class RoomViewport: OrbitControlling {
             scene?.geometry.pick(origin: ray.origin, direction: ray.direction).flatMap(RoomScene.Item.init))
     }
 
+    /// Applies an edit: shown at once, and handed on.
+    func edit(_ settings: RoomResponseSettings) {
+        guard settings != shown else { return }
+        show(settings)
+        onEdit(settings)
+    }
+
+    /// A press on the source or a receiver selects it and drags it.
+    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool {
+        let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
+        guard let shown,
+            let item = scene?.geometry.pick(origin: ray.origin, direction: ray.direction).flatMap(
+                RoomScene.Item.init),
+            let position = shown.position(of: item)
+        else { return false }
+        select(item)
+        let hit = Self.intersect(ray, withPlaneThrough: position, normal: [0, 0, 1]) ?? position
+        dragging = (item, position - hit)
+        return true
+    }
+
+    /// Moves the dragged point across the horizontal plane through it, or, with Option, up and down a
+    /// vertical plane facing the camera. Moves that would leave the room are ignored.
+    func drag(ndc: SIMD2<Float>, aspectRatio: Float, vertical: Bool) {
+        guard let dragging, let shown, let position = shown.position(of: dragging.item) else { return }
+        let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
+        var target = position
+        if vertical {
+            let forward = SIMD3<Double>(SIMD3<Float>(ray.direction.x, ray.direction.y, 0))
+            guard simd_length(forward) > 1e-6,
+                let hit = Self.intersect(ray, withPlaneThrough: position, normal: simd_normalize(forward))
+            else { return }
+            target.z = hit.z
+        } else {
+            guard let hit = Self.intersect(ray, withPlaneThrough: position, normal: [0, 0, 1]) else { return }
+            target.x = hit.x + dragging.grab.x
+            target.y = hit.y + dragging.grab.y
+        }
+        edit(shown.moving(dragging.item, to: target))
+    }
+
+    func endDrag() { dragging = nil }
+
+    /// Where a ray meets a plane in front of it, if it does.
+    static func intersect(
+        _ ray: (origin: SIMD3<Float>, direction: SIMD3<Float>), withPlaneThrough point: SIMD3<Double>,
+        normal: SIMD3<Double>
+    ) -> SIMD3<Double>? {
+        let origin = SIMD3<Double>(ray.origin)
+        let direction = SIMD3<Double>(ray.direction)
+        let denominator = simd_dot(direction, normal)
+        guard abs(denominator) > 1e-9 else { return nil }
+        let t = simd_dot(point - origin, normal) / denominator
+        return t > 0 ? origin + direction * t : nil
+    }
+
+    /// The material of the selected surface, if a surface is selected.
+    var selectedMaterial: SurfaceMaterial? {
+        guard case .surface(let index) = selected else { return nil }
+        return shown?.surfaceMaterial(index)
+    }
+
+    /// Gives the selected surface a published material's absorption, keeping its scattering.
+    func applyToSelected(_ preset: MaterialPreset) {
+        guard case .surface(let index) = selected, let shown, let material = shown.surfaceMaterial(index)
+        else {
+            return
+        }
+        edit(shown.settingSurfaceMaterial(index, to: material.applying(absorption: preset)))
+    }
+
     /// What is selected, in words.
     var caption: String? {
         guard let selected, let scene, let shown else { return nil }
@@ -97,7 +172,7 @@ extension RoomScene {
 /// The room in 3D, with a caption naming what was clicked. Drag to orbit, shift-drag to pan, pinch or
 /// scroll to zoom, click a surface, zone or point to select it.
 struct RoomView3D: View {
-    let settings: RoomResponseSettings
+    @Binding var settings: RoomResponseSettings
     @State private var viewport = RoomViewport()
 
     var body: some View {
@@ -109,11 +184,34 @@ struct RoomView3D: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             HStack(alignment: .bottom) {
-                Text(viewport.caption ?? "Drag to orbit, shift-drag to pan, pinch to zoom; click to select")
+                HStack(spacing: 8) {
+                    Text(
+                        viewport.caption
+                            ?? "Drag to orbit, shift-drag to pan, pinch to zoom; click to select; drag the source or a "
+                            + "receiver to move it, with Option to raise or lower it"
+                    )
                     .font(.caption)
                     .foregroundStyle(viewport.caption == nil ? .secondary : .primary)
-                    .padding(6)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                    if viewport.selectedMaterial != nil {
+                        Menu("Material") {
+                            ForEach(MaterialPresets.categories(of: MaterialPresets.absorption), id: \.self) {
+                                category in
+                                Menu(category) {
+                                    ForEach(MaterialPresets.absorption.filter { $0.category == category }) {
+                                        preset in
+                                        Button(preset.name) { viewport.applyToSelected(preset) }
+                                    }
+                                }
+                            }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                        .help(
+                            "Give this surface a material with published absorption, keeping its scattering")
+                    }
+                }
+                .padding(6)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
                 Spacer()
                 Button("Reset View", systemImage: "arrow.counterclockwise") { viewport.frame() }
                     .labelStyle(.iconOnly)
@@ -121,7 +219,10 @@ struct RoomView3D: View {
             }
             .padding(8)
         }
-        .onAppear { viewport.show(settings) }
+        .onAppear {
+            viewport.show(settings)
+            viewport.onEdit = { settings = $0 }
+        }
         .onChange(of: settings) { viewport.show(settings) }
     }
 }
