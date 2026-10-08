@@ -111,6 +111,9 @@ public enum ImpactBenchmark {
         /// holds the beam's own faces over the bearing length instead, which resists its ends'
         /// turning.
         public var supportPlates: Float?
+        /// Each bar's steel spread through the concrete about it, out to the nearest face and as
+        /// far the other way, rather than through the one row of elements at its height.
+        public var spreadBars = false
     }
 
     public static func specimen(_ test: Test) -> Specimen {
@@ -155,10 +158,12 @@ public enum ImpactBenchmark {
         for index in 1..<solids.count { model.setMaterial(.structuralSteel, of: index) }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
+            let reach = s.spreadBars ? max(min(bar.height, s.depth - bar.height), h / 2) : h / 2
             var band = beam
-            band.min.z = base + bar.height - h / 2
-            band.max.z = base + bar.height + h / 2
-            bands.append(ReinforcementLayer(region: band, ratio: SIMD3(bar.area / (s.width * h), 0, 0)))
+            band.min.z = base + bar.height - reach
+            band.max.z = base + bar.height + reach
+            bands.append(
+                ReinforcementLayer(region: band, ratio: SIMD3(bar.area / (s.width * 2 * reach), 0, 0)))
         }
         if let stirrups = s.stirrups {
             // Two legs each way, smeared through the section.
@@ -191,10 +196,13 @@ public enum ImpactBenchmark {
     /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        spreadBars: Bool = false, adjust: (inout StructureModel) -> Void = { _ in },
+        inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
-        try run(
-            device: device, specimen: specimen(test), weight: test.weight, speed: impactSpeed,
+        var specimen = specimen(test)
+        specimen.spreadBars = spreadBars
+        return try run(
+            device: device, specimen: specimen, weight: test.weight, speed: impactSpeed,
             elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 
@@ -508,10 +516,13 @@ public enum ImpactBenchmark {
 
     public static func run(
         device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        spreadBars: Bool = false, adjust: (inout StructureModel) -> Void = { _ in },
+        inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
-        try run(
-            device: device, specimen: specimen(test), weight: 300, speed: test.speed,
+        var specimen = specimen(test)
+        specimen.spreadBars = spreadBars
+        return try run(
+            device: device, specimen: specimen, weight: 300, speed: test.speed,
             elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 }

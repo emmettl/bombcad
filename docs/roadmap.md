@@ -109,7 +109,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    under it the beam without stirrups breaks under the light drop it survived, split along its
    bars. Read over each crack's own band, the split's width was found four to six times too
    wide; corrected, the beam comes through on 16 elements and still splits on 24, and with bars
-   that slip it comes through whole on both. So the bond between bars and concrete under
+   that slip it comes through whole on both. Spreading the bars' steel through the concrete
+   about them takes the mesh dependence away but leaves beams without stirrups too stiff and
+   springing back from their peaks, keeping a third of the deflection the tests kept. So the bond between bars and concrete under
    impact, and the shear such a beam carries across cracks at these rates, are still open.) Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.

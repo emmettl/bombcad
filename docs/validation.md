@@ -595,6 +595,22 @@ they go further, 58% too far on average (108% before), and some far further: A24
 did, cut through by removed elements beside the plate and at a support; B36, which its test
 beam also broke at 5 m/s, bends but holds.
 
+**Bars spread through the concrete about them** (`blastbench impact --spread`). Smeared, each
+bar's steel sits in the one row of elements at its height, so the row that carries it, and the
+row of plain concrete above that splits, thin as the mesh is refined. Spread instead from the
+bar's nearest face to as far the other side (106 mm for Saatci's bars, 80 mm for Ando's, much
+as Eurocode 2's effective tension area), the steel no longer depends on the mesh, and nor do
+the beams: over the fourteen faster tests the peaks are 24% off on 16 elements and 25% on 24,
+where they were 18% and 58%, and Saatci's beams with stirrups come within 3–8% on 24
+elements. But the beams are too stiff: Ando's go 24% short on average (A24 at 6 m/s 28 mm
+against 54), Saatci's heavy drops 13–18% short on 16 elements, and they spring back too far,
+keeping a third of the deflection the tests kept (two thirds with the bars in one row, on 16
+elements). SS0a-1 still loses 430–890 elements, now along the top of the spread steel. So the
+one-row bars' agreement on 16 elements owes something to the split along the bars, which
+softens a beam and holds its deflection; without it the beams spring back. Either way the
+shear such a beam carries across its cracks, and what keeps a struck beam bent, are not yet
+right, and the spread is not the default.
+
 How the jig held the beams decides much of this. Held as pins at both ends (the paper's "turning
 and nothing else"), the 1.0 m beams came within 15% at every speed and B36 broke at 5 m/s, but
 the 2.0 m beams went twice as far; on steel plates turning freely about their centres, every
