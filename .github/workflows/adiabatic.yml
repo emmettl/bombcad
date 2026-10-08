@@ -1,0 +1,32 @@
+name: Adiabatic conformance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bombcad-adiabatic
+  cancel-in-progress: false
+
+jobs:
+  reference:
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify source calculation against shared cases
+        run: bash Scripts/check-adiabatic.sh "${{ runner.temp }}/adiabatic-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Retain conformance and complete histories
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 14
