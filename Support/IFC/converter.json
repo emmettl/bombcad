@@ -1,0 +1,14 @@
+{
+  "version": "IfcOpenShell IfcConvert 0.8.5-7bdc1b6 (OCC 7.8.1)",
+  "source": "https://github.com/IfcOpenShell/IfcOpenShell/tree/7bdc1b6",
+  "archives": {
+    "arm64": {
+      "url": "https://s3.amazonaws.com/ifcopenshell-builds/IfcConvert-v0.8.5-7bdc1b6-macosm164.zip",
+      "sha256": "a48519bda6de68f3f7031cbf20ed49f1f9e796093746baf64e2bfe335bcd3bb7"
+    },
+    "x86_64": {
+      "url": "https://s3.amazonaws.com/ifcopenshell-builds/IfcConvert-v0.8.5-7bdc1b6-macos64.zip",
+      "sha256": "7743e86d0de16d2e5b3c7f39ad74f91bb4dc3932e0c15857e6af4662d9dc02d7"
+    }
+  }
+}

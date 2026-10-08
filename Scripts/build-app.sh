@@ -27,5 +27,10 @@ cp LICENSE "$app/Contents/Resources/LICENSE"
 for bundle in BombCAD_BlastCore.bundle BombCAD_BlastRender.bundle; do
   cp -R "$binary_directory/$bundle" "$app/Contents/Resources/$bundle"
 done
+# The IFC translator is a separate, checksum-pinned native helper, never a runtime download.
+python3 Scripts/prepare-ifc-converter.py
+cp .build/ifc-converter/IfcConvert "$app/Contents/MacOS/IfcConvert"
+cp -R Support/IFC "$app/Contents/Resources/IFC"
+codesign --force --sign - "$app/Contents/MacOS/IfcConvert"
 codesign --force --sign - "$app"
 echo "Built $app"
