@@ -12,6 +12,7 @@ struct Observation: Codable {
     var coupling: CouplingStatistics
     var solverBytes: Int
     var couplingGPUMedianS: Double
+    var couplingGPUSamplesS: [Double]
     var batchGPUS: Double
     var steps: Int
     var refinedPatches: Int
@@ -92,19 +93,30 @@ enum SceneBench {
             for spacing: Float in quick ? [24] : [12, 28] {
                 let scene = try fixture(count: count, spacing: spacing)
                 for refinement in quick ? [1] : [1, 2] {
-                    var reference: [CellState]?
-                    for layout in layouts {
+                    let solvers = try layouts.map { layout in
                         var configuration = SolverConfiguration()
                         configuration.bodyCouplingLayout = layout
                         configuration.refinement = refinement
                         configuration.refinementMemory = 16 << 20
                         configuration.airSleepThreshold = 0
                         configuration.airSleepCrossings = 0
-                        let solver = try BlastSolver(
+                        return try BlastSolver(
                             device: device, scenario: scene, cellSize: 0.5, configuration: configuration)
-                        _ = try solver.measureCouplingGPU(repetitions: 2)
-                        var times: [Double] = []
-                        for _ in 0..<5 { times.append(try solver.measureCouplingGPU(repetitions: 8)) }
+                    }
+                    for solver in solvers { _ = try solver.measureCouplingGPU(repetitions: 2) }
+                    var samples = Array(repeating: [Double](), count: solvers.count)
+                    // Keep the competing layouts live and interleave measurements so order,
+                    // thermal drift and background GPU work do not favor a whole case.
+                    for round in 0..<5 {
+                        for offset in solvers.indices {
+                            let index = (round + offset) % solvers.count
+                            samples[index].append(try solvers[index].measureCouplingGPU(repetitions: 8))
+                        }
+                    }
+                    var reference: [CellState]?
+                    for (index, solver) in solvers.enumerated() {
+                        let layout = layouts[index]
+                        let times = samples[index]
                         let command = solver.encodeBatch(steps: 8, updateVisualization: false)!
                         command.commit()
                         command.waitUntilCompleted()
@@ -113,8 +125,8 @@ enum SceneBench {
                         var pressureError: Float = 0
                         if let reference {
                             for (a, b) in zip(reference, states) {
-                                let p = a.primitive(gamma: configuration.gamma).pressure
-                                let q = b.primitive(gamma: configuration.gamma).pressure
+                                let p = a.primitive(gamma: solver.configuration.gamma).pressure
+                                let q = b.primitive(gamma: solver.configuration.gamma).pressure
                                 pressureError = max(pressureError, abs(p - q) / max(abs(p), 1))
                             }
                         } else {
@@ -124,7 +136,7 @@ enum SceneBench {
                             bodies: count, spacingM: spacing, refinement: refinement,
                             layout: layout.rawValue,
                             coupling: solver.couplingStatistics, solverBytes: solver.memoryFootprint,
-                            couplingGPUMedianS: times.sorted()[2],
+                            couplingGPUMedianS: times.sorted()[2], couplingGPUSamplesS: times,
                             batchGPUS: command.gpuEndTime - command.gpuStartTime,
                             steps: result.steps, refinedPatches: result.refinedTiles,
                             sweptFraction: result.sweptFraction, maxRelativePressureError: pressureError,
@@ -147,6 +159,7 @@ enum SceneBench {
             var device: String
             var system: String
             var cellSizeM: Float = 0.5
+            var timingOrder = "interleaved layouts, rotated each round"
             var timingSamples = 5
             var repetitionsPerTimingSample = 8
             var observations: [Observation]

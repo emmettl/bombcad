@@ -4,6 +4,7 @@ import json
 import math
 from pathlib import Path
 import sys
+import statistics
 
 report = json.loads(Path(sys.argv[1]).read_text())
 assert report["schemaVersion"] == 1
@@ -19,6 +20,9 @@ for r in rows:
     assert r["stable"] and r["steps"] == 8, r
     assert 0 <= r["maxRelativePressureError"] < 1e-5, r
     assert all(math.isfinite(r[key]) and r[key] > 0 for key in ("batchGPUS", "couplingGPUMedianS")), r
+    assert len(r["couplingGPUSamplesS"]) == 5
+    assert all(math.isfinite(v) and v > 0 for v in r["couplingGPUSamplesS"])
+    assert abs(statistics.median(r["couplingGPUSamplesS"]) - r["couplingGPUMedianS"]) < 1e-12
     assert r["solverBytes"] >= r["coupling"]["bytes"] > 0
     if r["coupling"]["layout"] == "tiled":
         assert 0 < r["coupling"]["activeTiles"] <= r["coupling"]["tileCapacity"]

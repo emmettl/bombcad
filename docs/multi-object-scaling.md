@@ -49,7 +49,9 @@ The complete matrix contains 2, 4, 8 and 16 clamped bodies at 12 m and 28 m spac
 coarse air and refinement ratio 2, and all three layouts. Bodies include solid, shell
 and mixed representations and 0.25 m/0.5 m meshes. Each fixture uses the same object
 identities and inputs across layouts. Each case warms up twice, then records the
-median of five GPU measurements, each containing eight boundary updates. An
+median of five GPU measurements, each containing eight boundary updates. Layouts
+remain live together and measurements interleave, rotating their order each round;
+the raw samples are retained. An
 eight-step simulation batch is measured separately. Coarse pressure is compared
 against the first layout (dense by default); the checker requires relative error
 below `1e-5`. Refinement counts and swept fractions are retained.
