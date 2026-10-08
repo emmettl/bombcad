@@ -101,10 +101,10 @@ struct SimulationSettings: Equatable {
 
 /// The part of the layout picked out for editing.
 enum EditSelection: Hashable {
-    case block(Int)
-    case solid(Int)
-    case opening(Int)
-    case support(Int)
+    case block(UUID)
+    case solid(SceneObject.ComponentReference)
+    case opening(SceneObject.ComponentReference)
+    case support(SceneObject.ComponentReference)
     case part(StructureModel.SourcePart)
     case gauge(Int)
     case imported(UUID)
@@ -459,6 +459,7 @@ final class SimulationModel {
             settings.scenario.structure = body
         }
         settings.scenario.importedModels?.removeAll { $0.id == id }
+        settings.scenario.clearSourceOwnership(id: id)
         selection = nil
         settingsChanged()
     }
@@ -558,16 +559,19 @@ final class SimulationModel {
     var highlightedBox: Box? {
         let scenario = settings.scenario
         switch selection {
-        case .block(let index): return scenario.boxes.indices.contains(index) ? scenario.boxes[index] : nil
-        case .solid(let index):
+        case .block(let id): return scenario.object(id: id)?.fixedBox
+        case .solid(let reference):
+            guard let index = scenario.componentIndex(reference) else { return nil }
             guard let solids = scenario.structure?.solids, solids.indices.contains(index) else { return nil }
             return solids[index]
-        case .opening(let index):
+        case .opening(let reference):
+            guard let index = scenario.componentIndex(reference) else { return nil }
             guard let openings = scenario.structure?.openings, openings.indices.contains(index) else {
                 return nil
             }
             return openings[index]
-        case .support(let index):
+        case .support(let reference):
+            guard let index = scenario.componentIndex(reference) else { return nil }
             guard let supports = scenario.structure?.supports, supports.indices.contains(index) else {
                 return nil
             }
@@ -629,15 +633,80 @@ final class SimulationModel {
             return
         }
         let centre = settings.scenario.domainSize / 2
-        settings.scenario.boxes.append(
-            Box(x: (centre.x - 3)...(centre.x + 3), y: (centre.y - 3)...(centre.y + 3), height: 9))
-        selection = .block(settings.scenario.boxes.count - 1)
+        let id = settings.scenario.addFixedObject(
+            Box(x: (centre.x - 3)...(centre.x + 3), y: (centre.y - 3)...(centre.y + 3), height: 9),
+            name: "Block \(settings.scenario.fixedObjects.count + 1)")
+        selection = .block(id)
     }
 
     func removeBlock(at index: Int) {
-        guard settings.scenario.boxes.indices.contains(index) else { return }
-        settings.scenario.boxes.remove(at: index)
-        selection = nil
+        guard settings.scenario.fixedObjects.indices.contains(index) else { return }
+        removeBlock(id: settings.scenario.fixedObjects[index].id)
+    }
+
+    func removeBlock(id: UUID) {
+        do { try settings.scenario.removeObject(id: id) } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        if selection == .block(id) { selection = nil }
+    }
+
+    func updateBlock(id: UUID, box: Box) {
+        guard settings.scenario.object(id: id)?.fixedBox != nil else { return }
+        do { try settings.scenario.updateFixedObject(id: id, box: box) } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func duplicateBlock(id: UUID) {
+        guard settings.scenario.rigidBoxes.count < SceneRenderer.maxBoxes else {
+            errorMessage = "The layout has reached the 2,048 rigid region limit."
+            return
+        }
+        do { selection = .block(try settings.scenario.duplicateFixedObject(id: id)) } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func componentSelection(_ kind: SceneObject.ComponentKind, at index: Int) -> EditSelection? {
+        let references = settings.scenario.componentReferences(kind)
+        guard references.indices.contains(index) else { return nil }
+        switch kind {
+        case .solid: return .solid(references[index])
+        case .opening: return .opening(references[index])
+        case .support: return .support(references[index])
+        }
+    }
+
+    struct ComponentRow: Identifiable {
+        var reference: SceneObject.ComponentReference
+        var index: Int
+        var id: SceneObject.ComponentReference { reference }
+    }
+
+    func componentRows(_ kind: SceneObject.ComponentKind) -> [ComponentRow] {
+        settings.scenario.componentReferences(kind).enumerated().map {
+            ComponentRow(reference: $0.element, index: $0.offset)
+        }
+    }
+
+    /// A stale editor row must never fall through to another component's array index.
+    func editComponent(
+        _ reference: SceneObject.ComponentReference,
+        _ change: (inout StructureModel, Int) -> Void
+    ) {
+        guard let index = settings.scenario.componentIndex(reference) else { return }
+        editStructure(retainingComponents: true) { change(&$0, index) }
+    }
+
+    func removeComponent(_ reference: SceneObject.ComponentReference) {
+        guard let index = settings.scenario.componentIndex(reference) else { return }
+        switch reference.kind {
+        case .solid: removeSolid(at: index)
+        case .opening: removeOpening(at: index)
+        case .support: removeSupport(at: index)
+        }
     }
 
     /// Adds a 250 mm wall, 4 m long and 3 m high, to the deformable structure, creating the
@@ -646,11 +715,13 @@ final class SimulationModel {
         let centre = settings.scenario.domainSize / 2
         let wall = Box(x: centre.x...(centre.x + 0.25), y: (centre.y - 2)...(centre.y + 2), height: 3)
         editStructure { $0.solids.append(wall) }
-        selection = .solid((settings.scenario.structure?.solids.count ?? 1) - 1)
+        selection = componentSelection(.solid, at: (settings.scenario.structure?.solids.count ?? 1) - 1)
     }
 
     func removeSolid(at index: Int) {
-        editStructure { $0.removeSolid(at: index) }
+        let references = settings.scenario.componentReferences(.solid)
+        guard references.indices.contains(index) else { return }
+        editStructure(removing: references[index]) { $0.removeSolid(at: index) }
         selection = nil
     }
 
@@ -705,11 +776,13 @@ final class SimulationModel {
         half[thin] = target.size[thin] / 2 + settings.resolution.cellSize
         let opening = Box(min: centre - half, max: centre + half)
         editStructure { $0.openings.append(opening) }
-        selection = .opening((settings.scenario.structure?.openings.count ?? 1) - 1)
+        selection = componentSelection(.opening, at: (settings.scenario.structure?.openings.count ?? 1) - 1)
     }
 
     func removeOpening(at index: Int) {
-        editStructure { structure in
+        let references = settings.scenario.componentReferences(.opening)
+        guard references.indices.contains(index) else { return }
+        editStructure(removing: references[index]) { structure in
             guard structure.openings.indices.contains(index) else { return }
             structure.openings.remove(at: index)
         }
@@ -718,10 +791,14 @@ final class SimulationModel {
 
     /// Changes the deformable structure and re-derives its reinforcement from the new shapes.
     /// A structure left with no solids is removed.
-    func editStructure(_ change: (inout StructureModel) -> Void) {
+    func editStructure(
+        removing reference: SceneObject.ComponentReference? = nil,
+        retainingComponents: Bool = false, _ change: (inout StructureModel) -> Void
+    ) {
         guard !isPreparingImports else { return }
         do {
-            settings.scenario = try StructureEditing.changing(settings.scenario, change)
+            settings.scenario = try StructureEditing.changing(
+                settings.scenario, removing: reference, retainingComponents: retainingComponents, change)
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -803,11 +880,13 @@ final class SimulationModel {
                 target.max.x + thickness * 0.01, target.max.y + thickness * 0.01,
                 target.min.z + thickness * 0.5))
         editStructure { $0.supports.append(support) }
-        selection = .support((settings.scenario.structure?.supports.count ?? 1) - 1)
+        selection = componentSelection(.support, at: (settings.scenario.structure?.supports.count ?? 1) - 1)
     }
 
     func removeSupport(at index: Int) {
-        editStructure { body in
+        let references = settings.scenario.componentReferences(.support)
+        guard references.indices.contains(index) else { return }
+        editStructure(removing: references[index]) { body in
             body.removeSupport(at: index)
         }
         selection = nil

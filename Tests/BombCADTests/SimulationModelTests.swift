@@ -324,11 +324,11 @@ struct SimulationModelTests {
 
         // A rigid block, then a deformable wall with an opening cut in it.
         model.addBlock()
-        #expect(model.selection == .block(0))
+        #expect(model.selection == .block(model.settings.scenario.fixedObjects[0].id))
         #expect(model.highlightedBox == model.settings.scenario.boxes[0])
         model.addWall()
         model.addOpening()
-        #expect(model.selection == .opening(0))
+        #expect(model.selection == model.componentSelection(.opening, at: 0))
         let structure = try #require(model.settings.scenario.structure)
         #expect(structure.solids.count == 1 && structure.openings.count == 1)
         #expect(structure.reinforcement.count == 2, "a wall gets a mat in each face")

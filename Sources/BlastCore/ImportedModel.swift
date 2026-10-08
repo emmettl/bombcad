@@ -200,6 +200,7 @@ extension Scenario {
             structure = body
         }
         importedModels = models
+        if imported.behavior == .deformable { bindStructuralSource(imported.id) }
     }
     /// Keep derived volumes and material edits, but stop automatic source regeneration.
     public mutating func detachImport(id: UUID) {

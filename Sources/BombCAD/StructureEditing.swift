@@ -71,7 +71,8 @@ enum StructureEditing {
 
     /// A local edit and any necessary detachment are one transaction and one undo step.
     static func changing(
-        _ scenario: Scenario, _ change: (inout StructureModel) -> Void
+        _ scenario: Scenario, removing reference: SceneObject.ComponentReference? = nil,
+        retainingComponents: Bool = false, _ change: (inout StructureModel) -> Void
     ) throws -> Scenario {
         var candidate = scenario
         var body = scenario.structure ?? StructureModel(solids: [], elementSize: 0.0625)
@@ -118,7 +119,12 @@ enum StructureEditing {
         where imported.behavior == .deformable && imported.isAttached && !imported.canRegenerate(body) {
             candidate.detachImport(id: imported.id)
         }
-        candidate.structure = body.solids.isEmpty ? nil : body
+        if retainingComponents || reference != nil, let old = scenario.structuralObject {
+            try candidate.replaceStructure(
+                body.solids.isEmpty ? nil : body, retainingComponentsFrom: old, removing: reference)
+        } else {
+            candidate.structure = body.solids.isEmpty ? nil : body
+        }
         return candidate
     }
 

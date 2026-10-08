@@ -53,6 +53,17 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     static let barDepth: Float = 0.04
 
     public var scenario: Scenario {
+        var result = authoredScenario
+        // Presets are reproducible inputs, including those assembled by editing other presets.
+        let body = result.structure
+        result.objects = result.boxes.enumerated().map {
+            SceneObject.legacyBlock($0.element, index: $0.offset)
+        }
+        if let body { result.objects.append(.legacyStructure(body)) }
+        return result
+    }
+
+    private var authoredScenario: Scenario {
         let domain = SIMD3<Float>(64, 64, 32)
         switch self {
         case .openGround:

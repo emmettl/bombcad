@@ -39,10 +39,25 @@ on load, so reading them never requires the original external path. Imported mes
 as versioned JSON assets at `assets/<id>.mesh.json`. Identical sources share one asset;
 content-derived IDs stay stable across repeated saves, and existing asset IDs are retained.
 
-`scene.json` has format `dev.bombcad.scene`. Encoding version 1 remains readable and is written for scenes without finite support-region laws; scenes with those laws use version 2 so older readers reject them rather than substitute ideal clamps. Its `scenario` contains
+`scene.json` has format `dev.bombcad.scene`. New saves use encoding version 3, which requires
+durable object/component ownership. Versions 1 and 2 remain readable; version 2 originally
+introduced finite support-region laws. Older readers reject version 3 rather than discard
+ownership. Its `scenario` contains
 structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`
 contains instance IDs, source asset references, names, transforms, behavior, attachment status,
 part material assignments and retained previews. Source triangles are not duplicated per instance.
+
+The versioned `scenario.objectOwnership` record stores fixed-block and structural-object IDs
+and names, structural component IDs, an optional retained source reference and object order.
+It accompanies the existing geometry without duplicating numerical inputs. Legacy inputs
+acquire deterministic scene-scoped identities; subsequent additions and duplicates use
+fresh UUIDs. IDs persist on save/reopen and undo. Invalid counts, duplicate IDs, stale source
+references and unsupported ownership versions are rejected. This is the
+[multiple-object ownership foundation](multiple-object-scene.md#implemented-ownership-foundation);
+the solver still supports one deformable object.
+
+Saved-run numerical fingerprints omit this ownership record, preserving compatibility with
+historical inputs and solver provenance.
 
 Mesh assets have format `dev.simulationkit.source-mesh`, `encodingVersion: 1` and
 `coordinateSpace: source`. They retain original coordinates and face labels, plus a part identity
@@ -87,7 +102,7 @@ fresh run and clears undo across documents.
 
 - New/Open use the native document workflow. Each project has its own window and simulation.
   Open Project accepts `.bombcad`; Import Layout JSON in the More menu opens a separate new,
-  untitled project. JSON support is a direct reader, without a historical migration framework.
+  untitled project. Legacy JSON geometry gains object ownership when decoded.
   JSON originals are never the target of autosave.
 - Save Project and Command-S save to the document's current location, asking for a name and
   location on the first save. Save As is in the More menu. Native File-menu commands provide

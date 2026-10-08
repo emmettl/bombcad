@@ -81,11 +81,17 @@ struct EditorView: View {
             }
 
             Section {
-                ForEach(model.settings.scenario.boxes.indices, id: \.self) { index in
+                ForEach(model.settings.scenario.fixedObjects) { object in
                     BoxRow(
-                        title: "Block \(index + 1)", box: blockBinding(index), step: 0.25,
-                        isSelected: model.selection == .block(index),
-                        select: { toggle(.block(index)) }, remove: { model.removeBlock(at: index) })
+                        title: object.name, box: blockBinding(object.id), step: 0.25,
+                        isSelected: model.selection == .block(object.id),
+                        select: { toggle(.block(object.id)) }, remove: { model.removeBlock(id: object.id) }
+                    )
+                    .contextMenu {
+                        Button("Duplicate Block", systemImage: "plus.square.on.square") {
+                            model.duplicateBlock(id: object.id)
+                        }
+                    }
                 }
                 Button("Add Block", systemImage: "plus") { model.addBlock() }
             } header: {
@@ -103,12 +109,15 @@ struct EditorView: View {
                     )
                     .font(.caption).foregroundStyle(.secondary)
                 }
-                ForEach(visibleSolidIndices, id: \.self) { index in
+                ForEach(model.componentRows(.solid).filter { visibleSolidIndices.contains($0.index) }) {
+                    row in
+                    let index = row.index
                     BoxRow(
                         title: name(of: solids[index], index: index), box: solidBinding(index), step: 0.125,
-                        isSelected: model.selection == .solid(index),
-                        select: { toggle(.solid(index)) }, remove: { model.removeSolid(at: index) })
-                    if model.selection == .solid(index) {
+                        isSelected: model.selection == .solid(row.reference),
+                        select: { toggle(.solid(row.reference)) },
+                        remove: { model.removeComponent(row.reference) })
+                    if model.selection == .solid(row.reference) {
                         Picker("Material", selection: materialBinding(index)) {
                             ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                             if !StructureMaterial.presets.contains(materialBinding(index).wrappedValue) {
@@ -135,11 +144,13 @@ struct EditorView: View {
                 }
                 Button("Add Wall", systemImage: "plus") { model.addWall() }
                 if !solids.isEmpty {
-                    ForEach(openings.indices, id: \.self) { index in
+                    ForEach(model.componentRows(.opening)) { row in
+                        let index = row.index
                         BoxRow(
                             title: "Opening \(index + 1)", box: openingBinding(index), step: 0.125,
-                            isSelected: model.selection == .opening(index),
-                            select: { toggle(.opening(index)) }, remove: { model.removeOpening(at: index) })
+                            isSelected: model.selection == .opening(row.reference),
+                            select: { toggle(.opening(row.reference)) },
+                            remove: { model.removeComponent(row.reference) })
                     }
                     Button("Add Opening", systemImage: "plus") { model.addOpening() }
                     Picker("Main material", selection: mainMaterialBinding) {
@@ -193,17 +204,17 @@ struct EditorView: View {
                                 get: { model.settings.scenario.structure?.baseAnchorage },
                                 set: { model.setBaseAnchorage($0) }))
                     }
-                    ForEach(supports.indices, id: \.self) { index in
+                    ForEach(model.componentRows(.support)) { row in
+                        let index = row.index
                         BoxRow(
                             title: "Support \(index + 1)", box: supportBinding(index), step: 0.125,
-                            isSelected: model.selection == .support(index),
-                            select: { toggle(.support(index)) }, remove: { model.removeSupport(at: index) })
-                        if model.selection == .support(index) {
+                            isSelected: model.selection == .support(row.reference),
+                            select: { toggle(.support(row.reference)) },
+                            remove: { model.removeComponent(row.reference) })
+                        if model.selection == .support(row.reference) {
                             AnchorageEditor(
                                 title: "Support connection",
-                                law: Binding(
-                                    get: { model.settings.scenario.structure?.anchorage(ofSupport: index) },
-                                    set: { model.setSupportAnchorage($0, at: index) }))
+                                law: supportLawBinding(row.reference))
                             if model.settings.scenario.structure?.anchorage(ofSupport: index) != nil,
                                 let area = model.supportBearingArea(at: index)
                             {
@@ -287,7 +298,9 @@ struct EditorView: View {
             return model.structuralParts.first(where: { $0.id == id })?.regions ?? []
         }
         let owned = Set(model.structuralParts.flatMap(\.regions))
-        return solids.indices.filter { !owned.contains($0) || model.selection == .solid($0) }
+        return solids.indices.filter {
+            !owned.contains($0) || model.selection == model.componentSelection(.solid, at: $0)
+        }
     }
 
     private var mainMaterialBinding: Binding<StructureMaterial> {
@@ -310,6 +323,18 @@ struct EditorView: View {
             })
     }
 
+    private func supportLawBinding(_ reference: SceneObject.ComponentReference) -> Binding<Anchorage?> {
+        Binding(
+            get: {
+                guard let current = model.settings.scenario.componentIndex(reference) else { return nil }
+                return model.settings.scenario.structure?.anchorage(ofSupport: current)
+            },
+            set: { law in
+                guard let current = model.settings.scenario.componentIndex(reference) else { return }
+                model.setSupportAnchorage(law, at: current)
+            })
+    }
+
     private func supportBinding(_ index: Int) -> Binding<Box> {
         regionBinding(index, keyPath: \.supports)
     }
@@ -317,23 +342,33 @@ struct EditorView: View {
     /// SwiftUI can read an old row's binding while undo/deletion removes it from the form.
     private func regionBinding(_ index: Int, keyPath: WritableKeyPath<StructureModel, [Box]>) -> Binding<Box>
     {
+        let kind: SceneObject.ComponentKind =
+            keyPath == \StructureModel.solids
+            ? .solid
+            : (keyPath == \StructureModel.openings ? .opening : .support)
+        let references = model.settings.scenario.componentReferences(kind)
+        let reference = references.safeElement(at: index)
         let original =
             (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: index)
             ?? Box(min: .zero, max: SIMD3(repeating: 1))
         return Binding(
             get: {
-                (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: index)
+                guard let reference, let current = model.settings.scenario.componentIndex(reference) else {
+                    return original
+                }
+                return (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: current)
                     ?? original
             },
             set: { box in
-                model.editStructure { body in
-                    guard body[keyPath: keyPath].indices.contains(index) else { return }
-                    body[keyPath: keyPath][index] = box
+                guard let reference else { return }
+                model.editComponent(reference) { body, current in
+                    body[keyPath: keyPath][current] = box
                 }
             })
     }
 
-    private func toggle(_ selection: EditSelection) {
+    private func toggle(_ selection: EditSelection?) {
+        guard let selection else { return }
         model.selection = model.selection == selection ? nil : selection
     }
 
@@ -347,15 +382,15 @@ struct EditorView: View {
         return "\(kind) \(index + 1)"
     }
 
-    private func blockBinding(_ index: Int) -> Binding<Box> {
+    private func blockBinding(_ id: UUID) -> Binding<Box> {
         let original =
-            model.settings.scenario.boxes.safeElement(at: index)
+            model.settings.scenario.object(id: id)?.fixedBox
             ?? Box(min: .zero, max: SIMD3(repeating: 1))
         return Binding(
-            get: { model.settings.scenario.boxes.safeElement(at: index) ?? original },
-            set: {
-                guard model.settings.scenario.boxes.indices.contains(index) else { return }
-                model.settings.scenario.boxes[index] = $0
+            get: { model.settings.scenario.object(id: id)?.fixedBox ?? original },
+            set: { box in
+                guard model.settings.scenario.object(id: id)?.fixedBox != nil else { return }
+                model.updateBlock(id: id, box: box)
             })
     }
 
@@ -379,22 +414,45 @@ struct EditorView: View {
             set: { on in model.editStructure { $0.unitJoints = on } })
     }
 
+    /// Resolve ownership on every binding access, including an old row during undo/deletion.
+    private func solidPropertyBinding<Value>(
+        _ index: Int, fallback: Value,
+        get: @escaping (StructureModel, Int) -> Value,
+        set: @escaping (Value, Int) -> Void
+    ) -> Binding<Value> {
+        let reference = model.settings.scenario.componentReferences(.solid).safeElement(at: index)
+        let original = model.settings.scenario.structure.map { get($0, index) } ?? fallback
+        return Binding(
+            get: {
+                guard let reference, let current = model.settings.scenario.componentIndex(reference),
+                    let body = model.settings.scenario.structure
+                else { return original }
+                return get(body, current)
+            },
+            set: { value in
+                guard let reference, let current = model.settings.scenario.componentIndex(reference) else {
+                    return
+                }
+                set(value, current)
+            })
+    }
+
     private func elementKindBinding(_ index: Int) -> Binding<ElementKind> {
-        Binding(
-            get: { model.settings.scenario.structure?.elementKind(of: index) ?? .solid },
-            set: { model.setElementKind($0, ofSolid: index) })
+        solidPropertyBinding(
+            index, fallback: .solid,
+            get: { $0.elementKind(of: $1) }, set: { model.setElementKind($0, ofSolid: $1) })
     }
 
     private func materialBinding(_ index: Int) -> Binding<StructureMaterial> {
-        Binding(
-            get: { model.settings.scenario.structure?.material(of: index) ?? .reinforcedConcrete },
-            set: { model.setMaterial($0, ofSolid: index) })
+        solidPropertyBinding(
+            index, fallback: .reinforcedConcrete,
+            get: { $0.material(of: $1) }, set: { model.setMaterial($0, ofSolid: $1) })
     }
 
     private func reinforcementBinding(_ index: Int) -> Binding<Reinforcement> {
-        Binding(
-            get: { model.settings.scenario.structure?.reinforcement(of: index) ?? .automatic },
-            set: { model.setReinforcement($0, ofSolid: index) })
+        solidPropertyBinding(
+            index, fallback: .automatic,
+            get: { $0.reinforcement(of: $1) }, set: { model.setReinforcement($0, ofSolid: $1) })
     }
 
     private func gaugeBinding(_ index: Int) -> Binding<BlastCore.Gauge> {

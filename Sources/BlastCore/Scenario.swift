@@ -1,3 +1,4 @@
+import Foundation
 import Metal
 import simd
 
@@ -44,7 +45,22 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var name: String
     /// Extent of the simulated volume in metres; its origin is at a ground-level corner.
     public var domainSize: SIMD3<Float>
-    public var boxes: [Box]
+    public internal(set) var objects: [SceneObject]
+    /// Compatibility adapter for the existing air solver and legacy callers.
+    public var boxes: [Box] {
+        get { fixedObjects.compactMap(\.fixedBox) }
+        set {
+            let old = fixedObjects
+            let ids = SceneObject.reconcile(old.compactMap(\.fixedBox), ids: old.map(\.id), new: newValue)
+            let byID = Dictionary(uniqueKeysWithValues: old.map { ($0.id, $0) })
+            let replacements = zip(newValue, ids).map { box, id in
+                var object = byID[id] ?? SceneObject(id: id, name: "Block", representation: .fixed(box))
+                object.setBox(box)
+                return object
+            }
+            objects = replacements + objects.filter { $0.fixedBox == nil }
+        }
+    }
     /// Experimental independent rigid objects. Ordinary scene loading does not render or simulate
     /// them; the explicit standalone rigid-box driver can consume one definition.
     /// Optional so layouts predating rigid-object definitions continue to decode unchanged.
@@ -58,7 +74,16 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var additionalCharges: [Charge]?
     public var gauges: [Gauge]
     /// An optional deformable body. The air treats it as rigid; it responds to the air's pressure.
-    public var structure: StructureModel?
+    public var structure: StructureModel? {
+        get { structuralObject?.structure }
+        set {
+            if let index = objects.firstIndex(where: { $0.structure != nil }) {
+                if let newValue { objects[index].setStructure(newValue) } else { objects.remove(at: index) }
+            } else if let newValue {
+                objects.append(SceneObject(name: "Structure", representation: .deformable(newValue)))
+            }
+        }
+    }
     public var atmosphere = Atmosphere()
     public var reflectiveFaces: BoundaryFaces = .ground
 
@@ -68,10 +93,10 @@ public struct Scenario: Sendable, Hashable, Codable {
     ) {
         self.name = name
         self.domainSize = domainSize
-        self.boxes = boxes
+        objects = boxes.enumerated().map { SceneObject.legacyBlock($0.element, index: $0.offset) }
         self.charge = charge
         self.gauges = gauges
-        self.structure = structure
+        if let structure { objects.append(.legacyStructure(structure)) }
         self.rigidObjects = rigidObjects
     }
 
@@ -96,6 +121,79 @@ public struct Scenario: Sendable, Hashable, Codable {
     }
 }
 
+extension Scenario {
+    /// Saved-run fingerprints retain the pre-ownership numerical input encoding.
+    public static let physicsInputEncoding = CodingUserInfoKey(rawValue: "dev.bombcad.physics-input")!
+
+    private enum CodingKeys: String, CodingKey {
+        case name, domainSize, boxes, rigidObjects, importNotes, importedModels, charge,
+            additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership
+    }
+
+    private struct Ownership: Codable {
+        var version = 1
+        var blocks: [SceneObject.Ownership]
+        var structure: SceneObject.Ownership?
+        var order: [UUID]
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            name: try c.decode(String.self, forKey: .name),
+            domainSize: try c.decode(SIMD3<Float>.self, forKey: .domainSize),
+            boxes: try c.decode([Box].self, forKey: .boxes),
+            charge: try c.decode(Charge.self, forKey: .charge),
+            gauges: try c.decode([Gauge].self, forKey: .gauges),
+            structure: try c.decodeIfPresent(StructureModel.self, forKey: .structure),
+            rigidObjects: try c.decodeIfPresent([RigidObjectDefinition].self, forKey: .rigidObjects))
+        importNotes = try c.decodeIfPresent([String].self, forKey: .importNotes)
+        importedModels = try c.decodeIfPresent([ImportedModel].self, forKey: .importedModels)
+        additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
+        atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
+        reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
+        if let ownership = try c.decodeIfPresent(Ownership.self, forKey: .objectOwnership) {
+            guard ownership.version == 1, ownership.blocks.count == fixedObjects.count,
+                (ownership.structure == nil) == (structuralObject == nil)
+            else { throw SceneObjectError.invalidOwnership }
+            var restored = try zip(fixedObjects, ownership.blocks).map { try $1.applying(to: $0) }
+            if let body = structuralObject, let owner = ownership.structure {
+                restored.append(try owner.applying(to: body))
+            }
+            objects = restored
+            try validateObjectOwnership()
+            try reorderObjects(ownership.order)
+        } else {
+            resolveLegacyStructuralSource()
+        }
+        try validateObjectOwnership()
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        try validateObjectOwnership()
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(name, forKey: .name)
+        try c.encode(domainSize, forKey: .domainSize)
+        try c.encode(boxes, forKey: .boxes)
+        try c.encodeIfPresent(rigidObjects, forKey: .rigidObjects)
+        try c.encodeIfPresent(importNotes, forKey: .importNotes)
+        try c.encodeIfPresent(importedModels, forKey: .importedModels)
+        try c.encode(charge, forKey: .charge)
+        try c.encodeIfPresent(additionalCharges, forKey: .additionalCharges)
+        try c.encode(gauges, forKey: .gauges)
+        try c.encodeIfPresent(structure, forKey: .structure)
+        try c.encode(atmosphere, forKey: .atmosphere)
+        try c.encode(reflectiveFaces, forKey: .reflectiveFaces)
+        if encoder.userInfo[Self.physicsInputEncoding] as? Bool != true {
+            try c.encode(
+                Ownership(
+                    blocks: fixedObjects.map(SceneObject.Ownership.init),
+                    structure: structuralObject.map(SceneObject.Ownership.init), order: objects.map(\.id)),
+                forKey: .objectOwnership)
+        }
+    }
+}
+
 extension BlastSolver {
     /// Creates a solver sized for `scenario` and loads it, with `configuration` but the
     /// scenario's atmosphere and reflecting faces.
@@ -117,6 +215,7 @@ extension BlastSolver {
     ///
     /// The scenario's domain must match the solver's grid.
     public func load(_ scenario: Scenario) throws {
+        try scenario.validateObjectOwnership()
         configuration.ambientPressure = scenario.atmosphere.pressure
         configuration.reflectiveFaces = scenario.reflectiveFaces
         ambientSoundSpeed = scenario.atmosphere.soundSpeed(gamma: configuration.gamma)

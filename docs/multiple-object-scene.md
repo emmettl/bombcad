@@ -11,7 +11,35 @@ editing behaviour. New inter-object contact, moving-component connections, therm
 and large-area response approximations are separate capabilities. This proposal defines
 requirements and ownership; the conceptual names below are not committed public APIs.
 
-## Current constraints
+## Implemented ownership foundation
+
+The first stage is implemented in BombCAD. `Scenario.objects` owns local fixed blocks and
+the existing deformable body as `SceneObject` values. Objects have stable IDs and names;
+structural solids, openings and supports have references containing their owning object ID,
+component ID and kind. Editor rows, geometry/property bindings and component removal resolve
+these references rather than retaining array positions. Fixed blocks can be duplicated from
+their context menu, with a fresh ID. Undo restores the original identities.
+
+`Scenario.boxes` and `Scenario.structure` remain compatibility adapters to the existing
+solver. The first stage still permits only one deformable object. Attached rigid imports
+retain their existing instance identities and preview path; they are not duplicated into
+local fixed objects. The deformable object's source reference survives regeneration and
+detachment. A resampled generated region can acquire a new component ID when its geometry
+changes topology; source-part identity remains the stable reference across sampling grids.
+
+The persisted geometry keeps its existing shape, with a versioned `objectOwnership` record
+carrying names, IDs, source ownership and object order. Project scene encoding advances to
+version 3; versions 1 and 2 and flat legacy layouts remain readable. Presets and legacy
+inputs receive deterministic IDs scoped to the scene, while authored additions and copies
+receive fresh UUIDs. No ContinuumKit extraction or release is needed for this stage.
+
+Saved-run fingerprints exclude ownership metadata and retain the original numerical input
+encoding. Historical solver provenance is preserved. Verification covers legacy presets,
+project and historical-run migration, malformed ownership, duplicate geometry, stale
+references, undo/redo, independent import preservation and exact GPU air-field parity.
+The native editor has also been checked for block duplication, deletion, undo and saving.
+
+## Constraints at the planning baseline
 
 - `Scenario` stores static `boxes`, optional imported models, experimental `rigidObjects`
   and one optional `structure`. These collections do not form a common object model.

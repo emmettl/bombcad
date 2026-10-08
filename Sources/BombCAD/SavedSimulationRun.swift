@@ -63,10 +63,11 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             var scenario: Scenario
             var settings: ProjectRunSettings
         }
-        return SHA256.hash(
-            data: try ProjectArchive.encodeJSON(Inputs(scenario: scenario, settings: settings))
-        )
-        .map { String(format: "%02x", $0) }.joined()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        encoder.userInfo[Scenario.physicsInputEncoding] = true
+        return SHA256.hash(data: try encoder.encode(Inputs(scenario: scenario, settings: settings)))
+            .map { String(format: "%02x", $0) }.joined()
     }
 
     func validate() throws {

@@ -200,11 +200,11 @@ struct StructuralEditorWorkflowTests {
         let archive = try ProjectDocument(model: model).makeArchive()
         let payload = try JSONDecoder().decode(
             ImportedSceneCodec.ScenePayload.self, from: #require(archive.files["scene.json"]))
-        #expect(payload.encodingVersion == 2)
+        #expect(payload.encodingVersion == 3)
         let oldArchive = try ProjectDocument(scenario: clamped).makeArchive()
         let oldPayload = try JSONDecoder().decode(
             ImportedSceneCodec.ScenePayload.self, from: #require(oldArchive.files["scene.json"]))
-        #expect(oldPayload.encodingVersion == 1)
+        #expect(oldPayload.encodingVersion == 3)
         let restored = try ProjectDocument(archive: archive)
         #expect(restored.scenario == detached)
         model.removeSupport(at: 0)
@@ -227,7 +227,9 @@ struct StructuralEditorWorkflowTests {
         model.addSupport()
         #expect(model.settings.scenario.importedModels?.first?.isAttached == false)
         #expect(model.settings.scenario.structure?.supports.count == 2)
-        if case .support(let index) = model.selection {
+        if case .support(let reference) = model.selection,
+            let index = model.settings.scenario.componentIndex(reference)
+        {
             #expect(model.highlightedBox == model.settings.scenario.structure?.supports[index])
             model.removeSupport(at: index)
         } else {

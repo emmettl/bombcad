@@ -1,5 +1,13 @@
 # Editing imported structures
 
+Local fixed blocks and the deformable object have persistent scene identities. Structural
+solids, openings and supports have component IDs scoped to their owning object. Selection
+and editor bindings resolve those identities on each access, so a deleted row cannot edit
+the next region that moves into its old array position. Fixed-block context menus offer
+**Duplicate Block**; the copy gets a new identity, and undo restores the exact prior objects.
+Names stay with blocks after deletion or reorder rather than being renumbered by position.
+See the [ownership foundation](multiple-object-scene.md#implemented-ownership-foundation).
+
 Deformable imports can be edited by their named source parts in **Edit layout → Deformable
 structure**. Selecting a part highlights the bounds of its surviving sampled regions.
 **Frame selected part** brings it into view. The selected part's regions appear below its

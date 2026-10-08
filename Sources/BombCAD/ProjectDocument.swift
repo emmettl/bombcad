@@ -233,6 +233,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     }
 
     static func validate(_ scenario: Scenario) throws {
+        try scenario.validateObjectOwnership()
+        let sourceIDs = Set((scenario.importedModels ?? []).filter { $0.behavior == .deformable }.map(\.id))
+        guard scenario.objects.compactMap(\.sourceModelID).allSatisfy({ sourceIDs.contains($0) }) else {
+            throw ProjectFileError.invalid("A scene object references a missing imported source.")
+        }
         guard
             [scenario.domainSize.x, scenario.domainSize.y, scenario.domainSize.z].allSatisfy({
                 $0.isFinite && $0 > 0
