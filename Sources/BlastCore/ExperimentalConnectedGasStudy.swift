@@ -69,6 +69,7 @@ public enum ExperimentalConnectedGasStudy {
         return results
     }
     struct Domain {
+        let geometry: FractionalBoxGeometry
         let cells: [FractionalGasTransport.Cell]
         let centres: [SIMD3<Double>]
         let faces: [ConnectedGasGroups.Face]
@@ -157,7 +158,7 @@ public enum ExperimentalConnectedGasStudy {
             }
         }
         return Domain(
-            cells: cells, centres: centres, faces: faces, boundaries: boundaries,
+            geometry: geometry, cells: cells, centres: centres, faces: faces, boundaries: boundaries,
             bodyCentre: body.position)
     }
 }

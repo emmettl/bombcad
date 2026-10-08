@@ -115,30 +115,8 @@ struct FractionalBoxGeometry {
         ]
         .map { face in face.map { vertices[$0] } }
         for plane in planes {
-            var cut: [SIMD3<Double>] = []
-            faces = faces.compactMap { face in
-                let polygon = clip(face, against: plane, epsilon: epsilon, intersections: &cut)
-                return polygon.count >= 3 ? polygon : nil
-            }
-            guard !faces.isEmpty else { return 0 }
-            var unique: [SIMD3<Double>] = []
-            for point in cut
-            where !unique.contains(where: { simd_distance_squared($0, point) < epsilon * epsilon }) {
-                unique.append(point)
-            }
-            if unique.count >= 3 {
-                let midpoint = unique.reduce(.zero, +) / Double(unique.count)
-                let seed = abs(plane.normal.x) < 0.8 ? SIMD3<Double>(1, 0, 0) : SIMD3<Double>(0, 1, 0)
-                let tangent = simd_normalize(simd_cross(plane.normal, seed))
-                let other = simd_cross(plane.normal, tangent)
-                unique.sort {
-                    let a = $0 - midpoint
-                    let b = $1 - midpoint
-                    return atan2(simd_dot(a, other), simd_dot(a, tangent))
-                        < atan2(simd_dot(b, other), simd_dot(b, tangent))
-                }
-                faces.append(unique)
-            }
+            faces = clipped(faces, against: plane, epsilon: epsilon)
+            if faces.isEmpty { return 0 }
         }
         let origin = low + SIMD3<Double>(repeating: h / 2)
         var volume = 0.0
@@ -148,6 +126,96 @@ struct FractionalBoxGeometry {
             }
         }
         return min(1, max(0, volume / (h * h * h)))
+    }
+
+    private func clipped(_ input: [[SIMD3<Double>]], against plane: Plane, epsilon: Double) -> [[SIMD3<
+        Double
+    >]] {
+        var faces = input
+        var cut: [SIMD3<Double>] = []
+        faces = faces.compactMap { face in
+            let polygon = clip(face, against: plane, epsilon: epsilon, intersections: &cut)
+            return polygon.count >= 3 ? polygon : nil
+        }
+        guard !faces.isEmpty else { return [] }
+        var unique: [SIMD3<Double>] = []
+        for point in cut
+        where !unique.contains(where: { simd_distance_squared($0, point) < epsilon * epsilon }) {
+            unique.append(point)
+        }
+        if unique.count >= 3 {
+            let midpoint = unique.reduce(.zero, +) / Double(unique.count)
+            let seed = abs(plane.normal.x) < 0.8 ? SIMD3<Double>(1, 0, 0) : SIMD3<Double>(0, 1, 0)
+            let tangent = simd_normalize(simd_cross(plane.normal, seed))
+            let other = simd_cross(plane.normal, tangent)
+            unique.sort {
+                let a = $0 - midpoint
+                let b = $1 - midpoint
+                return atan2(simd_dot(a, other), simd_dot(a, tangent))
+                    < atan2(simd_dot(b, other), simd_dot(b, tangent))
+            }
+            faces.append(unique)
+        }
+        return faces
+    }
+
+    struct VolumeNode {
+        let point: SIMD3<Double>
+        let weight: Double
+    }
+
+    /// Positive degree-two quadrature on disjoint convex gas pieces. This avoids subtracting
+    /// nearly equal full/solid integrals in a thin gas sliver. Full cells use tensor Gauss nodes.
+    func gasQuadrature(lower: SIMD3<Double>, cellSize h: Double) -> [VolumeNode] {
+        precondition(h.isFinite && h > 0)
+        let low = lower - centre
+        let vertices = (0..<8).map { n in
+            low + h * SIMD3<Double>(n & 1 == 0 ? 0 : 1, n & 2 == 0 ? 0 : 1, n & 4 == 0 ? 0 : 1)
+        }
+        let epsilon = h * 1e-12
+        if vertices.allSatisfy({ point in planes.allSatisfy { $0.distance(point) <= 0 } }) { return [] }
+        if planes.contains(where: { plane in vertices.allSatisfy { plane.distance($0) > epsilon } }) {
+            let offset = h / (2 * sqrt(3.0))
+            return (0..<8).map { n in
+                VolumeNode(
+                    point: lower + SIMD3(repeating: h / 2)
+                        + SIMD3(
+                            n & 1 == 0 ? -offset : offset, n & 2 == 0 ? -offset : offset,
+                            n & 4 == 0 ? -offset : offset), weight: h * h * h / 8)
+            }
+        }
+        var remaining = [
+            [0, 4, 6, 2], [1, 3, 7, 5], [0, 1, 5, 4], [2, 6, 7, 3], [0, 2, 3, 1], [4, 5, 7, 6],
+        ]
+        .map { $0.map { vertices[$0] } }
+        var nodes: [VolumeNode] = []
+        let small = (5 - sqrt(5.0)) / 20
+        let large = (5 + 3 * sqrt(5.0)) / 20
+        for plane in planes {
+            let outside = clipped(
+                remaining, against: Plane(normal: -plane.normal, offset: -plane.offset), epsilon: epsilon)
+            let points = outside.flatMap { $0 }
+            if !points.isEmpty {
+                let origin = points.reduce(.zero, +) / Double(points.count)
+                for face in outside where face.count >= 3 {
+                    for n in 1..<(face.count - 1) {
+                        let tetra = [origin, face[0], face[n], face[n + 1]]
+                        let volume =
+                            simd_dot(face[0] - origin, simd_cross(face[n] - origin, face[n + 1] - origin)) / 6
+                        if volume > 0 {
+                            let sum = tetra.reduce(SIMD3<Double>.zero, +)
+                            for corner in tetra {
+                                let point = centre + small * sum + (large - small) * corner
+                                if !contains(point) { nodes.append(.init(point: point, weight: volume / 4)) }
+                            }
+                        }
+                    }
+                }
+            }
+            remaining = clipped(remaining, against: plane, epsilon: epsilon)
+            if remaining.isEmpty { break }
+        }
+        return nodes
     }
 
     /// Open fractions ordered x−, x+, y−, y+, z−, z+. Adjacent cells share the same face measure.

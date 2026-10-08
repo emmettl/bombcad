@@ -19,6 +19,10 @@ def main():
         raise ValueError("Expected a complete twelve-case load comparison")
     if any(r["duration"] != 0.0005 or abs(r["pulseEnergy"] / 6400 - 1) > 1e-10 for r in rows):
         raise ValueError("Cases must use matched time and 6400 J pulse energy")
+    initializations = {r.get("initialization", "cellCentre") for r in rows}
+    if len(initializations) != 1:
+        raise ValueError("Cases must use the same initialization method")
+    print(f"Initialization: {next(iter(initializations))}")
     print("CFL 0.1 loads; grid changes compare with the preceding coarser grid")
     print("rotation   dx    Ix(N s)  grid Ix%  angular vector%  CFL Ix%  amplitude(Pa)")
     for angle in [0, 0.23]:

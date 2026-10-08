@@ -11,6 +11,8 @@ public enum ExperimentalConnectedLoadStudy {
         public let pulseAmplitude: Double
         public let pulseEnergy: Double
         public let requestedPulseEnergy: Double?
+        public let initialization: String
+        public let maximumQuadratureVolumeResidual: Double
         public let steps: Int
         public let groups: Int
         public let initialMass: Double
@@ -29,7 +31,7 @@ public enum ExperimentalConnectedLoadStudy {
     public static func run(
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         duration: Double = 0.0005, pulseAmplitude: Double = 40000,
-        cfls: [Double] = [0.2], targetPulseEnergy: Double? = nil,
+        cfls: [Double] = [0.2], targetPulseEnergy: Double? = nil, volumeAverage: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite && duration > 0, pulseAmplitude.isFinite && pulseAmplitude >= 0,
@@ -42,9 +44,23 @@ public enum ExperimentalConnectedLoadStudy {
         for h in cellSizes {
             for angle in rotations {
                 let domain = try ExperimentalConnectedGasStudy.domain(cellSize: h, rotation: angle)
-                let weights = domain.centres.map { point in
+                func pulse(_ point: SIMD3<Double>) -> Double {
                     let offset = (point - SIMD3(0.45, 1.18, 1.10)) / SIMD3(0.14, 0.18, 0.18)
                     return exp(-0.5 * simd_length_squared(offset))
+                }
+                var quadratureResidual = 0.0
+                let weights = try domain.cells.indices.map { n -> Double in
+                    guard volumeAverage else { return pulse(domain.centres[n]) }
+                    guard domain.cells[n].volume > 0 else { return 0 }
+                    let nodes = domain.geometry.gasQuadrature(
+                        lower: domain.centres[n] - SIMD3(repeating: h / 2), cellSize: h)
+                    let volume = nodes.reduce(0) { $0 + $1.weight }
+                    let residual = abs(volume - domain.cells[n].volume) / (h * h * h)
+                    guard volume.isFinite && volume > 0 && residual < 1e-8 else {
+                        throw Failure.invalidConfiguration
+                    }
+                    quadratureResidual = max(quadratureResidual, residual)
+                    return nodes.reduce(0) { $0 + $1.weight * pulse($1.point) } / volume
                 }
                 var coefficient = 0.0
                 var correction = 0.0
@@ -110,7 +126,9 @@ public enum ExperimentalConnectedLoadStudy {
                     let result = Result(
                         cellSize: h, rotation: angle, duration: duration, cfl: cfl,
                         pulseAmplitude: amplitude, pulseEnergy: amplitude * coefficient,
-                        requestedPulseEnergy: targetPulseEnergy, steps: steps,
+                        requestedPulseEnergy: targetPulseEnergy,
+                        initialization: volumeAverage ? "gasAverage" : "cellCentre",
+                        maximumQuadratureVolumeResidual: quadratureResidual, steps: steps,
                         groups: cells.count, initialMass: before[0], initialEnergy: before[4],
                         relativeMassChange: after[0] / before[0] - 1,
                         relativeEnergyChange: after[4] / before[4] - 1,

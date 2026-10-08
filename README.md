@@ -419,6 +419,13 @@ each pulse to 6400 J of excess energy. It writes `.build/connected-loads-converg
 Peak amplitude is recorded because energy matching changes it. Finer-grid impulse differences
 remain appreciable even though timestep differences and conservation residuals are small.
 
+Adding `--volume-average` initializes pressure from positive quadrature over each cell's gas
+volume. Full cells use tensor Gauss nodes; cut cells use degree-two tetrahedral quadrature
+on disjoint convex gas pieces. This samples gas rather than a potentially solid cell centre.
+Combined with `--convergence`, it writes `.build/connected-loads-convergence-volume-average.json`;
+pass that path to the summary script to compare with the original point sampling. Energy
+matching and gas-volume checks still apply; this changes initialization only.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

@@ -920,6 +920,32 @@ not audited, and this pressure pulse is not a detonation model. Next, improve th
 representation of the pulse and pressure transport around clipped geometry, then repeat
 these load checks before allowing free-body motion.
 
+The held-box study now has opt-in `--volume-average` pressure initialization. Positive
+quadrature integrates the Gaussian over the gas portion of each cell: full-fluid cells use
+eight tensor Gauss nodes, while cut cells are partitioned into disjoint convex gas pieces
+and tetrahedralized with a positive degree-two rule. No quadrature node samples the solid.
+The quadrature volume is checked against the existing clipped gas volume, and its weighted
+pressure average is normalized by quadrature volume before the existing matched-energy
+normalization. This is approximate Gaussian integration, not an exact spatial solution.
+The default point sampling and normal application simulations retain their existing behavior.
+
+All twelve `--connected-loads --convergence --volume-average` cases complete at 6400 J and
+0.5 ms. Quadrature-volume discrepancies are below 0.000000000000004 of nominal cell volume;
+mass and energy budgets close to floating-point precision and momentum residuals remain
+below 0.000000000001 N s. Twenty-six selected geometry/grouping/load tests pass, including
+analytical quadratic moments, positive gas-only nodes in rotated cut cells, clipped-volume
+agreement and independent matched-energy checks. The summary script also rejects mixed
+initialization methods.
+
+At CFL 0.1, forward impulses are 1.983/2.375/2.587 N s for the axis-aligned box and
+1.896/2.231/2.437 N s for the rotated box. Relative to point sampling, coarse-grid changes
+are −4.89%/−4.26%, but finest-grid changes are only +0.080%/−0.052%. The last refinement
+still changes forward impulse by 8.92%/9.21%, and angular-impulse vectors by 10.81%/18.67%.
+CFL effects remain below 0.222%. Correcting initialization therefore does not resolve the
+spatial load sensitivity. Next, develop bounded spatial pressure/velocity reconstruction
+on the stationary grouped geometry, verify uniform and affine-field behavior, then repeat
+these load comparisons before adding moving geometry or free-body coupling.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
