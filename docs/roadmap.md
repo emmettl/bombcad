@@ -20,7 +20,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges to 105 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 15% under light drops and −5% to +15% under heavy ones, and Ando's beams without stirrups peak within 18% on average on 16 elements (58% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 13% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
@@ -113,12 +113,14 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    about them takes the mesh dependence away but leaves beams without stirrups too stiff and
    springing back from their peaks, keeping a third of the deflection the tests kept. So the bond between bars and concrete under
    impact, and the shear such a beam carries across cracks at these rates, are still open.)
-   The bars' law next: Malvar and Crawford's, the default, which tension tests of bars find a
-   fifth too strong at yield at these rates, holds struck beams elastic, so they spring back.
-   The CEB's (an option), which the tests support, brings Saatci's heavy drops within −6% to 0%,
-   but leaves the slab's mid-span hinge to run away on fine meshes, where the default's
-   factor, growing with the strain rate of the one element a crack runs through, had held it.
-   The bars' rate wants taking over their debonded length, as their rupture is. Which strengthening is the material's
+   (Done: the bars' law, the CEB's as the fib Model Code 2010 re-adopted it, after a beam
+   pushed slowly kept its deflection as the test's did and the same beam struck had yielded its
+   bars half as far: Malvar and Crawford's law, which tension tests of bars find a fifth too
+   strong at yield at these rates, held it elastic; with the bars taking their strain rate over
+   their debonded length, not from the one element a crack runs through, so that the slab's
+   hinge converges under it on fine meshes. Saatci's heavy drops now come within −6% to 0% on
+   16 elements, Ando's within 13% on average; the contest slab goes 5–15% too far and its
+   shells a quarter.) Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
@@ -130,7 +132,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done for beams: cracks that slide for good and ride up on their aggregate,
    after which beams struck by a falling weight keep their deflection as the tests did; the
-   slab, whose hinge bends rather than slides, is unchanged.) (Done: compaction of the pores under very high confined pressure, after
+   slab, whose hinge bends rather than slides, is unchanged. Since crack widths were read over
+   each crack's own band, beams without stirrups keep about three quarters of the deflection
+   the tests kept.) (Done: compaction of the pores under very high confined pressure, after
    Holmquist, Johnson and Cook; unchecked against a close-in test.)
 8. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would

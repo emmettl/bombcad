@@ -33,6 +33,7 @@ let package = Package(
                 .product(name: "SceneModel", package: "SimulationKit"),
                 .product(name: "SceneView", package: "SimulationKit"),
                 .product(name: "SceneRender", package: "SimulationKit"),
+                .product(name: "GeometryImport", package: "SimulationKit"),
             ]),
         .executableTarget(
             name: "acousticbench", dependencies: ["AcousticCore", "ImpulseResponseKit", "Audition"]),

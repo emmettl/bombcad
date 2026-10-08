@@ -194,7 +194,7 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// With `rateDependent`, raise the bars' strength too; off, they keep their static curve.
     public var steelRateDependent = true
     /// With `rateDependent`, the law that raises the bars' strength with strain rate.
-    public var steelRateLaw: SteelRateLaw = .malvarCrawford
+    public var steelRateLaw: SteelRateLaw = .ceb
     /// Masonry: the units it is laid in and the joints between them (see `MasonryUnits`). The
     /// strengths above are then the wall's as a whole, used where the elements are too coarse
     /// to show the joints.
@@ -531,6 +531,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// measurements on cracks in plain concrete (1981), instead of keeping a quarter of the
     /// concrete's whatever its width. Solid elements only.
     public var crackShearStiffness = false
+    /// Bars take their strain rate, for their strain-rate law, as their stretching rate averaged
+    /// over their debonded length (the window their rupture is judged over), instead of the
+    /// effective strain rate of the element they run through, which grows as the mesh is
+    /// refined where a crack localises.
+    public var barRateAlongBars = true
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -849,8 +854,8 @@ public enum SteelRateLaw: String, Codable, Sendable, CaseIterable {
     case malvarCrawford
     /// CEB Bulletin 187 (1988), re-adopted by the fib Model Code 2010: 1 + (6 / f_y)
     /// ln(ε̇ / 5 × 10⁻⁵) at yield and 1 + (7 / f_u) ln(ε̇ / 5 × 10⁻⁵) at ultimate, strengths in
-    /// MPa: 1.15 at yield at 1 per second for 400 MPa bars. Closer to tension tests of bars, but
-    /// the contest slab's hinge runs away on fine meshes under it (docs/concrete-model.md).
+    /// MPa: 1.15 at yield at 1 per second for 400 MPa bars. Within 7% of tension tests of bars
+    /// at 3 to 9 per second (docs/concrete-model.md).
     case ceb
 }
 
@@ -975,6 +980,7 @@ struct StructureUniforms {
     var crackShearStiffness: UInt32 = 0
     var bondYieldRange: Float = 0
     var bondYieldExponent: Float = 0
+    var barRateAlongBars: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1090,6 +1096,23 @@ enum ShaderLibrary {
         }.joined(separator: "\n")
         return try device.makeLibrary(source: source, options: nil)
     }
+
+    /// Index of the optional function constant that compiles a kernel for one gas model
+    /// (`airModelConstant` in Solver.metal).
+    static let airModelConstant = 2
+
+    /// A compute pipeline for kernel `name`, specialised with `constants` (none by default).
+    /// Every kernel is specialised: many read the optional gas-model constant through the gas
+    /// functions, and Metal builds a pipeline from such a kernel only once it is specialised.
+    static func pipeline(
+        _ name: String, in library: MTLLibrary,
+        constants: MTLFunctionConstantValues = MTLFunctionConstantValues()
+    ) throws -> MTLComputePipelineState {
+        guard let function = try? library.makeFunction(name: name, constantValues: constants) else {
+            throw BlastError.missingFunction(name)
+        }
+        return try library.device.makeComputePipelineState(function: function)
+    }
 }
 
 // MARK: - Decoding layouts saved by earlier versions
@@ -1143,7 +1166,7 @@ extension StructureModel {
         case solids, openings, material, elementSize, fixedBase, baseAnchorage
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, crackAxes, secondCracks
-        case bareBars, crackSlip, bondSlip, crackShearStiffness, solidElementKind
+        case bareBars, crackSlip, bondSlip, crackShearStiffness, barRateAlongBars, solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
     }
 
@@ -1169,6 +1192,7 @@ extension StructureModel {
         try container.encode(crackSlip, forKey: .crackSlip)
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
+        try container.encode(barRateAlongBars, forKey: .barRateAlongBars)
         try container.encode(solidElementKind, forKey: .solidElementKind)
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
@@ -1204,6 +1228,7 @@ extension StructureModel {
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false
+        barRateAlongBars = try container.decodeIfPresent(Bool.self, forKey: .barRateAlongBars) ?? true
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)

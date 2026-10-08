@@ -105,6 +105,9 @@ public final class StructureSolver {
     /// Bar plastic strains along each axis, written in alternate substeps like `crushBuffers`, so
     /// that rupture can be judged over a debonded length.
     private let barPlasticBuffers: [MTLBuffer]
+    /// Each element's stretching rate along the lattice axes, for bars that take their rate
+    /// over their debonded length (`StructureModel.barRateAlongBars`), even and odd substeps.
+    private let barRateBuffers: [MTLBuffer]
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
     /// Per material, the most steel any of its elements holds along one direction (the largest
@@ -178,10 +181,7 @@ public final class StructureSolver {
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
         // The element kernel is specialised for structures of a single material without joints.
         let constants = MTLFunctionConstantValues()
@@ -191,19 +191,12 @@ public final class StructureSolver {
         }
         var single = model.materials.count == 1 && !model.materials.contains(where: showsJoints)
         constants.setConstantValue(&single, type: .bool, index: 0)
-        guard
-            let elementFunction = try? library.makeFunction(
-                name: "structureElements", constantValues: constants)
-        else {
-            throw BlastError.missingFunction("structureElements")
-        }
-        elementPipeline = try device.makeComputePipelineState(function: elementFunction)
+        elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
-        let nodeFunction = try library.makeFunction(name: "structureNodes", constantValues: nodeConstants)
-        nodePipeline = try device.makeComputePipelineState(function: nodeFunction)
+        nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")
         contactForcePipeline = try pipeline("contactForces")
@@ -326,6 +319,11 @@ public final class StructureSolver {
         barPlasticBuffers = [
             try buffer(barPlasticLength, "bar plastic strain, even"),
             try buffer(barPlasticLength, "bar plastic strain, odd"),
+        ]
+        let barRateLength = spreadsRupture && model.barRateAlongBars ? elements * 16 : 16
+        barRateBuffers = [
+            try buffer(barRateLength, "bar strain rate, even"),
+            try buffer(barRateLength, "bar strain rate, odd"),
         ]
 
         // Smear each reinforcement layer into the elements it overlaps, in proportion to the
@@ -528,7 +526,7 @@ public final class StructureSolver {
         memset(barForceBuffer.contents(), 0, barForceBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
-        for crushBuffer in crushBuffers + barPlasticBuffers {
+        for crushBuffer in crushBuffers + barPlasticBuffers + barRateBuffers {
             memset(crushBuffer.contents(), 0, crushBuffer.length)
         }
 
@@ -1049,6 +1047,8 @@ public final class StructureSolver {
             encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 23)
             encoder.setBuffer(slipBuffer, offset: 0, index: 24)
             encoder.setBuffer(barForceBuffer, offset: 0, index: 25)
+            encoder.setBuffer(barRateBuffers[substep % 2], offset: 0, index: 26)
+            encoder.setBuffer(barRateBuffers[1 - substep % 2], offset: 0, index: 27)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -1150,6 +1150,7 @@ public final class StructureSolver {
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
         uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
+        uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0
         if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)
             uniforms.bondSlip = 1

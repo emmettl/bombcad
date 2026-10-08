@@ -124,37 +124,48 @@ public struct SceneGeometry: Sendable, Equatable {
             min: points.reduce(first) { simd_min($0, $1) }, max: points.reduce(first) { simd_max($0, $1) })
     }
 
-    /// The pick number of the nearest solid triangle that a ray meets from its drawn side, if it has
-    /// one: what a click there selects. Triangles seen from behind are passed through, as they are
-    /// not drawn.
+    /// The pick number of the nearest triangle with one that a ray meets, if any: what a click there
+    /// selects. Solid triangles count only from their drawn side, since from behind they are not
+    /// drawn; translucent ones count from either side.
     public func pick(origin: SIMD3<Float>, direction: SIMD3<Float>) -> Int32? {
         var nearest = Float.infinity
         var found: Int32?
-        var index = 0
-        while index + 2 < solid.count {
-            defer { index += 3 }
-            let a = solid[index]
-            guard a.pick >= 0, simd_dot(a.normal.xyz, direction) < 0 else { continue }
-            // Möller–Trumbore.
-            let p0 = a.point
-            let e1 = solid[index + 1].point - p0
-            let e2 = solid[index + 2].point - p0
-            let h = simd_cross(direction, e2)
-            let det = simd_dot(e1, h)
-            guard abs(det) > 1e-12 else { continue }
-            let s = origin - p0
-            let u = simd_dot(s, h) / det
-            guard u >= 0, u <= 1 else { continue }
-            let q = simd_cross(s, e1)
-            let v = simd_dot(direction, q) / det
-            guard v >= 0, u + v <= 1 else { continue }
-            let t = simd_dot(e2, q) / det
-            if t > 0, t < nearest {
-                nearest = t
-                found = a.pick
+        for (triangles, oneSided) in [(solid, true), (translucent, false)] {
+            var index = 0
+            while index + 2 < triangles.count {
+                defer { index += 3 }
+                let a = triangles[index]
+                guard a.pick >= 0, !oneSided || simd_dot(a.normal.xyz, direction) < 0 else { continue }
+                if let t = Self.intersect(
+                    origin, direction, a.point, triangles[index + 1].point, triangles[index + 2].point),
+                    t < nearest
+                {
+                    nearest = t
+                    found = a.pick
+                }
             }
         }
         return found
+    }
+
+    /// How far along a ray it meets a triangle, if it does (Möller–Trumbore).
+    static func intersect(
+        _ origin: SIMD3<Float>, _ direction: SIMD3<Float>, _ p0: SIMD3<Float>, _ p1: SIMD3<Float>,
+        _ p2: SIMD3<Float>
+    ) -> Float? {
+        let e1 = p1 - p0
+        let e2 = p2 - p0
+        let h = simd_cross(direction, e2)
+        let det = simd_dot(e1, h)
+        guard abs(det) > 1e-12 else { return nil }
+        let s = origin - p0
+        let u = simd_dot(s, h) / det
+        guard u >= 0, u <= 1 else { return nil }
+        let q = simd_cross(s, e1)
+        let v = simd_dot(direction, q) / det
+        guard v >= 0, u + v <= 1 else { return nil }
+        let t = simd_dot(e2, q) / det
+        return t > 0 ? t : nil
     }
 }
 

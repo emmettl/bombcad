@@ -129,6 +129,13 @@ struct StepControl {
 // (below). Below about 500 K they agree to better than 0.1%; the shock-tube and point-blast
 // tests, in units where T is tiny, are unchanged.
 enum AirModel { airIdeal = 0, airThermallyPerfect = 1, airDissociating = 2 };
+// The gas model, when a kernel is compiled for one: the other models' code is then left out of
+// it, which spares the kernels that run on every cell the registers it would hold. Kernels
+// compiled without it read the model from their uniforms.
+constant uint airModelConstant [[function_constant(2)]];
+static inline uint airModelOf(uint model) {
+    return is_function_constant_defined(airModelConstant) ? airModelConstant : model;
+}
 constant float airGasConstant = 287.05f;
 
 // Dissociating air: thermally perfect air whose N2 and O2 also split into atoms once hot, in
@@ -237,6 +244,7 @@ static inline float airTemperature(float e) {
 
 // Pressure from density and internal energy per volume.
 static inline float gasPressure(float rho, float internalEnergy, uint model, float gamma) {
+    model = airModelOf(model);
     if (model == airIdeal) {
         return (gamma - 1.0f) * internalEnergy;
     }
@@ -253,6 +261,7 @@ static inline float gasPressure(float rho, float internalEnergy, uint model, flo
 // For dissociating air the ratio is the frozen one, at the composition as it stands: sound
 // travels too fast for the gas to dissociate or recombine as it passes.
 static inline float2 gasState(float rho, float internalEnergy, uint model, float gamma) {
+    model = airModelOf(model);
     if (model == airIdeal) {
         return float2((gamma - 1.0f) * internalEnergy, gamma);
     }
@@ -268,6 +277,7 @@ static inline float2 gasState(float rho, float internalEnergy, uint model, float
 
 // Internal energy per volume from density and pressure.
 static inline float gasEnergy(float rho, float pressure, uint model, float gamma) {
+    model = airModelOf(model);
     if (model == airIdeal) {
         return pressure / (gamma - 1.0f);
     }
@@ -280,6 +290,7 @@ static inline float gasEnergy(float rho, float pressure, uint model, float gamma
 
 // Ratio of specific heats at the state (frozen), which sets the speed of sound: c^2 = g p / rho.
 static inline float gasGamma(float rho, float pressure, uint model, float gamma) {
+    model = airModelOf(model);
     if (model == airIdeal) {
         return gamma;
     }
@@ -440,7 +451,7 @@ static inline Flux riemannFlux(Prim l, Prim r, constant SolverUniforms &u) {
     float hRoe = (sl * (el + l.p) / l.rho + sr * (er + r.p) / r.rho) * inv;
     // For an ideal gas the Roe-averaged sound speed follows from the averaged enthalpy; for
     // thermally perfect air the sound speeds themselves are averaged.
-    float cRoe = u.airModel == airIdeal ? sqrt(max((gamma - 1.0f) * (hRoe - 0.5f * dot(vRoe, vRoe)), 1e-12f))
+    float cRoe = airModelOf(u.airModel) == airIdeal ? sqrt(max((gamma - 1.0f) * (hRoe - 0.5f * dot(vRoe, vRoe)), 1e-12f))
                                         : (sl * cl + sr * cr) * inv;
     float waveL = min(l.v.x - cl, vRoe.x - cRoe);
     float waveR = max(r.v.x + cr, vRoe.x + cRoe);

@@ -16,6 +16,9 @@ struct RoomScene {
         case source
         case receiver(Int)
         case zone(Int)
+        case opening(Int)
+        /// A corner of a floor plan.
+        case corner(Int)
 
         var pick: Int32 {
             switch self {
@@ -23,6 +26,8 @@ struct RoomScene {
             case .source: 10_000
             case .receiver(let index): 10_001 + Int32(index)
             case .zone(let index): 20_000 + Int32(index)
+            case .opening(let index): 30_000 + Int32(index)
+            case .corner(let index): 40_000 + Int32(index)
             }
         }
 
@@ -31,7 +36,9 @@ struct RoomScene {
             case 0..<10_000: self = .surface(Int(pick))
             case 10_000: self = .source
             case 10_001..<20_000: self = .receiver(Int(pick) - 10_001)
-            case 20_000...: self = .zone(Int(pick) - 20_000)
+            case 20_000..<30_000: self = .zone(Int(pick) - 20_000)
+            case 30_000..<40_000: self = .opening(Int(pick) - 30_000)
+            case 40_000...: self = .corner(Int(pick) - 40_000)
             default: return nil
             }
         }
@@ -47,6 +54,7 @@ struct RoomScene {
     static let openingColour = SIMD4<Float>(0.2, 0.75, 0.3, 0.35)
     static let zoneColour = SIMD4<Float>(0.6, 0.4, 0.2, 0.22)
     static let edgeColour = SIMD4<Float>(0.15, 0.15, 0.15, 0.7)
+    static let cornerColour = SIMD4<Float>(0.3, 0.3, 0.32, 1)
 
     /// Gentle, distinct colours for the room's materials, in turn.
     static let palette: [SIMD4<Float>] = [
@@ -102,9 +110,11 @@ struct RoomScene {
             }
         }
         for (a, b) in mesh.outlineEdges() { scene.addLine(point(a), point(b), colour: Self.edgeColour) }
-        for opening in settings.openings {
+        for (index, opening) in settings.openings.enumerated() {
             if let corners = Self.corners(of: opening, in: room) {
-                scene.addPolygon(corners.map(point), colour: Self.openingColour, translucent: true)
+                scene.addPolygon(
+                    corners.map(point), colour: Self.openingColour, pick: Item.opening(index).pick,
+                    translucent: true)
                 for i in corners.indices {
                     scene.addLine(
                         point(corners[i]), point(corners[(i + 1) % corners.count]),
@@ -120,6 +130,12 @@ struct RoomScene {
         }
         // Points sized with the room, so they show in a hall and do not fill a booth.
         let radius = Float(min(max(0.012 * simd_length(room.size), 0.06), 0.35))
+        // A floor plan's corners have handles at the top of their edges, where the cutaway shows them.
+        for (index, corner) in (room.plan?.corners ?? []).enumerated() {
+            scene.addSphere(
+                centre: point(SIMD3(corner.x, corner.y, room.size.z)), radius: 0.7 * radius,
+                colour: Self.cornerColour, pick: Item.corner(index).pick, rings: 6)
+        }
         scene.addSphere(
             centre: point(settings.source.position), radius: radius, colour: Self.sourceColour,
             pick: Item.source.pick)
@@ -186,6 +202,16 @@ struct RoomScene {
             guard index < settings.receivers.count else { return "" }
             let receiver = settings.receivers[index]
             return "Receiver \(receiver.name), \(receiver.microphone?.summary ?? "omnidirectional")"
+        case .corner(let index):
+            guard let corner = settings.room.plan?.corners[safe: index] else { return "" }
+            func metres(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }
+            return "Corner \(index + 1) at \(metres(corner.x)), \(metres(corner.y)) m: drag to move it"
+        case .opening(let index):
+            guard index < settings.openings.count else { return "" }
+            let opening = settings.openings[index]
+            func metres(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }
+            return
+                "\(opening.name): \(metres(opening.size.x)) × \(metres(opening.size.y)) m, open to the outside"
         case .zone(let index):
             guard let zone = settings.room.fittings?[index] else { return "" }
             return

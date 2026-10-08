@@ -84,11 +84,39 @@ script before an archive is written.
   - drag to orbit, shift-drag or right-drag to pan, and pinch or scroll to zoom; **Reset View**
     frames the room again;
   - a click selects a surface, zone, source or receiver, highlights it in orange, and names it in a
-    caption: a surface's material, area, and absorption and scattering at 1 kHz.
+    caption: a surface's material, area, and absorption and scattering at 1 kHz;
+  - with a surface selected, **Material** beside the caption gives it a published material's
+    absorption, keeping its scattering;
+  - dragging the source or a receiver moves it across the room at its height, and with Option held,
+    up and down. Positions snap to centimetres, and a move that would take a point outside the room,
+    or within 5 cm of a surface, is ignored;
+  - dragging a fitted zone moves it across the room, or with Option up and down. Command-dragging
+    resizes it: its footprint's nearest corner follows the pointer, or with Option its top. A zone
+    stays within the room, is never smaller than 10 cm a side, and is never moved or grown into
+    another zone;
+  - dragging an opening slides it over its wall, floor or ceiling, held within the surface, and
+    Command-dragging moves its nearest corner. Zones and openings, though translucent, can be clicked
+    from either side, so a ceiling hatch can be reached from above, through the ceiling;
+  - Command-dragging a wall, floor or ceiling of a box or floor plan pushes it out or pulls it in,
+    in centimetre steps along its normal. A plan's wall moves with its two corners. When a west,
+    south or floor surface moves, or a plan grows past its origin, everything inside shifts with it,
+    so it keeps its place against the surfaces that stay. A step that would leave a point, zone or
+    opening outside, or the room under half a metre, is refused. The camera stays put while editing.
+    A plain drag on a surface still orbits.
+
+    A floor plan's corners have dark handles at the top of their edges. Dragging one moves the
+    corner across the room, in centimetre steps; if the plan reaches past its origin, everything
+    shifts so it stays at or above zero, and a move that would cross walls or leave anything outside
+    is refused.
+
+    In a room of any shape, from a preset or a model, the face under the pointer moves with every
+    face on its plane, and the corners on that plane drag the faces that meet them. A shoebox hall's
+    back wall or a stage house's roof moves this way. A step is refused if it would bend a face, as
+    moving one plane of a raked floor's neighbour can, or take a corner through another face;
 
   The view frames the room when it opens and when the room's size changes: from a three-quarter view
-  above, as close as it can be with every corner within the middle 85% of the view. Editing is done in the
-  inspector as before. The camera controls and renderer are shared with BombCAD (see
+  above, as close as it can be with every corner within the middle 85% of the view. Everything else
+  is edited in the inspector. The camera controls and renderer are shared with BombCAD (see
   [the roadmap](roomcad-roadmap.md#architecture-and-sharing)).
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
@@ -97,7 +125,12 @@ script before an archive is written.
 - **Inspector.** Edits everything that affects the response:
   - room dimensions, or with **Shape** a floor plan (L, T or trapezoid to start from). Its corners
     can be edited as numbers or dragged by their handles in the plan view, which numbers its walls;
-  - for a room of any shape, built from solids by a preset (see
+  - **Shape ▸ Import Model…**, which reads an OBJ or STL file as the room (see
+    [Importing a model](room-acoustics-model.md#importing-a-model)). A sheet chooses the units it was
+    drawn in and whether y is up, and shows the room's size, volume, faces and materials, what was
+    tidied, or why the model is not a closed room. **Replace Room** keeps the source and receivers if
+    they are still well inside, and otherwise moves them to roomy spots;
+  - for a room of any shape, built from solids by a preset or imported (see
     [Rooms of any shape](room-acoustics-model.md#rooms-of-any-shape)): its size is shown but not
     edited, and each of its materials is edited with its label and area. **Shape** turns it back into
     a box or a floor plan. Its openings are open faces, so the openings list is not offered;
@@ -343,6 +376,18 @@ saved again.
   - the wording of generation progress and of the wave solver's engines;
   - the 3D scene: its triangles cover the room's surfaces once, openings lie on their wall, and a
     click from above selects the floor, and on the source the source;
+  - importing a model: an OBJ file read with its material names, scaled and turned upright, and points
+    outside a smaller room moved inside, clear of every surface;
+  - editing in 3D: surfaces numbered alike for boxes, plans and meshes, a material landing on the
+    surface chosen, and the source dragged across the room, raised with Option, and kept inside;
+    zones moved to the wall and no further, refused where they would overlap, and resized from the
+    nearest corner or the top; openings held within their surface; and both dragged in the view;
+  - pushing surfaces: a box's walls, floor and ceiling and a plan's walls, with everything shifted
+    when a low wall moves, steps refused when the room would be invalid, a hall's back wall pushed
+    through its mesh, and a Command-drag in the view that pushes the east wall without moving the
+    camera;
+  - plan corners: moved out, moved past the origin with everything shifting, refused where walls
+    would cross, and dragged by their handle in the view;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.

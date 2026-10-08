@@ -98,6 +98,9 @@ struct StructureUniforms {
     // ultimate strength, and the exponent b = (2 - f_u / f_y)^2. Zero range: no reduction.
     float bondYieldRange;
     float bondYieldExponent;
+    // 1: bars take their strain rate as their own stretching rate averaged over their debonded
+    // length, not the element's (see `StructureModel.barRateAlongBars`).
+    uint barRateAlongBars;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -791,6 +794,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device uchar *fineAirMask [[buffer(23)]],
                               const device float4 *slips [[buffer(24)]],
                               device float4 *barForces [[buffer(25)]],
+                              device float4 *barRateOut [[buffer(26)]],
+                              const device float4 *barRateBefore [[buffer(27)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -983,6 +988,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float instantaneous = sqrt((2.0f / 3.0f) * (dxx * dxx + dyy * dyy + dzz * dzz
                                                      + 2.0f * (dxy * dxy + dyz * dyz + dzx * dzx)));
         state.strainRate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.strainRate);
+        // The stretching rate along each lattice axis, averaged as the effective rate is: what a
+        // bar along that axis strains at here.
+        float3 axisRate = float3(0.0f);
+        if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+            float3 before = barRateBefore[compact].xyz;
+            axisRate = before + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (abs(float3(dxx, dyy, dzz)) - before);
+            barRateOut[compact] = float4(axisRate, 0.0f);
+        }
         float3 history = float3(state.crackStrain);
         float worst = max(history.x, max(history.y, history.z));
         // Once a crack has formed, strain gathers in it at a rate that depends on the element
@@ -1465,7 +1478,31 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float root;
             float yield;
             float own = plastic[j];
-            float stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], state.strainRate, m, root, yield);
+            // A bar strains at the rate of its debonded length, not of the one element a crack
+            // runs through, whose rate grows as the mesh is refined.
+            float barRate = state.strainRate;
+            if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+                int3 dims = int3(u.ex, u.ey, u.ez);
+                int r = int(ceil(m.barReach - 0.5f));
+                float sum = axisRate[j];
+                float weights = 1.0f;
+                for (int offset = -r; offset <= r; ++offset) {
+                    int3 cell = int3(tid);
+                    cell[j] += offset;
+                    if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
+                        continue;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uint compactOther = cellElement[other];
+                    if (carriesBars(flags[other]) && steel[compactOther].ratio[j] > 0.0f) {
+                        float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+                        sum += weight * barRateBefore[compactOther][j];
+                        weights += weight;
+                    }
+                }
+                barRate = sum / weights;
+            }
+            float stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], barRate, m, root, yield);
             plastic[j] = own;
             // A bar slips in its concrete either side of a crack, so it is strained by the crack's
             // opening spread over a debonded length, not over the one element the crack happens

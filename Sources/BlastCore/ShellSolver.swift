@@ -301,10 +301,7 @@ public final class ShellSolver {
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
         elementPipeline = try pipeline("shellElements")
         beamPipeline = try pipeline("beamElements")
@@ -313,8 +310,7 @@ public final class ShellSolver {
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
-        let nodeFunction = try library.makeFunction(name: "shellNodes", constantValues: nodeConstants)
-        nodePipeline = try device.makeComputePipelineState(function: nodeFunction)
+        nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         tiePipeline = try pipeline("shellTies")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 

@@ -65,6 +65,14 @@ struct SceneRenderTests {
         #expect(box.solid.count == 36)
         #expect(box.lines.count == 24)
         #expect(box.pick(origin: [0.5, 0.5, 5], direction: [0, 0, -1]) == 1)
+        // Translucent pieces are picked from either side, nearest first.
+        var glass = SceneGeometry()
+        glass.addBox([0, 0, 0], [1, 1, 1], colour: Self.wallColour, pick: 2, translucent: true)
+        glass.addPolygon(
+            [[0, 0, -1], [1, 0, -1], [1, 1, -1], [0, 1, -1]], colour: Self.floorColour, pick: 3)
+        #expect(glass.pick(origin: [0.5, 0.5, 5], direction: [0, 0, -1]) == 2)
+        #expect(glass.pick(origin: [0.5, 0.5, 0.5], direction: [0, 0, -1]) == 2)
+        #expect(glass.pick(origin: [0.5, 0.5, -0.5], direction: [0, 0, -1]) == 3)
     }
 
     @Test("Rendered from outside, the near walls are cut away: the floor shows, and the highlight tints it")

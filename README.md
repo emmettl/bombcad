@@ -424,23 +424,23 @@ Seven comparisons with the outside world, all in the [validation notes](docs/val
   switched on, which also bring the gas pressure in a closed room within 8% of the US design
   manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 100, 101 and 107 mm with 4, 8 and 16 elements through the
-  thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
-  elements (4.4 million) it is 105 mm, so the peak has converged. The rebound
-  after it is twice the measured one, and the result is sensitive to the load and to how the
-  supports are modelled. Shell elements converge to 124 mm in about a second, with a rebound
-  close to the measured one.
+  model predicts peak deflections of 114, 113, 121 and 124 mm with 4, 8, 16 and 32 elements
+  through the thickness, where 108 mm was measured, with no material constant fitted to the test, and
+  follows the record within 4–8 mm root-mean-square. The rebound after it is larger than the
+  measured one, and the result is sensitive to the load, to how the supports are modelled and
+  to the strain-rate laws. Shell elements give 135 mm in about a second.
 - **Beam bent to failure.** A reinforced beam with no stirrups, loaded slowly in four-point
-  bending, carries 97–99% of its measured peak moment on two meshes and fails at 38–52 mm
-  against 42 mm measured, with nothing fitted.
+  bending, carries 98–99% of its measured peak moment on two meshes, with nothing fitted; it
+  fails at 57 mm on one, and holds to 60 mm on the other, against 42 mm measured.
 - **Beam failing in shear.** A beam without stirrups fails suddenly in diagonal tension, as
   the test beam did, at 11–12% above the measured load on fine meshes; on coarse ones (twelve
   elements through the depth) it is a third too strong.
 - **Beams struck by a falling weight.** Seven drop-weight impacts on beams that differ only in
-  their stirrups: with stirrups, the peaks are within 15% under the light drops and −5% to +15%
-  under the heavy ones, and the beam without stirrups is broken by the heavy drop, as in the
-  test, but also by the light one, which it survived. Ando et al.'s beams without stirrups,
-  struck at rising speeds, peak within 15% up to 3 m/s and go too far at higher speeds.
+  their stirrups: with stirrups, the peaks are within 11–26% under the light drops and within
+  6% under the heavy ones, which leave them nearly as far down as the tests' did; the beam without
+  stirrups is broken by the heavy drop, as in the test, and damaged by the light one, which it
+  survived. Ando et al.'s beams without stirrups, struck at rising speeds, peak within 15% up
+  to 3 m/s and 13% on average beyond on one mesh, but go too far on a finer one.
 - **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
   them: the impulse under the charge is 86–95% of the empirical curves' on fine cells (and
   within 8% from 0.3 m/kg^(1/3) on a rigid surface), and light charges

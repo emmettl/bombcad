@@ -65,10 +65,16 @@ public final class BlastSolver {
     var experimentalBoxRemapMode: ExperimentalBoxRemap = .redistribution
 
     let library: MTLLibrary
-    private let sweepPipeline: MTLComputePipelineState
-    private let sweepTilesPipeline: MTLComputePipelineState
+    /// The kernels that run on every cell, compiled for one gas model so that the other models'
+    /// code is left out of them (see `airModelOf` in Solver.metal).
+    private struct CellKernels {
+        var sweep: MTLComputePipelineState
+        var sweepTiles: MTLComputePipelineState
+        var collectTiles: MTLComputePipelineState
+    }
+    /// `CellKernels` for each gas model used so far.
+    private var cellKernelsByModel: [AirModel: CellKernels] = [:]
     private let wakeTilesPipeline: MTLComputePipelineState
-    private let collectTilesPipeline: MTLComputePipelineState
     private let preparePipeline: MTLComputePipelineState
     private let sampleGaugesPipeline: MTLComputePipelineState
     private let measurePipeline: MTLComputePipelineState
@@ -161,15 +167,9 @@ public final class BlastSolver {
         let library = try ShaderLibrary.make(device: device)
         self.library = library
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
-        sweepPipeline = try pipeline("sweep")
-        sweepTilesPipeline = try pipeline("sweepTiles")
         wakeTilesPipeline = try pipeline("wakeTiles")
-        collectTilesPipeline = try pipeline("collectTiles")
         preparePipeline = try pipeline("prepareStep")
         sampleGaugesPipeline = try pipeline("sampleGauges")
         measurePipeline = try pipeline("measureWaveSpeed")
@@ -787,7 +787,8 @@ public final class BlastSolver {
     ) -> MTLCommandBuffer? {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
         let steps = batchSteps(steps)
-        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+        guard let kernels = try? cellKernels(),
+            let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         else { return nil }
 
@@ -798,6 +799,7 @@ public final class BlastSolver {
         controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
 
         let extents = [grid.nx, grid.ny, grid.nz]
+        let tileThreads = Self.tileThreads(for: kernels.sweepTiles)
         if stepCount % Self.checkpointInterval == 0 || checkpointSubsteps == 0 {
             checkpointSubsteps = structureSubsteps
             if let bodyStep, lastFluidStep > 0 {
@@ -827,7 +829,7 @@ public final class BlastSolver {
                 uniforms.tileNx = 0
             } else if tilesEnabled {
                 let tiles = tileDims.x * tileDims.y * tileDims.z
-                encoder.setComputePipelineState(collectTilesPipeline)
+                encoder.setComputePipelineState(kernels.collectTiles)
                 encoder.setBuffer(tileFlagBuffer, offset: 0, index: 0)
                 encoder.setBuffer(tileListBuffer, offset: 0, index: 1)
                 encoder.setBuffer(tileCountBuffer, offset: 0, index: 2)
@@ -836,7 +838,7 @@ public final class BlastSolver {
                 encoder.dispatchThreads(
                     MTLSize(width: tiles, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(
-                        width: min(tiles, collectTilesPipeline.maxTotalThreadsPerThreadgroup), height: 1,
+                        width: min(tiles, kernels.collectTiles.maxTotalThreadsPerThreadgroup), height: 1,
                         depth: 1))
             }
 
@@ -870,7 +872,7 @@ public final class BlastSolver {
             var axes = order.filter { extents[$0] > 1 }
             if axes.isEmpty { axes = [0] }
 
-            encoder.setComputePipelineState(tilesEnabled ? sweepTilesPipeline : sweepPipeline)
+            encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
             encoder.setBuffer(maskBuffer, offset: 0, index: 2)
             encoder.setBuffer(peakBuffer, offset: 0, index: 3)
             encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
@@ -897,7 +899,7 @@ public final class BlastSolver {
                         indirectBuffer: tileDispatchBuffer, indirectBufferOffset: 0,
                         threadsPerThreadgroup: tileThreads)
                 } else {
-                    dispatchGrid(encoder, pipeline: sweepPipeline)
+                    dispatchGrid(encoder, pipeline: kernels.sweep)
                 }
                 current = 1 - current
             }
@@ -1271,12 +1273,29 @@ public final class BlastSolver {
         return uniforms
     }
 
+    /// The per-cell kernels for the configured gas model, compiled the first time it is used.
+    private func cellKernels() throws -> CellKernels {
+        let model = configuration.airModel
+        if let kernels = cellKernelsByModel[model] { return kernels }
+        let constants = MTLFunctionConstantValues()
+        var value = model.rawValue
+        constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        func pipeline(_ name: String) throws -> MTLComputePipelineState {
+            try ShaderLibrary.pipeline(name, in: library, constants: constants)
+        }
+        let kernels = CellKernels(
+            sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
+            collectTiles: try pipeline("collectTiles"))
+        cellKernelsByModel[model] = kernels
+        return kernels
+    }
+
     /// Threads per tile in the tiled sweep: a column through the tile for each, or several if the
     /// pipeline cannot hold a whole tile's worth.
-    private var tileThreads: MTLSize {
+    private static func tileThreads(for sweepTiles: MTLComputePipelineState) -> MTLSize {
         var depth = Self.tileSize
         while depth > 1
-            && Self.tileSize * Self.tileSize * depth > sweepTilesPipeline.maxTotalThreadsPerThreadgroup
+            && Self.tileSize * Self.tileSize * depth > sweepTiles.maxTotalThreadsPerThreadgroup
         {
             depth /= 2
         }
