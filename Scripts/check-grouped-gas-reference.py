@@ -13,7 +13,7 @@ SOURCES = [
     "ExperimentalPistonWaveStudy", "PlanarPistonWave", "PrescribedPistonTube",
 ]
 TESTS = [
-    "LimitedGroupedGasFluxTests", "FractionalEulerFluxTests", "FractionalEulerWallTests",
+    "SurfaceWallLoadTests", "LimitedGroupedGasFluxTests", "FractionalEulerFluxTests", "FractionalEulerWallTests",
     "IdealGasWallRiemannTests", "GasQuadratureTests", "ConnectedLoadStudyTests", "LimitedTubeFluxTests",
 ]
 

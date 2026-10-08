@@ -1000,6 +1000,49 @@ for individual ContinuumKit extraction with explicit public contracts, source pr
 fetched-consumer checks and BombCAD parity. Scene ownership, scenario construction and replay
 remain here; the complete experimental coupling is not yet a verified shared product.
 
+Held-box loads now have opt-in `--surface-quadrature`. Positive degree-two triangle nodes
+are exposed by the clipped wall geometry and carried with boundary patches through grouping.
+Grouping checks their positive areas, total area, first moment and coplanarity; unsupported
+sample measures fail explicitly. Expansion into individual wall evaluation points preserves
+owner and gas-group identity. Reconstruction limits all these locations, and both SSPRK2
+stages use their wall-Riemann tractions for the matching gas impulse and integrated body
+angular impulse. Domain walls retain centroid sampling. Constant-state pressure/velocity
+per group gives the same integrated loads as centroid evaluation to floating-point precision.
+
+Analytical checks demonstrate the previously missing patch torque: a unit square with
+pressure `2 + y` and outward solid normal +x has torque 1/12 N m about its centroid in the
++z direction, while centroid-only evaluation gives zero. Whole clipped rotated and
+axis-aligned boxes under affine pressure match the divergence-theorem force `-V grad(p)`
+and torque about an arbitrary origin. Samples preserve resting uniform gas, positive
+states and closed extensive gas/wall budgets. The selected geometry/grouping/reconstruction
+suite passes 30 tests; the final CPU-only package passes 37 tests, including the
+sampled-uniform-state regression. This is exact polynomial integration for the supported
+pressure fields, not an independent transient blast-load validation.
+
+All twelve `--connected-loads --convergence --volume-average --limited --surface-quadrature`
+cases complete with 72–569 accepted steps and no rejections. At CFL 0.1, forward impulses
+on 0.2/0.1/0.05 m grids are 2.571/2.763/2.808 N s for the aligned box and
+2.418/2.606/2.660 N s for the rotated box. Last-refinement forward changes are 1.64%/2.08%,
+compared with 1.57%/1.96% for centroid wall evaluation. Angular-vector changes are
+4.05%/6.18%, compared with 4.57%/6.66%. The corrected integration therefore does not resolve
+the remaining bulk spatial sensitivity. At the finest grid, surface sampling changes
+forward impulse by −0.0052%/−0.0536% and angular vectors by 0.175%/0.151%.
+
+The finest cases use 10,404/12,732 body-wall evaluation points for 1,734/2,122 patches;
+this adds boundary work rather than gas cells. Mass and energy residuals remain below
+0.000000000000001 relative, linear-momentum residuals below 0.000000000001 N s, and CFL
+changes in forward impulse below 0.001%. Reports record the wall integration method and
+sample counts; the summary rejects comparisons mixing wall integration methods.
+
+Next, establish a stationary reflection benchmark with an independently specified wall
+pressure and impulse history, separating spatial transport error from wall integration.
+An analytical weak-wave case must explicitly quantify its finite-amplitude approximation;
+an exact shock/rarefaction case must restrict the time before other boundaries interfere.
+Only after these bounded checks should prescribed moving grouped geometry and free-body
+feedback proceed. Gas angular momentum is still unaudited, and the degree-two rule is
+approximate for nonlinear Riemann traction. No normal application simulation is enabled by
+these experiments; stable primitives remain candidates for separately verified extraction.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
