@@ -1,5 +1,64 @@
 import BlastCore
+import DocumentKit
 import Foundation
+import simd
+
+/// The particles as of the last frame consumed, for drawing.
+struct FragmentLive: Sendable, Equatable {
+    var time: Double = 0
+    var positions: [SIMD3<Float>] = []
+    var speeds: [Float] = []
+    var landed: [Bool] = []
+    /// The first `fragmentCount` particles are fragments, the rest tracers.
+    var fragmentCount = 0
+    var impacts: [FragmentImpact] = []
+
+    /// Positions as little-endian floats, four a particle: x, y, z and the speed, negative once
+    /// landed.
+    var payload: Data {
+        var values: [Float] = []
+        values.reserveCapacity(4 * positions.count)
+        for n in positions.indices {
+            values += [
+                positions[n].x, positions[n].y, positions[n].z, landed[n] ? -1 - speeds[n] : speeds[n],
+            ]
+        }
+        return values.withUnsafeBytes { Data($0) }
+    }
+
+    mutating func read(_ payload: Data) throws {
+        guard payload.count % 16 == 0 else {
+            throw ProjectFileError.invalid("Fragment positions arrived cut short.")
+        }
+        let count = payload.count / 16
+        positions = []
+        speeds = []
+        landed = []
+        positions.reserveCapacity(count)
+        payload.withUnsafeBytes { raw in
+            for n in 0..<count {
+                let x = raw.loadUnaligned(fromByteOffset: 16 * n, as: Float.self)
+                let y = raw.loadUnaligned(fromByteOffset: 16 * n + 4, as: Float.self)
+                let z = raw.loadUnaligned(fromByteOffset: 16 * n + 8, as: Float.self)
+                let s = raw.loadUnaligned(fromByteOffset: 16 * n + 12, as: Float.self)
+                positions.append(SIMD3(x, y, z))
+                speeds.append(s < 0 ? -1 - s : s)
+                landed.append(s < 0)
+            }
+        }
+    }
+
+    init() {}
+
+    init(_ consumer: FragmentConsumer, time: Double) {
+        self.time = time
+        positions = consumer.cloud.particles.map(\.position)
+        speeds = consumer.cloud.particles.map { simd_length($0.velocity) }
+        landed = consumer.cloud.particles.map(\.landed)
+        fragmentCount = consumer.cloud.fragmentCount
+        impacts = consumer.cloud.impacts
+    }
+}
 
 /// The producer's side of a one-way consumer: the air goes out a frame at a time, reports of
 /// where the particles have got come back, and the result at the end.
@@ -11,6 +70,8 @@ protocol LiveConsumer: AnyObject, Sendable {
     var report: ConsumerReport { get }
     /// Its report after `frame`, or before the first frame for a negative one; nil if not yet in.
     func report(after frame: Int) -> ConsumerReport?
+    /// The particles as of the last frame consumed, if the consumer was asked to show them.
+    var live: FragmentLive? { get }
     /// Sends the next frame's air.
     func send(_ slice: AirSlice)
     /// Waits for every frame sent to be consumed, and returns what the consumer found.
@@ -28,11 +89,17 @@ final class LocalLiveConsumer: LiveConsumer, @unchecked Sendable {
     private var history: [ConsumerReport]
     private var count = 0
     private var total = 0
+    private let showsLive: Bool
+    private var current: FragmentLive?
 
-    init(spec: FragmentSpec, scene: FragmentScene) {
-        consumer = FragmentConsumer(spec: spec, scene: scene)
+    /// `live` keeps the particles' latest positions to draw, and only those: a run in the app,
+    /// with a frame each batch, would not hold every frame's.
+    init(spec: FragmentSpec, scene: FragmentScene, live: Bool = false) {
+        consumer = FragmentConsumer(spec: spec, scene: scene, keepsFrames: !live)
         latest = consumer.report
         history = [latest]
+        showsLive = live
+        current = live ? FragmentLive(consumer, time: 0) : nil
     }
 
     func report(after frame: Int) -> ConsumerReport? {
@@ -42,6 +109,7 @@ final class LocalLiveConsumer: LiveConsumer, @unchecked Sendable {
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { lock.withLock { latest } }
+    var live: FragmentLive? { lock.withLock { current } }
 
     func send(_ slice: AirSlice) {
         lock.withLock {
@@ -51,9 +119,11 @@ final class LocalLiveConsumer: LiveConsumer, @unchecked Sendable {
         queue.async { [self] in
             consumer.consume(slice)
             let report = consumer.report
+            let live = showsLive ? FragmentLive(consumer, time: slice.time) : nil
             lock.withLock {
                 latest = report
                 history.append(report)
+                if let live { current = live }
             }
         }
     }
@@ -70,7 +140,7 @@ final class LocalLiveConsumer: LiveConsumer, @unchecked Sendable {
 }
 
 /// A consumer on another Mac, through a worker: frames go out over its connection as they come,
-/// and its reports come back after each.
+/// and its reports, and if asked its particles' positions, come back after each.
 final class RemoteLiveConsumer: LiveConsumer, @unchecked Sendable {
     let id = UUID()
     private let client: SweepWorkerClient
@@ -80,21 +150,41 @@ final class RemoteLiveConsumer: LiveConsumer, @unchecked Sendable {
     private var history: [ConsumerReport]
     private var count = 0
     private var total = 0
+    private var current: FragmentLive?
+    /// Whether the connection is this consumer's to close when done, or shared, as by the app.
+    private let ownsClient: Bool
 
     @MainActor
-    init(client: SweepWorkerClient, spec: FragmentSpec, scene: FragmentScene) {
+    init(
+        client: SweepWorkerClient, spec: FragmentSpec, scene: FragmentScene, live: Bool = false,
+        ownsClient: Bool = true
+    ) {
         self.client = client
+        self.ownsClient = ownsClient
         writer = client.writer
         // The particles' starting place, worked out here as the worker will.
-        latest = FragmentConsumer(spec: spec, scene: scene).report
+        let start = FragmentConsumer(spec: spec, scene: scene, keepsFrames: false)
+        latest = start.report
         history = [latest]
-        client.startConsumer(ConsumerSession(id: id, spec: spec, scene: scene)) { [weak self] report in
-            guard let self else { return }
-            self.lock.withLock {
-                self.latest = report
-                self.history.append(report)
-            }
-        }
+        current = live ? FragmentLive(start, time: 0) : nil
+        client.startConsumer(
+            ConsumerSession(id: id, spec: spec, scene: scene, live: live),
+            report: { [weak self] report in
+                guard let self else { return }
+                self.lock.withLock {
+                    self.latest = report
+                    self.history.append(report)
+                }
+            },
+            live: { [weak self] header, payload in
+                guard let self else { return }
+                var live = self.lock.withLock { self.current } ?? FragmentLive()
+                guard (try? live.read(payload)) != nil else { return }
+                live.time = header.time
+                live.fragmentCount = header.fragmentCount
+                live.impacts += header.impacts
+                self.lock.withLock { self.current = live }
+            })
     }
 
     func report(after frame: Int) -> ConsumerReport? {
@@ -104,6 +194,7 @@ final class RemoteLiveConsumer: LiveConsumer, @unchecked Sendable {
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { lock.withLock { latest } }
+    var live: FragmentLive? { lock.withLock { current } }
 
     func send(_ slice: AirSlice) {
         let payload = slice.payload
@@ -121,6 +212,11 @@ final class RemoteLiveConsumer: LiveConsumer, @unchecked Sendable {
 
     func cancel() {
         let client = client
-        Task { @MainActor in client.close() }
+        if ownsClient {
+            Task { @MainActor in client.close() }
+        } else {
+            // The worker drops the session; the connection stays for the next.
+            writer.enqueue(.cancel(id))
+        }
     }
 }

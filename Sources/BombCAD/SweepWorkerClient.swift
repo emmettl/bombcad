@@ -12,6 +12,7 @@ final class SweepWorkerClient {
     /// Safe from any thread: frames go out in the order given.
     nonisolated let writer: SweepWorkerWriter
     private var reports: [UUID: @Sendable (ConsumerReport) -> Void] = [:]
+    private var liveFrames: [UUID: @Sendable (LiveFrameHeader, Data) -> Void] = [:]
     private var fragmentWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
     private let onClose: () -> Void
     private var reader: Task<Void, Never>?
@@ -122,9 +123,14 @@ final class SweepWorkerClient {
         onClose()
     }
 
-    /// Starts a consumer session, whose reports go to `report`.
-    func startConsumer(_ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void) {
+    /// Starts a consumer session, whose reports go to `report`, and for a live one its
+    /// particles to `live`.
+    func startConsumer(
+        _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void,
+        live: @escaping @Sendable (LiveFrameHeader, Data) -> Void = { _, _ in }
+    ) {
         reports[session.id] = report
+        if session.live { liveFrames[session.id] = live }
         writer.enqueue(.consume(session))
     }
 
@@ -140,6 +146,7 @@ final class SweepWorkerClient {
             writer.enqueue(.finishConsumer(id, frameInterval))
         }
         reports[id] = nil
+        liveFrames[id] = nil
         guard payload.count >= 4 else {
             throw ProjectFileError.invalid("The fragments' result was cut short.")
         }
@@ -156,6 +163,8 @@ final class SweepWorkerClient {
         switch message {
         case .report(let id, let report):
             reports[id]?(report)
+        case .live(let id, let header):
+            liveFrames[id]?(header, payload)
         case .fragments(let id):
             fragmentWaiters.removeValue(forKey: id)?.resume(returning: payload)
         case .hello(let hello):

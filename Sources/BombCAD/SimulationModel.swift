@@ -294,6 +294,21 @@ final class SimulationModel {
     @ObservationIgnored private var settledInputs: SimulationInputs?
     @ObservationIgnored private var handledSettings: SimulationSettings?
     @ObservationIgnored lazy var sweep = ParameterSweep(model: self)
+    /// The project's fragments, if it flies any: a cased charge's fragments and tracers, flown
+    /// one way through the blast from the start of each run and drawn over it. Saved with the
+    /// project; changes take effect from the next run.
+    var fragmentSpec: FragmentSpec?
+    /// Fly the fragments on the Mac set for sweeps in Settings, not this one.
+    var fragmentsOnRemote = false
+    /// Where the fragments of the run stand: how many are in flight and landed.
+    private(set) var fragmentStatus = ""
+    /// The run's fragments, in flight and landed, to draw.
+    private(set) var fragmentLive: FragmentLive?
+    @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
+    @ObservationIgnored private var fragmentTime = -1.0
+    @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
+    @ObservationIgnored private var fragmentWorker: SweepWorkerClient?
+    @ObservationIgnored private var fragmentWorkerHost: String?
     private static let undoLimit = 100
 
     init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {
@@ -312,6 +327,7 @@ final class SimulationModel {
         if let document {
             settings.scenario = scenario
             savedRuns = document.savedRuns
+            fragmentSpec = document.fragments
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -383,6 +399,7 @@ final class SimulationModel {
                 lastSampleTime = 0
                 onSample?(solver)
             }
+            if let solver { startFragments(solver) }
         }
         isRunning = true
         restartPacing()
@@ -435,6 +452,7 @@ final class SimulationModel {
         renderSettings = RenderSettings()
         adopt(document.scenario)
         savedRuns = document.savedRuns
+        fragmentSpec = document.fragments
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -1174,6 +1192,84 @@ final class SimulationModel {
         savedRuns.append(run)
     }
 
+    // MARK: - Fragments
+
+    /// Starts flying the project's fragments for a run beginning now, if it has any.
+    private func startFragments(_ solver: BlastSolver) {
+        guard let spec = fragmentSpec, spec.count + spec.tracers > 0, (try? spec.validate()) != nil else {
+            return
+        }
+        stopFragments()
+        let scene = FragmentScene(scenario)
+        let consumer: any LiveConsumer
+        if fragmentsOnRemote, let worker = fragmentWorker {
+            consumer = RemoteLiveConsumer(
+                client: worker, spec: spec, scene: scene, live: true, ownsClient: false)
+        } else {
+            consumer = LocalLiveConsumer(spec: spec, scene: scene, live: true)
+        }
+        fragments = consumer
+        fragmentLaunchSpeed = spec.launchSpeed(chargeMass: scenario.charge.mass)
+        fragmentLive = consumer.live
+        fragmentTime = -1
+        // The consumer may fall up to four frames behind; then the run waits for it.
+        holdBatches = { consumer.sent - 1 - consumer.report.frame > 4 }
+        sendFragmentFrame(solver)
+        updateFragmentStatus()
+    }
+
+    private func stopFragments() {
+        // The gate is the fragments' only while they run; a headless run may set its own.
+        if fragments != nil { holdBatches = nil }
+        fragments?.cancel()
+        fragments = nil
+        fragmentLive = nil
+        fragmentStatus = ""
+    }
+
+    /// The air now, for the fragments, if they have not had this moment's yet.
+    private func sendFragmentFrame(_ solver: BlastSolver) {
+        guard let fragments, solver.time > fragmentTime + 1e-9 else { return }
+        fragmentTime = solver.time
+        let region = fragments.report.region(
+            for: fragments.sent, interval: 0.001, domain: scenario.domainSize, cellSize: solver.grid.cellSize)
+        fragments.send(solver.airSlice(region: region.box, stride: region.stride))
+    }
+
+    private func updateFragmentStatus() {
+        guard let live = fragments?.live else { return }
+        fragmentLive = live
+        let landed = live.impacts.count
+        let flying = (0..<live.fragmentCount).filter { !live.landed[$0] }.count
+        let energy = live.impacts.map(\.energy).max() ?? 0
+        var text = "\(flying) fragments in flight, \(landed) landed"
+        if energy > 0 {
+            text +=
+                energy >= 1e6
+                ? String(format: ", hardest %.1f MJ", energy / 1e6)
+                : String(format: ", hardest %.0f kJ", energy / 1e3)
+        }
+        if fragments is RemoteLiveConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        fragmentStatus = text
+    }
+
+    /// Connects to the Mac set for sweeps, to fly fragments there; nil `host` disconnects.
+    func connectFragmentWorker(_ host: String?) async {
+        guard host != fragmentWorkerHost || fragmentWorker == nil else { return }
+        fragmentWorker?.close()
+        fragmentWorker = nil
+        fragmentWorkerHost = nil
+        guard let host else { return }
+        fragmentStatus = "Connecting to \(host)…"
+        do {
+            fragmentWorker = try await RemoteSweepWorker.connect(host: host)
+            fragmentWorkerHost = host
+            fragmentStatus = "Fragments will fly on \(host) from the next run."
+        } catch {
+            fragmentStatus = "Fragments fly here: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Building
 
     private func requestRebuild() {
@@ -1197,6 +1293,7 @@ final class SimulationModel {
     private func rebuild() {
         isLoadingInputs = true
         defer { isLoadingInputs = false }
+        stopFragments()
         completedRunSettings = nil
         loadedRunSettings = nil
         isRunning = false
@@ -1311,7 +1408,12 @@ final class SimulationModel {
 
         // Steps past the limit would be wasted work, so only encode as many as are needed.
         let needed = stats.timeStep > 0 ? Int((remaining / stats.timeStep).rounded(.up)) + 1 : 2
-        let steps = max(1, min(batchSize, needed))
+        var steps = max(1, min(batchSize, needed))
+        // Fragments take a frame at each batch's end: keep frames within about a millisecond, by
+        // taking fewer steps, never shorter ones, so the air is the same as without them.
+        if fragments != nil, stats.timeStep > 0 {
+            steps = min(steps, max(1, Int(0.001 / stats.timeStep)))
+        }
         guard
             let commandBuffer = solver.encodeBatch(steps: steps, timeLimit: limit, updateVisualization: true)
         else {
@@ -1336,6 +1438,7 @@ final class SimulationModel {
         let result = solver.completeBatch()
         time = solver.time
         stepCount = solver.stepCount
+        sendFragmentFrame(solver)
 
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
@@ -1377,6 +1480,16 @@ final class SimulationModel {
     private func finish() {
         isRunning = false
         publishTraces()
+        // The fragments' last frames may still be in flight: show them once they are in.
+        if let fragments {
+            Task { [weak self] in
+                let deadline = ContinuousClock.now + .seconds(30)
+                while fragments.report.frame < fragments.sent - 1, ContinuousClock.now < deadline {
+                    try? await Task.sleep(for: .milliseconds(20))
+                }
+                if self?.fragments === fragments { self?.updateFragmentStatus() }
+            }
+        }
         if errorMessage == nil, var inputs = loadedRunSettings {
             inputs.duration = duration
             completedRunSettings = inputs
@@ -1425,6 +1538,7 @@ final class SimulationModel {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."
             isRunning = false
         }
+        updateFragmentStatus()
         let ambient = scenario.atmosphere.pressure
         let maxPoints = 500
         for (index, history) in solver.gaugeHistories.enumerated() where index < traces.count {
@@ -1450,6 +1564,35 @@ final class SimulationModel {
             traces[index].peak = peak
         }
     }
+}
+
+extension SimulationModel {
+    /// Draws the run's particles: in flight, coloured by speed; tracers; and where fragments
+    /// landed, coloured by their energy. Each is a position and a code, the kind (0 a fragment, 1
+    /// a tracer, 2 a landing) plus a value from 0 to 1.
+    func fragmentDots(showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
+        // Straight from the consumer, so the dots move with every frame drawn.
+        guard let live = fragments?.live ?? fragmentLive else { return [] }
+        var dots: [SIMD4<Float>] = []
+        dots.reserveCapacity(live.positions.count)
+        for n in live.positions.indices {
+            let fragment = n < live.fragmentCount
+            if fragment, showFragments, !live.landed[n] {
+                dots.append(SIMD4(live.positions[n], min(live.speeds[n] / fragmentScale, 0.999)))
+            } else if !fragment, showTracers, !live.landed[n] {
+                dots.append(SIMD4(live.positions[n], 1))
+            }
+        }
+        if showFragments {
+            for impact in live.impacts {
+                // log10 of the energy over 7 decades: 1 J to 10 MJ.
+                dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
+            }
+        }
+        return dots
+    }
+
+    private var fragmentScale: Float { max(fragmentLaunchSpeed, 1) }
 }
 
 extension Duration {

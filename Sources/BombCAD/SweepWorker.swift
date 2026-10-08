@@ -35,17 +35,33 @@ enum SweepWorker {
                     )
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
+                    jobs.sessions[id] = nil
+                    jobs.live[id] = nil
                 case .shutdown:
                     await jobs.stop()
                     return
                 case .consume(let session):
-                    jobs.sessions[session.id] = FragmentConsumer(spec: session.spec, scene: session.scene)
+                    jobs.sessions[session.id] = FragmentConsumer(
+                        spec: session.spec, scene: session.scene, keepsFrames: !session.live)
+                    if session.live { jobs.live[session.id] = 0 }
                 case .air(let id, let header):
                     guard var consumer = jobs.sessions[id] else { continue }
                     do {
                         consumer.consume(try AirSlice(header: header, payload: packet.payload))
                         jobs.sessions[id] = consumer
                         writer.enqueue(.report(id, consumer.report))
+                        if let reported = jobs.live[id] {
+                            let live = FragmentLive(consumer, time: header.time)
+                            let impacts = Array(live.impacts.dropFirst(reported))
+                            jobs.live[id] = live.impacts.count
+                            writer.enqueue(
+                                .live(
+                                    id,
+                                    LiveFrameHeader(
+                                        time: header.time, fragmentCount: live.fragmentCount, impacts: impacts
+                                    )),
+                                payload: live.payload)
+                        }
                     } catch {
                         jobs.sessions[id] = nil
                         writer.enqueue(.failed(id, error.localizedDescription))
@@ -81,6 +97,8 @@ enum SweepWorker {
     private final class Jobs {
         var current: (id: UUID, task: Task<Void, Never>)?
         var sessions: [UUID: FragmentConsumer] = [:]
+        /// Live sessions, and the impacts each has been sent.
+        var live: [UUID: Int] = [:]
 
         func stop() async {
             guard let task = current?.task else { return }

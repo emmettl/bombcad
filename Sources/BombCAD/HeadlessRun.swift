@@ -210,6 +210,8 @@ enum HeadlessRun {
         start.scenario = inputs.scenario
         start.runSettings = inputs.settings
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
+        // A run here flies fragments as `options` says, not as the project's live view does.
+        model.fragmentSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Before the inputs load, which sets the first sample time.
         model.airSampleInterval = interval
