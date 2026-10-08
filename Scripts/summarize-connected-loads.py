@@ -25,6 +25,10 @@ def main():
     transports = {r.get("transport", "constantEuler") for r in rows}
     if len(transports) != 1:
         raise ValueError("Cases must use the same transport method")
+    wall_methods = {r.get("wallIntegration", "centroid") for r in rows}
+    if len(wall_methods) != 1:
+        raise ValueError("Cases must use the same wall integration method")
+    print(f"Wall integration: {next(iter(wall_methods))}")
     print(f"Transport: {next(iter(transports))}")
     print(f"Initialization: {next(iter(initializations))}")
     print("CFL 0.1 loads; grid changes compare with the preceding coarser grid")

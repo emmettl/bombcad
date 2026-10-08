@@ -11,9 +11,10 @@ do {
         let convergence = arguments.contains("--convergence")
         let volumeAverage = arguments.contains("--volume-average")
         let limited = arguments.contains("--limited")
+        let surfaceQuadrature = arguments.contains("--surface-quadrature")
         let stem =
             "connected-loads" + (convergence ? "-convergence" : "") + (volumeAverage ? "-volume-average" : "")
-            + (limited ? "-limited" : "")
+            + (limited ? "-limited" : "") + (surfaceQuadrature ? "-surface-quadrature" : "")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
                 ?? ".build/\(stem).json")
@@ -23,7 +24,7 @@ do {
         _ = try ExperimentalConnectedLoadStudy.run(
             cellSizes: convergence ? [0.2, 0.1, 0.05] : [0.2, 0.1],
             cfls: convergence ? [0.2, 0.1] : [0.2], targetPulseEnergy: convergence ? 6400 : nil,
-            volumeAverage: volumeAverage, limited: limited
+            volumeAverage: volumeAverage, limited: limited, surfaceQuadrature: surfaceQuadrature
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)

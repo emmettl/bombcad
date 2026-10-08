@@ -438,6 +438,13 @@ writes `.build/connected-loads-convergence-volume-average-limited.json`. Pass th
 tests into a temporary CPU-only package and verifies them without application or Metal
 imports. This is preparation for extraction, not a released ContinuumKit product check.
 
+Adding `--surface-quadrature` samples each body-wall patch with positive degree-two triangle
+quadrature. Sample locations enter the reconstruction limiter and CFL calculation; the
+same sample impulses update gas momentum and integrate body torque. Domain walls continue
+to use their centroids. With the flags above, the report name gains `-surface-quadrature`
+before `.json`, and records the patch and evaluation-point counts. Affine pressure force
+and torque are checked analytically; nonlinear wall-Riemann traction is still approximate.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

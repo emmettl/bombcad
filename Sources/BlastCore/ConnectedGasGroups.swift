@@ -11,18 +11,39 @@ enum ConnectedGasGroups {
         let normal: SIMD3<Double>  // From a to b.
         let centroid: SIMD3<Double>
     }
+    struct SurfaceSample {
+        let point: SIMD3<Double>
+        let area: Double
+    }
     struct Boundary {
         let cell: Int
         let area: Double
         let normal: SIMD3<Double>  // Outward from gas.
         let centroid: SIMD3<Double>
         let owner: Int
-        init(cell: Int, area: Double, normal: SIMD3<Double>, centroid: SIMD3<Double>, owner: Int = 0) {
+        let samples: [SurfaceSample]?
+        init(
+            cell: Int, area: Double, normal: SIMD3<Double>, centroid: SIMD3<Double>, owner: Int = 0,
+            samples: [SurfaceSample]? = nil
+        ) {
             self.cell = cell
             self.area = area
             self.normal = normal
             self.centroid = centroid
             self.owner = owner
+            self.samples = samples
+        }
+    }
+    /// Expand pressure evaluation locations while preserving ownership and paired gas loads.
+    /// Call after build has checked area, first moment and coplanarity of supplied samples.
+    static func sampledBoundaries(_ boundaries: [Boundary]) -> [Boundary] {
+        boundaries.flatMap { boundary in
+            guard let samples = boundary.samples else { return [boundary] }
+            return samples.map {
+                .init(
+                    cell: boundary.cell, area: $0.area, normal: boundary.normal,
+                    centroid: $0.point, owner: boundary.owner)
+            }
         }
     }
     struct Group {
@@ -108,6 +129,23 @@ enum ConnectedGasGroups {
         }
         for boundary in boundaries {
             try patch(boundary.cell, boundary.area, boundary.normal, boundary.centroid)
+            if let samples = boundary.samples {
+                let length = pow(nominalVolume, 1.0 / 3)
+                var area = 0.0
+                var moment = SIMD3<Double>.zero
+                for sample in samples {
+                    guard sample.area.isFinite && sample.area > 0,
+                        (0..<3).allSatisfy({ sample.point[$0].isFinite }),
+                        abs(simd_dot(sample.point - boundary.centroid, boundary.normal)) <= tolerance * length
+                    else { throw Failure.invalidGeometry }
+                    area += sample.area
+                    moment += sample.area * (sample.point - boundary.centroid)
+                }
+                guard boundary.area == 0 || !samples.isEmpty,
+                    abs(area - boundary.area) <= tolerance * max(boundary.area, 1e-300),
+                    simd_length(moment) <= tolerance * max(boundary.area, 1e-300) * length
+                else { throw Failure.invalidGeometry }
+            }
         }
         var areaResidual = 0.0
         var momentResidual = 0.0
@@ -178,7 +216,7 @@ enum ConnectedGasGroups {
         let outer = boundaries.filter { $0.area > 0 }.map {
             Boundary(
                 cell: mapping[$0.cell], area: $0.area, normal: $0.normal, centroid: $0.centroid,
-                owner: $0.owner)
+                owner: $0.owner, samples: $0.samples)
         }
         var groupVectors = [SIMD3<Double>](repeating: .zero, count: groups.count)
         var groupAreas = [Double](repeating: 0, count: groups.count)

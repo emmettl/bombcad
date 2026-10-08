@@ -78,7 +78,8 @@ public enum ExperimentalConnectedGasStudy {
     }
     static func domain(
         cellSize h: Double, rotation angle: Double,
-        pressureAt: (SIMD3<Double>) -> Double = { _ in 101325 }
+        pressureAt: (SIMD3<Double>) -> Double = { _ in 101325 },
+        surfaceQuadrature: Bool = false
     ) throws -> Domain {
         guard h.isFinite && h > 0 && 2 / h <= 100 && angle.isFinite else { throw Failure.inconsistentFace }
         let n = Int((2 / h).rounded())
@@ -111,7 +112,10 @@ public enum ExperimentalConnectedGasStudy {
                             boundaries.append(
                                 .init(
                                     cell: id, area: wall.area, normal: -wall.normal,
-                                    centroid: wall.centroid, owner: 1))
+                                    centroid: wall.centroid, owner: 1,
+                                    samples: surfaceQuadrature
+                                        ? wall.quadrature.map { .init(point: $0.point, area: $0.weight) }
+                                        : nil))
                         }
                         for side in 0..<6 {
                             let coordinate = [i, j, k][side / 2]

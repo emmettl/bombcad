@@ -17,6 +17,10 @@ struct FractionalBoxGeometry {
         let centroid: SIMD3<Double>
         let normal: SIMD3<Double>
     }
+    struct SurfaceNode {
+        let point: SIMD3<Double>
+        let weight: Double  // Area in square metres.
+    }
     struct WallPatch {
         let area: Double
         let centroid: SIMD3<Double>
@@ -29,21 +33,30 @@ struct FractionalBoxGeometry {
             area * simd_dot(velocity(centroid), normal)
         }
 
-        /// Work rate delivered to gas. Body pressure work has the opposite sign.
-        func gasPressurePower(
-            velocity: (SIMD3<Double>) -> SIMD3<Double>, pressure: (SIMD3<Double>) -> Double
-        ) -> Double {
-            var power = 0.0
+        /// Positive degree-two triangle rule, exact for quadratic surface polynomials.
+        var quadrature: [SurfaceNode] {
+            var nodes: [SurfaceNode] = []
             for n in 1..<(vertices.count - 1) {
                 let a = vertices[0]
                 let b = vertices[n]
                 let c = vertices[n + 1]
                 let weight = simd_length(simd_cross(b - a, c - a)) / 6
-                for point in [(4 * a + b + c) / 6, (a + 4 * b + c) / 6, (a + b + 4 * c) / 6] {
-                    power += weight * pressure(point) * simd_dot(velocity(point), normal)
+                if weight > 0 {
+                    for point in [(4 * a + b + c) / 6, (a + 4 * b + c) / 6, (a + b + 4 * c) / 6] {
+                        nodes.append(.init(point: point, weight: weight))
+                    }
                 }
             }
-            return power
+            return nodes
+        }
+
+        /// Work rate delivered to gas. Body pressure work has the opposite sign.
+        func gasPressurePower(
+            velocity: (SIMD3<Double>) -> SIMD3<Double>, pressure: (SIMD3<Double>) -> Double
+        ) -> Double {
+            quadrature.reduce(0) {
+                $0 + $1.weight * pressure($1.point) * simd_dot(velocity($1.point), normal)
+            }
         }
 
         /// Degree-two triangle quadrature integrates linear pressure force and torque exactly.
@@ -53,16 +66,10 @@ struct FractionalBoxGeometry {
         ) -> (force: SIMD3<Double>, torque: SIMD3<Double>) {
             var force = SIMD3<Double>.zero
             var torque = SIMD3<Double>.zero
-            for n in 1..<(vertices.count - 1) {
-                let a = vertices[0]
-                let b = vertices[n]
-                let c = vertices[n + 1]
-                let weight = simd_length(simd_cross(b - a, c - a)) / 6
-                for point in [(4 * a + b + c) / 6, (a + 4 * b + c) / 6, (a + b + 4 * c) / 6] {
-                    let applied = -weight * pressure(point) * normal
-                    force += applied
-                    torque += simd_cross(point - origin, applied)
-                }
+            for node in quadrature {
+                let applied = -node.weight * pressure(node.point) * normal
+                force += applied
+                torque += simd_cross(node.point - origin, applied)
             }
             return (force, torque)
         }
