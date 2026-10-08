@@ -19,6 +19,8 @@ machines' published specifications, not measurements of a distributed solver.
   exchanging a little each frame) scale better than a split grid, but at most twice as fast,
   only when the models cost about the same; with this pair of machines the Studio's own CPU is
   the better second worker. See [Separate models](#separate-models-on-separate-machines).
+  Most of the effects in the [long-term vision](long-term-vision.md) separate this way; three
+  pairings do not. See [The long-term vision's effects](#the-long-term-visions-effects).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
   size. [`BombCAD run`](run-comparison.md#headless-runs) is the building block for the last.
@@ -160,6 +162,42 @@ on the same GPU would help little: the air solver already uses nearly all its ba
 - They exchange every air step, not every millisecond, so latency counts again, and the loads
   and the structure's motion lag a step.
 - On the mini, 3.2 times slower for the structure, the structure would hold everything up.
+
+## The long-term vision's effects
+
+Which of the effects in the [long-term vision](long-term-vision.md) could run apart from the
+blast in this way, judged by the same tests: which way the coupling runs, how often, and how much
+must pass. Most separate, because they happen on different time scales: prompt radiation in
+microseconds, the thermal flash over milliseconds to seconds, the blast in milliseconds, collapse
+over seconds, the fireball's rise over seconds to minutes, fire over minutes to hours, fallout
+over hours to days. Effects that overlap in time and act on each other must run together; those
+that only follow from the blast can trail it, or come after it, elsewhere. None of these models
+exists yet except the blast and the structures.
+
+| Effect | Coupling to the blast | Separable? |
+|---|---|---|
+| Structural response in a detailed study | Both ways, every air step | No: at most about 1.33 times (above). One GPU. |
+| Fragments and debris | Mostly one way: the air pushes them; failed elements hand them over | Yes: alongside, on another machine or the CPU, or afterwards from saved frames |
+| Simplified buildings across a wide area, as obstacles | Both ways: they shield and redirect the blast | No: they belong in the air's solve. Deriving them from detailed studies is independent runs, which scale perfectly. |
+| Damage to those buildings | In effect one way, if most collapse comes after the main blast has passed (an assumption to state) | Yes: each driven by its recorded loads, as independent jobs |
+| The early fireball (expansion, afterburning) | It is the hot gas in the air model | No: the same solver |
+| The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state |
+| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)) |
+| Material heating and fire | Driven by the radiation; the blast's wind disturbs it only weakly | Yes: after the event |
+| Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures |
+| The crater and ground shock near the charge | Both ways, in the first milliseconds: the ground loads and vents the blast, and throws soil into it | No near the charge; yes for thrown soil once airborne, ballistic like fragments, unless its dust loading of the air matters |
+| Prompt radiation | None with the flow; depends on the geometry and the air's density | Yes, entirely: before, alongside or independently |
+| Fallout and plumes | One way, from the risen cloud and the weather | Yes, in sequence, after the rise |
+
+So only three pairings need one solver on one GPU: the blast with detailed structures, with the
+crater near the charge, and with the early fireball. These are where faster single machines
+matter. Thermal radiation, fragments, thrown soil and distant ground shock are concurrent and
+one-way, suited to a second machine or the CPU, with small exchanges each frame. The fireball's
+rise, fire and fallout are a chain of hand-overs after the blast: they speed up a set of
+scenarios, not one run. Wide-area studies are better placed than they look: deriving simplified
+buildings and assessing each building's damage are independent runs, and only the air's solve
+over the whole area must be one computation, the case where splitting a single grid eventually
+pays ([When it pays](#when-it-pays)).
 
 ## Better first
 
