@@ -114,9 +114,15 @@ struct FragmentStreamingTests {
         let run = Task {
             try await HeadlessRun.perform(document(), options: options(spec), consumer: consumer)
         }
-        try await Task.sleep(for: .milliseconds(500))
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(10)
+        while consumer.sent < 5, clock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         // Frame 0 and four more, ahead of a consumer stuck before its first.
         #expect(consumer.sent == 5)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(consumer.sent == 5, "The paused consumer must continue to hold the run.")
         consumer.release()
         let result = try await run.value
         #expect(consumer.sent == 7 && result.run.elapsedTime >= 0.006 - 1e-9)
