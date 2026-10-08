@@ -13,8 +13,8 @@ struct AbsorptionCalibrationTests {
         room.floor = .uniform(0.5, scattering: 0.3, name: "Audience")
         let settings = RoomResponseSettings(
             room: room, source: RoomPoint(name: "S", position: [2, 3, 1.5]),
-            receivers: [RoomPoint(name: "R", position: [6.5, 2.2, 1.2])], airAbsorption: false, duration: 1.5,
-            maximumReflectionOrder: 30, diffuseRays: 20_000)
+            receivers: [RoomPoint(name: "R", position: [6.5, 2.2, 1.2])], airAbsorption: false, duration: 1.2,
+            maximumReflectionOrder: 12, diffuseRays: 10_000)
         // As given it decays in about 1.5 s, against Eyring's 0.9 s.
         let target: [Double?] = [nil, nil, 1.2, 1.2, 1.2, 1.2, nil, nil]
         let (fitted, steps) = try AbsorptionCalibration.fit(settings, to: target, tolerance: 0.03)

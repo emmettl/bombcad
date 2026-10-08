@@ -245,7 +245,8 @@ struct WaveSolverTests {
         let busy = try #require(
             solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: steps) { false })
         #expect(!busy.onGPU)
-        #expect(Date().timeIntervalSince(start) < 8)
+        // The GPU would take at least 16 s; the CPU, with other tests running beside it, well under 12.
+        #expect(Date().timeIntervalSince(start) < 12)
         var cpu = solver
         cpu.engine = .cpu
         let reference = try #require(
