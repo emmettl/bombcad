@@ -538,6 +538,12 @@ which is where the beam splits. But slip stiffens the beams with stirrups: the l
 35–40, and left 9–11 mm down against 18, on 16 elements; and the reactions rise to 560–700 kN.
 With the contest slab at 82% and OA1 at 142–147% with slip, it stays an option.
 
+Under the CEB's strain-rate law for the bars (`--steel-law ceb`; see the
+[concrete model](concrete-model.md#strain-rate-effects)) the heavy drops with stirrups peak
+at 39.3, 37.5 and 33.1 mm on 16 elements and are left 16.8, 18.4 and 13.8 mm down, against
+39.5 / 17.7, 37.9 / 18.5 and 35.3 / 17.7 measured (46.5, 41.7 and 35.9 mm on 24); the light
+drops and SS0a-1 move by under 0.5 mm.
+
 How much aggregate interlock strengthens with strain rate, which the model takes to be as much
 as the tensile strength, remains open: with interlock doubled, about what Malvar and Ross's
 factor gave it at these rates, SS0a-1 survived even before the crack widths were corrected.
@@ -594,6 +600,34 @@ they go further, 58% too far on average (108% before), and some far further: A24
 6 m/s, A36 at 4 m/s and B48 at 6 m/s two to four times. A36 breaks at 5 m/s as its test beam
 did, cut through by removed elements beside the plate and at a support; B36, which its test
 beam also broke at 5 m/s, bends but holds.
+
+**Pushed slowly instead** (`blastbench impact --ando --push 0.026`), B36 is left 22.9 mm down
+from 26 mm, as the test beam was after the blow: statically the model keeps its deflection.
+Struck, it yields its bars 6.4 mm (`--bars`) where pushed it yields them 11 mm: the bars, made
+1.4 times as strong at the rate by Malvar and Crawford's law, hold it elastic, and it springs
+back. Tension tests of bars find a fifth less (see the
+[concrete model](concrete-model.md#strain-rate-effects)); under the CEB's law, which they
+support (`--steel-law ceb`), the fourteen faster peaks are 14% off on 16 elements and 56% on
+24, and the residuals much as here, while the contest slab's hinge runs away on fine meshes.
+Pushed, the clamped beam carries 112 kN, almost what fully fixed ends would give, against
+68 kN measured and about 53 kN for a simply supported beam; on plates that turn freely
+(`--plates 0.02`), 92 kN, or 74 kN without the strain-rate laws.
+
+**Bars spread through the concrete about them** (`blastbench impact --spread`). Smeared, each
+bar's steel sits in the one row of elements at its height, so the row that carries it, and the
+row of plain concrete above that splits, thin as the mesh is refined. Spread instead from the
+bar's nearest face to as far the other side (106 mm for Saatci's bars, 80 mm for Ando's, much
+as Eurocode 2's effective tension area), the steel no longer depends on the mesh, and nor do
+the beams: over the fourteen faster tests the peaks are 24% off on 16 elements and 25% on 24,
+where they were 18% and 58%, and Saatci's beams with stirrups come within 3–8% on 24
+elements. But the beams are too stiff: Ando's go 24% short on average (A24 at 6 m/s 28 mm
+against 54), Saatci's heavy drops 13–18% short on 16 elements, and they spring back too far,
+keeping a third of the deflection the tests kept (two thirds with the bars in one row, on 16
+elements). SS0a-1 still loses 430–890 elements, now along the top of the spread steel. So the
+one-row bars' agreement on 16 elements owes something to the split along the bars, which
+softens a beam and holds its deflection; without it the beams spring back. Either way the
+shear such a beam carries across its cracks, and what keeps a struck beam bent, are not yet
+right, and the spread is not the default.
 
 How the jig held the beams decides much of this. Held as pins at both ends (the paper's "turning
 and nothing else"), the 1.0 m beams came within 15% at every speed and B36 broke at 5 m/s, but

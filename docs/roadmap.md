@@ -109,8 +109,16 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    under it the beam without stirrups breaks under the light drop it survived, split along its
    bars. Read over each crack's own band, the split's width was found four to six times too
    wide; corrected, the beam comes through on 16 elements and still splits on 24, and with bars
-   that slip it comes through whole on both. So the bond between bars and concrete under
-   impact, and the shear such a beam carries across cracks at these rates, are still open.) Which strengthening is the material's
+   that slip it comes through whole on both. Spreading the bars' steel through the concrete
+   about them takes the mesh dependence away but leaves beams without stirrups too stiff and
+   springing back from their peaks, keeping a third of the deflection the tests kept. So the bond between bars and concrete under
+   impact, and the shear such a beam carries across cracks at these rates, are still open.)
+   The bars' law next: Malvar and Crawford's, the default, which tension tests of bars find a
+   fifth too strong at yield at these rates, holds struck beams elastic, so they spring back.
+   The CEB's (an option), which the tests support, brings Saatci's heavy drops within −6% to 0%,
+   but leaves the slab's mid-span hinge to run away on fine meshes, where the default's
+   factor, growing with the strain rate of the one element a crack runs through, had held it.
+   The bars' rate wants taking over their debonded length, as their rupture is. Which strengthening is the material's
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the

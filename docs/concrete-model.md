@@ -483,6 +483,8 @@ that depends on a running average (50 steps) of the element's effective strain r
 | Concrete tension, as an option | (ε̇ / 10⁻⁶)^δ, δ = 1 / (1 + 8 f_c / 10 MPa), below 1 /s; cube-root law above | Malvar and Ross, 1998 |
 | Steel yield          | (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa             | Malvar and Crawford, 1998 |
 | Steel ultimate       | (ε̇ / 10⁻⁴)^α, α = 0.019 − 0.009 f_y / 414 MPa             | Malvar and Crawford, 1998 |
+| Steel yield, as an option | 1 + (6 / f_y) ln(ε̇ / 5×10⁻⁵), f_y in MPa              | CEB Bulletin 187, 1988; fib Model Code 2010 |
+| Steel ultimate, as an option | 1 + (7 / f_u) ln(ε̇ / 5×10⁻⁵), f_u in MPa           | the same |
 
 The factor raises strength without changing stiffness. Two details matter:
 
@@ -508,6 +510,27 @@ The factor raises strength without changing stiffness. Two details matter:
   fine meshes splits along its bars, under a drop the test beam survived (see
   [Validation](validation.md#beams-struck-by-a-falling-weight)). The Model Code's is the
   default; it errs, there, towards damage.
+- The **steel law** (`steelRateLaw`) sets how much of a struck beam's deflection is the bars'
+  yielding, and so how much it keeps. Malvar and Crawford's, the default, raises a 400 MPa
+  bar's yield 1.39 times at 1 per second and 1.49 at 9; the CEB's, which the fib Model Code
+  2010 re-adopted, 1.15 and 1.18. Tension tests of HRB400 bars (F. Lin, Y. Dong, X. Kuang and
+  L. Lu, *Materials* 9, 2016, 1013) found 1.20 at 3 per second and 1.25 at 9.3, within 7% of
+  the CEB's, where Malvar and Crawford's overestimated the yield by a fifth. Under Malvar and
+  Crawford's, Ando's beam struck at 4 m/s and bent through 26 mm yields its bars 6.4 mm, where
+  pushed slowly to the same deflection it yields them 11 mm and keeps the test's 22.6 mm: the
+  bars, too strong at the rate, hold the beam elastic and it springs back. Under the CEB's,
+  Saatci's heavy drops come within −6% to 0% on 16 elements (−11% to −5% under the default),
+  left 14–18 mm down against 18 (12–15 mm), and Ando's faster peaks within 14% on average
+  (18%), keeping about three quarters of the residuals measured either way; the contest slab
+  peaks at 113–121 mm on 4 to 16 elements (105–112%) and follows its record more closely
+  (4–8 mm root-mean-square, against 9–12), and its shells at 135 mm (125%, against 115%).
+  But on finer meshes the slab's mid-span hinge runs away under it: a 25 mm strip of it
+  reaches 180 mm and still going on 16 elements, where under the default it peaks at 118, and
+  153 mm on 32; the full slab on 32 elements falls apart. Malvar and Crawford's factor grows
+  with the strain rate of the element a crack runs through, which grows as the mesh is
+  refined, and strengthens the hinge just where it localises. So the bars' rate is taken from
+  one element, and the hinge relies on that to converge; until it is taken over the bars'
+  debonded length, as their rupture is, the CEB's law stays an option.
 
 Until the fix described in step 14 below, the compressive law above 30 per second omitted the
 normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
@@ -828,6 +851,14 @@ matter.
    on average on 16 elements, where they had gone 44% too far (58% on 24, from 108%), but
    spring back to about half the measured residual. The beams with stirrups, the contest slab, OA1, the chamber and the close-in slabs
    are unchanged; Janney's beam holds where it had failed at 52 mm on 24 elements.
+27. **Why struck beams spring back** (see Strain-rate effects). A beam without stirrups pushed
+   slowly keeps its deflection as the test's did; the same beam struck yields its bars about
+   half as far and springs back, held elastic by bars that Malvar and Crawford's law makes 1.4
+   times as strong at the rate, a fifth more than tension tests of bars find. The CEB's law
+   for the bars (an option) brings the impacts closer, but leaves the slab's hinge to run
+   away on fine meshes. Spreading the bars' steel through the concrete about them, tried
+   first, made the beams converge with the mesh but too stiff (see
+   [Validation](validation.md#beams-struck-by-a-falling-weight)).
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so

@@ -318,6 +318,41 @@ noise between runs, and changed the collapse, since the air steps fall different
 dispatch, which would let the GPU skip them, needs bounds checks in every structural kernel
 and a kernel to write the dispatch sizes, for at most those 3%; it has not been done.
 
+## Other Macs
+
+Measured on the CI Mac mini (M4, 10-core GPU, 120 GB/s, 24 GB) on 7 and 8 October 2026, against
+the M4 Max figures above (32-core GPU, 546 GB/s): 3.2 times the cores, 4.5 times the bandwidth.
+The mini also runs other CI and an app on its desktop, so its figures are the best of several
+runs; they agreed to within a few per cent overnight and when its runner was idle.
+
+| Benchmark | M4 Max | M4 | Ratio |
+|---|---|---|---|
+| Air, every cell swept (`throughput --no-skip`), cell-updates per second | 2.8 billion | 0.57–0.64 billion | 4.4–4.9 |
+| Air, street at 0.5 m, still air skipped, steps/s | 3,060 | 843–878 | 3.5 |
+| Air, street at 0.25 m, still air skipped, steps/s | 524 | 140–144 | 3.7 |
+| Structure alone (`structure`), steps/s | 1,227 | 378–381 | 3.2 |
+| Concrete building coupled to the air, app's run loop (`BombCAD run`, medium grid) | 57–64 s | 110 s | 1.8 |
+
+- **The air solver is limited by memory bandwidth.** With every cell swept, its rate per cell is
+  steady at every size on both machines, and the ratio between them is the ratio of their
+  bandwidths. Skipping still air leaves less work in each step, and the ratio falls towards the
+  cores'.
+- **The structural solver is limited by the GPU's cores** (or by something that scales with
+  them, such as the chains of small kernels in each substep): its ratio is exactly the ratio of
+  cores.
+- **A coupled run in the app gains much less** than either, since part of its time is spent
+  outside the GPU: the run loop waits for each batch and samples the structure every millisecond.
+- The finest street grid (0.125 m) is quoted by `blastbench throughput` from a sample of full
+  sweeps; on the mini that sample, 8 steps/s, is a full-sweep rate, so compare it with the first
+  row, not with the 71 steps/s measured over the whole event above.
+
+From these, a Mac with an **M5 Max, 40-core GPU** (614 GB/s) would be expected to run the air
+about 1.1 times as fast as the M4 Max on large grids (the bandwidth ratio), up to 1.25 times on
+small ones, and the structure about 1.25 times as fast (the ratio of cores), more if the M5's
+cores are individually faster for this work, which is not known. Coupled runs in the app would
+gain less. Its larger memory (up to 128 GB) matters more: it holds a street grid at 0.0625 m
+(about 31 GB) that 36 GB cannot.
+
 ## Where the time goes, and what would help
 
 | Cost                                              | Possible remedy                                        |
