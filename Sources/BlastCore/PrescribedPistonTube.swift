@@ -1,7 +1,7 @@
 import simd
 
 /// One-dimensional planar piston with conservative end-cell merging/splitting.
-/// A small end cell is joined to its neighbour at one quarter of the grid-cell volume.
+/// A small end cell is joined to its neighbour at a configurable volume fraction.
 /// This changes spatial diffusion; it is not a general moving cut-cell solver.
 enum PrescribedPistonTube {
     enum Failure: Error { case invalidGeometry, stepLimit }
@@ -17,12 +17,15 @@ enum PrescribedPistonTube {
 
     static func run(
         cellLength h: Double, area: Double, length: Double, pistonVelocity: Double, duration: Double,
-        density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000
+        density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000,
+        mergeFraction: Double = 0.25, cfl: Double = 0.4
     ) throws -> Result {
         let finalLength = length + pistonVelocity * duration
         guard h.isFinite && h > 0, area.isFinite && area > 0, length.isFinite && length > 0,
             pistonVelocity.isFinite, duration.isFinite && duration > 0,
             finalLength.isFinite && finalLength > 0, maximumSteps > 0,
+            mergeFraction.isFinite && mergeFraction > 0 && mergeFraction <= 0.5,
+            cfl.isFinite && cfl > 0 && cfl <= 0.5,
             max(length, finalLength) / h < 10000
         else { throw Failure.invalidGeometry }
         func volumes(_ length: Double) -> [Double] {
@@ -31,7 +34,7 @@ enum PrescribedPistonTube {
             let remainder = length - Double(full) * h
             if remainder > 0 { lengths.append(remainder) }
             if lengths.count > 1,
-                lengths.last! <= 0.25 * h * (pistonVelocity < 0 ? 1 + 1e-12 : 1 - 1e-12)
+                lengths.last! <= mergeFraction * h * (pistonVelocity < 0 ? 1 + 1e-12 : 1 - 1e-12)
             {
                 let small = lengths.removeLast()
                 lengths[lengths.count - 1] += small
@@ -47,7 +50,7 @@ enum PrescribedPistonTube {
         var crossings = 0
         if pistonVelocity != 0 {
             for n in 1...Int(ceil(max(length, finalLength) / h)) {
-                for offset in [0.0, 0.25] {
+                for offset in [0.0, mergeFraction] {
                     let boundary = (Double(n) + offset) * h
                     let time = (boundary - length) / pistonVelocity
                     if time > 0 && time < duration {
@@ -74,13 +77,13 @@ enum PrescribedPistonTube {
                         cell: cells.count - 1, normal: SIMD3(1, 0, 0), area: area,
                         velocity: SIMD3(pistonVelocity, 0, 0)),
                 ]
-                let limit = try FractionalEulerFlux.maximumStep(cells, faces: faces, walls: walls)
+                let limit = try FractionalEulerFlux.maximumStep(cells, faces: faces, walls: walls, cfl: cfl)
                 let step = min(limit, event.time - elapsed)
                 guard steps < maximumSteps && step > 0 && elapsed + step > elapsed else {
                     throw Failure.stepLimit
                 }
                 let result = try FractionalEulerFlux.advanceWithWalls(
-                    cells, faces: faces, walls: walls, duration: step)
+                    cells, faces: faces, walls: walls, duration: step, cfl: cfl)
                 cells = result.cells
                 wallWork += result.wallWork.reduce(0, +)
                 wallImpulse += result.wallImpulses.reduce(.zero, +)

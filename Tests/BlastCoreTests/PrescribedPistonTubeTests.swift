@@ -5,6 +5,22 @@ import simd
 
 @Suite("Piston tube cell crossings")
 struct PrescribedPistonTubeTests {
+    @Test("Alternative merge fractions and CFL limits conserve crossing budgets", arguments: [0.125, 0.5])
+    func policies(merge: Double) throws {
+        var stepCounts: [Int] = []
+        for cfl in [0.4, 0.2] {
+            let run = try PrescribedPistonTube.run(
+                cellLength: 0.1, area: 0.01, length: 0.655,
+                pistonVelocity: -20, duration: 0.015, mergeFraction: merge, cfl: cfl)
+            stepCounts.append(run.steps)
+            let after = run.cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
+            #expect(abs(after[0] / run.initialAmount[0] - 1) < 1e-12)
+            #expect(abs(after[4] - run.initialAmount[4] + run.wallWork) < 1e-9)
+            #expect(simd_length(SIMD3(after[1], after[2], after[3]) + run.wallImpulse) < 1e-12)
+            #expect(run.cells.allSatisfy { $0.volume >= merge * 0.001 * (1 - 1e-10) && $0.pressure() > 0 })
+        }
+        #expect(stepCounts[1] > stepCounts[0])
+    }
     @Test(
         "Compression and expansion cross three grid cells with closed gas/wall budgets",
         arguments: [-1.0, 1.0])
@@ -43,6 +59,13 @@ struct PrescribedPistonTubeTests {
 
     @Test("Invalid geometry and exhausted step budgets fail explicitly")
     func failure() throws {
+        for merge in [0.0, 0.75] {
+            #expect(throws: PrescribedPistonTube.Failure.self) {
+                try PrescribedPistonTube.run(
+                    cellLength: 0.1, area: 0.01, length: 0.65,
+                    pistonVelocity: -1, duration: 0.3, mergeFraction: merge)
+            }
+        }
         #expect(throws: PrescribedPistonTube.Failure.self) {
             try PrescribedPistonTube.run(
                 cellLength: 0.1, area: 0.01, length: 0.1, pistonVelocity: -1, duration: 0.2)

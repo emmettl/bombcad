@@ -654,6 +654,32 @@ outside this tube reference. Next, test spatial and temporal sensitivity of the 
 then combine swept box geometry and chronological aperture fluxes with conservative topology
 changes before enabling freely moving bodies in the blast solver.
 
+The end-cell merge fraction and acoustic CFL are now configurable in the tube reference,
+with the existing quarter-cell/0.4 defaults retained. Merge fractions must be positive
+and at most 0.5; CFL must be positive and at most 0.5. Event times follow the selected
+merge threshold. Four tube tests cover the alternative policies and previous crossing,
+repartition and failure checks.
+
+`--piston-sensitivity` compares matched compression/expansion at 20 m/s on 0.1 and 0.05 m
+grids, CFL 0.4 and 0.2, and merge fractions 0.125, 0.25 and 0.5. All 24 cases complete,
+taking 306–2522 acoustic steps. The report records mean pressure, wall work, gas/wall
+budgets and 64 pressure/normal-velocity samples at uniform fractional tube positions.
+Relative mass departures stay below 0.000000000000001, energy residuals below
+0.00000000001 J and momentum residuals below 0.000000000000001 N s.
+
+Across merge thresholds at fixed grid/CFL, mean-pressure spread is at most 0.0044% and
+wall-work spread at most 0.0176%. The largest mean absolute pressure-profile difference
+over the 64 samples, normalised by reference mean sampled pressure, is 0.144%. The reference for
+these normalisations is the matched 0.05 m/CFL 0.2/merge 0.25 case, not an exact solution.
+At CFL 0.2 and merge 0.25, halving grid spacing changes mean pressure by 0.091% in
+compression and 0.102% in expansion. These two grids do not establish convergence;
+spatial errors exceed the mean-pressure response to merge policy in these cases.
+Reports save completed cases incrementally, so a failed run can leave a partial array.
+
+Next, add a finer spatial reference and check transient pressure profiles before combining
+general swept-box apertures, topology changes and physical fluxes. The current comparisons
+do not validate free-body blast response or choose a production merge policy.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

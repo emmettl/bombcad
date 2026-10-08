@@ -335,6 +335,11 @@ with its neighbour before closure and splits during expansion. Piecewise-constan
 repartitioning conserves extensive mass, momentum and energy. This bounds end-cell
 stiffness but changes spatial diffusion; general box geometry and varying apertures
 are not yet coupled to the physical flux reference.
+`--piston-sensitivity` writes `.build/piston-sensitivity.json`, comparing matched 20 m/s
+compression/expansion on two grids, two CFL limits and three merge fractions (24 cases).
+It records wall work, conservation budgets and 64 pressure/velocity samples along the
+final tube. Changing merge thresholds has a small effect on mean pressure in this study,
+but local profiles and grid spacing still matter; the comparison is not blast validation.
 
 ## Headline results
 
