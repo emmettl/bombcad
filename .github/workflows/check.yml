@@ -7,6 +7,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Full application checks or the bounded adiabatic source benchmark
+        type: choice
+        options: [all, adiabatic]
+        default: all
 
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
 # left no run complete. GitHub keeps only the newest waiting push queued behind it.
@@ -19,8 +25,27 @@ permissions:
 
 jobs:
   check:
+    if: github.event_name != 'workflow_dispatch' || inputs.suite != 'adiabatic'
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - run: make check
+
+  adiabatic:
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify source calculation against shared cases
+        run: bash Scripts/check-adiabatic.sh "${{ runner.temp }}/adiabatic-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Retain conformance and complete histories
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 14

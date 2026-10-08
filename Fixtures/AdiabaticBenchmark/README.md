@@ -9,6 +9,10 @@ observed orders are documented in [the core contract](https://github.com/emmettl
 Metadata includes source/dependency revisions, source hashes, dirty status, toolchain,
 hardware, precision and SI-labelled CSV histories. Output stays outside study baselines.
 
-This is uniform, closed, reversible-adabatic reference conformance with prescribed
+This is uniform, closed, reversible adiabatic reference conformance with prescribed
 volume. It does not verify coupled support/geometry, venting, waves or empirical
 material response. The 1 s sample clock is a case label, not an acoustic/piston speed.
+
+The existing Check workflow runs this source benchmark on main pushes. Manual dispatch
+with `suite=adiabatic` verifies only this bounded case; `suite=all` retains the application
+checks as well. Trusted triggers and the repository-scoped Mac mini runner remain in use.
