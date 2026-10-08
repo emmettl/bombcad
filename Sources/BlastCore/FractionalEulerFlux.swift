@@ -30,11 +30,16 @@ enum FractionalEulerFlux {
         let normal: SIMD3<Double>  // Unit normal outward from the gas.
         let area: Double
         let velocity: SIMD3<Double>
-        init(cell: Int, normal: SIMD3<Double>, area: Double, velocity: SIMD3<Double> = .zero) {
+        let state: FractionalGasTransport.Cell?
+        init(
+            cell: Int, normal: SIMD3<Double>, area: Double, velocity: SIMD3<Double> = .zero,
+            state: FractionalGasTransport.Cell? = nil
+        ) {
             self.cell = cell
             self.normal = normal
             self.area = area
             self.velocity = velocity
+            self.state = state
         }
     }
     struct Result {
@@ -79,9 +84,14 @@ enum FractionalEulerFlux {
                 (0..<3).allSatisfy({ wall.velocity[$0].isFinite }),
                 abs(simd_length_squared(wall.normal) - 1) < 1e-12
             else { throw Failure.invalidWall }
+            let trace = wall.state ?? cells[wall.cell]
+            guard trace.volume > 0 else { throw Failure.invalidWall }
+            if wall.state != nil {
+                _ = try FractionalGasTransport.advance([trace], newVolumes: [trace.volume], transfers: [])
+            }
             let normalSpeed = simd_dot(wall.velocity, wall.normal)
             let rate =
-                try wall.area * (wallState(cells[wall.cell], wall: wall).signalSpeed + abs(normalSpeed))
+                try wall.area * (wallState(trace, wall: wall).signalSpeed + abs(normalSpeed))
             guard rate.isFinite else { throw Failure.invalidWall }
             rates[wall.cell] += rate
             volumeRates[wall.cell] += wall.area * normalSpeed
@@ -127,7 +137,7 @@ enum FractionalEulerFlux {
                 wallWork.append(0)
                 continue
             }
-            let cell = cells[wall.cell]
+            let cell = wall.state ?? cells[wall.cell]
             let traction = try wallState(cell, wall: wall).pressure
             let impulse = duration * wall.area * traction * wall.normal
             let work = simd_dot(impulse, wall.velocity)
