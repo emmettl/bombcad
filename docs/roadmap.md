@@ -3,6 +3,11 @@
 Where the model is weakest, and what would be done about it. Each model document has its own
 detailed list; this one puts them in order across the whole project.
 
+The [long-term vision](long-term-vision.md) describes the broader ambition of exploring
+“all explosions great and small”, with detail and physical scope appropriate to each scale.
+It is a product direction rather than a delivery commitment; the validation priorities here
+remain the immediate focus.
+
 A separate [RoomCAD and convolution reverb roadmap](https://github.com/emmettl/RoomCAD/blob/main/docs/roomcad-roadmap.md) covers shared SwiftPM
 modules, acoustic impulse-response generation, WAV export and potential Driftbox rack
 integration, with milestones and acceptance checks. It does not replace the blast-model work
