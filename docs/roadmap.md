@@ -625,6 +625,32 @@ faces and no cell topology changes. Next, combine physical flux/work with chrono
 cell-crossing geometry and face apertures, including gas transfer when cells open or close,
 before coupling a freely moving rigid box.
 
+The planar piston can now cross grid cells in a standalone one-dimensional tube reference.
+Time intervals split at grid boundaries and at quarter-cell merge/split thresholds. Before
+an end cell closes, it is joined to its neighbour; expansion creates a separate end cell
+once it reaches one quarter of a full cell. Internal faces are rebuilt for each acoustic
+step, and the physical flux and pressure-work update uses the current control volumes.
+This avoids the vanishing acoustic timestep of an unmerged closing cell.
+
+At topology changes, ordered volume overlaps conservatively rebin each donor's extensive
+state. The last overlap receives the donor's remaining packet, keeping its complete mass,
+momentum and energy inventory. Only endpoint geometric roundoff is normalised away; a
+significant total-volume mismatch fails. Merging nonuniform gas mixes states and changes
+spatial diffusion, so this is a small-cell treatment to test, not an accuracy validation.
+
+`--piston-crossings` compresses a 0.655 m tube to 0.355 m and expands it back with prescribed
+1 m/s motion. The 0.1 m grid crosses three boundaries and repartitions three times; the
+0.05 m grid crosses/repartitions six times. The four cases take 7822–17732 acoustic steps,
+with relative mass departures below 0.00000000000001, gas-plus-wall energy residuals below
+0.00000000001 J and momentum residuals below 0.000000000000001 N s. Gas remains positive.
+Three tests cover complete compression/expansion crossings, conservative nonuniform merging
+and uniform splitting, invalid geometry and bounded-work failure.
+
+General rotating boxes, transient face openings and arbitrary cut-cell adjacency are still
+outside this tube reference. Next, test spatial and temporal sensitivity of the merge policy,
+then combine swept box geometry and chronological aperture fluxes with conservative topology
+changes before enabling freely moving bodies in the blast solver.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
