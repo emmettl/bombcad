@@ -48,6 +48,23 @@ titles; the authors, journals and years should be enough to find each one.
   paper says only that diagonal bars were "arranged along the chamfered surfaces". The model
   leaves them out, and the joints decide whether its roof holds.
 
+## 2b. A freestanding wall under an open-air charge
+
+- **Where:** a field test of a wall standing on its own footing, not held at its top. Found
+  (2026-10-08) but not readable here, behind the publishers' bot checks: "Experimental and
+  numerical study on protective effect of RC blast wall against air shock wave", *Defence
+  Technology* (2022, open access, ScienceDirect S2214914722002434), which measured the reflected
+  pressure on a reinforced concrete blast wall and the diffracted pressure behind it from TNT
+  3 m away; the cantilever-wall tests of Keys and Clubley, and of Ahmad et al., on the
+  pressures behind a cantilever blast wall; and the scaled masonry walls of M. Hayman's thesis
+  (McMaster University), which were held in frames rather than freestanding.
+- **Needed:** the wall's section, reinforcement and footing; the charge and its position; the
+  pressures in front of and behind the wall; and its deflection or rotation, peak and left.
+- **Use:** the coupled wall study (`blastbench anchorage --air`) found that the wave wrapping
+  over and round a freestanding wall, loading its back face, cuts its sway to a third of a
+  pulse on its face alone (see [base connections](structural-model.md#base-connections)).
+  Pressures behind a wall would check that; a deflection record would check its base too.
+
 ## 2a. Shear across cracks at high rates
 
 - **Where:** any test of shear across a crack (push-off specimens) loaded quickly, or a
