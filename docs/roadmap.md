@@ -830,6 +830,40 @@ constant-state flux and quarter-cell merge defaults remain unchanged. Next, gene
 conservative merging/splitting to connected cell graphs with geometry/face-balance checks,
 while retaining these tube studies as regression references for accuracy and work.
 
+Static connected control-volume aggregation now accepts general shared-face graphs.
+Underfilled groups join an adjacent group through positive open area, prioritising the
+largest shared area, then neighbour volume and stable cell index. Groups reach a quarter
+of nominal cell volume by default, with a configurable 64-member bound. Disconnected
+undersized components and exhausted member bounds fail explicitly. Dry cells have no group
+and receive no gas. Internal faces cancel; exterior face patches retain their individual
+normals and centroids instead of being combined into an approximate face.
+
+Geometry validation checks both cells and resulting groups: outward area vectors must
+close, and the centroid tensor integral must equal gas volume times the identity matrix.
+Area residuals are scaled by total surface area; tensor residuals by the larger of nominal
+and gas volume. Aggregation sums extensive mass, momentum and total energy. Splitting
+distributes a constant group state by member volume, assigning the packet remainder to a
+largest-volume member so it does not corrupt tiny members. Significant group-volume changes
+are rejected by this static split operation. Mixing nonuniform members remains diffusive,
+and angular-momentum conservation is not supplied by these extensive-state sums.
+
+`--connected-gas` links this graph reference to clipped 0.8 m boxes in a 2 m domain on
+0.2 and 0.1 m grids, at rotations 0 and 0.23 radians. Fractions and face areas below
+0.000000000001 of their nominal measures are canonicalised as geometric roundoff.
+All four cases pass shared-face and surface/tensor checks. Rotated cases contain gas
+fractions as small as 0.000000129 and 0.000000410; aggregation raises their uniform-gas
+acoustic timestep bounds by 162× and 128×, respectively. Axis-aligned gains are about
+1.98× and 1.50×. The largest group has two members in these cases.
+
+One grouped uniform-gas flux update followed by splitting preserves pressure to below
+0.000000000000001 relative, with mass/energy changes within floating-point precision and
+momentum changes below 0.00000000000001 N s. Six tests cover translated/rotated geometry,
+clipped-box integration, tiny-member roundoff, nonuniform inventory conservation, bad
+centroids/volumes, chained merges, isolated components, dry cells and member limits.
+The reference remains CPU-only and static; timestep gains do not measure grouping cost
+or validate blast loading. Next, check nonuniform pressure transport and held-box load
+budgets through these groups before allowing geometry to move.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

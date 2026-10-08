@@ -402,6 +402,12 @@ adding `--limited` produces the reconstructed comparison. Each mode writes 48 ca
 analytical errors and gas/wall budgets. `python3 Scripts/summarize-piston-strong.py` reports
 pressure accuracy, wall-work error and computational work at CFL 0.2. Refinement improves
 the stronger waves, while merge thresholds have a larger effect than in the slow studies.
+`--connected-gas` writes `.build/connected-gas.json`, grouping small fractional gas cells
+through shared open faces around a static axis-aligned or rotated box. It checks surface
+closure and centroid/volume identities before and after grouping, then verifies uniform
+gas through a grouped flux update and conservative splitting. Rotated-box cases permit
+128–162× larger acoustic timesteps; these are timestep limits, not measured speedups.
+Moving geometry, nonuniform transport accuracy and angular-momentum transport remain open.
 
 ## Headline results
 
