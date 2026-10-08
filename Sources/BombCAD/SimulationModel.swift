@@ -1253,6 +1253,12 @@ final class SimulationModel {
         fragmentStatus = text
     }
 
+    /// Flies fragments through `worker` from the next run, as if connected to `host`; for tests.
+    func useFragmentWorker(_ worker: SweepWorkerClient, host: String) {
+        fragmentWorker = worker
+        fragmentWorkerHost = host
+    }
+
     /// Connects to the Mac set for sweeps, to fly fragments there; nil `host` disconnects.
     func connectFragmentWorker(_ host: String?) async {
         guard host != fragmentWorkerHost || fragmentWorker == nil else { return }
