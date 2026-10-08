@@ -44,8 +44,8 @@ final class AbsorptionFitter {
             guard !flag.isCancelled else { return }
             isRunning = false
             switch outcome {
-            case .success(let (room, steps)):
-                status = Self.summary(steps, target: target)
+            case .success(let (room, steps, best)):
+                status = Self.summary(best, simulations: steps.count, target: target)
                 apply(room)
             case .failure(let error):
                 status = "Fitting failed: \(error.localizedDescription)"
@@ -71,8 +71,7 @@ final class AbsorptionFitter {
     private var cancellation: CancellationFlag?
 
     /// "Absorption scaled ×0.82–1.31 in 3 steps; T30 within 2% of the targets."
-    static func summary(_ steps: [AbsorptionCalibration.Step], target: [Double?]) -> String {
-        guard let last = steps.last else { return "Nothing was simulated." }
+    static func summary(_ last: AbsorptionCalibration.Step, simulations: Int, target: [Double?]) -> String {
         let used = target.indices.filter { target[$0] != nil }
         let factors = used.map { last.factors[$0] }
         let errors = used.compactMap { band in
@@ -85,7 +84,7 @@ final class AbsorptionFitter {
                 + (factors.max()! - factors.min()! > 0.005
                     ? "–\(factors.max()!.formatted(.number.precision(.fractionLength(2))))" : "")
         let worst = errors.max().map { "\(Int(($0 * 100).rounded()))%" } ?? "—"
-        let steps = steps.count - 1
+        let steps = simulations - 1
         return
             "Absorption \(scale) in \(steps) step\(steps == 1 ? "" : "s"); preview T30 within \(worst) of the "
             + "targets."

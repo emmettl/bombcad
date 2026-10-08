@@ -25,14 +25,18 @@ public enum AbsorptionCalibration {
     /// The room with `settings`' absorption scaled so the simulated T30 meets `target` within
     /// `tolerance` (a fraction) in every band that has a target, or after `iterations` simulations.
     /// Bands without a target, or whose decay cannot be measured, keep their absorption. `simulate`
-    /// generates a response's channels for settings (by default the full model); it returns the
-    /// calibrated room and each step's measurements, the last of them the calibrated room's.
+    /// generates a response's channels for settings (by default the full model).
+    ///
+    /// Returns the calibrated room, each step's measurements, and the best: in each band, the factor
+    /// and time from the step that came closest to the target there. Each band's absorption barely
+    /// changes another band's decay, so the bands are chosen apart; a band whose time is noisy, or held
+    /// by the wave solver, keeps its best step rather than its last.
     public static func fit(
         _ settings: RoomResponseSettings, to target: [Double?], tolerance: Double = 0.02, iterations: Int = 5,
         simulate: (RoomResponseSettings) throws -> [[Float]] = {
             try RoomResponseGenerator.generate($0).response.channels
         }
-    ) throws -> (room: ShoeboxRoom, steps: [Step]) {
+    ) throws -> (room: ShoeboxRoom, steps: [Step], best: Step) {
         precondition(target.count == OctaveBands.count)
         let room = settings.room
         let c = settings.atmosphere.soundSpeed
@@ -64,7 +68,7 @@ public enum AbsorptionCalibration {
                 guard let goal = target[band], let time = times[band] else { return true }
                 return abs(time / goal - 1) <= tolerance
             }
-            if done || iteration == iterations { return (trial.room, steps) }
+            if done || iteration == iterations { break }
             for band in factors.indices {
                 guard let goal = target[band], let time = times[band] else { continue }
                 var ratio: Double
@@ -75,7 +79,16 @@ public enum AbsorptionCalibration {
                     // steps. A room that is not diffuse answers less than Sabine's formula says.
                     let b =
                         -log(time / before) / log(factors[band] / steps[steps.count - 2].factors[band])
-                    ratio = pow(time / goal, 1 / min(max(b, 0.2), 2))
+                    if b >= 0.3 {
+                        ratio = pow(time / goal, 1 / min(b, 1.5))
+                    } else {
+                        // The time hardly answered, or went the wrong way, as it can where the wave
+                        // solver holds a band or the decay is noisy: fall back to Sabine's ratio.
+                        let have = area(time, band: band)
+                        let want = area(goal, band: band)
+                        guard have > 0, want > 0 else { continue }
+                        ratio = want / have
+                    }
                 } else {
                     let have = area(time, band: band)
                     let want = area(goal, band: band)
@@ -87,7 +100,17 @@ public enum AbsorptionCalibration {
                 factors[band] = min(max(factors[band] * min(max(ratio, 0.5), 2), 0), limit)
             }
         }
-        return (room.scalingAbsorption(by: factors), steps)
+        var best = Step(reverberationTime: steps[0].reverberationTime, factors: steps[0].factors)
+        for band in factors.indices {
+            guard let goal = target[band] else { continue }
+            let closest = steps.min { a, b in
+                abs((a.reverberationTime[band] ?? .infinity) / goal - 1)
+                    < abs((b.reverberationTime[band] ?? .infinity) / goal - 1)
+            }!
+            best.factors[band] = closest.factors[band]
+            best.reverberationTime[band] = closest.reverberationTime[band]
+        }
+        return (room.scalingAbsorption(by: best.factors), steps, best)
     }
 }
 

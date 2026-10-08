@@ -114,14 +114,17 @@ enum MeasuredRoom {
             let probe = scene.settings(
                 set: "refitted", source: "LS1", driver: 1, receivers: (1...5).map { "MP\($0)" }, duration: 3.5
             )
-            let (_, steps) = try AbsorptionCalibration.fit(probe, to: measuredT30)
+            let (_, steps, best) = try AbsorptionCalibration.fit(probe, to: measuredT30)
             for (index, step) in steps.enumerated() {
                 print(
                     "Calibration step \(index): T30 "
                         + step.reverberationTime.map { format($0, 2) }.joined(separator: ", ") + "; factors "
                         + step.factors.map { format($0, 3) }.joined(separator: ", "))
             }
-            scene = scene.scaling("refitted", by: steps.last!.factors, as: "calibrated")
+            print(
+                "Calibrated: T30 " + best.reverberationTime.map { format($0, 2) }.joined(separator: ", ")
+                    + "; factors " + best.factors.map { format($0, 3) }.joined(separator: ", "))
+            scene = scene.scaling("refitted", by: best.factors, as: "calibrated")
         }
         let receivers = (1...5).map { "MP\($0)" }
         var simulated: [String: [String: Pair]] = [:]

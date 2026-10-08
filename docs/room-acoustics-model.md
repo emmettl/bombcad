@@ -265,9 +265,15 @@ model decays 4–13% more slowly than Eyring's estimate from 500 Hz to 2 kHz.
    both by Sabine's formula with the room's air. A room that is not diffuse answers less than
    Sabine's formula says, so later steps measure how strongly the time answered the last change,
    T ∝ f^(−b), and solve for the target with that (a secant step).
-3. It repeats until every band with a target is within 2%, or after five steps. A step never doubles
-   or halves the absorption, and never takes a surface past 0.99. A target beyond reach, shorter than
-   the room can decay with every surface at 0.99 or longer than with none, is reported as missed.
+3. Where the time hardly answered the last change, or went the wrong way, as it can in a band the
+   wave solver holds or where the decay is noisy, the step falls back to Sabine's ratio.
+4. It repeats until every band with a target is within 2%, or after five steps, and keeps, in each
+   band, the step that came closest. Each band's absorption barely changes another's decay, so the
+   bands are chosen apart.
+
+A step never doubles or halves the absorption, and never takes a surface past 0.99. A target beyond
+reach, shorter than the room can decay with every surface at 0.99 or longer than with none, is
+reported as missed.
 
 Bands without a target keep their absorption. In the app, **Match Reverberation Time** takes a
 target for any band and fits the room at preview quality, usually in three or four simulations.
@@ -276,7 +282,8 @@ A test fits a room with an absorbing floor and little scattering to 1.2 s from 2
 decay as given is about 1.5 s, against Eyring's 0.9 s. Sabine's ratio alone closes the gap slowly;
 with the secant steps the fit is within 3% after three simulations. The floor and walls keep their
 ratio, bands without a target keep their absorption, and Eyring's formula, given the fitted
-absorption, predicts a faster decay than the simulated one.
+absorption, predicts a faster decay than the simulated one. A second test stands a synthetic decay in for the model, with one band
+whose time jumps about from step to step, and checks that the band keeps its closest step.
 
 ## Openings
 
