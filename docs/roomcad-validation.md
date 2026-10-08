@@ -276,15 +276,37 @@ source LS1 to three receivers, without the wave solver:
 | Every surface scattering fully | +13% | +7% | +4% |
 | Without the attic | +23% | +11% | +10% |
 
-These are T30 above Eyring's estimate for the same room. More scattering takes away about half the
-excess. The attic makes little difference. The rest of the excess probably comes from the hall's long, nearly
-parallel side walls and flat ceiling, in which sound keeps travelling sideways, past absorbing floor
-and seating.
+These are T30 above Eyring's estimate for the same room. Two things make up the excess:
 
-The simplified hall has smooth walls where the real one has pillars, coffers and mouldings, and a
-flat layer where it has chairs. Those features scatter sound towards the audience. BRAS's scattering
-coefficients describe surfaces on their own, not the large objects in front of them. The model's
-decay is long for that reason.
+- **Scattering.** More scattering takes away about half of it. The simplified hall has smooth walls
+  where the real one has pillars, coffers and mouldings, and a flat layer where it has chairs. BRAS's
+  scattering coefficients describe surfaces on their own, not the objects in front of them.
+- **Concentrated absorption.** The rest remains even when every surface scatters fully. Most of the
+  hall's absorption is in the seating, on the floor, and Eyring's formula takes absorption to be spread
+  evenly. With it concentrated, a diffuse room still decays more slowly than the formula says. Any
+  model of the room would show this; fitting absorption to the formula cannot remove it.
+
+The attic makes little difference.
+
+### Chairs as fitted zones
+
+BRAS models the seating as a material on the floor. It counts the chairs in its notes on the model:
+246 in the stalls, 22 in each side gallery and 61 on the rear balcony. The configuration **fitted to
+this model, with chairs** adds them as
+[fitted zones](room-acoustics-model.md#fitted-zones), 0.9 m high over the seating. Each chair is
+taken to have 1.5 m² of surface, an estimate, which gives a density of 0.8–1.0 per metre. Their
+absorption stays with the seating material, so the fitted absorption is unchanged. T30, against the
+measurement:
+
+| | 125 Hz | 250 Hz | 500 Hz | 1 kHz | 2 kHz | 4 kHz | 8 kHz |
+|---|---|---|---|---|---|---|---|
+| Without chairs | +23% | +40% | +32% | +18% | +13% | +14% | +14% |
+| With chairs | +15% | +31% | +22% | +15% | +12% | +15% | +11% |
+
+The chairs shorten the decay by 8–10 points from 125 to 500 Hz, and make little difference above.
+Clarity, definition and centre time change by less than a JND. The early reflections correlate at
+0.45 ± 0.18, as before. Doubling each chair's surface did not shorten the decay further in a shorter
+probe.
 
 ## What the comparison shows
 

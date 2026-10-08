@@ -428,6 +428,7 @@ struct RoomInspector: View {
                 Button("Add Seating Zone") { addZone() }
                     .help("A box of objects that scatter sound, such as chairs, desks, pews or ornament")
             }
+            CalibrationSection(project: $project)
             Section("Simulation") {
                 Picker("Sample rate", selection: settings.sampleRate) {
                     ForEach([44_100, 48_000, 96_000], id: \.self) {

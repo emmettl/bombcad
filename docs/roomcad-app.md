@@ -104,6 +104,11 @@ script before an archive is written.
     Pair** for A–B, XY, ORTF, NOS or Blumlein (see
     [Microphones](room-acoustics-model.md#microphones)). Directional microphones show their aim as an
     arrow in the drawings;
+  - **Match Reverberation Time:** a target T30 for any band, and **Fit Absorption**, which scales
+    every surface's absorption in those bands, keeping their proportions, until the simulated T30
+    meets the targets (see
+    [Matching a measured reverberation time](room-acoustics-model.md#matching-a-measured-reverberation-time)).
+    It simulates at preview quality and reports each step; **Stop** cancels it;
   - sample rate, duration, maximum reflection order and content;
   - low cut, the number of diffuse rays and the random seed;
   - the wave solver for low frequencies, on for new documents, with an automatic or fixed crossover;

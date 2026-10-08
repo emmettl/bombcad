@@ -153,6 +153,12 @@ public struct ValidationScene: Codable, Sendable {
             let present = room.boundaries.reduce(0) { $0 + $1.area * $1.material.absorption[band] } / surface
             return present > 0 ? max(needed, 0) / present : 1
         }
+        return scaling(base, by: factors, as: name)
+    }
+
+    /// This scene with a material set `name`: set `base` with its absorption multiplied by `factors` in
+    /// each octave band (each third octave by its octave's), at most 0.99.
+    public func scaling(_ base: String, by factors: [Double], as name: String) -> ValidationScene {
         var scene = self
         scene.materials[name] = materials[base]!.mapValues { material in
             var scaled = material

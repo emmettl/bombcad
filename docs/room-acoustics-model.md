@@ -247,6 +247,37 @@ Tests check zones against exact results:
   receiver away from the source then sees the room's decay only once the energy has spread, so its
   decay looks a few percent longer.
 
+## Matching a measured reverberation time
+
+Absorption is often fitted to a measured reverberation time with Eyring's formula, as BRAS did for
+its fitted materials. That formula takes the sound field to be diffuse. Where absorption is
+concentrated, as on an audience floor, or surfaces scatter little, a room decays more slowly than the
+formula says, and so does RoomCAD's model of it. Absorption fitted with the formula then leaves the
+simulated decay too long. In BRAS's chamber music hall, even with every surface scattering fully, the
+model decays 4–13% more slowly than Eyring's estimate from 500 Hz to 2 kHz.
+
+`AbsorptionCalibration` fits absorption with the model instead:
+
+1. It simulates the room and measures T30 in each band at every receiver.
+2. It scales every surface's absorption, and every fitted zone's, by one factor per band, keeping
+   their proportions until one reaches 0.99; beyond that, the others keep scaling. The first factor
+   is the ratio of the absorption area the target implies to the area the simulated time implies,
+   both by Sabine's formula with the room's air. A room that is not diffuse answers less than
+   Sabine's formula says, so later steps measure how strongly the time answered the last change,
+   T ∝ f^(−b), and solve for the target with that (a secant step).
+3. It repeats until every band with a target is within 2%, or after five steps. A step never doubles
+   or halves the absorption, and never takes a surface past 0.99. A target beyond reach, shorter than
+   the room can decay with every surface at 0.99 or longer than with none, is reported as missed.
+
+Bands without a target keep their absorption. In the app, **Match Reverberation Time** takes a
+target for any band and fits the room at preview quality, usually in three or four simulations.
+
+A test fits a room with an absorbing floor and little scattering to 1.2 s from 250 Hz to 2 kHz. Its
+decay as given is about 1.5 s, against Eyring's 0.9 s. Sabine's ratio alone closes the gap slowly;
+with the secant steps the fit is within 3% after three simulations. The floor and walls keep their
+ratio, bands without a target keep their absorption, and Eyring's formula, given the fitted
+absorption, predicts a faster decay than the simulated one.
+
 ## Openings
 
 An opening is a rectangle on one surface, such as an open door, window or hatch, given by its centre

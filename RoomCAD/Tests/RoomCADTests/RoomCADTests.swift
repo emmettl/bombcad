@@ -297,3 +297,29 @@ func progressText() {
     #expect(RoomEditor.describe((.rays, 0.404)) == "Tracing rays 40%")
     #expect(RoomEditor.describe((.waveSolver, 1)) == "Wave solver 100%")
 }
+
+@MainActor
+@Test("Fitting absorption applies a room that meets the target and reports how far it scaled")
+func fitAbsorption() async throws {
+    var settings = RoomProject.starter
+    settings.lowFrequencyModel = false
+    settings.duration = 1.2
+    // Quick enough for a test: few image sources, the rays carry the rest.
+    settings.maximumReflectionOrder = 8
+    settings.diffuseRays = 5_000
+    let fitter = AbsorptionFitter()
+    fitter.fit(settings, to: Array(repeating: nil, count: 8)) { _ in Issue.record("Nothing to fit") }
+    #expect(fitter.status == "Enter a target time in at least one band.")
+    var fitted: ShoeboxRoom?
+    fitter.fit(settings, to: [nil, nil, nil, 0.5, 0.5, nil, nil, nil]) { fitted = $0 }
+    #expect(fitter.isRunning)
+    while fitter.isRunning { try await Task.sleep(for: .milliseconds(50)) }
+    let room = try #require(fitted)
+    // The starter living room decays faster than 0.5 s, so the fit takes absorption away in the
+    // bands asked for and leaves the others.
+    #expect(room.floor.absorption[4] < settings.room.floor.absorption[4])
+    #expect(room.floor.absorption[6] == settings.room.floor.absorption[6])
+    let status = try #require(fitter.status)
+    #expect(status.hasPrefix("Absorption scaled ×0."), "\(status)")
+    #expect(status.hasSuffix("of the targets."))
+}
