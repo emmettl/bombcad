@@ -126,3 +126,42 @@ extension BlastSolver {
             ambient: Primitive(density: ambientDensity, pressure: configuration.ambientPressure))
     }
 }
+
+extension AirSlice {
+    /// Everything but the samples, for sending ahead of them.
+    public struct Header: Codable, Sendable, Equatable {
+        var time: Double
+        var cellSize: Float
+        var grid: SIMD3<Int32>
+        var first: SIMD3<Int32>
+        var counts: SIMD3<Int32>
+        var stride: Int32
+        var ambientDensity: Float
+        var ambientPressure: Float
+    }
+
+    public var header: Header {
+        Header(
+            time: time, cellSize: cellSize, grid: grid, first: first, counts: counts, stride: stride,
+            ambientDensity: ambient.density, ambientPressure: ambient.pressure)
+    }
+
+    /// The samples as raw little-endian 16-bit floats.
+    public var payload: Data { values.withUnsafeBytes { Data($0) } }
+
+    public init(header: Header, payload: Data) throws {
+        let count = 5 * Int(header.counts.x) * Int(header.counts.y) * Int(header.counts.z)
+        guard payload.count == 2 * count else {
+            throw CocoaError(
+                .coderInvalidValue, userInfo: [NSLocalizedDescriptionKey: "A slice of air arrived cut short."]
+            )
+        }
+        var values = [Float16](repeating: 0, count: count)
+        _ = values.withUnsafeMutableBytes { payload.copyBytes(to: $0) }
+        self.init(
+            time: header.time, cellSize: header.cellSize, grid: header.grid, first: header.first,
+            counts: header.counts,
+            stride: header.stride, values: values,
+            ambient: Primitive(density: header.ambientDensity, pressure: header.ambientPressure))
+    }
+}

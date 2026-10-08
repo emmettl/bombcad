@@ -1,3 +1,4 @@
+import BlastCore
 import DocumentKit
 import Foundation
 import Metal
@@ -18,8 +19,8 @@ enum SweepWorker {
         guard (try? writer.send(.hello(SweepWorkerHello(device: device)))) != nil else { return }
         let jobs = Jobs()
         do {
-            for try await message in SweepWorkerFrame.messages(from: input) {
-                switch message {
+            for try await packet in SweepWorkerFrame.packets(from: input) {
+                switch packet.message {
                 case .run(let job):
                     if let running = jobs.current {
                         try? writer.send(.failed(job.id, "The worker is already running \(running.id)."))
@@ -37,6 +38,26 @@ enum SweepWorker {
                 case .shutdown:
                     await jobs.stop()
                     return
+                case .consume(let session):
+                    jobs.sessions[session.id] = FragmentConsumer(spec: session.spec, scene: session.scene)
+                case .air(let id, let header):
+                    guard var consumer = jobs.sessions[id] else { continue }
+                    do {
+                        consumer.consume(try AirSlice(header: header, payload: packet.payload))
+                        jobs.sessions[id] = consumer
+                        writer.enqueue(.report(id, consumer.report))
+                    } catch {
+                        jobs.sessions[id] = nil
+                        writer.enqueue(.failed(id, error.localizedDescription))
+                    }
+                case .finishConsumer(let id, let interval):
+                    guard let consumer = jobs.sessions.removeValue(forKey: id),
+                        let result = try? JSONEncoder().encode(consumer.result(frameInterval: interval))
+                    else {
+                        writer.enqueue(.failed(id, "No such fragment session."))
+                        continue
+                    }
+                    writer.enqueue(.fragments(id), payload: result)
                 default:
                     continue
                 }
@@ -49,6 +70,7 @@ enum SweepWorker {
     /// The job running, if one is.
     private final class Jobs {
         var current: (id: UUID, task: Task<Void, Never>)?
+        var sessions: [UUID: FragmentConsumer] = [:]
 
         func stop() async {
             guard let task = current?.task else { return }

@@ -87,7 +87,7 @@ struct SweepWorkerFrameTests {
 
 /// A worker in this process, on pipes, as `BombCAD worker` would be at the far end of SSH.
 @MainActor
-private func localWorker(name: String = "test worker") -> (SweepWorkerClient, Task<Void, Never>) {
+func localWorker(name: String = "test worker") -> (SweepWorkerClient, Task<Void, Never>) {
     let toWorker = Pipe()
     let fromWorker = Pipe()
     let server = Task {

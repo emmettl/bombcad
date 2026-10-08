@@ -1,3 +1,4 @@
+import BlastCore
 import CryptoKit
 import DocumentKit
 import Foundation
@@ -8,7 +9,10 @@ final class SweepWorkerClient {
     /// The worker's host, or what stands for it.
     let name: String
     private(set) var hello: SweepWorkerHello?
-    private let writer: SweepWorkerWriter
+    /// Safe from any thread: frames go out in the order given.
+    nonisolated let writer: SweepWorkerWriter
+    private var reports: [UUID: @Sendable (ConsumerReport) -> Void] = [:]
+    private var fragmentWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
     private let onClose: () -> Void
     private var reader: Task<Void, Never>?
     private var helloWaiter: CheckedContinuation<SweepWorkerHello, Error>?
@@ -25,8 +29,8 @@ final class SweepWorkerClient {
         self.onClose = onClose
         reader = Task { [weak self] in
             do {
-                for try await message in SweepWorkerFrame.messages(from: input) {
-                    self?.receive(message)
+                for try await packet in SweepWorkerFrame.packets(from: input) {
+                    self?.receive(packet.message, payload: packet.payload)
                 }
                 self?.closed(ProjectFileError.invalid("The worker on \(name) stopped."))
             } catch {
@@ -118,8 +122,33 @@ final class SweepWorkerClient {
         onClose()
     }
 
-    private func receive(_ message: SweepWorkerMessage) {
+    /// Starts a consumer session, whose reports go to `report`.
+    func startConsumer(_ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void) {
+        reports[session.id] = report
+        writer.enqueue(.consume(session))
+    }
+
+    /// Asks for a consumer session's result, after every frame sent.
+    func finishConsumer(_ id: UUID, frameInterval: Double) async throws -> FragmentResult {
+        let payload = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Data, Error>) in
+            if let closedError {
+                continuation.resume(throwing: closedError)
+                return
+            }
+            fragmentWaiters[id] = continuation
+            writer.enqueue(.finishConsumer(id, frameInterval))
+        }
+        reports[id] = nil
+        return try JSONDecoder().decode(FragmentResult.self, from: payload)
+    }
+
+    private func receive(_ message: SweepWorkerMessage, payload: Data) {
         switch message {
+        case .report(let id, let report):
+            reports[id]?(report)
+        case .fragments(let id):
+            fragmentWaiters.removeValue(forKey: id)?.resume(returning: payload)
         case .hello(let hello):
             self.hello = hello
             helloWaiter?.resume(returning: hello)
@@ -130,6 +159,8 @@ final class SweepWorkerClient {
             progress[id] = nil
             waiting.removeValue(forKey: id)?.resume(returning: archive)
         case .failed(let id, let reason):
+            fragmentWaiters.removeValue(forKey: id)?.resume(
+                throwing: ProjectFileError.invalid("On \(name): \(reason)"))
             progress[id] = nil
             waiting.removeValue(forKey: id)?.resume(
                 throwing: reason == SweepWorkerMessage.cancelled
@@ -150,6 +181,8 @@ final class SweepWorkerClient {
         helloWaiter = nil
         for continuation in waiting.values { continuation.resume(throwing: error) }
         waiting = [:]
+        for continuation in fragmentWaiters.values { continuation.resume(throwing: error) }
+        fragmentWaiters = [:]
         progress = [:]
     }
 }

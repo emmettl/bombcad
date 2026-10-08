@@ -171,6 +171,10 @@ final class SimulationModel {
     /// How often `onSample` is called in a run without a structure, a whole number of
     /// `structureSampleInterval`s: each sample stops the run, so the fewer the better.
     @ObservationIgnored var airSampleInterval = structureSampleInterval
+    /// While this says so, the run waits before its next batch: a consumer of its frames has
+    /// fallen behind. Checked every couple of milliseconds; the main thread is not blocked.
+    @ObservationIgnored var holdBatches: (() -> Bool)?
+    @ObservationIgnored private var waitingForHold = false
     @ObservationIgnored private var lastSampleTime: Double?
     private var samples: Bool { structureSummary != nil || onSample != nil }
     private var sampleInterval: Double {
@@ -1073,6 +1077,17 @@ final class SimulationModel {
     /// Commits the next batch of steps if the run is active and the GPU is free.
     private func pump() {
         guard isRunning, !batchInFlight, let solver else { return }
+        if let holdBatches, holdBatches() {
+            if !waitingForHold {
+                waitingForHold = true
+                Task {
+                    try? await Task.sleep(for: .milliseconds(2))
+                    waitingForHold = false
+                    pump()
+                }
+            }
+            return
+        }
 
         var limit = duration
         if speed != .unlimited {

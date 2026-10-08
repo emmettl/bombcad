@@ -31,6 +31,41 @@ public struct FragmentSpec: Codable, Sendable, Equatable {
 
     public init() {}
 
+    private enum CodingKeys: String, CodingKey {
+        case casingMass, count, casing, axis, spread, gurneyVelocity, fragmentDensity, tracers, tracerRegion,
+            seed
+    }
+
+    /// Any field left out takes its default.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = FragmentSpec()
+        casingMass = try c.decodeIfPresent(Float.self, forKey: .casingMass) ?? d.casingMass
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? d.count
+        casing = try c.decodeIfPresent(Casing.self, forKey: .casing) ?? d.casing
+        axis = try c.decodeIfPresent(SIMD3<Float>.self, forKey: .axis) ?? d.axis
+        spread = try c.decodeIfPresent(Float.self, forKey: .spread) ?? d.spread
+        gurneyVelocity = try c.decodeIfPresent(Float.self, forKey: .gurneyVelocity) ?? d.gurneyVelocity
+        fragmentDensity = try c.decodeIfPresent(Float.self, forKey: .fragmentDensity) ?? d.fragmentDensity
+        tracers = try c.decodeIfPresent(Int.self, forKey: .tracers) ?? d.tracers
+        tracerRegion = try c.decodeIfPresent(Box.self, forKey: .tracerRegion)
+        seed = try c.decodeIfPresent(UInt64.self, forKey: .seed) ?? d.seed
+    }
+
+    /// Fragment counts and masses a run can handle.
+    public func validate() throws {
+        guard (0...200_000).contains(count), (0...200_000).contains(tracers), casingMass >= 0,
+            casingMass.isFinite, count == 0 || casingMass > 0, gurneyVelocity > 0, fragmentDensity > 0,
+            spread >= 0, spread <= .pi / 2, simd_length(axis) > 0, tracers == 0 || tracerRegion != nil
+        else {
+            throw CocoaError(
+                .coderInvalidValue,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "The fragment description is out of range or incomplete."
+                ])
+        }
+    }
+
     /// The fragments' launch speed for a charge of `chargeMass`, by the Gurney equation for the
     /// casing's shape.
     public func launchSpeed(chargeMass: Float) -> Float {
@@ -48,6 +83,22 @@ public struct FragmentImpact: Codable, Sendable, Equatable {
     public var energy: Float
     /// `ground`, `block <n>` or `structure`.
     public var surface: String
+}
+
+/// What fragments need of a scene: the charge, the domain, and what they can hit.
+public struct FragmentScene: Codable, Sendable, Equatable {
+    public var charge: Charge
+    public var domain: SIMD3<Float>
+    public var blocks: [Box]
+    /// The structure's outline as it starts; fragments do not see it move.
+    public var structure: [Box]
+
+    public init(_ scenario: Scenario) {
+        charge = scenario.charge
+        domain = scenario.domainSize
+        blocks = scenario.rigidBoxes
+        structure = scenario.structure?.solids ?? []
+    }
 }
 
 public struct FragmentCloud: Sendable {
@@ -75,12 +126,16 @@ public struct FragmentCloud: Sendable {
     public var airborne: Int { particles.lazy.filter { !$0.landed }.count }
 
     public init(spec: FragmentSpec, scenario: Scenario) {
+        self.init(spec: spec, scene: FragmentScene(scenario))
+    }
+
+    public init(spec: FragmentSpec, scene: FragmentScene) {
         var random = SplitMix(seed: spec.seed)
-        let charge = scenario.charge
+        let charge = scene.charge
         let speed = spec.launchSpeed(chargeMass: charge.mass)
         launchSpeed = speed
-        blocks = scenario.rigidBoxes
-        structure = scenario.structure?.solids ?? []
+        blocks = scene.blocks
+        structure = scene.structure
         var particles: [Particle] = []
         // Mott: P(mass > m) = exp(-√(m/μ)), whose mean is 2μ; scaled after to the casing's mass.
         let mu = spec.count > 0 ? spec.casingMass / Float(2 * spec.count) : 0

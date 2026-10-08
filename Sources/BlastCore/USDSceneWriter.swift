@@ -28,6 +28,8 @@ public final class USDSceneWriter {
     private let camera: Camera?
     private let volumeFields: [String]
     private var volumes: [(frame: Int, path: String)] = []
+    private var pointSets: [(name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>)] =
+        []
     public let frameInterval: Double
     private let scenario: Scenario
     private let playbackRate: Double
@@ -160,6 +162,12 @@ public final class USDSceneWriter {
         text.bytes.removeAll(keepingCapacity: true)
     }
 
+    /// Adds a set of points, such as fragments, with their positions at each frame from the first
+    /// and their sizes; written with the rest by `finish()`.
+    public func addPoints(_ name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>) {
+        pointSets.append((name, frames, widths, colour))
+    }
+
     /// Joins the parts into `url`, which must not exist yet.
     public func finish() throws {
         guard !finished else { return }
@@ -245,6 +253,7 @@ public final class USDSceneWriter {
         }
         if let camera { appendCamera(camera, to: &text) }
         if !volumes.isEmpty, !volumeFields.isEmpty { appendVolume(to: &text) }
+        for set in pointSets { appendPoints(set.name, set.frames, set.widths, set.colour, to: &text) }
         try flush()
 
         if hasBody {
@@ -334,6 +343,38 @@ public final class USDSceneWriter {
         )
         text.append(colour)
         text.append("]\n        custom uniform string bombcad:label = \(quoted(label))\n    }\n\n")
+    }
+
+    private func appendPoints(
+        _ name: String, _ frames: [[SIMD3<Float>]], _ widths: [Float], _ colour: SIMD3<Float>,
+        to text: inout Text
+    ) {
+        let all = frames.joined()
+        let low = all.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1) }
+        let high = all.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1) }
+        text.append("    def Points \"\(name)\"\n    {\n        float3[] extent = [")
+        text.append(all.isEmpty ? .zero : low)
+        text.append(", ")
+        text.append(all.isEmpty ? .zero : high)
+        text.append("]\n        float[] widths = [")
+        for (n, width) in widths.enumerated() {
+            if n > 0 { text.append(", ") }
+            text.append(width, decimals: 4)
+        }
+        text.append(
+            "] (\n            interpolation = \"vertex\"\n        )\n        color3f[] primvars:displayColor = ["
+        )
+        text.append(colour)
+        text.append("]\n        point3f[] points.timeSamples = {\n")
+        for (frame, points) in frames.enumerated() {
+            text.append("            \(frame): [")
+            for (n, point) in points.enumerated() {
+                if n > 0 { text.append(", ") }
+                text.append(point)
+            }
+            text.append("],\n")
+        }
+        text.append("        }\n    }\n\n")
     }
 
     /// The air: a Volume whose fields read the frames' OpenVDB files.

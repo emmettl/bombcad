@@ -65,6 +65,7 @@ struct HeadlessRunTests {
         let project = folder.appending(path: "air.bombcad")
         try write(document, to: project)
         let run = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--mass", "0.02"]))
+            .run
 
         let swept = try await sweep(document, mass: 0.02)
         #expect(run.name == "Headless run" && swept.name == "Sweep · 0.02 kg")
@@ -95,7 +96,7 @@ struct HeadlessRunTests {
         defer { try? FileManager.default.removeItem(at: folder) }
         let project = folder.appending(path: "wall.bombcad")
         try write(document, to: project)
-        let run = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--mass", "50"]))
+        let run = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--mass", "50"])).run
 
         let swept = try await sweep(document, mass: 50)
         #expect(run.inputSHA256 == swept.inputSHA256 && run.stepCount == swept.stepCount)
@@ -121,7 +122,8 @@ struct HeadlessRunTests {
                 project.path, "--name", "Half a kilo", "--mass", "0.5",
                 "--out", folder.appending(path: "out.bombcad").path,
                 "--csv", folder.appending(path: "out.csv").path,
-            ]))
+            ])
+        ).run
         #expect(run.scenario.charge.mass == 0.5 && run.elapsedTime >= kept.settings.duration - 1e-9)
         #expect(run.structure.map { !$0.points.isEmpty } == true)
 
@@ -145,7 +147,8 @@ struct HeadlessRunTests {
         try write(document, to: project)
         let scene = folder.appending(path: "scene.usda")
         let run = try await HeadlessRun.execute(
-            HeadlessRun.Options.parse([project.path, "--usd", scene.path, "--frame-interval", "2"]))
+            HeadlessRun.Options.parse([project.path, "--usd", scene.path, "--frame-interval", "2"])
+        ).run
         #expect(run.elapsedTime >= 0.01 - 1e-9 && run.structure != nil)
         // 0, 2, … 10 ms.
         let text = try String(contentsOf: scene, encoding: .utf8)
@@ -179,7 +182,8 @@ struct HeadlessRunTests {
         _ = try await HeadlessRun.execute(
             HeadlessRun.Options.parse([
                 project.path, "--usd", usd.path, "--vdb", volumes.path, "--frame-interval", "2",
-            ]))
+            ])
+        ).run
         // 0, 2 and 4 ms.
         let files = try FileManager.default.contentsOfDirectory(atPath: volumes.path).sorted()
         #expect(files == ["blast.0000.vdb", "blast.0001.vdb", "blast.0002.vdb"])
@@ -209,7 +213,7 @@ struct HeadlessRunTests {
         try write(document, to: project)
         let out = folder.appending(path: "out.bombcad")
         await #expect(throws: ProjectFileError.self) {
-            try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--out", out.path]))
+            try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path, "--out", out.path])).run
         }
         #expect(!FileManager.default.fileExists(atPath: out.path))
     }
