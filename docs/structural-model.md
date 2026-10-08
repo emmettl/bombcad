@@ -210,10 +210,37 @@ peak sway is within 10% of the clamped wall's at 15 and 25 m, 21% more at 10 m a
 bars it is not. A plain construction joint cracks through under every pulse here, even the
 58 kPa one at 25 m that sways the clamped wall 11 mm, and the wall then rocks on its toe as if
 it stood loose. Resting on the ground it rocks up at every distance; at 25 m it is given about
-200 J per metre against the 92 J it takes to tip it, so it goes over. A wall that stands
-clamped can therefore be thrown over if its base is not tied into its footing. This is a
-comparison of support assumptions, not a validation: no measured wall is reproduced, the load
-is idealised, and the footing itself is rigid.
+200 J per metre against the 92 J it takes to tip it, so it goes over. Under this pulse a wall
+that stands clamped can be thrown over if its base is not tied into its footing. But the pulse
+overstates the load, as the air shows (below). This is a comparison of support assumptions,
+not a validation: no measured wall is reproduced, and the footing itself is rigid.
+
+**Loaded by the air** (`AnchorageStudy.runCoupled`, `blastbench anchorage --air`). The same
+section as a wall 12 m long, the charge on the ground in front of the middle of its length,
+loaded by the air solver on 0.25 m cells for 1 s. The air reaches 12 m beyond the wall, its
+ends and the charge, and 18 m up: with 2 m and 7 m its open boundaries sent back enough of the
+wave to load the wall's back face, and at 25 m the clamped wall swayed 12.0 mm against 4.9 to
+5.5 mm with 12 or 20 m, and walls on weak bases were thrown back towards the charge. On 0.125 m
+cells the clamped wall sways within 1 to 2 mm of the 0.25 m answer.
+
+| Base | 10 m, pulse | 10 m, air | 25 m, pulse | 25 m, air |
+|---|---|---|---|---|
+| clamped | 64 mm | 22 mm | 11 mm | 5 mm |
+| starter bars | 77 mm | 22 mm | 11 mm | 7 mm |
+| construction joint | over | 287 mm, still going | 310 mm, still going | 7 mm, stands |
+| resting | over | 237 mm, still going | 327 mm, still going | 7 mm, stands |
+| on soil (600 kPa, 50 MN/m³) | over | 593 mm, still going | 399 mm, still going | 9 mm, then 50 mm back |
+
+The face's positive impulse is the Kingery–Bulmash reflected impulse (946 Pa s against 929 at
+10 m, 312 against 331 at 25 m), but its peak is low on these cells (281 kPa against 434). The
+pulse leaves out what reaches the back: the wave runs over the 3 m wall and round its ends and
+loads the back face, and the negative phase follows. Over the 50 ms from arrival the net
+impulse through the wall at mid-height, front less back, is 290 Pa s at 10 m, a third of the
+face's, and about nothing at 25 m. So the clamped wall sways a third as far, and at 25 m every
+wall stands that the pulse throws over; at 10 m, walls without bars are still rotating away
+after 1 s, more slowly than under the pulse.
+A freestanding wall's base still decides close in, but a reflected pulse on its face alone, as
+for a wall that is part of a closed building, overstates its load.
 
 **On soil.** With a bearing capacity the ground under the base yields once pressed harder
 than that, and the base settles into it for good; unloaded, it springs back from where it
