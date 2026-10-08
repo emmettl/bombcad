@@ -15,6 +15,10 @@ machines' published specifications, not measurements of a distributed solver.
   machines over Thunderbolt 5 might run the 0.125 m street event about 1.8 times as fast.
 - **It is essential only for problems too big for one machine**, such as a city block at
   0.0625 m (about a terabyte of state). There it would scale almost perfectly.
+- **Separate models on separate machines** (the air on one, a fragment model on another,
+  exchanging a little each frame) scale better than a split grid, but at most twice as fast,
+  only when the models cost about the same; with this pair of machines the Studio's own CPU is
+  the better second worker. See [Separate models](#separate-models-on-separate-machines).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
   size. [`BombCAD run`](run-comparison.md#headless-runs) is the building block for the last.
@@ -102,6 +106,60 @@ The usual pattern holds:
 3. **Repeatability.** The solver repeats to the last bit, using fixed-point sums. A split run
    would need every reduction done in a fixed order, independent of how the grid is cut, to keep
    that.
+
+## Separate models on separate machines
+
+Instead of cutting one model's grid, each machine could run a different model, exchanging a
+little at each frame: the air on one, say, and a model of fragments flying ballistically on
+another. This was weighed in October 2026; nothing is built.
+
+**How it would work.** At each exchange, every simulated millisecond for instance, the air's
+machine sends what the fragments need: the pressure, density and air velocity where each
+fragment is. If the fragments act back on the air, their forces or blockage come back.
+
+**Why it scales better than a split grid.**
+
+- **Little data.** Ten thousand fragments at a few numbers each is a few hundred kilobytes an
+  exchange, against megabytes of boundary cells every step.
+- **Infrequent exchanges.** One a frame, not three a step. On the medium street grid a
+  simulated millisecond is about six air steps and some 12 ms of the M4 Max's time, so a 0.1 to
+  0.2 ms round trip over Thunderbolt IP is about 1%.
+- **But send samples, not fields.** The whole medium grid's air is about 170 MB, more than 50 ms
+  over this link: the air's machine should sample where the fragments are, or send only the
+  region around them.
+
+**The limit.** Two models side by side take as long as the slower of them instead of their sum,
+so the most they can gain is a factor of two, when they cost the same.
+
+- Fragments are usually cheap: thousands of particles with drag, gravity and ground impacts are
+  little next to millions of air cells, so moving them saves almost nothing.
+- They become expensive with contact between fragments or with the structure, break-up, or
+  millions of pieces; then the gain approaches two.
+- The mini is 3.2 to 4.5 times slower than the M4 Max ([Performance](performance.md#other-macs)):
+  it should take the cheaper model, and the split pays only if that model runs there in less
+  time than the air takes on the Studio.
+
+**The direction of the coupling decides most.**
+
+- **One way**, the air pushing the fragments but not the reverse, is the usual approximation
+  when fragments fill little of the air. Nothing waits on the fragment model, which can trail
+  behind, or run after the simulation from saved frames, as the
+  [volume export](usd-export.md#the-air) writes them: no coupling at run time, on any machine.
+- **Both ways**, each model must use the other's state from the previous exchange for the two to
+  overlap. That is standard, and stable when the fragments are much denser than air, as concrete
+  is; a millisecond is short beside a heavy fragment's response to the air.
+
+**Better first.** The Studio's CPU is mostly idle while its GPU runs the air, and its cores could
+step tens of thousands of ballistic fragments a millisecond without any network. A second queue
+on the same GPU would help little: the air solver already uses nearly all its bandwidth.
+
+**Air and structure split this way**, the coupling BombCAD already has, gain less:
+
+- The structure is about three quarters of a coupled building run, so overlapping the two gains
+  at most about 1.33 times, on two equal machines.
+- They exchange every air step, not every millisecond, so latency counts again, and the loads
+  and the structure's motion lag a step.
+- On the mini, 3.2 times slower for the structure, the structure would hold everything up.
 
 ## Better first
 
