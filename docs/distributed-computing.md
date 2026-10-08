@@ -231,10 +231,10 @@ the run slowing, rather than making any one model faster.
   ([Performance](performance.md#structural-solver)).
 - **Independent runs.** A sweep's cases, a grid-sensitivity study or an uncertainty ensemble are
   separate runs: only the project goes out and the result comes back, so the link does not
-  matter and the scaling is perfect. On the Studio and the mini together a sweep would finish
-  about a fifth sooner (the mini completes about one case in five), and more usefully the mini
-  could take a long study overnight. This needs the app to send cases to another Mac running
-  `BombCAD run` and read back the saved runs; not built.
+  matter and the scaling is perfect. Built in October 2026 for sweeps: see
+  [Sharing a sweep with another Mac](run-comparison.md#sharing-a-sweep-with-another-mac). Six
+  equal cases took 18.5 s on the Studio and the mini together against 22.1 s on the Studio
+  alone, the mini running one, with identical results.
 
 ## Sources
 

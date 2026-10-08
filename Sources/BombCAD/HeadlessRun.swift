@@ -143,9 +143,27 @@ enum HeadlessRun {
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> SavedSimulationRun {
         var document = try ProjectDocument.read(from: options.project)
-        let inputs = try inputs(for: document, options: options)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
         if options.out == nil { document.savedRuns = [] }
+        let result = try await perform(document, options: options)
+        if let out = options.out {
+            try result.document.makeArchive().fileWrapper().write(to: out, originalContentsURL: nil)
+        }
+        if let csv = options.csv {
+            try Data(result.run.csv().utf8).write(to: csv, options: .withoutOverwriting)
+        }
+        return result.run
+    }
+
+    /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
+    /// the kept run and the document, its own inputs unchanged, with the run added to its saved
+    /// runs. `progress` is told the fraction of the simulated time reached, now and then.
+    /// Cancelling the task stops the run.
+    static func perform(
+        _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil
+    ) async throws -> (run: SavedSimulationRun, document: ProjectDocument) {
+        var document = document
+        let inputs = try inputs(for: document, options: options)
         guard document.savedRuns.count < SavedSimulationRun.maximumRuns else {
             throw ProjectFileError.invalid(
                 "The project already keeps \(SavedSimulationRun.maximumRuns) runs; remove one first.")
@@ -206,22 +224,22 @@ enum HeadlessRun {
             }
         }
         model.run()
-        try await waitUntil(model) { !model.isRunning && !model.hasPendingGPUWork }
+        var reported = ContinuousClock.now
+        try await waitUntil(model) {
+            if let progress, ContinuousClock.now - reported > .milliseconds(500) {
+                reported = .now
+                progress(min(model.time / model.duration, 1))
+            }
+            return !model.isRunning && !model.hasPendingGPUWork
+        }
         if let exportError { throw exportError }
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
         try scene?.finish()
         finished = true
-
-        if let out = options.out {
-            // The project's own inputs, with the new run among its saved ones.
-            document.savedRuns = model.savedRuns
-            try document.makeArchive().fileWrapper().write(to: out, originalContentsURL: nil)
-        }
-        if let csv = options.csv {
-            try Data(run.csv().utf8).write(to: csv, options: .withoutOverwriting)
-        }
-        return run
+        // The project's own inputs, with the new run among its saved ones.
+        document.savedRuns = model.savedRuns
+        return (run, document)
     }
 
     /// `file` as the USD file at `scene` should name it: relative where it lies beside or below it.
@@ -235,7 +253,11 @@ enum HeadlessRun {
     private static func waitUntil(_ model: SimulationModel, _ condition: () -> Bool) async throws {
         while !condition() {
             if let error = model.errorMessage { throw ProjectFileError.invalid(error) }
-            try await Task.sleep(for: .milliseconds(5))
+            if Task.isCancelled {
+                if model.isRunning { model.toggleRun() }
+                throw CancellationError()
+            }
+            try? await Task.sleep(for: .milliseconds(5))
         }
         if let error = model.errorMessage { throw ProjectFileError.invalid(error) }
     }

@@ -7,12 +7,23 @@ struct AppPreferences: Equatable, Sendable {
         static let detailedCharge = "newProject.detailedCharge"
         static let sharpShocks = "newProject.sharpShocks"
         static let playbackSpeed = "playback.defaultSpeed"
+        static let sweepHost = "sweep.remoteHost"
+        static let sweepUsesRemote = "sweep.usesRemote"
     }
 
     var resolution: Resolution = .medium
     var detailedCharge = false
     var sharpShocks = false
     var playbackSpeed: PlaybackSpeed = .x100
+    /// Another Mac to share sweeps with: an SSH host name or alias, and whether to use it.
+    var sweepHost = ""
+    var sweepUsesRemote = false
+
+    /// The host sweeps should share cases with, if any.
+    var sweepRemoteHost: String? {
+        let host = sweepHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        return sweepUsesRemote && !host.isEmpty ? host : nil
+    }
 
     static func load(from store: UserDefaults = .standard) -> Self {
         var preferences = Self()
@@ -26,6 +37,8 @@ struct AppPreferences: Equatable, Sendable {
         {
             preferences.playbackSpeed = speed
         }
+        preferences.sweepHost = store.string(forKey: Key.sweepHost) ?? ""
+        preferences.sweepUsesRemote = store.object(forKey: Key.sweepUsesRemote) as? Bool ?? false
         return preferences
     }
 
@@ -34,5 +47,7 @@ struct AppPreferences: Equatable, Sendable {
         store.set(detailedCharge, forKey: Key.detailedCharge)
         store.set(sharpShocks, forKey: Key.sharpShocks)
         store.set(playbackSpeed.rawValue, forKey: Key.playbackSpeed)
+        store.set(sweepHost, forKey: Key.sweepHost)
+        store.set(sweepUsesRemote, forKey: Key.sweepUsesRemote)
     }
 }

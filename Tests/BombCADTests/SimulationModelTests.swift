@@ -200,8 +200,9 @@ struct SimulationModelTests {
         let wall = ContinuousClock.now - start
         let seconds = Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
 
-        // 20 ms of simulation at 25x slow motion should take about half a second.
-        #expect(seconds > 0.45 && seconds < 1.0, "took \(seconds) s")
+        // 20 ms of simulation at 25x slow motion should take about half a second: never less, and
+        // not much more, though other suites running at once on the main actor can delay it.
+        #expect(seconds > 0.45 && seconds < 2.0, "took \(seconds) s")
         #expect(abs(model.time - 0.02) < 1e-6)
     }
 

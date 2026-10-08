@@ -925,6 +925,31 @@ final class SimulationModel {
         savedRuns.append(run)
     }
 
+    /// Keeps a run made elsewhere, as by a sweep worker on another Mac, with the checks
+    /// `keepRun` makes.
+    func addRun(_ run: SavedSimulationRun) throws {
+        guard savedRuns.count < SavedSimulationRun.maximumRuns,
+            !savedRuns.contains(where: {
+                $0.id == run.id || $0.name.localizedCaseInsensitiveCompare(run.name) == .orderedSame
+            })
+        else {
+            throw ProjectFileError.invalid("There is no room for \(run.name), or its name is taken.")
+        }
+        try run.validate()
+        var document = ProjectDocument(model: self)
+        document.savedRuns.append(run)
+        _ = try document.makeArchive()
+        savedRuns.append(run)
+    }
+
+    /// Puts the runs named in `names` in that order, in the places they already take.
+    func orderRuns(_ names: [String]) {
+        let rank = Dictionary(names.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        let places = savedRuns.indices.filter { rank[savedRuns[$0].name] != nil }
+        let ordered = places.map { savedRuns[$0] }.sorted { rank[$0.name]! < rank[$1.name]! }
+        for (place, run) in zip(places, ordered) { savedRuns[place] = run }
+    }
+
     func renameRun(id: UUID, name: String) {
         guard !sweep.isActive else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
