@@ -56,6 +56,14 @@ struct NormalShockReflectionTests {
             try NormalShockReflection(mach: 2, pressure: Double.greatestFiniteMagnitude / 10)
         }
     }
+    @Test("Unresolved initial wall loads record thresholds already exceeded at time zero")
+    func initialRise() throws {
+        let result = try #require(
+            ExperimentalWallReflectionStudy.run(
+                cellLengths: [1], cfls: [0.2], machNumbers: [1.2]
+            ).first)
+        #expect(result.rise10Time == 0)
+    }
     @Test("Static channel closes budgets and reconstructed histories improve with refinement")
     func budgets() throws {
         var constantHistory = 0.0
@@ -68,6 +76,16 @@ struct NormalShockReflectionTests {
                 #expect(simd_length(r.momentumBudgetResidual) < 1e-10)
                 #expect(r.relativePressureHistoryL1.isFinite && r.relativePressureHistoryL1 > 0)
                 #expect(r.frames.last!.excessImpulse > 0)
+                let t10 = try #require(r.rise10Time)
+                let t50 = try #require(r.rise50Time)
+                #expect(t10 < t50 && t10 >= 0 && t50 < r.duration)
+                if let t90 = r.rise90Time {
+                    #expect(t50 < t90 && t90 < r.duration)
+                    #expect(t10 < r.arrivalTime && t90 > r.arrivalTime)
+                } else {
+                    // Coarse first-order transport may not finish its smeared rise by the cutoff.
+                    #expect(!limited)
+                }
             }
             if limited {
                 let coarse = try #require(rows.first { $0.cellLength == 0.1 })
@@ -75,6 +93,9 @@ struct NormalShockReflectionTests {
                 #expect(coarse.relativePressureHistoryL1 < 0.8 * constantHistory)
                 #expect(fine.relativePressureHistoryL1 < 0.7 * coarse.relativePressureHistoryL1)
                 #expect(abs(fine.frames.last!.impulseError) < abs(coarse.frames.last!.impulseError))
+                let coarseWidth = try #require(coarse.rise90Time) - #require(coarse.rise10Time)
+                let fineWidth = try #require(fine.rise90Time) - #require(fine.rise10Time)
+                #expect(fineWidth < 0.7 * coarseWidth)
             } else {
                 constantHistory = try #require(rows.first).relativePressureHistoryL1
             }

@@ -9,13 +9,17 @@ do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--wall-reflection") {
         let limited = arguments.contains("--limited")
+        let refined = arguments.contains("--refined")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/wall-reflection\(limited ? "-limited" : "").json")
+                ?? ".build/wall-reflection\(limited ? "-limited" : "")\(refined ? "-refined" : "").json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalWallReflectionStudy.Result] = []
-        _ = try ExperimentalWallReflectionStudy.run(limited: limited) { r in
+        _ = try ExperimentalWallReflectionStudy.run(
+            cellLengths: refined ? [0.00625, 0.003125] : [0.1, 0.05, 0.025, 0.0125],
+            cfls: refined ? [0.2] : [0.2, 0.1], limited: limited
+        ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             print(

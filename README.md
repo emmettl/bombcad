@@ -458,6 +458,14 @@ pressure-history error and excess-impulse error at four times, and rejects times
 opposite boundary can interact with the reflected shock. This planar slip-wall channel
 checks transport and wall-load timing; it does not validate oblique cut cells or free bodies.
 
+`--wall-reflection --limited --refined` adds 6.25 and 3.125 mm grids at CFL 0.2, writing
+`.build/wall-reflection-limited-refined.json`. Regenerate the ordinary limited report with
+the current driver, then run `python3 Scripts/summarize-wall-reflection.py --refined` to
+compare all six grids. Reports now include first 10/50/90% pressure-rise times interpolated
+from accepted-step mean tractions. Unreached thresholds remain absent; already-exceeded
+initial thresholds are zero. These diagnostics distinguish load-arrival bias from numerical
+shock smearing. Finer cases retain the original shock strengths and boundary-interaction cutoff.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

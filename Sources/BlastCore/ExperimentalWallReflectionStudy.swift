@@ -23,6 +23,11 @@ public enum ExperimentalWallReflectionStudy {
         public let reflectedPressure: Double
         public let steps: Int
         public let rejectedSteps: Int
+        /// First 10/50/90% crossings of the pressure rise, interpolated between step-average tractions.
+        /// Nil when not reached by the cutoff; zero when the numerical initial load already exceeds the level.
+        public let rise10Time: Double?
+        public let rise50Time: Double?
+        public let rise90Time: Double?
         public let relativePressureHistoryL1: Double
         public let relativeMassChange: Double
         public let relativeEnergyChange: Double
@@ -37,7 +42,7 @@ public enum ExperimentalWallReflectionStudy {
     ) throws -> [Result] {
         guard
             cellLengths.allSatisfy({
-                $0.isFinite && $0 > 0 && 2 / $0 <= 400 && abs(2 / $0 - (2 / $0).rounded()) < 1e-10
+                $0.isFinite && $0 > 0 && 2 / $0 <= 800 && abs(2 / $0 - (2 / $0).rounded()) < 1e-10
             }),
             cfls.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 0.5 })
         else { throw Failure.invalidConfiguration }
@@ -117,6 +122,20 @@ public enum ExperimentalWallReflectionStudy {
                     var reflectingImpulse = 0.0
                     var historyError = 0.0
                     var frames: [Frame] = []
+                    // The wall starts in ambient gas on benchmark grids. Very coarse callers may
+                    // average the initial shock into that cell; report already-crossed levels at t=0.
+                    // Every row has the same initial x=0 cell and its wall-limited trace is constant.
+                    let initialWall = initial[0]
+                    let initialPressure = try IdealGasWallRiemann.solve(
+                        density: initialWall.amount[0] / initialWall.volume,
+                        pressure: initialWall.pressure(), normalVelocity: -initialWall.velocity.x
+                    ).pressure
+                    let initialRise =
+                        (initialPressure - reference.pressure)
+                        / (reference.reflectedPressure - reference.pressure)
+                    var riseTimes: [Double?] = [0.1, 0.5, 0.9].map { initialRise >= $0 ? 0 : nil }
+                    var previousTime = 0.0
+                    var previousRise = initialRise
                     for fraction in [0.8, 1.0, 1.2, 1.4] {
                         let target = fraction * reference.arrivalTime
                         while elapsed < target {
@@ -152,6 +171,18 @@ public enum ExperimentalWallReflectionStudy {
                             let impulse = boundaries.indices.filter { boundaries[$0].owner == 1 }.reduce(0) {
                                 $0 - update.wallImpulses[$1].x
                             }
+                            let rise =
+                                (impulse / (area * dt) - reference.pressure)
+                                / (reference.reflectedPressure - reference.pressure)
+                            let middle = elapsed + dt / 2
+                            for (n, threshold) in [0.1, 0.5, 0.9].enumerated()
+                            where riseTimes[n] == nil && previousRise < threshold && rise >= threshold {
+                                riseTimes[n] =
+                                    previousTime + (middle - previousTime)
+                                    * (threshold - previousRise) / (rise - previousRise)
+                            }
+                            previousTime = middle
+                            previousRise = rise
                             let exact =
                                 try reference.wallImpulse(time: elapsed + dt, area: area)
                                 - reference.wallImpulse(time: elapsed, area: area)
@@ -180,6 +211,7 @@ public enum ExperimentalWallReflectionStudy {
                         duration: duration, interactionTime: reference.interactionTime,
                         reflectedPressure: reference.reflectedPressure,
                         steps: steps, rejectedSteps: rejected,
+                        rise10Time: riseTimes[0], rise50Time: riseTimes[1], rise90Time: riseTimes[2],
                         relativePressureHistoryL1: historyError / exactFinal,
                         relativeMassChange: after[0] / before[0] - 1,
                         relativeEnergyChange: after[4] / before[4] - 1,

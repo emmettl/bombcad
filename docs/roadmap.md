@@ -1093,6 +1093,38 @@ existing moving-wall/piston references, before rebuilding moving clipped groups 
 free-body feedback. The normal application
 solver remains unaffected, and verified reference components can be extracted individually.
 
+Further static reflection refinement now accepts `--wall-reflection --limited --refined`,
+adding 0.00625/0.003125 m streamwise cells at CFL 0.2 for both Mach numbers. All four cases
+complete with 1855–3913 steps and no rejections. The ordinary sixteen-case limited report
+is regenerated with identical transport results and added timing diagnostics. The general
+reference limit increases to 800 streamwise cells; this does not change the app air grid.
+
+At CFL 0.2, pressure-history L1 errors on 0.0125/0.00625/0.003125 m grids are
+5.12%/2.56%/1.28% for Mach 1.2 and 6.24%/3.32%/1.69% for Mach 2. Normalized final
+excess-impulse errors on the finest grid are −0.024%/−0.072%. Mass and energy residuals
+remain below 0.000000000000001 relative and momentum residuals below
+0.000000000001 N s. Finer cases use CFL 0.2; the preceding CFL-pair comparison remains
+the temporal sensitivity evidence, rather than a new finest-grid timestep study.
+
+First 10/50/90% crossings of the exact pressure jump are interpolated between numerical
+accepted-step mean tractions. The exact step crosses every threshold at arrival, giving
+zero rise width. Numerically, 10–90% widths on the three fine grids are
+105.8/52.9/26.5 microseconds for Mach 1.2 and 60.5/30.2/15.1 microseconds for Mach 2.
+The finest half-rise timing biases are −0.080%/−0.100% of exact arrival time. These widths
+shrink almost in proportion to cell size; smearing dominates the remaining arrival bias.
+The diagnostic is a measure of numerical step-average load history, not a reconstruction
+of within-step instantaneous pressure or a physical shock thickness.
+
+A threshold not reached before the supported cutoff remains absent; the coarse first-order
+Mach-1.2 run does not reach 90%. Very coarse inputs can average the initial shock into the
+wall cell; levels already exceeded by the numerical initial traction are recorded at zero.
+Tests cover ordered finite crossings, missing late levels, initially exceeded levels and
+rise-width reduction with refinement. All 42 CPU-only tests pass. The summary's optional
+`--refined` mode checks matching references, ordered rise times and decreasing history errors
+and rise widths across all three fine grids. Next, extend the reflection benchmark to
+prescribed planar wall motion with independently predicted impulse/work, using the existing
+piston references, before moving clipped groups or enabling free-body feedback.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
