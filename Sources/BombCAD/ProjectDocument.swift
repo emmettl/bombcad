@@ -252,9 +252,18 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
                 [$0.min.x, $0.min.y, $0.min.z, $0.max.x, $0.max.y, $0.max.z].allSatisfy(\.isFinite)
                     && $0.size.x > 0 && $0.size.y > 0 && $0.size.z > 0
             }),
-            scenario.structure.map({ $0.elementSize.isFinite && $0.elementSize > 0 }) ?? true
+            scenario.structuralObjects.allSatisfy({
+                $0.structure!.elementSize.isFinite && $0.structure!.elementSize > 0
+            })
         else { throw ProjectFileError.invalid("Project geometry or atmosphere is invalid.") }
-        if let body = scenario.structure {
+        for object in scenario.structuralObjects {
+            let body = object.structure!
+            guard body.materials.count <= StructureModel.maxMaterials,
+                (body.solids + body.openings + body.supports).allSatisfy({ box in
+                    [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].allSatisfy(\.isFinite)
+                        && (0..<3).allSatisfy({ box.size[$0] > 0 })
+                })
+            else { throw ProjectFileError.invalid("Invalid structural geometry or material count.") }
             try body.baseAnchorage?.validate()
             guard body.supportAnchorages.count <= body.supports.count else {
                 throw ProjectFileError.invalid("A connection references a missing support region.")
@@ -268,6 +277,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
                 body.solidSourceParts.compactMap({ $0 }).allSatisfy({ parts.contains($0) })
             else { throw ProjectFileError.invalid("A structural region references a missing source part.") }
         }
+        try scenario.validateStructuralSeparation()
         try validateGrid(scenario, resolution: .coarse)
     }
 

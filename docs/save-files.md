@@ -39,10 +39,10 @@ on load, so reading them never requires the original external path. Imported mes
 as versioned JSON assets at `assets/<id>.mesh.json`. Identical sources share one asset;
 content-derived IDs stay stable across repeated saves, and existing asset IDs are retained.
 
-`scene.json` has format `dev.bombcad.scene`. New saves use encoding version 3, which requires
-durable object/component ownership. Versions 1 and 2 remain readable; version 2 originally
+`scene.json` has format `dev.bombcad.scene`. Single-body saves use encoding version 3, which requires
+durable object/component ownership; multiple-body saves use version 4. Versions 1 and 2 remain readable; version 2 originally
 introduced finite support-region laws. Older readers reject version 3 rather than discard
-ownership. Its `scenario` contains
+ownership; readers predating multi-body support reject version 4. Its `scenario` contains
 structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`
 contains instance IDs, source asset references, names, transforms, behavior, attachment status,
 part material assignments and retained previews. Source triangles are not duplicated per instance.
@@ -54,10 +54,18 @@ acquire deterministic scene-scoped identities; subsequent additions and duplicat
 fresh UUIDs. IDs persist on save/reopen and undo. Invalid counts, duplicate IDs, stale source
 references and unsupported ownership versions are rejected. This is the
 [multiple-object ownership foundation](multiple-object-scene.md#implemented-ownership-foundation);
-the solver still supports one deformable object.
+up to sixteen independent deformable objects are supported. `scenario.structure` and its
+ownership remain the first body for compatibility. `scenario.additionalStructures` carries
+the other models with their own ownership; the recorded object order includes them all.
+Ownership may also retain a preferred solid element size for an object's formulation switch.
 
 Saved-run numerical fingerprints omit this ownership record, preserving compatibility with
 historical inputs and solver provenance.
+
+Multi-body saved-run records use encoding version 2 and `blast-solver-3` provenance. Their
+`bodyResponses` entries carry object IDs, names and individual histories alongside the
+overall structural history. Missing/duplicate response owners and incompatible record
+versions are rejected. Existing single-body records retain their encoding and provenance.
 
 Mesh assets have format `dev.simulationkit.source-mesh`, `encodingVersion: 1` and
 `coordinateSpace: source`. They retain original coordinates and face labels, plus a part identity

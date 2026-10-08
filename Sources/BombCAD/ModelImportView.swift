@@ -256,7 +256,9 @@ struct ModelImportView: View {
                     corner = SIMD3<Double>(existing.corner)
                     deformable = existing.behavior == .deformable
                     partMaterials = existing.partMaterials ?? [:]
-                    if deformable, let body = model.settings.scenario.structure {
+                    if deformable,
+                        let body = model.settings.scenario.structuralObject(sourceID: existing.id)?.structure
+                    {
                         material = body.material
                         fixedBase = body.fixedBase
                     }
@@ -354,9 +356,9 @@ struct ModelImportView: View {
     @ViewBuilder private var behaviorControls: some View {
         Toggle("Deformable solid", isOn: $deformable).disabled(
             isBuilding || existing != nil
-                || model.settings.scenario.structure != nil && existing?.behavior != .deformable)
-        if !isBuilding && model.settings.scenario.structure != nil && existing?.behavior != .deformable {
-            Text("A structure already exists. Use an empty layout for a new deformable body.").font(.caption)
+                || model.settings.scenario.structuralObjects.count >= Scenario.maximumStructures)
+        if model.settings.scenario.structuralObjects.count >= Scenario.maximumStructures {
+            Text("The scene has reached its independent structure limit.").font(.caption)
         }
         if deformable {
             Picker("Default material", selection: $material) {
@@ -422,7 +424,9 @@ struct ModelImportView: View {
         yUp = isBuilding ? false : profile.yUp
         fixedBase = profile.fixedBase
         material = profile.material
-        if !isBuilding && existing == nil && (model.settings.scenario.structure == nil || !profile.deformable)
+        if !isBuilding && existing == nil
+            && (model.settings.scenario.structuralObjects.count < Scenario.maximumStructures
+                || !profile.deformable)
         {
             deformable = profile.deformable
         }
@@ -500,7 +504,11 @@ struct ModelImportView: View {
             error = nil
         } catch { self.error = error.localizedDescription }
     }
-    private var canApply: Bool { existing?.canRegenerate(model.settings.scenario.structure) ?? true }
+    private var canApply: Bool {
+        existing.map {
+            $0.canRegenerate(model.settings.scenario.structuralObject(sourceID: $0.id)?.structure)
+        } ?? true
+    }
     private func commit() {
         guard let preview, canApply, isPreviewCurrent, acknowledged, !busy, blocker == nil else { return }
         do {

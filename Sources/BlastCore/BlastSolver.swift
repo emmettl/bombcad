@@ -30,18 +30,27 @@ public final class BlastSolver {
     /// `rgba16Float` volume: overpressure and peak overpressure (both in units of ambient
     /// pressure), positive impulse (Pa s) and a solid flag. Refreshed on request.
     public let visualizationTexture: MTLTexture
-    /// The deformable body advanced alongside the air, if the scenario has one.
-    public private(set) var structure: StructureSolver?
-    /// The deformable body when it is meshed with shells; `structure` is then nil, unless the
-    /// body is mixed.
-    public private(set) var shells: ShellSolver?
-    /// A body meshed partly with solid elements and partly with shells; its parts are
-    /// `structure` and `shells`.
-    public private(set) var mixed: MixedStructure?
-    /// Whether there is a deformable body of either kind.
-    public var hasBody: Bool { structure != nil || shells != nil }
-    /// The deformable body's stable time step.
-    private var bodyStep: Float? { structure?.criticalTimeStep ?? shells?.criticalTimeStep }
+    public private(set) var bodies: [StructuralBody] = []
+    /// Compatibility views for single-body clients. Multi-body clients use `bodies` or IDs.
+    public var structure: StructureSolver? { bodies.first?.solids }
+    public var shells: ShellSolver? { bodies.first?.shells }
+    public var mixed: MixedStructure? { bodies.first?.mixed }
+    public var hasBody: Bool { !bodies.isEmpty }
+    private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
+    public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
+    public var interObjectContactDetected: Bool {
+        interactionBuffer?.contents().load(as: UInt32.self) != nil
+            && interactionBuffer!.contents().load(as: UInt32.self) != 0
+    }
+    private var combinedOccupancyBuffer: MTLBuffer?
+    private var interactionBuffer: MTLBuffer?
+    private var bodyEnvelopeBuffer: MTLBuffer?
+    private let bodyComposePipeline: MTLComputePipelineState
+    private let haltInteractionPipeline: MTLComputePipelineState
+    private let clearEnvelopesPipeline: MTLComputePipelineState
+    private let solidEnvelopePipeline: MTLComputePipelineState
+    private let shellEnvelopePipeline: MTLComputePipelineState
+    private let validateEnvelopesPipeline: MTLComputePipelineState
     /// Sound speed of the undisturbed air, used to bound the fluid time step.
     var ambientSoundSpeed: Float = 340
     var ambientDensity: Float = 1.225
@@ -104,6 +113,7 @@ public final class BlastSolver {
     let maskBuffer: MTLBuffer
     /// Solid flags of the rigid blocks alone, which never change.
     private let rigidMaskBuffer: MTLBuffer
+    private var needsRigidMaskCapture = true
     private let peakBuffer: MTLBuffer
     private let impulseBuffer: MTLBuffer
     private let controlBuffer: MTLBuffer
@@ -175,6 +185,12 @@ public final class BlastSolver {
         measurePipeline = try pipeline("measureWaveSpeed")
         visualizationPipeline = try pipeline("updateVisualization")
         splatPipeline = try pipeline("splatStructure")
+        bodyComposePipeline = try pipeline("composeBodyOccupancy")
+        haltInteractionPipeline = try pipeline("haltBodyInteraction")
+        clearEnvelopesPipeline = try pipeline("clearBodyEnvelopes")
+        solidEnvelopePipeline = try pipeline("solidBodyEnvelope")
+        shellEnvelopePipeline = try pipeline("shellBodyEnvelope")
+        validateEnvelopesPipeline = try pipeline("validateBodyEnvelopes")
         remaskPreparePipeline = try pipeline("remaskPrepare")
         remaskApplyPipeline = try pipeline("remaskApply")
         debrisExchangePipeline = try pipeline("debrisExchange")
@@ -344,6 +360,7 @@ public final class BlastSolver {
     public func mutateMask(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
         rigidBoxes = nil
+        needsRigidMaskCapture = true
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
@@ -380,36 +397,45 @@ public final class BlastSolver {
         }
     }
 
-    /// Replaces the deformable body. The current solid mask is taken as the rigid scenery, and
-    /// the structure is added to it at the next `restart()`.
+    /// Replaces the deformable body, preserving scenery authored through `mutateMask`.
+    /// The new outline is added at the next `restart()`; old body masks are removed.
     public func setStructure(_ model: StructureModel?) throws {
-        precondition(!batchInFlight, "Cannot change the structure while a batch is in flight")
-        structure = nil
-        shells = nil
-        mixed = nil
+        try setStructures(model.map { [SceneObject.legacyStructure($0)] } ?? [])
+    }
+
+    public func setStructures(_ objects: [SceneObject]) throws {
+        precondition(!batchInFlight, "Cannot change structures while a batch is in flight")
+        guard objects.count <= Scenario.maximumStructures, Set(objects.map(\.id)).count == objects.count,
+            objects.allSatisfy({ $0.structure != nil })
+        else { throw SceneObjectError.invalidOwnership }
+        try SceneObject.validateSeparation(objects)
+        let ordered = objects.count > 1 ? objects.sorted { $0.id.uuidString < $1.id.uuidString } : objects
+        let compiled = try ordered.map {
+            try StructuralBody(object: $0, device: device, queue: commandQueue, library: library)
+        }
+        bodies = compiled
         couplingRegion = nil
         occupancyBuffer = nil
+        combinedOccupancyBuffer = nil
+        interactionBuffer = nil
+        bodyEnvelopeBuffer = nil
         debrisExchangeBuffer = nil
         debrisAreaBuffer = nil
         wallVelocityBuffer = stillWallBuffer
-        memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
-        guard let model else { return }
-        if model.isMixed {
-            let body = try MixedStructure(
-                device: device, commandQueue: commandQueue, library: library, model: model)
-            mixed = body
-            structure = body.solids
-            shells = body.shells
-        } else if model.elementKind == .shell {
-            shells = try ShellSolver(
-                device: device, commandQueue: commandQueue, library: library, model: model)
-        } else {
-            structure = try StructureSolver(
-                device: device, commandQueue: commandQueue, library: library, model: model)
+        if needsRigidMaskCapture {
+            memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
+            needsRigidMaskCapture = false
         }
-
+        // Replacing/removing bodies must clear their old outline outside the new coupling region.
+        memcpy(maskBuffer.contents(), rigidMaskBuffer.contents(), grid.cellCount)
+        guard let first = compiled.first else { return }
+        let model = first.model
         // Follow the structure within a few metres of where it starts.
-        let bounds = model.bounds
+        let bounds = compiled.dropFirst().reduce(model.bounds) { bounds, body in
+            Box(
+                min: simd_min(bounds.min, body.model.bounds.min),
+                max: simd_max(bounds.max, body.model.bounds.max))
+        }
         let margin = SIMD3<Float>(4, 4, 3)
         let low = grid.cell(containing: bounds.min - margin)
         let high = grid.cell(containing: bounds.max + margin)
@@ -435,6 +461,17 @@ public final class BlastSolver {
         memset(exchange.contents(), 0, exchange.length)
         couplingRegion = (origin, dims)
         occupancyBuffer = occupancy
+        if bodies.count > 1 {
+            guard let combined = device.makeBuffer(length: occupancy.length, options: .storageModeShared),
+                let interaction = device.makeBuffer(length: 4, options: .storageModeShared),
+                let envelopes = device.makeBuffer(length: bodies.count * 6 * 4, options: .storageModeShared)
+            else { throw BlastError.allocationFailed("multi-body coupling") }
+            memset(combined.contents(), 0, combined.length)
+            memset(interaction.contents(), 0, interaction.length)
+            combinedOccupancyBuffer = combined
+            interactionBuffer = interaction
+            bodyEnvelopeBuffer = envelopes
+        }
         wallVelocityBuffer = wallVelocity
         debrisExchangeBuffer = exchange
         debrisAreaBuffer = debrisArea
@@ -448,7 +485,9 @@ public final class BlastSolver {
         if let debrisAreaBuffer { memset(debrisAreaBuffer.contents(), 0, debrisAreaBuffer.length) }
     }
 
-    private func couplingUniforms(_ region: (origin: SIMD3<Int>, dims: SIMD3<Int>)) -> CouplingUniforms {
+    private func couplingUniforms(
+        _ region: (origin: SIMD3<Int>, dims: SIMD3<Int>), body: StructuralBody? = nil
+    ) -> CouplingUniforms {
         var uniforms = CouplingUniforms(
             regionX: UInt32(region.origin.x), regionY: UInt32(region.origin.y),
             regionZ: UInt32(region.origin.z),
@@ -463,7 +502,7 @@ public final class BlastSolver {
             uniforms.blocksX = UInt32(refinement.tileDims.x)
             uniforms.blocksY = UInt32(refinement.tileDims.y)
         }
-        if let structure {
+        if let structure = body?.solids ?? (bodies.count == 1 ? structure : nil) {
             let h = structure.model.elementSize
             // A cell is solid when at least a third of it is filled with intact elements. Elements
             // larger than the cells are sampled at points no further apart than a cell.
@@ -494,6 +533,77 @@ public final class BlastSolver {
         return MTLSize(width: width, height: max(1, pipeline.maxTotalThreadsPerThreadgroup / width), depth: 1)
     }
 
+    private func encodeBodyEnvelopes(_ encoder: MTLComputeCommandEncoder, clear: Bool) {
+        guard let bounds = bodyEnvelopeBuffer else { return }
+        var count = UInt32(bodies.count)
+        if clear {
+            encoder.setComputePipelineState(clearEnvelopesPipeline)
+            encoder.setBuffer(bounds, offset: 0, index: 0)
+            encoder.setBytes(&count, length: 4, index: 1)
+            encoder.dispatchThreads(
+                MTLSize(width: bodies.count, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        }
+        for index in bodies.indices { encodeBodyEnvelope(encoder, index: index) }
+    }
+
+    private func encodeBodyEnvelope(_ encoder: MTLComputeCommandEncoder, index: Int, substep: Int? = nil) {
+        guard let bounds = bodyEnvelopeBuffer else { return }
+        let body = bodies[index]
+        var timing = SIMD2<Float>(substep == nil ? 0 : body.criticalTimeStep, Float(substep ?? 0))
+        if let solids = body.solids, solids.nodeCount > 0 {
+            var layout = SIMD4<UInt32>(
+                UInt32(index), UInt32(solids.ex + 1), UInt32(solids.ey + 1), UInt32(solids.nodeCount))
+            var origin = SIMD4<Float>(solids.origin, solids.model.elementSize)
+            encoder.setComputePipelineState(solidEnvelopePipeline)
+            encoder.setBuffer(solids.nodeBuffer, offset: 0, index: 0)
+            encoder.setBuffer(solids.nodeListBuffer, offset: 0, index: 1)
+            encoder.setBuffer(bounds, offset: 0, index: 2)
+            encoder.setBytes(&layout, length: 16, index: 3)
+            encoder.setBytes(&origin, length: 16, index: 4)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+            encoder.setBytes(&timing, length: 8, index: 6)
+            encoder.dispatchThreads(
+                MTLSize(width: solids.nodeCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: solidEnvelopePipeline.threadExecutionWidth, height: 1, depth: 1))
+        }
+        if let shells = body.shells, shells.nodeCount > 0 {
+            var layout = SIMD4<UInt32>(UInt32(index), 0, 0, UInt32(shells.nodeCount))
+            var parameters = SIMD4<Float>(0, 0, 0, body.shellEnvelopeMargin)
+            encoder.setComputePipelineState(shellEnvelopePipeline)
+            encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 0)
+            encoder.setBuffer(shells.referenceBuffer, offset: 0, index: 1)
+            encoder.setBuffer(bounds, offset: 0, index: 2)
+            encoder.setBytes(&layout, length: 16, index: 3)
+            encoder.setBytes(&parameters, length: 16, index: 4)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+            encoder.setBytes(&timing, length: 8, index: 6)
+            encoder.dispatchThreads(
+                MTLSize(width: shells.nodeCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: shellEnvelopePipeline.threadExecutionWidth, height: 1, depth: 1))
+        }
+    }
+
+    private func encodeInteractionCheck(_ encoder: MTLComputeCommandEncoder) {
+        guard let interactionBuffer, let bounds = bodyEnvelopeBuffer else { return }
+        var count = UInt32(bodies.count)
+        encoder.setComputePipelineState(validateEnvelopesPipeline)
+        encoder.setBuffer(bounds, offset: 0, index: 0)
+        encoder.setBytes(&count, length: 4, index: 1)
+        encoder.setBuffer(interactionBuffer, offset: 0, index: 2)
+        encoder.dispatchThreads(
+            MTLSize(width: bodies.count, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        encoder.setComputePipelineState(haltInteractionPipeline)
+        encoder.setBuffer(interactionBuffer, offset: 0, index: 0)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 1)
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+    }
+
     /// Encodes the return to the air of what loose debris took from it during the substeps.
     private func encodeDebrisExchange(_ encoder: MTLComputeCommandEncoder) {
         guard hasBody, let region = couplingRegion, let debrisExchangeBuffer else { return }
@@ -518,59 +628,87 @@ public final class BlastSolver {
         let patches = refinement?.patchOfTile ?? refinementPlaceholder
         let fineOccupancy = refinement?.fineOccupancy ?? refinementPlaceholder
 
-        if let structure {
-            encoder.setComputePipelineState(splatPipeline)
-            encoder.setBuffer(structure.instanceBuffer, offset: 0, index: 0)
-            encoder.setBuffer(structure.flagBuffer, offset: 0, index: 1)
-            encoder.setBuffer(structure.nodeBuffer, offset: 0, index: 2)
-            encoder.setBuffer(occupancyBuffer, offset: 0, index: 3)
-            encoder.setBytes(&uniforms, length: length, index: 4)
-            encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
-            encoder.setBuffer(patches, offset: 0, index: 6)
-            encoder.setBuffer(fineOccupancy, offset: 0, index: 7)
-            encoder.dispatchThreads(
-                MTLSize(width: structure.elementCount, height: 1, depth: 1),
-                threadsPerThreadgroup: MTLSize(
-                    width: splatPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1))
-        }
-        if let shells {
-            // In a mixed body, one shell point fills a cell, as a third of it in solid elements does.
-            uniforms.splatWeight = structure != nil ? uniforms.threshold : 1
-            if shells.beamCount > 0 {
-                var beams = UInt32(shells.beamCount)
-                encoder.setComputePipelineState(beamSplatPipeline)
-                encoder.setBuffer(shells.beamBuffer, offset: 0, index: 0)
-                encoder.setBuffer(shells.beamFlagBuffer, offset: 0, index: 1)
+        for body in bodies {
+            uniforms = couplingUniforms(region, body: body)
+            if !fine { uniforms.refineRatio = 0 }
+            if let structure = body.solids {
+                encoder.setComputePipelineState(splatPipeline)
+                encoder.setBuffer(structure.instanceBuffer, offset: 0, index: 0)
+                encoder.setBuffer(structure.flagBuffer, offset: 0, index: 1)
+                encoder.setBuffer(structure.nodeBuffer, offset: 0, index: 2)
+                encoder.setBuffer(occupancyBuffer, offset: 0, index: 3)
+                encoder.setBytes(&uniforms, length: length, index: 4)
+                encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
+                encoder.setBuffer(patches, offset: 0, index: 6)
+                encoder.setBuffer(fineOccupancy, offset: 0, index: 7)
+                encoder.dispatchThreads(
+                    MTLSize(width: structure.elementCount, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(
+                        width: splatPipeline.maxTotalThreadsPerThreadgroup, height: 1, depth: 1))
+            }
+            if let shells = body.shells {
+                // In a mixed body, one shell point fills a cell, as a third of it in solid elements does.
+                uniforms.splatWeight = body.solids != nil ? uniforms.threshold : 1
+                if shells.beamCount > 0 {
+                    var beams = UInt32(shells.beamCount)
+                    encoder.setComputePipelineState(beamSplatPipeline)
+                    encoder.setBuffer(shells.beamBuffer, offset: 0, index: 0)
+                    encoder.setBuffer(shells.beamFlagBuffer, offset: 0, index: 1)
+                    encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
+                    encoder.setBuffer(shells.referenceBuffer, offset: 0, index: 3)
+                    encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
+                    encoder.setBytes(&uniforms, length: length, index: 5)
+                    encoder.setBytes(&beams, length: 4, index: 6)
+                    encoder.setBuffer(patches, offset: 0, index: 7)
+                    encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
+                    encoder.dispatchThreads(
+                        MTLSize(width: shells.beamCount, height: 1, depth: 1),
+                        threadsPerThreadgroup: MTLSize(
+                            width: beamSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                }
+                var count = UInt32(shells.elementCount)
+                encoder.setComputePipelineState(shellSplatPipeline)
+                encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
+                encoder.setBuffer(shells.flagBuffer, offset: 0, index: 1)
                 encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
                 encoder.setBuffer(shells.referenceBuffer, offset: 0, index: 3)
                 encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
                 encoder.setBytes(&uniforms, length: length, index: 5)
-                encoder.setBytes(&beams, length: 4, index: 6)
+                encoder.setBytes(&count, length: 4, index: 6)
                 encoder.setBuffer(patches, offset: 0, index: 7)
                 encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
-                encoder.dispatchThreads(
-                    MTLSize(width: shells.beamCount, height: 1, depth: 1),
-                    threadsPerThreadgroup: MTLSize(
-                        width: beamSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                if shells.elementCount > 0 {
+                    encoder.dispatchThreads(
+                        MTLSize(width: shells.elementCount, height: 1, depth: 1),
+                        threadsPerThreadgroup: MTLSize(
+                            width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                }
             }
-            var count = UInt32(shells.elementCount)
-            encoder.setComputePipelineState(shellSplatPipeline)
-            encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
-            encoder.setBuffer(shells.flagBuffer, offset: 0, index: 1)
-            encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
-            encoder.setBuffer(shells.referenceBuffer, offset: 0, index: 3)
-            encoder.setBuffer(occupancyBuffer, offset: 0, index: 4)
-            encoder.setBytes(&uniforms, length: length, index: 5)
-            encoder.setBytes(&count, length: 4, index: 6)
-            encoder.setBuffer(patches, offset: 0, index: 7)
-            encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
-            if shells.elementCount > 0 {
+
+            if let combined = combinedOccupancyBuffer, let interactionBuffer {
+                var threshold = uniforms.threshold
+                var cells = UInt32(region.dims.x * region.dims.y * region.dims.z)
+                encoder.setComputePipelineState(bodyComposePipeline)
+                encoder.setBuffer(occupancyBuffer, offset: 0, index: 0)
+                encoder.setBuffer(combined, offset: 0, index: 1)
+                encoder.setBytes(&threshold, length: 4, index: 2)
+                encoder.setBytes(&cells, length: 4, index: 3)
+                encoder.setBuffer(interactionBuffer, offset: 0, index: 4)
                 encoder.dispatchThreads(
-                    MTLSize(width: shells.elementCount, height: 1, depth: 1),
+                    MTLSize(width: Int(cells), height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(
-                        width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                        width: bodyComposePipeline.threadExecutionWidth, height: 1, depth: 1))
+                if fine {
+                    refinement?.encodeComposeBody(
+                        encoder, threshold: uniforms.fineThreshold,
+                        interaction: interactionBuffer, uniforms: makeUniforms())
+                }
             }
         }
+        uniforms = couplingUniforms(region)
+        if !fine { uniforms.refineRatio = 0 }
+        let composed = combinedOccupancyBuffer ?? occupancyBuffer
+        if fine, bodies.count > 1 { refinement?.encodePublishBodies(encoder, uniforms: makeUniforms()) }
 
         let size = MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z)
         let width = remaskPreparePipeline.threadExecutionWidth
@@ -580,7 +718,7 @@ public final class BlastSolver {
         encoder.setComputePipelineState(remaskPreparePipeline)
         encoder.setBuffer(maskBuffer, offset: 0, index: 0)
         encoder.setBuffer(rigidMaskBuffer, offset: 0, index: 1)
-        encoder.setBuffer(occupancyBuffer, offset: 0, index: 2)
+        encoder.setBuffer(composed, offset: 0, index: 2)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 3)
         encoder.setBytes(&uniforms, length: length, index: 4)
         encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 5)
@@ -588,7 +726,7 @@ public final class BlastSolver {
 
         encoder.setComputePipelineState(remaskApplyPipeline)
         encoder.setBuffer(maskBuffer, offset: 0, index: 0)
-        encoder.setBuffer(occupancyBuffer, offset: 0, index: 1)
+        encoder.setBuffer(composed, offset: 0, index: 1)
         encoder.setBytes(&uniforms, length: length, index: 2)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
@@ -628,12 +766,9 @@ public final class BlastSolver {
         stepCount = 0
         lastFluidStep = 0
         checkpointSubsteps = 0
-        if let mixed {
-            mixed.reset()
-        } else {
-            structure?.reset()
-            shells?.reset()
-        }
+        for body in bodies { body.reset() }
+        if let interactionBuffer { memset(interactionBuffer.contents(), 0, interactionBuffer.length) }
+
         if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
@@ -751,14 +886,18 @@ public final class BlastSolver {
             return
         }
         let memory = configuration.refinementMemory
-        let patches = memory / AirRefinement.bytesPerPatch(ratio: ratio, species: hasSpecies)
+        let patches =
+            memory
+            / AirRefinement.bytesPerPatch(
+                ratio: ratio, species: hasSpecies, bodyComposition: bodies.count > 1)
         if refinement?.ratio != ratio || refinement?.species != hasSpecies
+            || refinement?.bodyComposition != (bodies.count > 1)
             || refinement?.maxPatches != max(1, patches)
         {
             refinement = nil
             refinement = try? AirRefinement(
                 device: device, library: library, grid: grid, ratio: ratio, memory: memory,
-                species: hasSpecies)
+                species: hasSpecies, bodyComposition: bodies.count > 1)
         }
         refinement?.reset()
         refinement?.setBoxes(rigidBoxes)
@@ -786,6 +925,7 @@ public final class BlastSolver {
         steps: Int, timeLimit: Double? = nil, updateVisualization: Bool = false
     ) -> MTLCommandBuffer? {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
+        guard !interObjectContactDetected else { return nil }
         let steps = batchSteps(steps)
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -806,11 +946,11 @@ public final class BlastSolver {
                 let likely = Int((1.25 * lastFluidStep / bodyStep).rounded(.up)) + 1
                 checkpointSubsteps = max(likely, 1)
             }
-            structure?.failedAtCheckpoint = structure?.hasFailed
-            shells?.failedAtCheckpoint = shells?.hasFailed
+            for body in bodies { body.checkpoint() }
         }
         let substeps = min(checkpointSubsteps, structureSubsteps)
         for step in 0..<steps {
+            encodeBodyEnvelopes(encoder, clear: true)
             let globalStep = stepCount + step
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
             var uniforms = makeUniforms(cfl: configuration.cfl * ramp)
@@ -931,18 +1071,29 @@ public final class BlastSolver {
                     )
                 }
                 let count = asleep ? structureSubsteps : substeps
-                if let mixed {
-                    mixed.encodeSubsteps(encoder, count: count, fluid: binding)
-                } else if let structure {
-                    structure.encodeSubsteps(encoder, count: count, fluid: binding)
-                } else if let shells {
-                    shells.encodeSubsteps(encoder, count: count, fluid: binding)
+                if bodies.count > 1 {
+                    for body in bodies { body.prepareDebrisAreas(encoder, fluid: binding) }
+                    binding.debrisAreasPrepared = true
                 }
+                for (index, body) in bodies.enumerated() {
+                    if bodies.count > 1 {
+                        body.encodeSubsteps(
+                            encoder, count: count, fluid: binding,
+                            afterSubstep: { [self] substep in
+                                encodeBodyEnvelope(encoder, index: index, substep: substep)
+                            })
+                    } else {
+                        body.encodeSubsteps(encoder, count: count, fluid: binding)
+                    }
+                }
+                encodeBodyEnvelopes(encoder, clear: false)
+                encodeInteractionCheck(encoder)
                 if !asleep {
                     encodeDebrisExchange(encoder)
                 }
                 if configuration.twoWayCoupling && !asleep {
                     encodeRemask(encoder)
+                    encodeInteractionCheck(encoder)
                 }
                 if let refinement, refining {
                     refinement.encodeSync(
@@ -1011,6 +1162,13 @@ public final class BlastSolver {
             if step > 0 { lastStep = step }
         }
         let elapsed = time - start
+        for body in bodies {
+            body.time = time
+            if bodies.count > 1 {
+                body.solids?.time = time
+                body.shells?.time = time
+            }
+        }
         stepCount += Int(control.activeSteps)
         // Once the blast has left and the air is close to ambient everywhere, stop advancing it.
         // This is decided only at a checkpoint, from the step before it.
@@ -1037,7 +1195,7 @@ public final class BlastSolver {
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, stoppedShort: control.stopped == 1,
-            reachedLimit: control.stopped == 2)
+            reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -1068,6 +1226,7 @@ public final class BlastSolver {
                 break
             }
         }
+        total.unsupportedInteraction = interObjectContactDetected
         return total
     }
 
@@ -1086,6 +1245,7 @@ public final class BlastSolver {
             total.refinedTiles = result.refinedTiles
             if result.steps == 0 || !result.isStable { break }
         }
+        total.unsupportedInteraction = interObjectContactDetected
         return total
     }
 
@@ -1181,21 +1341,23 @@ public final class BlastSolver {
 
     /// Damage and deflection of the deformable body, both parts of it if mixed.
     public func bodySummary() -> StructureSummary? {
-        switch (structure?.summary(), shells?.summary()) {
-        case (let solid?, let shell?): solid.combined(with: shell)
-        case (let solid?, nil): solid
-        case (nil, let shell?): shell
-        default: nil
+        bodies.compactMap { $0.summary() }.reduce(nil) { total, summary in
+            total.map { $0.combined(with: summary) } ?? summary
         }
     }
 
     /// Bytes of GPU memory held by the solver's fields.
     public var memoryFootprint: Int {
         let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
-        return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8 + (structure?.memoryFootprint ?? 0)
-            + (shells?.memoryFootprint ?? 0) + (refinement?.memoryFootprint ?? 0)
+        return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
+            + bodies.reduce(0) { $0 + $1.memoryFootprint } + (refinement?.memoryFootprint ?? 0)
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
             + (experimentalBoxImpulse?.length ?? 0)
+            + (hasBody
+                ? wallVelocityBuffer.length + (occupancyBuffer?.length ?? 0)
+                    + (debrisExchangeBuffer?.length ?? 0) + (debrisAreaBuffer?.length ?? 0) : 0)
+            + (combinedOccupancyBuffer?.length ?? 0) + (interactionBuffer?.length ?? 0)
+            + (bodyEnvelopeBuffer?.length ?? 0)
             + (experimentalBoxCentre == nil ? 0 : wallVelocityBuffer.length)
     }
 

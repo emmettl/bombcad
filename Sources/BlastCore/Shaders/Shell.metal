@@ -2180,3 +2180,16 @@ kernel void crossContactShell(const device ShellNode *nodes [[buffer(0)]],
     float size = length(total);
     contact[n] = size > largest ? total * (largest / size) : total;
 }
+
+kernel void shellBodyEnvelope(const device ShellNode *nodes [[buffer(0)]],
+                              const device float4 *reference [[buffer(1)]],
+                              device atomic_uint *bounds [[buffer(2)]],
+                              constant uint4 &layout [[buffer(3)]],
+                              constant float4 &parameters [[buffer(4)]],
+                              const device StepControl &control [[buffer(5)]],
+                              constant float2 &timing [[buffer(6)]],
+                              uint tid [[thread_position_in_grid]]) {
+    if (tid >= layout.w) { return; }
+    if (timing.x > 0.0f && (control.dt <= 0.0f || timing.y >= ceil(control.dt / timing.x))) { return; }
+    bodyEnvelopePoint(reference[tid].xyz + float3(nodes[tid].displacement), parameters.w, layout.x, bounds);
+}

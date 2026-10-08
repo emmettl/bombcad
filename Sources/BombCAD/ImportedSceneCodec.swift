@@ -14,7 +14,7 @@ enum ImportedSceneCodec {
             self.scenario = scenario
             self.imports = imports
             // Older readers must not silently discard durable object/component ownership.
-            encodingVersion = 3
+            encodingVersion = scenario.structuralObjects.count > 1 ? 4 : 3
         }
     }
 
@@ -159,15 +159,18 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", (1...3).contains(header.encodingVersion) else {
+        guard header.format == "dev.bombcad.scene", (1...4).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
         let payload = try JSONDecoder().decode(ScenePayload.self, from: data)
-        if header.encodingVersion == 3 {
+        if header.encodingVersion >= 3 {
             guard let scene = object?["scenario"] as? [String: Any], scene["objectOwnership"] != nil else {
-                throw ProjectFileError.invalid("Scene encoding version 3 requires object ownership.")
+                throw ProjectFileError.invalid("This scene encoding requires object ownership.")
             }
+        }
+        guard (payload.scenario.structuralObjects.count > 1) == (header.encodingVersion == 4) else {
+            throw ProjectFileError.invalid("Multiple structures require scene encoding version 4.")
         }
         guard payload.scenario.importedModels == nil else {
             throw ProjectFileError.invalid("The scene contains conflicting inline and referenced imports.")

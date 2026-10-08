@@ -69,7 +69,7 @@ struct SceneObjectTests {
         #expect(try JSONDecoder().decode(Scenario.self, from: JSONEncoder().encode(scene)) == scene)
     }
 
-    @Test("Malformed ownership and an unsupported second deformable object are rejected")
+    @Test("Malformed ownership and duplicate object identity are rejected")
     func malformed() throws {
         let original = try #require(
             try JSONSerialization.jsonObject(with: JSONEncoder().encode(scene())) as? [String: Any])
@@ -96,7 +96,9 @@ struct SceneObjectTests {
         }
         var unsupported = scene()
         unsupported.objects.append(
-            SceneObject(name: "Second", representation: .deformable(unsupported.structure!)))
+            SceneObject(
+                id: unsupported.structuralObject!.id, name: "Second",
+                representation: .deformable(unsupported.structure!)))
         #expect(throws: SceneObjectError.self) { try unsupported.validateObjectOwnership() }
         #expect(throws: SceneObjectError.self) { try JSONEncoder().encode(unsupported) }
     }

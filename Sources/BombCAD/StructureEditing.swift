@@ -6,14 +6,17 @@ import simd
 enum StructureEditing {
     struct Part: Identifiable {
         var id: StructureModel.SourcePart
+        var objectID: UUID
         var name: String
         var regions: [Int]
         var attached: Bool
     }
 
     static func parts(in scenario: Scenario) -> [Part] {
-        guard let body = scenario.structure else { return [] }
-        return (scenario.importedModels ?? []).filter { $0.behavior == .deformable }.flatMap { model in
+        return (scenario.importedModels ?? []).filter { $0.behavior == .deformable }.flatMap {
+            model -> [Part] in
+            guard let object = scenario.structuralObject(sourceID: model.id), let body = object.structure
+            else { return [] }
             let owners =
                 body.solidSourceParts.isEmpty && model.canRegenerate(body)
                 ? model.regionSourceParts : body.solidSourceParts
@@ -24,7 +27,7 @@ enum StructureEditing {
             return model.source.parts.map { part in
                 let reference = StructureModel.SourcePart(modelID: model.id, partID: part.id)
                 return Part(
-                    id: reference, name: part.name,
+                    id: reference, objectID: object.id, name: part.name,
                     regions: regionsByPart[reference] ?? [], attached: model.isAttached)
             }
         }
@@ -47,7 +50,7 @@ enum StructureEditing {
         guard let index = candidate.importedModels?.firstIndex(where: { $0.id == part.modelID }),
             var imported = candidate.importedModels?[index], imported.behavior == .deformable,
             imported.source.parts.contains(where: { $0.id == part.partID }),
-            var body = candidate.structure
+            let owner = candidate.structuralObject(sourceID: part.modelID), var body = owner.structure
         else { throw invalid("This structural part is no longer available.") }
         if imported.isAttached {
             guard imported.canRegenerate(body) else {
@@ -65,20 +68,24 @@ enum StructureEditing {
             }
         }
         try validateMaterials(body)
-        candidate.structure = body
+        try candidate.updateStructureObject(id: owner.id, model: body)
         return candidate
     }
 
     /// A local edit and any necessary detachment are one transaction and one undo step.
     static func changing(
-        _ scenario: Scenario, removing reference: SceneObject.ComponentReference? = nil,
+        _ scenario: Scenario, objectID: UUID? = nil,
+        removing reference: SceneObject.ComponentReference? = nil,
         retainingComponents: Bool = false, _ change: (inout StructureModel) -> Void
     ) throws -> Scenario {
         var candidate = scenario
-        var body = scenario.structure ?? StructureModel(solids: [], elementSize: 0.0625)
+        let targetID = reference?.objectID ?? objectID
+        let target = targetID.flatMap { scenario.object(id: $0) } ?? scenario.structuralObject
+        if targetID != nil, target?.id != targetID { throw invalid("This structure is no longer available.") }
+        var body = target?.structure ?? StructureModel(solids: [], elementSize: 0.0625)
         if body.solidSourceParts.isEmpty,
             let imported = scenario.importedModels?.first(where: {
-                $0.behavior == .deformable && $0.canRegenerate(body)
+                $0.behavior == .deformable && $0.id == target?.sourceModelID && $0.canRegenerate(body)
             })
         {
             body.solidSourceParts = imported.regionSourceParts
@@ -116,14 +123,18 @@ enum StructureEditing {
             })
         else { throw invalid("Structural regions must have finite coordinates and positive dimensions.") }
         for imported in scenario.importedModels ?? []
-        where imported.behavior == .deformable && imported.isAttached && !imported.canRegenerate(body) {
+        where imported.behavior == .deformable && imported.id == target?.sourceModelID && imported.isAttached
+            && !imported.canRegenerate(body)
+        {
             candidate.detachImport(id: imported.id)
         }
-        if retainingComponents || reference != nil, let old = scenario.structuralObject {
+        if retainingComponents || reference != nil, let old = target {
             try candidate.replaceStructure(
                 body.solids.isEmpty ? nil : body, retainingComponentsFrom: old, removing: reference)
-        } else {
-            candidate.structure = body.solids.isEmpty ? nil : body
+        } else if let target {
+            try candidate.updateStructureObject(id: target.id, model: body.solids.isEmpty ? nil : body)
+        } else if !body.solids.isEmpty {
+            try candidate.addStructureObject(body)
         }
         return candidate
     }

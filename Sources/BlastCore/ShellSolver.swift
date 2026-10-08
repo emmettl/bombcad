@@ -874,6 +874,27 @@ public final class ShellSolver {
         return min(shells, 0.9 * 2 * damping / frequency)
     }
 
+    func encodeDebrisAreas(_ encoder: MTLComputeCommandEncoder, fluid: StructureSolver.FluidBinding) {
+        var uniforms = makeUniforms(fluid: fluid)
+        let group = MTLSize(width: elementPipeline.threadExecutionWidth, height: 1, depth: 1)
+        if nodeCount > 0, uniforms.debrisLoading != 0, encodesAsFailed, let area = fluid.debrisArea {
+            encoder.setComputePipelineState(debrisAreaPipeline)
+            encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+            encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
+            encoder.setBuffer(flagBuffer, offset: 0, index: 2)
+            encoder.setBuffer(beamFlagBuffer, offset: 0, index: 3)
+            encoder.setBuffer(incidenceStartBuffer, offset: 0, index: 4)
+            encoder.setBuffer(incidenceBuffer, offset: 0, index: 5)
+            encoder.setBuffer(fluid.mask, offset: 0, index: 6)
+            encoder.setBuffer(area, offset: 0, index: 7)
+            encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 8)
+            encoder.setBuffer(fluid.control, offset: 0, index: 9)
+            encoder.setBuffer(failureGateBuffer, offset: 0, index: 10)
+            encoder.dispatchThreads(
+                MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+        }
+    }
+
     /// Encodes `count` substeps. With a fluid binding, the substeps share out the fluid's current
     /// time step and apply blast loads; without one, each advances by `criticalTimeStep`.
     public func encodeSubsteps(
@@ -890,7 +911,7 @@ public final class ShellSolver {
     func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, fluid: StructureSolver.FluidBinding?,
         prelude: Bool, interface: (link: MTLBuffer, loads: MTLBuffer)?,
-        beforeNodes: ((ShellUniforms) -> Void)?
+        beforeNodes: ((ShellUniforms) -> Void)?, afterNodes: ((Int) -> Void)? = nil
     ) {
         guard elementCount + beamCount > 0 else { return }
         var uniforms = makeUniforms(fluid: fluid)
@@ -902,22 +923,8 @@ public final class ShellSolver {
         let encodeContact = contactMode == .always || (contactMode == .afterFailure && encodesAsFailed)
 
         // Loose debris adds up its frontal area in each air cell before the substeps.
-        if prelude, uniforms.debrisLoading != 0, encodesAsFailed, let fluid, let area = fluid.debrisArea {
-            encoder.setComputePipelineState(debrisAreaPipeline)
-            encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
-            encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
-            encoder.setBuffer(flagBuffer, offset: 0, index: 2)
-            encoder.setBuffer(beamFlagBuffer, offset: 0, index: 3)
-            encoder.setBuffer(incidenceStartBuffer, offset: 0, index: 4)
-            encoder.setBuffer(incidenceBuffer, offset: 0, index: 5)
-            encoder.setBuffer(fluid.mask, offset: 0, index: 6)
-            encoder.setBuffer(area, offset: 0, index: 7)
-            encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 8)
-            encoder.setBuffer(fluid.control, offset: 0, index: 9)
-            encoder.setBuffer(failureGateBuffer, offset: 0, index: 10)
-            encoder.dispatchThreads(
-                MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
-        }
+        if prelude, let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
+
         for substep in substeps {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
@@ -1046,6 +1053,7 @@ public final class ShellSolver {
                 encoder.dispatchThreads(
                     MTLSize(width: mesh.ties.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
+            afterNodes?(substep)
         }
     }
 

@@ -22,6 +22,10 @@ public struct StructureSurface: Sendable, Equatable {
     /// Per face: whether it belongs to a lump of rubble standing for a failed element.
     public var rubble: [Bool] = []
     public var materials: [Material] = []
+    /// Per-face owner index, with a stable ID/name table for multi-body exports.
+    public var object: [Int32] = []
+    public var objectIDs: [UUID] = []
+    public var objectNames: [String] = []
     public var faceCount: Int { quads.count / 4 }
 
     public init() {}
@@ -72,8 +76,15 @@ extension BlastSolver {
     public func structureSurface() -> StructureSurface? {
         guard hasBody else { return nil }
         var surface = StructureSurface()
-        structure?.appendSurface(to: &surface)
-        shells?.appendSurface(to: &surface)
+        for body in bodies {
+            let first = surface.faceCount
+            body.solids?.appendSurface(to: &surface)
+            body.shells?.appendSurface(to: &surface)
+            surface.object.append(
+                contentsOf: repeatElement(Int32(surface.objectIDs.count), count: surface.faceCount - first))
+            surface.objectIDs.append(body.id)
+            surface.objectNames.append(body.name)
+        }
         return surface
     }
 }

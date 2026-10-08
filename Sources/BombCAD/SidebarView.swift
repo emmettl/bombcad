@@ -114,15 +114,36 @@ struct SidebarView: View {
             }
 
             if let summary = model.structureSummary {
-                Section("Structure") {
+                Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
+                {
+                    if model.settings.scenario.structuralObjects.count > 1 {
+                        Picker(
+                            "Editing structure",
+                            selection: Binding(
+                                get: { model.editedObject?.id }, set: { model.selectStructure(id: $0) })
+                        ) {
+                            ForEach(model.settings.scenario.structuralObjects) { object in
+                                Text(object.name).tag(Optional(object.id))
+                            }
+                        }
+                        ForEach(model.settings.scenario.structuralObjects) { object in
+                            if let own = model.bodySummaries[object.id] {
+                                LabeledContent(
+                                    object.name,
+                                    value: String(
+                                        format: "%.1f mm · %.1f%% failed", own.maxDisplacement * 1000,
+                                        own.erodedFraction * 100))
+                            }
+                        }
+                    }
                     Picker(
                         "Material",
                         selection: Binding(
-                            get: { model.settings.material }, set: { model.setStructureMaterial($0) })
+                            get: { model.editedMaterial }, set: { model.setStructureMaterial($0) })
                     ) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
-                        if !StructureMaterial.presets.contains(model.settings.material) {
-                            Text("Custom: \(model.settings.material.name)").tag(model.settings.material)
+                        if !StructureMaterial.presets.contains(model.editedMaterial) {
+                            Text("Custom: \(model.editedMaterial.name)").tag(model.editedMaterial)
                         }
                     }
                     LabeledContent("Elements", value: "\(summary.activeElements + summary.erodedElements)")

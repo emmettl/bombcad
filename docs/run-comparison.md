@@ -45,6 +45,13 @@ or a running simulation.
 
 ## Measurements and interpretation
 
+For a multi-body run, the overall structural trace is the largest displacement across
+intact bodies. Individual histories are retained by object ID and name, shown in current
+readouts and included as separate CSV series. Aggregate failure counts sum the bodies'
+element counts; maximum displacement and damage take the maximum. A conservative
+inter-object interaction stop prevents a completed capture, because inter-object contact
+is outside the supported model.
+
 Pressure snapshots retain every recorded solver gauge sample, converted to kPa relative to the
 run's ambient pressure. Chart reduction retains the low and high value of each bucket, but CSV
 export and stored data use the full history. The pressure readout reports the largest positive

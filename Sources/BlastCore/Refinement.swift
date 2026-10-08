@@ -9,6 +9,7 @@ final class AirRefinement {
     /// Coarse cells along a patch's edge.
     static let patchSize = 4
     let ratio: Int
+    let bodyComposition: Bool
     /// Fine cells along a patch's edge.
     let side: Int
     let maxPatches: Int
@@ -43,6 +44,9 @@ final class AirRefinement {
     private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
     let fineOccupancy: MTLBuffer
+    private var combinedBodyOccupancy: MTLBuffer?
+    private var bodyComposePipeline: MTLComputePipelineState?
+    private var bodyPublishPipeline: MTLComputePipelineState?
     /// The rigid blocks, as minimum and maximum corners, for the fine outline; none to take the
     /// coarse cells' rigid mask instead.
     private var boxes: MTLBuffer
@@ -91,30 +95,40 @@ final class AirRefinement {
 
     /// Bytes one patch takes: two fine states, its halo and its flux registers, and with `species`
     /// their fuel and oxygen.
-    static func bytesPerPatch(ratio: Int, species: Bool = false) -> Int {
+    static func bytesPerPatch(ratio: Int, species: Bool = false, bodyComposition: Bool = false) -> Int {
         let side = patchSize * ratio
         let cell = MemoryLayout<CellState>.stride
         let gas =
             2 * side * side * side * cell + side * side * side * (4 + 1 + 12 + 16) + 64 * 5 + 4 + 512
             * cell
             + 4 * side * side * (cell + 1) + 6 * side * side * 5 * 4 + 6 * patchSize * patchSize * 5 * 4
-        guard species else { return gas }
-        return gas + 2 * side * side * side * 8 + 4 * side * side * 8 + 6 * side * side * 8
+        let composition = bodyComposition ? side * side * side * 16 : 0
+        guard species else { return gas + composition }
+        return gas + composition + 2 * side * side * side * 8 + 4 * side * side * 8 + 6 * side * side * 8
             + 6 * patchSize * patchSize * 8
     }
 
-    init(device: MTLDevice, library: MTLLibrary, grid: Grid, ratio: Int, memory: Int, species: Bool = false)
+    init(
+        device: MTLDevice, library: MTLLibrary, grid: Grid, ratio: Int, memory: Int, species: Bool = false,
+        bodyComposition: Bool = false
+    )
         throws
     {
         precondition(ratio == 2 || ratio == 4, "The air is refined by 2 or 4")
         self.ratio = ratio
+        self.bodyComposition = bodyComposition
         self.species = species
         side = Self.patchSize * ratio
         let block = Self.patchSize
         tileDims = SIMD3(
             (grid.nx + block - 1) / block, (grid.ny + block - 1) / block, (grid.nz + block - 1) / block)
         let tiles = tileDims.x * tileDims.y * tileDims.z
-        maxPatches = max(1, min(tiles, memory / Self.bytesPerPatch(ratio: ratio, species: species)))
+        maxPatches = max(
+            1,
+            min(
+                tiles,
+                memory / Self.bytesPerPatch(ratio: ratio, species: species, bodyComposition: bodyComposition))
+        )
 
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
@@ -179,6 +193,12 @@ final class AirRefinement {
         fineSpeciesFlux = try buffer(maxPatches * 6 * side * side * pair, "fine species flux sums")
         coarseSpeciesFlux = try buffer(
             maxPatches * 6 * Self.patchSize * Self.patchSize * pair, "coarse species fluxes")
+        if bodyComposition {
+            combinedBodyOccupancy = try buffer(fineOccupancy.length, "combined fine body occupancy")
+            memset(combinedBodyOccupancy!.contents(), 0, combinedBodyOccupancy!.length)
+            bodyComposePipeline = try pipeline("composeFineBodyOccupancy")
+            bodyPublishPipeline = try pipeline("publishFineBodyOccupancy")
+        }
     }
 
     var memoryFootprint: Int {
@@ -188,6 +208,39 @@ final class AirRefinement {
             fineFlux, fineImpulse, impulseBase, coarseFlux, fineMask, fineWall, fineOccupancy, ghostSpecies,
             fineSpeciesFlux, coarseSpeciesFlux,
         ] + fine + fineSpecies).reduce(0) { $0 + $1.length } + (experimentalBoxImpulse?.length ?? 0)
+            + (combinedBodyOccupancy?.length ?? 0)
+    }
+
+    func encodeComposeBody(
+        _ encoder: MTLComputeCommandEncoder, threshold: UInt32,
+        interaction: MTLBuffer, uniforms: SolverUniforms
+    ) {
+        guard let combinedBodyOccupancy, let bodyComposePipeline else { return }
+        var threshold = threshold
+        var uniforms = uniforms
+        encoder.setComputePipelineState(bodyComposePipeline)
+        encoder.setBuffer(fineOccupancy, offset: 0, index: 0)
+        encoder.setBuffer(combinedBodyOccupancy, offset: 0, index: 1)
+        encoder.setBytes(&threshold, length: 4, index: 2)
+        setUniforms(encoder, &uniforms, index: 3)
+        encoder.setBuffer(patchList, offset: 0, index: 4)
+        encoder.setBuffer(interaction, offset: 0, index: 5)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: arguments, indirectBufferOffset: 72,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+    }
+
+    func encodePublishBodies(_ encoder: MTLComputeCommandEncoder, uniforms: SolverUniforms) {
+        guard let combinedBodyOccupancy, let bodyPublishPipeline else { return }
+        var uniforms = uniforms
+        encoder.setComputePipelineState(bodyPublishPipeline)
+        encoder.setBuffer(fineOccupancy, offset: 0, index: 0)
+        encoder.setBuffer(combinedBodyOccupancy, offset: 0, index: 1)
+        setUniforms(encoder, &uniforms, index: 2)
+        encoder.setBuffer(patchList, offset: 0, index: 3)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: arguments, indirectBufferOffset: 72,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
     }
 
     /// Patches in use after the last regrid.
@@ -317,6 +370,9 @@ final class AirRefinement {
         memset(fineSpeciesFlux.contents(), 0, fineSpeciesFlux.length)
         memset(fineImpulse.contents(), 0, fineImpulse.length)
         memset(fineOccupancy.contents(), 0, fineOccupancy.length)
+        if let combinedBodyOccupancy {
+            memset(combinedBodyOccupancy.contents(), 0, combinedBodyOccupancy.length)
+        }
         memset(pinned.contents(), 0, pinned.length)
     }
 

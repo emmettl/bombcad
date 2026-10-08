@@ -106,8 +106,9 @@ public struct ImportPlacementReport: Sendable, Hashable {
         where model.isAttached && model.behavior == .rigid && model.id != editingID {
             addEnvironment(model.preview.boxes)
         }
-        let editing = scenario.importedModels?.first { $0.id == editingID && $0.isAttached }
-        if editing?.behavior != .deformable, let body = scenario.structure {
+        for object in scenario.structuralObjects
+        where object.sourceModelID == nil || object.sourceModelID != editingID {
+            let body = object.structure!
             for solid in body.solids {
                 try Task.checkCancellation()
                 let fragments = subtracting(body.openings, from: solid, limit: 4096)

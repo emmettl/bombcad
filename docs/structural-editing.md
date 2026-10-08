@@ -8,6 +8,17 @@ the next region that moves into its old array position. Fixed-block context menu
 Names stay with blocks after deletion or reorder rather than being renumbered by position.
 See the [ownership foundation](multiple-object-scene.md#implemented-ownership-foundation).
 
+**Add Independent Structure** creates a separate deformable body, initially a wall placed
+beyond the current structures along x. **Editing structure** selects the object whose
+members, materials, element formulation, openings and supports are being edited. Deformable
+imports also create separate owners. Removing an attached imported body uses its source
+controls; local and detached bodies can be removed through **Remove Selected Structure**.
+Each object retains its own preferred solid element size when switching formulations.
+
+All bodies share the air domain. Their initial envelopes must be separated; inter-object
+contact and connections between moving bodies are not supported. A conservative envelope
+or resolved-cell overlap stops the run. See [shared air mechanics](multiple-object-scene.md#implemented-shared-air-mechanics).
+
 Deformable imports can be edited by their named source parts in **Edit layout → Deformable
 structure**. Selecting a part highlights the bounds of its surviving sampled regions.
 **Frame selected part** brings it into view. The selected part's regions appear below its

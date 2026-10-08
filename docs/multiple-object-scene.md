@@ -21,7 +21,7 @@ these references rather than retaining array positions. Fixed blocks can be dupl
 their context menu, with a fresh ID. Undo restores the original identities.
 
 `Scenario.boxes` and `Scenario.structure` remain compatibility adapters to the existing
-solver. The first stage still permits only one deformable object. Attached rigid imports
+solver. That stage preserved the single-body solver path. Attached rigid imports
 retain their existing instance identities and preview path; they are not duplicated into
 local fixed objects. The deformable object's source reference survives regeneration and
 detachment. A resampled generated region can acquire a new component ID when its geometry
@@ -38,6 +38,65 @@ encoding. Historical solver provenance is preserved. Verification covers legacy 
 project and historical-run migration, malformed ownership, duplicate geometry, stale
 references, undo/redo, independent import preservation and exact GPU air-field parity.
 The native editor has also been checked for block duplication, deletion, undo and saving.
+
+## Implemented shared air mechanics
+
+A scene can now contain up to sixteen independently owned deformable objects. Each
+`StructuralBody` compiles its own solid, shell or mixed mechanics, including its material
+table, reinforcement, supports and mesh sizes. The bodies read one air solution and cover
+the same fluid interval with substeps respecting their own stability limits. The parent
+bounds the air step by the smallest structural stability limit. Legacy single-body accessors
+remain available; multi-body code addresses a runtime body by its object ID.
+
+Boundary contributions are composed before updating the air mask. Each body's coarse and
+fine occupancy is evaluated against its own mesh-dependent threshold, then the qualifying
+cells are combined. Moving-wall velocities retain the contributing body's mean velocity,
+with fixed-point rounding in the composition pass. A body cannot clear another body's mask.
+All bodies' loose-debris areas are collected before any body's substeps, and their summed
+momentum and energy exchange is returned to the air once. Runtime ordering is deterministic
+by object ID and independent of the editor's object order.
+
+**Add Independent Structure** creates another editable body. **Editing structure** selects
+the owner for materials, element formulation, openings, supports and member edits. Changing
+between solid and shell formulations retains each object's preferred solid element size.
+Deformable imports create separate bodies; replacing, resampling or detaching a source
+targets its owner. Rendering and camera framing include every body.
+
+Current summaries and saved runs retain per-object response histories. The existing overall
+history records the largest displacement across the intact structures; summary element
+counts are summed and maximum damage/displacement are maxima. CSV adds separately identified
+object series. USD combines the visible surfaces while preserving a per-face owner index and
+stable object ID/name tables.
+
+Multi-body scenes use project scene encoding version 4, with the additional models and their
+ownership stored in `additionalStructures`. Single-body scenes continue to use version 3;
+versions 1 and 2 remain readable. Multi-body saved-run records use version 2 and provenance
+`blast-solver-3`; existing single-body records and numerical fingerprints retain their
+previous semantics and provenance. No ContinuumKit package changes are required.
+
+Inter-object contact and moving-component connections remain unsupported. Initial touching
+or intersecting body envelopes are rejected. During a run, GPU checks collect node envelopes
+at the start of the fluid step and after mechanical substeps, including loose nodes and
+conservative section/debris radii. They also detect overlapping resolved boundary cells.
+A detected interaction stops further steps and prevents a completed run capture.
+Envelope checks are conservative: a stop identifies a potentially unsupported interaction,
+not a prediction that detailed surfaces have collided. Paths through the same space at
+different times can also trigger this conservative screen; it applies no contact force.
+Contact between parts of one existing mixed body remains supported.
+
+The coupling buffers currently cover one bounding region around all bodies. This establishes
+correct ownership and composition rather than a sparse city-scale implementation. Memory
+reporting includes all structural instances and coupling buffers; refinement budgets include
+the extra composition storage. More local allocation is a subsequent performance task.
+
+Verification includes differently meshed stationary bodies against equivalent fixed
+geometry, coarse and refined air, exact invariance under object reorder for solid and shell
+responses, independent prescribed-load mechanics, interaction stopping, mixed-body surface
+export, renderer pixels, source isolation, per-object capture and package round trips.
+The native editor was checked by adding a second structure, changing its material,
+switching back to the first structure and saving both in a version-4 project.
+These checks establish numerical behaviour; no measured multi-building experiment has been
+reproduced.
 
 ## Constraints at the planning baseline
 

@@ -7,6 +7,20 @@ The material laws have their own document: [Concrete model](concrete-model.md). 
 can instead be meshed with shell elements and columns with beams, many times faster: see
 [Shell and beam model](shell-model.md). This document describes the solid elements.
 
+## Independent bodies
+
+The shared air solver can advance up to sixteen independent structural objects. Each has
+its own solid, shell or mixed solver, material table, supports and mesh sizes. Objects share
+the air field without sharing structural nodes or automatically bonding. The editor's
+**Editing structure** selector scopes local edits; deformable imports retain separate owners.
+Overall deflection is the maximum across intact bodies, with individual histories also kept.
+See [shared air mechanics](multiple-object-scene.md#implemented-shared-air-mechanics).
+
+Inter-object contact and moving connections are excluded. Touching initial envelopes are
+rejected, and conservative GPU envelope/cell checks stop a run when independent bodies may
+interact. This includes loose nodes and can stop before actual detailed surfaces touch.
+Existing contact within one body, including between its solid and shell parts, is unchanged.
+
 ## Mesh
 
 The structure is the union of axis-aligned boxes (walls, slabs, columns) minus other boxes
@@ -401,12 +415,13 @@ shock, and the drag and pressure-gradient push on loose debris.
 
 ## Limitations
 
-1. **One structure, bonded throughout unless joints are asked for.** A layout has a single
-   deformable body, of up to eight materials (joints between them take some of those). Joints
+1. **Each body is bonded throughout unless joints are asked for.** A layout can have up to
+   sixteen independent bodies, each of up to eight materials (joints take some of those). Joints
    between materials are an element thick and open at the bond's strength, and masonry's own
    mortar joints are meshed on fine enough elements, but there are no bearings that can
    separate and no joints between other pieces of the same material. Rigid blocks never
-   respond.
+   respond. Independent bodies have no mutual contact or moving connections; conservative
+   interaction checks stop the run when their envelopes or resolved cells overlap.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
    fixed coefficient, as cubes of their share of the elements around them. The air feels
    the reaction, so packed rubble slows the gas through it, but only through drag spread over

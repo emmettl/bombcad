@@ -104,13 +104,14 @@ extension Scenario {
         var copy = self
         for original in importedModels ?? []
         where original.isAttached && original.preview.cellSize != cellSize {
-            guard original.canRegenerate(copy.structure) else {
+            let owner = copy.structuralObject(sourceID: original.id)
+            guard original.canRegenerate(owner?.structure) else {
                 throw ImportedMesh.ImportError.invalid(
                     "\(original.name) has edited regions, reinforcement or supports. Detach its geometry from the source before changing the grid, or undo those edits."
                 )
             }
             let updated = try original.sampled(cellSize: cellSize, domain: domainSize)
-            if original.behavior == .deformable, var body = copy.structure {
+            if original.behavior == .deformable, let owner, var body = owner.structure {
                 body.solids = updated.preview.boxes
                 body.solidMaterial = try updated.regionMaterials()
                 body.solidSourceParts = updated.regionSourceParts
@@ -125,7 +126,7 @@ extension Scenario {
                         "The regenerated body exceeds the \(StructureModel.maxMaterials)-material solver limit. Reuse materials or reset part assignments before refining."
                     )
                 }
-                copy.structure = body
+                try copy.updateStructureObject(id: owner.id, model: body)
             }
             if let index = copy.importedModels?.firstIndex(where: { $0.id == original.id }) {
                 copy.importedModels?[index] = updated
@@ -174,13 +175,14 @@ extension Scenario {
                 "The combined layout exceeds the 2,048 rigid region limit.")
         }
         if imported.behavior == .deformable {
-            guard structure == nil || old?.canRegenerate(structure) == true else {
+            let owner = structuralObject(sourceID: imported.id)
+            guard owner == nil || old?.canRegenerate(owner?.structure) == true else {
                 throw ImportedMesh.ImportError.invalid(
                     "The structure contains local edits. Detach its geometry before replacing it from the source."
                 )
             }
             var body =
-                structure
+                owner?.structure
                 ?? StructureModel(solids: [], material: material, elementSize: imported.preview.cellSize)
             body.solids = imported.preview.boxes
             body.solidMaterial = materials
@@ -197,10 +199,14 @@ extension Scenario {
                     "The body exceeds the \(StructureModel.maxMaterials)-material solver limit, including its default. Reuse materials or reset part assignments."
                 )
             }
-            structure = body
+            if let owner {
+                try updateStructureObject(id: owner.id, model: body)
+            } else {
+                let id = try addStructureObject(body, name: imported.name)
+                bindStructuralSource(imported.id, objectID: id)
+            }
         }
         importedModels = models
-        if imported.behavior == .deformable { bindStructuralSource(imported.id) }
     }
     /// Keep derived volumes and material edits, but stop automatic source regeneration.
     public mutating func detachImport(id: UUID) {

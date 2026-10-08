@@ -5,6 +5,7 @@ import Foundation
 
 struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     static let solverVersion = "blast-solver-2"
+    static let multiBodySolverVersion = "blast-solver-3"
     static let maximumRuns = 16
     static let maximumSamples = 500_000
 
@@ -43,6 +44,12 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         var peak: Double { points.reduce(0) { max($0, $1.value) } }
     }
 
+    struct BodyResponse: Codable, Equatable, Identifiable, Sendable {
+        var id: UUID
+        var name: String
+        var response: Structure
+    }
+
     var id = UUID()
     var name: String
     var capturedAt = Date()
@@ -57,6 +64,7 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     var stepCount: Int
     var gauges: [Gauge]
     var structure: Structure?
+    var bodyResponses: [BodyResponse]? = nil
 
     static func fingerprint(_ scenario: Scenario, settings: ProjectRunSettings) throws -> String {
         struct Inputs: Encodable {
@@ -82,10 +90,26 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             inputSHA256 == (try Self.fingerprint(scenario, settings: settings)),
             gauges.map(\.key) == Gauge.keys(Array(scenario.gauges.prefix(BlastSolver.maxGauges))),
             gauges.reduce(0, { $0 + $1.points.count }) + (structure?.points.count ?? 0)
+                + (bodyResponses ?? []).reduce(0, { $0 + $1.response.points.count })
                 <= Self.maximumSamples,
             gauges.allSatisfy({ valid($0.points) }),
             (structure == nil) == (scenario.structure == nil)
         else { throw ProjectFileError.invalid("Invalid saved run inputs, identity or measurement history.") }
+        if scenario.structuralObjects.count > 1 || bodyResponses != nil {
+            let responses = bodyResponses ?? []
+            let objects = scenario.structuralObjects
+            guard responses.count == objects.count, Set(responses.map(\.id)).count == responses.count,
+                Set(responses.map(\.id)) == Set(objects.map(\.id)),
+                responses.allSatisfy({ entry in
+                    !entry.name.isEmpty && entry.name == scenario.object(id: entry.id)?.name
+                        && valid(entry.response.points) && entry.response.points.allSatisfy({ $0.value >= 0 })
+                        && entry.response.sampleInterval.isFinite && entry.response.sampleInterval > 0
+                        && entry.response.failedFraction.isFinite
+                        && (0...1).contains(entry.response.failedFraction)
+                        && entry.response.maximumDamage.isFinite && entry.response.maximumDamage >= 0
+                }), scenario.structuralObjects.count <= 1 || solverVersion == Self.multiBodySolverVersion
+            else { throw ProjectFileError.invalid("Invalid per-object response ownership or history.") }
+        }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,
                 valid(structure.points), structure.points.allSatisfy({ $0.value >= 0 }),
@@ -132,6 +156,12 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         for point in structure?.points ?? [] {
             lines.append("\(field(name)),\"Largest deflection\",\(point.time * 1000),\(point.value),mm")
         }
+        for body in bodyResponses ?? [] {
+            let label = field("\(body.name) [\(body.id.uuidString)] deflection")
+            for point in body.response.points {
+                lines.append("\(field(name)),\(label),\(point.time * 1000),\(point.value),mm")
+            }
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 }
@@ -162,7 +192,9 @@ enum SavedRunStore {
                 throw ProjectFileError.invalid("Missing saved run \(id).")
             }
             let record = try JSONDecoder().decode(Record.self, from: data)
-            guard record.format == "dev.bombcad.run", record.encodingVersion == 1, record.result.id == id,
+            guard record.format == "dev.bombcad.run", [1, 2].contains(record.encodingVersion),
+                record.result.id == id,
+                (record.result.scenario.structuralObjects.count > 1) == (record.encodingVersion == 2),
                 record.result.scenario.importedModels == nil, record.result.scenario == record.scene.scenario
             else { throw ProjectFileError.invalid("Unsupported or conflicting saved run payload.") }
             var input = archive
@@ -205,7 +237,9 @@ enum SavedRunStore {
                 from: ImportedSceneCodec.encode(run.scenario, manifest: &manifest, files: &files))
             var stored = run
             stored.scenario.importedModels = nil
-            files[path(run.id)] = try ProjectArchive.encodeJSON(Record(result: stored, scene: scene))
+            var record = Record(result: stored, scene: scene)
+            record.encodingVersion = run.scenario.structuralObjects.count > 1 ? 2 : 1
+            files[path(run.id)] = try ProjectArchive.encodeJSON(record)
         }
         files[indexPath] = try ProjectArchive.encodeJSON(Index(runs: runs.map(\.id)))
     }

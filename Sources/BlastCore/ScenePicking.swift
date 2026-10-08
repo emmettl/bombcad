@@ -39,8 +39,17 @@ public enum ScenePicking {
             }
         }
         visit(scenario.boxes, id: nil)
-        let owner = scenario.importedModels?.first { $0.isAttached && $0.behavior == .deformable }
-        if let body = scenario.structure {
+        let legacySources = (scenario.importedModels ?? []).filter {
+            $0.isAttached && $0.behavior == .deformable
+        }
+        for object in scenario.structuralObjects {
+            let body = object.structure!
+            let owner = scenario.importedModels?.first { model in
+                model.isAttached && model.behavior == .deformable
+                    && (model.id == object.sourceModelID
+                        || (object.sourceModelID == nil && scenario.structuralObjects.count == 1
+                            && legacySources.count == 1))
+            }
             for solid in body.solids {
                 // Subtract openings before intersecting the ray. Work is bounded per member.
                 let fragments = ImportPlacementReport.subtracting(body.openings, from: solid, limit: 4096)

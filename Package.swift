@@ -40,7 +40,7 @@ let package = Package(
         .testTarget(
             name: "BombCADTests",
             dependencies: [
-                "BombCAD", "BlastCore", .product(name: "DocumentKit", package: "continuumkit"),
+                "BombCAD", "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "continuumkit"),
             ]),
     ],
     swiftLanguageModes: [.v6]

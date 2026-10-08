@@ -25,6 +25,8 @@ public final class StructureSolver {
         /// The frontal area of the loose debris in each air cell of `exchangeRegion`, one `Int32`
         /// each, summed before the substeps and cleared after.
         public var debrisArea: MTLBuffer?
+        /// The parent collected every body's area before advancing any body.
+        var debrisAreasPrepared = false
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
         /// Where the air is refined: which block each patch refines, the patches' fine cells,
         /// the ratio and the grid of blocks' size. Faces then read the fine cells beside them.
@@ -964,6 +966,24 @@ public final class StructureSolver {
         encodeSubsteps(encoder, count: count, fluid: fluid, interface: nil, beforeNodes: nil, afterNodes: nil)
     }
 
+    func encodeDebrisAreas(_ encoder: MTLComputeCommandEncoder, fluid: FluidBinding) {
+        var uniforms = makeUniforms(fluid: fluid)
+        let group = MTLSize(width: elementPipeline.threadExecutionWidth, height: 1, depth: 1)
+        if nodeCount > 0, uniforms.debrisLoading != 0, encodesAsFailed, let area = fluid.debrisArea {
+            encoder.setComputePipelineState(debrisAreaPipeline)
+            encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+            encoder.setBuffer(flagBuffer, offset: 0, index: 1)
+            encoder.setBuffer(fluid.control, offset: 0, index: 2)
+            encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 3)
+            encoder.setBuffer(nodeListBuffer, offset: 0, index: 4)
+            encoder.setBuffer(fluid.mask, offset: 0, index: 5)
+            encoder.setBuffer(area, offset: 0, index: 6)
+            encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
+            encoder.dispatchThreads(
+                MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+        }
+    }
+
     /// Shell nodes tied into this body's elements: the links, how many, each lattice node's
     /// entries among them (start per compact node, then (link, corner) pairs), and the force and
     /// moment each tied node hands over.
@@ -1002,19 +1022,7 @@ public final class StructureSolver {
 
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
-        if uniforms.debrisLoading != 0, encodesAsFailed, let fluid, let area = fluid.debrisArea {
-            encoder.setComputePipelineState(debrisAreaPipeline)
-            encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
-            encoder.setBuffer(flagBuffer, offset: 0, index: 1)
-            encoder.setBuffer(fluid.control, offset: 0, index: 2)
-            encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 3)
-            encoder.setBuffer(nodeListBuffer, offset: 0, index: 4)
-            encoder.setBuffer(fluid.mask, offset: 0, index: 5)
-            encoder.setBuffer(area, offset: 0, index: 6)
-            encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
-            encoder.dispatchThreads(
-                MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
-        }
+        if let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
 
         for substep in 0..<count {
             uniforms.substep = UInt32(substep)

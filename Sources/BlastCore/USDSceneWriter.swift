@@ -36,6 +36,9 @@ public final class USDSceneWriter {
     private var frames = 0
     private var lastQuads: [Int32]?
     private var lastMaterial: [Int32]?
+    private var lastObject: [Int32]?
+    private var objectIDs: [UUID] = []
+    private var objectNames: [String] = []
     private var lastRubble: [Bool]?
     private var lastDamage: [Float]?
     private var materials: [StructureSurface.Material] = []
@@ -65,7 +68,7 @@ public final class USDSceneWriter {
         parts = url.deletingLastPathComponent().appending(
             path: ".\(url.lastPathComponent).parts-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: parts, withIntermediateDirectories: false)
-        for name in ["points", "extent", "counts", "indices", "damage", "material", "rubble"] {
+        for name in ["points", "extent", "counts", "indices", "damage", "material", "rubble", "object"] {
             let file = parts.appending(path: name)
             FileManager.default.createFile(atPath: file.path, contents: nil)
             streams[name] = try FileHandle(forWritingTo: file)
@@ -93,6 +96,8 @@ public final class USDSceneWriter {
         guard let surface else { return }
         hasBody = true
         materials = surface.materials
+        objectIDs = surface.objectIDs
+        objectNames = surface.objectNames
         let frame = "            \(frames): "
         var text = Text()
 
@@ -135,6 +140,13 @@ public final class USDSceneWriter {
             text.append("],\n")
             try write(&text, to: "material")
             lastMaterial = surface.material
+        }
+        if surface.objectIDs.count > 1, surface.object != lastObject {
+            text.append(frame + "[")
+            text.appendList(surface.object)
+            text.append("],\n")
+            try write(&text, to: "object")
+            lastObject = surface.object
         }
         if surface.rubble != lastRubble {
             text.append(frame + "[")
@@ -267,6 +279,16 @@ public final class USDSceneWriter {
                         )
 
                 """)
+            if objectIDs.count > 1 {
+                text.append(
+                    "        custom uniform string[] bombcad:objectIds = ["
+                        + objectIDs.map { quoted($0.uuidString) }.joined(separator: ", ") + "]\n")
+                text.append(
+                    "        custom uniform string[] bombcad:objectNames = ["
+                        + objectNames.map(quoted).joined(separator: ", ") + "]\n")
+                text.append("        int[] primvars:object (interpolation = \"uniform\")\n")
+                try timeSamples("int[] primvars:object", "object")
+            }
             try timeSamples("float3[] extent", "extent")
             try timeSamples("int[] faceVertexCounts", "counts")
             try timeSamples("int[] faceVertexIndices", "indices")

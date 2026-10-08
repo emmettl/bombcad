@@ -8,9 +8,13 @@ public typealias OrbitCamera = SceneView.OrbitCamera
 extension OrbitCamera {
     /// A three-quarter view that frames the whole scenario.
     public static func framing(_ scenario: Scenario) -> OrbitCamera {
-        if let structure = scenario.structure {
+        if let structure = scenario.structuralObjects.first?.structure {
             // Close in on the structure and the charge rather than the whole domain.
-            let bounds = structure.bounds
+            let bounds = scenario.structuralObjects.dropFirst().reduce(structure.bounds) { bounds, object in
+                Box(
+                    min: simd_min(bounds.min, object.structure!.bounds.min),
+                    max: simd_max(bounds.max, object.structure!.bounds.max))
+            }
             let low = simd_min(bounds.min, scenario.charge.position)
             let high = simd_max(bounds.max, scenario.charge.position)
             let centre = (bounds.min + bounds.max) / 2

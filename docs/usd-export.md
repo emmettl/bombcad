@@ -44,6 +44,10 @@ Per face, three primvars carry the element's state:
   marking glass.
 - `rubble`, true on the lumps that stand for failed elements.
 
+Multi-body runs include all structural surfaces in `/Scene/Structure`. They add the uniform
+per-face integer `object` primvar, indexing `bombcad:objectIds` and `bombcad:objectNames`.
+Those tables preserve persistent scene ownership independently of vertex and face indices.
+
 The points and damage change every frame; the faces, and with them `material` and `rubble`, are
 written only on the frames where elements fail. Time codes count frames, played
 at 24 a second; `simulatedSecondsPerFrame` in the layer's `customLayerData` gives the simulated

@@ -2895,3 +2895,119 @@ kernel void refineRemaskApply(device uchar *fineMask [[buffer(0)]],
         fineOccupancy[4 * at + n] = 0;
     }
 }
+
+// Normalize each independently meshed body's occupancy before combining it with others.
+// A qualifying body contributes one count and its mean fixed-point wall velocity.
+static inline void composeBodyCell(device uint *scratch, device uint *combined, uint at,
+                                   uint threshold, device atomic_uint *interaction) {
+    uint slot = 4u * at;
+    uint count = scratch[slot];
+    if (count >= threshold) {
+        uint old = combined[slot];
+        if (old != 0u) { atomic_store_explicit(interaction, 1u, memory_order_relaxed); }
+        combined[slot] = old + 1u;
+        for (uint n = 1; n < 4; ++n) {
+            int mean = int(round(float(as_type<int>(scratch[slot + n])) / float(count)));
+            combined[slot + n] += as_type<uint>(mean);
+        }
+    }
+    for (uint n = 0; n < 4; ++n) { scratch[slot + n] = 0u; }
+}
+
+kernel void composeBodyOccupancy(device uint *scratch [[buffer(0)]],
+                                 device uint *combined [[buffer(1)]],
+                                 constant uint &threshold [[buffer(2)]],
+                                 constant uint &cells [[buffer(3)]],
+                                 device atomic_uint *interaction [[buffer(4)]],
+                                 uint tid [[thread_position_in_grid]]) {
+    if (tid < cells) { composeBodyCell(scratch, combined, tid, threshold, interaction); }
+}
+
+kernel void composeFineBodyOccupancy(device uint *scratch [[buffer(0)]],
+                                     device uint *combined [[buffer(1)]],
+                                     constant uint &threshold [[buffer(2)]],
+                                     constant SolverUniforms &u [[buffer(3)]],
+                                     const device uint *patchList [[buffer(4)]],
+                                     device atomic_uint *interaction [[buffer(5)]],
+                                     uint gid [[thread_position_in_grid]]) {
+    uint side = uint(patchSize) * u.refineRatio;
+    uint cells = side * side * side;
+    uint at = patchList[gid / cells] * cells + gid % cells;
+    composeBodyCell(scratch, combined, at, threshold, interaction);
+}
+
+kernel void publishFineBodyOccupancy(device uint *scratch [[buffer(0)]],
+                                     device uint *combined [[buffer(1)]],
+                                     constant SolverUniforms &u [[buffer(2)]],
+                                     const device uint *patchList [[buffer(3)]],
+                                     uint gid [[thread_position_in_grid]]) {
+    uint side = uint(patchSize) * u.refineRatio;
+    uint cells = side * side * side;
+    uint at = patchList[gid / cells] * cells + gid % cells;
+    for (uint n = 0; n < 4; ++n) {
+        scratch[4u * at + n] = combined[4u * at + n];
+        combined[4u * at + n] = 0u;
+    }
+}
+
+kernel void haltBodyInteraction(const device uint *interaction [[buffer(0)]],
+                                device StepControl &control [[buffer(1)]],
+                                uint tid [[thread_position_in_grid]]) {
+    if (tid == 0 && interaction[0] != 0u) { control.stopped = 3u; }
+}
+
+static inline uint bodyOrderedFloat(float value) {
+    uint bits = as_type<uint>(value);
+    return (bits & 0x80000000u) != 0u ? ~bits : (bits ^ 0x80000000u);
+}
+static inline float bodyFloatFromOrder(uint value) {
+    return as_type<float>((value & 0x80000000u) != 0u ? (value ^ 0x80000000u) : ~value);
+}
+static inline void bodyEnvelopePoint(float3 position, float margin, uint body,
+                                     device atomic_uint *bounds) {
+    if (!all(isfinite(position))) { return; }
+    for (uint axis = 0; axis < 3; ++axis) {
+        atomic_fetch_min_explicit(&bounds[6u * body + axis], bodyOrderedFloat(position[axis] - margin), memory_order_relaxed);
+        atomic_fetch_max_explicit(&bounds[6u * body + 3u + axis], bodyOrderedFloat(position[axis] + margin), memory_order_relaxed);
+    }
+}
+kernel void clearBodyEnvelopes(device uint *bounds [[buffer(0)]],
+                               constant uint &count [[buffer(1)]],
+                               uint tid [[thread_position_in_grid]]) {
+    if (tid >= count) { return; }
+    for (uint axis = 0; axis < 3; ++axis) {
+        bounds[6u * tid + axis] = 0xffffffffu;
+        bounds[6u * tid + 3u + axis] = 0u;
+    }
+}
+kernel void solidBodyEnvelope(const device StructureNode *nodes [[buffer(0)]],
+                              const device uint *nodeList [[buffer(1)]],
+                              device atomic_uint *bounds [[buffer(2)]],
+                              constant uint4 &layout [[buffer(3)]],
+                              constant float4 &origin [[buffer(4)]],
+                              const device StepControl &control [[buffer(5)]],
+                              constant float2 &timing [[buffer(6)]],
+                              uint tid [[thread_position_in_grid]]) {
+    if (tid >= layout.w) { return; }
+    if (timing.x > 0.0f && (control.dt <= 0.0f || timing.y >= ceil(control.dt / timing.x))) { return; }
+    uint n = nodeList[tid];
+    float3 reference = origin.xyz + origin.w * float3(n % layout.y, (n / layout.y) % layout.z, n / (layout.y * layout.z));
+    bodyEnvelopePoint(reference + float3(nodes[tid].displacement), 0.5f * origin.w, layout.x, bounds);
+}
+kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
+                                  constant uint &count [[buffer(1)]],
+                                  device atomic_uint *interaction [[buffer(2)]],
+                                  uint tid [[thread_position_in_grid]]) {
+    if (tid >= count) { return; }
+    for (uint other = tid + 1u; other < count; ++other) {
+        bool overlap = true;
+        for (uint axis = 0; axis < 3; ++axis) {
+            uint alo = bounds[6u * tid + axis], ahi = bounds[6u * tid + 3u + axis];
+            uint blo = bounds[6u * other + axis], bhi = bounds[6u * other + 3u + axis];
+            if (alo > ahi || blo > bhi) { overlap = false; break; }
+            overlap = overlap && min(bodyFloatFromOrder(ahi), bodyFloatFromOrder(bhi))
+                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f;
+        }
+        if (overlap) { atomic_store_explicit(interaction, 1u, memory_order_relaxed); }
+    }
+}

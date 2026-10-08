@@ -196,7 +196,8 @@ public final class MixedStructure {
 
     /// Encodes `count` substeps of both parts, tied.
     public func encodeSubsteps(
-        _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?
+        _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?,
+        afterSubstep: ((Int) -> Void)? = nil
     ) {
         let tie = (link: shellLink, loads: interface.loads)
         // Contact between the parts needs both parts' tables, so once either part would collide,
@@ -229,7 +230,8 @@ public final class MixedStructure {
                     })
                 first = false
             },
-            afterNodes: { [self] _ in
+            afterNodes: { [self] substep in
+                defer { afterSubstep?(substep) }
                 guard !links.isEmpty else { return }
                 var linkCount = UInt32(links.count)
                 encoder.setComputePipelineState(followPipeline)

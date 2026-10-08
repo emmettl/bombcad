@@ -38,7 +38,9 @@ struct EditorView: View {
                                 }
                             }
                             if imported.behavior == .deformable,
-                                let part = model.structuralParts.first(where: { $0.id.modelID == imported.id }
+                                let part = StructureEditing.parts(in: model.settings.scenario).first(where: {
+                                    $0.id.modelID == imported.id
+                                }
                                 )
                             {
                                 Button("Edit structural parts") { model.selection = .part(part.id) }
@@ -101,6 +103,24 @@ struct EditorView: View {
             }
 
             Section {
+                if !model.settings.scenario.structuralObjects.isEmpty {
+                    Picker(
+                        "Editing structure",
+                        selection: Binding(
+                            get: { model.editedObject?.id }, set: { model.selectStructure(id: $0) })
+                    ) {
+                        ForEach(model.settings.scenario.structuralObjects) { object in
+                            Text(object.name).tag(Optional(object.id))
+                        }
+                    }
+                }
+                Button("Add Independent Structure", systemImage: "plus.square") {
+                    model.addIndependentStructure()
+                }
+                .disabled(model.settings.scenario.structuralObjects.count >= Scenario.maximumStructures)
+                if model.editedObject != nil {
+                    Button("Remove Selected Structure", role: .destructive) { model.removeEditedStructure() }
+                }
                 if !model.structuralParts.isEmpty {
                     StructuralPartsEditor(model: model)
                     Toggle("Show all sampled regions", isOn: $showAllImportedRegions)
@@ -155,8 +175,8 @@ struct EditorView: View {
                     Button("Add Opening", systemImage: "plus") { model.addOpening() }
                     Picker("Main material", selection: mainMaterialBinding) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
-                        if !StructureMaterial.presets.contains(model.settings.material) {
-                            Text("Custom: \(model.settings.material.name)").tag(model.settings.material)
+                        if !StructureMaterial.presets.contains(model.editedMaterial) {
+                            Text("Custom: \(model.editedMaterial.name)").tag(model.editedMaterial)
                         }
                     }
                     DisclosureGroup("Main material properties") {
@@ -195,13 +215,13 @@ struct EditorView: View {
                     Toggle(
                         "Restrain the base on the ground",
                         isOn: Binding(
-                            get: { model.settings.scenario.structure?.fixedBase ?? false },
+                            get: { model.editedStructure?.fixedBase ?? false },
                             set: { model.setFixedBase($0) }))
-                    if model.settings.scenario.structure?.fixedBase == true {
+                    if model.editedStructure?.fixedBase == true {
                         AnchorageEditor(
                             title: "Base connection",
                             law: Binding(
-                                get: { model.settings.scenario.structure?.baseAnchorage },
+                                get: { model.editedStructure?.baseAnchorage },
                                 set: { model.setBaseAnchorage($0) }))
                     }
                     ForEach(model.componentRows(.support)) { row in
@@ -215,7 +235,7 @@ struct EditorView: View {
                             AnchorageEditor(
                                 title: "Support connection",
                                 law: supportLawBinding(row.reference))
-                            if model.settings.scenario.structure?.anchorage(ofSupport: index) != nil,
+                            if model.editedStructure?.anchorage(ofSupport: index) != nil,
                                 let area = model.supportBearingArea(at: index)
                             {
                                 if area > 0 {
@@ -287,10 +307,10 @@ struct EditorView: View {
 
     }
 
-    private var solids: [Box] { model.settings.scenario.structure?.solids ?? [] }
-    private var openings: [Box] { model.settings.scenario.structure?.openings ?? [] }
+    private var solids: [Box] { model.editedStructure?.solids ?? [] }
+    private var openings: [Box] { model.editedStructure?.openings ?? [] }
 
-    private var supports: [Box] { model.settings.scenario.structure?.supports ?? [] }
+    private var supports: [Box] { model.editedStructure?.supports ?? [] }
 
     private var visibleSolidIndices: [Int] {
         guard !showAllImportedRegions else { return Array(solids.indices) }
@@ -304,17 +324,17 @@ struct EditorView: View {
     }
 
     private var mainMaterialBinding: Binding<StructureMaterial> {
-        Binding(get: { model.settings.material }, set: { model.setStructureMaterial($0) })
+        Binding(get: { model.editedMaterial }, set: { model.setStructureMaterial($0) })
     }
 
     private var mainElementKindBinding: Binding<ElementKind> {
         Binding(
-            get: { model.settings.elementKind },
+            get: { model.editedElementKind },
             set: { kind in
                 // Preserve the existing mixed-mesh sizing rules, then make it a local edit.
-                let size = kind == .shell ? SimulationSettings.shellSize : model.settings.solidElementSize
+                let size = kind == .shell ? SimulationSettings.shellSize : model.editedSolidElementSize
                 if kind == .shell {
-                    model.settings.solidElementSize = model.settings.scenario.structure?.elementSize ?? size
+                    model.rememberSolidElementSize(model.editedStructure?.elementSize ?? size)
                 }
                 model.editStructure {
                     $0.elementKind = kind
@@ -327,11 +347,12 @@ struct EditorView: View {
         Binding(
             get: {
                 guard let current = model.settings.scenario.componentIndex(reference) else { return nil }
-                return model.settings.scenario.structure?.anchorage(ofSupport: current)
+                return model.settings.scenario.object(id: reference.objectID)?.structure?.anchorage(
+                    ofSupport: current)
             },
             set: { law in
-                guard let current = model.settings.scenario.componentIndex(reference) else { return }
-                model.setSupportAnchorage(law, at: current)
+                guard model.settings.scenario.componentIndex(reference) != nil else { return }
+                model.editComponent(reference) { $0.setAnchorage(law, ofSupport: $1) }
             })
     }
 
@@ -346,17 +367,19 @@ struct EditorView: View {
             keyPath == \StructureModel.solids
             ? .solid
             : (keyPath == \StructureModel.openings ? .opening : .support)
-        let references = model.settings.scenario.componentReferences(kind)
+        let references = (model.editedObject?.references(kind) ?? [])
         let reference = references.safeElement(at: index)
         let original =
-            (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: index)
+            (model.editedStructure?[keyPath: keyPath] ?? []).safeElement(at: index)
             ?? Box(min: .zero, max: SIMD3(repeating: 1))
         return Binding(
             get: {
                 guard let reference, let current = model.settings.scenario.componentIndex(reference) else {
                     return original
                 }
-                return (model.settings.scenario.structure?[keyPath: keyPath] ?? []).safeElement(at: current)
+                return
+                    (model.settings.scenario.object(id: reference.objectID)?.structure?[keyPath: keyPath]
+                    ?? []).safeElement(at: current)
                     ?? original
             },
             set: { box in
@@ -404,13 +427,13 @@ struct EditorView: View {
 
     private var bondBinding: Binding<Bool> {
         Binding(
-            get: { model.settings.scenario.structure?.interfaceBond != nil },
+            get: { model.editedStructure?.interfaceBond != nil },
             set: { on in model.editStructure { $0.interfaceBond = on ? StructureModel.masonryBond : nil } })
     }
 
     private var unitJointsBinding: Binding<Bool> {
         Binding(
-            get: { model.settings.scenario.structure?.unitJoints ?? true },
+            get: { model.editedStructure?.unitJoints ?? true },
             set: { on in model.editStructure { $0.unitJoints = on } })
     }
 
@@ -418,14 +441,14 @@ struct EditorView: View {
     private func solidPropertyBinding<Value>(
         _ index: Int, fallback: Value,
         get: @escaping (StructureModel, Int) -> Value,
-        set: @escaping (Value, Int) -> Void
+        set: @escaping (Value, Int, UUID) -> Void
     ) -> Binding<Value> {
-        let reference = model.settings.scenario.componentReferences(.solid).safeElement(at: index)
-        let original = model.settings.scenario.structure.map { get($0, index) } ?? fallback
+        let reference = (model.editedObject?.references(.solid) ?? []).safeElement(at: index)
+        let original = model.editedStructure.map { get($0, index) } ?? fallback
         return Binding(
             get: {
                 guard let reference, let current = model.settings.scenario.componentIndex(reference),
-                    let body = model.settings.scenario.structure
+                    let body = model.editedStructure
                 else { return original }
                 return get(body, current)
             },
@@ -433,26 +456,26 @@ struct EditorView: View {
                 guard let reference, let current = model.settings.scenario.componentIndex(reference) else {
                     return
                 }
-                set(value, current)
+                set(value, current, reference.objectID)
             })
     }
 
     private func elementKindBinding(_ index: Int) -> Binding<ElementKind> {
         solidPropertyBinding(
             index, fallback: .solid,
-            get: { $0.elementKind(of: $1) }, set: { model.setElementKind($0, ofSolid: $1) })
+            get: { $0.elementKind(of: $1) }, set: { model.setElementKind($0, ofSolid: $1, objectID: $2) })
     }
 
     private func materialBinding(_ index: Int) -> Binding<StructureMaterial> {
         solidPropertyBinding(
             index, fallback: .reinforcedConcrete,
-            get: { $0.material(of: $1) }, set: { model.setMaterial($0, ofSolid: $1) })
+            get: { $0.material(of: $1) }, set: { model.setMaterial($0, ofSolid: $1, objectID: $2) })
     }
 
     private func reinforcementBinding(_ index: Int) -> Binding<Reinforcement> {
         solidPropertyBinding(
             index, fallback: .automatic,
-            get: { $0.reinforcement(of: $1) }, set: { model.setReinforcement($0, ofSolid: $1) })
+            get: { $0.reinforcement(of: $1) }, set: { model.setReinforcement($0, ofSolid: $1, objectID: $2) })
     }
 
     private func gaugeBinding(_ index: Int) -> Binding<BlastCore.Gauge> {

@@ -91,7 +91,9 @@ final class ImportPreviewModel {
                                     $0.id == request.editingID && $0.isAttached
                                 }) {
                                     candidate.importedModels?.removeAll { $0.id == own.id }
-                                    if own.behavior == .deformable { candidate.structure = nil }
+                                    if let owner = candidate.structuralObject(sourceID: own.id) {
+                                        try candidate.updateStructureObject(id: owner.id, model: nil)
+                                    }
                                 }
                                 candidate = try candidate.resamplingImports(cellSize: request.cellSize)
                             }

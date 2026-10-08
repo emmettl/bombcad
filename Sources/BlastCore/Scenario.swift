@@ -73,7 +73,7 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// before it existed still open.)
     public var additionalCharges: [Charge]?
     public var gauges: [Gauge]
-    /// An optional deformable body. The air treats it as rigid; it responds to the air's pressure.
+    /// Legacy adapter to the first deformable object. Multi-body callers address objects by ID.
     public var structure: StructureModel? {
         get { structuralObject?.structure }
         set {
@@ -111,7 +111,8 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// True when the charge sits inside a rigid block or the structure, where it can release
     /// no energy into the air.
     public var chargeIsBlocked: Bool {
-        rigidBoxes.contains { $0.contains(charge.position) } || structure?.occupies(charge.position) == true
+        rigidBoxes.contains { $0.contains(charge.position) }
+            || structuralObjects.contains { $0.structure?.occupies(charge.position) == true }
     }
 
     /// Time for an ambient sound wave to travel from the charge to the farthest corner.
@@ -127,7 +128,8 @@ extension Scenario {
 
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, importNotes, importedModels, charge,
-            additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership
+            additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
+            additionalStructures
     }
 
     private struct Ownership: Codable {
@@ -135,6 +137,11 @@ extension Scenario {
         var blocks: [SceneObject.Ownership]
         var structure: SceneObject.Ownership?
         var order: [UUID]
+    }
+
+    private struct AdditionalStructure: Codable {
+        var model: StructureModel
+        var ownership: SceneObject.Ownership?
     }
 
     public init(from decoder: Decoder) throws {
@@ -152,6 +159,15 @@ extension Scenario {
         additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
         atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
         reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
+        let additional =
+            try c.decodeIfPresent([AdditionalStructure].self, forKey: .additionalStructures) ?? []
+        guard additional.count < Self.maximumStructures, additional.isEmpty || structure != nil else {
+            throw SceneObjectError.invalidOwnership
+        }
+        let extraObjects = try additional.enumerated().map { index, saved in
+            let object = SceneObject.legacyStructure(saved.model, index: index + 1)
+            return try saved.ownership?.applying(to: object) ?? object
+        }
         if let ownership = try c.decodeIfPresent(Ownership.self, forKey: .objectOwnership) {
             guard ownership.version == 1, ownership.blocks.count == fixedObjects.count,
                 (ownership.structure == nil) == (structuralObject == nil)
@@ -160,10 +176,12 @@ extension Scenario {
             if let body = structuralObject, let owner = ownership.structure {
                 restored.append(try owner.applying(to: body))
             }
+            restored.append(contentsOf: extraObjects)
             objects = restored
             try validateObjectOwnership()
             try reorderObjects(ownership.order)
         } else {
+            objects.append(contentsOf: extraObjects)
             resolveLegacyStructuralSource()
         }
         try validateObjectOwnership()
@@ -184,7 +202,15 @@ extension Scenario {
         try c.encodeIfPresent(structure, forKey: .structure)
         try c.encode(atmosphere, forKey: .atmosphere)
         try c.encode(reflectiveFaces, forKey: .reflectiveFaces)
-        if encoder.userInfo[Self.physicsInputEncoding] as? Bool != true {
+        let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
+        if structuralObjects.count > 1 {
+            try c.encode(
+                structuralObjects.dropFirst().map { object in
+                    AdditionalStructure(
+                        model: object.structure!, ownership: physicsOnly ? nil : .init(object))
+                }, forKey: .additionalStructures)
+        }
+        if !physicsOnly {
             try c.encode(
                 Ownership(
                     blocks: fixedObjects.map(SceneObject.Ownership.init),
@@ -242,7 +268,8 @@ extension BlastSolver {
         }
         rigidBoxes = scenario.rigidBoxes
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
-        try setStructure(scenario.structure)
+        try scenario.validateStructuralSeparation()
+        try setStructures(scenario.structuralObjects)
 
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
@@ -259,6 +286,10 @@ extension BlastSolver {
         }
         setGauges(cells: gaugeCells, points: scenario.gauges.map(\.position))
         restart()
+        if interObjectContactDetected { throw SceneObjectError.interObjectContact }
+        if scenario.structuralObjects.count > 1, configuration.refinement > 1, refinement == nil {
+            throw BlastError.allocationFailed("multi-body air refinement")
+        }
         if let mapping, let mapped {
             recordMapped(mapped, charge: scenario.charge, radius: mapping.radius, gauges: gaugeCentres)
         }
@@ -277,7 +308,7 @@ extension BlastSolver {
         let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin)
         var nearest = Float.infinity
         var obstacles = scenario.rigidBoxes
-        if let structure = scenario.structure { obstacles.append(structure.bounds) }
+        obstacles.append(contentsOf: scenario.structuralObjects.compactMap { $0.structure?.bounds })
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
         }

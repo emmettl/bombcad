@@ -179,6 +179,68 @@ final class SimulationModel {
     @ObservationIgnored private var nextStructureSampleTime = structureSampleInterval
     /// The block or wall being edited, which the view outlines.
     var selection: EditSelection?
+    var selectedStructureID: UUID?
+    var editedObject: SceneObject? {
+        let scene = settings.scenario
+        switch selection {
+        case .solid(let ref), .opening(let ref), .support(let ref): return scene.object(id: ref.objectID)
+        case .part(let ref): return scene.structuralObject(sourceID: ref.modelID)
+        case .imported(let id):
+            if let object = scene.structuralObject(sourceID: id) { return object }
+        default: break
+        }
+        return selectedStructureID.flatMap { scene.object(id: $0) }.flatMap { $0.structure == nil ? nil : $0 }
+            ?? scene.structuralObject
+    }
+    var editedStructure: StructureModel? { editedObject?.structure }
+    var editedMaterial: StructureMaterial { editedStructure?.material ?? .reinforcedConcrete }
+    var editedElementKind: ElementKind { editedStructure?.elementKind ?? .solid }
+    var editedSolidElementSize: Float { editedObject?.preferredSolidElementSize ?? settings.solidElementSize }
+    func rememberSolidElementSize(_ size: Float, objectID: UUID? = nil) {
+        guard let id = objectID ?? editedObject?.id else { return }
+        do { try settings.scenario.setPreferredSolidElementSize(id: id, size: size) } catch {
+            errorMessage = error.localizedDescription
+        }
+        if settings.scenario.structuralObject?.id == id { settings.solidElementSize = size }
+    }
+    func selectStructure(id: UUID?) {
+        selectedStructureID = id
+        selection = nil
+    }
+
+    func addIndependentStructure() {
+        let scene = settings.scenario
+        let centre = scene.domainSize / 2
+        let x =
+            scene.structuralObjects.compactMap { $0.structure?.bounds.max.x }.max().map { $0 + 1 } ?? centre.x
+        var body = StructureModel(
+            solids: [Box(x: x...(x + 0.25), y: (centre.y - 2)...(centre.y + 2), height: 3)],
+            elementSize: settings.solidElementSize)
+        body.autoReinforce()
+        do {
+            let id = try settings.scenario.addStructureObject(
+                body, name: "Structure \(scene.structuralObjects.count + 1)")
+            selectStructure(id: id)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func removeEditedStructure() {
+        guard let object = editedObject else { return }
+        if let source = object.sourceModelID {
+            guard settings.scenario.importedModels?.first(where: { $0.id == source })?.isAttached != true
+            else {
+                errorMessage = "Detach or remove this imported model through its source controls."
+                return
+            }
+        }
+        do { try settings.scenario.updateStructureObject(id: object.id, model: nil) } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        selectedStructureID = nil
+        selection = nil
+    }
+
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
@@ -194,6 +256,8 @@ final class SimulationModel {
     private(set) var structureSubsteps = 0
     /// Deflection of the structure through the run, sampled about ten times a second.
     private(set) var structureHistory: [StructureSample] = []
+    private(set) var bodyHistories: [UUID: [StructureSample]] = [:]
+    private(set) var bodySummaries: [UUID: StructureSummary] = [:]
     /// Largest deflection recorded so far, in millimetres.
     var peakDeflection: Double { structureHistory.map(\.deflection).max() ?? 0 }
     private(set) var memoryFootprint = 0
@@ -304,6 +368,14 @@ final class SimulationModel {
                 ]
             }
             if let solver, samples {
+                for body in solver.bodies {
+                    if let summary = body.summary() {
+                        bodyHistories[body.id] = [
+                            StructureSample(
+                                id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
+                        ]
+                    }
+                }
                 lastSampleTime = 0
                 onSample?(solver)
             }
@@ -447,16 +519,18 @@ final class SimulationModel {
     func removeImport(id: UUID) {
         guard let imported = settings.scenario.importedModels?.first(where: { $0.id == id }) else { return }
         if imported.isAttached && imported.behavior == .deformable {
-            guard imported.canRegenerate(settings.scenario.structure) else {
-                errorMessage =
-                    "This imported structure has local edits. Detach it to preserve them before removing the retained source."
+            guard let owner = settings.scenario.structuralObject(sourceID: id),
+                imported.canRegenerate(owner.structure)
+            else {
+                errorMessage = "Detach this edited structure before removing its source."
                 return
             }
-            settings.scenario.structure = nil
+            try? settings.scenario.updateStructureObject(id: owner.id, model: nil)
         }
-        if var body = settings.scenario.structure {
+        for object in settings.scenario.structuralObjects {
+            var body = object.structure!
             body.solidSourceParts = body.solidSourceParts.map { $0?.modelID == id ? nil : $0 }
-            settings.scenario.structure = body
+            try? settings.scenario.updateStructureObject(id: object.id, model: body)
         }
         settings.scenario.importedModels?.removeAll { $0.id == id }
         settings.scenario.clearSourceOwnership(id: id)
@@ -562,22 +636,28 @@ final class SimulationModel {
         case .block(let id): return scenario.object(id: id)?.fixedBox
         case .solid(let reference):
             guard let index = scenario.componentIndex(reference) else { return nil }
-            guard let solids = scenario.structure?.solids, solids.indices.contains(index) else { return nil }
+            guard let solids = scenario.object(id: reference.objectID)?.structure?.solids,
+                solids.indices.contains(index)
+            else { return nil }
             return solids[index]
         case .opening(let reference):
             guard let index = scenario.componentIndex(reference) else { return nil }
-            guard let openings = scenario.structure?.openings, openings.indices.contains(index) else {
+            guard let openings = scenario.object(id: reference.objectID)?.structure?.openings,
+                openings.indices.contains(index)
+            else {
                 return nil
             }
             return openings[index]
         case .support(let reference):
             guard let index = scenario.componentIndex(reference) else { return nil }
-            guard let supports = scenario.structure?.supports, supports.indices.contains(index) else {
+            guard let supports = scenario.object(id: reference.objectID)?.structure?.supports,
+                supports.indices.contains(index)
+            else {
                 return nil
             }
             return supports[index]
         case .part(let reference):
-            guard let body = scenario.structure,
+            guard let body = scenario.structuralObject(sourceID: reference.modelID)?.structure,
                 let part = StructureEditing.parts(in: scenario).first(where: { $0.id == reference })
             else { return nil }
             return StructureEditing.bounds(of: part.regions, in: body)
@@ -589,7 +669,8 @@ final class SimulationModel {
             guard let imported = scenario.importedModels?.first(where: { $0.id == id && $0.isAttached })
             else { return nil }
             let volumes =
-                imported.behavior == .deformable ? scenario.structure?.solids ?? [] : imported.preview.boxes
+                imported.behavior == .deformable
+                ? scenario.structuralObject(sourceID: id)?.structure?.solids ?? [] : imported.preview.boxes
             return volumes.first.map { first in
                 volumes.dropFirst().reduce(first) {
                     Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
@@ -670,7 +751,7 @@ final class SimulationModel {
     }
 
     func componentSelection(_ kind: SceneObject.ComponentKind, at index: Int) -> EditSelection? {
-        let references = settings.scenario.componentReferences(kind)
+        let references = editedObject?.references(kind) ?? []
         guard references.indices.contains(index) else { return nil }
         switch kind {
         case .solid: return .solid(references[index])
@@ -686,7 +767,7 @@ final class SimulationModel {
     }
 
     func componentRows(_ kind: SceneObject.ComponentKind) -> [ComponentRow] {
-        settings.scenario.componentReferences(kind).enumerated().map {
+        (editedObject?.references(kind) ?? []).enumerated().map {
             ComponentRow(reference: $0.element, index: $0.offset)
         }
     }
@@ -697,16 +778,19 @@ final class SimulationModel {
         _ change: (inout StructureModel, Int) -> Void
     ) {
         guard let index = settings.scenario.componentIndex(reference) else { return }
-        editStructure(retainingComponents: true) { change(&$0, index) }
+        editStructure(objectID: reference.objectID, retainingComponents: true) { change(&$0, index) }
     }
 
     func removeComponent(_ reference: SceneObject.ComponentReference) {
         guard let index = settings.scenario.componentIndex(reference) else { return }
-        switch reference.kind {
-        case .solid: removeSolid(at: index)
-        case .opening: removeOpening(at: index)
-        case .support: removeSupport(at: index)
+        editStructure(objectID: reference.objectID, removing: reference) { body in
+            switch reference.kind {
+            case .solid: body.removeSolid(at: index)
+            case .opening: body.openings.remove(at: index)
+            case .support: body.removeSupport(at: index)
+            }
         }
+        selection = nil
     }
 
     /// Adds a 250 mm wall, 4 m long and 3 m high, to the deformable structure, creating the
@@ -715,26 +799,30 @@ final class SimulationModel {
         let centre = settings.scenario.domainSize / 2
         let wall = Box(x: centre.x...(centre.x + 0.25), y: (centre.y - 2)...(centre.y + 2), height: 3)
         editStructure { $0.solids.append(wall) }
-        selection = componentSelection(.solid, at: (settings.scenario.structure?.solids.count ?? 1) - 1)
+        selection = componentSelection(.solid, at: (editedStructure?.solids.count ?? 1) - 1)
     }
 
     func removeSolid(at index: Int) {
-        let references = settings.scenario.componentReferences(.solid)
+        let references = editedObject?.references(.solid) ?? []
         guard references.indices.contains(index) else { return }
         editStructure(removing: references[index]) { $0.removeSolid(at: index) }
         selection = nil
     }
 
     /// Sets the material of one piece of the structure; nil returns it to the structure's own.
-    func setMaterial(_ material: StructureMaterial?, ofSolid index: Int) {
-        editStructure { $0.setMaterial(material, of: index) }
+    func setMaterial(_ material: StructureMaterial?, ofSolid index: Int, objectID: UUID? = nil) {
+        editStructure(objectID: objectID) { $0.setMaterial(material, of: index) }
     }
 
     /// Meshes one piece of the structure with solid elements or shells. A structure of both
     /// kinds keeps solid elements at their own size and shells at theirs.
-    func setElementKind(_ kind: ElementKind, ofSolid index: Int) {
-        let solidSize = settings.solidElementSize
-        editStructure { structure in
+    func setElementKind(_ kind: ElementKind, ofSolid index: Int, objectID: UUID? = nil) {
+        let target = objectID.flatMap { settings.scenario.object(id: $0) } ?? editedObject
+        let solidSize = target?.preferredSolidElementSize ?? settings.solidElementSize
+        if let target, let body = target.structure, body.elementKind == .solid {
+            rememberSolidElementSize(body.elementSize, objectID: target.id)
+        }
+        editStructure(objectID: target?.id) { structure in
             structure.setElementKind(kind, of: index)
             if structure.isMixed {
                 structure.elementSize = structure.elementKind == .solid ? structure.elementSize : solidSize
@@ -762,13 +850,13 @@ final class SimulationModel {
     }
 
     /// Sets how one piece of the structure is reinforced.
-    func setReinforcement(_ spec: Reinforcement, ofSolid index: Int) {
-        editStructure { $0.setReinforcement(spec, of: index) }
+    func setReinforcement(_ spec: Reinforcement, ofSolid index: Int, objectID: UUID? = nil) {
+        editStructure(objectID: objectID) { $0.setReinforcement(spec, of: index) }
     }
 
     /// Adds an opening (a window or door) to cut out of the structure.
     func addOpening() {
-        guard let body = settings.scenario.structure, !body.solids.isEmpty else { return }
+        guard let body = editedStructure, !body.solids.isEmpty else { return }
         let target = selectedStructureBounds ?? body.solids[0]
         let centre = (target.min + target.max) / 2
         var half = simd_min(target.size / 4, SIMD3<Float>(repeating: 0.5))
@@ -776,11 +864,11 @@ final class SimulationModel {
         half[thin] = target.size[thin] / 2 + settings.resolution.cellSize
         let opening = Box(min: centre - half, max: centre + half)
         editStructure { $0.openings.append(opening) }
-        selection = componentSelection(.opening, at: (settings.scenario.structure?.openings.count ?? 1) - 1)
+        selection = componentSelection(.opening, at: (editedStructure?.openings.count ?? 1) - 1)
     }
 
     func removeOpening(at index: Int) {
-        let references = settings.scenario.componentReferences(.opening)
+        let references = editedObject?.references(.opening) ?? []
         guard references.indices.contains(index) else { return }
         editStructure(removing: references[index]) { structure in
             guard structure.openings.indices.contains(index) else { return }
@@ -792,17 +880,20 @@ final class SimulationModel {
     /// Changes the deformable structure and re-derives its reinforcement from the new shapes.
     /// A structure left with no solids is removed.
     func editStructure(
-        removing reference: SceneObject.ComponentReference? = nil,
+        objectID: UUID? = nil, removing reference: SceneObject.ComponentReference? = nil,
         retainingComponents: Bool = false, _ change: (inout StructureModel) -> Void
     ) {
         guard !isPreparingImports else { return }
         do {
             settings.scenario = try StructureEditing.changing(
-                settings.scenario, removing: reference, retainingComponents: retainingComponents, change)
+                settings.scenario, objectID: objectID ?? editedObject?.id,
+                removing: reference, retainingComponents: retainingComponents, change)
         } catch { errorMessage = error.localizedDescription }
     }
 
-    var structuralParts: [StructureEditing.Part] { StructureEditing.parts(in: settings.scenario) }
+    var structuralParts: [StructureEditing.Part] {
+        StructureEditing.parts(in: settings.scenario).filter { $0.objectID == editedObject?.id }
+    }
 
     var selectedStructureBounds: Box? {
         switch selection {
@@ -837,7 +928,7 @@ final class SimulationModel {
 
     func setFixedBase(_ fixed: Bool) {
         let imported = settings.scenario.importedModels?.first {
-            $0.behavior == .deformable && $0.canRegenerate(settings.scenario.structure)
+            $0.behavior == .deformable && $0.canRegenerate(editedStructure)
         }
         editStructure { body in
             body.fixedBase = fixed
@@ -850,7 +941,7 @@ final class SimulationModel {
 
     func setBaseAnchorage(_ law: Anchorage?) {
         let imported = settings.scenario.importedModels?.first {
-            $0.behavior == .deformable && $0.canRegenerate(settings.scenario.structure)
+            $0.behavior == .deformable && $0.canRegenerate(editedStructure)
         }
         editStructure { body in
             body.baseAnchorage = law
@@ -862,8 +953,9 @@ final class SimulationModel {
 
     func supportBearingArea(at index: Int) -> Float? {
         guard runtimeInputsMatch, !hasPendingGPUWork, !isRunning, let solver else { return nil }
-        return (solver.structure?.supportBearingArea(at: index) ?? 0)
-            + (solver.shells?.supportBearingArea(at: index) ?? 0)
+        guard let id = editedObject?.id, let body = solver.body(id: id) else { return nil }
+        return (body.solids?.supportBearingArea(at: index) ?? 0)
+            + (body.shells?.supportBearingArea(at: index) ?? 0)
     }
 
     func setSupportAnchorage(_ law: Anchorage?, at index: Int) {
@@ -871,7 +963,7 @@ final class SimulationModel {
     }
 
     func addSupport() {
-        guard let body = settings.scenario.structure, !body.solids.isEmpty else { return }
+        guard let body = editedStructure, !body.solids.isEmpty else { return }
         let target = selectedStructureBounds ?? body.bounds
         let thickness = max(body.elementSize, 0.01)
         let support = Box(
@@ -880,11 +972,11 @@ final class SimulationModel {
                 target.max.x + thickness * 0.01, target.max.y + thickness * 0.01,
                 target.min.z + thickness * 0.5))
         editStructure { $0.supports.append(support) }
-        selection = componentSelection(.support, at: (settings.scenario.structure?.supports.count ?? 1) - 1)
+        selection = componentSelection(.support, at: (editedStructure?.supports.count ?? 1) - 1)
     }
 
     func removeSupport(at index: Int) {
-        let references = settings.scenario.componentReferences(.support)
+        let references = editedObject?.references(.support) ?? []
         guard references.indices.contains(index) else { return }
         editStructure(removing: references[index]) { body in
             body.removeSupport(at: index)
@@ -951,6 +1043,14 @@ final class SimulationModel {
                 "Largest deflection,\(String(format: "%.4f", sample.time)),\(String(format: "%.3f", sample.deflection)),mm"
             )
         }
+        if scenario.structuralObjects.count > 1 {
+            for object in scenario.structuralObjects {
+                let label = field("\(object.name) [\(object.id.uuidString)] deflection")
+                for sample in bodyHistories[object.id] ?? [] {
+                    lines.append("\(label),\(sample.time),\(sample.deflection),mm")
+                }
+            }
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 
@@ -991,11 +1091,25 @@ final class SimulationModel {
         }
         let run = SavedSimulationRun(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            solverVersion: scenario.structuralObjects.count > 1
+                ? SavedSimulationRun.multiBodySolverVersion : SavedSimulationRun.solverVersion,
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
                 ?? "development",
             deviceName: device?.name ?? "Unknown Metal device", scenario: scenario, settings: inputs,
             inputSHA256: try SavedSimulationRun.fingerprint(scenario, settings: inputs),
-            elapsedTime: time, stepCount: stepCount, gauges: gauges, structure: response)
+            elapsedTime: time, stepCount: stepCount, gauges: gauges, structure: response,
+            bodyResponses: scenario.structuralObjects.count > 1
+                ? scenario.structuralObjects.map { object in
+                    let summary = bodySummaries[object.id]!
+                    return SavedSimulationRun.BodyResponse(
+                        id: object.id, name: object.name,
+                        response: .init(
+                            points: (bodyHistories[object.id] ?? []).map {
+                                .init(time: $0.time / 1000, value: $0.deflection)
+                            },
+                            failedFraction: Double(summary.erodedFraction),
+                            maximumDamage: Double(summary.maxDamage)))
+                } : nil)
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1103,6 +1217,11 @@ final class SimulationModel {
         structureSummary = solver?.bodySummary()
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
+        bodyHistories = [:]
+        bodySummaries = Dictionary(
+            uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
+                body.summary().map { (body.id, $0) }
+            })
         nextStructureSampleTime = sampleInterval
         lastSampleTime = nil
         chargeIsBlocked = scenario.chargeIsBlocked
@@ -1229,6 +1348,13 @@ final class SimulationModel {
         guard let solver else { return }
         lastTracePublication = .now
         structureSummary = solver.bodySummary()
+        bodySummaries = Dictionary(
+            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+        if solver.interObjectContactDetected {
+            errorMessage =
+                "Independent structures entered overlapping envelopes or resolved cells. Inter-object contact is unsupported; reset and separate the bodies."
+            isRunning = false
+        }
         if samples, structureSummary?.hasBlownUp != true, lastSampleTime != solver.time,
             solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
         {
@@ -1237,6 +1363,18 @@ final class SimulationModel {
                     StructureSample(
                         id: structureHistory.count, time: solver.time * 1000,
                         deflection: Double(summary.maxDisplacement) * 1000))
+            }
+            for body in solver.bodies {
+                if let summary = bodySummaries[body.id],
+                    bodyHistories[body.id]?.last?.time != solver.time * 1000
+                {
+                    var history = bodyHistories[body.id] ?? []
+                    history.append(
+                        StructureSample(
+                            id: history.count, time: solver.time * 1000,
+                            deflection: Double(summary.maxDisplacement) * 1000))
+                    bodyHistories[body.id] = history
+                }
             }
             nextStructureSampleTime =
                 (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval

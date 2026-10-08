@@ -351,6 +351,8 @@ public struct BatchResult: Sendable {
     public var stoppedShort = false
     /// True when the batch's time reached its limit; its unused steps did nothing.
     public var reachedLimit = false
+    /// A conservative independent-body overlap was detected; this run cannot continue.
+    public var unsupportedInteraction = false
 }
 
 public enum BlastError: Error, CustomStringConvertible {
