@@ -124,7 +124,12 @@ is 105–115% on 4 to 32 elements, converging at about 124 mm, and the record is
 closely on the coarser meshes, within 4.4, 7.6 and 8.3 mm root-mean-square on 4, 8 and 16
 elements (14.7 mm on 32): the slab rebounds less (from 113 mm to 82 on 8 elements, against 108
 to 95 measured). On 32 elements it loses 60,152 elements, 1.4% of them, where under the
-earlier laws it lost 32; where, a run of 2.3 hours has not yet said. Under Malvar and Crawford's steeper law for the bars
+earlier laws it lost 32: the row of elements just above the bottom bars, split along them for
+about 0.45 m either side of mid-span (`blastbench slab --layers 32 --map`), and a band about
+20 mm below the loaded face near mid-span, where the compression zone cracks along its length.
+The split is the one that parts Saatci's beam without stirrups on fine meshes (below): the
+bars, perfectly bonded and smeared through one row of elements, hand their changes of force
+to the row of plain concrete above, which no bar crosses. Under Malvar and Crawford's steeper law for the bars
 the peak was 96–103%. The tables below were made with Malvar and Ross's tensile law and Malvar
 and Crawford's for the bars, the defaults until the drop-weight impacts and close-in slabs
 below showed them too stiff.
