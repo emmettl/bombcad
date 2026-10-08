@@ -264,7 +264,9 @@ or friction alone (see [base connections](docs/structural-model.md#base-connecti
 keeps the result as a saved run, for scripts and other Macs; see
 [headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` and `--vdb Example.volumes` to
 write the scene, the structure and the blast over time for rendering elsewhere
-([USD export](docs/usd-export.md)).
+([USD export](docs/usd-export.md)). Sweeps can share their cases with another Mac over SSH,
+in the app or with `BombCAD sweep`; see
+[sharing a sweep](docs/run-comparison.md#sharing-a-sweep-with-another-mac).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
@@ -513,6 +515,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
+| [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast, here or on another Mac |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
