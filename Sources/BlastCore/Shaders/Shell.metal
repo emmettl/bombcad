@@ -579,8 +579,8 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     float first = m.steelStress[0];
     float top = m.steelStress[m.steelPoints - 1];
     float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
-    float ratio = max(rate, 1e-4f) / 1e-4f;
-    float factor = mix(pow(ratio, m.steelRateYield), pow(ratio, m.steelRateUltimate), along);
+    float2 factors = steelRateFactors(rate, m);
+    float factor = mix(factors.x, factors.y, along);
     yield *= factor;
     if (plastic == 0.0f) {
         if (fabs(stress) > yield) {
@@ -589,7 +589,7 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
             stress = m.steelModulus * (fibre - plastic);
         }
     } else {
-        stress = cycleBar(bar.history, fibre, plastic, yield, slope * factor, first * pow(ratio, m.steelRateYield), m);
+        stress = cycleBar(bar.history, fibre, plastic, yield, slope * factor, first * factors.x, m);
     }
     float averaged = (plastic * spread.x + spread.y);
     if (fabs(averaged) > m.steelStrain[m.steelPoints - 1]) {

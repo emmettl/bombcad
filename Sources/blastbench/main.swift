@@ -145,6 +145,11 @@ func chosenAirModel() -> AirModel? {
 func applyRateOptions(_ material: inout StructureMaterial) {
     if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
+    // `--static-steel`: the bars without their strain-rate law.
+    if flag("static-steel") { material.steelRateDependent = false }
+    // `--steel-law ceb|malvar`: the bars' strain-rate law.
+    if option("steel-law") == "ceb" { material.steelRateLaw = .ceb }
+    if option("steel-law") == "malvar" { material.steelRateLaw = .malvarCrawford }
     if option("tension-law") == "mc2010" { material.tensionRateLaw = .modelCode2010 }
     if option("tension-law") == "malvar" { material.tensionRateLaw = .malvarRoss }
     if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
@@ -1016,15 +1021,40 @@ func runImpact() throws {
         print(
             pad("test", 8) + pad("speed", 8) + pad("measured", 22) + pad("model", 20) + pad("failed", 8)
                 + "  remark")
+        if let push = option("push").flatMap({ Float($0) }) {
+            // `--push 0.026`: each beam pushed slowly through its plate to that deflection and let go.
+            for test in ImpactBenchmark.shearTests where names?.contains(test.name) ?? true {
+                var specimen = ImpactBenchmark.specimen(test)
+                specimen.spreadBars = flag("spread")
+                chooseSupports(&specimen)
+                let result = try ImpactBenchmark.run(
+                    device: device, specimen: specimen, weight: 0, speed: 0, elementsThroughDepth: layers,
+                    push: push
+                ) { model in
+                    if flag("no-rate") { model.material.rateDependent = false }
+                    applyRateOptions(&model)
+                } inspect: { solver in
+                    if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+                    if flag("bars") { printBarYield(solver) }
+                }
+                print(
+                    pad(test.name, 8) + "  pushed to \(format(Double(push) * 1000)) mm: largest load "
+                        + "\(format(Double(result.peakReaction) / 1000, 1)) kN, "
+                        + "left \(format(Double(result.residual) * 1000)) mm down, "
+                        + "\(result.summary.erodedElements) failed")
+            }
+            return
+        }
         for test in ImpactBenchmark.shearTests where names?.contains(test.name) ?? true {
             let result = try ImpactBenchmark.run(
                 device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.15),
-                spreadBars: flag("spread")
+                spreadBars: flag("spread"), specimen: chooseSupports
             ) { model in
                 if flag("no-rate") { model.material.rateDependent = false }
                 applyRateOptions(&model)
             } inspect: { solver in
                 if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+                if flag("bars") { printBarYield(solver) }
             }
             let numbers =
                 "\(test.peak.map { format(Double($0) * 1000) } ?? "-") / \(test.residual.map { format(Double($0) * 1000) } ?? "-")"
@@ -1035,6 +1065,9 @@ func runImpact() throws {
                         "\(format(Double(result.peak) * 1000)) / \(format(Double(result.residual) * 1000)) mm",
                         20)
                     + pad("\(result.summary.erodedElements)", 8) + "  " + test.remark)
+            if flag("bars") {
+                print("    largest reaction at a support \(format(Double(result.peakReaction) / 1000, 0)) kN")
+            }
             if flag("history") {
                 // Mid-span displacement every 5 ms, in mm.
                 let samples = stride(from: 0.0, through: min(duration, 0.15), by: 0.005).map { t in
@@ -1098,6 +1131,47 @@ func runImpact() throws {
     print(
         "\nPeak / residual mid-span displacement, the residual the mean over the last 30 ms; largest"
             + " support reaction, measured / model.")
+}
+
+/// `--pins`: Ando's beams held lengthwise at both ends; `--plates 0.02`: on steel plates that
+/// turn freely about their centre lines, instead of clamped over their faces.
+func chooseSupports(_ specimen: inout ImpactBenchmark.Specimen) {
+    if flag("pins") { specimen.pinnedEnds = true }
+    if let plates = option("plates").flatMap({ Float($0) }) { specimen.supportPlates = plates }
+}
+
+/// `--bars`: how far the bars along x have yielded, row by row of elements that carry them: the
+/// largest plastic strain, the length yielded, and the plastic stretch summed along the bars.
+func printBarYield(_ solver: StructureSolver) {
+    let h = solver.model.elementSize
+    for k in 0..<solver.ez {
+        var stretch: Float = 0
+        var largest: Float = 0
+        var yielded = 0
+        var carries = false
+        for i in 0..<solver.ex {
+            var strain: Float = 0
+            var count = 0
+            for j in 0..<solver.ey where solver.steelRatio(i, j, k).x > 0 {
+                carries = true
+                let plastic = solver.barPlasticStrain(i, j, k).x
+                guard abs(plastic) < 1e8 else { continue }
+                strain += plastic
+                count += 1
+            }
+            guard count > 0 else { continue }
+            strain /= Float(count)
+            stretch += strain * h
+            largest = max(largest, strain)
+            if strain > 1e-4 { yielded += 1 }
+        }
+        if carries {
+            print(
+                "    bars in row \(k): largest plastic strain \(format(Double(largest) * 100, 2))%, "
+                    + "yielded over \(format(Double(Float(yielded) * h) * 1000, 0)) mm, "
+                    + "plastic stretch \(format(Double(stretch) * 1000, 2)) mm")
+        }
+    }
 }
 
 /// Vecchio and Shim's beam OA1, with no stirrups, pushed to its diagonal-tension failure.
