@@ -893,6 +893,33 @@ and angular load, closed gas/wall budgets and zero load/flow under uniform press
 with the preceding geometry and aggregation checks. Next, compare finer-grid and timestep
 response with matched pulse energy before changing the box pose or coupling free-body motion.
 
+The held-box study now optionally normalises the initial pressure pulse to a prescribed
+excess energy. A compensated sum of Gaussian weight times gas volume determines the effective
+peak amplitude, and initialization rebuilds the gas states with that amplitude. Reports
+record requested/deposited pulse energy, effective amplitude and CFL. Matching energy controls
+total forcing but does not make the sampled spatial field identical between grids or rotations.
+
+`--connected-loads --convergence` compares three grids (0.2, 0.1 and 0.05 m), CFL 0.2 and
+0.1, and both box orientations at 0.5 ms with 6400 J excess energy. All twelve cases complete
+in an optimised CPU build, using 71–559 steps. Pulse energy agrees across cases to floating-point
+precision; actual initial gas energy above its ambient background is independently checked.
+Mass/energy budgets remain within floating-point precision, with gas/box/domain momentum
+residuals below 0.000000000001 N s. Ten selected grouping/load tests pass, including energy
+matching, identical initialization across CFL settings and invalid configuration rejection.
+
+At CFL 0.1, forward impulses on the three grids are 2.085/2.390/2.585 N s for the
+axis-aligned box and 1.980/2.238/2.438 N s for the rotated box. The last refinement still
+changes them by 8.16% and 8.91%, respectively. Angular-impulse vector changes across that
+refinement are 9.08% and 17.62%. Halving CFL changes forward impulse by at most 0.226%
+on any grid, falling below 0.092% on the finest grid. This separates temporal and spatial
+sensitivity; three grids do not yet establish reliable load convergence.
+
+`Scripts/summarize-connected-loads.py` reproduces the grid/CFL comparison and rejects
+partial or unmatched-energy reports. The box remains held, gas angular momentum is still
+not audited, and this pressure pulse is not a detonation model. Next, improve the spatial
+representation of the pulse and pressure transport around clipped geometry, then repeat
+these load checks before allowing free-body motion.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

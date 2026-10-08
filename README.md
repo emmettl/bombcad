@@ -413,6 +413,11 @@ around a held box for 0.5 ms. Boundary ownership keeps box loads separate from d
 loads; the report records box impulse, centroid-based angular impulse and complete gas/wall
 linear-momentum budgets. Fixed walls do no work. Load predictions remain grid-sensitive,
 and gas angular momentum is not audited by this reference.
+Adding `--convergence` compares 0.2, 0.1 and 0.05 m grids at CFL 0.2 and 0.1, normalizing
+each pulse to 6400 J of excess energy. It writes `.build/connected-loads-convergence.json`;
+`python3 Scripts/summarize-connected-loads.py` reports spatial and timestep load differences.
+Peak amplitude is recorded because energy matching changes it. Finer-grid impulse differences
+remain appreciable even though timestep differences and conservation residuals are small.
 
 ## Headline results
 

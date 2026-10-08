@@ -8,16 +8,21 @@ import simd
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--connected-loads") {
+        let convergence = arguments.contains("--convergence")
         let output = URL(
-            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/connected-loads.json")
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? (convergence ? ".build/connected-loads-convergence.json" : ".build/connected-loads.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalConnectedLoadStudy.Result] = []
-        _ = try ExperimentalConnectedLoadStudy.run { r in
+        _ = try ExperimentalConnectedLoadStudy.run(
+            cellSizes: convergence ? [0.2, 0.1, 0.05] : [0.2, 0.1],
+            cfls: convergence ? [0.2, 0.1] : [0.2], targetPulseEnergy: convergence ? 6400 : nil
+        ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             print(
-                "dx \(r.cellSize), rotation \(r.rotation): \(r.steps) steps, body impulse \(r.bodyImpulse), momentum residual \(r.momentumBudgetResidual)"
+                "dx \(r.cellSize), rotation \(r.rotation), CFL \(r.cfl): \(r.steps) steps, body impulse \(r.bodyImpulse), momentum residual \(r.momentumBudgetResidual)"
             )
             fflush(stdout)
         }
