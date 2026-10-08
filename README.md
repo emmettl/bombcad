@@ -376,6 +376,12 @@ compression/expansion on two grids, two CFL limits and three merge fractions (24
 It records wall work, conservation budgets and 64 pressure/velocity samples along the
 final tube. Changing merge thresholds has a small effect on mean pressure in this study,
 but local profiles and grid spacing still matter; the comparison is not blast validation.
+`--piston-transients` writes `.build/piston-transients.json`, with profiles at 0.5, 2, 5
+and 15 ms on 0.1, 0.05 and 0.025 m grids at two CFL limits. Complete cell profiles are
+included alongside 64 samples. `python3 Scripts/summarize-piston-transients.py` compares
+pressure by exact overlaps of the piecewise-constant profiles, using the finest run as a
+numerical reference. Snapshot times split integration steps, and budgets are recorded at
+every snapshot. Early wave profiles remain more grid-sensitive than final mean pressure.
 
 ## Headline results
 

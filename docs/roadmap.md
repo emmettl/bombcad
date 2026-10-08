@@ -681,6 +681,32 @@ Next, add a finer spatial reference and check transient pressure profiles before
 general swept-box apertures, topology changes and physical fluxes. The current comparisons
 do not validate free-body blast response or choose a production merge policy.
 
+Matched-time snapshots now split the piston integrator at requested physical times and
+retain each snapshot's cumulative gas/wall budgets. Output times are validated, sorted and
+recorded exactly; adding them can shorten integration steps and slightly change the numerical
+trajectory. Five tube tests cover snapshots (including initial/final states), previous crossing
+and merge policies, conservation and invalid inputs.
+
+`--piston-transients` runs 20 m/s compression/expansion on 0.1, 0.05 and 0.025 m grids,
+at CFL 0.4 and 0.2, with merge fraction 0.25. The twelve trajectories record 48 frames
+at 0.5, 2, 5 and 15 ms, including complete ordered cell volumes/pressures/velocities and
+64 sampled profiles. Relative mass departures stay below 0.000000000000001, gas-plus-wall
+energy residuals below 0.000000000001 J and momentum residuals below 0.000000000000001 N s.
+Completed trajectories save incrementally; a partial report is not a completed comparison.
+
+`Scripts/summarize-piston-transients.py` integrates absolute pressure differences over
+overlaps of the complete piecewise-constant profiles, avoiding sampling aliasing. It normalises
+by the finest CFL 0.2 run's mean pressure; this run is a numerical reference, not exact truth.
+At 0.5 ms, coarse/medium relative L1 differences are 0.615%/0.291% in compression and
+1.010%/0.526% in expansion. Finest-grid CFL differences remain below 0.039% at all four
+times. At 5 ms in expansion, the medium-grid difference (0.230%) exceeds the coarse-grid
+difference (0.205%); transient profile convergence is not uniformly monotone. At 15 ms,
+coarse/medium differences fall to 0.139%/0.053% in compression and 0.241%/0.149% in expansion.
+These profiles expose spatial and phase errors hidden by final mean-pressure comparisons.
+
+Next, check the initial compression/expansion wave against an analytical planar-piston
+solution before extending to arbitrary swept-box aperture and topology changes.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

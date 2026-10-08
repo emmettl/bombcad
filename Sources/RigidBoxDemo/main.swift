@@ -7,6 +7,24 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--piston-transients") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/piston-transients.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalPistonTransientStudy.Result] = []
+        _ = try ExperimentalPistonTransientStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellLength), CFL \(r.cfl), piston \(r.pistonVelocity): \(r.frames.count) frames, \(r.frames.last!.steps) steps"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--piston-sensitivity") {
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })

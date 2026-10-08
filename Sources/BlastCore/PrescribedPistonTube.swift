@@ -5,6 +5,13 @@ import simd
 /// This changes spatial diffusion; it is not a general moving cut-cell solver.
 enum PrescribedPistonTube {
     enum Failure: Error { case invalidGeometry, stepLimit }
+    struct Snapshot {
+        let time: Double
+        let cells: [FractionalGasTransport.Cell]
+        let wallWork: Double
+        let wallImpulse: SIMD3<Double>
+        let steps: Int
+    }
     struct Result {
         let cells: [FractionalGasTransport.Cell]
         let steps: Int
@@ -13,12 +20,13 @@ enum PrescribedPistonTube {
         let wallWork: Double
         let wallImpulse: SIMD3<Double>
         let initialAmount: SIMD8<Double>
+        let snapshots: [Snapshot]
     }
 
     static func run(
         cellLength h: Double, area: Double, length: Double, pistonVelocity: Double, duration: Double,
         density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000,
-        mergeFraction: Double = 0.25, cfl: Double = 0.4
+        mergeFraction: Double = 0.25, cfl: Double = 0.4, outputTimes: [Double] = []
     ) throws -> Result {
         let finalLength = length + pistonVelocity * duration
         guard h.isFinite && h > 0, area.isFinite && area > 0, length.isFinite && length > 0,
@@ -26,6 +34,8 @@ enum PrescribedPistonTube {
             finalLength.isFinite && finalLength > 0, maximumSteps > 0,
             mergeFraction.isFinite && mergeFraction > 0 && mergeFraction <= 0.5,
             cfl.isFinite && cfl > 0 && cfl <= 0.5,
+            outputTimes.allSatisfy({ $0.isFinite && $0 >= 0 && $0 <= duration }),
+            Set(outputTimes).count == outputTimes.count,
             max(length, finalLength) / h < 10000
         else { throw Failure.invalidGeometry }
         func volumes(_ length: Double) -> [Double] {
@@ -46,7 +56,12 @@ enum PrescribedPistonTube {
         }
         _ = try FractionalGasTransport.advance(cells, newVolumes: cells.map(\.volume), transfers: [])
         let initialAmount = cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
-        var events: [(time: Double, length: Double)] = [(duration, finalLength)]
+        var events: [(time: Double, length: Double, snapshot: Bool)] = [
+            (duration, finalLength, outputTimes.contains(duration))
+        ]
+        for time in outputTimes where time < duration {
+            events.append((time, length + pistonVelocity * time, true))
+        }
         var crossings = 0
         if pistonVelocity != 0 {
             for n in 1...Int(ceil(max(length, finalLength) / h)) {
@@ -54,7 +69,7 @@ enum PrescribedPistonTube {
                     let boundary = (Double(n) + offset) * h
                     let time = (boundary - length) / pistonVelocity
                     if time > 0 && time < duration {
-                        events.append((time, boundary))
+                        events.append((time, boundary, false))
                         if offset == 0 { crossings += 1 }
                     }
                 }
@@ -66,6 +81,7 @@ enum PrescribedPistonTube {
         var remeshes = 0
         var wallWork = 0.0
         var wallImpulse = SIMD3<Double>.zero
+        var snapshots: [Snapshot] = []
         for event in events {
             while elapsed < event.time {
                 let faces = (0..<max(0, cells.count - 1)).map {
@@ -93,10 +109,17 @@ enum PrescribedPistonTube {
             let next = volumes(event.length)
             if next.count != cells.count { remeshes += 1 }
             cells = try repartition(cells, volumes: next)
+            if event.snapshot {
+                snapshots.append(
+                    Snapshot(
+                        time: event.time, cells: cells, wallWork: wallWork,
+                        wallImpulse: wallImpulse, steps: steps))
+            }
         }
         return Result(
             cells: cells, steps: steps, remeshes: remeshes, gridCrossings: crossings,
-            wallWork: wallWork, wallImpulse: wallImpulse, initialAmount: initialAmount)
+            wallWork: wallWork, wallImpulse: wallImpulse, initialAmount: initialAmount,
+            snapshots: snapshots)
     }
 
     /// Piecewise-constant extensive rebinning on ordered, contiguous one-dimensional volumes.

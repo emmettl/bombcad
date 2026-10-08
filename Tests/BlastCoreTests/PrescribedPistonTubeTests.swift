@@ -5,6 +5,25 @@ import simd
 
 @Suite("Piston tube cell crossings")
 struct PrescribedPistonTubeTests {
+    @Test("Physical-time snapshots retain their own gas/wall budgets", arguments: [-20.0, 20.0])
+    func snapshots(speed: Double) throws {
+        let start = speed < 0 ? 0.655 : 0.355
+        let times = [0.0, 0.0005, 0.002, 0.005, 0.015]
+        let run = try PrescribedPistonTube.run(
+            cellLength: 0.1, area: 0.01, length: start,
+            pistonVelocity: speed, duration: 0.015, outputTimes: Array(times.reversed()))
+        #expect(run.snapshots.map(\.time) == times)
+        #expect(run.snapshots.first!.steps == 0 && run.snapshots.last!.steps == run.steps)
+        for frame in run.snapshots {
+            let after = frame.cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
+            #expect(abs(after[0] / run.initialAmount[0] - 1) < 1e-12)
+            #expect(abs(after[4] - run.initialAmount[4] + frame.wallWork) < 1e-9)
+            #expect(simd_length(SIMD3(after[1], after[2], after[3]) + frame.wallImpulse) < 1e-12)
+            #expect(
+                abs(frame.cells.reduce(0) { $0 + $1.volume } - 0.01 * (start + speed * frame.time)) < 1e-14)
+        }
+        #expect(run.snapshots.last!.cells.map(\.amount) == run.cells.map(\.amount))
+    }
     @Test("Alternative merge fractions and CFL limits conserve crossing budgets", arguments: [0.125, 0.5])
     func policies(merge: Double) throws {
         var stepCounts: [Int] = []
@@ -59,6 +78,13 @@ struct PrescribedPistonTubeTests {
 
     @Test("Invalid geometry and exhausted step budgets fail explicitly")
     func failure() throws {
+        for times in [[0.001, 0.001], [-0.001], [0.4]] {
+            #expect(throws: PrescribedPistonTube.Failure.self) {
+                try PrescribedPistonTube.run(
+                    cellLength: 0.1, area: 0.01, length: 0.65,
+                    pistonVelocity: -1, duration: 0.3, outputTimes: times)
+            }
+        }
         for merge in [0.0, 0.75] {
             #expect(throws: PrescribedPistonTube.Failure.self) {
                 try PrescribedPistonTube.run(
