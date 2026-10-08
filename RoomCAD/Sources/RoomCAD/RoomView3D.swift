@@ -26,6 +26,10 @@ final class RoomViewport: OrbitControlling {
     @ObservationIgnored var onEdit: (RoomResponseSettings) -> Void = { _ in }
     /// The point being dragged, and where on it it was grabbed.
     @ObservationIgnored private var dragging: (item: RoomScene.Item, grab: SIMD3<Double>)?
+    /// A surface being pushed or pulled: the settings when it was grabbed, where, and its normal into
+    /// the room.
+    @ObservationIgnored private var pushing:
+        (index: Int, start: RoomResponseSettings, point: SIMD3<Double>, normal: SIMD3<Double>)?
 
     /// Shows `settings`' room, framing the camera on it the first time and whenever its size changes.
     func show(_ settings: RoomResponseSettings) {
@@ -79,9 +83,11 @@ final class RoomViewport: OrbitControlling {
             scene?.geometry.pick(origin: ray.origin, direction: ray.direction).flatMap(RoomScene.Item.init))
     }
 
-    /// Applies an edit: shown at once, and handed on.
+    /// Applies an edit: shown at once, and handed on. The camera stays where it is, even if the room
+    /// changed size.
     func edit(_ settings: RoomResponseSettings) {
         guard settings != shown else { return }
+        framedSize = settings.room.size
         show(settings)
         onEdit(settings)
     }
@@ -117,13 +123,29 @@ final class RoomViewport: OrbitControlling {
         return simd_length(forward) > 1e-6 ? simd_normalize(forward) : nil
     }
 
-    /// A press on the source, a receiver, a zone or an opening selects it and drags it.
-    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool {
+    /// A press on the source, a receiver, a zone or an opening selects it and drags it. With Command, a
+    /// press on a box's or a floor plan's wall, floor or ceiling selects it to push or pull.
+    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) -> Bool {
         let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
         guard let shown,
             let item = scene?.geometry.pick(origin: ray.origin, direction: ray.direction).flatMap(
-                RoomScene.Item.init),
-            let anchor = anchor(of: item, in: shown),
+                RoomScene.Item.init)
+        else { return false }
+        if case .surface(let index) = item {
+            guard modifiers.contains(.resize), shown.room.mesh == nil, let scene,
+                let face = scene.mesh.faces.indices.first(where: { scene.mesh.faces[$0].material == index })
+            else { return false }
+            let normal = scene.mesh.normalAndArea(face).normal
+            guard
+                let point = Self.intersect(
+                    ray, withPlaneThrough: scene.mesh.vertices[scene.mesh.faces[face].corners[0]],
+                    normal: normal)
+            else { return false }
+            select(item)
+            pushing = (index, shown, point, normal)
+            return true
+        }
+        guard let anchor = anchor(of: item, in: shown),
             let normal = plane(for: item, anchor: anchor, vertical: false, ray: ray)
         else { return false }
         select(item)
@@ -138,8 +160,19 @@ final class RoomViewport: OrbitControlling {
     /// over its surface, and a resize moves its nearest corner. Changes that would leave the room, or
     /// make a zone overlap another, are ignored.
     func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {
-        guard let dragging, let shown, let anchor = anchor(of: dragging.item, in: shown) else { return }
         let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
+        if let pushing {
+            // How far along the surface's normal the pointer's ray passes closest: the push, out of
+            // the room, is the opposite of that.
+            let direction = SIMD3<Double>(ray.direction)
+            let along = simd_dot(pushing.normal, direction)
+            guard abs(along) < 0.999 else { return }
+            let w = pushing.point - SIMD3<Double>(ray.origin)
+            let t = (along * simd_dot(direction, w) - simd_dot(pushing.normal, w)) / (1 - along * along)
+            if let pushed = pushing.start.pushingSurface(pushing.index, by: -t) { edit(pushed) }
+            return
+        }
+        guard let dragging, let shown, let anchor = anchor(of: dragging.item, in: shown) else { return }
         let vertical = modifiers.contains(.vertical)
         guard let normal = plane(for: dragging.item, anchor: anchor, vertical: vertical, ray: ray),
             let hit = Self.intersect(ray, withPlaneThrough: anchor, normal: normal)
@@ -181,7 +214,10 @@ final class RoomViewport: OrbitControlling {
         }
     }
 
-    func endDrag() { dragging = nil }
+    func endDrag() {
+        dragging = nil
+        pushing = nil
+    }
 
     /// Where a ray meets a plane in front of it, if it does.
     static func intersect(
@@ -250,7 +286,8 @@ struct RoomView3D: View {
                     Text(
                         viewport.caption
                             ?? "Drag to orbit, shift-drag to pan, pinch to zoom; click to select. Drag a point, zone or "
-                            + "opening to move it, with Option to raise or lower it, or with Command to resize it"
+                            + "opening to move it, with Option to raise or lower it, or with Command to resize it; "
+                            + "Command-drag a wall, floor or ceiling to push or pull it"
                     )
                     .font(.caption)
                     .foregroundStyle(viewport.caption == nil ? .secondary : .primary)

@@ -235,3 +235,74 @@ extension RoomResponseSettings {
 extension Array {
     subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }
+
+extension RoomResponseSettings {
+    /// These settings with everything in the room moved by `offset`: the source and receivers, the
+    /// zones, a plan's corners or a mesh's vertices, and openings' positions on the surfaces they move
+    /// along. The room's size is unchanged.
+    func translating(by offset: SIMD3<Double>) -> RoomResponseSettings {
+        var result = self
+        result.source.position += offset
+        for index in result.receivers.indices { result.receivers[index].position += offset }
+        result.room.fittings = room.fittings?.map { zone in
+            var zone = zone
+            zone.low += offset
+            zone.high += offset
+            return zone
+        }
+        result.room.plan?.corners = room.plan?.corners.map { $0 + SIMD2(offset.x, offset.y) } ?? []
+        result.room.mesh?.vertices = room.mesh?.vertices.map { $0 + offset } ?? []
+        for index in result.openings.indices where result.openings[index].wall == nil {
+            let (a, b) = result.openings[index].surface.planeAxes
+            result.openings[index].centre += SIMD2(offset[a], offset[b])
+        }
+        return result
+    }
+
+    /// These settings with surface `index` (numbered as in `RoomScene.surfaces(of:)`) pushed out of the
+    /// room by `distance` metres, or pulled in for a negative one: a box's wall, floor or ceiling, or a
+    /// plan's wall, with its two corners, or its floor or ceiling. What is inside keeps its place
+    /// relative to the surfaces that do not move. Nil for a mesh, whose shape is not edited here, or if
+    /// the result would not be a valid room.
+    func pushingSurface(_ index: Int, by distance: Double) -> RoomResponseSettings? {
+        guard room.mesh == nil else { return nil }
+        let step = (distance * 100).rounded() / 100
+        var result = self
+        // The floor and ceiling are the box's last two surfaces, and a plan's too.
+        let floorIndex = room.plan.map { $0.corners.count } ?? 4
+        if let plan = room.plan, index < plan.corners.count {
+            let outward = -plan.inwardNormal(index) * step
+            var corners = plan.corners
+            corners[index] += outward
+            corners[(index + 1) % corners.count] += outward
+            result.room.plan?.corners = corners
+            // Keep the plan's corners at or above zero, shifting everything if it grew past the origin.
+            let low = corners.reduce(SIMD2(Double.infinity, .infinity)) { simd_min($0, $1) }
+            let high = corners.reduce(-SIMD2(Double.infinity, .infinity)) { simd_max($0, $1) }
+            result = result.translating(by: SIMD3(-low.x, -low.y, 0))
+            result.room.size.x = high.x - low.x
+            result.room.size.y = high.y - low.y
+        } else {
+            let surface: Surface
+            switch index - floorIndex {
+            case 0: surface = .floor
+            case 1: surface = .ceiling
+            default:
+                guard room.plan == nil, index < 4 else { return nil }
+                surface = Surface.allCases[index]
+            }
+            let axis = surface.normalAxis
+            if [Surface.west, .south, .floor].contains(surface) {
+                // The low wall moves; everything else shifts so the far wall stays put.
+                result.room.size[axis] += step
+                var offset = SIMD3<Double>(repeating: 0)
+                offset[axis] = step
+                result = result.translating(by: offset)
+            } else {
+                result.room.size[axis] += step
+            }
+        }
+        guard (try? result.validate()) != nil else { return nil }
+        return result
+    }
+}

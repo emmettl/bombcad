@@ -96,7 +96,14 @@ script before an archive is written.
     another zone;
   - dragging an opening slides it over its wall, floor or ceiling, held within the surface, and
     Command-dragging moves its nearest corner. Zones and openings, though translucent, can be clicked
-    from either side, so a ceiling hatch can be reached from above, through the ceiling.
+    from either side, so a ceiling hatch can be reached from above, through the ceiling;
+  - Command-dragging a wall, floor or ceiling of a box or floor plan pushes it out or pulls it in,
+    in centimetre steps along its normal. A plan's wall moves with its two corners. When a west,
+    south or floor surface moves, or a plan grows past its origin, everything inside shifts with it,
+    so it keeps its place against the surfaces that stay. A step that would leave a point, zone or
+    opening outside, or the room under half a metre, is refused. The camera stays put while editing.
+    A plain drag on a surface still orbits, and a room of any shape, from a preset or a model, keeps
+    its shape.
 
   The view frames the room when it opens and when the room's size changes: from a three-quarter view
   above, as close as it can be with every corner within the middle 85% of the view. Everything else
@@ -366,6 +373,9 @@ saved again.
     surface chosen, and the source dragged across the room, raised with Option, and kept inside;
     zones moved to the wall and no further, refused where they would overlap, and resized from the
     nearest corner or the top; openings held within their surface; and both dragged in the view;
+  - pushing surfaces: a box's walls, floor and ceiling and a plan's walls, with everything shifted
+    when a low wall moves, steps refused when the room would be invalid, meshes left alone, and a
+    Command-drag in the view that pushes the east wall without moving the camera;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.

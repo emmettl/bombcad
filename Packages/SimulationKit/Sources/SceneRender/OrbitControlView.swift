@@ -9,9 +9,9 @@ public protocol OrbitControlling: AnyObject {
     /// A press and release without movement, at a point in normalised device coordinates (x right and
     /// y up, both from -1 to 1).
     func click(ndc: SIMD2<Float>, aspectRatio: Float)
-    /// A press that may start dragging something in the scene instead of the camera; true to take the
-    /// drag. By default the camera orbits.
-    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool
+    /// A press that may start dragging something in the scene instead of the camera, with the keys held;
+    /// true to take the drag. By default the camera orbits.
+    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) -> Bool
     /// The pointer moved during a drag taken by `beginDrag`, with the keys held.
     func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers)
     func endDrag()
@@ -33,7 +33,7 @@ public struct DragModifiers: OptionSet, Sendable {
 }
 
 extension OrbitControlling {
-    public func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float) -> Bool { false }
+    public func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) -> Bool { false }
     public func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {}
     public func endDrag() {}
 }
@@ -62,7 +62,9 @@ public final class OrbitControlView: MTKView {
         dragged = false
         draggingObject =
             bounds.width > 0 && bounds.height > 0
-            && controller?.beginDrag(ndc: ndc(event), aspectRatio: aspectRatio) == true
+            && controller?.beginDrag(
+                ndc: ndc(event), aspectRatio: aspectRatio, modifiers: DragModifiers(event.modifierFlags))
+                == true
     }
 
     public override func mouseUp(with event: NSEvent) {

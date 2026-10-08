@@ -459,7 +459,8 @@ code.
   receivers dragged, across the room or with Option up and down. Fitted zones and openings move and,
   with Command, resize by dragging, held within the room or their surface. The controls let an app
   take a drag for an object instead of the camera, with Option and Command passed on; BombCAD keeps
-  orbiting. Still to do: editing the room's shape in the view. BombCAD's blast renderer remains its own.
+  orbiting. A box's or a floor plan's walls, floor and ceiling push and pull with Command-drag. Still
+  to do: editing a mesh's shape, such as the pieces that build a hall, in the view. BombCAD's blast renderer remains its own.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 

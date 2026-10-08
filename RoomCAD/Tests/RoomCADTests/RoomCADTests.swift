@@ -425,8 +425,8 @@ func dragPoint() throws {
     let source = SIMD3<Float>(settings.source.position)
     viewport.camera = OrbitCamera(target: source, distance: 4, azimuth: 0.3, elevation: 0.6)
     // A press on the floor is not a drag.
-    #expect(!viewport.beginDrag(ndc: [0, -0.95], aspectRatio: 1))
-    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
+    #expect(!viewport.beginDrag(ndc: [0, -0.95], aspectRatio: 1, modifiers: []))
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1, modifiers: []))
     #expect(viewport.selected == .source)
     viewport.drag(ndc: [0.15, 0], aspectRatio: 1, modifiers: [])
     let moved = try #require(edits.last).source.position
@@ -548,7 +548,7 @@ func dragZoneAndOpening() throws {
     viewport.show(settings)
     // Looking straight down on the rug.
     viewport.camera = OrbitCamera(target: [1.75, 1.5, 0.2], distance: 6, azimuth: 0, elevation: 1.55)
-    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1, modifiers: []))
     #expect(viewport.selected == .zone(0))
     viewport.drag(ndc: [0.1, 0], aspectRatio: 1, modifiers: [])
     let moved = try #require(edits.last?.room.fittings?.first)
@@ -561,7 +561,7 @@ func dragZoneAndOpening() throws {
     // From above, through the ceiling, which is seen from behind: the ceiling window, selectable from
     // either side, slides over the ceiling and resizes from its nearest corner.
     viewport.camera = OrbitCamera(target: [3, 2, Float(size.z)], distance: 3, azimuth: 0, elevation: 1.55)
-    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1))
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1, modifiers: []))
     #expect(viewport.selected == .opening(0))
     viewport.drag(ndc: [0.2, 0.1], aspectRatio: 1, modifiers: [])
     let slid = try #require(edits.last?.openings.first)
@@ -572,4 +572,67 @@ func dragZoneAndOpening() throws {
     #expect(grown.size.x > 1 && grown.size.y > 1)
     viewport.endDrag()
     try #require(edits.last).validate()
+}
+
+@Test(
+    "Pushing a wall out or in resizes a box or a plan, keeping what is inside in place against the far walls")
+func pushSurfaces() throws {
+    var box = RoomProject.starter
+    box.room.fittings = [RoomInspector.seating(in: box.room.size)]
+    box.openings = [Opening(name: "Door", surface: .north, centre: [2, 1], size: [0.9, 2])]
+    let size = box.room.size
+    // The east wall out by half a metre: only the size changes.
+    let east = try #require(box.pushingSurface(1, by: 0.5))
+    #expect(east.room.size == size + [0.5, 0, 0] && east.source == box.source)
+    // The west wall out: everything shifts east with it, so it stays put against the east wall.
+    let west = try #require(box.pushingSurface(0, by: 0.5))
+    #expect(west.room.size.x == size.x + 0.5)
+    #expect(west.source.position == box.source.position + [0.5, 0, 0])
+    #expect(west.room.fittings![0].low.x == box.room.fittings![0].low.x + 0.5)
+    #expect(west.openings[0].centre == [2.5, 1])
+    // The ceiling down: lower, the floor where it was.
+    #expect(try #require(box.pushingSurface(5, by: -0.3)).room.size.z == size.z - 0.3)
+    // Pulled in past the source, or below half a metre: refused.
+    #expect(box.pushingSurface(1, by: -(size.x - 0.3)) == nil)
+    // A plan's wall moves with its two corners; the plan grows past the origin and everything shifts.
+    let l = try #require(RoomPresets.all.first { $0.id == "l-shaped-living-room" }).applied(to: box)
+    let wall = 0
+    let pushed = try #require(l.pushingSurface(wall, by: 0.4))
+    let plan = try #require(pushed.room.plan)
+    #expect(plan.corners.allSatisfy { $0.x >= 0 && $0.y >= 0 })
+    #expect(abs(plan.area - l.room.plan!.area - 0.4 * l.room.plan!.length(wall)) < 1e-9)
+    #expect(abs(simd_distance(pushed.source.position, l.source.position) - 0.4) < 1e-9)
+    // A mesh's shape is not edited this way.
+    let hall = try #require(RoomPresets.all.first { $0.id == "raked-auditorium" }).applied(to: box)
+    #expect(hall.pushingSurface(0, by: 0.5) == nil)
+}
+
+@MainActor
+@Test("Command-dragging a wall in the 3D view pushes it, and the camera stays where it was")
+func dragWall() throws {
+    let settings = RoomProject.starter
+    let viewport = RoomViewport()
+    var edits: [RoomResponseSettings] = []
+    viewport.onEdit = { edits.append($0) }
+    viewport.show(settings)
+    let size = SIMD3<Float>(settings.room.size)
+    // From the south, looking north, with the east wall on the right.
+    viewport.camera = OrbitCamera(
+        target: [size.x * 0.6, size.y * 0.5, size.z * 0.5], distance: 8, azimuth: -.pi / 2, elevation: 0.2)
+    let camera = viewport.camera
+    let x = try #require(
+        stride(from: Float(0), to: 0.95, by: 0.01).first { x in
+            let ray = viewport.camera.ray(ndc: [x, 0], aspectRatio: 1)
+            return viewport.scene?.geometry.pick(origin: ray.origin, direction: ray.direction) == 1
+        })
+    // Without Command a press on a wall orbits.
+    #expect(!viewport.beginDrag(ndc: [x + 0.02, 0], aspectRatio: 1, modifiers: []))
+    #expect(viewport.beginDrag(ndc: [x + 0.02, 0], aspectRatio: 1, modifiers: .resize))
+    #expect(viewport.selected == .surface(1))
+    viewport.drag(ndc: [x + 0.15, 0], aspectRatio: 1, modifiers: .resize)
+    viewport.endDrag()
+    let pushed = try #require(edits.last)
+    #expect(pushed.room.size.x > settings.room.size.x + 0.1)
+    #expect(pushed.room.size.y == settings.room.size.y)
+    #expect(viewport.camera == camera)
 }
