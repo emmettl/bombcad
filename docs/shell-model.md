@@ -351,14 +351,18 @@ The contest slab of the [validation notes](validation.md) with shells, through
 
 | Shell size | Peak | At | End of record | RMS difference | Run time |
 |---|---|---|---|---|---|
-| 2 in (51 mm) | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.3 mm | 0.4 s |
-| 1 in (25 mm) | 124 mm (115%) | 29 ms | 97 mm (106%) | 10.2 mm | 0.9 s |
-| 0.5 in (13 mm) | 123 mm (114%) | 28 ms | 94 mm (103%) | 9.7 mm | |
+| 2 in (51 mm) | 136 mm (126%) | 30 ms | 114 mm (125%) | 17.3 mm | 0.4 s |
+| 1 in (25 mm) | 135 mm (125%) | 30 ms | 113 mm (124%) | 17.0 mm | 0.9 s |
+| 2 in, bars under Malvar and Crawford's rate law | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.3 mm | |
 | Measured | 108 mm | 30 ms | 91 mm | | |
 | Solid elements, 16 through | 108 mm (100%) | 27 ms | 80 mm (88%) | 9.8 mm | minutes |
 
-With 4, 8, 16 and 32 layers the peak is 121, 124, 124 and 124 mm, so the shells' answer has
-converged, and it is 18% above the solid elements' converged 105 mm. Part of the gap is known:
+Since the bars' strain-rate law became the CEB's (see the
+[concrete model](concrete-model.md#strain-rate-effects)), which tension tests of bars support,
+the shells go a quarter too far, where the solid elements come within 5%: under Malvar and
+Crawford's steeper law the shells peaked at 124 mm. Under that law, with 4, 8, 16 and 32 layers
+the peak was 121, 124, 124 and 124 mm, so the shells' answer has converged, and it was 18%
+above the solid elements' converged 105 mm. Part of the gap is known:
 on the reinforced strip the solid elements are 5–8% stronger than the shells, because of the
 hourglass forces of squeezed elements. With the fixed design factors of UFC 3-340-02 the shells
 peak at 154 mm (solids 121 mm); with static strengths the shells fail (the solids reach

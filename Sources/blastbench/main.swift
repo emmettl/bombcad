@@ -158,6 +158,8 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 }
 
 func applyRateOptions(_ model: inout StructureModel) {
+    // `--element-bar-rate`: bars take the strain rate of the element they run through.
+    if flag("element-bar-rate") { model.barRateAlongBars = false }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
     applyRateOptions(&model.material)
@@ -1330,6 +1332,7 @@ func runSlab() throws {
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
             crackShearStiffness: flag("crack-shear"),
             adjust: { applyRateOptions(&$0) },
+            adjustModel: { if flag("element-bar-rate") { $0.barRateAlongBars = false } },
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
