@@ -11,7 +11,11 @@ let package = Package(
         .executable(name: "blastbench", targets: ["blastbench"]),
         .executable(name: "rigidboxdemo", targets: ["RigidBoxDemo"]),
     ],
-    dependencies: [.package(url: "https://github.com/emmettl/ContinuumKit.git", exact: "0.1.0-alpha.1")],
+    dependencies: [
+        .package(
+            url: "https://github.com/emmettl/ContinuumKit.git",
+            exact: "0.1.0-alpha.4")
+    ],
     targets: [
         // Shaders are copied verbatim and compiled at runtime so that `swift build`,
         // `swift test` and Xcode all behave identically.

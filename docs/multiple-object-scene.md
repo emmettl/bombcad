@@ -98,6 +98,26 @@ switching back to the first structure and saving both in a version-4 project.
 These checks establish numerical behaviour; no measured multi-building experiment has been
 reproduced.
 
+## Implemented shared query extraction
+
+[ContinuumKit PR #7](https://github.com/emmettl/ContinuumKit/pull/7) adds a bounded
+`SceneModel.Box.intersection` contract for ray and segment queries. It returns a closed
+parameter interval with explicit clipping and a caller-selected parallel-component
+tolerance. It uses metre coordinates in one frame and needs no renderer or application
+object model. The library retains independent analytic, boundary, transform and
+face-plane-oracle tests plus a fetched Git-consumer check.
+
+BombCAD uses that query for source picking and one-way fragment
+intersections. Picking retains its historical strictly-below `1e-8` threshold and
+fragments their `1e-12` segment threshold. Stationary-particle contact, object ownership,
+openings, selection and impact interpretation remain in BlastCore. Additional adapter
+tests preserve the exact threshold boundary, closed-face and stationary-segment cases.
+No mechanical coupling or numerical solver moves in this extraction.
+
+The application pins the independently verified `0.1.0-alpha.4` release exactly and
+commits its resolved revision. The [adoption record](continuumkit-adoption.md) links
+the core release verification and describes application compatibility checks.
+
 ## Constraints at the planning baseline
 
 - `Scenario` stores static `boxes`, optional imported models, experimental `rigidObjects`

@@ -332,12 +332,12 @@ public struct FragmentCloud: Sendable {
             best = (0, "ground", nil)
         }
         for (n, box) in blocks.enumerated() {
-            if let f = entry(start, end, box), f < (best?.fraction ?? .infinity) {
+            if let f = Self.entry(start, end, box), f < (best?.fraction ?? .infinity) {
                 best = (f, "block \(n)", nil)
             }
         }
         for (index, box) in structure.enumerated() {
-            if let f = entry(start, end, box), f < (best?.fraction ?? .infinity) {
+            if let f = Self.entry(start, end, box), f < (best?.fraction ?? .infinity) {
                 best = (f, "structure", structureOwners?[index])
             }
         }
@@ -346,22 +346,16 @@ public struct FragmentCloud: Sendable {
     }
 
     /// The fraction of the way from `start` to `end` where the segment enters `box`, if it does.
-    private func entry(_ start: SIMD3<Float>, _ end: SIMD3<Float>, _ box: Box) -> Float? {
+    static func entry(_ start: SIMD3<Float>, _ end: SIMD3<Float>, _ box: Box) -> Float? {
         let direction = end - start
-        var near: Float = 0
-        var far: Float = 1
-        for axis in 0..<3 {
-            if abs(direction[axis]) < 1e-12 {
-                if start[axis] < box.min[axis] || start[axis] > box.max[axis] { return nil }
-                continue
-            }
-            let t1 = (box.min[axis] - start[axis]) / direction[axis]
-            let t2 = (box.max[axis] - start[axis]) / direction[axis]
-            near = max(near, min(t1, t2))
-            far = min(far, max(t1, t2))
-            if near > far { return nil }
+        // A stationary particle inside closed bounds is already touching the outline.
+        // A zero direction does not define a ray in the shared geometry contract.
+        if direction == .zero {
+            return all(start .>= box.min) && all(start .<= box.max) ? 0 : nil
         }
-        return near
+        return box.intersection(
+            origin: start, direction: direction, parameters: 0...1,
+            parallelTolerance: Float(1e-12).nextDown)?.lowerBound
     }
 }
 
