@@ -192,6 +192,8 @@ struct WaveSolverTests {
         for (room, openings) in [(box, []), (lShape, [door])] {
             var solver = WaveSolver(
                 room: room, sampleRate: 48_000, topFrequency: 200, atmosphere: .standard, openings: openings)
+            // Kept on the GPU even if other apps slow it, so the two engines are compared.
+            solver.engine = .gpu
             #expect(solver.usesGPU)
             let gpu = try #require(
                 solver.run(source: [0.7, 0.6, 1.1], receivers: receivers, steps: 2048) { false })
@@ -254,10 +256,12 @@ struct WaveSolverTests {
         let same = busy.signals == reference.signals
         #expect(same)
 
-        // A run with under a second left when judged stays on the GPU, however slow.
+        // A run with under a second left when judged stays on the GPU, however slow. Two buffers: once the
+        // first is done, the other is all that is left, so this holds unless a buffer takes a second even
+        // when other apps load the GPU.
         let short = try #require(
             solver.run(
-                source: [0.7, 0.6, 1.1], receivers: receivers, steps: 4 * MetalWaveSolver.stepsPerBuffer
+                source: [0.7, 0.6, 1.1], receivers: receivers, steps: 2 * MetalWaveSolver.stepsPerBuffer
             ) { false })
         #expect(short.onGPU)
     }

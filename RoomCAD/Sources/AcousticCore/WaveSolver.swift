@@ -31,7 +31,10 @@ struct WaveSolver {
     /// diffuse rate their absorption gives (see `responses`); off only to test the bare boundary model.
     var matchesDiffuseDecay = true
 
-    enum Engine: Sendable { case automatic, cpu }
+    /// `automatic` uses the GPU when there is one and moves a run to the CPU when other work slows the
+    /// GPU too much; `gpu` keeps a run on the GPU however slow, for comparing the two; `cpu` never uses
+    /// the GPU.
+    enum Engine: Sendable { case automatic, gpu, cpu }
 
     /// For tests: extra seconds after each GPU command buffer, standing in for other work on the GPU.
     var gpuDelay: TimeInterval = 0
@@ -483,16 +486,17 @@ extension WaveSolver {
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
         stop: @Sendable () -> Bool
     ) -> (signals: [[Double]], onGPU: Bool)? {
-        if engine == .automatic, let gpu = MetalWaveSolver.shared {
+        if engine != .cpu, let gpu = MetalWaveSolver.shared {
             var cpuSeconds: Double?
             let result = gpu.simulate(self, source: source, receivers: receivers, steps: steps, stop: stop) {
                 done, elapsed in
-                Self.abandonsGPU(done: done, steps: steps, elapsed: elapsed) {
-                    if let cpuSeconds { return cpuSeconds }
-                    let estimate = cpuSecondsEstimate(source: source, receivers: receivers, steps: steps)
-                    cpuSeconds = estimate
-                    return estimate
-                }
+                engine == .automatic
+                    && Self.abandonsGPU(done: done, steps: steps, elapsed: elapsed) {
+                        if let cpuSeconds { return cpuSeconds }
+                        let estimate = cpuSecondsEstimate(source: source, receivers: receivers, steps: steps)
+                        cpuSeconds = estimate
+                        return estimate
+                    }
             }
             if let result { return (result, true) }
             if stop() { return nil }
@@ -523,7 +527,7 @@ extension WaveSolver {
     }
 
     /// Whether `run` will use the GPU.
-    var usesGPU: Bool { engine == .automatic && MetalWaveSolver.shared != nil }
+    var usesGPU: Bool { engine != .cpu && MetalWaveSolver.shared != nil }
 
     /// The octave bands below the crossover's top, grouped by the impedances their absorption gives every
     /// boundary.
