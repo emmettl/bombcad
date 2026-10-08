@@ -204,4 +204,31 @@ struct RoomMeshTests {
         }
         #expect(meshed.diagnostics.waveCrossover == reference.diagnostics.waveCrossover)
     }
+
+    @Test("Faces cut into triangles cover each face once, concave floors included, facing into the room")
+    func triangulation() throws {
+        for room in [
+            Self.meshRoom(Self.lShape),
+            try #require(RoomPresets.all.first { $0.id == "raked-auditorium" })
+                .applied(
+                    to: RoomResponseSettings(
+                        room: Self.lShape, source: RoomPoint(name: "S", position: [1, 1, 1]),
+                        receivers: [RoomPoint(name: "R", position: [2, 2, 1])])
+                ).room,
+        ] {
+            let mesh = try #require(room.mesh)
+            var areas = [Double](repeating: 0, count: mesh.faces.count)
+            for (corners, face) in mesh.triangles() {
+                let (a, b, c) = (mesh.vertices[corners.x], mesh.vertices[corners.y], mesh.vertices[corners.z])
+                let cross = simd_cross(b - a, c - a)
+                areas[face] += simd_length(cross) / 2
+                #expect(simd_dot(cross, mesh.normalAndArea(face).normal) > 0)
+            }
+            for face in mesh.faces.indices {
+                #expect(
+                    abs(areas[face] - mesh.normalAndArea(face).area) < 1e-9 * max(1, areas[face]),
+                    "face \(face)")
+            }
+        }
+    }
 }

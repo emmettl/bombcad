@@ -17,8 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = "dist/RoomCAD.app"
 EXECUTABLE = "RoomCAD"
 MINIMUM_MACOS = "15.0"
-# Files every copy needs: the bundled recordings with their credits, the icon, and the licences.
+# Files every copy needs: the bundled recordings with their credits, the 3D view's shader, the icon,
+# and the licences.
 REQUIRED = [
+    "Contents/Resources/SimulationKit_SceneRender.bundle/Contents/Resources/Shaders/Scene.metal",
     "Contents/Resources/RoomCAD_Audition.bundle/Contents/Resources/Clips/clips.json",
     "Contents/Resources/RoomCAD_Audition.bundle/Contents/Resources/Clips/CREDITS.md",
     "Contents/Resources/AppIcon.icns",

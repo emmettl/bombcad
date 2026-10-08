@@ -70,6 +70,53 @@ public struct RoomMesh: Codable, Equatable, Sendable {
         return (length > 0 ? n / length : n, length / 2)
     }
 
+    /// Each face cut into triangles, as corner indices wound so their normals point into the room like
+    /// the face's, by ear clipping in the face's own plane. Faces may be concave, as an L-shaped floor
+    /// is.
+    public func triangles() -> [(corners: SIMD3<Int>, face: Int)] {
+        var result: [(corners: SIMD3<Int>, face: Int)] = []
+        for face in faces.indices {
+            let corners = faces[face].corners
+            guard corners.count >= 3 else { continue }
+            let normal = normalAndArea(face).normal
+            // Axes in the plane with (u, v, normal) right-handed, so the face runs anticlockwise in them.
+            let helper: SIMD3<Double> = abs(normal.z) < 0.9 ? [0, 0, 1] : [1, 0, 0]
+            let u = simd_normalize(simd_cross(helper, normal))
+            let v = simd_cross(normal, u)
+            let flat = corners.map { SIMD2(simd_dot(vertices[$0], u), simd_dot(vertices[$0], v)) }
+            func cross(_ o: Int, _ a: Int, _ b: Int) -> Double {
+                (flat[a].x - flat[o].x) * (flat[b].y - flat[o].y) - (flat[a].y - flat[o].y)
+                    * (flat[b].x - flat[o].x)
+            }
+            var remaining = Array(corners.indices)
+            while remaining.count > 3 {
+                var clipped = false
+                for i in remaining.indices {
+                    let p = remaining[(i + remaining.count - 1) % remaining.count]
+                    let q = remaining[i]
+                    let r = remaining[(i + 1) % remaining.count]
+                    guard cross(p, q, r) > 1e-12 else { continue }
+                    let blocked = remaining.contains { s in
+                        s != p && s != q && s != r && cross(p, q, s) >= 0 && cross(q, r, s) >= 0
+                            && cross(r, p, s) >= 0
+                    }
+                    guard !blocked else { continue }
+                    result.append((SIMD3(corners[p], corners[q], corners[r]), face))
+                    remaining.remove(at: i)
+                    clipped = true
+                    break
+                }
+                // A degenerate remainder, such as collinear corners, is left out.
+                if !clipped { break }
+            }
+            if remaining.count == 3 {
+                result.append(
+                    (SIMD3(corners[remaining[0]], corners[remaining[1]], corners[remaining[2]]), face))
+            }
+        }
+        return result
+    }
+
     /// The material a face presents: its own, or air for an open face.
     public func material(of face: Int) -> SurfaceMaterial {
         faces[face].open ? .anechoic : materials[faces[face].material]

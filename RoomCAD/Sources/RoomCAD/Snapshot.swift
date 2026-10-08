@@ -26,7 +26,8 @@ enum Snapshot {
             player.wetMix = 0.7
             player.seek(to: 1.5)
             let view = SnapshotView(
-                settings: settings, result: result, summary: ResponseSummary(result), player: player)
+                settings: settings, result: result, summary: ResponseSummary(result), player: player,
+                threeD: threeD(settings))
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2
             guard let image = renderer.cgImage else { throw CocoaError(.fileWriteUnknown) }
@@ -44,14 +45,35 @@ enum Snapshot {
     }
 }
 
+/// The room in 3D from the view's starting camera, with the first surface selected, and the caption the
+/// view would show for it.
+@MainActor
+private func threeD(_ settings: RoomResponseSettings) -> (image: CGImage, caption: String)? {
+    let viewport = RoomViewport()
+    viewport.show(settings)
+    viewport.select(.surface(0))
+    guard let renderer = viewport.renderer, let queue = viewport.commandQueue,
+        let image = renderer.snapshot(commandQueue: queue, width: 1920, height: 880, camera: viewport.camera)
+    else { return nil }
+    return (image, viewport.caption ?? "")
+}
+
 private struct SnapshotView: View {
     let settings: RoomResponseSettings
     let result: RoomResponse
     let summary: ResponseSummary
     let player: AuditionPlayer
+    let threeD: (image: CGImage, caption: String)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let threeD {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("3D").font(.caption.bold()).foregroundStyle(.secondary)
+                    Image(decorative: threeD.image, scale: 2).frame(width: 960, height: 440)
+                    Text(threeD.caption).font(.caption)
+                }
+            }
             HStack(spacing: 0) {
                 ForEach(RoomProjection.allCases) { projection in
                     VStack(alignment: .leading) {

@@ -14,8 +14,10 @@ struct RoomEditorView: View {
     @State private var playWhenGenerated = false
     @State private var spaceKey = SpaceKeyMonitor()
     @State private var chart = Chart.envelope
+    @State private var view = RoomView.drawings
 
     enum Chart { case envelope, spectrum, early }
+    enum RoomView { case drawings, threeD }
 
     private var project: RoomProject { document.project }
 
@@ -30,10 +32,25 @@ struct RoomEditorView: View {
     var body: some View {
         HSplitView {
             VSplitView {
-                HStack(spacing: 0) {
-                    drawing(.plan)
-                    Divider()
-                    drawing(.elevation)
+                VStack(spacing: 4) {
+                    Picker("View", selection: $view) {
+                        Text("Plan and Section").tag(RoomView.drawings)
+                        Text("3D").tag(RoomView.threeD)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 240)
+                    .padding(.top, 6)
+                    switch view {
+                    case .drawings:
+                        HStack(spacing: 0) {
+                            drawing(.plan)
+                            Divider()
+                            drawing(.elevation)
+                        }
+                    case .threeD:
+                        RoomView3D(settings: project.settings)
+                    }
                 }
                 .frame(minHeight: 260)
                 results

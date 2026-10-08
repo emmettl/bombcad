@@ -74,6 +74,21 @@ script before an archive is written.
 
 ## The window
 
+- **Plan and Section, or 3D.** A switch above the drawings chooses between them.
+- **3D.** The room as a cutaway, rendered with Metal:
+  - its surfaces are coloured by material, and the walls nearest the camera are left out, so the
+    inside shows from any side;
+  - open faces and openings are translucent green, and fitted zones translucent brown boxes;
+  - the source is an orange sphere and the receivers blue ones, each directional microphone with a
+    line along its aim;
+  - drag to orbit, shift-drag or right-drag to pan, and pinch or scroll to zoom; **Reset View**
+    frames the room again;
+  - a click selects a surface, zone, source or receiver, highlights it in orange, and names it in a
+    caption: a surface's material, area, and absorption and scattering at 1 kHz.
+
+  The view frames the room when it opens and when the room's size changes. Editing is done in the
+  inspector as before. The camera controls and renderer are shared with BombCAD (see
+  [the roadmap](roomcad-roadmap.md#architecture-and-sharing)).
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
   stay 5 cm inside the walls. A room of any shape (a mesh) is drawn as its outline edges projected
@@ -325,15 +340,19 @@ saved again.
   - cancellation, and a newer generation replacing one in progress;
   - the mapping between drawing and room coordinates, including clamping;
   - the wording of generation progress and of the wave solver's engines;
+  - the 3D scene: its triangles cover the room's surfaces once, openings lie on their wall, and a
+    click from above selects the floor, and on the source the source;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
-`RoomCAD --snapshot FILE.png [PRESET]` renders the starter room's plan and section offscreen, or a
-preset's, given its identifier such as `raked-auditorium`. It also renders
+`RoomCAD --snapshot FILE.png [PRESET]` renders the starter room's 3D view, plan and section offscreen,
+or a preset's, given its identifier such as `raked-auditorium`. The 3D view is rendered from its
+starting camera with the first surface selected, and its caption below it. It also renders
 the audition waveform with its playhead, and a generated response's envelope, spectrum, early
 arrivals, decay table and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
 coincide in one projection; labels now move apart. It also showed the two halls' outlines, with
-their stage houses, balconies, rake and rear tier, as intended. Form controls and toolbars do not render
+their stage houses, balconies, rake and rear tier, as intended. The 3D snapshots of the L-shaped room
+and the raked auditorium show the cutaway, the openings, the points and the highlighted selection. Form controls and toolbars do not render
 offscreen.
 
 ## Limitations

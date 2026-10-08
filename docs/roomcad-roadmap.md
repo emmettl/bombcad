@@ -1,7 +1,8 @@
 # RoomCAD and convolution reverb roadmap
 
 Status: October 2026. The initial shared-package extraction is implemented:
-`Packages/SimulationKit` supplies SceneModel (Box and Grid) and SceneView (OrbitCamera).
+`Packages/SimulationKit` supplies SceneModel (Box and Grid), SceneView (OrbitCamera) and SceneRender
+(scene geometry, picking, a mesh renderer and the orbit controls both apps use).
 BombCAD consumes it with compatibility aliases.
 
 The first acoustic backend is implemented in the separate `RoomCAD` package. It covers M2 items 1–3
@@ -42,7 +43,7 @@ existing sources; this document does not prescribe a migration of the current ch
 | DocumentKit | Versioned document containers and asset handling; foundation implemented | Both apps |
 | GeometryImport | File readers, source meshes, parts, transforms and geometric diagnostics | Both apps |
 | MetalSupport | Reusable device, buffer, shader-loading and dispatch utilities | Both solvers and rendering |
-| SceneRender | Camera, selection, geometry and generic field rendering | Both apps |
+| SceneRender | Camera controls, selection, geometry and rendering; scene geometry, picking, a mesh renderer and the orbit controls implemented | Both apps |
 | BlastCore | Blast equations, charges, measurements and validation | BombCAD |
 | AcousticCore | Sources, acoustic propagation, boundaries and room-response generation | RoomCAD |
 | ImpulseResponseKit | Response data, channel mapping, audio I/O and conditioning | RoomCAD; potentially Driftbox |
@@ -442,9 +443,16 @@ code.
   and exports are always full quality.
 - **Item 5.** Testing on screen has been done only by the user, who confirmed that the window,
   audition, waveform and space bar work. The app is otherwise checked by offscreen snapshots.
-- **Item 6.** Not started. The app draws a plan and a section, with a mesh room's outline projected
-  onto each. SimulationKit's SceneView already holds the orbit camera that BombCAD uses; its Metal
-  view, selection and geometry rendering live in BombCAD.
+- **Item 6.** The first version is done. SimulationKit's new SceneRender library holds:
+  - scene geometry: lit and translucent triangles and lines, with pick numbers;
+  - picking by ray against the triangles seen from the front;
+  - a Metal renderer with four-sample anti-aliasing and offscreen snapshots;
+  - the orbit, pan, zoom and click controls, moved from BombCAD, which now uses them from there.
+
+  RoomCAD's 3D view uses all of it to draw any room as a cutaway coloured by material, with
+  openings, fitted zones, the source and the receivers, and to select them with a click. Still to
+  do: editing in the view itself, such as dragging points or choosing a surface's material there;
+  BombCAD's blast renderer remains its own.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 
