@@ -445,6 +445,17 @@ to use their centroids. With the flags above, the report name gains `-surface-qu
 before `.json`, and records the patch and evaluation-point counts. Affine pressure force
 and torque are checked analytically; nonlinear wall-Riemann traction is still approximate.
 
+`swift run -c release rigidboxdemo --wall-reflection` compares transient wall loads against
+an independent normal-shock reflection reference; add `--limited` for grouped reconstruction
+and SSPRK2. The reports are `.build/wall-reflection.json` and
+`.build/wall-reflection-limited.json`. `python3 Scripts/summarize-wall-reflection.py` compares
+both sixteen-case reports (four grids, two CFL settings and Mach 1.2/2 incident shocks).
+The reference applies [normal-shock jump relations](https://www.grc.nasa.gov/WWW/k-12/airplane/normal.html)
+to an incident and reflected shock, without calling the numerical wall solver. It records
+pressure-history error and excess-impulse error at four times, and rejects times after the
+opposite boundary can interact with the reflected shock. This planar slip-wall channel
+checks transport and wall-load timing; it does not validate oblique cut cells or free bodies.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

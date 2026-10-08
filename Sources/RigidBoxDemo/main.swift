@@ -7,6 +7,25 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--wall-reflection") {
+        let limited = arguments.contains("--limited")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/wall-reflection\(limited ? "-limited" : "").json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalWallReflectionStudy.Result] = []
+        _ = try ExperimentalWallReflectionStudy.run(limited: limited) { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellLength), Mach \(r.mach), CFL \(r.cfl): history L1 \(r.relativePressureHistoryL1), impulse error \(r.frames.last!.impulseError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--connected-loads") {
         let convergence = arguments.contains("--convergence")
         let volumeAverage = arguments.contains("--volume-average")

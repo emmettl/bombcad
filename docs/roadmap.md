@@ -1047,6 +1047,52 @@ feedback proceed. Gas angular momentum is still unaudited, and the degree-two ru
 approximate for nonlinear Riemann traction. No normal application simulation is enabled by
 these experiments; stable primitives remain candidates for separately verified extraction.
 
+An independent normal-shock reflection benchmark now supplies a transient load reference.
+A leftward shock starts at x=0.655 m in a 2 m slip-wall channel. The incident state follows
+[NASA's calorically perfect normal-shock relations](https://www.grc.nasa.gov/WWW/k-12/airplane/normal.html).
+We apply the relations again in the reflected shock's frame, choosing its Mach number so
+that downstream laboratory velocity is zero. Wall pressure changes from ambient to the
+reflected value at the analytically determined shock-arrival time. Its integrated pressure
+and excess impulse are piecewise linear. The reference does not call `IdealGasWallRiemann`;
+independent tests check both shocks' mass, momentum and enthalpy jumps, and the Mach-2
+special case gives reflected pressure 15 times ambient and density six times ambient.
+
+The opposite wall starts in moving gas and creates a rarefaction. The reference calculates
+when its head could first meet a shock, rejects configurations interacting before the
+initial reflection, and refuses later times. Runs stop at 1.4 arrival times, safely before
+interaction (the earliest cutoff is more than 1.42 run durations). Three cells across each
+transverse axis provide full-rank stencils for the same 3D reconstruction used in the held-box
+study; transverse slip walls preserve the planar solution. Initial cells contain conservative
+averages of the sharp incident shock. Output and timesteps split at 0.8/1.0/1.2/1.4 arrival
+times, including the pressure-history discontinuity.
+
+`--wall-reflection` and `--wall-reflection --limited` complete sixteen cases each: 0.1,
+0.05, 0.025 and 0.0125 m streamwise cells, CFL 0.2/0.1 and incident Mach 1.2/2. There are
+242–2143 accepted steps and no rejected steps. At CFL 0.1, first-order step-average pressure
+history L1 errors on the finest grid are 17.93%/12.11%; reconstruction reduces these to
+5.11%/6.24%. Reconstructed history errors decrease on every grid for both shock strengths
+and timestep settings. Halving CFL changes reconstructed history error by less than 0.085%
+relative. The normalized final excess-impulse errors are only −0.103%/−0.262%, versus
+−0.336%/−0.805% with first-order transport: good total impulse can conceal a blurred load
+history. These pressure-history percentages normalize the integrated absolute error by the
+exact excess impulse over the entire run, not by ambient pressure or instantaneous pressure.
+The calculation uses accepted-step average traction, with the exact history constant within
+each event-split interval; it is not a pointwise peak-pressure error measure.
+
+Mass/energy residuals stay below 0.000000000000001 relative and linear-momentum residuals
+below 0.000000000001 N s. The 41-test CPU-only suite passes, covering the independent oracle
+and coarse channel budgets; an added regression checks that reconstructed history improves
+with refinement and against first-order transport. `Scripts/summarize-wall-reflection.py`
+rejects incomplete/mismatched reports and checks history refinement before reporting errors.
+
+This supplies a bounded propagation/load benchmark without a weak-wave amplitude floor.
+It has regular stationary cells and normal incidence; oblique clipped-wall accuracy, gas
+angular momentum and moving group topology remain separate gates. Next, refine the shock
+history further and extend this reflection case to prescribed planar wall motion using the
+existing moving-wall/piston references, before rebuilding moving clipped groups or coupling
+free-body feedback. The normal application
+solver remains unaffected, and verified reference components can be extracted individually.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
