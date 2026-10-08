@@ -12,14 +12,14 @@ let package = Package(
         .executable(name: "RoomCAD", targets: ["RoomCAD"]),
         .executable(name: "acousticbench", targets: ["acousticbench"]),
     ],
-    dependencies: [.package(path: "../Packages/SimulationKit")],
+    dependencies: [.package(url: "https://github.com/emmettl/ContinuumKit.git", exact: "0.1.0-alpha.1")],
     targets: [
         .target(name: "ImpulseResponseKit"),
         .target(name: "AcousticCore", dependencies: ["ImpulseResponseKit"]),
         .target(
             name: "RoomDocument",
             dependencies: [
-                "AcousticCore", "ImpulseResponseKit", .product(name: "DocumentKit", package: "SimulationKit"),
+                "AcousticCore", "ImpulseResponseKit", .product(name: "DocumentKit", package: "continuumkit"),
             ]),
         // Bundled dry recordings are listed, with their credits, in Clips/clips.json.
         .target(
@@ -29,11 +29,11 @@ let package = Package(
             name: "RoomCAD",
             dependencies: [
                 "AcousticCore", "ImpulseResponseKit", "RoomDocument", "Audition",
-                .product(name: "DocumentKit", package: "SimulationKit"),
-                .product(name: "SceneModel", package: "SimulationKit"),
-                .product(name: "SceneView", package: "SimulationKit"),
-                .product(name: "SceneRender", package: "SimulationKit"),
-                .product(name: "GeometryImport", package: "SimulationKit"),
+                .product(name: "DocumentKit", package: "continuumkit"),
+                .product(name: "SceneModel", package: "continuumkit"),
+                .product(name: "SceneView", package: "continuumkit"),
+                .product(name: "SceneRender", package: "continuumkit"),
+                .product(name: "GeometryImport", package: "continuumkit"),
             ]),
         .executableTarget(
             name: "acousticbench", dependencies: ["AcousticCore", "ImpulseResponseKit", "Audition"]),
@@ -43,15 +43,15 @@ let package = Package(
             name: "RoomDocumentTests",
             dependencies: [
                 "RoomDocument", "AcousticCore", "ImpulseResponseKit",
-                .product(name: "DocumentKit", package: "SimulationKit"),
+                .product(name: "DocumentKit", package: "continuumkit"),
             ]),
         .testTarget(name: "AuditionTests", dependencies: ["Audition", "AcousticCore", "ImpulseResponseKit"]),
         .testTarget(
             name: "RoomCADTests",
             dependencies: [
                 "RoomCAD", "RoomDocument", "AcousticCore",
-                .product(name: "SceneRender", package: "SimulationKit"),
-                .product(name: "SceneView", package: "SimulationKit"),
+                .product(name: "SceneRender", package: "continuumkit"),
+                .product(name: "SceneView", package: "continuumkit"),
             ]),
     ],
     swiftLanguageModes: [.v6]

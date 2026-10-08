@@ -1,33 +1,8 @@
-# SimulationKit
+# SimulationKit moved to ContinuumKit
 
-Shared SwiftPM foundations for BombCAD and a future RoomCAD. This package builds and tests
-independently and has no dependency on BlastCore, Metal, SwiftUI or either app.
+The shared CAD foundations now live in [ContinuumKit](https://github.com/emmettl/ContinuumKit),
+pinned by both application packages to `0.1.0-alpha.1`.
 
-| Product / module | Contents |
-|---|---|
-| SceneModel | Axis-aligned `Box` bounds and uniform Cartesian `Grid`, in metres with z up |
-| SceneView | `OrbitCamera`, bounds framing, view rays, ground picking, orbit, pan and zoom |
-| DocumentKit | Versioned project packages, embedded assets, checksums and bounded readers |
-
-Consume the package with `.package(path: "Packages/SimulationKit")` (adjust the relative path
-for the consuming manifest), then add the required `.product` dependencies to each target.
-Import `SceneModel` and/or `SceneView` explicitly in new consumers.
-
-BombCAD retains `BlastCore.Box`, `BlastCore.Grid` and `BlastRender.OrbitCamera` as public
-type aliases for compatibility with existing clients and the ongoing importer work. Its
-scenario-specific camera framing remains in BlastRender; shared bounds framing has no
-knowledge of charges or structures. `Box` keeps its original Codable representation.
-
-The root BombCAD package remains the app package. Shared shaders, import readers, audio and
-structural modules have not been extracted. Add those when a second consumer establishes
-the required interface rather than creating empty targets ahead of it.
-
-DocumentKit uses Foundation and CryptoKit but has no application or solver dependency. Payload
-schemas and interpretation belong to the consuming app. See [the save format](../../../docs/save-files.md).
-
-```sh
-swift test --package-path Packages/SimulationKit
-```
-
-Root `swift test` checks BombCAD integration; run the command above as well to check this
-dependency package's own tests.
+The module names SceneModel, SceneView, SceneRender, GeometryImport and DocumentKit remain
+unchanged. This directory is a historical documentation pointer, not a Swift package.
+See [adoption notes](../../docs/continuumkit-adoption.md) for resource packaging and verification.
