@@ -117,6 +117,8 @@ public struct FragmentCloud: Sendable {
     public private(set) var time: Double = 0
     /// Samples taken inside the domain but outside the air given: the slice was too small.
     public private(set) var misses = 0
+    /// Particles whose flight became non-finite, taken out of it.
+    public private(set) var lost = 0
     public let launchSpeed: Float
     let blocks: [Box]
     let structure: [Box]
@@ -213,24 +215,41 @@ public struct FragmentCloud: Sendable {
                 let speed = simd_length(particle.velocity)
                 if speed > 0 { dt = min(dt, Double(0.5 * a.cellSize / speed)) }
                 if particle.mass > 0 {
+                    // Drag is integrated exactly for a rate held over the step, so the step need
+                    // only follow the rate's own change, not its stiffness.
                     let drag = dragRate(particle, air)
-                    if drag > 0 { dt = min(dt, Double(0.2 / drag)) }
+                    if drag > 0 { dt = min(dt, max(Double(0.5 / drag), 1e-5)) }
                 }
                 dt = max(dt, 1e-7)
-                // Midpoint step.
-                let a1 = acceleration(particle, air)
-                let middle = particle.position + particle.velocity * Float(dt / 2)
-                var halfway = particle
-                halfway.position = middle
-                halfway.velocity = particle.mass > 0 ? particle.velocity + a1 * Float(dt / 2) : air.velocity
-                let airMiddle = sample(middle, t + dt / 2, a, b)
-                if particle.mass == 0 { halfway.velocity = airMiddle.velocity }
-                let a2 = acceleration(halfway, airMiddle)
                 let start = particle.position
-                particle.position += halfway.velocity * Float(dt)
-                particle.velocity =
-                    particle.mass > 0 ? particle.velocity + a2 * Float(dt) : airMiddle.velocity
+                if particle.mass > 0 {
+                    // Half a step to find the drag at the midpoint, then the whole step with it.
+                    let middle = particle.position + particle.velocity * Float(dt / 2)
+                    let airMiddle = sample(middle, t + dt / 2, a, b)
+                    var halfway = particle
+                    halfway.position = middle
+                    halfway.velocity = relax(particle.velocity, air, dragRate(particle, air), dt / 2)
+                    let velocity = relax(particle.velocity, airMiddle, dragRate(halfway, airMiddle), dt)
+                    particle.position += (particle.velocity + velocity) * Float(dt / 2)
+                    particle.velocity = velocity
+                } else {
+                    // A tracer goes with the air, by the midpoint rule.
+                    let middle = particle.position + air.velocity * Float(dt / 2)
+                    particle.velocity = sample(middle, t + dt / 2, a, b).velocity
+                    particle.position += particle.velocity * Float(dt)
+                }
                 t += dt
+                guard particle.position.x.isFinite, particle.position.y.isFinite,
+                    particle.position.z.isFinite,
+                    particle.velocity.x.isFinite, particle.velocity.y.isFinite, particle.velocity.z.isFinite
+                else {
+                    // Lost to the numerics: left where it was, out of the flight.
+                    particle.position = start
+                    particle.velocity = .zero
+                    particle.landed = true
+                    lost += 1
+                    break
+                }
                 if let hit = hit(from: start, to: particle.position) {
                     particle.position = hit.point
                     particle.landed = true
@@ -256,6 +275,17 @@ public struct FragmentCloud: Sendable {
         if let air = AirSlice.sample(point, time: time, between: a, and: b) { return air }
         misses += 1
         return a.ambient
+    }
+
+    /// The velocity after `dt` of gravity and of drag at `rate` towards the air's velocity:
+    /// exact for a rate held over the step, and stable however stiff.
+    private func relax(_ velocity: SIMD3<Float>, _ air: Primitive, _ rate: Float, _ dt: Double) -> SIMD3<
+        Float
+    > {
+        let x = Double(rate) * dt
+        // (1 - e^-x) / x, without losing it as x goes to 0.
+        let share = x < 1e-6 ? 1 - x / 2 : -expm1(-x) / x
+        return velocity + (air.velocity - velocity) * Float(x * share) + gravity * Float(dt * share)
     }
 
     /// The inverse of a particle's drag time, 1/s.

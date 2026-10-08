@@ -140,7 +140,16 @@ final class SweepWorkerClient {
             writer.enqueue(.finishConsumer(id, frameInterval))
         }
         reports[id] = nil
-        return try JSONDecoder().decode(FragmentResult.self, from: payload)
+        guard payload.count >= 4 else {
+            throw ProjectFileError.invalid("The fragments' result was cut short.")
+        }
+        let length = Int(payload.prefix(4).withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian })
+        guard payload.count >= 4 + length else {
+            throw ProjectFileError.invalid("The fragments' result was cut short.")
+        }
+        var result = try JSONDecoder().decode(FragmentResult.self, from: payload.subdata(in: 4..<4 + length))
+        try result.setTrajectories(payload.subdata(in: 4 + length..<payload.count))
+        return result
     }
 
     private func receive(_ message: SweepWorkerMessage, payload: Data) {

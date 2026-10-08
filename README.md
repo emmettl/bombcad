@@ -508,6 +508,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
+| [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast, here or on another Mac |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |

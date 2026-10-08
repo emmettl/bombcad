@@ -54,9 +54,12 @@ public struct AirSlice: Sendable, Equatable {
             // Continuous index among the slice's samples along this axis.
             let position = (point[axis] / cellSize - 0.5 - Float(first[axis])) / Float(stride)
             let last = Float(counts[axis] - 1)
+            // Up to half a stride past the outer samples is taken as theirs, and all the way to the
+            // domain's edge where the grid has no further sample to take.
+            let openBelow = first[axis] - stride < 0
+            let openAbove = first[axis] + Int32(counts[axis]) * stride > grid[axis] - 1
+            guard position >= -0.5 || openBelow, position <= last + 0.5 || openAbove else { return nil }
             let clamped = min(max(position, 0), last)
-            // Up to half a stride past the outer samples is taken as theirs.
-            guard abs(clamped - position) <= 0.5 else { return nil }
             let lower = min(clamped.rounded(.down), max(last - 1, 0))
             low[axis] = Int(lower)
             fraction[axis] = clamped - lower
@@ -102,7 +105,8 @@ extension BlastSolver {
         let stride = Int32(max(stride, 1))
         let low = simd_clamp(SIMD3<Int32>((region.min / h).rounded(.down)), .zero, dims &- 1)
         let high = simd_clamp(SIMD3<Int32>((region.max / h).rounded(.down)), low, dims &- 1)
-        let counts = (high &- low) / stride &+ 1
+        // Enough samples to reach past the region's far side, as far as the grid goes.
+        let counts = simd_min((high &- low &+ stride &- 1) / stride &+ 1, (dims &- 1 &- low) / stride &+ 1)
         var values = [Float16](repeating: 0, count: 5 * Int(counts.x) * Int(counts.y) * Int(counts.z))
         withState { cells in
             var n = 0

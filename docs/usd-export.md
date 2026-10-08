@@ -27,6 +27,7 @@ USD in its text form (`.usda`), Z up, in metres, written without any USD library
 | `/Scene/Gauge_0`, … | Spheres at the gauges, named in `bombcad:label` |
 | `/Scene/Camera` | The project's saved view, in a 16:9 frame |
 | `/Scene/Structure` | The body's surface, frame by frame |
+| `/Scene/Fragments`, `/Scene/Tracers` | With `--fragments`, Points that follow the frames ([Fragments](fragments.md)) |
 
 The structure's surface is what the app draws: the outer faces of intact solid elements, each
 shell and beam as a box its thickness or section across, and a small cube of rubble for each

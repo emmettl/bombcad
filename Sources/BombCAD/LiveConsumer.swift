@@ -4,10 +4,13 @@ import Foundation
 /// The producer's side of a one-way consumer: the air goes out a frame at a time, reports of
 /// where the particles have got come back, and the result at the end.
 protocol LiveConsumer: AnyObject, Sendable {
-    /// Frames sent so far.
+    /// Frames sent so far, and their air in bytes.
     var sent: Int { get }
+    var bytes: Int { get }
     /// The consumer's latest report.
     var report: ConsumerReport { get }
+    /// Its report after `frame`, or before the first frame for a negative one; nil if not yet in.
+    func report(after frame: Int) -> ConsumerReport?
     /// Sends the next frame's air.
     func send(_ slice: AirSlice)
     /// Waits for every frame sent to be consumed, and returns what the consumer found.
@@ -22,22 +25,36 @@ final class LocalLiveConsumer: LiveConsumer, @unchecked Sendable {
     private let lock = NSLock()
     private var consumer: FragmentConsumer
     private var latest: ConsumerReport
+    private var history: [ConsumerReport]
     private var count = 0
+    private var total = 0
 
     init(spec: FragmentSpec, scene: FragmentScene) {
         consumer = FragmentConsumer(spec: spec, scene: scene)
         latest = consumer.report
+        history = [latest]
+    }
+
+    func report(after frame: Int) -> ConsumerReport? {
+        lock.withLock { history.indices.contains(frame + 1) ? history[frame + 1] : nil }
     }
 
     var sent: Int { lock.withLock { count } }
+    var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { lock.withLock { latest } }
 
     func send(_ slice: AirSlice) {
-        lock.withLock { count += 1 }
+        lock.withLock {
+            count += 1
+            total += 2 * slice.values.count
+        }
         queue.async { [self] in
             consumer.consume(slice)
             let report = consumer.report
-            lock.withLock { latest = report }
+            lock.withLock {
+                latest = report
+                history.append(report)
+            }
         }
     }
 
@@ -60,7 +77,9 @@ final class RemoteLiveConsumer: LiveConsumer, @unchecked Sendable {
     private let writer: SweepWorkerWriter
     private let lock = NSLock()
     private var latest: ConsumerReport
+    private var history: [ConsumerReport]
     private var count = 0
+    private var total = 0
 
     @MainActor
     init(client: SweepWorkerClient, spec: FragmentSpec, scene: FragmentScene) {
@@ -68,18 +87,31 @@ final class RemoteLiveConsumer: LiveConsumer, @unchecked Sendable {
         writer = client.writer
         // The particles' starting place, worked out here as the worker will.
         latest = FragmentConsumer(spec: spec, scene: scene).report
+        history = [latest]
         client.startConsumer(ConsumerSession(id: id, spec: spec, scene: scene)) { [weak self] report in
             guard let self else { return }
-            self.lock.withLock { self.latest = report }
+            self.lock.withLock {
+                self.latest = report
+                self.history.append(report)
+            }
         }
     }
 
+    func report(after frame: Int) -> ConsumerReport? {
+        lock.withLock { history.indices.contains(frame + 1) ? history[frame + 1] : nil }
+    }
+
     var sent: Int { lock.withLock { count } }
+    var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { lock.withLock { latest } }
 
     func send(_ slice: AirSlice) {
-        lock.withLock { count += 1 }
-        writer.enqueue(.air(id, slice.header), payload: slice.payload)
+        let payload = slice.payload
+        lock.withLock {
+            count += 1
+            total += payload.count
+        }
+        writer.enqueue(.air(id, slice.header), payload: payload)
     }
 
     func finish(frameInterval: Double) async throws -> FragmentResult {

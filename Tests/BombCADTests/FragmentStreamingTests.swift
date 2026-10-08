@@ -35,12 +35,16 @@ final class StalledConsumer: LiveConsumer, @unchecked Sendable {
     private var released = false
 
     var sent: Int { lock.withLock { count } }
+    var bytes: Int { 0 }
     var report: ConsumerReport {
         lock.withLock {
             ConsumerReport(frame: released ? count - 1 : consumed, low: nil, high: nil, speed: 0, airborne: 0)
         }
     }
     func send(_ slice: AirSlice) { lock.withLock { count += 1 } }
+    func report(after frame: Int) -> ConsumerReport? {
+        ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0)
+    }
     func release() { lock.withLock { released = true } }
     func finish(frameInterval: Double) async throws -> FragmentResult {
         FragmentResult(

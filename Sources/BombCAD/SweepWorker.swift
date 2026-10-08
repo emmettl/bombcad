@@ -51,13 +51,23 @@ enum SweepWorker {
                         writer.enqueue(.failed(id, error.localizedDescription))
                     }
                 case .finishConsumer(let id, let interval):
-                    guard let consumer = jobs.sessions.removeValue(forKey: id),
-                        let result = try? JSONEncoder().encode(consumer.result(frameInterval: interval))
-                    else {
+                    guard let consumer = jobs.sessions.removeValue(forKey: id) else {
                         writer.enqueue(.failed(id, "No such fragment session."))
                         continue
                     }
-                    writer.enqueue(.fragments(id), payload: result)
+                    do {
+                        // The JSON's length, the JSON, then the trajectories.
+                        let result = consumer.result(frameInterval: interval)
+                        let json = try JSONEncoder().encode(result)
+                        var length = UInt32(json.count).bigEndian
+                        writer.enqueue(
+                            .fragments(id),
+                            payload: Data(bytes: &length, count: 4) + json + result.trajectoryData)
+                    } catch {
+                        writer.enqueue(
+                            .failed(
+                                id, "The fragments' result could not be sent: \(error.localizedDescription)"))
+                    }
                 default:
                     continue
                 }

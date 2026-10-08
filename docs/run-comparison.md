@@ -157,7 +157,10 @@ device, each gauge's peak and the structure's largest deflection.
 | `--duration <s>` | Changes the simulated duration |
 | `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
 | `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
-| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd` and `--vdb`, 1 by default |
+| `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
+| `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
+| `--fragment-results <file>` | Writes the fragments' impacts as JSON |
+| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb` and `--fragments`, 1 by default |
 
 The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
 file. With `--out`, the project must have room for another run (16 at most). A legacy layout
@@ -191,7 +194,7 @@ index, and JSON layout export continues to omit this project-level result collec
 ## Verification
 
 ```sh
-swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
+swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|Fragment|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
 ```
 
 Tests cover actual Metal runs, explicit change tracking, stable historical inputs, fixed-time

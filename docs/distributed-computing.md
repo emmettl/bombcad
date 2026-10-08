@@ -151,6 +151,12 @@ so the most they can gain is a factor of two, when they cost the same.
   overlap. That is standard, and stable when the fragments are much denser than air, as concrete
   is; a millisecond is short beside a heavy fragment's response to the air.
 
+**Built, as a trial.** A cased charge's fragments, flown one way through blocks of the air
+streamed each frame, on this Mac or on the mini: see [Fragments](fragments.md). Over Thunderbolt,
+1.6 GB of air went to the mini at about 200 MB/s without the run waiting for it, the result was
+the same to the last bit, and, as expected, the fragments are too cheap for moving them to gain
+anything: one CPU core keeps up with a few thousand.
+
 **Better first.** The Studio's CPU is mostly idle while its GPU runs the air, and its cores could
 step tens of thousands of ballistic fragments a millisecond without any network. A second queue
 on the same GPU would help little: the air solver already uses nearly all its bandwidth.

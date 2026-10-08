@@ -51,11 +51,70 @@ public struct FragmentResult: Codable, Sendable, Equatable {
     public var frameInterval: Double
     /// Samples the air given did not cover: the region asked for was too small.
     public var misses: Int
+    /// Particles whose flight became non-finite, taken out of it.
+    public var lost = 0
+
+    /// The trajectories are left out of JSON, which they would swamp: they travel as
+    /// `trajectoryData` and are in the USD scene.
+    private enum CodingKeys: String, CodingKey {
+        case launchSpeed, masses, impacts, airborne, fragmentCount, frameInterval, misses, lost
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        launchSpeed = try c.decode(Float.self, forKey: .launchSpeed)
+        masses = try c.decode([Float].self, forKey: .masses)
+        impacts = try c.decode([FragmentImpact].self, forKey: .impacts)
+        airborne = try c.decode(Int.self, forKey: .airborne)
+        frames = []
+        fragmentCount = try c.decode(Int.self, forKey: .fragmentCount)
+        frameInterval = try c.decode(Double.self, forKey: .frameInterval)
+        misses = try c.decode(Int.self, forKey: .misses)
+        lost = try c.decodeIfPresent(Int.self, forKey: .lost) ?? 0
+    }
+
+    /// Every frame's positions as little-endian 32-bit floats, after the frame and particle counts.
+    public var trajectoryData: Data {
+        var data = Data()
+        for count in [UInt32(frames.count), UInt32(frames.first?.count ?? 0)] {
+            withUnsafeBytes(of: count.littleEndian) { data.append(contentsOf: $0) }
+        }
+        var values: [Float] = []
+        values.reserveCapacity(3 * frames.count * (frames.first?.count ?? 0))
+        for frame in frames {
+            for point in frame { values += [point.x, point.y, point.z] }
+        }
+        values.withUnsafeBytes { data.append(contentsOf: $0) }
+        return data
+    }
+
+    /// Restores the trajectories from `trajectoryData`.
+    public mutating func setTrajectories(_ data: Data) throws {
+        guard data.count >= 8 else { throw CocoaError(.coderReadCorrupt) }
+        let counts = data.withUnsafeBytes {
+            (
+                Int($0.loadUnaligned(as: UInt32.self)),
+                Int($0.loadUnaligned(fromByteOffset: 4, as: UInt32.self))
+            )
+        }
+        guard data.count == 8 + 12 * counts.0 * counts.1 else { throw CocoaError(.coderReadCorrupt) }
+        frames = data.withUnsafeBytes { raw in
+            (0..<counts.0).map { frame in
+                (0..<counts.1).map { n in
+                    let offset = 8 + 12 * (frame * counts.1 + n)
+                    return SIMD3(
+                        raw.loadUnaligned(fromByteOffset: offset, as: Float.self),
+                        raw.loadUnaligned(fromByteOffset: offset + 4, as: Float.self),
+                        raw.loadUnaligned(fromByteOffset: offset + 8, as: Float.self))
+                }
+            }
+        }
+    }
 
     public init(
         launchSpeed: Float, masses: [Float], impacts: [FragmentImpact], airborne: Int,
         frames: [[SIMD3<Float>]],
-        fragmentCount: Int, frameInterval: Double, misses: Int
+        fragmentCount: Int, frameInterval: Double, misses: Int, lost: Int = 0
     ) {
         self.launchSpeed = launchSpeed
         self.masses = masses
@@ -65,6 +124,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
         self.fragmentCount = fragmentCount
         self.frameInterval = frameInterval
         self.misses = misses
+        self.lost = lost
     }
 
     public var summary: String {
@@ -75,6 +135,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
             format: "%d fragments at %.0f m/s: %d landed (%@), highest impact energy %.0f J",
             fragmentCount, launchSpeed, impacts.count, surfaces.isEmpty ? "none" : surfaces, energy)
             + (misses > 0 ? "; \(misses) samples fell outside the air sent" : "")
+            + (lost > 0 ? "; \(lost) lost to the numerics" : "")
     }
 }
 
@@ -90,7 +151,8 @@ public struct FragmentConsumer: Sendable {
 
     public init(spec: FragmentSpec, scene: FragmentScene) {
         cloud = FragmentCloud(spec: spec, scene: scene)
-        tracerSpeed = spec.tracers > 0 ? 500 : 0
+        // The blast wind close to a charge can pass 2 km/s.
+        tracerSpeed = spec.tracers > 0 ? 2500 : 0
     }
 
     public mutating func consume(_ slice: AirSlice) {
@@ -112,6 +174,6 @@ public struct FragmentConsumer: Sendable {
             launchSpeed: cloud.launchSpeed, masses: cloud.particles.prefix(cloud.fragmentCount).map(\.mass),
             impacts: cloud.impacts, airborne: cloud.airborne, frames: frames,
             fragmentCount: cloud.fragmentCount,
-            frameInterval: frameInterval, misses: cloud.misses)
+            frameInterval: frameInterval, misses: cloud.misses, lost: cloud.lost)
     }
 }

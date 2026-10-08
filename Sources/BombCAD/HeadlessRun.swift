@@ -169,7 +169,7 @@ enum HeadlessRun {
 
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
-        run: SavedSimulationRun, fragments: FragmentResult?
+        run: SavedSimulationRun, fragments: FragmentResult?, stream: String?
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -184,7 +184,7 @@ enum HeadlessRun {
         if let url = options.fragmentResults, let fragments = result.fragments {
             try JSONEncoder().encode(fragments).write(to: url, options: .withoutOverwriting)
         }
-        return (result.run, result.fragments)
+        return (result.run, result.fragments, result.stream)
     }
 
     /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
@@ -194,7 +194,9 @@ enum HeadlessRun {
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any LiveConsumer)? = nil
-    ) async throws -> (run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?) {
+    ) async throws -> (
+        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?
+    ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
         guard document.savedRuns.count < SavedSimulationRun.maximumRuns else {
@@ -235,9 +237,20 @@ enum HeadlessRun {
             consumer = try await makeConsumer(options.consumer, spec: spec, scenario: inputs.scenario)
         }
         defer { if !finished { consumer?.cancel() } }
+        var heldSince: ContinuousClock.Instant?
+        var held = Duration.zero
+        let streamStart = ContinuousClock.now
         if let consumer {
             // The consumer may fall up to four frames behind; then the run waits for it.
-            model.holdBatches = { consumer.sent - 1 - consumer.report.frame > 4 }
+            model.holdBatches = {
+                let hold = consumer.sent - 1 - consumer.report.frame > consumerLag
+                if hold, heldSince == nil { heldSince = .now }
+                if !hold, let since = heldSince {
+                    held += since.duration(to: .now)
+                    heldSince = nil
+                }
+                return hold
+            }
         }
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
         // so exporting does not change the run. Without a structure, only volumes and fragments
@@ -261,7 +274,11 @@ enum HeadlessRun {
                     }
                     try scene?.append(solver.structureSurface(), volume: volume)
                     if let consumer {
-                        let region = consumer.report.region(
+                        // From the report `lag` frames back, always in by now, so that the air
+                        // sent, and the result, do not depend on how the two sides keep time.
+                        let basis =
+                            consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
+                        let region = basis.region(
                             for: frame, interval: interval, domain: inputs.scenario.domainSize,
                             cellSize: solver.grid.cellSize)
                         consumer.send(solver.airSlice(region: region.box, stride: region.stride))
@@ -283,7 +300,15 @@ enum HeadlessRun {
         if let exportError { throw exportError }
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
+        let running = streamStart.duration(to: .now)
         let fragments = try await consumer?.finish(frameInterval: interval)
+        let stream = consumer.map { consumer in
+            String(
+                format:
+                    "%d frames, %.1f MB of air (%.0f MB/s); the run waited %.2f s of %.2f s for the consumer",
+                consumer.sent, Double(consumer.bytes) / 1e6,
+                Double(consumer.bytes) / 1e6 / max(running.seconds, 1e-9), held.seconds, running.seconds)
+        }
         if let fragments {
             let edges = fragments.masses.map { cbrt($0 / (options.fragments?.fragmentDensity ?? 7850)) }
             let count = fragments.fragmentCount
@@ -301,8 +326,11 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (run, document, fragments)
+        return (run, document, fragments, stream)
     }
+
+    /// How many frames a consumer may fall behind before the run waits for it.
+    static let consumerLag = 4
 
     /// The consumer to fly fragments: on this Mac's CPU, or on another Mac over SSH.
     static func makeConsumer(_ placement: String, spec: FragmentSpec, scenario: Scenario) async throws
@@ -376,10 +404,17 @@ enum HeadlessRun {
                     wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
                 ))
             if let fragments = result.fragments { print("  " + fragments.summary) }
+            if let stream = result.stream { print("  " + stream) }
             return 0
         } catch {
             FileHandle.standardError.write(Data("Run failed: \(error.localizedDescription)\n".utf8))
             return 1
         }
+    }
+}
+
+extension Duration {
+    fileprivate var seconds: Double {
+        Double(components.seconds) + Double(components.attoseconds) * 1e-18
     }
 }
