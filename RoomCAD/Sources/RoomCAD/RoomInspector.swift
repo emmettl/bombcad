@@ -264,7 +264,16 @@ struct RoomInspector: View {
                     }
                 }
                 .help("A floor plan with vertical walls; drag its corners in the plan view")
-                if project.settings.room.plan == nil {
+                if project.settings.room.mesh != nil {
+                    LabeledContent("Length × width × height") {
+                        Text(
+                            String(
+                                format: "%.2f × %.2f × %.2f m, from the shape", project.settings.room.size.x,
+                                project.settings.room.size.y, project.settings.room.size.z)
+                        )
+                        .foregroundStyle(.secondary)
+                    }
+                } else if project.settings.room.plan == nil {
                     NumberField(title: "Length (x)", value: settings.room.size.component(0), unit: "m")
                     NumberField(title: "Width (y)", value: settings.room.size.component(1), unit: "m")
                 } else {
@@ -291,10 +300,23 @@ struct RoomInspector: View {
                         }
                     }
                 }
-                NumberField(title: "Height (z)", value: settings.room.size.component(2), unit: "m")
+                if project.settings.room.mesh == nil {
+                    NumberField(title: "Height (z)", value: settings.room.size.component(2), unit: "m")
+                }
             }
             Section("Surface absorption") {
-                if project.settings.room.plan == nil {
+                if let mesh = project.settings.room.mesh {
+                    let areas = mesh.materialAreas
+                    ForEach(mesh.materials.indices, id: \.self) { index in
+                        MaterialEditor(
+                            title: String(
+                                format: "%@, %.0f m²", mesh.labels?[index] ?? "Surface \(index + 1)",
+                                areas[index]),
+                            material: Binding(
+                                get: { project.settings.room.mesh?.materials[index] ?? .rigid },
+                                set: { project.settings.room.mesh?.materials[index] = $0 }))
+                    }
+                } else if project.settings.room.plan == nil {
                     ForEach(Surface.allCases, id: \.self) { surface in
                         MaterialEditor(title: surface.rawValue.capitalized, material: settings.room[surface])
                     }
@@ -309,13 +331,15 @@ struct RoomInspector: View {
                                 set: { project.settings.room.plan?.walls[index] = $0 }))
                     }
                 }
-                Button("Set All Surfaces Like the Floor") {
-                    for surface in Surface.allCases {
-                        project.settings.room[surface] = project.settings.room.floor
-                    }
-                    if let count = project.settings.room.plan?.walls.count {
-                        project.settings.room.plan?.walls = Array(
-                            repeating: project.settings.room.floor, count: count)
+                if project.settings.room.mesh == nil {
+                    Button("Set All Surfaces Like the Floor") {
+                        for surface in Surface.allCases {
+                            project.settings.room[surface] = project.settings.room.floor
+                        }
+                        if let count = project.settings.room.plan?.walls.count {
+                            project.settings.room.plan?.walls = Array(
+                                repeating: project.settings.room.floor, count: count)
+                        }
                     }
                 }
             }
@@ -345,14 +369,18 @@ struct RoomInspector: View {
                     .disabled(project.settings.receivers.count >= 16)
             }
             Section("Openings") {
-                ForEach(settings.openings) { $opening in
-                    OpeningEditor(opening: $opening, walls: project.settings.room.plan?.corners.count)
-                    Button("Remove \(opening.name)", role: .destructive) {
-                        project.settings.openings.removeAll { $0.id == opening.id }
+                if project.settings.room.mesh != nil {
+                    Text("A built shape's openings are part of the shape.").foregroundStyle(.secondary)
+                } else {
+                    ForEach(settings.openings) { $opening in
+                        OpeningEditor(opening: $opening, walls: project.settings.room.plan?.corners.count)
+                        Button("Remove \(opening.name)", role: .destructive) {
+                            project.settings.openings.removeAll { $0.id == opening.id }
+                        }
                     }
+                    Button("Add Opening") { addOpening() }
+                        .help("An open door or window: sound reaching it leaves the room")
                 }
-                Button("Add Opening") { addOpening() }
-                    .help("An open door or window: sound reaching it leaves the room")
             }
             Section("Simulation") {
                 Picker("Sample rate", selection: settings.sampleRate) {
@@ -446,6 +474,7 @@ struct RoomInspector: View {
     }
 
     private var shapeName: String {
+        if let mesh = project.settings.room.mesh { return "Built shape, \(mesh.faces.count) faces" }
         guard let plan = project.settings.room.plan else { return "Rectangle" }
         return "\(plan.corners.count) walls"
     }
@@ -456,6 +485,7 @@ struct RoomInspector: View {
     }
 
     private func setShape(_ plan: FloorPlan?) {
+        project.settings.room.mesh = nil
         project.settings.room.plan = plan
         // Openings in walls belong to one kind of room or the other.
         project.settings.openings.removeAll {

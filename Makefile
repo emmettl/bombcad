@@ -37,6 +37,7 @@ roomcad-test:
 
 roomcad-validate:
 	swift run -c release --package-path RoomCAD acousticbench --bras-cr2
+	swift run -c release --package-path RoomCAD acousticbench --bras-cr3
 
 roomcad-app:
 	bash RoomCAD/Scripts/build-app.sh "$(CONFIGURATION)"

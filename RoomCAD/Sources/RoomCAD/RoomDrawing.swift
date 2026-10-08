@@ -229,6 +229,21 @@ struct RoomDrawing: View {
                     context.stroke(Path(handle), with: .color(.primary.opacity(0.8)), lineWidth: 1.5)
                 }
             }
+        } else if let mesh = settings.room.mesh {
+            // A room of any shape: the outlines of its surfaces seen along the view, over a faint
+            // bounding box.
+            context.stroke(
+                Path(rect), with: .color(.secondary.opacity(0.3)),
+                style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            var outline = Path()
+            for (a, b) in mesh.outlineEdges() {
+                let p = layout.point(a)
+                let q = layout.point(b)
+                guard hypot(p.x - q.x, p.y - q.y) > 0.5 else { continue }
+                outline.move(to: p)
+                outline.addLine(to: q)
+            }
+            context.stroke(outline, with: .color(.primary.opacity(0.55)), lineWidth: 1)
         } else {
             context.stroke(Path(rect), with: .color(.primary.opacity(0.8)), lineWidth: 2)
         }

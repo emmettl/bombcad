@@ -67,4 +67,24 @@ struct MeasuredRoomTests {
         #expect(mean(matched) > 0.55, "\(matched)")
         #expect(mean(mismatched) < 0.35, "\(mismatched)")
     }
+
+    @Test("The simplified chamber music hall is a closed room holding its sources and receivers")
+    func chamberHall() throws {
+        let directory = Self.directory.deletingLastPathComponent().appendingPathComponent("bras-cr3")
+        let scene = try ValidationScene.load(directory.appendingPathComponent("scene.json"))
+        let settings = scene.settings(
+            set: "initial", source: "LS1", driver: 0, receivers: (1...5).map { "MP\($0)" }, duration: 0.1)
+        try settings.validate()
+        // BRAS's own model, attic included, holds 3,331 m³; this one leaves out the pillars and ornament.
+        #expect(abs(settings.room.volume / 3331 - 1) < 0.1)
+        #expect(([settings.source] + settings.receivers).allSatisfy { settings.room.contains($0.position) })
+        let fitted = scene.refitting("initial", to: Array(repeating: 1.5, count: 8), as: "refitted").room(
+            set: "refitted")
+        // Refitting makes Eyring's estimate the time asked for.
+        let eyring = fitted.eyringReverberationTime(
+            atmosphere: Atmosphere(
+                temperatureCelsius: 22.4, relativeHumidity: 40.9, pressureKilopascals: 101.325),
+            airAbsorption: true)
+        #expect(eyring[3...6].allSatisfy { abs(($0 ?? 0) / 1.5 - 1) < 0.01 })
+    }
 }

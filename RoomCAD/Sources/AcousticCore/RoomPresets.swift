@@ -18,6 +18,12 @@ public struct RoomPreset: Identifiable, Sendable {
     /// For a room that is not rectangular, its corners in metres, anticlockwise; every wall takes the
     /// north wall's material.
     var planCorners: [SIMD2<Double>]? = nil
+    /// For a room built from pieces: its builder, given the materials for `HallShapes.labels`, those
+    /// materials, and the source's and the listeners' centre in the builder's coordinates.
+    var hall: (@Sendable ([SurfaceMaterial]) -> RoomMesh)? = nil
+    var hallSurfaces: [(absorption: String, scattering: Scattering)] = []
+    var hallSource: SIMD3<Double> = .zero
+    var hallListener: SIMD3<Double> = .zero
 
     enum Scattering: Sendable {
         /// A published scattering preset, by ID.
@@ -43,8 +49,9 @@ public struct RoomPreset: Identifiable, Sendable {
         [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5], "mouldings and panelling")
 
     /// The room's material for `surface`.
-    func material(_ surface: Surface) -> SurfaceMaterial {
-        let choice = surfaces[surface]!
+    func material(_ surface: Surface) -> SurfaceMaterial { material(surfaces[surface]!) }
+
+    func material(_ choice: (absorption: String, scattering: Scattering)) -> SurfaceMaterial {
         let absorption = MaterialPresets.absorption.first { $0.id == choice.absorption }!
         var material = SurfaceMaterial.uniform(0, name: "").applying(absorption: absorption)
         switch choice.scattering {
@@ -63,13 +70,22 @@ public struct RoomPreset: Identifiable, Sendable {
     public func applied(to settings: RoomResponseSettings) -> RoomResponseSettings {
         var result = settings
         var room = ShoeboxRoom(size: size, material: .rigid)
-        for surface in Surface.allCases { room[surface] = material(surface) }
-        if let planCorners { room.plan = FloorPlan(corners: planCorners, material: material(.north)) }
+        var centre: SIMD3<Double>
+        if let hall {
+            room.mesh = hall(hallSurfaces.map(material))
+            let low = room.mesh!.bounds.min
+            room = room.fittingMesh()
+            result.source.position = hallSource - low
+            centre = hallListener - low
+        } else {
+            for surface in Surface.allCases { room[surface] = material(surface) }
+            if let planCorners { room.plan = FloorPlan(corners: planCorners, material: material(.north)) }
+            result.source.position = [source.x * size.x, source.y * size.y, min(sourceHeight, 0.6 * size.z)]
+            centre = SIMD3(listener.x * size.x, listener.y * size.y, min(1.2, 0.5 * size.z))
+        }
         result.room = room
         result.openings = []
-        result.source.position = [source.x * size.x, source.y * size.y, min(sourceHeight, 0.6 * size.z)]
-        let centre = SIMD3(listener.x * size.x, listener.y * size.y, min(1.2, 0.5 * size.z))
-        let spread = min(0.6, 0.15 * size.y)
+        let spread = min(0.6, 0.15 * room.size.y)
         let names = ["Left", "Right"]
         result.receivers = (0..<2).map { index in
             let existing = index < settings.receivers.count ? settings.receivers[index] : nil
@@ -86,7 +102,7 @@ public struct RoomPreset: Identifiable, Sendable {
         // Enough order for the shortest dimension, capped so the image sources stay quick; scattering
         // carries the late energy that a cap omits.
         let reach = result.duration * settings.atmosphere.soundSpeed
-        result.maximumReflectionOrder = min(120, Int((reach / size.min()).rounded(.up)) + 2)
+        result.maximumReflectionOrder = min(120, Int((reach / room.size.min()).rounded(.up)) + 2)
         return result
     }
 }
@@ -216,5 +232,41 @@ public enum RoomPresets {
                 .south: ("limestone_wall", RoomPreset.ornate), .north: ("limestone_wall", RoomPreset.ornate),
             ],
             source: [0.1, 0.5], listener: [0.5, 0.5], sourceHeight: 2),
+        RoomPreset(
+            id: "shoebox-concert-hall", name: "Shoebox concert hall",
+            summary:
+                "26 × 18 × 14 m with a stage house and a balcony round three sides: upholstered seats, wooden "
+                + "linings",
+            size: [34, 18, 14], surfaces: [:],
+            hall: { materials in
+                HallShapes.shoebox(
+                    length: 26, width: 18, height: 14, stageDepth: 8, stageWidth: 14, stageHeight: 11,
+                    stageRise: 1, balconyHeight: 6, balconyDepth: 3, materials: materials)
+            },
+            hallSurfaces: [
+                ("audience_upholstered_chairs_1", .published("theatre_audience")),
+                ("stage_floor", RoomPreset.smooth),
+                ("wooden_lining", RoomPreset.ornate), ("hard_surface", RoomPreset.ornate),
+                ("stage_floor", RoomPreset.smooth), ("wooden_lining", RoomPreset.ornate),
+            ],
+            hallSource: [-3, 0.5, 2.5], hallListener: [15, -1, 1.2]),
+        RoomPreset(
+            id: "raked-auditorium", name: "Raked auditorium",
+            summary:
+                "26 m deep, widening from 18 to 32 m: raked seating, a rear tier and a sloping ceiling; brick "
+                + "walls",
+            size: [33, 32, 13], surfaces: [:],
+            hall: { materials in
+                HallShapes.raked(
+                    depth: 26, frontWidth: 18, backWidth: 32, frontHeight: 10, backHeight: 13, rake: 6,
+                    stageDepth: 7, tierDepth: 8, tierHeight: 3, materials: materials)
+            },
+            hallSurfaces: [
+                ("audience_upholstered_chairs_1", .published("theatre_audience")),
+                ("linoleum_on_concrete", RoomPreset.smooth), ("brickwork", RoomPreset.plainWalls),
+                ("plasterboard", RoomPreset.ornate), ("stage_floor", RoomPreset.smooth),
+                ("wooden_lining", RoomPreset.plainWalls),
+            ],
+            hallSource: [-2.5, 0.5, 1.5], hallListener: [11, -2, 3.2]),
     ]
 }

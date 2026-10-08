@@ -36,11 +36,25 @@ public struct RoomMesh: Codable, Equatable, Sendable {
     public var faces: [Face]
     /// Materials the faces refer to: one per kind of surface, such as "seating" or "plaster".
     public var materials: [SurfaceMaterial]
+    /// What each material covers, such as "Audience" or "Stage walls", for showing; nil for none.
+    public var labels: [String]?
 
-    public init(vertices: [SIMD3<Double>], faces: [Face], materials: [SurfaceMaterial]) {
+    public init(
+        vertices: [SIMD3<Double>], faces: [Face], materials: [SurfaceMaterial], labels: [String]? = nil
+    ) {
         self.vertices = vertices
         self.faces = faces
         self.materials = materials
+        self.labels = labels
+    }
+
+    /// The area each material covers.
+    public var materialAreas: [Double] {
+        var areas = [Double](repeating: 0, count: materials.count)
+        for face in faces.indices where !faces[face].open {
+            areas[faces[face].material] += normalAndArea(face).area
+        }
+        return areas
     }
 
     /// Unit normal into the room, by Newell's method, and the face's area.
@@ -59,6 +73,26 @@ public struct RoomMesh: Codable, Equatable, Sendable {
     /// The material a face presents: its own, or air for an open face.
     public func material(of face: Int) -> SurfaceMaterial {
         faces[face].open ? .anechoic : materials[faces[face].material]
+    }
+
+    /// The edges that outline the room for drawing: those of each flat surface's outline, leaving out
+    /// the edges between pieces of the same surface.
+    public func outlineEdges() -> [(SIMD3<Double>, SIMD3<Double>)] {
+        let geometry = MeshGeometry.of(self)
+        var edges: [(SIMD3<Double>, SIMD3<Double>)] = []
+        for plane in geometry.planes {
+            var count: [SIMD2<Int>: Int] = [:]
+            for face in plane.faces {
+                let corners = faces[face].corners
+                for i in corners.indices {
+                    let a = corners[i]
+                    let b = corners[(i + 1) % corners.count]
+                    count[SIMD2(min(a, b), max(a, b)), default: 0] += 1
+                }
+            }
+            for (edge, n) in count where n == 1 { edges.append((vertices[edge.x], vertices[edge.y])) }
+        }
+        return edges
     }
 
     public var bounds: (min: SIMD3<Double>, max: SIMD3<Double>) {
@@ -97,7 +131,7 @@ public struct RoomMesh: Codable, Equatable, Sendable {
                 throw AcousticError.invalid("\(name) refers to a material the mesh does not have.")
             }
             let (normal, area) = normalAndArea(index)
-            guard area > 1e-4 else { throw AcousticError.invalid("\(name) has no area.") }
+            guard area > 1e-10 else { throw AcousticError.invalid("\(name) has no area.") }
             let origin = vertices[face.corners[0]]
             let flatness = face.corners.map { abs(simd_dot(vertices[$0] - origin, normal)) }.max() ?? 0
             guard flatness < 0.02 else {

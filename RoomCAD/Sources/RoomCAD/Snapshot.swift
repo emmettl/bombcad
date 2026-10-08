@@ -4,19 +4,22 @@ import RoomDocument
 import SwiftUI
 
 /// Renders the starter room's drawings and a generated response offscreen, so the drawing code can be
-/// checked without a window: `RoomCAD --snapshot file.png`. Controls are not rendered.
+/// checked without a window: `RoomCAD --snapshot file.png [preset]`. Controls are not rendered.
 @MainActor
 enum Snapshot {
-    static func write(to url: URL) -> Bool {
+    static func write(to url: URL, preset id: String? = nil) -> Bool {
         do {
-            // The L-shaped living room, with a door in one wall and a hatch in the ceiling, and an ORTF pair.
-            var settings = StereoPair.ortf.arranged(
-                in: RoomPresets.all.first { $0.id == "l-shaped-living-room" }!.applied(
-                    to: RoomProject.starter))
-            settings.openings = [
-                Opening(name: "Door", surface: .north, wall: 5, centre: [2, 1], size: [0.9, 2]),
-                Opening(name: "Hatch", surface: .ceiling, centre: [6, 1.5], size: [0.8, 0.8]),
-            ]
+            // By default the L-shaped living room, with a door in one wall and a hatch in the ceiling, and
+            // an ORTF pair; or the preset named.
+            let preset = RoomPresets.all.first { $0.id == (id ?? "l-shaped-living-room") }
+            guard let preset else { throw CocoaError(.fileNoSuchFile) }
+            var settings = StereoPair.ortf.arranged(in: preset.applied(to: RoomProject.starter))
+            if id == nil {
+                settings.openings = [
+                    Opening(name: "Door", surface: .north, wall: 5, centre: [2, 1], size: [0.9, 2]),
+                    Opening(name: "Hatch", surface: .ceiling, centre: [6, 1.5], size: [0.8, 0.8]),
+                ]
+            }
             let result = try RoomResponseGenerator.generate(settings)
             let player = AuditionPlayer()
             try player.prepareImmediately(result)

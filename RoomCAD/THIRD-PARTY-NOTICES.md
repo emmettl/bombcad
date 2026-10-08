@@ -36,10 +36,10 @@ The dry recordings and their licences are listed in `Sources/Audition/Clips/CRED
 
 ## BRAS: Benchmark for Room Acoustical Simulation
 
-`Validation/bras-cr2/scene.json` and `Validation/bras-cr2/measured.json` are derived from scene CR2 of
-the Benchmark for Room Acoustical Simulation by L. Aspöck, M. Vorländer, F. Brinkmann, D. Ackermann
+The `scene.json` and `measured.json` files in `Validation/bras-cr2` and `Validation/bras-cr3` are
+derived from scenes CR2 and CR3 of the Benchmark for Room Acoustical Simulation by L. Aspöck, M. Vorländer, F. Brinkmann, D. Ackermann
 and S. Weinzierl (TU Berlin and RWTH Aachen, DOI 10.14279/depositonce-6726.3). They are licensed under
 the Creative Commons Attribution-ShareAlike 4.0 International licence
-(https://creativecommons.org/licenses/by-sa/4.0/), like the database; `Validation/bras-cr2/README.md`
+(https://creativecommons.org/licenses/by-sa/4.0/), like the database; the `README.md` in each folder
 says what was derived and how. The app does not bundle them.
 

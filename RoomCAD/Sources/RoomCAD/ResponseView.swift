@@ -214,6 +214,10 @@ struct DiagnosticsList: View {
                 Text(
                     "Image sources reach \(wallOrder) wall and \(totalOrder) total reflections; the ray tracer "
                         + "carries every later specular reflection.")
+            } else if result.settings.room.mesh != nil, let order = d.planTotalOrder {
+                Text(
+                    "Image sources reach \(order) reflections; the ray tracer carries every later specular "
+                        + "reflection.")
             } else if let limited = d.orderLimitedAfter.compactMap({ $0 }).min() {
                 if (d.diffuseRays ?? 0) > 0 {
                     Text(

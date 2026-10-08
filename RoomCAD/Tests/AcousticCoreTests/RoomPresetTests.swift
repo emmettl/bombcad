@@ -13,22 +13,23 @@ struct RoomPresetTests {
 
     @Test("Every preset gives valid settings with published absorption on every surface")
     func valid() throws {
-        #expect(RoomPresets.all.count == 10)
-        #expect(Set(RoomPresets.all.map(\.id)).count == 10)
+        #expect(RoomPresets.all.count == 12)
+        #expect(Set(RoomPresets.all.map(\.id)).count == 12)
         for preset in RoomPresets.all {
             let settings = preset.applied(to: base)
             try settings.validate()
-            #expect(settings.room.size == preset.size)
+            // A built shape's size is its bounds.
+            #expect(preset.hall != nil || settings.room.size == preset.size)
             #expect(settings.receivers.count == 2)
             #expect(
                 ([settings.source] + settings.receivers).allSatisfy { settings.room.contains($0.position) })
             #expect((0.5...8).contains(settings.duration))
             #expect(settings.estimatedImageCount < 3_000_000, "\(preset.id)")
-            for surface in Surface.allCases {
-                let material = settings.room[surface]
-                #expect(material.reference.hasPrefix("Absorption: Vorländer"), "\(preset.id) \(surface)")
-                #expect(material.reference.contains("Scattering:"), "\(preset.id) \(surface)")
-                #expect(material.scatters, "\(preset.id) \(surface)")
+            for (_, material) in settings.room.boundaries {
+                #expect(
+                    material.reference.hasPrefix("Absorption: Vorländer"), "\(preset.id) \(material.name)")
+                #expect(material.reference.contains("Scattering:"), "\(preset.id) \(material.name)")
+                #expect(material.scatters, "\(preset.id) \(material.name)")
             }
         }
     }

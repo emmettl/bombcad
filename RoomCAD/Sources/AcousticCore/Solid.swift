@@ -208,6 +208,12 @@ public struct Solid: Sendable {
             }
             if corners.count > 1, corners.first == corners.last { corners.removeLast() }
             guard Set(corners).count >= 3 else { continue }
+            // Slivers that splitting leaves at a shared edge enclose nothing.
+            let points = corners.map { vertices[$0] }
+            let doubled = points.indices.reduce(SIMD3<Double>(repeating: 0)) { total, i in
+                total + simd_cross(points[i], points[(i + 1) % points.count])
+            }
+            guard simd_length(doubled) / 2 > 1e-10 else { continue }
             faces.append(RoomMesh.Face(corners: corners, material: polygon.material, open: polygon.open))
         }
         return RoomMesh(vertices: vertices, faces: faces, materials: materials)

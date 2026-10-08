@@ -7,11 +7,12 @@ enum Main {
         let arguments = CommandLine.arguments
         if let flag = arguments.firstIndex(of: "--snapshot") {
             guard flag + 1 < arguments.count else {
-                FileHandle.standardError.write(Data("Usage: RoomCAD --snapshot FILE.png\n".utf8))
+                FileHandle.standardError.write(Data("Usage: RoomCAD --snapshot FILE.png [PRESET]\n".utf8))
                 exit(2)
             }
+            let preset = flag + 2 < arguments.count ? arguments[flag + 2] : nil
             MainActor.assumeIsolated {
-                exit(Snapshot.write(to: URL(fileURLWithPath: arguments[flag + 1])) ? 0 : 1)
+                exit(Snapshot.write(to: URL(fileURLWithPath: arguments[flag + 1]), preset: preset) ? 0 : 1)
             }
         }
         // Open a new room at launch, as document apps did before iCloud, instead of the Open panel.
