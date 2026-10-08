@@ -94,7 +94,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    but 42–47% strong, and the slab's peak 18% low. Across discrete cracks, a shear stiffness that
    falls as they open (Walraven and Reinhardt, now an option) barely moves either; the beam's
    strength follows the interlock cap alone, 108–109% on both meshes at a fifth of it, which
-   nothing measured yet supports. Bond lost where bars yield (now part of slip) spreads yield
+   nothing measured supports: checked directly against Walraven and Reinhardt's push-off tests,
+   the cap is 3% to 24% above what an unpressed crack carried, not five times. Bond lost where bars yield (now part of slip) spreads yield
    along them but leaves the slab at 88 mm; its stiffness with slip comes from cracks that keep
    to one element each, 90 mm apart over a shorter zone (98 mm if spread over the crack spacing).
    A direct test of interlock across one crack, and the test slab's crack pattern, come next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
@@ -729,7 +730,10 @@ checked. Finite support regions select initial lower-face/footprint points and u
 horizontal bearing planes; they do not model a footing's finite contact extents. See
 [structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
 and moving-component connections; bounded footings, and soil with mass, radiation damping and
-layers; and a measured connection case.
+layers; and a measured connection case. Loaded by the air instead of a pulse
+(`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
+wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
+pulse throws over.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2

@@ -1372,6 +1372,11 @@ func runAnchorage() throws {
             + (flag("air") ? "12 m long, loaded by the air" : "Kingery–Bulmash reflected pulse, no air")
             + "; \(format(Double(duration), 1)) s"
     )
+    if !flag("air") {
+        print(
+            "The pulse loads the face alone. A freestanding wall's back face is loaded too, as the wave wraps\n"
+                + "over and round it, and it sways about a third as far at 10 m: see --air.")
+    }
     for standoff in standoffs {
         print("")
         var header = false

@@ -3,6 +3,7 @@ import DocumentKit
 import Foundation
 import ImpulseResponseKit
 import Testing
+import simd
 
 @testable import RoomDocument
 
@@ -47,6 +48,20 @@ struct RoomDocumentTests {
         try starter.validate()
         #expect(starter.receivers.count == 2)
         #expect(starter.estimatedImageCount < 3_000_000)
+    }
+
+    @Test("A preview is current but not final, and stays a preview when the document reopens")
+    func preview() throws {
+        var project = RoomProject(settings: Self.settings)
+        project.result = try RoomResponseGenerator.generate(project.settings, quality: .preview)
+        #expect(project.isResultCurrent && !project.isResultFinal)
+        let loaded = try reopened(project)
+        #expect(loaded.isResultCurrent && !loaded.isResultFinal)
+        project.result = try RoomResponseGenerator.generate(project.settings)
+        #expect(project.isResultFinal)
+        // A response saved before previews existed has no quality and was made in full.
+        project.result?.diagnostics.quality = nil
+        #expect(project.isResultFinal)
     }
 
     @Test("A retained response reopens, and only changes to its inputs make it stale")
@@ -191,6 +206,30 @@ struct RoomDocumentTests {
             let levels = band.map { channel.spectrum[$0] }
             #expect(levels.max()! - levels.min()! < 0.2, "\(channel.name): \(levels)")
         }
+    }
+
+    @Test("The early view shows the direct sound and a floor reflection at their path lengths' times")
+    func early() throws {
+        var settings = Self.settings
+        settings.room = ShoeboxRoom(size: settings.room.size, material: .anechoic)
+        settings.room.floor = .rigid
+        settings.airAbsorption = false
+        settings.maximumReflectionOrder = 1
+        settings.duration = 0.1
+        let summary = ResponseSummary(try RoomResponseGenerator.generate(settings))
+        let c = settings.atmosphere.soundSpeed
+        let source = settings.source.position
+        let receiver = settings.receivers[0].position
+        let direct = simd_distance(source, receiver) / c
+        let floor = simd_distance(SIMD3(source.x, source.y, -source.z), receiver) / c
+        let early = summary.channels[0].early
+        func bin(_ t: Double) -> Int { Int(t / ResponseSummary.earlyBin) }
+        // The loudest bin is the direct sound's; the reflection, from a rigid floor along a longer path,
+        // is a little quieter; between them there is nothing.
+        #expect(early.indices.max { early[$0] < early[$1] }.map { abs($0 - bin(direct)) <= 1 } == true)
+        let reflection = early[(bin(floor) - 1)...(bin(floor) + 1)].max()!
+        #expect(reflection > -6 && reflection < 0)
+        #expect(early[(bin(direct) + 3)..<(bin(floor) - 2)].allSatisfy { $0 < -30 })
     }
 
     @Test("A saved document reopens from disk after being moved")

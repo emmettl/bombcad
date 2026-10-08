@@ -27,6 +27,9 @@ struct WaveSolver {
     var impedanceBands: [Int]?
     /// Where to run: the GPU when there is one, or the CPU.
     var engine = Engine.automatic
+    /// Whether `responses` damps each band so the room's modes decay, averaged over the room, at the
+    /// diffuse rate their absorption gives (see `responses`); off only to test the bare boundary model.
+    var matchesDiffuseDecay = true
 
     enum Engine: Sendable { case automatic, cpu }
 
@@ -69,6 +72,10 @@ struct WaveSolver {
         while Double(2 * m) / Double(sampleRate) <= limit { m *= 2 }
         decimation = m
     }
+
+    /// About how much memory a run takes, in bytes: per cell, pressure and three velocities in single
+    /// precision, six face coefficients and a flag on the GPU, and the layout they are built from.
+    var memoryEstimate: Int { cells.x * cells.y * cells.z * 72 }
 
     /// Work for `duration` seconds, in cell updates.
     func cost(duration: Double) -> Double {
@@ -305,12 +312,25 @@ extension WaveSolver {
     ///
     /// `fftLength` must be a power of two at least `frames` plus room for the decay to finish; the
     /// solver runs `fftLength / decimation` steps so its spectrum shares the audio spectrum's bins. Also
-    /// says how many of the runs used the GPU.
+    /// says how many of the runs used the GPU and, for each octave band covered, the room's T30 in the
+    /// bare simulation and the diffuse decay it was matched to.
+    ///
+    /// Published absorption coefficients are diffuse-field values, and the geometrical model uses them
+    /// that way. In the solver a wall is a locally reacting impedance, and by Morse's first-order theory a
+    /// mode loses only half as much energy to a wall it grazes as to one it strikes, so axial and
+    /// tangential modes outlast a diffuse field. In the measured seminar room (docs/roomcad-validation.md)
+    /// this made the solver's decay at 63–125 Hz 18–32% longer than measured, while the measurement
+    /// agreed with the diffuse decay: real rooms mix grazing and oblique energy by their irregularities,
+    /// furniture and surfaces that are not locally reacting. Each run therefore also records 24 probes
+    /// spread through the room, whose energy gives the room's average decay in each band; where that is
+    /// slower than Eyring's decay for the band's absorption, the band's response is damped by e^(-Δt) from
+    /// the direct sound's arrival on, to match it. Every mode in the band is damped alike, so the modes' frequencies, their spatial
+    /// pattern and their differences in decay remain.
     func responses(
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], frames: Int,
         fftLength: Int, progress: GenerationProgress? = nil, weight: (Double) -> Double,
         stop: @Sendable () -> Bool
-    ) -> (channels: [[Float]], gpuRuns: Int)? {
+    ) -> (channels: [[Float]], gpuRuns: Int, decay: [Int: (bare: Double?, diffuse: Double?)])? {
         let steps = fftLength / decimation
         let dt = timeStep
         let fft = RealFFT(length: steps)
@@ -318,9 +338,12 @@ extension WaveSolver {
         // The injected volume velocity at its sample times, (n + 1/2) dt.
         let q = fft.forward((0..<steps).map { pulse((Double($0) + 0.5) * dt) })
         let audio = RealFFT(length: fftLength)
-        var real = Array(repeating: [Double](repeating: 0, count: fftLength / 2), count: receivers.count)
-        var imag = real
+        var output = Array(repeating: [Double](repeating: 0, count: frames), count: receivers.count)
         var gpuRuns = 0
+        var decay: [Int: (bare: Double?, diffuse: Double?)] = [:]
+        let probes = probePositions().map { (position: $0, microphone: Microphone.omni) }
+        let diffuse = room.withOpenings(openings).eyringReverberationTime(
+            atmosphere: atmosphere, airAbsorption: true)
         // Walls absorb differently in each octave band: one run per group of bands with the same
         // impedances, each kept only in its own bands. The band weights sum to one, so together they
         // cover the spectrum once.
@@ -328,17 +351,23 @@ extension WaveSolver {
         for group in groups {
             var solver = self
             solver.impedanceBands = group
-            guard let run = solver.run(source: source, receivers: receivers, steps: steps, stop: stop) else {
+            guard
+                let run = solver.run(
+                    source: source, receivers: receivers + (matchesDiffuseDecay ? probes : []), steps: steps,
+                    stop: stop)
+            else {
                 return nil
             }
             if run.onGPU { gpuRuns += 1 }
             progress?.advance(by: 1 / Double(groups.count))
-            for (r, samples) in run.signals.enumerated() {
+            // The transfer function of each recorded signal, H = P / free-field reference, in the audio FFT's
+            // scaling, at the solver's bins.
+            func transfer(_ samples: [Double]) -> (real: [Double], imag: [Double]) {
                 let p = fft.forward(samples)
+                var real = [Double](repeating: 0, count: half)
+                var imag = real
                 for k in 1..<half {
                     let f = Double(k) / (Double(steps) * dt)
-                    let w = weight(f) * group.reduce(0) { $0 + OctaveBands.weight(band: $1, frequency: f) }
-                    guard w > 0 else { continue }
                     // Pressure was recorded at (n + 1) dt and the pulse injected at (n + 1/2) dt.
                     let pPhase = -2 * Double.pi * Double(k) / Double(steps)
                     let qPhase = -Double.pi * Double(k) / Double(steps)
@@ -352,17 +381,96 @@ extension WaveSolver {
                     let ri = qr * scale
                     let norm = rr * rr + ri * ri
                     guard norm > 1e-30 else { continue }
-                    // H = P / reference, in the audio FFT's forward scaling (vDSP scales by 2).
-                    real[r][k] += 2 * w * (pr * rr + pi * ri) / norm
-                    imag[r][k] += 2 * w * (pi * rr - pr * ri) / norm
+                    // vDSP scales the forward transform by 2.
+                    real[k] = 2 * (pr * rr + pi * ri) / norm
+                    imag[k] = 2 * (pi * rr - pr * ri) / norm
+                }
+                return (real, imag)
+            }
+            // Each band's extra damping, from the probes' summed energy in the band, above 20 Hz, over the
+            // response's length: the zero-phase band filter wraps its ringing before an arrival round to the
+            // end of the run.
+            var damping: [Int: Double] = [:]
+            if matchesDiffuseDecay {
+                let spectra = run.signals[receivers.count...].map(transfer)
+                let length = min(frames / decimation, steps)
+                for band in group {
+                    var energy = [Double](repeating: 0, count: length)
+                    for spectrum in spectra {
+                        var real = [Double](repeating: 0, count: half)
+                        var imag = real
+                        for k in 1..<half {
+                            let f = Double(k) / (Double(steps) * dt)
+                            let w =
+                                OctaveBands.weight(band: band, frequency: f)
+                                * OctaveBands.rise(f, crossover: 20)
+                            real[k] = spectrum.real[k] * w
+                            imag[k] = spectrum.imag[k] * w
+                        }
+                        let signal = fft.inverse(real: real, imag: imag)
+                        for n in 0..<length { energy[n] += signal[n] * signal[n] }
+                    }
+                    let parameters = RoomParameters.measure(
+                        energy: energy, sampleRate: sampleRate / decimation, noiseCompensated: false)
+                    let bare = parameters.t30 ?? parameters.t20
+                    decay[band] = (bare, diffuse[band])
+                    if let bare, let target = diffuse[band], target > 0, target < bare {
+                        // Energy decays at 6 ln 10 / T; amplitude at half that.
+                        damping[band] = 3 * log(10) * (1 / target - 1 / bare)
+                    }
+                }
+            }
+            for r in receivers.indices {
+                let h = transfer(run.signals[r])
+                // Damping starts with the direct sound, which it leaves alone.
+                let direct = simd_distance(receivers[r].position, source) / atmosphere.soundSpeed
+                for band in group {
+                    var real = [Double](repeating: 0, count: fftLength / 2)
+                    var imag = real
+                    for k in 1..<half {
+                        let f = Double(k) / (Double(steps) * dt)
+                        let w = weight(f) * OctaveBands.weight(band: band, frequency: f)
+                        real[k] = h.real[k] * w
+                        imag[k] = h.imag[k] * w
+                    }
+                    let signal = audio.inverse(real: real, imag: imag)
+                    let delta = damping[band] ?? 0
+                    let rate = Double(sampleRate)
+                    for n in 0..<frames {
+                        output[r][n] += signal[n] * exp(-delta * max(Double(n) / rate - direct, 0))
+                    }
                 }
             }
         }
-        let channels = receivers.indices.map { r in
-            let signal = audio.inverse(real: real[r], imag: imag[r])
-            return (0..<frames).map { Float(signal[$0]) }
+        return (output.map { $0.map(Float.init) }, gpuRuns, decay)
+    }
+
+    /// Points spread through the room for measuring its average decay: the first `count` points of a
+    /// Halton sequence that lie at least `clearance` inside every boundary.
+    func probePositions(count: Int = 24) -> [SIMD3<Double>] {
+        let clearance = min(0.3, 0.2 * room.size.min())
+        func radicalInverse(_ i: Int, _ base: Int) -> Double {
+            var (i, f, result) = (i, 1.0, 0.0)
+            while i > 0 {
+                f /= Double(base)
+                result += f * Double(i % base)
+                i /= base
+            }
+            return result
         }
-        return (channels, gpuRuns)
+        var points: [SIMD3<Double>] = []
+        var i = 1
+        while points.count < count, i < 4096 {
+            let unit = SIMD3(radicalInverse(i, 2), radicalInverse(i, 3), radicalInverse(i, 5))
+            let point = SIMD3(repeating: clearance) + unit * (room.size - 2 * clearance)
+            i += 1
+            if let plan = room.plan {
+                let plane = SIMD2(point.x, point.y)
+                guard plan.contains(plane), plan.distanceToWalls(plane) >= clearance else { continue }
+            }
+            points.append(point)
+        }
+        return points
     }
 
     /// Simulates on the GPU when there is one and the engine allows it, otherwise on the CPU, and says

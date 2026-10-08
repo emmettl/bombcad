@@ -48,6 +48,23 @@ titles; the authors, journals and years should be enough to find each one.
   paper says only that diagonal bars were "arranged along the chamfered surfaces". The model
   leaves them out, and the joints decide whether its roof holds.
 
+## 2b. A freestanding wall under an open-air charge
+
+- **Where:** a field test of a wall standing on its own footing, not held at its top. Found
+  (2026-10-08) but not readable here, behind the publishers' bot checks: "Experimental and
+  numerical study on protective effect of RC blast wall against air shock wave", *Defence
+  Technology* (2022, open access, ScienceDirect S2214914722002434), which measured the reflected
+  pressure on a reinforced concrete blast wall and the diffracted pressure behind it from TNT
+  3 m away; the cantilever-wall tests of Keys and Clubley, and of Ahmad et al., on the
+  pressures behind a cantilever blast wall; and the scaled masonry walls of M. Hayman's thesis
+  (McMaster University), which were held in frames rather than freestanding.
+- **Needed:** the wall's section, reinforcement and footing; the charge and its position; the
+  pressures in front of and behind the wall; and its deflection or rotation, peak and left.
+- **Use:** the coupled wall study (`blastbench anchorage --air`) found that the wave wrapping
+  over and round a freestanding wall, loading its back face, cuts its sway to a third of a
+  pulse on its face alone (see [base connections](structural-model.md#base-connections)).
+  Pressures behind a wall would check that; a deflection record would check its base too.
+
 ## 2a. Shear across cracks at high rates
 
 - **Where:** any test of shear across a crack (push-off specimens) loaded quickly, or a
@@ -66,7 +83,7 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Nine values in the code were written from memory and should be checked against the original.
+Eight values in the code were written from memory and should be checked against the original.
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
@@ -85,11 +102,12 @@ Nine values in the code were written from memory and should be checked against t
   and strain and the constants K₁, K₂, K₃ (taken as 0.8 GPa, 0.1, and 85, −171, 208 GPa), used
   in `compactionPressure` in `Structure.metal`. A close-in or contact-charge test on a concrete
   slab would then check it.
-- **Vibrational temperatures of N2 and O2** (3390 K and 2270 K), used for hot air in
-  `Solver.metal`, and **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and
-  59,500 K, ρ<sub>d</sub> 130 and 150 g/cm³, from Vincenti and Kruger's *Introduction to
-  Physical Gas Dynamics*), used for dissociating air; any text on statistical thermodynamics,
-  or the NIST-JANAF tables, to check them.
+- **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and 59,500 K, ρ<sub>d</sub> 130
+  and 150 g/cm³, from Vincenti and Kruger's *Introduction to Physical Gas Dynamics*), used for
+  dissociating air in `Solver.metal`; any text on statistical thermodynamics, or the NIST-JANAF
+  tables, to check them. (The vibrational temperatures of N2 and O2 used for hot air, 3390 K
+  and 2270 K, are checked: a table of diatomic properties from Georgia Tech's AE 6765 gives
+  3393 K and 2274 K.)
 
 - **Dowel strength.** B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and
   dowels embedded in concrete", *Bygningsstatiske Meddelelser* 34 (1963), or fib Model Code
@@ -143,7 +161,8 @@ Supplied by hand during development, and now in use:
   τ = −f_cc/30 + [1.8 w^−0.80 + (0.234 w^−0.707 − 0.20) f_cc] Δ (eq. 1a, w and Δ in mm), whose
   slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
   Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
-  were restrained, so their cracks carried compression, which the interlock cap leaves out.
+  were restrained, so their cracks carried compression, which the interlock cap leaves out;
+  where its laws give no stress across the crack, the model's cap is 3% to 24% above them.
 - J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
   effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
   (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,

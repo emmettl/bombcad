@@ -21,7 +21,10 @@ final class RoomEditor {
     private var delivery: Task<Void, Never>?
 
     /// Generates a response in the background and hands it to `deliver` unless cancelled.
-    func generate(_ settings: RoomResponseSettings, deliver: @escaping @MainActor (RoomResponse) -> Void) {
+    func generate(
+        _ settings: RoomResponseSettings, quality: GenerationQuality = .full,
+        deliver: @escaping @MainActor (RoomResponse) -> Void
+    ) {
         cancel()
         message = nil
         do {
@@ -34,7 +37,7 @@ final class RoomEditor {
         generatingSettings = settings
         let progress = GenerationProgress()
         let work = Task.detached(priority: .userInitiated) {
-            try await RoomResponseGenerator.generate(settings, progress: progress)
+            try await RoomResponseGenerator.generate(settings, quality: quality, progress: progress)
         }
         self.work = work
         watcher?.cancel()
@@ -86,14 +89,15 @@ final class RoomEditor {
     /// invalid settings, do nothing.
     /// `needed` is asked again after the delay, in case a response arrived meanwhile.
     func regenerate(
-        _ settings: RoomResponseSettings, after delay: Duration = .milliseconds(400),
-        needed: @MainActor () -> Bool = { true }, deliver: @escaping @MainActor (RoomResponse) -> Void
+        _ settings: RoomResponseSettings, quality: GenerationQuality = .full,
+        after delay: Duration = .milliseconds(400), needed: @MainActor () -> Bool = { true },
+        deliver: @escaping @MainActor (RoomResponse) -> Void
     ) async {
         if let generatingSettings, generatingSettings != settings { cancel() }
         guard generatingSettings != settings, (try? settings.validate()) != nil else { return }
         try? await Task.sleep(for: delay)
         guard !Task.isCancelled, generatingSettings != settings, needed() else { return }
-        generate(settings, deliver: deliver)
+        generate(settings, quality: quality, deliver: deliver)
     }
 
     /// Recomputes the summary shown for `result`, or clears it.

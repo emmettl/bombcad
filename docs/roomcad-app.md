@@ -105,19 +105,28 @@ script before an archive is written.
 - **Response.**
   - The response regenerates in the background 0.4 s after any input that affects it changes, so
     dragging or typing starts one run once you pause. A run for older inputs is cancelled at once.
-  - A new document generates on opening. **Generate** (⌘R) forces a run, and **Cancel** (⌘.) stops
-    one.
+  - That run is a preview. It spends a quarter of the wave solver's budget, which lowers its crossover
+    by about a sixth, and uses a quarter of the rays, so it arrives two to four times sooner. Once the
+    inputs have stayed the same for 1.5 s after a preview, the full-quality response follows. Until
+    then the status reads "Preview quality".
+  - A new document generates on opening, a preview and then the full response. **Generate** (⌘R)
+    forces a full-quality run, and **Cancel** (⌘.) stops one.
   - Export settings don't affect the response, since they are applied on export, so they don't start
     a run.
   - While a run is in progress the response is marked "Updating…"; until it finishes, the previous one
     stays in use. The toolbar shows the run's stage and how far it has got, such as "Tracing rays 40%"
     or "Wave solver 67%".
-  - The result shows each channel's peak envelope in dB, or, switched with the picker above it, its
-    spectrum from 20 Hz to 20 kHz, twelve points to an octave, each averaged over a sixth of an
-    octave, with the wave solver's crossover marked.
+  - The result shows each channel's peak envelope in dB. The picker above it switches to its spectrum
+    or its early arrivals.
+    - **Spectrum:** from 20 Hz to 20 kHz, twelve points to an octave, each averaged over a sixth of an
+      octave, with the wave solver's crossover marked.
+    - **Early arrivals:** the energy above 500 Hz in 0.25 ms bins, from emission to 80 ms after the
+      first direct sound, in dB, so the direct sound and early reflections show one by one.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
-  - It shows arrival counts and generation time. It also shows the wave solver's crossover, grid, time
-    and runs, with how many ran on the GPU and how many on the CPU. Then come the Schroeder
+  - It shows arrival counts and generation time. It also shows the wave solver's crossover, grid and
+    its approximate memory, time and runs, with how many ran on the GPU and how many on the CPU. It also gives its phase-velocity
+    error at the crossover, and the decay each of its bands had before it was matched to Eyring's
+    estimate. Then come the Schroeder
     frequency and the share of energy from 500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.
@@ -147,7 +156,8 @@ script before an archive is written.
     `RoomCAD/Sources/Audition/Clips/CREDITS.md`, which ships inside the app. Files are mixed to mono, converted to the
     response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
-  beside it.
+  beside it. Exports are always full quality: if the current response is a preview or out of date, the
+  full one is generated first and then written.
 
 ## Room presets
 
@@ -296,8 +306,8 @@ saved again.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
 `RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen. It also renders
-the audition waveform with its playhead, and a generated response's envelope, spectrum, decay table
-and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
+the audition waveform with its playhead, and a generated response's envelope, spectrum, early
+arrivals, decay table and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
 coincide in one projection; labels now move apart. Form controls and toolbars do not render
 offscreen.
 

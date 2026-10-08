@@ -203,6 +203,24 @@ fill the room, at least 10 per wavelength at the top of the crossover's transiti
   frequency-independent materials needs one run and one with several distinct bands needs one per band.
   Each run's spectrum is kept only in its own bands, through the same octave weights the geometrical
   model uses, which sum to one.
+- **Decay matched to a diffuse field.** Published absorption coefficients are diffuse-field values, and
+  the geometrical model uses them that way. In the solver a wall is a locally reacting impedance. By
+  Morse's first-order theory, a mode loses only half as much energy to a wall it grazes as to one it
+  strikes. Axial and tangential modes therefore outlast a diffuse field, and a bare-walled box's decay
+  in a band is 20–60% longer than Eyring's estimate for the same coefficients. The measured seminar
+  room ([RoomCAD against a measured room](roomcad-validation.md)) decayed at the diffuse rate, because
+  real rooms mix grazing and oblique energy through their irregularities, furniture and surfaces that
+  are not locally reacting.
+
+  Each run therefore also records 24 probes, spread through the room by a Halton sequence and kept
+  0.3 m clear of every boundary. Their summed energy in each band gives the room's average T30.
+  Where that is longer than Eyring's estimate for the band, with air absorption and openings, the
+  band's response is damped by e^(−Δt) from the direct sound's arrival, so that it decays at Eyring's
+  rate. Every mode in the band is damped alike, so the modes' frequencies, their spatial pattern and
+  their differences in decay remain, and the response never decays more slowly than before. In boxes
+  whose absorption is uniform, on the floor and ceiling only, or on one wall, the damped decay at
+  receivers other than the probes was within 12% of Eyring's estimate; bare, it was 20–60% longer. The
+  bare decay of each band is reported with the response.
 - **Source and calibration.** The source injects volume velocity, a Gaussian derivative with no net
   volume. Each receiver's spectrum, taken at its exact sample times, is divided by the free-field
   pressure 1 m away, ρ·j2πf·Q(f)/4π. That gives the geometrical model's units and time origin.
@@ -256,30 +274,81 @@ Tests check the solver against theory:
   a busy GPU: a long run moves to the CPU and gives exactly the CPU's result, while a run with under a
   second left when judged stays on the GPU.
 - The impedance inversion reproduces the absorption, and rooms over budget skip the solver.
+- Yee's dispersion relation gives the second-order phase-velocity error along an axis, and less on
+  diagonals. For every grid RoomCAD chooses, waves at the crossover travel within 1% of c.
+- Over 50,000 steps on either engine, a rigid room keeps ringing at the same strength and an anechoic
+  one dies away, so the walls are stable and passive.
+- Matched to the diffuse decay, a box decays within 12% of Eyring's estimate at receivers other than
+  the probes, with uniform absorption or with absorption on the floor and ceiling only.
 
 On an M-series Mac the presets' crossovers run from 69 Hz (stone church) to 457 Hz (vocal booth), with
 one to four runs, and generation with the solver takes 1.4–5.3 s in a release build. Every preset now
 gets a wave part; before the GPU solver, the halls and the church were skipped.
 
-In octave bands below the crossover, the two models' energy at the first listener agrees within 2.3 dB,
-the size of the modal variation from point to point, with two exceptions at 63 Hz:
+In the octave band holding each preset's crossover, the two models' energy at the listeners agrees
+within 2 dB, and their T30 within 15%. The stone church is the exception: its crossover (69 Hz) lies
+in the 63 Hz band, where the wave part is 4 dB louder and decays over 16.7 s against the geometrical
+model's 10.5 s. Eyring's estimate is 18.8 s.
 
-- The L-shaped living room is 7.4 dB louder in the wave model. The listener is round the corner from
+Below the crossover, where only the wave solver is heard, its energy is up to 3.4 dB lower than the
+geometrical model's. The geometrical model decays more slowly there, up to twice Eyring's estimate in
+the classroom at 63 Hz, because the presets' surfaces scatter little at low frequencies. The wave
+solver's decay is matched to Eyring's. There are two exceptions at 63 Hz:
+
+- The L-shaped living room is 5.4 dB louder in the wave model. The listener is round the corner from
   the source, and at 63 Hz (5.4 m) sound diffracts round it, which the geometrical model leaves out.
-- The stone church is 3.9 dB louder. Source and listener are both within about a quarter wavelength of
-  the floor, which raises the level near a boundary (the Waterhouse effect); the diffuse tail assumes
-  a uniform field.
+- The stone church is 4.0 dB louder (above). Source and listener are both within about a quarter
+  wavelength of the floor, which raises the level near a boundary (the Waterhouse effect); the
+  diffuse tail assumes a uniform field.
 
 Both are probably physical, but neither has been checked against a measurement.
+
+### Accuracy
+
+`acousticbench --wave-accuracy` measures how faithfully the solver carries a travelling wave, the
+benchmark that roadmap milestone M3 asks for.
+
+**Dispersion.** On Yee's grid a wave of frequency f travels slightly slower than sound, by an amount
+that grows with frequency and is largest along the grid's axes (`WaveAccuracy`). A room mode is low by
+about the same fraction. RoomCAD sizes the cells for 10 points per wavelength at the top of the
+crossover's transition, so the crossover itself has about 14. For a 250 Hz crossover (9.7 cm cells,
+83 µs steps) the errors are:
+
+| Frequency | Points per wavelength | Axis | Face diagonal | Body diagonal |
+|---|---|---|---|---|
+| 63 Hz | 57 | −0.05% | −0.02% | −0.01% |
+| 125 Hz | 28 | −0.19% | −0.08% | −0.05% |
+| 177 Hz | 20 | −0.38% | −0.17% | −0.10% |
+| 250 Hz | 14 | −0.76% | −0.34% | −0.20% |
+| 354 Hz | 10 | −1.53% | −0.68% | −0.40% |
+
+Below the crossover, which is where the solver is heard, mode frequencies are therefore within 1%,
+the roadmap's target. Each response reports its own worst error at the crossover.
+
+**Travelling waves.** A pulse travels from the centre of a large anechoic box (30 m for a 100 Hz
+crossover, 20 m for 250 Hz) to receivers 1, 2, 3.5 and 5 m away, along an axis and along the body
+diagonal. Each response is windowed before the walls' first reflection. The solver's part of it is
+divided by the geometrical model's exact direct sound, at a quarter, half, 0.71 and all of the
+crossover frequency.
+
+- **Amplitude.** The error is within 0.36 dB everywhere, against the roadmap's 1 dB over the declared
+  test distance of 5 m.
+- **Phase.** The phase lag grows with distance as the dispersion relation predicts. Along an axis at
+  5 m, at a 250 Hz crossover, it is 9.9° measured against 10.0° predicted, and 3.4° against 3.5° at
+  177 Hz. On the diagonal at 5 m, it is 2.8° against 2.6°. At the lowest frequencies the window, a
+  little shorter than a period, adds up to 3° of its own.
+
+So the solver's usable band is everything below its crossover. There, amplitude is within 0.4 dB
+over 5 m, and phase velocity and mode frequencies within 1%. The scheme is linear, so these hold at
+any level. Each export's model description states the crossover and the phase-velocity error there.
 
 Limitations of the solver:
 
 - The wall impedance is real, and constant within each octave band.
-- Walls are locally reacting, so a real impedance absorbs nothing at grazing incidence. Axial and
-  tangential modes that graze a surface lose little energy to it. In the measured seminar room (see
-  [RoomCAD against a measured room](roomcad-validation.md)), this left the solver's decay at 63 and
-  125 Hz 18–32% longer than measured, even with materials fitted to the measured decay. Real windows,
-  doors and suspended ceilings are not locally reacting and absorb at grazing incidence too.
+- Walls are locally reacting. The decay matching above makes each band decay, on average, as a
+  diffuse field would. It does not model how real surfaces absorb at grazing incidence, so which modes
+  decay faster than others may differ from a real room. In a room that really is a smooth, bare box,
+  matching makes the low end decay faster than it would.
 - There is no air absorption, which is negligible there.
 - It models bare walls: no furniture or scattering. Openings are walls of ξ = 1.
 - The grid's dispersion grows towards the top frequency.
@@ -397,8 +466,10 @@ in a 145 m³ seminar room from the BRAS database:
   2 kHz is within 12%, and clarity within about one just-noticeable difference.
 - **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
   frequencies within about 1.5%.
-- **Early reflections.** These follow the measured pattern at each position.
-- **Low-frequency decay.** With the wave solver it is too long (see the solver's limitations above).
+- **Early reflections.** These follow the measured pattern at most positions (correlation 0.61,
+  against 0.22 for the wrong position).
+- **Low-frequency decay.** The bare wave solver's was about 30% too long. With each band matched to
+  the diffuse decay, T30, EDT, clarity and definition at 63 and 125 Hz are within about 2 JND.
 
 `RoomParameters` computes the ISO 3382-1 parameters it uses: EDT, T20, T30, C50, C80, D50 and
 centre time, with Lundeby's noise compensation for measured responses.

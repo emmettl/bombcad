@@ -7,6 +7,19 @@ struct ModelImportView: View {
     let mesh: ImportedMesh
     let filename: String
     var existing: ImportedModel? = nil
+    struct Draft {
+        var scale: Float
+        var yUp: Bool
+        var corner: SIMD3<Double>
+        var resolution: Resolution
+        var domain: SIMD3<Float>
+        var deformable: Bool
+        var fixedBase: Bool
+        var material: StructureMaterial
+        var partMaterials: [Int: StructureMaterial]
+    }
+    var draft: Draft?
+    var chooseBuildingElements: ((Draft) -> Void)?
     @Bindable var model: SimulationModel
     @Environment(\.dismiss) private var dismiss
     @State private var scale: Float = 1
@@ -36,13 +49,19 @@ struct ModelImportView: View {
     @State private var geometryExpanded = true
     @State private var behaviorExpanded = true
     @State private var partsExpanded = true
-    init(mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel) {
+    init(
+        mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel,
+        draft: Draft? = nil, chooseBuildingElements: ((Draft) -> Void)? = nil
+    ) {
         self.mesh = mesh
         self.filename = filename
         self.existing = existing
+        self.draft = draft
+        self.chooseBuildingElements = chooseBuildingElements
         self._model = Bindable(wrappedValue: model)
         self._previewModel = State(initialValue: ImportPreviewModel(source: mesh))
     }
+    private var isBuilding: Bool { mesh.buildingElements != nil }
     private var preview: ImportedMesh.Preview? { previewModel.preview }
     private var busy: Bool { previewModel.isPreparing }
     private var currentRequest: ImportPreviewRequest {
@@ -92,6 +111,15 @@ struct ModelImportView: View {
             HStack {
                 Text("\(existing == nil ? "Import" : "Update") \(filename)").font(.title2)
                 Spacer()
+                if let chooseBuildingElements {
+                    Button("Choose IFC elements…") {
+                        chooseBuildingElements(
+                            Draft(
+                                scale: scale, yUp: yUp, corner: corner,
+                                resolution: resolution, domain: domainSize, deformable: deformable,
+                                fixedBase: fixedBase, material: material, partMaterials: partMaterials))
+                    }.disabled(!canApply)
+                }
                 Button("Export import report…") { exporting = true }.disabled(!isPreviewCurrent)
             }
             HStack(alignment: .top, spacing: 16) {
@@ -115,6 +143,11 @@ struct ModelImportView: View {
                                     focusedID: $selectedPartID, selectedIDs: $selectedPartIDs,
                                     assignments: $partMaterials,
                                     isolate: $isolate, colourByMaterial: $colourByMaterial)
+                            }
+                        }
+                        if isBuilding {
+                            Section {
+                                IFCCompletenessView(mesh: mesh, preview: isPreviewCurrent ? preview : nil)
                             }
                         }
                         Section { DisclosureGroup("Reusable import profiles") { profileControls } }
@@ -228,6 +261,19 @@ struct ModelImportView: View {
                         fixedBase = body.fixedBase
                     }
                 }
+                if let draft {
+                    scale = draft.scale
+                    yUp = draft.yUp
+                    corner = draft.corner
+                    resolution = draft.resolution
+                    domainSize = draft.domain
+                    deformable = draft.deformable
+                    fixedBase = draft.fixedBase
+                    material = draft.material
+                    partMaterials = draft.partMaterials.filter { key, _ in
+                        mesh.parts.contains { $0.id == key }
+                    }
+                }
                 initialized = true
                 schedulePreview()
             }
@@ -245,7 +291,9 @@ struct ModelImportView: View {
     }
     @ViewBuilder private var geometryControls: some View {
         Text(
-            "Nested shells describe cavities. OBJ polygons must be triangulated or convex; visual material files are ignored."
+            isBuilding
+                ? "IFC elements remain separate products. Openings are retained in each element’s geometry; overlaps form rigid occupancy."
+                : "Nested shells describe cavities. OBJ polygons must be triangulated or convex; visual material files are ignored."
         ).font(.caption)
         Picker("Source units", selection: $scale) {
             Text("Metres").tag(Float(1))
@@ -257,8 +305,14 @@ struct ModelImportView: View {
                 Text("Custom scale \(scale)").tag(scale)
             }
         }
-        Toggle("Y is the source up axis", isOn: $yUp)
-        if let size {
+        .disabled(isBuilding)
+        Toggle("Y is the source up axis", isOn: $yUp).disabled(isBuilding)
+        if isBuilding {
+            Text(
+                "IFC units and placements have been converted to metres, Z up. Physical building elements import as rigid obstacles."
+            ).font(.caption)
+        }
+        if let size, !isBuilding {
             let longest = max(size.x, max(size.y, size.z))
             if longest < h * 2 {
                 Text(
@@ -299,8 +353,9 @@ struct ModelImportView: View {
     }
     @ViewBuilder private var behaviorControls: some View {
         Toggle("Deformable solid", isOn: $deformable).disabled(
-            existing != nil || model.settings.scenario.structure != nil && existing?.behavior != .deformable)
-        if model.settings.scenario.structure != nil && existing?.behavior != .deformable {
+            isBuilding || existing != nil
+                || model.settings.scenario.structure != nil && existing?.behavior != .deformable)
+        if !isBuilding && model.settings.scenario.structure != nil && existing?.behavior != .deformable {
             Text("A structure already exists. Use an empty layout for a new deformable body.").font(.caption)
         }
         if deformable {
@@ -363,11 +418,12 @@ struct ModelImportView: View {
     }
     private func loadProfile() {
         guard let profile = profiles.profiles.first(where: { $0.id == selectedProfile }) else { return }
-        scale = profile.scale
-        yUp = profile.yUp
+        scale = isBuilding ? 1 : profile.scale
+        yUp = isBuilding ? false : profile.yUp
         fixedBase = profile.fixedBase
         material = profile.material
-        if existing == nil && (model.settings.scenario.structure == nil || !profile.deformable) {
+        if !isBuilding && existing == nil && (model.settings.scenario.structure == nil || !profile.deformable)
+        {
             deformable = profile.deformable
         }
         partMaterials = profile.assignments(for: mesh.parts)
@@ -379,9 +435,15 @@ struct ModelImportView: View {
     private var report: String {
         var text =
             "BombCAD import report\nFile: \(filename)\nScale: \(scale), Y-up: \(yUp)\nCorner (m): \(corner)\nGrid: \(h) m\n\(memory.description)\n\n"
+        if let origin = mesh.buildingOrigin { text += "IFC original geometry origin (m): \(origin)\n" }
+        text += IFCCompleteness.report(mesh: mesh, preview: isPreviewCurrent ? preview : nil)
+        for note in mesh.buildingNotes ?? [] { text += note + "\n" }
         for part in mesh.parts {
+            if let guid = part.ifcGlobalID {
+                text += "IFC element: \(guid) · \(part.ifcClass ?? "") · \(part.storey ?? "No storey")\n"
+            }
             text +=
-                "Part: \(part.name) · \(partMaterials[part.id]?.name ?? "Model default: " + material.name)\n"
+                "Part: \(part.name) · \(deformable ? (partMaterials[part.id]?.name ?? "Model default: " + material.name) : "Rigid obstacle")\n"
         }
         for issue in preview?.diagnostics ?? [] {
             let names = mesh.parts.filter { (issue.partIDs ?? []).contains($0.id) }.map(\.name).joined(
@@ -442,6 +504,9 @@ struct ModelImportView: View {
     private func commit() {
         guard let preview, canApply, isPreviewCurrent, acknowledged, !busy, blocker == nil else { return }
         do {
+            guard !isBuilding || (!deformable && scale == 1 && !yUp) else {
+                throw ImportedMesh.ImportError.invalid("IFC imports require metres, Z up and rigid behavior.")
+            }
             let imported = ImportedModel(
                 id: existing?.id ?? UUID(), name: filename, source: mesh, scale: Float(scale), yUp: yUp,
                 corner: SIMD3<Float>(corner), behavior: deformable ? .deformable : .rigid, preview: preview,

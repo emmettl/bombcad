@@ -31,6 +31,18 @@ struct RoomCADTests {
         #expect(editor.summary?.channels.count == 1)
     }
 
+    @Test("Automatic regeneration can ask for a preview, which a full-quality run then replaces")
+    func previewThenFull() async throws {
+        let editor = RoomEditor()
+        var project = RoomProject(settings: Self.settings)
+        await editor.regenerate(project.settings, quality: .preview, after: .zero) { project.result = $0 }
+        await editor.finished()
+        #expect(project.isResultCurrent && !project.isResultFinal)
+        await editor.regenerate(project.settings, quality: .full, after: .zero) { project.result = $0 }
+        await editor.finished()
+        #expect(project.isResultFinal)
+    }
+
     @Test("Invalid settings are reported instead of generated")
     func invalid() async {
         let editor = RoomEditor()

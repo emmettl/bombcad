@@ -813,6 +813,52 @@ struct ConcreteModelTests {
 }
 
 extension ConcreteModelTests {
+    @Test("An open crack carries the shear Walraven and Reinhardt measured with no stress across it")
+    func interlockAgainstWalraven() throws {
+        // Their push-off tests (HERON 26(1A), 1981, eqs. 1a and 1b; w and slip d in mm, stresses
+        // in N/mm², f_cc the cube strength):
+        //   tau   = -f_cc/30 + [1.8 w^-0.80 + (0.234 w^-0.707 - 0.20) f_cc] d
+        //   sigma = -f_cc/20 + [1.35 w^-0.63 + (0.191 w^-0.552 - 0.15) f_cc] d
+        // Their cracks were held, and so pressed, by restraint; with nothing across the crack
+        // (sigma = 0), as the model's cap assumes, they carry tau at the slip that makes sigma
+        // vanish.
+        let material = Self.concrete()
+        let size: Float = 0.05
+        let cube = material.compressiveStrength / 0.8 / 1e6
+        func walraven(width w: Float) -> Float {
+            let slip = (cube / 20) / (1.35 * pow(w, -0.63) + (0.191 * pow(w, -0.552) - 0.15) * cube)
+            return 1e6 * (-cube / 30 + (1.8 * pow(w, -0.8) + (0.234 * pow(w, -0.707) - 0.2) * cube) * slip)
+        }
+        func modelled(opening: Float) throws -> Float {
+            let (_, solver) = try strainCube(size: size, material: material, to: [opening / size])
+            solver.mutateNodes { nodes in
+                for k in 0...1 {
+                    for j in 0...1 { nodes[solver.nodeIndex(1, j, k)].velocity = SIMD3(0, 0, 0.02) }
+                }
+            }
+            var peak: Float = 0
+            for _ in 0..<60 {
+                solver.advance(steps: 20)
+                var force: Float = 0
+                for k in 0...1 {
+                    for j in 0...1 { force += solver.nodalForce(1, j, k).z }
+                }
+                peak = max(peak, -force / (size * size))
+            }
+            return peak
+        }
+        let onset = material.tensileStrength / material.youngsModulus * size
+        // 10%, 3% and 24% above them when written (2.13, 1.61 and 0.92 MPa against 1.94, 1.57 and
+        // 0.75): the modified compression field theory's cap the model uses.
+        for width in [0.0002, 0.0004, 0.001] as [Float] {
+            let measured = walraven(width: width * 1000)
+            let carried = try modelled(opening: width + onset)
+            #expect(
+                carried > measured && carried < 1.35 * measured,
+                "\(width * 1000) mm: \(carried / 1e6) against \(measured / 1e6) MPa")
+        }
+    }
+
     @Test("A crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured")
     func crackShearStiffness() throws {
         // Open a crack across x, then shear the cube across it a little, short of the interlock

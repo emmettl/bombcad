@@ -63,7 +63,7 @@ struct MeasuredRoomTests {
             }
         }
         func mean(_ values: [Double]) -> Double { values.reduce(0, +) / Double(values.count) }
-        // About 0.7 at the same position and 0.2 at others when the bench last ran.
+        // About 0.6 at the same position and 0.2 at others when the bench last ran.
         #expect(mean(matched) > 0.55, "\(matched)")
         #expect(mean(mismatched) < 0.35, "\(mismatched)")
     }

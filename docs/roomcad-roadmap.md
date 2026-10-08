@@ -212,10 +212,12 @@ Progress (October 2026):
     (1.4–5.3 s measured);
   - while another app kept the GPU busy, the slowest preset took 10.4 s, with runs moving to the CPU
     as needed;
-  - peak memory for all ten presets in one process is 310 MB.
+  - peak memory for all ten presets in one process, with the bundled clips loaded, is 550 MB;
+  - preparing the longest bundled clip (11.2 s) for auditioning through any preset takes 0.06 s.
+    Playback then mixes two prepared buffers, so auditioning adds no measurable CPU load.
 
-  `acousticbench --presets` measures these. The measured-room comparison takes about 6 minutes.
-  Preview CPU use while auditioning is not yet measured.
+  `acousticbench --presets` measures these. The decay matching's probes add no measurable time. The
+  measured-room comparison takes about 6 minutes.
 
 ### M1 — Create the shared foundation and RoomCAD scaffold
 
@@ -316,8 +318,15 @@ and free-field level within 0.03 dB with no timing offset. Axial decay between a
 within 6% of theory. The crossover's top is resolved at 10 points per wavelength, and work is
 budgeted. Walls take each octave band's own impedance, one run per group of bands that agree. A Metal
 version runs the same scheme on the GPU, matching the CPU to single precision at about 3.6 × 10⁹ cell
-updates a second, so every preset, the stone church included, now gets a wave part. A fuller benchmark
-report (phase and directional error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
+updates a second, so every preset, the stone church included, now gets a wave part. The measured
+seminar room showed the bare solver's low-frequency decay to be about 30% too long, because its locally
+reacting walls take only half as much energy from modes that graze them. Each band's response is now
+damped to Eyring's diffuse decay, measured by probes spread through the room; the modal structure is
+kept. `acousticbench --wave-accuracy` is the benchmark report. Below the crossover, amplitude is within
+0.36 dB over 5 m along an axis and the body diagonal. Phase lag matches Yee's dispersion relation, and
+phase velocity and mode frequencies are within 1% (0.76% at a 250 Hz crossover along an axis). Long
+runs on either engine are stable and passive. See
+[Room-acoustics model](room-acoustics-model.md#accuracy). See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
 
 ### M4 — Generate broadband hybrid room responses
 
@@ -361,13 +370,17 @@ compares ten measured responses in a 145 m³ seminar room from the BRAS database
   within 12%, and clarity and definition within about one just-noticeable difference.
 - **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
   frequencies within about 1.5%.
-- **Early reflections.** These follow the measured pattern at each position.
-- **Low-frequency decay.** The wave solver's decay at 63–125 Hz is 18–32% too long, because its
-  locally reacting walls absorb nothing at grazing incidence.
+- **Early reflections.** These follow the measured pattern at most positions (correlation 0.61,
+  against 0.22 for the wrong position).
+- **Low-frequency decay.** At first, the wave solver's decay at 63–125 Hz was 18–32% too long. Its
+  locally reacting walls take only half as much energy from modes that graze them as from modes that
+  strike them. With each band now matched to the diffuse decay, the fitted materials give T30 within
+  about 10% at 63 Hz and 2% at 125 Hz.
 
 Larger measured rooms need geometry beyond vertical walls, and listening comparisons are not done.
-Item 6's validated band is not done: the comparison suggests the wave solver is trustworthy for
-modal structure but not yet for low-frequency decay.
+Item 6 is done: every export's metadata keeps the settings, random seed and crossover. It also states
+the usable band, and, with the wave solver, its phase-velocity error at the crossover and that its decay
+was matched to Eyring's.
 
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 
@@ -393,13 +406,16 @@ code.
   Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
   and labelled in each material's reference. Most surfaces still need scattering values. See
   [RoomCAD app and documents](roomcad-app.md#material-presets).
-- **Item 3.** The app shows each channel's envelope, spectrum and octave-band decay. It also shows
-  the generation's stage and progress while it runs, the wave solver's crossover and engine, and T30
-  only where the band's decay reaches −35 dB. An early-arrivals view and a memory estimate are not
-  done.
+- **Item 3.** This is done. The app shows each channel's envelope, spectrum, early arrivals (an
+  energy-time curve above 500 Hz) and octave-band decay. It also shows:
+  - the generation's stage and progress while it runs;
+  - the wave solver's crossover, engine and approximate memory;
+  - T30 only where the band's decay reaches −35 dB.
 - **Item 4.** There are ten whole-room presets, and regeneration runs in the background and is
   cancelled when the room changes. Responses are kept with their settings and marked stale when the
-  settings change. Preview and export use the same quality.
+  settings change. While a room is edited, previews spend a quarter of the wave solver's budget and
+  rays and arrive two to four times sooner. The full-quality response follows once editing pauses,
+  and exports are always full quality.
 - **Item 5.** Testing on screen has been done only by the user, who confirmed that the window,
   audition, waveform and space bar work. The app is otherwise checked by offscreen snapshots.
 
