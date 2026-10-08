@@ -95,6 +95,15 @@ public struct ValidationScene: Codable, Sendable {
         return room
     }
 
+    /// A fixed identity for a named source or receiver, so that the seeds drawn from it, and so the
+    /// response, are the same on every run.
+    static func identifier(_ name: String) -> UUID {
+        // FNV-1a.
+        let hash = name.utf8.reduce(UInt64(0xcbf2_9ce4_8422_2325)) { ($0 ^ UInt64($1)) &* 0x100_0000_01b3 }
+        return UUID(
+            uuidString: "00000000-0000-4000-8000-" + String(format: "%012llx", hash & 0xffff_ffff_ffff))!
+    }
+
     /// Settings for one driver of `source` and the named receivers, with the measurement's air.
     public func settings(
         set: String, source: String, driver: Int, receivers names: [String], duration: Double,
@@ -107,8 +116,12 @@ public struct ValidationScene: Codable, Sendable {
             pressureKilopascals: 101.325)
         return RoomResponseSettings(
             room: room,
-            source: RoomPoint(name: source, position: position(s.position + [s.drivers[driver]])),
-            receivers: names.map { RoomPoint(name: $0, position: position(receivers[$0]!)) },
+            source: RoomPoint(
+                id: Self.identifier(source), name: source,
+                position: position(s.position + [s.drivers[driver]])),
+            receivers: names.map {
+                RoomPoint(id: Self.identifier($0), name: $0, position: position(receivers[$0]!))
+            },
             atmosphere: atmosphere, duration: duration,
             maximumReflectionOrder: min(
                 120, Int((duration * atmosphere.soundSpeed / room.size.min()).rounded(.up)) + 2),

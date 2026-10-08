@@ -43,6 +43,9 @@ make app
 ```
 
 The second command builds `dist/BombCAD.app`, which can be launched from Finder.
+The first app build downloads a checksum-pinned native IFC converter into `.build/ifc-converter`
+and bundles it with the app; later builds verify and reuse the cache. When using `swift run`,
+run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 [Releasing](docs/releasing.md) describes signed, notarized builds for other Macs.
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
@@ -69,7 +72,7 @@ project has its own window, and closing an edited untitled project asks whether 
 BombCAD → Settings (⌘,) sets defaults for new projects and playback windows.
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](docs/save-files.md).
 
-**Import Model…** reads watertight OBJ or STL geometry. Confirm source units, up axis and
+**Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and
 placement, then prepare a preview of the actual occupied simulation volumes. Imports can be
 rigid obstacles, or a new deformable solid body with a material preset and editable density,
 stiffness and strength. Deformable imports require a layout without an existing structure,
@@ -81,7 +84,40 @@ warnings, material assignment, repair, and saving or reopening imported sources.
 
 Repository-only [importer sample files](Samples/Importer/README.md) cover named parts,
 STL components, units, cavities, thin features, narrow gaps, and the repair workflow.
-They are not bundled with the app.
+They are not bundled with the app. The [real CAD fixtures](Samples/Importer/RealCAD/README.md)
+add unchanged FreeCAD library exports, pinned provenance and current acceptance/resolution expectations;
+their STEP counterparts are references for future support.
+
+IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**.
+Physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors
+and windows can be chosen; spaces, furnishings, proxy/site markers and other types are excluded.
+Before geometry conversion, choose exact elements using building, storey, type and text filters
+and inclusion checkboxes. Filters only change the list; Include/Exclude matching changes the
+import. Up to 1,024 supported elements can be chosen from a 20,000-entry decomposition inventory.
+Choose IFC elements in the preview or source inspector to revise choices from retained IFC bytes.
+Each subset is rebased to its own bounds; review placement after changing choices.
+The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
+of these. Source units and world placements are converted to metres, Z up, then rebased from
+large coordinates before Float conversion. The original coordinate origin remains recorded.
+
+Each IFC element is validated independently. Existing segmented edge junctions are made
+conforming without creating faces, and coordinates are canonicalised at 0.1 micrometre.
+Touching and overlapping elements produce a union of occupied cells; overlaps count once and
+use the first sorted GlobalId for selection. Element diagnostics do not certify gaps between
+separate elements. Geometry omissions, converter diagnostics and unsupported material metadata
+remain explicit import notes. IFC completeness and exported reports list intentional exclusions,
+unsupported types, missing converted geometry, complete grid losses and overlapping cell ownership
+separately. Inventory follows the decomposition tree; uncontained products may be absent. Invalid
+selected solids block conversion with their name and GlobalId; excluding one is an explicit action.
+Undetermined converter units block import to prevent incorrect scale. Structural materials, supports and connections are not inferred.
+
+Projects retain original IFC bytes and converted sources; reopening and grid resampling need
+neither the original file nor the converter. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
+while OBJ/STL assets retain version 1. See the repository-only
+[whole-building IFC fixture](Samples/Importer/Buildings/README.md) for a small house, matching
+raw OBJ reference, a two-storey duplex, structural beams, an imperial column, a unit-failure case,
+expected behaviour and reproducible provenance. IFCZIP/IFCXML and
+conversion to deformable shells or beams are outside this first milestone.
 
 The importer retains each source mesh, its units/orientation and placement in the saved layout.
 **Inspect / edit source…** in Edit layout reopens an import without its original file. Changing
@@ -100,7 +136,7 @@ controls. Detailed material properties live under Advanced. Dimensions in metres
 while units and placement change; unusually small or large models offer explicit unit corrections.
 A labelled reference grid helps judge scale. Corrections are never applied automatically.
 
-Drop one local OBJ/STL file into the viewport or use Import Model. Reading and geometry checking
+Drop one local OBJ/STL/IFC file into the viewport or use Import Model. Reading and geometry checking
 run in the background with a Cancel checking action; cancelled or superseded work cannot open a
 stale result. Rejected geometry opens a separate inspection view with red defect surfaces, source
 triangle numbers, repair guidance, and a text repair report. Collapsed/non-finite triangles remain

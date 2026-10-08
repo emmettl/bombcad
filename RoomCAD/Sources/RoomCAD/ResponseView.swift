@@ -191,6 +191,16 @@ struct DiagnosticsList: View {
                         (d.waveCells ?? 0).formatted(),
                         Self.engines(runs: d.waveRuns ?? 1, gpu: d.waveGPURuns ?? 0),
                         d.waveSeconds ?? 0))
+                if let dispersion = d.waveDispersion {
+                    Text(
+                        String(
+                            format:
+                                "Its waves travel within %.1f%% of the speed of sound there, so its modes are "
+                                + "at most that much low.", abs(dispersion) * 100))
+                }
+                if let bare = Self.bareDecay(d) {
+                    Text("Its decay is matched to Eyring's estimate; bare walls gave \(bare).")
+                }
             } else if let note = d.waveNote {
                 Text("Wave solver skipped: \(note)")
             }
@@ -208,6 +218,17 @@ struct DiagnosticsList: View {
         }
         .font(.caption)
         .foregroundStyle(.secondary)
+    }
+
+    /// The wave solver's bare T30 in each band it covers, such as "63 Hz 1.9 s, 125 Hz 1.6 s", or nil.
+    static func bareDecay(_ d: RoomResponseDiagnostics) -> String? {
+        let parts = OctaveBands.centres.indices.compactMap { band -> String? in
+            guard let t = d.waveBareDecay?[band] ?? nil else { return nil }
+            let f = OctaveBands.centres[band]
+            return String(
+                format: "%@ %.1f s", f >= 1000 ? "\(Int(f / 1000)) kHz" : "\(Int(f.rounded())) Hz", t)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
     /// "2 runs on the GPU", "1 run on the CPU", or "3 runs, 1 on the GPU and 2 on the CPU".

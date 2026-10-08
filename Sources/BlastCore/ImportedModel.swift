@@ -140,6 +140,10 @@ extension Scenario {
     public mutating func installImport(
         _ imported: ImportedModel, material: StructureMaterial, fixedBase: Bool
     ) throws {
+        guard imported.source.buildingElements == nil || imported.behavior == .rigid else {
+            throw ImportedMesh.ImportError.invalid(
+                "IFC building imports currently support rigid obstacles only.")
+        }
         guard imported.preview.occupiedCells > 0 else {
             throw ImportedMesh.ImportError.invalid(
                 "No occupied cells remain. Choose a finer grid before importing.")
