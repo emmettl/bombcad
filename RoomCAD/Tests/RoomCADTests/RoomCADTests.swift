@@ -644,3 +644,40 @@ func dragWall() throws {
     #expect(pushed.room.size.y == settings.room.size.y)
     #expect(viewport.camera == camera)
 }
+
+@MainActor
+@Test("A floor plan's corners drag in 3D, keeping the plan valid and at or above the origin")
+func dragCorner() throws {
+    let l = try #require(RoomPresets.all.first { $0.id == "l-shaped-living-room" }).applied(
+        to: RoomProject.starter)
+    let plan = try #require(l.room.plan)
+    // The L's outer corner at the far end of its long arm, pulled further out.
+    let far = try #require(
+        plan.corners.indices.max { simd_length(plan.corners[$0]) < simd_length(plan.corners[$1]) })
+    let out = try #require(l.movingCorner(far, to: plan.corners[far] + [0.5, 0]))
+    #expect(out.room.plan!.corners[far] == plan.corners[far] + [0.5, 0])
+    #expect(out.room.plan!.area > plan.area)
+    // Past the origin: everything shifts so the plan starts at zero.
+    let origin = try #require(plan.corners.indices.first { plan.corners[$0] == .zero })
+    let shifted = try #require(l.movingCorner(origin, to: [-0.4, 0]))
+    #expect(shifted.room.plan!.corners.allSatisfy { $0.x >= 0 && $0.y >= 0 })
+    #expect(shifted.source.position.x == l.source.position.x + 0.4)
+    // Walls that would cross are refused.
+    #expect(l.movingCorner(origin, to: plan.corners[far] + [1, 1]) == nil)
+
+    // In the view: from above, the corner's handle is grabbed and dragged.
+    let viewport = RoomViewport()
+    var edits: [RoomResponseSettings] = []
+    viewport.onEdit = { edits.append($0) }
+    viewport.show(l)
+    let handle = SIMD3<Float>(Float(plan.corners[far].x), Float(plan.corners[far].y), Float(l.room.size.z))
+    viewport.camera = OrbitCamera(target: handle, distance: 6, azimuth: 0, elevation: 1.55)
+    #expect(viewport.beginDrag(ndc: [0, 0], aspectRatio: 1, modifiers: []))
+    #expect(viewport.selected == .corner(far))
+    #expect(viewport.caption?.hasPrefix("Corner \(far + 1) at") == true)
+    viewport.drag(ndc: [0.1, 0.1], aspectRatio: 1, modifiers: [])
+    viewport.endDrag()
+    let moved = try #require(edits.last?.room.plan)
+    #expect(moved.corners[far] != plan.corners[far])
+    try #require(edits.last).validate()
+}

@@ -104,6 +104,11 @@ script before an archive is written.
     opening outside, or the room under half a metre, is refused. The camera stays put while editing.
     A plain drag on a surface still orbits.
 
+    A floor plan's corners have dark handles at the top of their edges. Dragging one moves the
+    corner across the room, in centimetre steps; if the plan reaches past its origin, everything
+    shifts so it stays at or above zero, and a move that would cross walls or leave anything outside
+    is refused.
+
     In a room of any shape, from a preset or a model, the face under the pointer moves with every
     face on its plane, and the corners on that plane drag the faces that meet them. A shoebox hall's
     back wall or a stage house's roof moves this way. A step is refused if it would bend a face, as
@@ -381,6 +386,8 @@ saved again.
     when a low wall moves, steps refused when the room would be invalid, a hall's back wall pushed
     through its mesh, and a Command-drag in the view that pushes the east wall without moving the
     camera;
+  - plan corners: moved out, moved past the origin with everything shifting, refused where walls
+    would cross, and dragged by their handle in the view;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.

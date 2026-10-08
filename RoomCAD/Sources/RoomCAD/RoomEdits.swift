@@ -45,7 +45,7 @@ extension RoomResponseSettings {
         switch item {
         case .source: source.position
         case .receiver(let index): index < receivers.count ? receivers[index].position : nil
-        case .surface, .zone, .opening: nil
+        case .surface, .zone, .opening, .corner: nil
         }
     }
 
@@ -313,6 +313,26 @@ extension RoomResponseSettings {
                 result.room.size[axis] += step
             }
         }
+        guard (try? result.validate()) != nil else { return nil }
+        return result
+    }
+}
+
+extension RoomResponseSettings {
+    /// These settings with the plan's corner `index` moved to `position`, snapped to centimetres. If the
+    /// plan then reaches past the origin, everything shifts so its corners stay at or above zero; the
+    /// room's length and width follow the plan. Nil if the walls would cross or anything would be left
+    /// outside.
+    func movingCorner(_ index: Int, to position: SIMD2<Double>) -> RoomResponseSettings? {
+        guard var plan = room.plan, plan.corners.indices.contains(index) else { return nil }
+        plan.corners[index] = (position * 100).rounded(.toNearestOrEven) / 100
+        var result = self
+        result.room.plan = plan
+        let low = plan.corners.reduce(SIMD2(Double.infinity, .infinity)) { simd_min($0, $1) }
+        let high = plan.corners.reduce(-SIMD2(Double.infinity, .infinity)) { simd_max($0, $1) }
+        result = result.translating(by: SIMD3(-low.x, -low.y, 0))
+        result.room.size.x = high.x - low.x
+        result.room.size.y = high.y - low.y
         guard (try? result.validate()) != nil else { return nil }
         return result
     }

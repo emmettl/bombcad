@@ -105,6 +105,9 @@ final class RoomViewport: OrbitControlling {
                 return nil
             }
             return frame.origin + frame.u * opening.centre.x + frame.v * opening.centre.y
+        case .corner(let index):
+            guard let corner = settings.room.plan?.corners[safe: index] else { return nil }
+            return SIMD3(corner.x, corner.y, settings.room.size.z)
         case .surface: return nil
         }
     }
@@ -211,6 +214,9 @@ final class RoomViewport: OrbitControlling {
                         index,
                         to: point + frame.coordinates(anchor + dragging.grab) - frame.coordinates(anchor)))
             }
+        case .corner(let index):
+            let target = hit + dragging.grab
+            if let moved = shown.movingCorner(index, to: SIMD2(target.x, target.y)) { edit(moved) }
         case .surface:
             break
         }
@@ -293,6 +299,7 @@ extension RoomScene {
         case .receiver(let index): index < settings.receivers.count
         case .zone(let index): index < (settings.room.fittings?.count ?? 0)
         case .opening(let index): index < settings.openings.count
+        case .corner(let index): index < (settings.room.plan?.corners.count ?? 0)
         }
     }
 }

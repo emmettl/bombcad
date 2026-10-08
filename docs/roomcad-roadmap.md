@@ -460,8 +460,8 @@ code.
   with Command, resize by dragging, held within the room or their surface. The controls let an app
   take a drag for an object instead of the camera, with Option and Command passed on; BombCAD keeps
   orbiting. Any room's walls, floor and ceiling push and pull with Command-drag: a box's or plan's
-  surfaces, or a mesh's planes. Still to do: adding and removing pieces of a hall, and editing a
-  plan's corners in 3D. BombCAD's blast renderer remains its own.
+  surfaces, or a mesh's planes. A floor plan's corners drag by handles at the top of their edges.
+  Still to do: adding and removing pieces of a hall, which needs the document to keep them. BombCAD's blast renderer remains its own.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 
