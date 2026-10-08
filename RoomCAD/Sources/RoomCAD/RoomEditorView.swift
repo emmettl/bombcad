@@ -15,7 +15,7 @@ struct RoomEditorView: View {
     @State private var spaceKey = SpaceKeyMonitor()
     @State private var chart = Chart.envelope
 
-    enum Chart { case envelope, spectrum }
+    enum Chart { case envelope, spectrum, early }
 
     private var project: RoomProject { document.project }
 
@@ -114,6 +114,7 @@ struct RoomEditorView: View {
                         Picker("Chart", selection: $chart) {
                             Text("Envelope").tag(Chart.envelope)
                             Text("Spectrum").tag(Chart.spectrum)
+                            Text("Early").tag(Chart.early)
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
@@ -122,6 +123,7 @@ struct RoomEditorView: View {
                         case .envelope: EnvelopeChart(summary: summary)
                         case .spectrum:
                             SpectrumChart(summary: summary, crossover: result.diagnostics.waveCrossover)
+                        case .early: EarlyChart(summary: summary)
                         }
                     }
                     .frame(minWidth: 260)

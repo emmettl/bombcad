@@ -199,6 +199,8 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     /// The wave solver's largest phase-velocity error at the crossover, over directions (negative: waves
     /// travel slower than sound); its modes are low by about as much. See `WaveAccuracy`.
     public var waveDispersion: Double?
+    /// About how much memory the wave solver's grid took, in bytes.
+    public var waveMemory: Int?
     /// Why the wave solver was not used although asked for, if so.
     public var waveNote: String?
     /// In a room with a floor plan, the wall reflections and total reflections the image sources reached.
@@ -444,7 +446,7 @@ public enum RoomResponseGenerator {
         var wave:
             (
                 crossover: Double, cells: Int, seconds: Double, runs: Int, gpuRuns: Int, bareDecay: [Double?],
-                dispersion: Double?
+                dispersion: Double?, memory: Int
             )?
         var waveNote: String?
         if settings.lowFrequencyModel {
@@ -481,7 +483,8 @@ public enum RoomResponseGenerator {
                         WaveAccuracy.worstPhaseVelocityError(
                             frequency: crossover, spacing: plan.solver.spacing,
                             timeStep: plan.solver.timeStep,
-                            soundSpeed: c)
+                            soundSpeed: c),
+                        plan.solver.memoryEstimate
                     )
                 }
             } else {
@@ -498,6 +501,7 @@ public enum RoomResponseGenerator {
                 ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
             waveCells: wave?.cells, waveSeconds: wave?.seconds, waveRuns: wave?.runs,
             waveGPURuns: wave?.gpuRuns, waveBareDecay: wave?.bareDecay, waveDispersion: wave?.dispersion,
+            waveMemory: wave?.memory,
             waveNote: waveNote,
             planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
 
