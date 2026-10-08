@@ -1,4 +1,4 @@
-.PHONY: build app run test release-smoke roomcad-test roomcad-validate roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ifc-converter ci-test check release-check release
+.PHONY: build app run test release-smoke lint format icons ifc-converter ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -31,37 +31,17 @@ release-smoke:
 	.build/release/blastbench anchorage --standoff 25 --bases clamped,dowelled,soil --time 0.05
 	.build/release/blastbench anchorage --shells --standoff 25 --bases clamped,soil --time 0.05
 
-roomcad-test:
-	swift test --package-path RoomCAD
-	python3 RoomCAD/Scripts/test-release.py
-
-roomcad-validate:
-	swift run -c release --package-path RoomCAD acousticbench --bras-cr2
-	swift run -c release --package-path RoomCAD acousticbench --bras-cr3
-
-roomcad-app:
-	bash RoomCAD/Scripts/build-app.sh "$(CONFIGURATION)"
-
-roomcad-icon:
-	swift RoomCAD/Scripts/make-icon.swift
-
-roomcad-release-check:
-	python3 RoomCAD/Scripts/release.py check
-
-roomcad-release:
-	python3 RoomCAD/Scripts/release.py prepare
-
 lint:
-	swift format lint --strict --recursive Package.swift Sources Tests Scripts RoomCAD/Package.swift RoomCAD/Sources RoomCAD/Tests RoomCAD/Scripts
+	swift format lint --strict --recursive Package.swift Sources Tests Scripts
 
 format:
-	swift format format --in-place --recursive Package.swift Sources Tests Scripts RoomCAD/Package.swift RoomCAD/Sources RoomCAD/Tests RoomCAD/Scripts
+	swift format format --in-place --recursive Package.swift Sources Tests Scripts
 
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
 
-check: lint test roomcad-test ci-test build
+check: lint test ci-test build
 
 release-check:
 	python3 Scripts/release.py check

@@ -3,7 +3,7 @@
 Where the model is weakest, and what would be done about it. Each model document has its own
 detailed list; this one puts them in order across the whole project.
 
-A separate [RoomCAD and convolution reverb roadmap](roomcad-roadmap.md) covers shared SwiftPM
+A separate [RoomCAD and convolution reverb roadmap](https://github.com/emmettl/RoomCAD/blob/main/docs/roomcad-roadmap.md) covers shared SwiftPM
 modules, acoustic impulse-response generation, WAV export and potential Driftbox rack
 integration, with milestones and acceptance checks. It does not replace the blast-model work
 below.
