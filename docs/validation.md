@@ -53,7 +53,7 @@ swift run -c release blastbench chamber
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 13% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 16 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -768,9 +768,9 @@ leaves out:
 |-------|------------|----------------------|----------------------|-----------------------------------|
 | P1    | 0          | 3 (12)               |                      |                                   |
 | S1–S3 | cracks     | 3 (14)               |                      |                                   |
-| P7    | 340        | 112 (161)            | 79 (206)             | 128 (164)                         |
-| S5    | punched through | 206 (261), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
-| P2    | 510, punched through, hanging | 210 (261), whole | broken at mid-span, fell | 195 (278), spalled 1.9% under the charge, no hole |
+| P7    | 340        | 111 (161)            | 79 (206)             | 128 (164)                         |
+| S5    | punched through | 207 (261), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
+| P2    | 510, punched through, hanging | 211 (261), whole | broken at mid-span, fell | 195 (278), spalled 1.9% under the charge, no hole |
 
 (The 8-element and fine-air columns predate cracks that slide for good, which moved the 6-element
 column by 7–17 mm, and the CEB's strain-rate law for the bars, which moved it by 5–14 mm.)
@@ -1152,7 +1152,7 @@ scales the charges, `--pressures` fills the closed chamber with a steady overpre
 ### Results
 
 Since these runs, cracks slide for good and ride up when they do (see the
-[concrete model](concrete-model.md#shear-across-cracks)): the roof's edge is left 16 mm up,
+[concrete model](concrete-model.md#shear-across-cracks)): the roof's edge is left 15 mm up,
 where the runs below leave it 7 mm, with its peak unchanged at 38 mm.
 
 **Pressures.** At gauges placed near the sensors the model gives 4.2 and 6.8 MPa on the side

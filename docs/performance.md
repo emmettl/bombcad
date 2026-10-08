@@ -10,9 +10,9 @@ power or thermal state; figures here are from cool runs.
 
 | What is simulated                                   | Slower than real time |
 |-----------------------------------------------------|-----------------------|
-| Air blast, 1 million cells (0.5 m in a street scene) | 2×                    |
+| Air blast, 1 million cells (0.5 m in a street scene) | 1×                    |
 | Air blast, 8.4 million cells (0.25 m)               | 19×                   |
-| Air blast, 67 million cells (0.125 m)               | 276×                  |
+| Air blast, 67 million cells (0.125 m)               | 268×                  |
 | Air blast on 0.25 m cells refined by 2 near the shock (the peaks of 0.125 m) | 67× |
 | A 225,000-element concrete building, alone          | 54×                   |
 | The same, once pieces are colliding                 | 98×                   |
@@ -35,21 +35,21 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
 
 | Cell size | Cells  | GPU memory | Steps/s | Steps | Air swept | Whole event | Slower than real time | Sweeping all of it |
 |-----------|--------|------------|---------|-------|-----------|-------------|-----------------------|--------------------|
-| 0.5 m     | 1.0 M  | 0.06 GB    | 2,840   | 727   | 59%       | 0.3 s       | 2×                    | 2×                 |
-| 0.25 m    | 8.4 M  | 0.48 GB    | 482     | 1,526 | 50%       | 3.2 s       | 19×                   | 31×                |
-| 0.125 m   | 67 M   | 3.8 GB     | 65      | 3,055 | 42%       | 47 s        | 276×                  | 522× (est.)        |
+| 0.5 m     | 1.0 M  | 0.06 GB    | 2,890   | 727   | 59%       | 0.3 s       | 1×                    | 2×                 |
+| 0.25 m    | 8.4 M  | 0.48 GB    | 475     | 1,526 | 50%       | 3.2 s       | 19×                   | 30×                |
+| 0.125 m   | 67 M   | 3.8 GB     | 67      | 3,055 | 42%       | 46 s        | 268×                  | 465× (est.)        |
 
 - **Still air is skipped.** The grid is cut into tiles of 8 × 8 × 8 cells, and a tile is swept
   only from the step before the blast can first reach it (see the
   [air-blast model](air-blast-model.md#skipping-still-air)). Over the street event 42% to 59%
-  of the tiles are swept on average, and the event computes 1.5 to 1.9 times faster. The answer
+  of the tiles are swept on average, and the event computes 1.5 to 1.7 times faster. The answer
   is the same to the last bit; `--no-skip` sweeps everything. (The 0.5 m run used to show 64%:
   the idle steps encoded past the end of the event were counted as sweeping tiles, and no
   longer are.)
-- Throughput is about **2.0 to 2.4 billion cell-updates per second** when every cell is
+- Throughput is about **2.1 to 2.6 billion cell-updates per second** when every cell is
   swept, each update being three directional sweeps; counting the skipped cells as updated,
-  it is 3.0 to 4.4 billion. Earlier measurements gave 2.8 billion, and 3.2 to 4.8: the table
-  was 7 to 9% faster when still-air skipping went in, and has come down with the features
+  it is 3.0 to 4.5 billion. Earlier measurements gave 2.8 billion, and 3.2 to 4.8: the table
+  was 6 to 9% faster when still-air skipping went in, and has come down with the features
   added since (see below).
 - Halving the cell size costs 16 times as much: eight times the cells and twice the steps.
 - Memory is 57 bytes per cell: two copies of the state, peak pressure, impulse, the solid mask
@@ -62,13 +62,13 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
   shorter step in the hotter gas, and more of the air reached. Hot air alone costs about a
   quarter.
 - Without `--full`, the finest figure is extrapolated from a timed sample of 192 steps of full
-  sweeps, scaled by the swept fraction of the 0.25 m run (an estimate of 38 s, against 47 s
+  sweeps, scaled by the swept fraction of the 0.25 m run (an estimate of 39 s, against 46 s
   measured).
 - **The kernels are compiled for the gas in use.** Thermally perfect and dissociating air
   share the air's kernels with the ideal gas; compiled to handle all three, the kernels that
   sweep every cell ran the ideal gas 8 to 9% slower than before those models existed. The
   sweeps (coarse and fine) and the tile list are now compiled for the configured gas alone,
-  which wins that back. The rest of the slowdown since, about 5%, came in small steps with
+  which wins that back. The rest of the slowdown since, about 6%, came in small steps with
   later features.
 
 ## Refinement
