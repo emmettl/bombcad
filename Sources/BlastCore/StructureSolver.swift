@@ -170,10 +170,7 @@ public final class StructureSolver {
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
         // The element kernel is specialised for structures of a single material without joints.
         let constants = MTLFunctionConstantValues()
@@ -183,13 +180,7 @@ public final class StructureSolver {
         }
         var single = model.materials.count == 1 && !model.materials.contains(where: showsJoints)
         constants.setConstantValue(&single, type: .bool, index: 0)
-        guard
-            let elementFunction = try? library.makeFunction(
-                name: "structureElements", constantValues: constants)
-        else {
-            throw BlastError.missingFunction("structureElements")
-        }
-        elementPipeline = try device.makeComputePipelineState(function: elementFunction)
+        elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         nodePipeline = try pipeline("structureNodes")
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")

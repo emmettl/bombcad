@@ -1054,6 +1054,23 @@ enum ShaderLibrary {
         }.joined(separator: "\n")
         return try device.makeLibrary(source: source, options: nil)
     }
+
+    /// Index of the optional function constant that compiles a kernel for one gas model
+    /// (`airModelConstant` in Solver.metal).
+    static let airModelConstant = 1
+
+    /// A compute pipeline for kernel `name`, specialised with `constants` (none by default).
+    /// Every kernel is specialised: many read the optional gas-model constant through the gas
+    /// functions, and Metal builds a pipeline from such a kernel only once it is specialised.
+    static func pipeline(
+        _ name: String, in library: MTLLibrary,
+        constants: MTLFunctionConstantValues = MTLFunctionConstantValues()
+    ) throws -> MTLComputePipelineState {
+        guard let function = try? library.makeFunction(name: name, constantValues: constants) else {
+            throw BlastError.missingFunction(name)
+        }
+        return try library.device.makeComputePipelineState(function: function)
+    }
 }
 
 // MARK: - Decoding layouts saved by earlier versions

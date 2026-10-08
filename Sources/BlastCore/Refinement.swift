@@ -68,7 +68,11 @@ final class AirRefinement {
     let coarseSpeciesFlux: MTLBuffer
     private let device: MTLDevice
 
+    private let library: MTLLibrary
+    /// The fine sweep, reading the gas model from its uniforms; and, for each gas model used so
+    /// far, the sweep compiled for that model alone, which leaves the others' code out of it.
     private let sweepPipeline: MTLComputePipelineState
+    private var sweepPipelines: [AirModel: MTLComputePipelineState] = [:]
     private let ghostPipeline: MTLComputePipelineState
     private let haloPipeline: MTLComputePipelineState
     private let refluxPipeline: MTLComputePipelineState
@@ -113,10 +117,7 @@ final class AirRefinement {
         maxPatches = max(1, min(tiles, memory / Self.bytesPerPatch(ratio: ratio, species: species)))
 
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
         sweepPipeline = try pipeline("refineSweep")
         ghostPipeline = try pipeline("refineGhosts")
@@ -159,6 +160,7 @@ final class AirRefinement {
         fineOccupancy = try buffer(fineCells * 16, "fine occupancy")
         boxes = try buffer(32, "rigid blocks")
         self.device = device
+        self.library = library
         let fineLength = maxPatches * side * side * side * cell
         fine = [try buffer(fineLength, "fine state A"), try buffer(fineLength, "fine state B")]
         halo = try buffer(maxPatches * 512 * cell, "halo")
@@ -345,6 +347,22 @@ final class AirRefinement {
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
     }
 
+    /// The fine sweep compiled for `model`, made the first time it is used; the general one if
+    /// that fails.
+    private func sweepPipeline(for model: AirModel?) -> MTLComputePipelineState {
+        guard let model else { return sweepPipeline }
+        if let pipeline = sweepPipelines[model] { return pipeline }
+        let constants = MTLFunctionConstantValues()
+        var value = model.rawValue
+        constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        guard let pipeline = try? ShaderLibrary.pipeline("refineSweep", in: library, constants: constants)
+        else {
+            return sweepPipeline
+        }
+        sweepPipelines[model] = pipeline
+        return pipeline
+    }
+
     /// Step 3: r substeps of every patch, each sweeping `axes` in order, each sweep after filling
     /// the patches' ghosts along its axis.
     func encodeSubsteps(
@@ -353,6 +371,7 @@ final class AirRefinement {
         uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
+        let sweepPipeline = sweepPipeline(for: AirModel(rawValue: uniforms.airModel))
         var depth = 8
         while depth > 1 && 64 * depth > sweepPipeline.maxTotalThreadsPerThreadgroup { depth /= 2 }
         var sweep = 0

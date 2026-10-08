@@ -64,10 +64,7 @@ public final class MixedStructure {
         solids.stepOverride = step
         shells.stepOverride = step
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
         followPipeline = try pipeline("shellFollowSolid")
         crossSolidPipeline = try pipeline("crossContactSolid")

@@ -275,10 +275,7 @@ public final class ShellSolver {
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
-            guard let function = library.makeFunction(name: name) else {
-                throw BlastError.missingFunction(name)
-            }
-            return try device.makeComputePipelineState(function: function)
+            try ShaderLibrary.pipeline(name, in: library)
         }
         elementPipeline = try pipeline("shellElements")
         beamPipeline = try pipeline("beamElements")

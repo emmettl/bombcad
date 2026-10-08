@@ -697,7 +697,7 @@ leaves out:
 | P1    | 0          | 4 (11)               |                      |                                   |
 | S1–S3 | cracks     | 5 (13)               |                      |                                   |
 | P7    | 340        | 101 (156)            | 79 (206)             | 128 (164)                         |
-| S5    | punched through | 193 (251), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
+| S5    | punched through | 192 (251), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
 | P2    | 510, punched through, hanging | 198 (249), whole | broken at mid-span, fell | 195 (278), spalled 1.9% under the charge, no hole |
 
 (The 8-element and fine-air columns predate cracks that slide for good, which moved the 6-element
