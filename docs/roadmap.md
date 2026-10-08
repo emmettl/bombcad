@@ -703,10 +703,7 @@ checked. Finite support regions select initial lower-face/footprint points and u
 horizontal bearing planes; they do not model a footing's finite contact extents. See
 [structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
 and moving-component connections; bounded footings, and soil with mass, radiation damping and
-layers; and a measured connection case. Loaded by the air instead of a pulse
-(`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
-wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
-pulse throws over.
+layers; and a measured connection case.
 
 Done from these lists: blast loads against the full Kingery–Bulmash curves; a coupled test
 (the internal explosion); shell elements for walls and slabs and beam elements for columns (2
