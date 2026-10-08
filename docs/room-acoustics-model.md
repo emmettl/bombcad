@@ -183,6 +183,31 @@ Both hall presets have six materials: audience, other floors, walls, ceiling, st
 walls. Measured scenes describe their geometry the same way (see
 [the chamber music hall](roomcad-validation.md#a-larger-room-the-chamber-music-hall)).
 
+### Importing a model
+
+`RoomImport` turns the polygons of a model file into a room. The app reads OBJ and STL files with
+SimulationKit's GeometryImport, the reader BombCAD uses too. The model must be the closed surface of
+the room's air: a box, a hall or any shape drawn as one solid, or as the inside surface of a building's
+room. Then:
+
+- **Units and axes.** The model is scaled to metres and, if it was drawn with y up, turned so z is
+  up.
+- **Welding.** Corners closer than 0.1 mm become one, so an STL file's separate triangles join up.
+  Faces that collapse to a line or point are left out.
+- **Flatness.** A polygon that is not flat within a millimetre is cut into triangles. Concave
+  polygons, such as an L-shaped floor, stay whole.
+- **Orientation.** A solid's faces usually point out; if the enclosed volume comes out negative, every
+  face is turned to point into the room.
+- **Materials.** Faces take one material per name in the file: the OBJ material, else its group,
+  else its object. Each starts as the room's current wall material and keeps its name as a label.
+- **Checks.** Every edge must belong to exactly two faces. An edge with one face leaves a gap; an edge
+  with more than two means more than one surface, such as a building's inside and outside walls.
+  Either is refused, with a count of the edges at fault. At most 50,000 faces are taken.
+
+Tests import a solid drawn in centimetres with y up, an L-shaped room given as separate triangles and
+as polygons with a concave floor, an open box, two boxes sharing an edge, and a box with one corner
+raised, which is cut into triangles where it is warped.
+
 ### Tests
 
 Tests check the mesh code against the box and the floor plan:

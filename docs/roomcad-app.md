@@ -102,7 +102,12 @@ script before an archive is written.
 - **Inspector.** Edits everything that affects the response:
   - room dimensions, or with **Shape** a floor plan (L, T or trapezoid to start from). Its corners
     can be edited as numbers or dragged by their handles in the plan view, which numbers its walls;
-  - for a room of any shape, built from solids by a preset (see
+  - **Shape ▸ Import Model…**, which reads an OBJ or STL file as the room (see
+    [Importing a model](room-acoustics-model.md#importing-a-model)). A sheet chooses the units it was
+    drawn in and whether y is up, and shows the room's size, volume, faces and materials, what was
+    tidied, or why the model is not a closed room. **Replace Room** keeps the source and receivers if
+    they are still well inside, and otherwise moves them to roomy spots;
+  - for a room of any shape, built from solids by a preset or imported (see
     [Rooms of any shape](room-acoustics-model.md#rooms-of-any-shape)): its size is shown but not
     edited, and each of its materials is edited with its label and area. **Shape** turns it back into
     a box or a floor plan. Its openings are open faces, so the openings list is not offered;
@@ -348,6 +353,8 @@ saved again.
   - the wording of generation progress and of the wave solver's engines;
   - the 3D scene: its triangles cover the room's surfaces once, openings lie on their wall, and a
     click from above selects the floor, and on the source the source;
+  - importing a model: an OBJ file read with its material names, scaled and turned upright, and points
+    outside a smaller room moved inside, clear of every surface;
   - editing in 3D: surfaces numbered alike for boxes, plans and meshes, a material landing on the
     surface chosen, and the source dragged across the room, raised with Option, and kept inside;
   - fitting absorption to a target reverberation time, and refusing to fit without one.

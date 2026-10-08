@@ -18,7 +18,8 @@ let package = Package(
         .target(
             name: "BlastCore",
             dependencies: [
-                .product(name: "SceneModel", package: "SimulationKit")
+                .product(name: "SceneModel", package: "SimulationKit"),
+                .product(name: "GeometryImport", package: "SimulationKit"),
             ], resources: [.copy("Shaders")]),
         .target(
             name: "BlastRender",

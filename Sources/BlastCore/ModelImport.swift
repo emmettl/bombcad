@@ -1,4 +1,5 @@
 import Foundation
+import GeometryImport
 import simd
 
 /// Geometry-only OBJ and STL reader. Imported surfaces must enclose a volume.
@@ -41,127 +42,47 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
     }
     private init(data: Data, fileExtension: String, validating: Bool) throws {
         try Task.checkCancellation()
-        guard data.count <= 20_000_000 else { throw ImportError.invalid("Model exceeds the 20 MB limit.") }
+        // The shared reader parses the file; what makes an importable solid is decided here.
+        let file: MeshFile
+        do {
+            file = try MeshFile(data: data, fileExtension: fileExtension)
+        } catch let MeshFile.ReadError.invalid(reason) {
+            throw ImportError.invalid(reason)
+        }
         var result: [Triangle] = []
-        var labels: [FaceLabel]? = nil
-        if fileExtension.lowercased() == "obj" {
-            guard let source = String(data: data, encoding: .utf8) else {
-                throw ImportError.invalid("OBJ must be UTF-8 text.")
-            }
-            var vertices: [SIMD3<Float>] = []
-            labels = []
-            var objectName: String?
-            var groupName: String?
-            for (lineIndex, line) in source.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(
-                of: "\r", with: "\n"
-            ).split(separator: "\n", omittingEmptySubsequences: false)
-                .enumerated()
-            {
-                if lineIndex % 256 == 0 { try Task.checkCancellation() }
-                let fields = line.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
-                    .split(whereSeparator: \.isWhitespace)
-                guard let first = fields.first else { continue }
-                if first == "o" || first == "g" {
-                    let name = fields.dropFirst().joined(separator: " ")
-                    guard name.count <= 200 else {
-                        throw ImportError.invalid("OBJ part names must be at most 200 characters.")
-                    }
-                    if first == "o" {
-                        objectName = name.isEmpty ? nil : name
-                    } else {
-                        groupName = name.isEmpty || name == "off" ? nil : name
-                    }
-                } else if first == "v" {
-                    guard fields.count >= 4, let x = Float(fields[1]), let y = Float(fields[2]),
-                        let z = Float(fields[3])
-                    else { throw ImportError.invalid("Invalid OBJ vertex at line \(lineIndex + 1).") }
-                    vertices.append(SIMD3(x, y, z))
-                } else if first == "f" {
-                    guard fields.count >= 4 else {
-                        throw ImportError.invalid(
-                            "OBJ face at line \(lineIndex + 1) needs at least three vertices.")
-                    }
-                    let indices = try fields.dropFirst().map { field -> Int in
-                        guard let token = field.split(separator: "/").first, let raw = Int(token), raw != 0
-                        else { throw ImportError.invalid("Invalid OBJ face index at line \(lineIndex + 1).") }
-                        let index = raw > 0 ? raw - 1 : vertices.count + raw
-                        guard vertices.indices.contains(index) else {
-                            throw ImportError.invalid(
-                                "OBJ face at line \(lineIndex + 1) references a missing vertex.")
-                        }
-                        return index
-                    }
-                    // Reject polygons for which fan triangulation would change the volume.
-                    if indices.count > 3 {
-                        let points = indices.map { vertices[$0] }
-                        let normal = simd_cross(points[1] - points[0], points[2] - points[0])
-                        let magnitude = simd_length(normal)
-                        guard magnitude > 1e-10 else {
-                            throw ImportError.invalid("Triangulate OBJ polygons before importing.")
-                        }
-                        let tolerance = max(1e-6, simd_length(points[1] - points[0]) * 1e-5)
-                        guard
-                            points.allSatisfy({
-                                abs(simd_dot($0 - points[0], normal) / magnitude) < tolerance
-                            }),
-                            points.indices.allSatisfy({ n in
-                                let a = points[n]
-                                let b = points[(n + 1) % points.count]
-                                let c = points[(n + 2) % points.count]
-                                return simd_dot(simd_cross(b - a, c - b), normal) > 0
-                            })
-                        else {
-                            throw ImportError.invalid(
-                                "OBJ polygons must be planar and convex. Export triangulated faces.")
-                        }
-                    }
-                    for n in 1..<(indices.count - 1) {
-                        labels?.append(FaceLabel(object: objectName, group: groupName))
-                        result.append(
-                            Triangle(
-                                a: vertices[indices[0]], b: vertices[indices[n]], c: vertices[indices[n + 1]])
-                        )
-                    }
+        var labels: [FaceLabel]? = fileExtension.lowercased() == "obj" ? [] : nil
+        let vertices = file.vertices
+        for face in file.faces {
+            let indices = face.corners
+            // Reject polygons for which fan triangulation would change the volume.
+            if indices.count > 3 {
+                let points = indices.map { vertices[$0] }
+                let normal = simd_cross(points[1] - points[0], points[2] - points[0])
+                let magnitude = simd_length(normal)
+                guard magnitude > 1e-10 else {
+                    throw ImportError.invalid("Triangulate OBJ polygons before importing.")
+                }
+                let tolerance = max(1e-6, simd_length(points[1] - points[0]) * 1e-5)
+                guard
+                    points.allSatisfy({
+                        abs(simd_dot($0 - points[0], normal) / magnitude) < tolerance
+                    }),
+                    points.indices.allSatisfy({ n in
+                        let a = points[n]
+                        let b = points[(n + 1) % points.count]
+                        let c = points[(n + 2) % points.count]
+                        return simd_dot(simd_cross(b - a, c - b), normal) > 0
+                    })
+                else {
+                    throw ImportError.invalid(
+                        "OBJ polygons must be planar and convex. Export triangulated faces.")
                 }
             }
-        } else if fileExtension.lowercased() == "stl" {
-            func uint(_ offset: Int) -> UInt32 {
-                UInt32(data[offset]) | UInt32(data[offset + 1]) << 8 | UInt32(data[offset + 2]) << 16
-                    | UInt32(data[offset + 3]) << 24
+            for n in 1..<(indices.count - 1) {
+                labels?.append(FaceLabel(object: face.object, group: face.group))
+                result.append(
+                    Triangle(a: vertices[indices[0]], b: vertices[indices[n]], c: vertices[indices[n + 1]]))
             }
-            if data.count >= 84, 84 + UInt64(uint(80)) * 50 == UInt64(data.count) {
-                func point(_ offset: Int) -> SIMD3<Float> {
-                    SIMD3(
-                        Float(bitPattern: uint(offset)), Float(bitPattern: uint(offset + 4)),
-                        Float(bitPattern: uint(offset + 8)))
-                }
-                for n in 0..<Int(uint(80)) {
-                    if n % 256 == 0 { try Task.checkCancellation() }
-                    let offset = 84 + n * 50 + 12
-                    result.append(Triangle(a: point(offset), b: point(offset + 12), c: point(offset + 24)))
-                }
-            } else {
-                guard let source = String(data: data, encoding: .utf8) else {
-                    throw ImportError.invalid("Invalid STL file.")
-                }
-                var points: [SIMD3<Float>] = []
-                for (lineIndex, line) in source.split(whereSeparator: \.isNewline).enumerated() {
-                    if lineIndex % 256 == 0 { try Task.checkCancellation() }
-                    let fields = line.split(whereSeparator: \.isWhitespace)
-                    if fields.first == "vertex" {
-                        guard fields.count == 4, let x = Float(fields[1]), let y = Float(fields[2]),
-                            let z = Float(fields[3])
-                        else { throw ImportError.invalid("Invalid STL vertex.") }
-                        points.append(SIMD3(x, y, z))
-                    }
-                }
-                guard points.count % 3 == 0 else { throw ImportError.invalid("Incomplete STL triangle.") }
-                for n in stride(from: 0, to: points.count, by: 3) {
-                    result.append(Triangle(a: points[n], b: points[n + 1], c: points[n + 2]))
-                }
-            }
-        } else {
-            throw ImportError.invalid("Choose an OBJ or STL file.")
         }
         guard !result.isEmpty, result.count <= 100_000 else {
             throw ImportError.invalid("Models must have between 1 and 100,000 triangles.")

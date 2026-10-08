@@ -41,7 +41,7 @@ existing sources; this document does not prescribe a migration of the current ch
 | SceneModel | Geometry, transforms, openings and shared scene identifiers | Both apps |
 | SceneView | Shared camera, bounds framing and viewport mathematics; implemented first | Both apps |
 | DocumentKit | Versioned document containers and asset handling; foundation implemented | Both apps |
-| GeometryImport | File readers, source meshes, parts, transforms and geometric diagnostics | Both apps |
+| GeometryImport | File readers, source meshes, parts, transforms and geometric diagnostics; the OBJ and STL reader implemented | Both apps |
 | MetalSupport | Reusable device, buffer, shader-loading and dispatch utilities | Both solvers and rendering |
 | SceneRender | Camera controls, selection, geometry and rendering; scene geometry, picking, a mesh renderer and the orbit controls implemented | Both apps |
 | BlastCore | Blast equations, charges, measurements and validation | BombCAD |
@@ -65,7 +65,10 @@ in BombCAD until RoomCAD needs them and their dependencies can be extracted clea
 The integrated BombCAD importer is a major shared foundation: OBJ/STL parsing, scale and axis
 conversion, placement, mesh diagnostics, preview overlays and selection can serve both apps.
 Its current implementation lives in BlastCore and BombCAD; extract the shared pieces when
-RoomCAD needs them.
+RoomCAD needs them. The OBJ and STL reader is now shared: SimulationKit's GeometryImport returns a
+file's polygons with their object, group and material names. BlastCore applies its own rules to them,
+as before: planar convex polygons, fanned into triangles, enclosing solids. RoomCAD turns them into
+a closed room. Placement, diagnostics, preview overlays and selection remain in BombCAD.
 
 Keep the source mesh, stable part identifiers and material-group references as the canonical
 import. Voxel boxes are derived data for a particular solver and resolution. RoomCAD's
@@ -419,8 +422,9 @@ code.
   faces can be open. Meshes are built from pieces of air with constructive solid geometry: two
   presets, a shoebox concert hall with balconies and a raked auditorium with a rear tier, and the
   measured chamber music hall are built this way. Each backend's supported geometry is documented in
-  [Room-acoustics model](room-acoustics-model.md#rooms-of-any-shape). The app shows a mesh and edits
-  its materials but not its shape; editing solids in the app, and importing models, remain to do.
+  [Room-acoustics model](room-acoustics-model.md#rooms-of-any-shape). OBJ and STL models can be
+  imported as rooms, through the reader BombCAD shares. The app shows a mesh and edits its materials
+  but not its shape; editing solids in the app remains to do.
 - **Item 2.** This has started: 90 absorption and 7 scattering presets come from the annex of
   Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
   and labelled in each material's reference. Most surfaces still need scattering values. See

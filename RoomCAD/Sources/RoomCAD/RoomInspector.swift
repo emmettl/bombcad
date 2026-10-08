@@ -256,6 +256,9 @@ struct MaterialEditor: View {
 struct RoomInspector: View {
     @Binding var project: RoomProject
     @State private var pendingPreset: RoomPreset?
+    @State private var choosingModel = false
+    @State private var pendingModel: PendingModel?
+    @State private var modelError: String?
 
     private var settings: Binding<RoomResponseSettings> { $project.settings }
 
@@ -294,8 +297,32 @@ struct RoomInspector: View {
                             .trapezoid(
                                 width: size.x, depth: size.y, narrowTo: size.x * 0.6, material: wallMaterial))
                     }
+                    Divider()
+                    Button("Import Model…") {
+                        modelError = nil
+                        choosingModel = true
+                    }
                 }
-                .help("A floor plan with vertical walls; drag its corners in the plan view")
+                .fileImporter(isPresented: $choosingModel, allowedContentTypes: PendingModel.types) {
+                    result in
+                    do {
+                        pendingModel = try PendingModel(url: result.get())
+                    } catch {
+                        modelError = error.localizedDescription
+                    }
+                }
+                .sheet(item: $pendingModel) { model in
+                    ModelImportSheet(model: model, material: wallMaterial) { room in
+                        project.settings = project.settings.replacingRoom(with: room)
+                    }
+                }
+                .help(
+                    "A floor plan with vertical walls, whose corners drag in the plan view; or a model of any "
+                        + "shape from an OBJ or STL file")
+                if let modelError {
+                    Label(modelError, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(
+                        .callout)
+                }
                 if project.settings.room.mesh != nil {
                     LabeledContent("Length × width × height") {
                         Text(

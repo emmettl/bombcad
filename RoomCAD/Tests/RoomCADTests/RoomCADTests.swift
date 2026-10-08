@@ -439,3 +439,53 @@ func dragPoint() throws {
     #expect(settings.moving(.source, to: [-1, 1, 1]) == settings)
     #expect(settings.moving(.source, to: [1.234, 1.5, 1.2]).source.position == [1.23, 1.5, 1.2])
 }
+
+@Test("An OBJ file becomes the room, and points left outside it move to roomy spots inside")
+func importModel() throws {
+    // A 20 × 10 × 6 m hall, drawn in centimetres with y up, faces pointing out, floor and ceiling named.
+    let obj = """
+        v 0 0 0
+        v 2000 0 0
+        v 0 0 -1000
+        v 2000 0 -1000
+        v 0 600 0
+        v 2000 600 0
+        v 0 600 -1000
+        v 2000 600 -1000
+        usemtl Walls
+        f 1 5 7 3
+        f 2 4 8 6
+        f 1 2 6 5
+        f 3 7 8 4
+        usemtl Floor
+        f 1 3 4 2
+        usemtl Ceiling
+        f 5 6 8 7
+        """
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).obj")
+    try Data(obj.utf8).write(to: url)
+    defer { try? FileManager.default.removeItem(at: url) }
+    let model = try PendingModel(url: url)
+    #expect(model.polygons.count == 6)
+    #expect(model.polygons.map(\.name) == ["Walls", "Walls", "Walls", "Walls", "Floor", "Ceiling"])
+    let (room, _) = try RoomImport.room(
+        from: model.polygons, scale: ModelUnit.centimetres.metres, yUp: true,
+        material: .uniform(0.1, name: "Plaster"))
+    #expect(simd_distance(room.size, [20, 10, 6]) < 1e-6)
+
+    var settings = RoomProject.starter
+    settings.openings = [Opening(name: "Door", surface: .north, centre: [2, 1], size: [0.9, 2])]
+    // The starter room's points are inside the hall too, so they stay.
+    #expect(settings.replacingRoom(with: room).source.position == settings.source.position)
+    // Points outside a smaller room, 4 × 2 × 1.2 m, move inside, at least 0.3 m from every surface.
+    let small = try RoomImport.room(
+        from: model.polygons, scale: 0.002, yUp: true, material: .uniform(0.1, name: "Plaster")
+    ).room
+    let placed = settings.replacingRoom(with: small)
+    #expect(placed.openings.isEmpty)
+    for point in [placed.source] + placed.receivers {
+        #expect(small.contains(point.position) && small.clearance(point.position) >= 0.3, "\(point.position)")
+    }
+    #expect(simd_distance(placed.source.position, placed.receivers[0].position) > 0.5)
+    try placed.validate()
+}

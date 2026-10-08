@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "SceneModel", targets: ["SceneModel"]),
         .library(name: "SceneView", targets: ["SceneView"]),
         .library(name: "SceneRender", targets: ["SceneRender"]),
+        .library(name: "GeometryImport", targets: ["GeometryImport"]),
         .library(name: "DocumentKit", targets: ["DocumentKit"]),
     ],
     targets: [
@@ -17,9 +18,10 @@ let package = Package(
         .target(
             name: "SceneRender", dependencies: ["SceneModel", "SceneView"], resources: [.copy("Shaders")]),
         .target(name: "DocumentKit"),
+        .target(name: "GeometryImport"),
         .testTarget(
             name: "SimulationKitTests",
-            dependencies: ["SceneModel", "SceneView", "SceneRender", "DocumentKit"]),
+            dependencies: ["SceneModel", "SceneView", "SceneRender", "DocumentKit", "GeometryImport"]),
     ],
     swiftLanguageModes: [.v6]
 )
