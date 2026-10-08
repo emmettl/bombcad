@@ -199,6 +199,28 @@ buildings and assessing each building's damage are independent runs, and only th
 over the whole area must be one computation, the case where splitting a single grid eventually
 pays ([When it pays](#when-it-pays)).
 
+**Adding machines.** More hardware, a second and stronger mini or another Studio, can take on
+the separable models, but a run cannot finish sooner than its inseparable core: with X the time
+of the blast and whatever must share its solver, and Y that of everything separable, one machine
+takes X + Y and enough machines approach X, a gain of at most (X + Y) / X. Today Y is nothing.
+As expensive effects arrive (thermal radiation over a city, every building's damage, fire), extra
+machines absorb them and keep a run near the blast's own time: they let the scope grow without
+the run slowing, rather than making any one model faster.
+
+- Models alongside the blast take a machine each, or several where they divide (thermal
+  radiation by patches of surface, fragments by groups); the slowest share sets the pace.
+- Independent jobs, each building's damage or deriving simplified buildings, scale almost in
+  proportion to the machines, like sweeps.
+- Hand-overs in sequence (the fireball's rise, fire, fallout) do not shorten one scenario; they
+  raise the throughput of several, as a production line does.
+- Work goes by cost: a stronger machine takes the heaviest separable model, the present mini
+  (3.2 to 4.5 times slower) the lightest or the independent jobs.
+- The blast's machine sends every consumer its share each frame: samples, kilobytes to megabytes,
+  are fine; whole fields to many consumers would fill its link.
+- One larger machine does some of this already, on its CPU or spare GPU, so extra machines pay
+  once one machine is full; the inseparable core stays on one GPU, where a faster machine is
+  the only help, until its grid outgrows it.
+
 ## Better first
 
 - **A bigger single GPU.** An M3 Ultra (80-core GPU, 819 GB/s, up to 512 GB) would run about
