@@ -114,6 +114,11 @@ public enum ImpactBenchmark {
         /// Each bar's steel spread through the concrete about it, out to the nearest face and as
         /// far the other way, rather than through the one row of elements at its height.
         public var spreadBars = false
+        /// An elastic pad between the weight and the plate, of this stiffness per unit area
+        /// (Pa/m): the compliance of the weight's contact with a plate seated loose on the beam.
+        /// It is one element thick, its modulus the stiffness times the element size. Nil strikes
+        /// the plate's top nodes directly, a contact infinitely stiff.
+        public var pad: Float?
     }
 
     public static func specimen(_ test: Test) -> Specimen {
@@ -141,6 +146,12 @@ public enum ImpactBenchmark {
             min: SIMD3(middle - s.plate.x / 2, 0, base + s.depth),
             max: SIMD3(middle + s.plate.x / 2, s.width, base + s.depth + s.plate.y))
         var solids = [beam, plateBox]
+        if s.pad != nil {
+            solids.append(
+                Box(
+                    min: SIMD3(plateBox.min.x, 0, plateBox.max.z),
+                    max: SIMD3(plateBox.max.x, s.width, plateBox.max.z + h)))
+        }
         if let thickness = s.supportPlates {
             let t = max((thickness / h).rounded(), 1) * h
             for support in [(s.length - s.span) / 2, (s.length + s.span) / 2] {
@@ -156,6 +167,14 @@ public enum ImpactBenchmark {
         var model = StructureModel(
             solids: solids, material: s.material, elementSize: h, fixedBase: false)
         for index in 1..<solids.count { model.setMaterial(.structuralSteel, of: index) }
+        if let stiffness = s.pad {
+            model.setMaterial(
+                StructureMaterial(
+                    name: "Pad", density: 1000, youngsModulus: stiffness * h, poissonRatio: 0.3,
+                    yieldStress: 1e12,
+                    hardeningModulus: 0, failureStrain: 10),
+                of: 2)
+        }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
             let reach = s.spreadBars ? max(min(bar.height, s.depth - bar.height), h / 2) : h / 2
@@ -186,6 +205,9 @@ public enum ImpactBenchmark {
         /// Largest reaction at either support (N), averaged over 0.5 ms as the load cells, read
         /// 2,400 times a second, would see it.
         public var peakReaction: Float
+        /// Largest impact force (N): the weight's mass times its deceleration, while it rides
+        /// the plate, averaged over the 0.42 ms between the tests' readings of its accelerometers.
+        public var peakImpactForce: Float = 0
         public var summary: StructureSummary
         public var elementCount: Int
         public var wallSeconds: Double
@@ -196,11 +218,12 @@ public enum ImpactBenchmark {
     /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
-        spreadBars: Bool = false, adjust: (inout StructureModel) -> Void = { _ in },
-        inspect: (StructureSolver) -> Void = { _ in }
+        spreadBars: Bool = false, specimen change: (inout Specimen) -> Void = { _ in },
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
         specimen.spreadBars = spreadBars
+        change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: test.weight, speed: impactSpeed,
             elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
@@ -311,6 +334,8 @@ public enum ImpactBenchmark {
         var reactions: [SIMD2<Float>] = []
         let stepsPerSample = max(1, Int(0.0001 / solver.criticalTimeStep))
         var attached = push == nil
+        // The weight's speed (the struck nodes' mean, downwards) while it rides the plate.
+        var weightSpeed: [Float] = push == nil ? [impact] : []
         // Pushing: 0 down, 1 drawn back, 2 let go and settling (until `settled`).
         var phase = 0
         var settled = Double.infinity
@@ -336,6 +361,12 @@ public enum ImpactBenchmark {
                             nodes[n].velocity = .zero
                         }
                     }
+                }
+            }
+            if attached {
+                solver.mutateNodes { nodes in
+                    weightSpeed.append(
+                        -struck.reduce(Float(0)) { $0 + nodes[$1].velocity.z } / Float(struck.count))
                 }
             }
             if attached && bounce {
@@ -387,13 +418,24 @@ public enum ImpactBenchmark {
                 peakReaction = max(peakReaction, abs(mean).max())
             }
         }
+        // Impact force from the weight's deceleration, over 0.42 ms windows.
+        let sample = Double(stepsPerSample) * Double(solver.criticalTimeStep)
+        let reading = max(1, Int((1 / 2400 / sample).rounded()))
+        var peakImpactForce: Float = 0
+        if weightSpeed.count > reading {
+            for i in reading..<weightSpeed.count {
+                let force =
+                    weight * (weightSpeed[i - reading] - weightSpeed[i]) / Float(Double(reading) * sample)
+                peakImpactForce = max(peakImpactForce, force)
+            }
+        }
         let end = push == nil ? duration : Double(history.last?.x ?? 0)
         let tail = history.filter { Double($0.x) >= end - 0.03 }
         if push != nil { peakReaction = pushForce }
         return Result(
             history: history, peak: history.map(\.y).max() ?? 0,
             residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)), peakReaction: peakReaction,
-            summary: solver.summary(), elementCount: solver.elementCount,
+            peakImpactForce: peakImpactForce, summary: solver.summary(), elementCount: solver.elementCount,
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
     }
 

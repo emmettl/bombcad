@@ -1159,7 +1159,7 @@ func runImpact() throws {
     for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
         let result = try ImpactBenchmark.run(
             device: device, test: test, elementsThroughDepth: layers, duration: duration,
-            spreadBars: flag("spread")
+            spreadBars: flag("spread"), specimen: chooseSupports
         ) { model in
             if flag("no-rate") { model.material.rateDependent = false }
             // `--bond`: the No. 30 bars slip.
@@ -1179,7 +1179,8 @@ func runImpact() throws {
                 )
                 + pad(
                     "\(Int(test.reaction / 1000)) / \(format(Double(result.peakReaction) / 1000, 0)) kN", 18)
-                + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
+                + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10)
+                + (flag("force") ? "  impact \(format(Double(result.peakImpactForce) / 1000, 0)) kN" : ""))
     }
     print(
         "\nPeak / residual mid-span displacement, the residual the mean over the last 30 ms; largest"
@@ -1189,6 +1190,9 @@ func runImpact() throws {
 /// `--pins`: Ando's beams held lengthwise at both ends; `--plates 0.02`: on steel plates that
 /// turn freely about their centre lines, instead of clamped over their faces.
 func chooseSupports(_ specimen: inout ImpactBenchmark.Specimen) {
+    // `--pad 2.3`: an elastic pad between the weight and the plate, of that stiffness per unit
+    // area (GPa/m).
+    if let pad = option("pad").flatMap({ Float($0) }) { specimen.pad = pad * 1e9 }
     if flag("pins") { specimen.pinnedEnds = true }
     if let plates = option("plates").flatMap({ Float($0) }) { specimen.supportPlates = plates }
 }

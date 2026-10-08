@@ -559,6 +559,20 @@ which is where the beam splits. But slip stiffens the beams with stirrups: the l
 35–40, and left 9–11 mm down against 18, on 16 elements; and the reactions rise to 560–700 kN.
 With the contest slab at 82% and OA1 at 142–147% with slip, it stays an option.
 
+**The blow itself.** The weight's momentum goes into the plate's top nodes at once, and the
+plate is bonded to the beam, so the contact is infinitely stiff. Measured as the tests did, as
+the weight's mass times its deceleration over the 0.42 ms between their readings
+(`blastbench impact --force`), the model's light drop strikes with about 3,200 kN and the heavy
+one 4,800 kN, where the paper gives 1,421 kN for SS3a-1 under the light drop. On 24 elements
+that blow parts the beam without stirrups at mid-depth under the plate within 3 ms, the stress
+wave reflected from the bottom face as tension (the beams with stirrups crack there too, but
+their stirrups cross the crack and hold it). An elastic pad between weight and plate of
+2.3 GPa per metre (`--pad 2.3`) brings the light drop's force to 1,420 kN and its peaks to
+11.3–12.3 mm (measured 9.3–12.1), but leaves those beams 1–2 mm above where they started, the
+heavy drops 8–12% short and left 9–12 mm down against 18, and SS0a-1 still losing 368 elements
+on 16 elements and 1,369 on 24. So it is not the default; the records of the impact force (see
+[Data wanted](data-wanted.md)) would say what the contact should be.
+
 How much aggregate interlock strengthens with strain rate, which the model takes to be as much
 as the tensile strength, remains open: with interlock doubled, about what Malvar and Ross's
 factor gave it at these rates, SS0a-1 survived even before the crack widths were corrected.
