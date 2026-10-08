@@ -76,10 +76,15 @@ script before an archive is written.
 
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
-  stay 5 cm inside the walls.
+  stay 5 cm inside the walls. A room of any shape (a mesh) is drawn as its outline edges projected
+  onto each view, over its dashed bounding box.
 - **Inspector.** Edits everything that affects the response:
   - room dimensions, or with **Shape** a floor plan (L, T or trapezoid to start from). Its corners
     can be edited as numbers or dragged by their handles in the plan view, which numbers its walls;
+  - for a room of any shape, built from solids by a preset (see
+    [Rooms of any shape](room-acoustics-model.md#rooms-of-any-shape)): its size is shown but not
+    edited, and each of its materials is edited with its label and area. **Shape** turns it back into
+    a box or a floor plan. Its openings are open faces, so the openings list is not offered;
   - each surface's absorption and scattering, either one value for all bands or band by band, with the
     material's name and reference;
   - whole rooms from **Load Room Preset…** (see below);
@@ -175,6 +180,11 @@ script before an archive is written.
 | Stone church | 36 × 14 × 16 m | Limestone walls and vault, wooden pews over the floor |
 | L-shaped living room | 8 × 6 × 2.6 m L | Carpet, plastered walls; the listener round the corner |
 | Fan-shaped hall | 16 → 10 m wide, 20 m deep, 8 m high | Stage at the narrow end, audience seating, wooden walls |
+| Shoebox concert hall | 26 × 18 × 14 m, and an 8 m stage house | Balcony round three sides, upholstered seats, wooden linings |
+| Raked auditorium | 26 m deep, 18 → 32 m wide, 10–13 m high | Raked seating, rear tier, sloping ceiling, brick walls |
+
+The last two are built from solids. They have six materials, labelled audience, floors, walls,
+ceiling, stage floor and stage walls, instead of six box surfaces.
 
 Every surface's absorption comes from the published table below. Scattering comes from a published
 set where one fits: theatre audience in the hall, and rows of desks in the office and classroom.
@@ -235,7 +245,9 @@ Example.roomcad/
 ```
 
 `scene.json` holds the room's size in metres (z up), each surface's material, and any openings. A material has a
-name, a reference and eight octave-band absorption coefficients. The file also holds the source and
+name, a reference and eight octave-band absorption coefficients. A room may also have a floor plan
+(corners and one material per wall) or a mesh (vertices; faces, each a list of corners with a
+material index and whether it is open; the materials; and their labels). The file also holds the source and
 receivers, each with a UUID, name and position.
 
 `settings.json` holds the atmosphere and air-absorption switch. It also holds the sample rate,
@@ -269,7 +281,7 @@ saved again.
 `swift test --package-path RoomCAD` covers the following:
 
 - **RoomDocumentTests:**
-  - round trips, including per-band materials and moved documents on disk;
+  - round trips, including per-band materials, floor plans, meshes and moved documents on disk;
   - retained responses and when they go stale;
   - preserved unknown files and rejected documents;
   - responses too large to retain;
@@ -305,10 +317,12 @@ saved again.
   - the wording of generation progress and of the wave solver's engines.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
-`RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen. It also renders
+`RoomCAD --snapshot FILE.png [PRESET]` renders the starter room's plan and section offscreen, or a
+preset's, given its identifier such as `raked-auditorium`. It also renders
 the audition waveform with its playhead, and a generated response's envelope, spectrum, early
 arrivals, decay table and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
-coincide in one projection; labels now move apart. Form controls and toolbars do not render
+coincide in one projection; labels now move apart. It also showed the two halls' outlines, with
+their stage houses, balconies, rake and rear tier, as intended. Form controls and toolbars do not render
 offscreen.
 
 ## Limitations

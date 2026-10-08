@@ -204,15 +204,17 @@ Progress (October 2026):
   and documented in [Room-acoustics model](room-acoustics-model.md#output). The defaults are
   48 kHz, one channel per receiver, emission at frame 0, a common gain only, and both complete and
   reflections-only content.
-- **Measured reference room (item 5).** This is the seminar room CR2 of the BRAS database; see
-  [RoomCAD against a measured room](roomcad-validation.md). The acousticbench reference room remains
+- **Measured reference rooms (item 5).** These are the seminar room CR2 and the chamber music hall
+  CR3 of the BRAS database; see [RoomCAD against measured rooms](roomcad-validation.md). The acousticbench reference room remains
   illustrative.
 - **Performance budgets (item 5).** On a Mac Studio (M4 Max, 14 cores, 36 GB):
-  - each room preset generates within 6 s with the wave solver, while no other app is loading the GPU
-    (1.4–5.3 s measured);
+  - each of the first ten room presets generates within 6 s with the wave solver, while no other app
+    is loading the GPU (1.4–5.3 s measured);
   - while another app kept the GPU busy, the slowest preset took 10.4 s, with runs moving to the CPU
-    as needed;
-  - peak memory for all ten presets in one process, with the bundled clips loaded, is 550 MB;
+    as needed. In a later run with every wave run on the CPU and the machine shared, the presets took
+    4.7–16.1 s, and the two halls built from solids 10.9 and 4.7 s. Their times with the GPU free
+    have not been measured;
+  - peak memory for all twelve presets in one process, with the bundled clips loaded, is 596 MB;
   - preparing the longest bundled clip (11.2 s) for auditioning through any preset takes 0.06 s.
     Playback then mixes two prepared buffers, so auditioning adds no measurable CPU load.
 
@@ -363,8 +365,9 @@ Items 2–4 are implemented with the M3 solver:
   agree within 2.3 dB across the presets, except at 63 Hz in the L-shaped room (diffraction round the
   corner) and the stone church (the floor's boundary gain).
 
-Item 5 is done for one measured room: [RoomCAD against a measured room](roomcad-validation.md)
-compares ten measured responses in a 145 m³ seminar room from the BRAS database.
+Item 5 is done for two measured rooms: [RoomCAD against measured rooms](roomcad-validation.md)
+compares ten measured responses in each of a 145 m³ seminar room and a 3,100 m³ chamber music hall
+from the BRAS database. In the seminar room:
 
 - **Reverberation.** With published absorption data, reverberation time from 250 Hz to 2 kHz is
   within 12%, and clarity and definition within about one just-noticeable difference.
@@ -377,7 +380,14 @@ compares ten measured responses in a 145 m³ seminar room from the BRAS database
   strike them. With each band now matched to the diffuse decay, the fitted materials give T30 within
   about 10% at 63 Hz and 2% at 125 Hz.
 
-Larger measured rooms need geometry beyond vertical walls, and listening comparisons are not done.
+In the chamber music hall, built from solids, with absorption fitted to the simplified model:
+
+- **Clarity and definition.** C80, D50 and centre time are within about one JND from 500 Hz to 4 kHz.
+- **Reverberation.** The decay is 13–40% too long. The simplified hall lacks the pillars, ornament
+  and chairs that scatter sound in the real one, and more scattering takes away about half the excess.
+- **Low frequencies.** At 63 Hz the wave solver gives the measured T30.
+
+BRAS's third room, the auditorium CR4, is not yet modelled. Listening comparisons are not done.
 Item 6 is done: every export's metadata keeps the settings, random seed and crossover. It also states
 the usable band, and, with the wave solver, its phase-velocity error at the crossover and that its decay
 was matched to Eyring's.
@@ -399,9 +409,13 @@ and can see the output's frequency coverage and modelling assumptions.
 Progress (October 2026): the RoomCAD app covers saving, reopening, auditioning and export without
 code.
 
-- **Item 1.** Rooms are boxes or floor plans with vertical walls (L, T, trapezoid or any outline),
-  with openings such as doors and windows. Each backend's supported geometry is documented in
-  [Room-acoustics model](room-acoustics-model.md). Connected spaces are not modelled.
+- **Item 1.** Rooms are boxes, floor plans with vertical walls (L, T, trapezoid or any outline), or
+  closed meshes of any shape. Boxes and plans take openings such as doors and windows; a mesh's
+  faces can be open. Meshes are built from pieces of air with constructive solid geometry: two
+  presets, a shoebox concert hall with balconies and a raked auditorium with a rear tier, and the
+  measured chamber music hall are built this way. Each backend's supported geometry is documented in
+  [Room-acoustics model](room-acoustics-model.md#rooms-of-any-shape). The app shows a mesh and edits
+  its materials but not its shape; editing solids in the app, and importing models, remain to do.
 - **Item 2.** This has started: 90 absorption and 7 scattering presets come from the annex of
   Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
   and labelled in each material's reference. Most surfaces still need scattering values. See
@@ -411,7 +425,7 @@ code.
   - the generation's stage and progress while it runs;
   - the wave solver's crossover, engine and approximate memory;
   - T30 only where the band's decay reaches −35 dB.
-- **Item 4.** There are ten whole-room presets, and regeneration runs in the background and is
+- **Item 4.** There are twelve whole-room presets, and regeneration runs in the background and is
   cancelled when the room changes. Responses are kept with their settings and marked stale when the
   settings change. While a room is edited, previews spend a quarter of the wave solver's budget and
   rays and arrive two to four times sooner. The full-quality response follows once editing pauses,
