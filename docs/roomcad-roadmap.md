@@ -402,6 +402,10 @@ was matched to Eyring's.
 4. Add presets, repeatable export settings, cancellation and caching keyed by scene and solver
    settings. Distinguish preview quality from export quality.
 5. Test editing, export and auditioning on screen with rooms of different sizes and decay times.
+6. Show the room in 3D with BombCAD's model view: orbit, zoom and select surfaces, with the source,
+   receivers, openings and materials drawn on the room. This extracts the view into SceneRender (see
+   [Architecture and sharing](#architecture-and-sharing)) once a mesh room gives it a second
+   consumer. It changes how the room is seen and edited, not the model.
 
 Done when: a user can build, save, reopen, audition and export a room without editing code,
 and can see the output's frequency coverage and modelling assumptions.
@@ -432,6 +436,9 @@ code.
   and exports are always full quality.
 - **Item 5.** Testing on screen has been done only by the user, who confirmed that the window,
   audition, waveform and space bar work. The app is otherwise checked by offscreen snapshots.
+- **Item 6.** Not started. The app draws a plan and a section, with a mesh room's outline projected
+  onto each. SimulationKit's SceneView already holds the orbit camera that BombCAD uses; its Metal
+  view, selection and geometry rendering live in BombCAD.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 
