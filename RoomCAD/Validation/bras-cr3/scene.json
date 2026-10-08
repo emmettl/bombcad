@@ -764,6 +764,80 @@
    }
   ]
  },
+ "fittings": [
+  {
+   "name": "chairs, stalls",
+   "box": [
+    [
+     1.6,
+     -4.3,
+     0.01
+    ],
+    [
+     13.3,
+     4.3,
+     0.9
+    ]
+   ],
+   "count": 246,
+   "area": 1.5,
+   "reference": "Chairs counted in BRAS's CR3_ModelSimplifications.pdf; 1.5 m² of surface each, estimated."
+  },
+  {
+   "name": "chairs, rear balcony",
+   "box": [
+    [
+     15.85,
+     -4.9,
+     3.99
+    ],
+    [
+     18.4,
+     4.9,
+     4.88
+    ]
+   ],
+   "count": 61,
+   "area": 1.5,
+   "reference": "Chairs counted in BRAS's CR3_ModelSimplifications.pdf; 1.5 m² of surface each, estimated."
+  },
+  {
+   "name": "chairs, side gallery",
+   "box": [
+    [
+     0.0,
+     4.9,
+     3.99
+    ],
+    [
+     14.6,
+     5.7,
+     4.88
+    ]
+   ],
+   "count": 22,
+   "area": 1.5,
+   "reference": "Chairs counted in BRAS's CR3_ModelSimplifications.pdf; 1.5 m² of surface each, estimated."
+  },
+  {
+   "name": "chairs, side gallery",
+   "box": [
+    [
+     0.0,
+     -5.7,
+     3.99
+    ],
+    [
+     14.6,
+     -4.9,
+     4.88
+    ]
+   ],
+   "count": 22,
+   "area": 1.5,
+   "reference": "Chairs counted in BRAS's CR3_ModelSimplifications.pdf; 1.5 m² of surface each, estimated."
+  }
+ ],
  "materials": {
   "initial": {
    "ceiling": {

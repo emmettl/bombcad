@@ -23,13 +23,15 @@ enum MeasuredRoom {
 
     /// Pairs measured with the dodecahedron.
     static let pairs = ["LS1", "LS2"].flatMap { s in (1...5).map { (s, "MP\($0)") } }
-    /// What is simulated: a name, the material set and whether the wave solver is used.
-    /// "fitted" is BRAS's set, fitted to its own models; "refitted" is the initial set fitted the same way
-    /// to the simplified room simulated here (`ValidationScene.refitting`).
+    /// What is simulated: a name, the material set, whether the wave solver is used and whether the
+    /// scene's fitted zones (its chairs) are. "fitted" is BRAS's set, fitted to its own models; "refitted"
+    /// is the initial set fitted the same way to the simplified room simulated here
+    /// (`ValidationScene.refitting`). The last configuration runs only for scenes with fitted zones.
     static let configurations = [
-        ("initial", "initial", true), ("fitted by BRAS", "fitted", true),
-        ("fitted to this model", "refitted", true),
-        ("fitted to this model, no wave solver", "refitted", false),
+        ("initial", "initial", true, false), ("fitted by BRAS", "fitted", true, false),
+        ("fitted to this model", "refitted", true, false),
+        ("fitted to this model, no wave solver", "refitted", false, false),
+        ("fitted to this model, with chairs", "refitted", true, true),
     ]
     static var names: [String] { configurations.map(\.0) }
 
@@ -101,8 +103,10 @@ enum MeasuredRoom {
         let measuredT30 = OctaveBands.centres.indices.map { band in
             statistics(fixture.pairs.values.map { $0.parameters[band].t30 })?.mean
         }
-        let scene = try ValidationScene.load(directory.appendingPathComponent("scene.json"))
+        let withZones = try ValidationScene.load(directory.appendingPathComponent("scene.json"))
             .refitting("initial", to: measuredT30, as: "refitted")
+        var scene = withZones
+        scene.fittings = nil
         let receivers = (1...5).map { "MP\($0)" }
         var simulated: [String: [String: Pair]] = [:]
         // The simulated analysis is kept beside the download, so the report can be reworked without
@@ -113,10 +117,10 @@ enum MeasuredRoom {
             report(fixture, simulated, scene: scene)
             return
         }
-        for (set, materials, wave) in configurations {
+        for (set, materials, wave, zones) in configurations where !zones || withZones.fittings != nil {
             for source in ["LS1", "LS2"] {
                 let start = Date()
-                let result = try scene.generate(
+                let result = try (zones ? withZones : scene).generate(
                     set: materials, source: source, receivers: receivers, duration: 3.5,
                     lowFrequencyModel: wave)
                 let responses = cache.deletingLastPathComponent().appendingPathComponent("simulated")
@@ -176,7 +180,7 @@ enum MeasuredRoom {
                 line += s.map { " \(format($0.mean, 2)) ± \(format($0.deviation, 2)) |" } ?? " — |"
             }
             print(line)
-            for set in names {
+            for set in names where simulated[set] != nil {
                 var line = "| | \(set) |"
                 for band in OctaveBands.centres.indices {
                     let m = statistics(measured.map { value($0.parameters[band]) })
@@ -200,7 +204,7 @@ enum MeasuredRoom {
         print(
             "\nLow-frequency fine structure, 30–175 Hz (correlation of 1/24-octave levels less their octave "
                 + "mean; the simulated spectrum also read with its frequencies scaled)")
-        for set in names {
+        for set in names where simulated[set] != nil {
             let matched = keys.map {
                 ResponseComparison.correlation(
                     fine(fixture.pairs[$0]!.lowFrequencyLevels), fine(simulated[set]![$0]!.lowFrequencyLevels)
@@ -237,7 +241,7 @@ enum MeasuredRoom {
         print(
             "\nEarly reflections above 500 Hz, 1.5–19.5 ms after the direct sound (correlation of levels in "
                 + "1 ms bins)")
-        for set in names {
+        for set in names where simulated[set] != nil {
             let matched = keys.map {
                 ResponseComparison.correlation(fixture.pairs[$0]!.early, simulated[set]![$0]!.early)
             }

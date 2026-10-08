@@ -56,14 +56,18 @@ struct MeshImageSources {
         return (images, order)
     }
 
-    /// The faces the path from `image` to `receiver` reflects from, from the source, if the path is real:
-    /// traced back from the receiver it must meet each mirroring plane within one of its faces that is
-    /// not open, and no other face may block any leg.
-    func path(_ index: Int, in images: [Image], receiver: SIMD3<Double>) -> [Int]? {
+    /// The faces the path from `image` to `receiver` reflects from, from the source, and the path's
+    /// points from the receiver back to the source, if the path is real: traced back from the receiver
+    /// it must meet each mirroring plane within one of its faces that is not open, and no other face
+    /// may block any leg.
+    func path(_ index: Int, in images: [Image], receiver: SIMD3<Double>) -> (
+        faces: [Int], points: [SIMD3<Double>]
+    )? {
         var target = receiver
         var current = index
         var arriving: [Int] = []
         var faces: [Int] = []
+        var points = [receiver]
         while images[current].parent >= 0 {
             let image = images[current]
             let plane = geometry.planes[image.planes.last!]
@@ -79,12 +83,13 @@ struct MeshImageSources {
                 geometry.unobstructed(target, point, excluding: plane.faces + arriving)
             else { return nil }
             faces.append(face)
+            points.append(point)
             target = point
             arriving = plane.faces
             current = image.parent
         }
         guard geometry.unobstructed(target, source, excluding: arriving) else { return nil }
-        return faces.reversed()
+        return (faces.reversed(), points + [source])
     }
 }
 
@@ -108,6 +113,7 @@ extension ImageSourceModel {
             airAbsorption
             ? OctaveBands.centres.map { atmosphere.amplitudeAttenuationPerMetre(frequency: $0) }
             : Array(repeating: 0, count: bands)
+        let zones = room.zones
         var summary = Summary()
         var gains = [Double](repeating: 0, count: bands)
         for (index, image) in images.enumerated() {
@@ -116,10 +122,11 @@ extension ImageSourceModel {
             guard order <= maximumOrder, order > 0 || includeDirect else { continue }
             let offset = image.position - receiver
             let r = simd_length(offset)
-            guard r <= reach, r > 0, let faces = generator.path(index, in: images, receiver: receiver) else {
-                continue
-            }
+            guard r <= reach, r > 0,
+                let (faces, points) = generator.path(index, in: images, receiver: receiver)
+            else { continue }
             var spreading = 1 / r
+            if !zones.isEmpty { spreading *= exp(-zones.depth(along: points) / 2) }
             if !microphone.isOmni { spreading *= microphone.gain(from: offset / r) }
             var audible = false
             for b in 0..<bands {

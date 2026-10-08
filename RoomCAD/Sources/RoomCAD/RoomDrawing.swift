@@ -248,6 +248,7 @@ struct RoomDrawing: View {
             context.stroke(Path(rect), with: .color(.primary.opacity(0.8)), lineWidth: 2)
         }
 
+        drawZones(in: &context, layout: layout)
         drawOpenings(in: &context, layout: layout, rect: rect)
 
         let (hName, vName) = projection.axisNames
@@ -340,6 +341,38 @@ struct RoomDrawing: View {
     }
 
     static let openingColor = Color.green
+    static let zoneColor = Color.brown
+
+    /// Fitted zones as hatched boxes, named in their corner.
+    private func drawZones(in context: inout GraphicsContext, layout: RoomLayout) {
+        for zone in settings.room.fittings ?? [] {
+            let p0 = layout.point(zone.low)
+            let p1 = layout.point(zone.high)
+            let box = CGRect(
+                x: min(p0.x, p1.x), y: min(p0.y, p1.y), width: abs(p1.x - p0.x), height: abs(p1.y - p0.y))
+            guard box.width > 0.5, box.height > 0.5 else { continue }
+            context.fill(Path(box), with: .color(Self.zoneColor.opacity(0.1)))
+            var hatch = Path()
+            var offset: CGFloat = 0
+            while offset < box.width + box.height {
+                // Diagonals 8 points apart, clipped to the box.
+                let start = CGPoint(
+                    x: box.minX + max(0, offset - box.height), y: box.maxY - min(offset, box.height))
+                let end = CGPoint(
+                    x: box.minX + min(offset, box.width), y: box.maxY - max(0, offset - box.width))
+                hatch.move(to: start)
+                hatch.addLine(to: end)
+                offset += 8
+            }
+            context.stroke(hatch, with: .color(Self.zoneColor.opacity(0.35)), lineWidth: 0.5)
+            context.stroke(Path(box), with: .color(Self.zoneColor.opacity(0.8)), lineWidth: 1)
+            if box.width > 40, box.height > 12 {
+                context.draw(
+                    Text(zone.name).font(.caption2).foregroundStyle(Self.zoneColor),
+                    at: CGPoint(x: box.minX + 3, y: box.minY + 2), anchor: .topLeading)
+            }
+        }
+    }
 
     /// Openings in walls seen edge-on show as gaps in the outline; those facing the view, as dashed
     /// outlines.

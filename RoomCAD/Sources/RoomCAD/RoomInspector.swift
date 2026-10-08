@@ -82,6 +82,38 @@ struct OpeningEditor: View {
     }
 }
 
+/// Edits a fitted zone: its name, corners, how densely its objects lie and what they absorb.
+struct ZoneEditor: View {
+    @Binding var zone: FittingZone
+
+    /// The objects' absorption, one value for every band; a zone whose bands differ shows their mean.
+    private var absorption: Binding<Double> {
+        Binding(
+            get: { zone.absorption.reduce(0, +) / Double(zone.absorption.count) },
+            set: { zone.absorption = Array(repeating: $0, count: OctaveBands.count) })
+    }
+
+    var body: some View {
+        TextField("Name", text: $zone.name).endsEditingOnSubmit()
+        ForEach(0..<3, id: \.self) { axis in
+            let name = OpeningEditor.axisNames[axis]
+            NumberField(title: "From \(name)", value: $zone.low.component(axis), unit: "m")
+            NumberField(title: "To \(name)", value: $zone.high.component(axis), unit: "m")
+        }
+        NumberField(title: "Objects met", value: $zone.density, unit: "/m", digits: 3)
+            .help(
+                "How often sound meets an object, per metre: the objects' total surface area over four times the zone's volume"
+            )
+        NumberField(title: "Absorption", value: absorption, digits: 3)
+            .help(
+                "The fraction of the energy lost at each object. Leave at 0 when a surface's material already accounts for the objects, as an audience floor does."
+            )
+        if !zone.reference.isEmpty {
+            Text(zone.reference).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
 /// Edits a point's name and position.
 struct PointEditor: View {
     @Binding var point: RoomPoint
@@ -382,6 +414,20 @@ struct RoomInspector: View {
                         .help("An open door or window: sound reaching it leaves the room")
                 }
             }
+            Section("Objects") {
+                ForEach((project.settings.room.fittings ?? []).indices, id: \.self) { index in
+                    ZoneEditor(zone: zoneBinding(index))
+                    Button("Remove \(project.settings.room.fittings?[index].name ?? "")", role: .destructive)
+                    {
+                        project.settings.room.fittings?.remove(at: index)
+                        if project.settings.room.fittings?.isEmpty == true {
+                            project.settings.room.fittings = nil
+                        }
+                    }
+                }
+                Button("Add Seating Zone") { addZone() }
+                    .help("A box of objects that scatter sound, such as chairs, desks, pews or ornament")
+            }
             Section("Simulation") {
                 Picker("Sample rate", selection: settings.sampleRate) {
                     ForEach([44_100, 48_000, 96_000], id: \.self) {
@@ -543,6 +589,31 @@ struct RoomInspector: View {
             Opening(
                 name: "Opening \(project.settings.openings.count + 1)", surface: .north,
                 centre: [size.x / 2, height / 2], size: [width, height]))
+    }
+
+    private func zoneBinding(_ index: Int) -> Binding<FittingZone> {
+        Binding(
+            get: { project.settings.room.fittings?[index] ?? Self.seating(in: project.settings.room.size) },
+            set: { project.settings.room.fittings?[index] = $0 })
+    }
+
+    /// Seating over the middle of the floor, 0.9 m high.
+    static func seating(in size: SIMD3<Double>) -> FittingZone {
+        let low = SIMD3(size.x * 0.2, size.y * 0.1, 0)
+        let high = SIMD3(size.x * 0.9, size.y * 0.9, min(0.9, size.z / 2))
+        // About one seat to 0.55 m² of floor, each with 1.5 m² of surface.
+        let floor = (high.x - low.x) * (high.y - low.y)
+        return .objects(
+            "Seating", low: low, high: high, count: floor / 0.55, area: 1.5,
+            absorption: Array(repeating: 0, count: OctaveBands.count),
+            reference:
+                "Estimate: upholstered seats, one to 0.55 m² of floor, 1.5 m² of surface each. They scatter; "
+                + "their absorption is left to the floor's audience material.")
+    }
+
+    private func addZone() {
+        let zone = Self.seating(in: project.settings.room.size)
+        project.settings.room.fittings = (project.settings.room.fittings ?? []) + [zone]
     }
 
     private func addReceiver() {

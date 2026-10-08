@@ -90,6 +90,23 @@ for y in (1, -1):
     low, high = sorted([4.9 * y, 5.7 * y])
     pieces.append(box("seating, side gallery", [0.0, low, 3.98], [14.6, high, 3.99], seat, "subtract"))
 
+# The chairs themselves, which BRAS leaves out, as fitted zones 0.9 m high over the seating. BRAS's
+# CR3_ModelSimplifications.pdf counts them: 246 in the stalls (16 rows: 14 of 16, then 14 and 12, less
+# 4 removed for the measurements), 22 in each side gallery and 61 on the rear balcony. Each chair's
+# surface area, 1.5 m², is an estimate. Their absorption stays with the seating material.
+CHAIR_AREA = 1.5
+CHAIRS = "Chairs counted in BRAS's CR3_ModelSimplifications.pdf; 1.5 m² of surface each, estimated."
+fittings = [
+    {"name": "chairs, stalls", "box": [[1.6, -4.3, 0.01], [13.3, 4.3, 0.9]], "count": 246,
+     "area": CHAIR_AREA, "reference": CHAIRS},
+    {"name": "chairs, rear balcony", "box": [[15.85, -4.9, 3.99], [18.4, 4.9, 4.88]], "count": 61,
+     "area": CHAIR_AREA, "reference": CHAIRS},
+]
+for y in (1, -1):
+    low, high = sorted([4.9 * y, 5.7 * y])
+    fittings.append({"name": "chairs, side gallery", "box": [[0.0, low, 3.99], [14.6, high, 4.88]], "count": 22,
+                     "area": CHAIR_AREA, "reference": CHAIRS})
+
 initial = {}
 fitted = {}
 for name in NAMES:
@@ -105,6 +122,7 @@ scene = {
     "temperatureCelsius": 22.4,
     "relativeHumidity": 40.9,
     "geometry": {"pieces": pieces},
+    "fittings": fittings,
     "materials": {"initial": initial, "fitted": fitted},
     "sources": {
         "LS1": {"position": [-2.02, 2.0], "drivers": [2.117, 2.38, 2.68]},

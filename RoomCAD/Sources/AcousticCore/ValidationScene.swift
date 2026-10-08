@@ -26,6 +26,19 @@ public struct ValidationScene: Codable, Sendable {
     public var driverCrossovers: [Double]
     /// Receiver positions in the scene's coordinates.
     public var receivers: [String: [Double]]
+    /// Zones of objects the geometry leaves out, such as chairs; see `FittingZone`.
+    public var fittings: [Fitting]?
+
+    /// A box of objects in the scene's coordinates: `count` objects of surface area `area` each, which
+    /// lose `absorption` (per octave band, none if absent) of the energy at each encounter.
+    public struct Fitting: Codable, Sendable {
+        public var name: String
+        public var box: [[Double]]
+        public var count: Double
+        public var area: Double
+        public var absorption: [Double]?
+        public var reference: String?
+    }
 
     public struct Material: Codable, Sendable {
         public var absorption: [Double]
@@ -135,7 +148,8 @@ public struct ValidationScene: Codable, Sendable {
         let factors = OctaveBands.centres.indices.map { band -> Double in
             guard let t = reverberationTime[band], t > 0 else { return 1 }
             let air = 2 * atmosphere.amplitudeAttenuationPerMetre(frequency: OctaveBands.centres[band])
-            let needed = 1 - exp(-(24 * log(10) * volume / (c * t) - 4 * air * volume) / surface)
+            let fitted = room.zones.reduce(0) { $0 + $1.absorptionArea[band] }
+            let needed = 1 - exp(-(24 * log(10) * volume / (c * t) - 4 * air * volume - fitted) / surface)
             let present = room.boundaries.reduce(0) { $0 + $1.area * $1.material.absorption[band] } / surface
             return present > 0 ? max(needed, 0) / present : 1
         }
@@ -203,7 +217,9 @@ public struct ValidationScene: Codable, Sendable {
         if geometry != nil, let mesh = try? sceneMesh(set: set) {
             var room = ShoeboxRoom(size: [1, 1, 1], material: .rigid)
             room.mesh = mesh
-            return room.fittingMesh()
+            room = room.fittingMesh()
+            room.fittings = zones(origin: mesh.bounds.min)
+            return room
         }
         let origin2 = SIMD2(origin.x, origin.y)
         let planCorners = (corners ?? []).map { SIMD2($0[0], $0[1]) - origin2 }
@@ -213,7 +229,23 @@ public struct ValidationScene: Codable, Sendable {
         room.floor = material([(floor ?? ""): 1], set: set)
         room.ceiling = material([(ceiling ?? ""): 1], set: set)
         room.plan = FloorPlan(corners: planCorners, walls: (walls ?? []).map { material($0, set: set) })
+        room.fittings = zones(origin: origin)
         return room
+    }
+
+    /// The fitted zones in RoomCAD's coordinates, or nil for none.
+    func zones(origin: SIMD3<Double>) -> [FittingZone]? {
+        fittings.map { fittings in
+            fittings.map { fitting in
+                FittingZone.objects(
+                    fitting.name,
+                    low: SIMD3(fitting.box[0][0], fitting.box[0][1], fitting.box[0][2]) - origin,
+                    high: SIMD3(fitting.box[1][0], fitting.box[1][1], fitting.box[1][2]) - origin,
+                    count: fitting.count, area: fitting.area,
+                    absorption: fitting.absorption ?? Array(repeating: 0, count: OctaveBands.count),
+                    reference: fitting.reference ?? "")
+            }
+        }
     }
 
     /// A fixed identity for a named source or receiver, so that the seeds drawn from it, and so the

@@ -106,6 +106,11 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
     /// A room of any shape, which takes the place of the box's surfaces and any plan. Its corners lie
     /// within `[0, size]`.
     public var mesh: RoomMesh?
+    /// Zones of scattering objects, such as seating or ornament; nil or empty for none.
+    public var fittings: [FittingZone]?
+
+    /// The fitted zones, if any.
+    var zones: [FittingZone] { fittings ?? [] }
 
     public init(size: SIMD3<Double>, material: SurfaceMaterial) {
         self.size = size
@@ -182,6 +187,18 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
                 throw AcousticError.invalid("The room's mesh must lie within its size.")
             }
         }
+        for zone in zones {
+            try zone.validate()
+            guard all(zone.low .>= -1e-9), all(zone.high .<= size + 1e-9) else {
+                throw AcousticError.invalid("The fitted zone \(zone.name) must lie within the room's size.")
+            }
+        }
+        for (i, a) in zones.enumerated() {
+            for b in zones[(i + 1)...] where all(a.low .< b.high - 1e-9) && all(b.low .< a.high - 1e-9) {
+                throw AcousticError.invalid(
+                    "The fitted zones \(a.name) and \(b.name) overlap; they may only touch.")
+            }
+        }
         if let plan {
             try plan.validate()
             let (low, high) = plan.bounds
@@ -207,7 +224,8 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
         }
     }
 
-    /// `T = 24 ln(10) V / (c (A + 4 m V))`, with `m` the energy attenuation of air per metre.
+    /// `T = 24 ln(10) V / (c (A + A_f + 4 m V))`, with `A_f` the fitted zones' absorption area and `m`
+    /// the energy attenuation of air per metre.
     private func statisticalDecay(
         atmosphere: Atmosphere, airAbsorption: Bool, absorptionArea: (Int) -> Double
     ) -> [Double?] {
@@ -216,7 +234,8 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
             let air =
                 airAbsorption
                 ? 2 * atmosphere.amplitudeAttenuationPerMetre(frequency: OctaveBands.centres[band]) : 0
-            let area = absorptionArea(band) + 4 * air * volume
+            let fitted = zones.reduce(0) { $0 + $1.absorptionArea[band] }
+            let area = absorptionArea(band) + fitted + 4 * air * volume
             return area > 0 ? 24 * log(10) * volume / (c * area) : nil
         }
     }

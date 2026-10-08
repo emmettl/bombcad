@@ -198,6 +198,55 @@ Tests check the mesh code against the box and the floor plan:
 - Boxes cut into fragments by solid operations keep the box's image sources. A raked hall with a
   balcony is watertight.
 
+## Fitted zones
+
+Chairs, desks, pews, pillars, ornament and hanging lights scatter sound, but they are too many and
+too small to model as surfaces. A fitted zone describes them statistically, after Ondet and Barbry
+(1989): a box of the room, with two numbers.
+
+- **Density, q.** This is how often sound meets an object, per metre travelled. In the zone, sound
+  travelling d metres meets one with probability 1 − e^(−qd). For objects scattered at random, q is
+  their total surface area over four times the zone's volume, because a convex object's mean
+  cross-section over all directions is a quarter of its surface (Cauchy's formula). The density is the
+  same in every band: the objects are taken to be large beside the wavelength. That holds for most
+  furniture above the wave solver's crossover, which handles the bands below it.
+- **Absorption, α.** This is the fraction of the energy lost at each encounter, per band. The rest
+  scatters equally in every direction.
+
+Zones lie within the room's size and may touch but not overlap.
+
+Each part of the model uses the zones as follows:
+
+- **Rays.** In a zone, a ray meets an object after a random optical depth, drawn from an exponential
+  distribution. There it loses α, leaves in a random direction, and from then on counts as scattered.
+- **Image sources.** Each keeps only the energy that crosses the zones without meeting an object:
+  e^(−∫q dl) along its actual path. In a box, that path is the straight line to the image, folded
+  back into the room at each wall it crosses. In a floor plan, the path turns at each wall
+  reflection, and its height folds at the floor and ceiling. In a mesh, it runs through the
+  reflection points. The rays carry the energy the image sources lose, so it is counted once.
+- **Estimates and the wave solver.** A zone adds 4qαV of absorption area, like air, to the Sabine and
+  Eyring estimates. The wave solver's bands are matched to those estimates, so they include it.
+
+In the app, **Objects** in the inspector adds, edits and removes zones. **Add Seating Zone**
+starts from an estimate for upholstered seats over the middle of the floor: one seat to 0.55 m² of
+floor, each with 1.5 m² of surface, giving about 0.76 per metre. Their absorption is left at zero,
+because the floor's audience material already accounts for it. Zones are drawn as hatched brown boxes
+in the plan and section.
+
+Tests check zones against exact results:
+
+- The direct sound loses exactly e^(−qd) of its energy crossing d metres of a zone.
+- A folded box path starts at the receiver, ends at the source, keeps the image's distance, and turns
+  once per reflection.
+- Box, floor-plan and mesh image sources lose the same energy to a zone, to within 10⁻⁹, in a box
+  and in an L-shaped room.
+- In a rigid room full of objects that absorb nothing, the rays still fill the room at the diffuse
+  rate 4πc/V, within 3%.
+- In a rigid room full of objects that absorb α, the response decays at cqα, as Sabine's formula with
+  4qαV predicts, within 4%. Much denser objects make sound spread through the room by diffusion. A
+  receiver away from the source then sees the room's decay only once the energy has spread, so its
+  decay looks a few percent longer.
+
 ## Openings
 
 An opening is a rectangle on one surface, such as an open door, window or hatch, given by its centre
@@ -659,6 +708,8 @@ The ray tracer and image sources could run on the GPU.
   *J. Acoust. Soc. Am.* 65 (4), 943–950, 1979.
 - J. Borish, "Extension of the image model to arbitrary polyhedra", *J. Acoust. Soc. Am.* 75 (6),
   1827–1836, 1984, for image sources in rooms of any shape.
+- A. M. Ondet and J. L. Barbry, "Modeling of sound propagation in fitted workshops using ray
+  tracing", *J. Acoust. Soc. Am.* 85 (2), 787–796, 1989, for fitted zones.
 - E. Wallace, csg.js (https://github.com/evanw/csg.js, MIT licence), for constructive solid geometry
   with binary space partitioning trees.
 - ISO 9613-1:1993, *Acoustics — Attenuation of sound during propagation outdoors — Part 1:

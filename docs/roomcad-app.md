@@ -92,6 +92,10 @@ script before an archive is written.
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
+  - under **Objects**, fitted zones: boxes of chairs, desks, pews or ornament that scatter sound,
+    each with its corners, how often sound meets an object per metre, and the objects' absorption
+    (see [Fitted zones](room-acoustics-model.md#fitted-zones)). **Add Seating Zone** starts from an
+    estimate for upholstered seats. Zones are drawn as hatched brown boxes;
   - openings: open doors, windows or hatches on any surface, or any numbered wall of a plan, by name,
     place, centre and size (see
     [Openings](room-acoustics-model.md#openings)). They are drawn as green gaps in the walls or as
@@ -245,7 +249,8 @@ Example.roomcad/
 ```
 
 `scene.json` holds the room's size in metres (z up), each surface's material, and any openings. A material has a
-name, a reference and eight octave-band absorption coefficients. A room may also have a floor plan
+name, a reference and eight octave-band absorption coefficients. A room may also have fitted zones (name,
+corners, density, absorption per band and reference), and a floor plan
 (corners and one material per wall) or a mesh (vertices; faces, each a list of corners with a
 material index and whether it is open; the materials; and their labels). The file also holds the source and
 receivers, each with a UUID, name and position.
