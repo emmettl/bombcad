@@ -44,3 +44,10 @@ BombCAD retains application source-picking, multiple-owner,
 fragment streaming/worker, import/document and headless-run checks. Its optimized
 application build also succeeds. The manifest uses an exact version requirement,
 and `Package.resolved` retains the reviewed release revision for reproducibility.
+
+After integration with the current application branch, 188 selected tests and eleven
+release/nightly script checks pass. The optimized app package passes deep strict
+signature verification. Its bundled executable completes a headless two-structure
+scene, writes a version-4 project retaining both response histories, and exports CSV
+and USD with object attribution. These application checks preserve the documented
+model scope; they do not establish new physical validation.
