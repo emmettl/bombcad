@@ -7,11 +7,19 @@ enum PrescribedPistonTube {
     enum Reconstruction: String, Codable, Sendable { case constant, minmod }
     enum StepControl: String, Codable, Sendable { case halving, stageAware }
     enum Failure: Error { case invalidGeometry, stepLimit }
+    /// Loads from one accepted physical interval. Rejected trial stages do not emit records.
+    struct AcceptedStep {
+        let time: Double  // Interval start, seconds.
+        let duration: Double
+        let pistonImpulse: Double  // Right-wall impulse, N s.
+        let pistonWork: Double  // Work delivered to right wall, J.
+    }
     struct Snapshot {
         let time: Double
         let cells: [FractionalGasTransport.Cell]
         let wallWork: Double
         let wallImpulse: SIMD3<Double>
+        let pistonImpulse: Double
         let steps: Int
         let rejectedSteps: Int
     }
@@ -23,6 +31,7 @@ enum PrescribedPistonTube {
         let gridCrossings: Int
         let wallWork: Double
         let wallImpulse: SIMD3<Double>
+        let pistonImpulse: Double
         let initialAmount: SIMD8<Double>
         let snapshots: [Snapshot]
     }
@@ -31,7 +40,9 @@ enum PrescribedPistonTube {
         cellLength h: Double, area: Double, length: Double, pistonVelocity: Double, duration: Double,
         density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000,
         mergeFraction: Double = 0.25, cfl: Double = 0.4, outputTimes: [Double] = [],
-        reconstruction: Reconstruction = .constant, stepControl: StepControl = .stageAware
+        reconstruction: Reconstruction = .constant, stepControl: StepControl = .stageAware,
+        initialState: ((Double, Double) throws -> FractionalGasTransport.Cell)? = nil,
+        onAcceptedStep: ((AcceptedStep) throws -> Void)? = nil
     ) throws -> Result {
         let finalLength = length + pistonVelocity * duration
         guard h.isFinite && h > 0, area.isFinite && area > 0, length.isFinite && length > 0,
@@ -56,8 +67,25 @@ enum PrescribedPistonTube {
             }
             return lengths.map { $0 * area }
         }
-        var cells = volumes(length).map {
-            FractionalGasTransport.Cell(volume: $0, density: density, pressure: pressure)
+        let initialVolumes = volumes(length)
+        var cells: [FractionalGasTransport.Cell]
+        if let initialState {
+            var lower = 0.0
+            cells = try initialVolumes.indices.map { n in
+                let volume = initialVolumes[n]
+                let upper = n == initialVolumes.count - 1 ? length : lower + volume / area
+                let cell = try initialState(lower, upper)
+                guard cell.volume.isFinite && cell.volume > 0,
+                    abs(cell.volume - volume) <= 1e-10 * volume
+                else { throw Failure.invalidGeometry }
+                lower = upper
+                // Preserve the supplied extensive inventory; only align geometric roundoff.
+                return .init(volume: volume, amount: cell.amount)
+            }
+        } else {
+            cells = initialVolumes.map {
+                FractionalGasTransport.Cell(volume: $0, density: density, pressure: pressure)
+            }
         }
         _ = try FractionalGasTransport.advance(cells, newVolumes: cells.map(\.volume), transfers: [])
         let initialAmount = cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
@@ -87,6 +115,7 @@ enum PrescribedPistonTube {
         var remeshes = 0
         var wallWork = 0.0
         var wallImpulse = SIMD3<Double>.zero
+        var pistonImpulse = 0.0
         var snapshots: [Snapshot] = []
         for event in events {
             while elapsed < event.time {
@@ -138,6 +167,11 @@ enum PrescribedPistonTube {
                 cells = result.cells
                 wallWork += result.wallWork.reduce(0, +)
                 wallImpulse += result.wallImpulses.reduce(.zero, +)
+                pistonImpulse += result.wallImpulses[1].x
+                try onAcceptedStep?(
+                    .init(
+                        time: elapsed, duration: step,
+                        pistonImpulse: result.wallImpulses[1].x, pistonWork: result.wallWork[1]))
                 elapsed += step
                 steps += 1
             }
@@ -148,13 +182,15 @@ enum PrescribedPistonTube {
                 snapshots.append(
                     Snapshot(
                         time: event.time, cells: cells, wallWork: wallWork,
-                        wallImpulse: wallImpulse, steps: steps, rejectedSteps: rejectedSteps))
+                        wallImpulse: wallImpulse, pistonImpulse: pistonImpulse, steps: steps,
+                        rejectedSteps: rejectedSteps))
             }
         }
         return Result(
             cells: cells, steps: steps, rejectedSteps: rejectedSteps, remeshes: remeshes,
             gridCrossings: crossings,
-            wallWork: wallWork, wallImpulse: wallImpulse, initialAmount: initialAmount,
+            wallWork: wallWork, wallImpulse: wallImpulse, pistonImpulse: pistonImpulse,
+            initialAmount: initialAmount,
             snapshots: snapshots)
     }
 

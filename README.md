@@ -466,6 +466,17 @@ from accepted-step mean tractions. Unreached thresholds remain absent; already-e
 initial thresholds are zero. These diagnostics distinguish load-arrival bias from numerical
 shock smearing. Finer cases retain the original shock strengths and boundary-interaction cutoff.
 
+`swift run -c release rigidboxdemo --moving-reflection` checks a translating planar piston
+against a mirrored, Galilean-transformed shock reference. Unshocked gas initially moves
+with the piston, avoiding an unrelated initial piston wave. Reports in
+`.build/moving-reflection.json` cover four grids, two shock strengths, velocities −20/+20 m/s
+and CFL 0.2/0.1. Add `--constant` for `.build/moving-reflection-constant.json`, then run
+`python3 Scripts/summarize-moving-reflection.py` to compare pressure-history, impulse and
+signed-work errors. The reference predicts `W = v I`. The numerical driver uses the existing
+conservative end-cell merge/split tube, now with optional conservative initial profiles
+and accepted-interval load observations. This verifies prescribed 1D motion; it does not
+enable moving clipped boxes or independently moving objects in ordinary app simulations.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

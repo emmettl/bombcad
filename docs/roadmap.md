@@ -1125,6 +1125,58 @@ and rise widths across all three fine grids. Next, extend the reflection benchma
 prescribed planar wall motion with independently predicted impulse/work, using the existing
 piston references, before moving clipped groups or enabling free-body feedback.
 
+The shock-reflection reference now has a prescribed moving-wall extension. Mirroring x
+and adding a constant Galilean velocity places the piston at `L + v t`; unshocked gas
+initially moves at v, so there is no additional wave at that piston. Incident and reflected
+pressure/density are unchanged, reflected gas moves with the wall, and exact piston work
+is `v * impulse`. The fixed opposite wall still launches a rarefaction when its incident
+gas moves away; its head in the transformed frame has the same path and inherited cutoff.
+Velocities that put that opposite wall on the compression branch are explicitly unsupported.
+This is a deliberately controlled reference, not a piston driven into initially stationary air.
+
+`PrescribedPistonTube` accepts an optional conservative initial profile over each physical
+interval. It checks returned volume against the prescribed geometry, aligns only volume
+roundoff, retains the supplied extensive inventory and validates gas states. Default uniform
+initialization is unchanged. Snapshots now attribute right-piston impulse separately from
+all-wall impulse. An optional accepted-step observer receives interval time/duration and
+piston impulse/work; rejected trial stages emit no observations. This lets the benchmark
+compare the complete accepted-step mean pressure history with its event-split exact reference,
+rather than using final impulse alone.
+
+`--moving-reflection` and `--moving-reflection --constant` complete 32 cases each on
+0.05/0.025/0.0125/0.00625 m cells, Mach 1.2/2, piston speeds −20/+20 m/s and CFL 0.2/0.1.
+The tube records 0–7 full-cell crossings and 0–7 merge/split remeshes per run. There are
+258–4724 accepted steps; the reconstructed runs retry 213 failed stages in total, while
+first-order runs have none. These are discarded trials, with accepted loads accumulated
+only after a valid update. Existing stage-aware shorter-step control remains in use.
+
+At CFL 0.1 on the finest grid, reconstructed final impulse errors normalized by exact excess
+impulse are −0.065%/−0.068% for Mach 1.2 at −20/+20 m/s and −0.127%/−0.125% for Mach 2.
+First-order errors range from −0.185% to −0.430% there. Reconstruction is not uniformly
+better in coarsest-grid total impulse: the coarse Mach-2 cases show cancellation in the
+first-order integrated load. Reconstructed pressure-history L1 errors on the finest grid
+are 3.62%/4.00% for Mach 1.2 and 3.30%/3.45% for Mach 2, versus first-order 9.91%/10.71%
+and 5.97%/6.32%. History errors decrease on every grid for every direction/CFL/method.
+Halving CFL changes reconstructed history error by less than 0.12% relative and final
+impulse error by less than 0.0024 percentage points of the exact excess-impulse normalization.
+
+The paired work errors have the same magnitude as impulse errors and opposite sign for
+negative v, as required by the normalization using `abs(v)`. They are not independent
+accuracy measures at constant speed. Independent consistency checks give mass residuals
+below 0.000000000000003 relative, gas-energy-plus-wall-work residuals below
+0.000000001 J, momentum residuals below 0.000000000001 N s, volume residuals below
+0.000000000000001 m³ and `W - v I` below 0.000000000001 J. All 47 CPU-only tests pass,
+including transformed states, unsupported inputs, conservative custom initialization,
+signed work through crossings and accepted-observation accumulation; 16 selected legacy
+piston/reconstruction tests also passed before the additional observer regression.
+
+Next, build a prescribed translating-box geometry study with space/time-integrated apertures,
+wall loads and geometric conservation checks. Wet/dry transitions and grouping must preserve
+uniform gas when gas and box move together, maintain positive inventories and pair impulse/work.
+This moving 3D cut-cell step is separate from the verified 1D tube; coupled free-body velocity,
+rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary simulations
+are unchanged, and stable kernels remain candidates for separately reviewed shared extraction.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
