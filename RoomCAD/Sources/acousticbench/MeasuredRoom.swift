@@ -7,7 +7,7 @@ import ImpulseResponseKit
 ///   acousticbench --bras-cr2 [--update-fixture] [--reuse-simulation]
 ///
 /// With `--update-fixture`, the measured responses are read from the cache that
-/// `RoomCAD/Scripts/fetch-bras-cr2.py` fills, and the parameters derived from them are written to
+/// `RoomCAD/Scripts/fetch-bras.py` fills, and the parameters derived from them are written to
 /// `RoomCAD/Validation/bras-cr2/measured.json`. Otherwise that file is used, so the comparison runs without
 /// the download.
 enum MeasuredRoom {
@@ -68,7 +68,7 @@ enum MeasuredRoom {
             let url = cache.appendingPathComponent("CR2_RIR_\(source)_\(receiver)_Dodecahedron.wav")
             guard FileManager.default.fileExists(atPath: url.path) else {
                 throw ImpulseResponseError.invalid(
-                    "\(url.lastPathComponent) is missing; run python3 RoomCAD/Scripts/fetch-bras-cr2.py first."
+                    "\(url.lastPathComponent) is missing; run python3 RoomCAD/Scripts/fetch-bras.py first."
                 )
             }
             let audio = try WAVFile.decode(Data(contentsOf: url))

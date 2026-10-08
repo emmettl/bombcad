@@ -70,7 +70,7 @@ sound is compared as a level. It is correlated at the same position, and at othe
 baseline.
 
 The measured parameters are kept in `RoomCAD/Validation/bras-cr2/measured.json`, so the comparison
-runs without downloading the measurements. `RoomCAD/Scripts/fetch-bras-cr2.py` fetches the 6 MB of
+runs without downloading the measurements. `RoomCAD/Scripts/fetch-bras.py` fetches the 6 MB of
 BRAS that the fixture is derived from, and `acousticbench --bras-cr2 --update-fixture` rebuilds the
 fixture from it. A run takes about 6 minutes on a Mac Studio (M4 Max), almost all of it in the wave
 solver.

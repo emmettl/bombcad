@@ -143,6 +143,9 @@ public struct RoomResponseSettings: Codable, Equatable, Sendable {
             throw AcousticError.invalid("A response needs between 1 and 16 receivers.")
         }
         for receiver in receivers { try receiver.microphone?.validate() }
+        if room.mesh != nil, !openings.isEmpty {
+            throw AcousticError.invalid("A room with a mesh has open faces instead of openings.")
+        }
         for opening in openings { try opening.validate(in: room) }
         for point in [source] + receivers where !room.contains(point.position) {
             throw AcousticError.invalid("\(point.name) is not inside the room.")
@@ -364,8 +367,17 @@ public enum RoomResponseGenerator {
             tracer.specularWallLimit = generated.order
             tracer.specularOrderLimit = total
         }
+        // A mesh's image sources reach the order that fits their budget; rays carry every specular path
+        // beyond it.
+        var meshImages: (images: [MeshImageSources.Image], order: Int)?
+        if let mesh = effectiveRoom.mesh {
+            let generated = MeshImageSources(geometry: .of(mesh), source: settings.source.position)
+                .images(maximumOrder: settings.maximumReflectionOrder, reach: reach)
+            meshImages = generated
+            tracer.specularOrderLimit = generated.order
+        }
         // Where the order limit may omit specular reflections within the duration, rays carry them on.
-        if planImages == nil,
+        if planImages == nil, meshImages == nil,
             Double(settings.maximumReflectionOrder) * settings.room.size.min() < settings.duration
                 * settings.atmosphere.soundSpeed
         {
@@ -402,7 +414,13 @@ public enum RoomResponseGenerator {
                 for b in reported { specularEnergy += gains[b] * gains[b] }
             }
             let summary =
-                if let planImages {
+                if let meshImages {
+                    model.forEachMeshArrival(
+                        at: receiver.position, images: meshImages.images, order: meshImages.order,
+                        microphone: receiver.microphone ?? .omni, duration: settings.duration,
+                        maximumOrder: settings.maximumReflectionOrder, includeDirect: includeDirect,
+                        stop: cancelled, add)
+                } else if let planImages {
                     model.forEachPlanArrival(
                         at: receiver.position, images: planImages.images, wallOrder: planImages.wallOrder,
                         microphone: receiver.microphone ?? .omni, duration: settings.duration,
@@ -511,7 +529,7 @@ public enum RoomResponseGenerator {
             waveGPURuns: wave?.gpuRuns, waveBareDecay: wave?.bareDecay, waveDispersion: wave?.dispersion,
             waveMemory: wave?.memory, quality: quality,
             waveNote: waveNote,
-            planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
+            planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder ?? meshImages?.order)
 
         let metadata = ResponseMetadata(
             sampleRate: settings.sampleRate, frameCount: frames,

@@ -87,6 +87,8 @@ struct DiffuseRayTracer {
             openings.filter { $0.surface == surface && $0.wall == nil }
         }
         let plan = room.plan
+        let mesh = room.mesh.map(MeshGeometry.of)
+        let meshMaterials = room.mesh.map { mesh in mesh.faces.indices.map { mesh.material(of: $0) } }
         let openingsByWall = plan.map { plan in
             plan.corners.indices.map { wall in openings.filter { $0.wall == wall } }
         }
@@ -116,7 +118,8 @@ struct DiffuseRayTracer {
                 var scattered = false
                 var reflections = 0
                 var wallReflections = 0
-                // The plan wall last reflected from, which the ray cannot meet again straight away.
+                // The plan wall or mesh face last reflected from, which the ray cannot meet again straight
+                // away.
                 var lastWall = -1
                 for b in 0..<bands { weights[b] = 1 / Double(rayCount) }
 
@@ -125,7 +128,16 @@ struct DiffuseRayTracer {
                     var hit = Double.infinity
                     var axis = 0
                     var planWall = -1
-                    if let plan {
+                    var meshFace = -1
+                    if let mesh {
+                        // A ray that slips through a seam between faces has left the room.
+                        guard
+                            let found = mesh.nearestHit(
+                                origin: position, direction: direction, excluding: lastWall)
+                        else { break }
+                        hit = found.t
+                        meshFace = found.face
+                    } else if let plan {
                         if direction.z != 0 {
                             hit = max(0, ((direction.z > 0 ? room.size.z : 0) - position.z) / direction.z)
                             axis = 2
@@ -182,6 +194,22 @@ struct DiffuseRayTracer {
                     guard segment == hit else { break }
                     position += direction * hit
                     reflections += 1
+                    if let mesh, meshFace >= 0 {
+                        // A mesh face: out if it is open, otherwise reflected about its normal.
+                        if mesh.faces[meshFace].open { break }
+                        let normal = mesh.faces[meshFace].normal
+                        let diffuse = reflect(
+                            material: meshMaterials![meshFace], weights: &weights, random: &random)
+                        if diffuse {
+                            scattered = true
+                            direction = lambert(aroundAny: normal, &random)
+                        } else {
+                            direction -= 2 * simd_dot(direction, normal) * normal
+                        }
+                        lastWall = meshFace
+                        if (weights.max() ?? 0) * Double(rayCount) < 1e-15 { break }
+                        continue
+                    }
                     if let plan, planWall >= 0 {
                         // A plan wall: out through an opening, or reflected about the wall's normal.
                         let start = plan.start(planWall)
