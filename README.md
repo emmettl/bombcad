@@ -477,6 +477,18 @@ conservative end-cell merge/split tube, now with optional conservative initial p
 and accepted-interval load observations. This verifies prescribed 1D motion; it does not
 enable moving clipped boxes or independently moving objects in ordinary app simulations.
 
+`swift run -c release rigidboxdemo --translating-box-geometry` writes
+`.build/translating-box-geometry.json`: an aligned and rotated 0.8 m box translating
+through 0.2/0.1 m grids. Plane-intersection events split motion into intervals on which
+two-node time quadrature integrates open-face areas, first moments, wall loads and gas
+volume. The study checks shared faces, local area/moment closure, swept-volume conservation
+and whole-box pressure impulse/torque/work, including wet/dry and transient intersections.
+An exact uniform Euler-trace probe supplies gas moving with the box and matching outer
+inflow/outflow. It verifies conservation identities without evolving gas states or choosing
+states for newly exposed cells. Near-parallel plane triples are rejected; contacts at the
+geometry/time tolerances are not certified. Rotation during motion and moving connected
+groups remain subsequent work.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

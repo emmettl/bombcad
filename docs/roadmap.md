@@ -1170,12 +1170,43 @@ including transformed states, unsupported inputs, conservative custom initializa
 signed work through crossings and accepted-observation accumulation; 16 selected legacy
 piston/reconstruction tests also passed before the additional observer regression.
 
-Next, build a prescribed translating-box geometry study with space/time-integrated apertures,
-wall loads and geometric conservation checks. Wet/dry transitions and grouping must preserve
-uniform gas when gas and box move together, maintain positive inventories and pair impulse/work.
-This moving 3D cut-cell step is separate from the verified 1D tube; coupled free-body velocity,
-rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary simulations
-are unchanged, and stable kernels remain candidates for separately reviewed shared extraction.
+A prescribed translating-box space/time geometry reference is now implemented. With fixed
+orientation and constant velocity, all feasible three-plane intersections of the six cell
+and six box planes identify topology changes, including edge/edge crossings. Two-node Gauss
+time quadrature then integrates quadratic areas and cubic spatial first moments/volumes.
+Wall normals point out of gas; their integrated areas give pressure impulse, and time-weighted
+areas keep torque measured about the translating centre of mass. Bounds skip cells proved
+clear or solid throughout the interval; clear endpoints alone do not justify skipping.
+Nearly parallel plane triples are rejected, and tolerance-scale grazing contacts are not
+certified. This geometry is separate from the existing adaptive rotation sweep.
+
+`--translating-box-geometry` completes aligned/0.23-radian cases on 0.2/0.1 m grids, moving
+the 0.8 m box at (3,1,-0.4) m/s for 0.08 s inside a 2 m cube. Each case crosses fully dry
+and wet cells: dry→wet counts are 9/6/133/129, and wet→dry counts 9/11/133/125, respectively.
+The finer aligned/rotated cases also detect 18/5 cells occupied only between clear endpoints.
+Maximum normalized swept-volume error is below `6e-15`; area/moment closure and
+shared-face area/first-moment discrepancies are below `3e-14`. Whole-domain gas
+volume differs from 7.488 m³ by less than `1e-12` m³; uniform-pressure body impulse,
+torque impulse and work vanish to below `1e-11` in their SI units.
+
+An exact-trace probe integrates uniform Euler fluxes and moving-wall pressure work with gas
+velocity equal to box velocity and supplied matching outer inflow/outflow. Maximum nominal-cell
+mass/energy errors are below `5e-15`, and momentum error below `5e-10`.
+Dry-cell predicted volumes can be negative at roundoff scale (about `4e-18` m³);
+the diagnostic retains this residual without applying a floor. This is a geometry identity
+check, not a numerical gas update or validation of newly exposed-cell initialization.
+All 55 tests in the CPU-only reference package pass, including analytical slab moments,
+transient occupancy, rotated closure, motion reversal, offset-centre torque, coincident
+stationary contact and rejected configurations. The four release study reports also pass
+the conservation and transition checks; strict formatting and diff checks are clean.
+
+Next, build moving connected groups with valid old gas inventories and a conservative
+wet/dry transition policy. The event-integrated apertures and first moments must support
+uniform gas preservation, positivity, and paired volume/impulse/work exchange without
+counting wall displacement twice through remapping. Then add a nonuniform prescribed-box
+transport benchmark. Coupled free-body velocity, rotation, ground contact and gas angular
+momentum remain subsequent gates. Ordinary simulations are unchanged, and stable kernels
+remain candidates for separately reviewed shared extraction.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
