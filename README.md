@@ -95,7 +95,8 @@ Before geometry conversion, choose exact elements using building, storey, type a
 and inclusion checkboxes. Filters only change the list; Include/Exclude matching changes the
 import. Up to 1,024 supported elements can be chosen from a 20,000-entry decomposition inventory.
 Choose IFC elements in the preview or source inspector to revise choices from retained IFC bytes.
-Each subset is rebased to its own bounds; review placement after changing choices.
+Changing the subset preserves surviving elements’ simulation positions using the retained IFC coordinate origin.
+Newly included geometry outside the domain or below ground stays blocked until placement is adjusted explicitly.
 The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
 of these. Source units and world placements are converted to metres, Z up, then rebased from
 large coordinates before Float conversion. The original coordinate origin remains recorded.
@@ -103,16 +104,22 @@ large coordinates before Float conversion. The original coordinate origin remain
 Each IFC element is validated independently. Existing segmented edge junctions are made
 conforming without creating faces, and coordinates are canonicalised at 0.1 micrometre.
 Touching and overlapping elements produce a union of occupied cells; overlaps count once and
-use the first sorted GlobalId for selection. Element diagnostics do not certify gaps between
-separate elements. Geometry omissions, converter diagnostics and unsupported material metadata
+use the first sorted GlobalId for selection. Cross-element gap checks union each product’s continuous solid intervals along X/Y/Z grid-centre
+rays, warn below two cells, and identify both bounding products. Touches, overlaps and intervening
+solids do not create a clearance. Off-ray and oblique gaps can still be missed; the checks are
+approximate. The interval inventory is bounded at 500,000 records; incomplete checks are reported
+without inferring gaps from partial data. Localized regions remain bounded at 128. Geometry omissions, converter diagnostics and unsupported material metadata
 remain explicit import notes. IFC completeness and exported reports list intentional exclusions,
 unsupported types, missing converted geometry, complete grid losses and overlapping cell ownership
 separately. Inventory follows the decomposition tree; uncontained products may be absent. Invalid
-selected solids block conversion with their name and GlobalId; excluding one is an explicit action.
+selected solids are collected into one review with names, GlobalIds and repair reasons. Select
+reviewed failures to exclude and retry, or export the complete geometry review. No partial geometry
+result can be applied while invalid meshes remain. Exclusion is an explicit action.
 Undetermined converter units block import to prevent incorrect scale. Structural materials, supports and connections are not inferred.
 
 Projects retain original IFC bytes and converted sources; reopening and grid resampling need
-neither the original file nor the converter. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
+neither the original file nor the converter. Attached older IFC previews refresh missing cross-element
+gap diagnostics on their existing grid; detached scene geometry remains authoritative. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
 while OBJ/STL assets retain version 1. See the repository-only
 [whole-building IFC fixture](Samples/Importer/Buildings/README.md) for a small house, matching
 raw OBJ reference, a two-storey duplex, structural beams, an imperial column, a unit-failure case,

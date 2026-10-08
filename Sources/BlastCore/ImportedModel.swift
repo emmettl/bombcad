@@ -30,6 +30,11 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
         self.preview = preview
         self.partMaterials = partMaterials
     }
+    public func needsSampling(cellSize: Float) -> Bool {
+        isAttached
+            && (preview.cellSize != cellSize
+                || (source.buildingElements != nil && preview.crossElementGapSamples == nil))
+    }
     public func transformedSource() throws -> ImportedMesh {
         try source.transformed(scale: scale, yUp: yUp, corner: corner)
     }
@@ -103,7 +108,7 @@ extension Scenario {
     public func resamplingImports(cellSize: Float) throws -> Self {
         var copy = self
         for original in importedModels ?? []
-        where original.isAttached && original.preview.cellSize != cellSize {
+        where original.needsSampling(cellSize: cellSize) {
             guard original.canRegenerate(copy.structure) else {
                 throw ImportedMesh.ImportError.invalid(
                     "\(original.name) has edited regions, reinforcement or supports. Detach its geometry from the source before changing the grid, or undo those edits."

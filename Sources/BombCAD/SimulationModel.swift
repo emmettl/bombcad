@@ -400,7 +400,7 @@ final class SimulationModel {
     /// Call when `settings` changes; records the edit and rebuilds once the edits settle.
     private var importsNeedResampling: Bool {
         (settings.scenario.importedModels ?? []).contains {
-            $0.isAttached && $0.preview.cellSize != settings.resolution.cellSize
+            $0.needsSampling(cellSize: settings.resolution.cellSize)
         }
     }
     func settingsChanged() {

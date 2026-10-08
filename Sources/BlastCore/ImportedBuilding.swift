@@ -54,6 +54,48 @@ extension ImportedMesh {
             else { throw ImportError.invalid("Saved IFC inventory or element choices are invalid.") }
         }
     }
+    /// Keep the simulation coordinates of surviving products unchanged when the subset is rebased.
+    /// A negative result deliberately remains staged: it must not silently shift the building.
+    public static func preservingBuildingPlacement(
+        from previous: ImportedMesh, to replacement: ImportedMesh,
+        corner: SIMD3<Double>
+    ) throws -> SIMD3<Double> {
+        guard let oldElements = previous.buildingElements, let newElements = replacement.buildingElements
+        else {
+            throw ImportError.invalid("IFC building sources are needed to preserve placement.")
+        }
+        let oldMinimum = SIMD3<Double>(previous.bounds.min)
+        let newMinimum = SIMD3<Double>(replacement.bounds.min)
+        let delta: SIMD3<Double>
+        if let oldOrigin = previous.buildingOrigin, let newOrigin = replacement.buildingOrigin {
+            delta =
+                (newOrigin - oldOrigin)
+                + (newMinimum - oldMinimum)
+        } else {
+            // Earlier or externally created sources can lack the original IFC origin. A surviving
+            // product establishes the relative frame; verify all shared products agree.
+            let old = Dictionary(uniqueKeysWithValues: oldElements.map { ($0.globalID, $0.mesh.bounds) })
+            let offsets = newElements.compactMap { e -> SIMD3<Double>? in
+                guard let bounds = old[e.globalID] else { return nil }
+                return (SIMD3<Double>(bounds.min) - oldMinimum)
+                    - (SIMD3<Double>(e.mesh.bounds.min) - newMinimum)
+            }
+            guard let reference = offsets.first,
+                offsets.allSatisfy({ simd_length($0 - reference) < 0.00001 })
+            else {
+                throw ImportError.invalid(
+                    "This earlier IFC source has no coordinate origin. Keep at least one shared element while changing choices to preserve its position."
+                )
+            }
+            delta = reference
+        }
+        let point = corner + delta
+        guard [point.x, point.y, point.z].allSatisfy(\.isFinite) else {
+            throw ImportError.invalid("The changed IFC selection has invalid placement coordinates.")
+        }
+        return point
+    }
+
     /// Separate source omissions from sampling loss and deterministic overlap ownership.
     public struct BuildingSampling: Sendable, Hashable, Codable, Identifiable {
         public var id: String
@@ -109,6 +151,7 @@ extension ImportedMesh {
         var cells: [SIMD3<Int>: Int] = [:]
         var diagnostics: [Diagnostic] = []
         var sampling: [BuildingSampling] = []
+        var gapScan = BuildingGapScan()
         var thin = 0
         var gaps = 0
         var missed = 0
@@ -124,7 +167,11 @@ extension ImportedMesh {
                     "IFC preview exceeds its sampling-work budget. Simplify the building or choose a coarser grid."
                 )
             }
-            let preview = try element.mesh.preview(cellSize: h, domain: domain, allowEmpty: true)
+            let preview = try element.mesh.sampledPreview(
+                cellSize: h, domain: domain, allowEmpty: true,
+                onRay: { axis, j, k, spans in
+                    gapScan.record(axis: axis, j: j, k: k, spans: spans, owner: element.partID)
+                })
             thin += preview.thinSpans
             gaps += preview.smallGaps
             missed += preview.missedTriangles
@@ -154,6 +201,10 @@ extension ImportedMesh {
                 BuildingSampling(
                     id: element.globalID, sampledCells: preview.occupiedCells, assignedCells: assigned))
         }
+        let crossingGaps = try gapScan.diagnostics(cellSize: h)
+        gaps += crossingGaps.samples
+        truncated = truncated || crossingGaps.truncated || diagnostics.count + crossingGaps.issues.count > 128
+        diagnostics = Array((crossingGaps.issues + diagnostics).prefix(128))
         let count = cells.count
         guard count > 0 || allowEmpty else {
             throw ImportError.invalid("No occupied IFC cells remain. Choose a finer grid.")
@@ -206,7 +257,10 @@ extension ImportedMesh {
             diagnosticsTruncated: truncated, boxPartIDs: owners,
             sourceNotes: (buildingNotes ?? []) + gridNotes + [
                 "IFC elements are rigid obstacles. Overlapping sampled cells count once and use the first GlobalId for selection; geometric contact does not establish a structural connection.",
-                "IFC feature checks run within each element. Narrow gaps between separate elements may close on the grid without a diagnostic; inspect Source against Simulation.",
-            ], buildingSampling: sampling)
+                gapScan.incomplete
+                    ? "The cross-element gap check exceeded its interval budget and is incomplete. No cross-element clearances are reported from partial data. Inspect Source against Simulation and compare grids."
+                    : "IFC gaps between separate elements are checked using solid unions along X/Y/Z grid-centre rays. These approximate checks can miss off-ray or oblique clearances; inspect Source against Simulation and compare grids.",
+            ], buildingSampling: sampling, crossElementGapSamples: crossingGaps.samples,
+            crossElementChecksIncomplete: gapScan.incomplete)
     }
 }
