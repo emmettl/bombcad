@@ -5,6 +5,39 @@ import simd
 
 @Suite("Limited tube reconstruction")
 struct LimitedTubeFluxTests {
+    @Test("Stronger analytical waves improve with refinement across merge policies")
+    func strongAccuracy() throws {
+        let limited = try ExperimentalPistonWaveStudy.run(
+            limited: true, strong: true, mergeStudy: true,
+            cellLengths: [0.1, 0.0125], cfls: [0.2])
+        let constant = try ExperimentalPistonWaveStudy.run(
+            strong: true, mergeStudy: true,
+            cellLengths: [0.0125], cfls: [0.2])
+        #expect(limited.count == 12 && constant.count == 6)
+        for speed in [-100.0, 100.0] {
+            for merge in [0.125, 0.25, 0.5] {
+                let coarse = try #require(
+                    limited.first {
+                        $0.cellLength == 0.1 && $0.pistonVelocity == speed && $0.mergeFraction == merge
+                    })
+                let fine = try #require(
+                    limited.first {
+                        $0.cellLength == 0.0125 && $0.pistonVelocity == speed && $0.mergeFraction == merge
+                    })
+                let baseline = try #require(
+                    constant.first { $0.pistonVelocity == speed && $0.mergeFraction == merge })
+                #expect(fine.frames.last!.relativePressureL1 < 0.4 * coarse.frames.last!.relativePressureL1)
+                #expect(fine.frames.last!.relativePressureL1 < 0.5 * baseline.frames.last!.relativePressureL1)
+                for frame in fine.frames {
+                    #expect(abs(frame.relativeMassChange) < 1e-11)
+                    #expect(abs(frame.energyBudgetResidual) < 1e-9)
+                    #expect(abs(frame.volumeResidual) < 1e-14)
+                    #expect(simd_length(frame.momentumBudgetResidual) < 1e-11)
+                    #expect(abs(frame.relativeWallWorkError) < 0.002)
+                }
+            }
+        }
+    }
     @Test("Stage-limit control avoids repeated halving while preserving compression budgets")
     func stepControl() throws {
         let old = try PrescribedPistonTube.run(

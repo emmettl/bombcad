@@ -800,6 +800,36 @@ selected limited/flux/tube/analytical tests pass. Stronger-motion tests check ro
 budgets, not analytical accuracy. Next, extend the analytical wave study to stronger motion
 and compare merge policies before general moving-box aperture coupling.
 
+The analytical wave study now supports 100 m/s compression/expansion and a merge-policy
+sweep. `--piston-wave --strong --merge-study` and the same command with `--limited`
+each run 48 cases on four grids, two CFL limits and three merge fractions, retaining
+pre-reflection snapshots at 0.5 and 0.8 ms. Reports now include swept-volume and gas-plus-wall
+momentum residuals alongside mass/energy budgets. The comparison script rejects incomplete
+48-case reports and summarises matched cases at CFL 0.2. All 96 runs complete; across
+their 192 frames, relative mass residuals remain below 0.00000000000001, energy residuals
+below 0.000000000001 J, volume residuals below 0.00000000000000001 m³ and momentum residuals
+below 0.000000000000001 N s.
+
+At 0.8 ms, finest-grid/quarter-cell/CFL 0.2 pressure L1 errors improve from 2.642% to
+0.905% in compression and 3.150% to 1.197% in expansion with reconstruction. Finest-grid
+reconstructed wall-work errors remain below 0.1% across the three merge policies. Coarse-grid
+reconstructed compression error changes from 4.531% at merge 0.125 to 6.203% at merge 0.5;
+the corresponding finest-grid range is 0.902–0.915%. Finest-grid expansion ranges from
+1.187% to 1.253%. Merging larger volumes has a clearer accuracy cost in these faster cases.
+
+At finest-grid CFL 0.2, compression takes 693/504/359 accepted steps as the merge fraction
+increases from 0.125 to 0.25 to 0.5, with 647/422/208 rejected trials. Expansion takes
+608/459/338 steps with no retries. The 1% stage margin is insufficient to avoid repeated
+compression retries at this speed, although stage-limit retries remain bounded and accurate.
+These counts expose a performance tradeoff, not a reason to choose a default from one test.
+
+Analytical conservation tests now include both 20 and 100 m/s waves. A new regression
+checks strong-wave refinement, improvement over constant-state fluxes and complete budgets
+across merge policies; all eleven selected analytical/reconstruction tests pass. The
+constant-state flux and quarter-cell merge defaults remain unchanged. Next, generalise
+conservative merging/splitting to connected cell graphs with geometry/face-balance checks,
+while retaining these tube studies as regression references for accuracy and work.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

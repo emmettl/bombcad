@@ -27,7 +27,7 @@ struct PlanarPistonWaveTests {
     }
     @Test(
         "Shock and rarefaction cell averages satisfy closed mass, momentum and work budgets",
-        arguments: [-20.0, 20.0])
+        arguments: [-100.0, -20.0, 20.0, 100.0])
     func budgets(speed: Double) throws {
         let length = 0.655
         let time = 0.0008

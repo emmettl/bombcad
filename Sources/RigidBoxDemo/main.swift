@@ -10,20 +10,24 @@ do {
     if arguments.contains("--piston-wave") {
         let limited = arguments.contains("--limited")
         let halving = arguments.contains("--halving")
+        let strong = arguments.contains("--strong")
+        let mergeStudy = arguments.contains("--merge-study")
+        let suffix =
+            (limited ? "-limited" : "") + (halving && limited ? "-halving" : "")
+            + (strong ? "-strong" : "") + (mergeStudy ? "-merges" : "")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? (limited
-                    ? (halving
-                        ? ".build/piston-wave-limited-halving.json" : ".build/piston-wave-limited.json")
-                    : ".build/piston-wave.json"))
+                ?? ".build/piston-wave\(suffix).json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalPistonWaveStudy.Result] = []
-        _ = try ExperimentalPistonWaveStudy.run(limited: limited, halving: halving) { r in
+        _ = try ExperimentalPistonWaveStudy.run(
+            limited: limited, halving: halving, strong: strong, mergeStudy: mergeStudy
+        ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             print(
-                "dx \(r.cellLength), CFL \(r.cfl), piston \(r.pistonVelocity): final pressure L1 \(r.frames.last!.relativePressureL1)"
+                "dx \(r.cellLength), CFL \(r.cfl), merge \(r.mergeFraction), piston \(r.pistonVelocity): final pressure L1 \(r.frames.last!.relativePressureL1)"
             )
             fflush(stdout)
         }
