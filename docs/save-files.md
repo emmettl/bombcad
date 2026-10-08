@@ -11,6 +11,7 @@ Example.bombcad/
   manifest.json
   scene.json
   settings.json
+  fragments.json         # Optional: a cased charge's fragments to fly alongside each run
   view.json              # Optional
   assets/                # Optional embedded assets
   results/               # Optional retained files; no simulation results are generated here yet
@@ -97,6 +98,9 @@ domain size and sampler version. Loading rejects mismatched keys. Resolution cha
 importer's normal resampling path and preserve part assignments. Detached scene boxes and the
 full structural model, including supports, openings and reinforcement, remain authoritative;
 opening a document never silently regenerates them from the source.
+
+`fragments.json`, when present, holds the Run tab's fragment description (see
+[Fragments](fragments.md#in-the-app)); fields left out take their defaults.
 
 `settings.json` stores resolution (`coarse`, `medium`, `fine`), `detailedCharge`, `sharpShocks`,
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`

@@ -466,6 +466,40 @@ from accepted-step mean tractions. Unreached thresholds remain absent; already-e
 initial thresholds are zero. These diagnostics distinguish load-arrival bias from numerical
 shock smearing. Finer cases retain the original shock strengths and boundary-interaction cutoff.
 
+`swift run -c release rigidboxdemo --moving-reflection` checks a translating planar piston
+against a mirrored, Galilean-transformed shock reference. Unshocked gas initially moves
+with the piston, avoiding an unrelated initial piston wave. Reports in
+`.build/moving-reflection.json` cover four grids, two shock strengths, velocities −20/+20 m/s
+and CFL 0.2/0.1. Add `--constant` for `.build/moving-reflection-constant.json`, then run
+`python3 Scripts/summarize-moving-reflection.py` to compare pressure-history, impulse and
+signed-work errors. The reference predicts `W = v I`. The numerical driver uses the existing
+conservative end-cell merge/split tube, now with optional conservative initial profiles
+and accepted-interval load observations. This verifies prescribed 1D motion; it does not
+enable moving clipped boxes or independently moving objects in ordinary app simulations.
+
+`swift run -c release rigidboxdemo --translating-box-geometry` writes
+`.build/translating-box-geometry.json`: an aligned and rotated 0.8 m box translating
+through 0.2/0.1 m grids. Plane-intersection events split motion into intervals on which
+two-node time quadrature integrates open-face areas, first moments, wall loads and gas
+volume. The study checks shared faces, local area/moment closure, swept-volume conservation
+and whole-box pressure impulse/torque/work, including wet/dry and transient intersections.
+An exact uniform Euler-trace probe supplies gas moving with the box and matching outer
+inflow/outflow. It verifies conservation identities without evolving gas states or choosing
+states for newly exposed cells. Near-parallel plane triples are rejected; contacts at the
+geometry/time tolerances are not certified. Rotation during motion remains subsequent work.
+
+`swift run -c release rigidboxdemo --moving-groups` writes `.build/moving-groups.json`.
+Eight short intervals straddle cells becoming wet or dry on aligned/rotated 0.2/0.1 m
+grids. Groups cover gas present at any time in the interval and must have at least
+0.25 nominal cell volume at both endpoints. Existing gas inventories feed paired
+Rusanov and moving-wall fluxes; accepted group packets scatter to final wet members,
+with empty final members receiving zero. Prescribed outer reservoirs supply matching
+comoving gas and report their inventory exchange. An excessive acoustic timestep is
+rejected and the interval geometry rebuilt. Thin corner volumes and face measures
+are integrated directly to avoid cancellation. This verifies a single numerical
+interval; sustained motion, nonuniform moving-load convergence and gas angular
+momentum transport still need separate checks.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
@@ -534,7 +568,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
-| [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast, here or on another Mac |
+| [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |

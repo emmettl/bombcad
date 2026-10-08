@@ -36,6 +36,11 @@ public struct RenderSettings: Sendable, Hashable {
     public var showWave = true
     public var waveOpacity: Float = 0.3
     public var showCharge = true
+    /// Fragments in flight and where they landed, and tracers, when a run flies them.
+    public var showFragments = true
+    public var showTracers = true
+    /// Their dots' diameter on screen, in points, whatever their true size.
+    public var dotSize: Float = 5
     /// A box to outline in the view, such as the one being edited.
     public var highlight: Box?
 
@@ -91,6 +96,9 @@ public final class SceneRenderer {
     private let shellPipeline: MTLRenderPipelineState
     private let beamPipeline: MTLRenderPipelineState
     private let glassPipeline: MTLRenderPipelineState
+    private let dotPipeline: MTLRenderPipelineState
+    private var dotBuffer: MTLBuffer?
+    private var dotCount = 0
     private let compositePipeline: MTLRenderPipelineState
     private let sceneDepthState: MTLDepthStencilState
     private let meshDepthState: MTLDepthStencilState
@@ -143,6 +151,7 @@ public final class SceneRenderer {
         beamPipeline = try pipeline(vertex: "beamVertex", fragment: "structureFragment", depth: true)
         glassPipeline = try pipeline(
             vertex: "shellVertex", fragment: "glassFragment", depth: true, blended: true)
+        dotPipeline = try pipeline(vertex: "dotVertex", fragment: "dotFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
@@ -191,6 +200,26 @@ public final class SceneRenderer {
         for (n, gauge) in scenario.gauges.prefix(gaugeCount).enumerated() {
             gauges[n] = SIMD4(gauge.position, 0.35)
         }
+    }
+
+    /// Pixels to a point on the screen drawn to, for dots of a size in points.
+    public var pixelsPerPoint: Float = 1
+
+    /// Dots to draw over the scene: each a position and a code, its kind (0 a fragment in flight,
+    /// 1 a tracer, 2 a fragment's landing) plus a value from 0 to 1 that colours it (a fragment's
+    /// speed, a landing's energy).
+    public func setDots(_ dots: [SIMD4<Float>]) {
+        dotCount = dots.count
+        guard !dots.isEmpty else { return }
+        let length = dots.count * MemoryLayout<SIMD4<Float>>.stride
+        if (dotBuffer?.length ?? 0) < length {
+            dotBuffer = device.makeBuffer(length: max(length, 4096) * 2, options: .storageModeShared)
+        }
+        guard let dotBuffer else {
+            dotCount = 0
+            return
+        }
+        dots.withUnsafeBytes { dotBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
     }
 
     /// Encodes a frame into `descriptor`'s first colour attachment.
@@ -311,6 +340,23 @@ public final class SceneRenderer {
                         type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.beamCount)
                 }
             }
+        }
+        if dotCount > 0, let dotBuffer {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            // The dot's size in pixels: points scaled as the drawable is to the view.
+            var viewport = SIMD4<Float>(
+                Float(destination.width), Float(destination.height), settings.dotSize * pixelsPerPoint, 0)
+            sceneEncoder.setRenderPipelineState(dotPipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setVertexBuffer(dotBuffer, offset: 0, index: 0)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 1)
+            sceneEncoder.setVertexBytes(&viewport, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: dotCount)
         }
         for glass in transparentBodies {
             sceneEncoder.setRenderPipelineState(glassPipeline)

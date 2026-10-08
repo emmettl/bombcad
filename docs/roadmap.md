@@ -1125,6 +1125,130 @@ and rise widths across all three fine grids. Next, extend the reflection benchma
 prescribed planar wall motion with independently predicted impulse/work, using the existing
 piston references, before moving clipped groups or enabling free-body feedback.
 
+The shock-reflection reference now has a prescribed moving-wall extension. Mirroring x
+and adding a constant Galilean velocity places the piston at `L + v t`; unshocked gas
+initially moves at v, so there is no additional wave at that piston. Incident and reflected
+pressure/density are unchanged, reflected gas moves with the wall, and exact piston work
+is `v * impulse`. The fixed opposite wall still launches a rarefaction when its incident
+gas moves away; its head in the transformed frame has the same path and inherited cutoff.
+Velocities that put that opposite wall on the compression branch are explicitly unsupported.
+This is a deliberately controlled reference, not a piston driven into initially stationary air.
+
+`PrescribedPistonTube` accepts an optional conservative initial profile over each physical
+interval. It checks returned volume against the prescribed geometry, aligns only volume
+roundoff, retains the supplied extensive inventory and validates gas states. Default uniform
+initialization is unchanged. Snapshots now attribute right-piston impulse separately from
+all-wall impulse. An optional accepted-step observer receives interval time/duration and
+piston impulse/work; rejected trial stages emit no observations. This lets the benchmark
+compare the complete accepted-step mean pressure history with its event-split exact reference,
+rather than using final impulse alone.
+
+`--moving-reflection` and `--moving-reflection --constant` complete 32 cases each on
+0.05/0.025/0.0125/0.00625 m cells, Mach 1.2/2, piston speeds −20/+20 m/s and CFL 0.2/0.1.
+The tube records 0–7 full-cell crossings and 0–7 merge/split remeshes per run. There are
+258–4724 accepted steps; the reconstructed runs retry 213 failed stages in total, while
+first-order runs have none. These are discarded trials, with accepted loads accumulated
+only after a valid update. Existing stage-aware shorter-step control remains in use.
+
+At CFL 0.1 on the finest grid, reconstructed final impulse errors normalized by exact excess
+impulse are −0.065%/−0.068% for Mach 1.2 at −20/+20 m/s and −0.127%/−0.125% for Mach 2.
+First-order errors range from −0.185% to −0.430% there. Reconstruction is not uniformly
+better in coarsest-grid total impulse: the coarse Mach-2 cases show cancellation in the
+first-order integrated load. Reconstructed pressure-history L1 errors on the finest grid
+are 3.62%/4.00% for Mach 1.2 and 3.30%/3.45% for Mach 2, versus first-order 9.91%/10.71%
+and 5.97%/6.32%. History errors decrease on every grid for every direction/CFL/method.
+Halving CFL changes reconstructed history error by less than 0.12% relative and final
+impulse error by less than 0.0024 percentage points of the exact excess-impulse normalization.
+
+The paired work errors have the same magnitude as impulse errors and opposite sign for
+negative v, as required by the normalization using `abs(v)`. They are not independent
+accuracy measures at constant speed. Independent consistency checks give mass residuals
+below 0.000000000000003 relative, gas-energy-plus-wall-work residuals below
+0.000000001 J, momentum residuals below 0.000000000001 N s, volume residuals below
+0.000000000000001 m³ and `W - v I` below 0.000000000001 J. All 47 CPU-only tests pass,
+including transformed states, unsupported inputs, conservative custom initialization,
+signed work through crossings and accepted-observation accumulation; 16 selected legacy
+piston/reconstruction tests also passed before the additional observer regression.
+
+A prescribed translating-box space/time geometry reference is now implemented. With fixed
+orientation and constant velocity, all feasible three-plane intersections of the six cell
+and six box planes identify topology changes, including edge/edge crossings. Two-node Gauss
+time quadrature then integrates quadratic areas and cubic spatial first moments/volumes.
+Wall normals point out of gas; their integrated areas give pressure impulse, and time-weighted
+areas keep torque measured about the translating centre of mass. Bounds skip cells proved
+clear or solid throughout the interval; clear endpoints alone do not justify skipping.
+Nearly parallel plane triples are rejected, and tolerance-scale grazing contacts are not
+certified. This geometry is separate from the existing adaptive rotation sweep.
+
+`--translating-box-geometry` completes aligned/0.23-radian cases on 0.2/0.1 m grids, moving
+the 0.8 m box at (3,1,-0.4) m/s for 0.08 s inside a 2 m cube. Each case crosses fully dry
+and wet cells: dry→wet counts are 9/6/133/129, and wet→dry counts 9/11/133/125, respectively.
+The finer aligned/rotated cases also detect 18/5 cells occupied only between clear endpoints.
+Maximum normalized swept-volume error is below `6e-15`; area/moment closure and
+shared-face area/first-moment discrepancies are below `3e-14`. Whole-domain gas
+volume differs from 7.488 m³ by less than `1e-12` m³; uniform-pressure body impulse,
+torque impulse and work vanish to below `1e-11` in their SI units.
+
+An exact-trace probe integrates uniform Euler fluxes and moving-wall pressure work with gas
+velocity equal to box velocity and supplied matching outer inflow/outflow. Maximum nominal-cell
+mass/energy errors are below `5e-15`, and momentum error below `5e-10`.
+Dry-cell predicted volumes can be negative at roundoff scale (about `4e-18` m³);
+the diagnostic retains this residual without applying a floor. This is a geometry identity
+check, not a numerical gas update or validation of newly exposed-cell initialization.
+All 55 tests in the CPU-only reference package pass, including analytical slab moments,
+transient occupancy, rotated closure, motion reversal, offset-centre torque, coincident
+stationary contact and rejected configurations. The four release study reports also pass
+the conservation and transition checks; strict formatting and diff checks are clean.
+
+Moving interval groups now use time-averaged gas volumes and aperture/first-moment measures
+for support geometry, including members that are initially or finally dry. After geometric
+closure checks, adjacent support groups are merged until both old and final gas capacities
+exceed 0.25 nominal cell volume (maximum 64 members). Actual extensive group states are
+summed exclusively from old gas inventories; geometric unit-state placeholders never become
+physical inventories. A newly exposed cell with no connected old support is rejected.
+Accepted packets scatter in proportion to final wet volumes, giving a largest wet member
+the floating-point remainder and exactly zero to final dry members.
+
+One frozen-state Rusanov/local wall update now uses these averaged areas. The existing Euler
+reference checks acoustic/contraction CFL and state positivity; computed wall displacement
+must match endpoint group volumes before those geometric volumes are used for scattering.
+No second remap flux is added. Each outer opening receives a prescribed reservoir buffer;
+its paired inventory change is reported in the global mass/momentum/energy budget. Pressure
+impulses, work and area/time-weighted application locations retain the paired body loads.
+
+Rotated crossings exposed cancellation in almost-solid cells and almost-blocked faces.
+Thin gas volume now uses the existing positive tetrahedral quadrature, and thin open faces
+use disjoint positive polygons classified by the first violated solid plane. This preserves
+emerging gas corners below the precision of full-volume subtraction; an independent
+tetrahedron/triangle test checks their volume, area and centroid. The original clipping
+tolerances and unsupported near-parallel/grazing configurations still apply. Crossing times
+use complete corner containment, rather than a gas-fraction threshold that would delay a
+rotated corner's first appearance.
+
+`--moving-groups` completes eight single-interval cases: two grids, aligned/0.23-radian boxes,
+and opening/closing windows. Aligned windows contain simultaneous dry→wet and wet→dry counts
+of 9 on 0.2 m grids and 49 on 0.1 m grids; each rotated window crosses one selected cell.
+Opening/closing windows coincide in the aligned geometry. Initial durations are 4 microseconds;
+the finer rotated opening rejects one trial and rebuilds geometry for 2 microseconds.
+The accepted minimum group capacity exceeds 0.25 at both endpoints, with two members at most.
+Numerical comoving gas preserves density and pressure within `6e-15` relative and velocity
+within `5e-11` m/s, including newly exposed members. Swept-volume residuals are below `2e-15`
+of a nominal cell. Budget residuals are below `1e-14` kg, `4e-14` N s and `3e-9` J;
+`W - v·I` is below `3e-16` J. Uniform-pressure net body impulse/work are below `1e-11`
+in SI units. These are numerical conservation/constant-state checks, not nonuniform moving
+wave accuracy measurements.
+All 61 CPU-only tests in 12 suites pass, including conservative endpoint scatter, rejected
+unsupported groups and inconsistent volumes, the thin tetrahedral corner, nonuniform static
+pressure budgets and finer-grid CFL retry. Both geometry and moving-group release reports
+pass their conservation/transition checks; formatting and diff checks are clean.
+
+Next, repeat moving group construction and conservative scatter over a sustained prescribed
+trajectory, checking the cumulative budgets and every active-set transition. Then establish
+nonuniform moving-load accuracy under grid and timestep refinement. Group homogenization
+does not preserve gas angular momentum. Coupled free-body velocity, rotation, ground contact
+and gas angular momentum remain subsequent gates. Ordinary simulations are unchanged, and
+stable kernels remain candidates for separately reviewed shared extraction.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

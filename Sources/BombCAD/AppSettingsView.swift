@@ -84,7 +84,7 @@ struct AppSettingsView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .frame(width: 480, height: 560)
+        .frame(width: 480, height: 640)
     }
 
     private func test() {

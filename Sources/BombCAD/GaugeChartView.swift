@@ -18,10 +18,12 @@ struct GaugeChartView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
+            // Charts of their own, which read only the histories: drawing a few thousand points
+            // after every batch kept the main thread from committing the next.
             if plotsStructure {
-                structureChart
+                StructureChart(model: model)
             } else {
-                pressureChart
+                PressureChart(model: model)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -101,28 +103,6 @@ struct GaugeChartView: View {
 
     // MARK: Air
 
-    private var pressureChart: some View {
-        Chart {
-            ForEach(model.traces) { trace in
-                ForEach(trace.points) { point in
-                    LineMark(
-                        x: .value("Time", point.time),
-                        y: .value("Overpressure", point.overpressure),
-                        series: .value("Gauge", trace.name)
-                    )
-                    .foregroundStyle(by: .value("Gauge", trace.name))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
-                }
-            }
-            nowMark
-        }
-        .chartXScale(domain: 0...(model.duration * 1000))
-        .chartXAxisLabel("Time since detonation (ms)")
-        .chartYAxisLabel("Overpressure at gauge (kPa)")
-        .chartLegend(.hidden)
-        .chartForegroundStyleScale(domain: model.traces.map(\.name), range: Self.palette)
-    }
-
     private var pressureReadout: some View {
         Group {
             Text("Peak overpressure")
@@ -149,20 +129,6 @@ struct GaugeChartView: View {
     }
 
     // MARK: Structure
-
-    private var structureChart: some View {
-        Chart {
-            ForEach(model.structureHistory) { sample in
-                LineMark(x: .value("Time", sample.time), y: .value("Deflection", sample.deflection))
-                    .foregroundStyle(.orange)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
-            }
-            nowMark
-        }
-        .chartXScale(domain: 0...(model.duration * 1000))
-        .chartXAxisLabel("Time since detonation (ms)")
-        .chartYAxisLabel("Largest deflection of intact structure (mm)")
-    }
 
     private var structureReadout: some View {
         Group {
@@ -193,11 +159,80 @@ struct GaugeChartView: View {
         .font(.callout)
     }
 
-    private var nowMark: some ChartContent {
-        RuleMark(x: .value("Now", model.time * 1000))
-            .foregroundStyle(.secondary.opacity(0.5))
-            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+    static let palette: [Color] = [.blue, .orange, .green, .pink, .purple, .teal, .brown, .mint]
+}
+
+private struct PressureChart: View {
+    let model: SimulationModel
+
+    var body: some View {
+        // One plot of every point rather than a mark per point, which Charts lays out far faster.
+        Chart {
+            LinePlot(
+                points, x: .value("Time", \.time), y: .value("Overpressure", \.overpressure),
+                series: .value("Gauge", \.gauge)
+            )
+            .foregroundStyle(by: .value("Gauge", \.gauge))
+            .lineStyle(StrokeStyle(lineWidth: 1.5))
+        }
+        .chartXScale(domain: 0...(model.duration * 1000))
+        .chartXAxisLabel("Time since detonation (ms)")
+        .chartYAxisLabel("Overpressure at gauge (kPa)")
+        .chartLegend(.hidden)
+        .chartForegroundStyleScale(domain: model.traces.map(\.name), range: GaugeChartView.palette)
+        .chartOverlay { proxy in NowLine.overlay(model: model, proxy: proxy) }
     }
 
-    private static let palette: [Color] = [.blue, .orange, .green, .pink, .purple, .teal, .brown, .mint]
+    private struct Point {
+        var gauge: String
+        var time: Double
+        var overpressure: Double
+    }
+
+    private var points: [Point] {
+        model.traces.flatMap { trace in
+            trace.points.map { Point(gauge: trace.name, time: $0.time, overpressure: $0.overpressure) }
+        }
+    }
+}
+
+private struct StructureChart: View {
+    let model: SimulationModel
+
+    var body: some View {
+        Chart {
+            LinePlot(model.structureHistory, x: .value("Time", \.time), y: .value("Deflection", \.deflection))
+                .foregroundStyle(.orange)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+        }
+        .chartXScale(domain: 0...(model.duration * 1000))
+        .chartXAxisLabel("Time since detonation (ms)")
+        .chartYAxisLabel("Largest deflection of intact structure (mm)")
+        .chartOverlay { proxy in NowLine.overlay(model: model, proxy: proxy) }
+    }
+}
+
+/// The run's time across the plot, drawn over the chart so that it alone follows every batch.
+/// The time axis is fixed, from 0 to the run's duration, so the line is placed without asking the
+/// chart, which would lay it out again.
+private struct NowLine: View {
+    let model: SimulationModel
+    let plot: CGRect
+
+    static func overlay(model: SimulationModel, proxy: ChartProxy) -> some View {
+        GeometryReader { geometry in
+            if let anchor = proxy.plotFrame { NowLine(model: model, plot: geometry[anchor]) }
+        }
+        .allowsHitTesting(false)
+    }
+
+    var body: some View {
+        let fraction = model.duration > 0 ? min(max(model.time / model.duration, 0), 1) : 0
+        let x = plot.minX + plot.width * fraction
+        Path { path in
+            path.move(to: CGPoint(x: x, y: plot.minY))
+            path.addLine(to: CGPoint(x: x, y: plot.maxY))
+        }
+        .stroke(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+    }
 }

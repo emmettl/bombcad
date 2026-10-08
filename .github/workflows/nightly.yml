@@ -4,6 +4,9 @@
 # docs/continuous-integration.md.
 name: Nightly
 
+# Started two ways each evening: by GitHub's schedule, which has run hours late or not at all,
+# and at 19:20 UTC by a launch agent on the mini (see docs/continuous-integration.md). A scheduled
+# run that finds tonight's already started skips itself.
 on:
   schedule:
     # Clear of Scrimply's nightly, which holds the same mini from about 01:30 to 04:30 UTC.
@@ -21,14 +24,29 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   nightly:
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 480
     steps:
+      - name: Skip if tonight's suite has already started
+        id: guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -v-12H +%Y-%m-%dT%H:%M:%SZ)
+          others=$(/opt/homebrew/bin/gh run list -R "$GITHUB_REPOSITORY" -w nightly.yml -L 20 \
+            --json databaseId,createdAt \
+            --jq "[.[] | select(.createdAt >= \"$since\" and .databaseId != $GITHUB_RUN_ID)] | length")
+          echo "Nightly runs started since $since besides this one: $others"
+          if [ "$others" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip != 'true'
       - name: Run the suite
+        if: steps.guard.outputs.skip != 'true'
         env:
           ONLY: ${{ inputs.only }}
         run: >
@@ -38,7 +56,7 @@ jobs:
           --summary "$GITHUB_STEP_SUMMARY"
           ${ONLY:+--only "$ONLY"}
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.guard.outputs.skip != 'true'
         with:
           name: nightly-${{ github.run_number }}
           path: nightly-results/

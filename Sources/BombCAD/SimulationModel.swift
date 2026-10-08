@@ -1253,6 +1253,12 @@ final class SimulationModel {
         fragmentStatus = text
     }
 
+    /// Flies fragments through `worker` from the next run, as if connected to `host`; for tests.
+    func useFragmentWorker(_ worker: SweepWorkerClient, host: String) {
+        fragmentWorker = worker
+        fragmentWorkerHost = host
+    }
+
     /// Connects to the Mac set for sweeps, to fly fragments there; nil `host` disconnects.
     func connectFragmentWorker(_ host: String?) async {
         guard host != fragmentWorkerHost || fragmentWorker == nil else { return }
@@ -1549,9 +1555,11 @@ final class SimulationModel {
         }
         updateFragmentStatus()
         let ambient = scenario.atmosphere.pressure
-        let maxPoints = 500
+        // Enough for the chart's width: each point is the extreme of its bucket, so peaks show, and
+        // Charts takes tens of milliseconds a redraw at a thousand points a gauge.
+        let maxPoints = 300
         for (index, history) in solver.gaugeHistories.enumerated() where index < traces.count {
-            let bucket = max(1, history.count / maxPoints)
+            let bucket = max(1, (history.count + maxPoints - 1) / maxPoints)
             var points: [GaugePoint] = []
             points.reserveCapacity(history.count / bucket + 1)
             var peak = 0.0

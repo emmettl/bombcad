@@ -40,6 +40,11 @@ struct MetalView: NSViewRepresentable {
             settings.showCharge = model.time == 0
             settings.highlight = model.highlightedBox
             renderer.settings = settings
+            renderer.setDots(
+                model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers))
+            if view.bounds.width > 0 {
+                renderer.pixelsPerPoint = Float(view.drawableSize.width / view.bounds.width)
+            }
             renderer.encode(into: commandBuffer, descriptor: descriptor, camera: model.camera)
             commandBuffer.present(drawable)
             commandBuffer.commit()

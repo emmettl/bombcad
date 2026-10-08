@@ -477,6 +477,62 @@ vertex MeshOut beamVertex(uint vertexID [[vertex_id]],
     return out;
 }
 
+struct DotOut {
+    float4 position [[position]];
+    float2 corner;
+    float3 colour [[flat]];
+};
+
+// Draws fragments, tracers and landings as round dots of a fixed size on screen, depth-tested at
+// their centres. Each is a position and a code: the kind (0 a fragment in flight, 1 a tracer, 2 a
+// landing) plus a value from 0 to 1, a fragment's speed or a landing's energy.
+vertex DotOut dotVertex(uint vertexID [[vertex_id]],
+                        uint instanceID [[instance_id]],
+                        const device float4 *dots [[buffer(0)]],
+                        constant MeshUniforms &u [[buffer(1)]],
+                        constant float4 &viewport [[buffer(2)]]) {
+    float4 p = dots[instanceID];
+    float kind = floor(p.w);
+    float value = p.w - kind;
+    float3 relative = p.xyz - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    float near = u.projection.z;
+    float far = u.projection.w;
+    float4 clip = float4(view.x * u.projection.x, view.y * u.projection.y,
+                         far / (far - near) * (view.z - near), view.z);
+    const float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(1, 1),
+                               float2(-1, -1), float2(1, 1), float2(-1, 1)};
+    float2 corner = corners[vertexID];
+    float size = viewport.z * (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f));
+    clip.xy += corner * size / viewport.xy * clip.w;
+
+    DotOut out;
+    out.position = clip;
+    out.corner = corner;
+    if (kind > 1.5f) {
+        // A landing: yellow at a joule, through orange, to dark red at ten megajoules.
+        out.colour = value < 0.5f ? mix(float3(0.98f, 0.85f, 0.2f), float3(0.95f, 0.4f, 0.1f), value * 2.0f)
+                                  : mix(float3(0.95f, 0.4f, 0.1f), float3(0.45f, 0.03f, 0.05f), value * 2.0f - 1.0f);
+    } else if (kind > 0.5f) {
+        out.colour = float3(0.3f, 0.85f, 1.0f);
+    } else {
+        // A fragment in flight: dark when slow, white-hot at its launch speed.
+        out.colour = mix(float3(0.12f, 0.12f, 0.14f), float3(1.0f, 0.95f, 0.8f), value);
+    }
+    return out;
+}
+
+fragment float4 dotFragment(DotOut in [[stage_in]]) {
+    float r2 = dot(in.corner, in.corner);
+    if (r2 > 1.0f) {
+        discard_fragment();
+    }
+    // Lit as a ball from the upper left, with a dark rim to stand out against any background.
+    float shade = 0.75f + 0.25f * (1.0f - r2) - 0.15f * (in.corner.x - in.corner.y) * 0.5f;
+    float rim = smoothstep(0.7f, 1.0f, r2);
+    return float4(mix(in.colour * shade, float3(0.05f), rim * 0.6f), 1.0f);
+}
+
 fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
     float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(normal, u.eye.xyz - in.world) < 0.0f) {

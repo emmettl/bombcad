@@ -1,8 +1,8 @@
 # Fragments flown alongside a run
 
 A cased charge's fragments, and passive tracers, flown through the blast one way: the air pushes
-them, they do not push back. The model can run on this Mac's CPU or on another Mac, fed the air a
-frame at a time over SSH, which is what it was built to try: a live one-way consumer, the first
+them, they do not push back. The app draws them over a run as it goes; headless runs export them.
+The model can run on this Mac's CPU or on another Mac, fed the air a frame at a time over SSH, which is what it was built to try: a live one-way consumer, the first
 of the separable models in [Distributed computing](distributed-computing.md#separate-models-on-separate-machines).
 
 **Standing: illustrative.** Each ingredient is a textbook approximation, and nothing here has
@@ -52,6 +52,34 @@ any field left out takes its default:
   its starting regions; impacts in multiple-structure scenes include the stable `objectID`.
   The optional owner table and impact ID preserve decoding of older single-structure streams
   and results. Beyond the air's domain the air is still.
+
+## In the app
+
+Turn on **Cased charge** in the Run tab's Fragments section. It starts with a casing a tenth of
+the charge's mass, 2,000 fragments and 300 tracers across 16 m round the charge, and sets the
+casing's mass, the number of fragments and tracers, and the casing's shape; the launch speed it
+gives is shown. The description is saved with the project (as `fragments.json`) and takes effect
+from the next run. With a Mac set for sweeps in Settings, **Fly on** that Mac sends the fragments
+there, over a connection kept open between runs.
+
+During a run the view draws them over the blast as dots of a fixed size on screen, whatever their
+true size: fragments in flight dark when slow and white-hot at their launch speed, tracers in cyan,
+and where fragments landed, from yellow at a joule to dark red at ten megajoules. Under Display,
+each kind can be hidden and the dots' size set. A line under the section counts the fragments in
+flight and landed, and the hardest impact.
+
+![Fragments, tracers and landings over the street canyon's blast at 24 ms, as the app draws them](street-fragments-app-24ms.png)
+
+**The air is untouched.** The app takes a frame at the end of each batch rather than stopping the
+run at fixed times, and with fragments on holds a batch to about a millisecond of simulated time by
+taking fewer steps, never shorter ones; the tests check that the air's gauges and the structure's
+response are the same to the last bit with fragments on or off. The cost is that the frames fall
+where batches end, which follows the playback's timing, so the fragments in the app differ a
+little from one run to the next. For a fragment study that repeats exactly, use `BombCAD run
+--fragments`, which stops at fixed frames.
+
+`blastbench snapshot --fragments casing.json` flies them alongside an offscreen snapshot, as the
+view draws them (the figure above).
 
 ## Running alongside the blast
 
@@ -122,7 +150,8 @@ to centimetres across.
 - The casing's own energy is not taken from the air's: the blast is the bare charge's.
 - No break-up, no ricochet, no penetration; a fragment stops where it first hits.
 - Only the coarse grid's air, also where refinement sharpens the shock.
-- Headless only, with Blender for viewing; the app does not draw fragments.
+- In the app, frames fall at batch ends, so its fragments vary a little from run to run (above).
+- Fragments are not kept with a saved run.
 
 ## Sources
 

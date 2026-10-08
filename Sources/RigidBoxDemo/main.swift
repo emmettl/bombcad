@@ -7,6 +7,61 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--moving-groups") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-groups.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingGroupsStudy.Result] = []
+        _ = try ExperimentalMovingGroupsStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation), \(r.transition): dry→wet \(r.dryToWetCells), wet→dry \(r.wetToDryCells), pressure error \(r.maximumRelativePressureError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--translating-box-geometry") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/translating-box-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalTranslatingBoxGeometryStudy.Result] = []
+        _ = try ExperimentalTranslatingBoxGeometryStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation): dry→wet \(r.dryToWetCells), wet→dry \(r.wetToDryCells), volume error \(r.maximumRelativeVolumeChangeResidual), uniform energy error \(r.maximumRelativeUniformEnergyResidual)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--moving-reflection") {
+        let constant = arguments.contains("--constant")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-reflection\(constant ? "-constant" : "").json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingReflectionStudy.Result] = []
+        _ = try ExperimentalMovingReflectionStudy.run(limited: !constant) { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellLength), Mach \(r.mach), piston \(r.pistonVelocity), CFL \(r.cfl): history L1 \(r.relativePressureHistoryL1), impulse error \(r.frames.last!.impulseError), work error \(r.frames.last!.workError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--wall-reflection") {
         let limited = arguments.contains("--limited")
         let refined = arguments.contains("--refined")

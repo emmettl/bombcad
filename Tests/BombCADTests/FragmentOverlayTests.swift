@@ -94,6 +94,49 @@ struct FragmentOverlayTests {
         #expect(model.fragmentDots(showFragments: true, showTracers: true).isEmpty)
     }
 
+    @Test("On a worker, the run's particles come back each frame, over a connection kept between runs")
+    func remote() async throws {
+        var document = airOnly()
+        document.fragments = spec()
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        let (worker, server) = localWorker(name: "the mini")
+        _ = try await worker.start()
+        model.useFragmentWorker(worker, host: "the mini")
+        model.fragmentsOnRemote = true
+        for _ in 0..<2 {
+            let deadline = ContinuousClock.now + .seconds(60)
+            while !model.experimentIsReady {
+                try #require(ContinuousClock.now < deadline)
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            model.run()
+            while model.isRunning || model.hasPendingGPUWork {
+                try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            let consumer = try #require(model.fragments as? RemoteLiveConsumer)
+            while consumer.live.map({ abs($0.time - 0.01) > 1e-6 }) ?? true {
+                try #require(ContinuousClock.now < deadline)
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            let live = try #require(consumer.live)
+            #expect(live.positions.count == 340 && !live.impacts.isEmpty)
+            #expect(model.fragmentDots(showFragments: true, showTracers: true).count > 0)
+            model.reset()
+        }
+        worker.close()
+        await server.value
+    }
+
+    @Test("The Run tab's starting description is valid and keeps its tracers in the domain")
+    func defaults() throws {
+        let scenario = airOnly().scenario
+        let spec = FragmentSection.defaultSpec(for: scenario)
+        try spec.validate()
+        let region = try #require(spec.tracerRegion)
+        #expect(region.min.x >= 0 && region.max.x <= 8 && region.max.z <= 8)
+    }
+
     @Test("A project keeps its fragments when saved and reopened")
     func saved() throws {
         var document = airOnly()

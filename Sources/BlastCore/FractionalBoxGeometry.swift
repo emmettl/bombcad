@@ -245,20 +245,56 @@ struct FractionalBoxGeometry {
             var db = SIMD3<Double>.zero
             da[a] = h
             db[b] = h
-            var polygon = [origin, origin + da, origin + da + db, origin + db]
+            let square = [origin, origin + da, origin + da + db, origin + db]
+            var polygon = square
             for plane in planes {
                 var intersections: [SIMD3<Double>] = []
                 polygon = clip(polygon, against: plane, epsilon: h * 1e-12, intersections: &intersections)
                 if polygon.count < 3 { break }
             }
             let blocked = measure(polygon)
-            let area = min(h * h, max(0, h * h - blocked.area))
+            var area = min(h * h, max(0, h * h - blocked.area))
             let midpoint = origin + (da + db) / 2
-            let centroid = area > 0 ? (h * h * midpoint - blocked.area * blocked.centroid) / area : midpoint
+            var centroid = area > 0 ? (h * h * midpoint - blocked.area * blocked.centroid) / area : midpoint
+            if area < h * h * 1e-6 {
+                // Partition open polygons by the FIRST violated solid plane. Direct
+                // positive areas/moments preserve thin triangles lost by full-minus-solid.
+                var remaining = square
+                area = 0
+                var moment = SIMD3<Double>.zero
+                for plane in planes {
+                    var intersections: [SIMD3<Double>] = []
+                    if remaining.contains(where: { plane.distance($0) > h * 1e-12 }) {
+                        let outside = clip(
+                            remaining,
+                            against: Plane(normal: -plane.normal, offset: -plane.offset),
+                            epsilon: h * 1e-12, intersections: &intersections)
+                        let patch = measure(outside)
+                        area += patch.area
+                        moment += patch.area * (patch.centroid - midpoint)
+                    }
+                    intersections = []
+                    remaining = clip(
+                        remaining, against: plane, epsilon: h * 1e-12,
+                        intersections: &intersections)
+                    if remaining.count < 3 { break }
+                }
+                centroid = area > 0 ? midpoint + moment / area : midpoint
+            }
             var normal = SIMD3<Double>.zero
             normal[axis] = face & 1 == 0 ? -1 : 1
             return SurfacePatch(area: area, centroid: centre + centroid, normal: normal)
         }
+    }
+
+    /// Positive tetrahedral measures avoid cancellation in an almost solid cell.
+    /// Tolerance-scale geometry remains subject to the clipping predicates.
+    func gasVolume(lower: SIMD3<Double>, cellSize h: Double) -> Double {
+        let fraction = 1 - solidVolumeFraction(lower: lower, cellSize: h)
+        if fraction < 1e-6 {
+            return gasQuadrature(lower: lower, cellSize: h).reduce(0) { $0 + $1.weight }
+        }
+        return fraction * h * h * h
     }
 
     /// Normals point out of the box, so pressure on the body acts along -normal.

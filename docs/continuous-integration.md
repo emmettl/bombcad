@@ -11,7 +11,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 | Workflow | When | What |
 |---|---|---|
 | [Check](../.github/workflows/check.yml) | Every push to `main`, or by hand | `make check`: lint, tests, release-script tests, build |
-| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC, or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
+| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
 ones are dropped, so every run finishes and at most one waits. Both run only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
@@ -55,6 +55,20 @@ python3 Scripts/nightly.py --list
 ```bash
 python3 Scripts/nightly.py --only beam,snapshot --history /tmp/bombcad-nightly
 ```
+
+## Starting the nightly
+
+GitHub's schedule has run the nightly four and a half hours late and, the next night, not at all,
+so the mini starts it too. A launch agent there, `dev.bombcad.nightly-trigger`, runs
+`~/bombcad-nightly-trigger/trigger.sh` at 21:20 local time (19:20 UTC in summer time): it asks
+GitHub, with `gh`, whether a nightly has started in the last 12 hours, and starts one if not,
+logging to `~/bombcad-nightly-trigger/trigger.log`. A scheduled run that finds one already started
+in that time skips itself, so the suite runs once whichever comes first.
+
+Starting a run needs `gh` on the mini signed in to an account that can run the workflow (`gh auth
+login`); asking which runs have started does not, the repository being public. `gh` keeps its token
+in the login keychain, which an SSH session cannot open, so over SSH it reports the token invalid;
+the agent runs in the logged-in session, where it is signed in.
 
 ## Setting up the runner
 
