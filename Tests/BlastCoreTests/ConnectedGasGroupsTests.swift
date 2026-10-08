@@ -120,8 +120,13 @@ struct ConnectedGasGroupsTests {
     @Test("Nonuniform gas inventories survive aggregation and constant-state splitting")
     func extensiveBudgets() throws {
         var f = boxes([1, 0.01, 1])
+        let first = f.boundaries[0]
+        f.boundaries[0] = .init(
+            cell: first.cell, area: first.area, normal: first.normal,
+            centroid: first.centroid, owner: 77)
         f.cells[1] = .init(volume: 0.01, density: 2, velocity: SIMD3(-2, 1, 0), pressure: 150000)
         let p = try plan(f)
+        #expect(p.boundaries.filter { $0.owner == 77 }.count == 1)
         let split = try p.scatter(p.groups.map(\.cell))
         let before = f.cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
         let after = split.reduce(SIMD8<Double>.zero) { $0 + $1.amount }

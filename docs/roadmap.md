@@ -864,6 +864,35 @@ The reference remains CPU-only and static; timestep gains do not measure groupin
 or validate blast loading. Next, check nonuniform pressure transport and held-box load
 budgets through these groups before allowing geometry to move.
 
+Nonuniform pressure transport around a held box is now exercised on the grouped clipped
+geometry. Boundary patches carry an owner identifier through aggregation so box loads
+remain distinct from enclosing-domain loads. Each box patch's impulse uses the same
+Riemann pressure as the gas update; its angular impulse is computed at the retained
+centroid about the box centre. The box pose stays fixed, representing an external holding
+constraint, and all boundary work is zero. This computes pressure torque but does not
+audit or conserve the gas's angular momentum.
+
+`--connected-loads` evolves an initial smooth Gaussian pressure excess of peak 40000 Pa,
+centred at (0.45, 1.18, 1.10) m with widths (0.14, 0.18, 0.18) m, for 0.5 ms. It runs
+axis-aligned and 0.23-radian boxes on 0.2 and 0.1 m grids at CFL 0.2, using 71–142 steps.
+The gas remains positive, with speeds reaching roughly 10–16 m/s. Compensated extensive
+totals distinguish cell-sum roundoff from transport drift; mass and energy changes stay
+within floating-point precision, and gas-plus-box-plus-domain linear-momentum residuals
+stay below 0.0000000000001 N s.
+
+The forward box impulse changes from 2.105 to 2.383 N s for the axis-aligned box and from
+1.924 to 2.158 N s for the rotated box when grid spacing halves: 13.2% and 12.1% increases.
+The rotated box's z angular impulse changes from -0.189 to -0.243 N m s. These two grids
+do not establish load convergence. Sampling the initial pressure field at cell centres also
+changes excess pulse energy by about 1.2% and 0.7%, respectively; initial mass and energy
+are reported so forcing differences remain visible. This is a pressure-pulse diagnostic,
+not detonation or freely moving-body validation.
+
+Eight grouping/load tests pass, covering boundary-owner retention, pulse-induced linear
+and angular load, closed gas/wall budgets and zero load/flow under uniform pressure, along
+with the preceding geometry and aggregation checks. Next, compare finer-grid and timestep
+response with matched pulse energy before changing the box pose or coupling free-body motion.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

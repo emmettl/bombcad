@@ -408,6 +408,11 @@ closure and centroid/volume identities before and after grouping, then verifies 
 gas through a grouped flux update and conservative splitting. Rotated-box cases permit
 128–162× larger acoustic timesteps; these are timestep limits, not measured speedups.
 Moving geometry, nonuniform transport accuracy and angular-momentum transport remain open.
+`--connected-loads` writes `.build/connected-loads.json`, evolving a smooth pressure pulse
+around a held box for 0.5 ms. Boundary ownership keeps box loads separate from domain-wall
+loads; the report records box impulse, centroid-based angular impulse and complete gas/wall
+linear-momentum budgets. Fixed walls do no work. Load predictions remain grid-sensitive,
+and gas angular momentum is not audited by this reference.
 
 ## Headline results
 

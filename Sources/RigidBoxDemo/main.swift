@@ -7,6 +7,23 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--connected-loads") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/connected-loads.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalConnectedLoadStudy.Result] = []
+        _ = try ExperimentalConnectedLoadStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation): \(r.steps) steps, body impulse \(r.bodyImpulse), momentum residual \(r.momentumBudgetResidual)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--connected-gas") {
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/connected-gas.json")

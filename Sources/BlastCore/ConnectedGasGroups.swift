@@ -16,6 +16,14 @@ enum ConnectedGasGroups {
         let area: Double
         let normal: SIMD3<Double>  // Outward from gas.
         let centroid: SIMD3<Double>
+        let owner: Int
+        init(cell: Int, area: Double, normal: SIMD3<Double>, centroid: SIMD3<Double>, owner: Int = 0) {
+            self.cell = cell
+            self.area = area
+            self.normal = normal
+            self.centroid = centroid
+            self.owner = owner
+        }
     }
     struct Group {
         let members: [Int]
@@ -168,7 +176,9 @@ enum ConnectedGasGroups {
                 normal: face.normal, centroid: face.centroid)
         }
         let outer = boundaries.filter { $0.area > 0 }.map {
-            Boundary(cell: mapping[$0.cell], area: $0.area, normal: $0.normal, centroid: $0.centroid)
+            Boundary(
+                cell: mapping[$0.cell], area: $0.area, normal: $0.normal, centroid: $0.centroid,
+                owner: $0.owner)
         }
         var groupVectors = [SIMD3<Double>](repeating: .zero, count: groups.count)
         var groupAreas = [Double](repeating: 0, count: groups.count)
