@@ -951,6 +951,55 @@ spatial load sensitivity. Next, develop bounded spatial pressure/velocity recons
 on the stationary grouped geometry, verify uniform and affine-field behavior, then repeat
 these load comparisons before adding moving geometry or free-body coupling.
 
+Stationary grouped transport now has opt-in `--limited` reconstruction. Area/distance-squared
+weighted least squares estimates density, velocity and pressure gradients from neighbouring
+group means. A component-wise limiter bounds all face and wall traces to the group's
+one-ring extrema, with trace-roundoff clamping to those same bounds. Rank-deficient or
+poorly conditioned stencils retain constant states. This is a bounded reconstruction,
+not a proof of positivity of the complete multidimensional update.
+
+Reconstruction locations use quadrature-derived gas-volume centroids aggregated by member
+volume; the existing grouping reference centres and geometry checks are unchanged. Supplied
+wall traces now determine both exact wall-Riemann traction and the wall contribution to CFL.
+SSPRK2 averages extensive gas updates and matching wall impulse/work from both stages.
+The driver checks stage-two CFL, retries shorter steps on failed stages, and records
+rejections without pressure/density floors. Fixed geometry and wall ordering retain the
+existing owner-based budget attribution.
+
+`Scripts/check-grouped-gas-reference.py` builds the selected implementations and tests in
+an isolated temporary CPU-only package. All 32 tests pass without application imports or
+Metal, including affine primitive reconstruction, analytical interior pressure-gradient
+momentum, bounded sharp-gradient face/wall states, singular-stencil fallback, resting clipped
+groups, supplied-wall traction/CFL validation, transport budgets and existing planar piston
+accuracy cases. This demonstrates a source-level numerical boundary suitable for future
+extraction; it does not replace a public API, provenance or fetched-release consumer check.
+
+All twelve `--connected-loads --convergence --volume-average --limited` cases complete,
+using 72–569 accepted steps and no rejected steps. At CFL 0.1, forward impulses on
+0.2/0.1/0.05 m grids are 2.572/2.765/2.808 N s for the axis-aligned box and
+2.427/2.610/2.661 N s for the rotated box. Last-refinement forward changes fall from
+8.92%/9.21% with gas-average constant-state transport to 1.57%/1.96%; angular-impulse
+vector changes fall from 10.81%/18.67% to 4.57%/6.66%. Across the limited cases, halving
+CFL changes forward impulse by less than 0.001%. Mass and energy residuals are below
+0.000000000000001 relative, and linear-momentum residuals below
+0.000000000001 N s. Additional whole-domain first, squared and cross moments match the
+analytical cube-complement moments, independently checking the gas centroids.
+
+These results support the reconstruction, but three grids are not an independent load
+accuracy reference. The comparison changes both spatial reconstruction and time integration;
+small CFL sensitivity separates temporal effects without proving a formal convergence order.
+Pressure traction is still evaluated once per patch at its centroid, and angular impulse
+uses that point force. Even affine pressure requires second surface moments for exact torque;
+centroid evaluation does not supply them. Gas angular momentum remains unaudited.
+
+Next, introduce surface quadrature with matching gas impulse and integrated body torque,
+verify affine pressure loads independently and repeat this comparison. Then establish a
+bounded reflection/load benchmark before prescribed moving grouped geometry and free-body
+coupling. The independently verified wall law and gas reference primitives can be proposed
+for individual ContinuumKit extraction with explicit public contracts, source provenance,
+fetched-consumer checks and BombCAD parity. Scene ownership, scenario construction and replay
+remain here; the complete experimental coupling is not yet a verified shared product.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

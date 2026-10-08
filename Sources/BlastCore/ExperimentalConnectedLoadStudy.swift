@@ -11,6 +11,8 @@ public enum ExperimentalConnectedLoadStudy {
         public let pulseAmplitude: Double
         public let pulseEnergy: Double
         public let requestedPulseEnergy: Double?
+        public let transport: String
+        public let rejectedSteps: Int
         public let initialization: String
         public let maximumQuadratureVolumeResidual: Double
         public let steps: Int
@@ -32,6 +34,7 @@ public enum ExperimentalConnectedLoadStudy {
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         duration: Double = 0.0005, pulseAmplitude: Double = 40000,
         cfls: [Double] = [0.2], targetPulseEnergy: Double? = nil, volumeAverage: Bool = false,
+        limited: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite && duration > 0, pulseAmplitude.isFinite && pulseAmplitude >= 0,
@@ -49,8 +52,9 @@ public enum ExperimentalConnectedLoadStudy {
                     return exp(-0.5 * simd_length_squared(offset))
                 }
                 var quadratureResidual = 0.0
+                var gasCentres = domain.centres
                 let weights = try domain.cells.indices.map { n -> Double in
-                    guard volumeAverage else { return pulse(domain.centres[n]) }
+                    guard volumeAverage || limited else { return pulse(domain.centres[n]) }
                     guard domain.cells[n].volume > 0 else { return 0 }
                     let nodes = domain.geometry.gasQuadrature(
                         lower: domain.centres[n] - SIMD3(repeating: h / 2), cellSize: h)
@@ -60,6 +64,8 @@ public enum ExperimentalConnectedLoadStudy {
                         throw Failure.invalidConfiguration
                     }
                     quadratureResidual = max(quadratureResidual, residual)
+                    gasCentres[n] = nodes.reduce(SIMD3<Double>.zero) { $0 + $1.weight * $1.point } / volume
+                    guard volumeAverage else { return pulse(domain.centres[n]) }
                     return nodes.reduce(0) { $0 + $1.weight * pulse($1.point) } / volume
                 }
                 var coefficient = 0.0
@@ -87,25 +93,54 @@ public enum ExperimentalConnectedLoadStudy {
                 let walls = plan.boundaries.map {
                     FractionalEulerFlux.Wall(cell: $0.cell, normal: $0.normal, area: $0.area)
                 }
+                let reconstruction: LimitedGroupedGasFlux.Geometry? =
+                    try limited
+                    ? .init(
+                        centres: plan.groups.map { group in
+                            group.members.reduce(SIMD3<Double>.zero) {
+                                $0 + initial[$1].volume * gasCentres[$1]
+                            } / group.cell.volume
+                        }, faces: plan.faces, boundaries: plan.boundaries) : nil
                 for cfl in cfls {
                     var cells = plan.groups.map(\.cell)
                     let before = totalAmount(initial)
                     var elapsed = 0.0
                     var steps = 0
+                    var rejectedSteps = 0
                     var bodyImpulse = SIMD3<Double>.zero
                     var angularImpulse = SIMD3<Double>.zero
                     var domainImpulse = SIMD3<Double>.zero
                     var wallWork = 0.0
                     while elapsed < duration {
+                        let traces = try reconstruction?.traces(cells)
                         let limit = try FractionalEulerFlux.maximumStep(
-                            cells, faces: faces, walls: walls, cfl: cfl)
-                        let step = min(limit, duration - elapsed)
+                            cells, faces: traces?.faces ?? faces, walls: traces?.walls ?? walls, cfl: cfl)
+                        var step = min(reconstruction == nil ? limit : 0.99 * limit, duration - elapsed)
                         guard steps < 10000 && step > 0 && elapsed + step > elapsed else {
                             throw Failure.stepLimit
                         }
-                        let update = try FractionalEulerFlux.advanceWithWalls(
-                            cells, faces: faces, walls: walls,
-                            duration: step, cfl: cfl)
+                        let update: FractionalEulerFlux.Result
+                        if let reconstruction, let traces {
+                            var accepted: FractionalEulerFlux.Result?
+                            for _ in 0..<24 {
+                                do {
+                                    accepted = try reconstruction.advance(
+                                        cells, traces: traces, duration: step, cfl: cfl)
+                                    break
+                                } catch LimitedGroupedGasFlux.Failure.stageLimit(let allowed) {
+                                    step = min(step / 2, 0.99 * allowed)
+                                } catch FractionalGasTransport.Failure.invalidState {
+                                    step /= 2
+                                }
+                                rejectedSteps += 1
+                                guard step > 0 && elapsed + step > elapsed else { throw Failure.stepLimit }
+                            }
+                            guard let accepted else { throw Failure.stepLimit }
+                            update = accepted
+                        } else {
+                            update = try FractionalEulerFlux.advanceWithWalls(
+                                cells, faces: faces, walls: walls, duration: step, cfl: cfl)
+                        }
                         cells = update.cells
                         for n in plan.boundaries.indices {
                             let patch = plan.boundaries[n]
@@ -127,6 +162,7 @@ public enum ExperimentalConnectedLoadStudy {
                         cellSize: h, rotation: angle, duration: duration, cfl: cfl,
                         pulseAmplitude: amplitude, pulseEnergy: amplitude * coefficient,
                         requestedPulseEnergy: targetPulseEnergy,
+                        transport: limited ? "limitedSSPRK2" : "constantEuler", rejectedSteps: rejectedSteps,
                         initialization: volumeAverage ? "gasAverage" : "cellCentre",
                         maximumQuadratureVolumeResidual: quadratureResidual, steps: steps,
                         groups: cells.count, initialMass: before[0], initialEnergy: before[4],

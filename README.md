@@ -428,6 +428,18 @@ Combined with `--convergence`, it writes `.build/connected-loads-convergence-vol
 pass that path to the summary script to compare with the original point sampling. Energy
 matching and gas-volume checks still apply; this changes initialization only.
 
+Adding `--limited` to the held-box study enables weighted least-squares primitive
+reconstruction with one-ring extrema limiting at face and wall centroids, and SSPRK2 time
+integration. Reconstruction uses gas-volume centroids computed by the quadrature, even
+when point pressure initialization is selected. Rank-deficient stencils retain constant
+states; failed updates are retried at shorter steps without pressure or density floors.
+`swift run -c release rigidboxdemo --connected-loads --convergence --volume-average --limited`
+writes `.build/connected-loads-convergence-volume-average-limited.json`. Pass this file to
+`Scripts/summarize-connected-loads.py` for the same grid/CFL comparisons.
+`python3 Scripts/check-grouped-gas-reference.py` copies the bounded reference sources and
+tests into a temporary CPU-only package and verifies them without application or Metal
+imports. This is preparation for extraction, not a released ContinuumKit product check.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

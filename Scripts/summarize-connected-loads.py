@@ -22,6 +22,10 @@ def main():
     initializations = {r.get("initialization", "cellCentre") for r in rows}
     if len(initializations) != 1:
         raise ValueError("Cases must use the same initialization method")
+    transports = {r.get("transport", "constantEuler") for r in rows}
+    if len(transports) != 1:
+        raise ValueError("Cases must use the same transport method")
+    print(f"Transport: {next(iter(transports))}")
     print(f"Initialization: {next(iter(initializations))}")
     print("CFL 0.1 loads; grid changes compare with the preceding coarser grid")
     print("rotation   dx    Ix(N s)  grid Ix%  angular vector%  CFL Ix%  amplitude(Pa)")
