@@ -84,4 +84,24 @@ public enum ResponseComparison {
         // The first bin is centred on the onset; the second holds the rest of the direct sound.
         return energy[2...].map { 10 * log10($0 / max(total, .leastNonzeroMagnitude) + 1e-6) }
     }
+
+    /// Energy above `above` Hz in bins `bin` seconds wide over the first `duration` seconds: the
+    /// energy-time curve that shows a response's direct sound and early reflections one by one.
+    public static func energyTimeCurve(
+        _ samples: [Float], sampleRate: Int, duration: Double, bin: Double, above: Double = 500
+    ) -> [Double] {
+        let rate = Double(sampleRate)
+        let bins = Int((duration / bin).rounded(.up))
+        // Room for the high-pass's ringing beyond the last bin.
+        let count = min(Int(duration * rate) + 2048, samples.count)
+        let highs = RealFFT.zeroPhaseFilter(Array(samples[..<count]), sampleRate: rate) {
+            OctaveBands.rise($0, crossover: above)
+        }
+        var energy = [Double](repeating: 0, count: bins)
+        for (i, x) in highs.enumerated() {
+            let b = Int(Double(i) / rate / bin)
+            if b < bins { energy[b] += Double(x) * Double(x) }
+        }
+        return energy
+    }
 }

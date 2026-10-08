@@ -73,6 +73,10 @@ struct WaveSolver {
         decimation = m
     }
 
+    /// About how much memory a run takes, in bytes: per cell, pressure and three velocities in single
+    /// precision, six face coefficients and a flag on the GPU, and the layout they are built from.
+    var memoryEstimate: Int { cells.x * cells.y * cells.z * 72 }
+
     /// Work for `duration` seconds, in cell updates.
     func cost(duration: Double) -> Double {
         Double(cells.x * cells.y * cells.z) * duration / timeStep

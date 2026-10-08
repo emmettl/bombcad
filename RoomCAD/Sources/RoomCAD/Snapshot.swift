@@ -69,6 +69,7 @@ private struct SnapshotView: View {
                     EnvelopeChart(summary: summary).frame(width: 560, height: 240)
                     SpectrumChart(summary: summary, crossover: result.diagnostics.waveCrossover)
                         .frame(width: 560, height: 200)
+                    EarlyChart(summary: summary).frame(width: 560, height: 200)
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     DecayTable(summary: summary, diagnostics: result.diagnostics)

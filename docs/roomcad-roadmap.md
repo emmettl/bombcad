@@ -404,10 +404,11 @@ code.
   Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
   and labelled in each material's reference. Most surfaces still need scattering values. See
   [RoomCAD app and documents](roomcad-app.md#material-presets).
-- **Item 3.** The app shows each channel's envelope, spectrum and octave-band decay. It also shows
-  the generation's stage and progress while it runs, the wave solver's crossover and engine, and T30
-  only where the band's decay reaches −35 dB. An early-arrivals view and a memory estimate are not
-  done.
+- **Item 3.** This is done. The app shows each channel's envelope, spectrum, early arrivals (an
+  energy-time curve above 500 Hz) and octave-band decay. It also shows:
+  - the generation's stage and progress while it runs;
+  - the wave solver's crossover, engine and approximate memory;
+  - T30 only where the band's decay reaches −35 dB.
 - **Item 4.** There are ten whole-room presets, and regeneration runs in the background and is
   cancelled when the room changes. Responses are kept with their settings and marked stale when the
   settings change. Preview and export use the same quality.

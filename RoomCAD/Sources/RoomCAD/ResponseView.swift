@@ -116,6 +116,54 @@ struct SpectrumChart: View {
     }
 }
 
+/// Energy above 500 Hz against time over the first tens of milliseconds, in dB: each peak is the direct
+/// sound or an early reflection.
+struct EarlyChart: View {
+    let summary: ResponseSummary
+    static let range = 50.0
+
+    var body: some View {
+        Canvas { context, size in
+            let left: CGFloat = 36
+            let bottom: CGFloat = 18
+            let plot = CGRect(x: left, y: 4, width: size.width - left - 8, height: size.height - bottom - 4)
+            let duration = summary.earlyDuration
+            func x(_ t: Double) -> CGFloat { plot.minX + CGFloat(t / duration) * plot.width }
+            func y(_ level: Double) -> CGFloat {
+                plot.minY + CGFloat(min(-level, Self.range) / Self.range) * plot.height
+            }
+            var grid = Path()
+            for db in stride(from: 0.0, through: -Self.range, by: -10) {
+                grid.move(to: CGPoint(x: plot.minX, y: y(db)))
+                grid.addLine(to: CGPoint(x: plot.maxX, y: y(db)))
+                context.draw(
+                    Text("\(Int(db)) dB").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: plot.minX - 4, y: y(db)), anchor: .trailing)
+            }
+            for t in stride(from: 0.0, through: duration, by: 0.01) {
+                grid.move(to: CGPoint(x: x(t), y: plot.minY))
+                grid.addLine(to: CGPoint(x: x(t), y: plot.maxY))
+                context.draw(
+                    Text("\(Int((t * 1000).rounded())) ms").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: x(t), y: plot.maxY + 9))
+            }
+            context.stroke(grid, with: .color(.secondary.opacity(0.25)), lineWidth: 0.5)
+            for (c, channel) in summary.channels.enumerated() {
+                var path = Path()
+                for (i, level) in channel.early.enumerated() {
+                    let point = CGPoint(x: x(Double(i) * ResponseSummary.earlyBin), y: y(level))
+                    if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(
+                    path, with: .color(EnvelopeChart.colors[c % EnvelopeChart.colors.count].opacity(0.8)),
+                    lineWidth: 1)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Early arrivals: energy above 500 hertz against time")
+    }
+}
+
 /// Octave-band decay: statistical estimates beside the measured T30 of each channel.
 struct DecayTable: View {
     let summary: ResponseSummary
@@ -187,8 +235,10 @@ struct DiagnosticsList: View {
             if let crossover = d.waveCrossover {
                 Text(
                     String(
-                        format: "Wave solver below %.0f Hz: %@ cells, %@, %.1f s.", crossover,
+                        format: "Wave solver below %.0f Hz: %@ cells (about %@), %@, %.1f s.", crossover,
                         (d.waveCells ?? 0).formatted(),
+                        ByteCountFormatter.string(
+                            fromByteCount: Int64(d.waveMemory ?? 0), countStyle: .memory),
                         Self.engines(runs: d.waveRuns ?? 1, gpu: d.waveGPURuns ?? 0),
                         d.waveSeconds ?? 0))
                 if let dispersion = d.waveDispersion {
