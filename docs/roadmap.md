@@ -734,6 +734,36 @@ they do not validate freely moving blast objects. Next, reduce spatial flux diff
 an opt-in limited reconstruction and repeat the analytical wave checks before combining
 general box aperture and topology changes.
 
+An opt-in tube reconstruction now limits density, pressure and velocity increments with
+minmod gradients using nonuniform centre spacing. Face traces are additionally bounded
+by neighbouring primitive states; boundary-cell slopes remain zero. The paired Rusanov
+flux accepts validated face states, exchanges one packet with opposite signs, and uses
+their wave speeds for the acoustic limit. Constant-state fluxes remain the default.
+
+The reconstructed tube uses an SSP two-stage update of extensive state and gas volume.
+Wall impulse and work use the same stage weights, so their budgets remain paired with
+the gas update. If a stage violates its timestep bound or produces an invalid state,
+the entire trial is discarded and its duration halved, with at most 24 attempts. No
+density/pressure floors are added. This is not a proof of second-order accuracy through
+cell merging, nor a general multidimensional positivity guarantee.
+
+`--piston-wave --limited` records the same sixteen analytical wave cases in a separate
+report, including accepted steps and rejected trials. At CFL 0.2 and 0.8 ms on the
+0.0125 m grid, pressure L1 errors improve from 0.542% to 0.257% in compression and
+0.908% to 0.422% in expansion. Momentum L1 errors improve to 3.189% and 4.974%; wall-work
+errors stay below 0.005%. Relative mass residuals stay below 0.00000000000001 and
+gas-plus-wall energy residuals below 0.000000000001 J. Four reconstruction tests cover
+bounded face states, resting gas, conservative crossings and analytical improvement;
+all seventeen selected reconstruction/flux/tube/wave tests pass.
+
+The improvement has a measurable cost. Finest-grid CFL 0.2 compression takes 802 accepted
+steps and 787 rejected trials versus 409 baseline steps; expansion takes 400 steps and
+24 trials versus 388 baseline steps. Each accepted reconstructed step has two flux stages.
+The current halving strategy is deliberately simple and often too conservative for the
+second-stage compression bound. Next, choose timesteps using the stage limits to reduce
+unnecessary retries, then check stronger waves and merge-policy sensitivity before general
+moving-box aperture coupling or any default change.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

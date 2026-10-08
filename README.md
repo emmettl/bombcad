@@ -387,6 +387,11 @@ against an analytical initial piston shock or rarefaction at 0.5 and 0.8 ms, bef
 reflections. Four grids down to 0.0125 m and two CFL limits expose pressure, density,
 momentum, energy and wall-work errors. Refinement reduces pressure error, but first-order
 wave diffusion remains appreciable; conservation alone is not an accuracy validation.
+Adding `--limited` to `--piston-wave` writes `.build/piston-wave-limited.json`, using
+minmod primitive reconstruction on the nonuniform tube cells and a two-stage conservative
+time update. It preserves gas/wall impulse and work accounting and records accepted steps
+and retries. Finest-grid pressure errors roughly halve in the wave study, at extra cost;
+the constant-state reference remains the default.
 
 ## Headline results
 
