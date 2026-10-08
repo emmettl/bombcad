@@ -4,26 +4,11 @@ import simd
 /// Picking follows the sampled solids, including openings, rather than the source AABB.
 public enum ScenePicking {
     public static func distance(to box: Box, origin: SIMD3<Float>, direction: SIMD3<Float>) -> Float? {
-        guard
-            (0..<3).allSatisfy({
-                origin[$0].isFinite && direction[$0].isFinite && box.min[$0].isFinite && box.max[$0].isFinite
-                    && box.min[$0] < box.max[$0]
-            }), simd_length_squared(direction) > 0
-        else { return nil }
-        var near: Float = 0
-        var far = Float.infinity
-        for axis in 0..<3 {
-            if abs(direction[axis]) < 1e-8 {
-                if origin[axis] < box.min[axis] || origin[axis] > box.max[axis] { return nil }
-            } else {
-                let a = (box.min[axis] - origin[axis]) / direction[axis]
-                let b = (box.max[axis] - origin[axis]) / direction[axis]
-                near = max(near, min(a, b))
-                far = min(far, max(a, b))
-                if far < near { return nil }
-            }
-        }
-        return far >= 0 ? near : nil
+        guard simd_length_squared(direction) > 0 else { return nil }
+        // Preserve the historical strictly-below threshold; the shared query uses <=.
+        return box.intersection(
+            origin: origin, direction: direction,
+            parallelTolerance: Float(1e-8).nextDown)?.lowerBound
     }
     public static func importedModel(in scenario: Scenario, origin: SIMD3<Float>, direction: SIMD3<Float>)
         -> UUID?

@@ -19,3 +19,19 @@ Library verification belongs to ContinuumKit's independent tests and clean Git c
 Applications retain their integration, model, measured-scene and UI checks. The observed
 RoomCAD full-suite calibration discrepancy remains a separate issue; this migration
 does not adjust its assertions or change acoustic behavior.
+
+## Spatial query adoption candidate
+
+The multi-object continuation branch tests the closed-box queries from
+[ContinuumKit PR #7](https://github.com/emmettl/ContinuumKit/pull/7), pinned to commit
+`d3c7367ba43940155f7e33da738e6f5058723fd5`. Source picking and fragment segments use the
+shared geometry while retaining their original parallel thresholds and stationary
+contact convention. The shared product needs no renderer or application schema.
+
+Core verification passes all 57 tests, the optimized fetched Git consumer, actual
+Metal compute and offscreen rendering, and adiabatic/acoustic reference reports on
+M4 Max. BombCAD's candidate retains application source-picking, multiple-owner,
+fragment streaming/worker, import/document and headless-run checks. Its optimized
+application build also succeeds. This candidate revision pin must become a tested
+release pin before the adoption branch is merged; production still uses the exact
+CAD foundations release described above.

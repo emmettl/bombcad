@@ -11,7 +11,12 @@ let package = Package(
         .executable(name: "blastbench", targets: ["blastbench"]),
         .executable(name: "rigidboxdemo", targets: ["RigidBoxDemo"]),
     ],
-    dependencies: [.package(url: "https://github.com/emmettl/ContinuumKit.git", exact: "0.1.0-alpha.1")],
+    // Candidate pin for shared spatial-query integration; replace with a verified release before merging.
+    dependencies: [
+        .package(
+            url: "https://github.com/emmettl/ContinuumKit.git",
+            revision: "d3c7367ba43940155f7e33da738e6f5058723fd5")
+    ],
     targets: [
         // Shaders are copied verbatim and compiled at runtime so that `swift build`,
         // `swift test` and Xcode all behave identically.
