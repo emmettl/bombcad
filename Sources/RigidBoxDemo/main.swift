@@ -7,6 +7,188 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--piston-wave") {
+        let limited = arguments.contains("--limited")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? (limited ? ".build/piston-wave-limited.json" : ".build/piston-wave.json"))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalPistonWaveStudy.Result] = []
+        _ = try ExperimentalPistonWaveStudy.run(limited: limited) { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellLength), CFL \(r.cfl), piston \(r.pistonVelocity): final pressure L1 \(r.frames.last!.relativePressureL1)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--piston-transients") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/piston-transients.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalPistonTransientStudy.Result] = []
+        _ = try ExperimentalPistonTransientStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellLength), CFL \(r.cfl), piston \(r.pistonVelocity): \(r.frames.count) frames, \(r.frames.last!.steps) steps"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--piston-sensitivity") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/piston-sensitivity.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalPistonSensitivityStudy.Result] = []
+        _ = try ExperimentalPistonSensitivityStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellLength), CFL \(r.cfl), merge \(r.mergeFraction), piston \(r.pistonVelocity): \(r.steps) steps, mean pressure \(r.meanPressure) Pa"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--piston-crossings") {
+        let results = try ExperimentalPistonCrossingStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/piston-crossings.json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "dx \(r.cellLength), piston \(r.pistonVelocity): \(r.gridCrossings) crossings, \(r.remeshes) repartitions, \(r.steps) steps, energy residual \(r.energyBudgetResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--piston") {
+        let results = try ExperimentalPistonStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/piston.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Piston \(r.pistonVelocity) m/s: \(r.steps) steps, energy residual \(r.energyBudgetResidual) J, pressure error \(r.relativeQuasiStaticPressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--wall-pressure") {
+        let results = try ExperimentalWallPressureStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/wall-pressure.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print("Normal Mach \(r.normalMach): wall pressure ratio \(r.pressureRatio), vacuum \(r.vacuum)")
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--fractional-flux") || arguments.contains("--fractional-walls") {
+        let reflectingWalls = arguments.contains("--fractional-walls")
+        let results = try ExperimentalFractionalFluxStudy.run(reflectingWalls: reflectingWalls)
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? (reflectingWalls ? ".build/fractional-walls.json" : ".build/fractional-flux.json"))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Smallest volume \(r.smallestVolume) m³: \(r.steps) steps, energy change \(r.relativeEnergyChange), peak speed \(r.maximumSpeed) m/s"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--fractional-substeps") {
+        let results = try ExperimentalFractionalSubstepStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-substeps.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "Transit volume \(r.transitVolume) m³: \(r.acceptedSteps) steps, \(r.rejectedIntervals) retries, pressure error \(r.maximumRelativePressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--fractional-remap") {
+        let results = try ExperimentalFractionalRemapStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-remap.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "dx \(r.cellSize): \(r.transferCount) transfers, mass change \(r.relativeMassChange), pressure error \(r.maximumRelativePressureError)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--fractional-gas") {
+        let results = try ExperimentalFractionalGasStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/fractional-gas-compression.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "\(r.steps) compression steps: pressure \(r.pressure) Pa, relative error \(r.relativePressureError), energy residual \(r.energyBudgetResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--grazing-geometry") {
+        let results = try ExperimentalRigidBoxGrazingStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-box-grazing-geometry.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "\(r.contactDuration) s graze: impulse \(r.linearImpulse), expected \(r.expectedLinearImpulse), evaluations \(r.evaluations)"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--motion-geometry") {
         let results = try ExperimentalRigidBoxMotionStudy.run()
         let output = URL(
@@ -17,7 +199,7 @@ do {
         try encoder.encode(results).write(to: output, options: .atomic)
         for r in results {
             print(
-                "\(r.kind) dx \(r.cellSize) samples \(r.temporalSamples): volume residual \(r.volumeResidual) m³, work balance \(r.workBalanceResidual) J"
+                "\(r.kind) \(r.integration.rawValue) dx \(r.cellSize) samples \(r.temporalSamples): volume residual \(r.volumeResidual) m³, work balance \(r.workBalanceResidual) J"
             )
         }
         print("Wrote \(output.path)")

@@ -43,6 +43,9 @@ make app
 ```
 
 The second command builds `dist/BombCAD.app`, which can be launched from Finder.
+The first app build downloads a checksum-pinned native IFC converter into `.build/ifc-converter`
+and bundles it with the app; later builds verify and reuse the cache. When using `swift run`,
+run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 [Releasing](docs/releasing.md) describes signed, notarized builds for other Macs.
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
@@ -69,16 +72,52 @@ project has its own window, and closing an edited untitled project asks whether 
 BombCAD → Settings (⌘,) sets defaults for new projects and playback windows.
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](docs/save-files.md).
 
-**Import Model…** reads watertight OBJ or STL geometry. Confirm source units, up axis and
+**Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and
 placement, then prepare a preview of the actual occupied simulation volumes. Imports can be
 rigid obstacles, or a new deformable solid body with a material preset and editable density,
 stiffness and strength. Deformable imports require a layout without an existing structure,
 use solid elements at the air cell size, and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
+**Help → Importing models** provides an offline walkthrough of scale, placement, feature-size
+warnings, material assignment, repair, and saving or reopening imported sources.
+
 Repository-only [importer sample files](Samples/Importer/README.md) cover named parts,
 STL components, units, cavities, thin features, narrow gaps, and the repair workflow.
-They are not bundled with the app.
+They are not bundled with the app. The [real CAD fixtures](Samples/Importer/RealCAD/README.md)
+add unchanged FreeCAD library exports, pinned provenance and current acceptance/resolution expectations;
+their STEP counterparts are references for future support.
+
+IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**.
+Physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors
+and windows can be chosen; spaces, furnishings, proxy/site markers and other types are excluded.
+Before geometry conversion, choose exact elements using building, storey, type and text filters
+and inclusion checkboxes. Filters only change the list; Include/Exclude matching changes the
+import. Up to 1,024 supported elements can be chosen from a 20,000-entry decomposition inventory.
+Choose IFC elements in the preview or source inspector to revise choices from retained IFC bytes.
+Each subset is rebased to its own bounds; review placement after changing choices.
+The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
+of these. Source units and world placements are converted to metres, Z up, then rebased from
+large coordinates before Float conversion. The original coordinate origin remains recorded.
+
+Each IFC element is validated independently. Existing segmented edge junctions are made
+conforming without creating faces, and coordinates are canonicalised at 0.1 micrometre.
+Touching and overlapping elements produce a union of occupied cells; overlaps count once and
+use the first sorted GlobalId for selection. Element diagnostics do not certify gaps between
+separate elements. Geometry omissions, converter diagnostics and unsupported material metadata
+remain explicit import notes. IFC completeness and exported reports list intentional exclusions,
+unsupported types, missing converted geometry, complete grid losses and overlapping cell ownership
+separately. Inventory follows the decomposition tree; uncontained products may be absent. Invalid
+selected solids block conversion with their name and GlobalId; excluding one is an explicit action.
+Undetermined converter units block import to prevent incorrect scale. Structural materials, supports and connections are not inferred.
+
+Projects retain original IFC bytes and converted sources; reopening and grid resampling need
+neither the original file nor the converter. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
+while OBJ/STL assets retain version 1. See the repository-only
+[whole-building IFC fixture](Samples/Importer/Buildings/README.md) for a small house, matching
+raw OBJ reference, a two-storey duplex, structural beams, an imperial column, a unit-failure case,
+expected behaviour and reproducible provenance. IFCZIP/IFCXML and
+conversion to deformable shells or beams are outside this first milestone.
 
 The importer retains each source mesh, its units/orientation and placement in the saved layout.
 **Inspect / edit source…** in Edit layout reopens an import without its original file. Changing
@@ -97,7 +136,7 @@ controls. Detailed material properties live under Advanced. Dimensions in metres
 while units and placement change; unusually small or large models offer explicit unit corrections.
 A labelled reference grid helps judge scale. Corrections are never applied automatically.
 
-Drop one local OBJ/STL file into the viewport or use Import Model. Reading and geometry checking
+Drop one local OBJ/STL/IFC file into the viewport or use Import Model. Reading and geometry checking
 run in the background with a Cancel checking action; cancelled or superseded work cannot open a
 stale result. Rejected geometry opens a separate inspection view with red defect surfaces, source
 triangle numbers, repair guidance, and a text repair report. Collapsed/non-finite triangles remain
@@ -223,8 +262,9 @@ or friction alone (see [base connections](docs/structural-model.md#base-connecti
 
 `BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
 keeps the result as a saved run, for scripts and other Macs; see
-[headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` to write the scene and the
-structure over time for rendering elsewhere ([USD export](docs/usd-export.md)).
+[headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` and `--vdb Example.volumes` to
+write the scene, the structure and the blast over time for rendering elsewhere
+([USD export](docs/usd-export.md)).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
@@ -273,6 +313,85 @@ complete box surface; those loads are geometry identities, not ground-pressure p
 `--motion-geometry` writes `.build/rigid-box-motion-geometry.json`, comparing endpoint cell
 volume changes with temporally integrated wall motion and equal/opposite pressure work.
 It includes cell crossings, rotation and thin-gap opening at three temporal resolutions.
+It also compares event-split integration for constant translation of axis-aligned boxes,
+recording the integration method and actual temporal evaluation count in each result.
+All results also record the six open face areas integrated over time
+(m² s). For axis-aligned constant translation, crossing events split the area into quadratic
+pieces integrated exactly by the Gaussian reference. These areas still need a gas flux to
+determine transported mass, momentum and energy. The adaptive rotated reference checks
+coarse/fine Gaussian and endpoint-inclusive estimates of each face integral, with a separate
+area-time tolerance and error indicator. These indicators are not certified error bounds.
+Rotated translation and rotation use an adaptive reference checked against endpoint volume
+changes and coarse/fine quadrature. The 48-case report includes volume tolerances and error
+indicators. This reference does not certify force impulses or detect every brief grazing event.
+`--grazing-geometry` writes `.build/rigid-box-grazing-geometry.json`, comparing analytical
+cell-pressure impulses for 1 ms, 100 µs and 10 µs corner encounters against midpoint and
+adaptive sampling. Adaptive refinement now also checks force/torque quadrature and uses
+separation bounds to investigate intervals whose samples could miss a complete encounter.
+`--fractional-gas` writes `.build/fractional-gas-compression.json`, checking ideal-gas pressure
+work in prescribed fractional volumes. The CPU transport reference conserves extensive mass,
+momentum and energy for supplied transfers; it does not yet derive face fluxes or choose a
+stable timestep, and is separate from the air solver.
+`--fractional-remap` writes `.build/fractional-remap.json`, deriving conservative adjacent
+transfers from a translating box's fractional volumes and sampled face openings. The network
+limits outgoing volume to each donor's old gas inventory. This is remapping, not physical
+air fluxes; dry relays and insufficient transit capacity are rejected.
+`--fractional-substeps` writes `.build/fractional-substeps.json`, automatically bisecting
+prescribed motion intervals when the remap exceeds a cell's gas-volume capacity. Passing
+0.02 m³ through transit cells of 0.004, 0.001 and 0.00025 m³ takes 8, 32 and 128 steps,
+preserving mass, momentum, energy and uniform pressure to floating-point precision.
+The controller has bounded refinement and returns a complete result only on success.
+This capacity limit is separate from acoustic timestep stability; physical face fluxes still
+need integration with the moving apertures before fractional blast coupling.
+`--fractional-flux` writes `.build/fractional-flux.json`, a CPU-only periodic pressure-pulse
+study using a first-order ideal-gas Rusanov flux in stationary positive gas volumes. Each
+interface exchanges equal/opposite mass, momentum and total energy. The timestep is limited
+by each cell's volume divided by its summed face acoustic rates; oversized steps and
+nonphysical states are rejected. Smaller cells require 10, 35 and 138 steps over 0.5 ms
+in this study. This periodic study uses stationary volumes; the wall and piston references
+below add boundary impulse and pressure work.
+`--fractional-walls` writes `.build/fractional-walls.json`, replacing the periodic endpoints
+with reflecting stationary slip walls. The report includes accumulated wall impulse and
+the gas-plus-wall momentum residual; no mass or energy crosses a fixed wall. Its three
+pressure-pulse cases require 11, 38 and 141 steps over 0.5 ms. Wall pressure now uses the
+exact planar ideal-gas shock/rarefaction relations, including zero load at vacuum onset.
+Prescribed moving walls are exercised by the piston reference below.
+`--wall-pressure` writes `.build/wall-pressure.json`, checking incident normal Mach numbers
+from -6 to +3 against the wall law. Positive velocity points toward the wall. The acoustic
+wall timestep rate includes the compressive shock speed.
+`--piston` writes `.build/piston.json`, prescribing constant-speed planar motion at one
+end of a closed four-cell tube. The same wall velocity changes gas volume and supplies
+equal/opposite pressure work and impulse. Six cases compress or expand total volume by
+10% at 0.25, 0.5 and 1 m/s, checking conservation and approach to the quasi-static
+adiabatic pressure. This reference keeps constant wall area and fixed cell topology;
+cell crossings and general time-varying apertures remain to be coupled.
+`--piston-crossings` writes `.build/piston-crossings.json`, advancing a planar piston
+through three or six grid boundaries on two grids. A quarter-volume end cell merges
+with its neighbour before closure and splits during expansion. Piecewise-constant
+repartitioning conserves extensive mass, momentum and energy. This bounds end-cell
+stiffness but changes spatial diffusion; general box geometry and varying apertures
+are not yet coupled to the physical flux reference.
+`--piston-sensitivity` writes `.build/piston-sensitivity.json`, comparing matched 20 m/s
+compression/expansion on two grids, two CFL limits and three merge fractions (24 cases).
+It records wall work, conservation budgets and 64 pressure/velocity samples along the
+final tube. Changing merge thresholds has a small effect on mean pressure in this study,
+but local profiles and grid spacing still matter; the comparison is not blast validation.
+`--piston-transients` writes `.build/piston-transients.json`, with profiles at 0.5, 2, 5
+and 15 ms on 0.1, 0.05 and 0.025 m grids at two CFL limits. Complete cell profiles are
+included alongside 64 samples. `python3 Scripts/summarize-piston-transients.py` compares
+pressure by exact overlaps of the piecewise-constant profiles, using the finest run as a
+numerical reference. Snapshot times split integration steps, and budgets are recorded at
+every snapshot. Early wave profiles remain more grid-sensitive than final mean pressure.
+`--piston-wave` writes `.build/piston-wave.json`, comparing numerical conserved cell averages
+against an analytical initial piston shock or rarefaction at 0.5 and 0.8 ms, before wall
+reflections. Four grids down to 0.0125 m and two CFL limits expose pressure, density,
+momentum, energy and wall-work errors. Refinement reduces pressure error, but first-order
+wave diffusion remains appreciable; conservation alone is not an accuracy validation.
+Adding `--limited` to `--piston-wave` writes `.build/piston-wave-limited.json`, using
+minmod primitive reconstruction on the nonuniform tube cells and a two-stage conservative
+time update. It preserves gas/wall impulse and work accounting and records accepted steps
+and retries. Finest-grid pressure errors roughly halve in the wave study, at extra cost;
+the constant-state reference remains the default.
 
 ## Headline results
 
@@ -300,23 +419,23 @@ Seven comparisons with the outside world, all in the [validation notes](docs/val
   switched on, which also bring the gas pressure in a closed room within 8% of the US design
   manual's.
 - **Structural response.** Against a published blast test of a reinforced-concrete slab, the
-  model predicts peak deflections of 100, 101 and 107 mm with 4, 8 and 16 elements through the
-  thickness, where 108 mm was measured, with no material constant fitted to the test; with 32
-  elements (4.4 million) it is 105 mm, so the peak has converged. The rebound
-  after it is twice the measured one, and the result is sensitive to the load and to how the
-  supports are modelled. Shell elements converge to 124 mm in about a second, with a rebound
-  close to the measured one.
+  model predicts peak deflections of 114, 113, 121 and 124 mm with 4, 8, 16 and 32 elements
+  through the thickness, where 108 mm was measured, with no material constant fitted to the test, and
+  follows the record within 4–8 mm root-mean-square. The rebound after it is larger than the
+  measured one, and the result is sensitive to the load, to how the supports are modelled and
+  to the strain-rate laws. Shell elements give 135 mm in about a second.
 - **Beam bent to failure.** A reinforced beam with no stirrups, loaded slowly in four-point
-  bending, carries 97–99% of its measured peak moment on two meshes and fails at 38–52 mm
-  against 42 mm measured, with nothing fitted.
+  bending, carries 98–99% of its measured peak moment on two meshes, with nothing fitted; it
+  fails at 57 mm on one, and holds to 60 mm on the other, against 42 mm measured.
 - **Beam failing in shear.** A beam without stirrups fails suddenly in diagonal tension, as
   the test beam did, at 11–12% above the measured load on fine meshes; on coarse ones (twelve
   elements through the depth) it is a third too strong.
 - **Beams struck by a falling weight.** Seven drop-weight impacts on beams that differ only in
-  their stirrups: with stirrups, the peaks are within 15% under the light drops and −5% to +15%
-  under the heavy ones, and the beam without stirrups is broken by the heavy drop, as in the
-  test, but also by the light one, which it survived. Ando et al.'s beams without stirrups,
-  struck at rising speeds, peak within 15% up to 3 m/s and go too far at higher speeds.
+  their stirrups: with stirrups, the peaks are within 11–26% under the light drops and within
+  6% under the heavy ones, which leave them nearly as far down as the tests' did; the beam without
+  stirrups is broken by the heavy drop, as in the test, and damaged by the light one, which it
+  survived. Ando et al.'s beams without stirrups, struck at rising speeds, peak within 15% up
+  to 3 m/s and 13% on average beyond on one mesh, but go too far on a finer one.
 - **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
   them: the impulse under the charge is 86–95% of the empirical curves' on fine cells (and
   within 8% from 0.3 m/kg^(1/3) on a rigid surface), and light charges
@@ -342,7 +461,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
-| [USD export](docs/usd-export.md) | Writing a run's geometry over time as USD, for rendering in Blender and elsewhere |
+| [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [RoomCAD roadmap](docs/roomcad-roadmap.md)   | Shared modules, room impulse responses and convolution reverb   |

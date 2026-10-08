@@ -82,6 +82,38 @@ struct OpeningEditor: View {
     }
 }
 
+/// Edits a fitted zone: its name, corners, how densely its objects lie and what they absorb.
+struct ZoneEditor: View {
+    @Binding var zone: FittingZone
+
+    /// The objects' absorption, one value for every band; a zone whose bands differ shows their mean.
+    private var absorption: Binding<Double> {
+        Binding(
+            get: { zone.absorption.reduce(0, +) / Double(zone.absorption.count) },
+            set: { zone.absorption = Array(repeating: $0, count: OctaveBands.count) })
+    }
+
+    var body: some View {
+        TextField("Name", text: $zone.name).endsEditingOnSubmit()
+        ForEach(0..<3, id: \.self) { axis in
+            let name = OpeningEditor.axisNames[axis]
+            NumberField(title: "From \(name)", value: $zone.low.component(axis), unit: "m")
+            NumberField(title: "To \(name)", value: $zone.high.component(axis), unit: "m")
+        }
+        NumberField(title: "Objects met", value: $zone.density, unit: "/m", digits: 3)
+            .help(
+                "How often sound meets an object, per metre: the objects' total surface area over four times the zone's volume"
+            )
+        NumberField(title: "Absorption", value: absorption, digits: 3)
+            .help(
+                "The fraction of the energy lost at each object. Leave at 0 when a surface's material already accounts for the objects, as an audience floor does."
+            )
+        if !zone.reference.isEmpty {
+            Text(zone.reference).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
 /// Edits a point's name and position.
 struct PointEditor: View {
     @Binding var point: RoomPoint
@@ -224,6 +256,9 @@ struct MaterialEditor: View {
 struct RoomInspector: View {
     @Binding var project: RoomProject
     @State private var pendingPreset: RoomPreset?
+    @State private var choosingModel = false
+    @State private var pendingModel: PendingModel?
+    @State private var modelError: String?
 
     private var settings: Binding<RoomResponseSettings> { $project.settings }
 
@@ -262,9 +297,42 @@ struct RoomInspector: View {
                             .trapezoid(
                                 width: size.x, depth: size.y, narrowTo: size.x * 0.6, material: wallMaterial))
                     }
+                    Divider()
+                    Button("Import Model…") {
+                        modelError = nil
+                        choosingModel = true
+                    }
                 }
-                .help("A floor plan with vertical walls; drag its corners in the plan view")
-                if project.settings.room.plan == nil {
+                .fileImporter(isPresented: $choosingModel, allowedContentTypes: PendingModel.types) {
+                    result in
+                    do {
+                        pendingModel = try PendingModel(url: result.get())
+                    } catch {
+                        modelError = error.localizedDescription
+                    }
+                }
+                .sheet(item: $pendingModel) { model in
+                    ModelImportSheet(model: model, material: wallMaterial) { room in
+                        project.settings = project.settings.replacingRoom(with: room)
+                    }
+                }
+                .help(
+                    "A floor plan with vertical walls, whose corners drag in the plan view; or a model of any "
+                        + "shape from an OBJ or STL file")
+                if let modelError {
+                    Label(modelError, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(
+                        .callout)
+                }
+                if project.settings.room.mesh != nil {
+                    LabeledContent("Length × width × height") {
+                        Text(
+                            String(
+                                format: "%.2f × %.2f × %.2f m, from the shape", project.settings.room.size.x,
+                                project.settings.room.size.y, project.settings.room.size.z)
+                        )
+                        .foregroundStyle(.secondary)
+                    }
+                } else if project.settings.room.plan == nil {
                     NumberField(title: "Length (x)", value: settings.room.size.component(0), unit: "m")
                     NumberField(title: "Width (y)", value: settings.room.size.component(1), unit: "m")
                 } else {
@@ -291,10 +359,23 @@ struct RoomInspector: View {
                         }
                     }
                 }
-                NumberField(title: "Height (z)", value: settings.room.size.component(2), unit: "m")
+                if project.settings.room.mesh == nil {
+                    NumberField(title: "Height (z)", value: settings.room.size.component(2), unit: "m")
+                }
             }
             Section("Surface absorption") {
-                if project.settings.room.plan == nil {
+                if let mesh = project.settings.room.mesh {
+                    let areas = mesh.materialAreas
+                    ForEach(mesh.materials.indices, id: \.self) { index in
+                        MaterialEditor(
+                            title: String(
+                                format: "%@, %.0f m²", mesh.labels?[index] ?? "Surface \(index + 1)",
+                                areas[index]),
+                            material: Binding(
+                                get: { project.settings.room.mesh?.materials[index] ?? .rigid },
+                                set: { project.settings.room.mesh?.materials[index] = $0 }))
+                    }
+                } else if project.settings.room.plan == nil {
                     ForEach(Surface.allCases, id: \.self) { surface in
                         MaterialEditor(title: surface.rawValue.capitalized, material: settings.room[surface])
                     }
@@ -309,13 +390,15 @@ struct RoomInspector: View {
                                 set: { project.settings.room.plan?.walls[index] = $0 }))
                     }
                 }
-                Button("Set All Surfaces Like the Floor") {
-                    for surface in Surface.allCases {
-                        project.settings.room[surface] = project.settings.room.floor
-                    }
-                    if let count = project.settings.room.plan?.walls.count {
-                        project.settings.room.plan?.walls = Array(
-                            repeating: project.settings.room.floor, count: count)
+                if project.settings.room.mesh == nil {
+                    Button("Set All Surfaces Like the Floor") {
+                        for surface in Surface.allCases {
+                            project.settings.room[surface] = project.settings.room.floor
+                        }
+                        if let count = project.settings.room.plan?.walls.count {
+                            project.settings.room.plan?.walls = Array(
+                                repeating: project.settings.room.floor, count: count)
+                        }
                     }
                 }
             }
@@ -345,15 +428,34 @@ struct RoomInspector: View {
                     .disabled(project.settings.receivers.count >= 16)
             }
             Section("Openings") {
-                ForEach(settings.openings) { $opening in
-                    OpeningEditor(opening: $opening, walls: project.settings.room.plan?.corners.count)
-                    Button("Remove \(opening.name)", role: .destructive) {
-                        project.settings.openings.removeAll { $0.id == opening.id }
+                if project.settings.room.mesh != nil {
+                    Text("A built shape's openings are part of the shape.").foregroundStyle(.secondary)
+                } else {
+                    ForEach(settings.openings) { $opening in
+                        OpeningEditor(opening: $opening, walls: project.settings.room.plan?.corners.count)
+                        Button("Remove \(opening.name)", role: .destructive) {
+                            project.settings.openings.removeAll { $0.id == opening.id }
+                        }
+                    }
+                    Button("Add Opening") { addOpening() }
+                        .help("An open door or window: sound reaching it leaves the room")
+                }
+            }
+            Section("Objects") {
+                ForEach((project.settings.room.fittings ?? []).indices, id: \.self) { index in
+                    ZoneEditor(zone: zoneBinding(index))
+                    Button("Remove \(project.settings.room.fittings?[index].name ?? "")", role: .destructive)
+                    {
+                        project.settings.room.fittings?.remove(at: index)
+                        if project.settings.room.fittings?.isEmpty == true {
+                            project.settings.room.fittings = nil
+                        }
                     }
                 }
-                Button("Add Opening") { addOpening() }
-                    .help("An open door or window: sound reaching it leaves the room")
+                Button("Add Seating Zone") { addZone() }
+                    .help("A box of objects that scatter sound, such as chairs, desks, pews or ornament")
             }
+            CalibrationSection(project: $project)
             Section("Simulation") {
                 Picker("Sample rate", selection: settings.sampleRate) {
                     ForEach([44_100, 48_000, 96_000], id: \.self) {
@@ -446,6 +548,7 @@ struct RoomInspector: View {
     }
 
     private var shapeName: String {
+        if let mesh = project.settings.room.mesh { return "Built shape, \(mesh.faces.count) faces" }
         guard let plan = project.settings.room.plan else { return "Rectangle" }
         return "\(plan.corners.count) walls"
     }
@@ -456,6 +559,7 @@ struct RoomInspector: View {
     }
 
     private func setShape(_ plan: FloorPlan?) {
+        project.settings.room.mesh = nil
         project.settings.room.plan = plan
         // Openings in walls belong to one kind of room or the other.
         project.settings.openings.removeAll {
@@ -513,6 +617,31 @@ struct RoomInspector: View {
             Opening(
                 name: "Opening \(project.settings.openings.count + 1)", surface: .north,
                 centre: [size.x / 2, height / 2], size: [width, height]))
+    }
+
+    private func zoneBinding(_ index: Int) -> Binding<FittingZone> {
+        Binding(
+            get: { project.settings.room.fittings?[index] ?? Self.seating(in: project.settings.room.size) },
+            set: { project.settings.room.fittings?[index] = $0 })
+    }
+
+    /// Seating over the middle of the floor, 0.9 m high.
+    static func seating(in size: SIMD3<Double>) -> FittingZone {
+        let low = SIMD3(size.x * 0.2, size.y * 0.1, 0)
+        let high = SIMD3(size.x * 0.9, size.y * 0.9, min(0.9, size.z / 2))
+        // About one seat to 0.55 m² of floor, each with 1.5 m² of surface.
+        let floor = (high.x - low.x) * (high.y - low.y)
+        return .objects(
+            "Seating", low: low, high: high, count: floor / 0.55, area: 1.5,
+            absorption: Array(repeating: 0, count: OctaveBands.count),
+            reference:
+                "Estimate: upholstered seats, one to 0.55 m² of floor, 1.5 m² of surface each. They scatter; "
+                + "their absorption is left to the floor's audience material.")
+    }
+
+    private func addZone() {
+        let zone = Self.seating(in: project.settings.room.size)
+        project.settings.room.fittings = (project.settings.room.fittings ?? []) + [zone]
     }
 
     private func addReceiver() {

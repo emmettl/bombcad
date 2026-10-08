@@ -26,6 +26,10 @@ machines' published specifications, not measurements of a distributed solver.
 | Mac Studio (development) | M4 Max, 32-core | 546 GB/s | 36 GB | 5 |
 | Mac mini (CI, `scrimply-ci-tb`) | M4, 10-core | 120 GB/s | 24 GB | 4 |
 
+Measured, the M4 Max runs the air 4.4 to 4.9 times as fast as the mini when every cell is swept
+(their bandwidth ratio) and the structure 3.2 times as fast (their ratio of cores); see
+[Performance](performance.md#other-macs).
+
 The link between them runs at 40 Gb/s, the mini's Thunderbolt 4 limit (`system_profiler
 SPThunderboltDataType` on both). Thunderbolt Bridge networking over it is ordinary IP: typically
 2 to 3 GB/s in practice, with a round trip of the order of 100 µs. macOS 26.2 added RDMA over

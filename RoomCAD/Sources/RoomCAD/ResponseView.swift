@@ -52,6 +52,118 @@ struct EnvelopeChart: View {
     }
 }
 
+/// Magnitude response of each channel in dB against frequency on a log axis, with the wave solver's
+/// crossover marked.
+struct SpectrumChart: View {
+    let summary: ResponseSummary
+    var crossover: Double?
+    static let range = (low: -60.0, high: 0.0)
+
+    var body: some View {
+        Canvas { context, size in
+            let left: CGFloat = 36
+            let bottom: CGFloat = 18
+            let plot = CGRect(x: left, y: 4, width: size.width - left - 8, height: size.height - bottom - 4)
+            let frequencies = ResponseSummary.spectrumFrequencies
+            let span = log2(frequencies.last! / frequencies[0])
+            func x(_ f: Double) -> CGFloat {
+                plot.minX + CGFloat(log2(f / frequencies[0]) / span) * plot.width
+            }
+            func y(_ level: Double) -> CGFloat {
+                let clamped = min(max(level, Self.range.low), Self.range.high)
+                return plot.minY + CGFloat((Self.range.high - clamped) / (Self.range.high - Self.range.low))
+                    * plot.height
+            }
+            var grid = Path()
+            for db in stride(from: Self.range.high, through: Self.range.low, by: -20) {
+                grid.move(to: CGPoint(x: plot.minX, y: y(db)))
+                grid.addLine(to: CGPoint(x: plot.maxX, y: y(db)))
+                context.draw(
+                    Text("\(Int(db)) dB").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: plot.minX - 4, y: y(db)), anchor: .trailing)
+            }
+            for (f, label) in [(31.5, "31"), (125, "125"), (500, "500"), (2000, "2k"), (8000, "8k")] {
+                grid.move(to: CGPoint(x: x(f), y: plot.minY))
+                grid.addLine(to: CGPoint(x: x(f), y: plot.maxY))
+                context.draw(
+                    Text("\(label) Hz").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: x(f), y: plot.maxY + 9))
+            }
+            context.stroke(grid, with: .color(.secondary.opacity(0.25)), lineWidth: 0.5)
+            if let crossover {
+                var line = Path()
+                line.move(to: CGPoint(x: x(crossover), y: plot.minY))
+                line.addLine(to: CGPoint(x: x(crossover), y: plot.maxY))
+                context.stroke(
+                    line, with: .color(.orange.opacity(0.7)), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                context.draw(
+                    Text("wave solver below").font(.caption2).foregroundStyle(.orange),
+                    at: CGPoint(x: x(crossover) - 4, y: plot.minY + 6), anchor: .trailing)
+            }
+            for (c, channel) in summary.channels.enumerated() {
+                var path = Path()
+                for (i, level) in channel.spectrum.enumerated() {
+                    let point = CGPoint(x: x(frequencies[i]), y: y(level))
+                    if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(
+                    path, with: .color(EnvelopeChart.colors[c % EnvelopeChart.colors.count].opacity(0.8)),
+                    lineWidth: 1)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Magnitude response in decibels against frequency")
+    }
+}
+
+/// Energy above 500 Hz against time over the first tens of milliseconds, in dB: each peak is the direct
+/// sound or an early reflection.
+struct EarlyChart: View {
+    let summary: ResponseSummary
+    static let range = 50.0
+
+    var body: some View {
+        Canvas { context, size in
+            let left: CGFloat = 36
+            let bottom: CGFloat = 18
+            let plot = CGRect(x: left, y: 4, width: size.width - left - 8, height: size.height - bottom - 4)
+            let duration = summary.earlyDuration
+            func x(_ t: Double) -> CGFloat { plot.minX + CGFloat(t / duration) * plot.width }
+            func y(_ level: Double) -> CGFloat {
+                plot.minY + CGFloat(min(-level, Self.range) / Self.range) * plot.height
+            }
+            var grid = Path()
+            for db in stride(from: 0.0, through: -Self.range, by: -10) {
+                grid.move(to: CGPoint(x: plot.minX, y: y(db)))
+                grid.addLine(to: CGPoint(x: plot.maxX, y: y(db)))
+                context.draw(
+                    Text("\(Int(db)) dB").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: plot.minX - 4, y: y(db)), anchor: .trailing)
+            }
+            for t in stride(from: 0.0, through: duration, by: 0.01) {
+                grid.move(to: CGPoint(x: x(t), y: plot.minY))
+                grid.addLine(to: CGPoint(x: x(t), y: plot.maxY))
+                context.draw(
+                    Text("\(Int((t * 1000).rounded())) ms").font(.caption2).foregroundStyle(.secondary),
+                    at: CGPoint(x: x(t), y: plot.maxY + 9))
+            }
+            context.stroke(grid, with: .color(.secondary.opacity(0.25)), lineWidth: 0.5)
+            for (c, channel) in summary.channels.enumerated() {
+                var path = Path()
+                for (i, level) in channel.early.enumerated() {
+                    let point = CGPoint(x: x(Double(i) * ResponseSummary.earlyBin), y: y(level))
+                    if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(
+                    path, with: .color(EnvelopeChart.colors[c % EnvelopeChart.colors.count].opacity(0.8)),
+                    lineWidth: 1)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Early arrivals: energy above 500 hertz against time")
+    }
+}
+
 /// Octave-band decay: statistical estimates beside the measured T30 of each channel.
 struct DecayTable: View {
     let summary: ResponseSummary
@@ -102,6 +214,10 @@ struct DiagnosticsList: View {
                 Text(
                     "Image sources reach \(wallOrder) wall and \(totalOrder) total reflections; the ray tracer "
                         + "carries every later specular reflection.")
+            } else if result.settings.room.mesh != nil, let order = d.planTotalOrder {
+                Text(
+                    "Image sources reach \(order) reflections; the ray tracer carries every later specular "
+                        + "reflection.")
             } else if let limited = d.orderLimitedAfter.compactMap({ $0 }).min() {
                 if (d.diffuseRays ?? 0) > 0 {
                     Text(
@@ -123,9 +239,22 @@ struct DiagnosticsList: View {
             if let crossover = d.waveCrossover {
                 Text(
                     String(
-                        format: "Wave solver below %.0f Hz: %@ cells, %.1f s.", crossover,
+                        format: "Wave solver below %.0f Hz: %@ cells (about %@), %@, %.1f s.", crossover,
                         (d.waveCells ?? 0).formatted(),
+                        ByteCountFormatter.string(
+                            fromByteCount: Int64(d.waveMemory ?? 0), countStyle: .memory),
+                        Self.engines(runs: d.waveRuns ?? 1, gpu: d.waveGPURuns ?? 0),
                         d.waveSeconds ?? 0))
+                if let dispersion = d.waveDispersion {
+                    Text(
+                        String(
+                            format:
+                                "Its waves travel within %.1f%% of the speed of sound there, so its modes are "
+                                + "at most that much low.", abs(dispersion) * 100))
+                }
+                if let bare = Self.bareDecay(d) {
+                    Text("Its decay is matched to Eyring's estimate; bare walls gave \(bare).")
+                }
             } else if let note = d.waveNote {
                 Text("Wave solver skipped: \(note)")
             }
@@ -143,5 +272,24 @@ struct DiagnosticsList: View {
         }
         .font(.caption)
         .foregroundStyle(.secondary)
+    }
+
+    /// The wave solver's bare T30 in each band it covers, such as "63 Hz 1.9 s, 125 Hz 1.6 s", or nil.
+    static func bareDecay(_ d: RoomResponseDiagnostics) -> String? {
+        let parts = OctaveBands.centres.indices.compactMap { band -> String? in
+            guard let t = d.waveBareDecay?[band] ?? nil else { return nil }
+            let f = OctaveBands.centres[band]
+            return String(
+                format: "%@ %.1f s", f >= 1000 ? "\(Int(f / 1000)) kHz" : "\(Int(f.rounded())) Hz", t)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
+    }
+
+    /// "2 runs on the GPU", "1 run on the CPU", or "3 runs, 1 on the GPU and 2 on the CPU".
+    static func engines(runs: Int, gpu: Int) -> String {
+        let count = runs == 1 ? "1 run" : "\(runs) runs"
+        if gpu == runs { return "\(count) on the GPU" }
+        if gpu == 0 { return "\(count) on the CPU" }
+        return "\(count), \(gpu) on the GPU and \(runs - gpu) on the CPU"
     }
 }

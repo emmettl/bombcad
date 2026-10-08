@@ -74,12 +74,66 @@ script before an archive is written.
 
 ## The window
 
+- **Plan and Section, or 3D.** A switch above the drawings chooses between them.
+- **3D.** The room as a cutaway, rendered with Metal:
+  - its surfaces are coloured by material, and the walls nearest the camera are left out, so the
+    inside shows from any side;
+  - open faces and openings are translucent green, and fitted zones translucent brown boxes;
+  - the source is an orange sphere and the receivers blue ones, each directional microphone with a
+    line along its aim;
+  - drag to orbit, shift-drag or right-drag to pan, and pinch or scroll to zoom; **Reset View**
+    frames the room again;
+  - a click selects a surface, zone, source or receiver, highlights it in orange, and names it in a
+    caption: a surface's material, area, and absorption and scattering at 1 kHz;
+  - with a surface selected, **Material** beside the caption gives it a published material's
+    absorption, keeping its scattering;
+  - dragging the source or a receiver moves it across the room at its height, and with Option held,
+    up and down. Positions snap to centimetres, and a move that would take a point outside the room,
+    or within 5 cm of a surface, is ignored;
+  - dragging a fitted zone moves it across the room, or with Option up and down. Command-dragging
+    resizes it: its footprint's nearest corner follows the pointer, or with Option its top. A zone
+    stays within the room, is never smaller than 10 cm a side, and is never moved or grown into
+    another zone;
+  - dragging an opening slides it over its wall, floor or ceiling, held within the surface, and
+    Command-dragging moves its nearest corner. Zones and openings, though translucent, can be clicked
+    from either side, so a ceiling hatch can be reached from above, through the ceiling;
+  - Command-dragging a wall, floor or ceiling of a box or floor plan pushes it out or pulls it in,
+    in centimetre steps along its normal. A plan's wall moves with its two corners. When a west,
+    south or floor surface moves, or a plan grows past its origin, everything inside shifts with it,
+    so it keeps its place against the surfaces that stay. A step that would leave a point, zone or
+    opening outside, or the room under half a metre, is refused. The camera stays put while editing.
+    A plain drag on a surface still orbits.
+
+    A floor plan's corners have dark handles at the top of their edges. Dragging one moves the
+    corner across the room, in centimetre steps; if the plan reaches past its origin, everything
+    shifts so it stays at or above zero, and a move that would cross walls or leave anything outside
+    is refused.
+
+    In a room of any shape, from a preset or a model, the face under the pointer moves with every
+    face on its plane, and the corners on that plane drag the faces that meet them. A shoebox hall's
+    back wall or a stage house's roof moves this way. A step is refused if it would bend a face, as
+    moving one plane of a raked floor's neighbour can, or take a corner through another face;
+
+  The view frames the room when it opens and when the room's size changes: from a three-quarter view
+  above, as close as it can be with every corner within the middle 85% of the view. Everything else
+  is edited in the inspector. The camera controls and renderer are shared with BombCAD (see
+  [the roadmap](roomcad-roadmap.md#architecture-and-sharing)).
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
-  stay 5 cm inside the walls.
+  stay 5 cm inside the walls. A room of any shape (a mesh) is drawn as its outline edges projected
+  onto each view, over its dashed bounding box.
 - **Inspector.** Edits everything that affects the response:
   - room dimensions, or with **Shape** a floor plan (L, T or trapezoid to start from). Its corners
     can be edited as numbers or dragged by their handles in the plan view, which numbers its walls;
+  - **Shape ▸ Import Model…**, which reads an OBJ or STL file as the room (see
+    [Importing a model](room-acoustics-model.md#importing-a-model)). A sheet chooses the units it was
+    drawn in and whether y is up, and shows the room's size, volume, faces and materials, what was
+    tidied, or why the model is not a closed room. **Replace Room** keeps the source and receivers if
+    they are still well inside, and otherwise moves them to roomy spots;
+  - for a room of any shape, built from solids by a preset or imported (see
+    [Rooms of any shape](room-acoustics-model.md#rooms-of-any-shape)): its size is shown but not
+    edited, and each of its materials is edited with its label and area. **Shape** turns it back into
+    a box or a floor plan. Its openings are open faces, so the openings list is not offered;
   - each surface's absorption and scattering, either one value for all bands or band by band, with the
     material's name and reference;
   - whole rooms from **Load Room Preset…** (see below);
@@ -87,6 +141,10 @@ script before an archive is written.
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
+  - under **Objects**, fitted zones: boxes of chairs, desks, pews or ornament that scatter sound,
+    each with its corners, how often sound meets an object per metre, and the objects' absorption
+    (see [Fitted zones](room-acoustics-model.md#fitted-zones)). **Add Seating Zone** starts from an
+    estimate for upholstered seats. Zones are drawn as hatched brown boxes;
   - openings: open doors, windows or hatches on any surface, or any numbered wall of a plan, by name,
     place, centre and size (see
     [Openings](room-acoustics-model.md#openings)). They are drawn as green gaps in the walls or as
@@ -95,6 +153,11 @@ script before an archive is written.
     Pair** for A–B, XY, ORTF, NOS or Blumlein (see
     [Microphones](room-acoustics-model.md#microphones)). Directional microphones show their aim as an
     arrow in the drawings;
+  - **Match Reverberation Time:** a target T30 for any band, and **Fit Absorption**, which scales
+    every surface's absorption in those bands, keeping their proportions, until the simulated T30
+    meets the targets (see
+    [Matching a measured reverberation time](room-acoustics-model.md#matching-a-measured-reverberation-time)).
+    It simulates at preview quality and reports each step; **Stop** cancels it;
   - sample rate, duration, maximum reflection order and content;
   - low cut, the number of diffuse rays and the random seed;
   - the wave solver for low frequencies, on for new documents, with an automatic or fixed crossover;
@@ -105,16 +168,29 @@ script before an archive is written.
 - **Response.**
   - The response regenerates in the background 0.4 s after any input that affects it changes, so
     dragging or typing starts one run once you pause. A run for older inputs is cancelled at once.
-  - A new document generates on opening. **Generate** (⌘R) forces a run, and **Cancel** (⌘.) stops
-    one.
+  - That run is a preview. It spends a quarter of the wave solver's budget, which lowers its crossover
+    by about a sixth, and uses a quarter of the rays, so it arrives two to four times sooner. Once the
+    inputs have stayed the same for 1.5 s after a preview, the full-quality response follows. Until
+    then the status reads "Preview quality".
+  - A new document generates on opening, a preview and then the full response. **Generate** (⌘R)
+    forces a full-quality run, and **Cancel** (⌘.) stops one.
   - Export settings don't affect the response, since they are applied on export, so they don't start
     a run.
   - While a run is in progress the response is marked "Updating…"; until it finishes, the previous one
-    stays in use.
-  - The result shows each channel's peak envelope in dB.
+    stays in use. The toolbar shows the run's stage and how far it has got, such as "Tracing rays 40%"
+    or "Wave solver 67%".
+  - The result shows each channel's peak envelope in dB. The picker above it switches to its spectrum
+    or its early arrivals.
+    - **Spectrum:** from 20 Hz to 20 kHz, twelve points to an octave, each averaged over a sixth of an
+      octave, with the wave solver's crossover marked.
+    - **Early arrivals:** the energy above 500 Hz in 0.25 ms bins, from emission to 80 ms after the
+      first direct sound, in dB, so the direct sound and early reflections show one by one.
   - It shows octave-band Sabine and Eyring estimates beside each channel's measured T30.
-  - It shows arrival counts and generation time, the wave solver's crossover, grid and time, the
-    Schroeder frequency, and the share of energy from 500 Hz to 4 kHz that arrived scattered.
+  - It shows arrival counts and generation time. It also shows the wave solver's crossover, grid and
+    its approximate memory, time and runs, with how many ran on the GPU and how many on the CPU. It also gives its phase-velocity
+    error at the crossover, and the decay each of its bands had before it was matched to Eyring's
+    estimate. Then come the Schroeder
+    frequency and the share of energy from 500 Hz to 4 kHz that arrived scattered.
   - It shows a warning when the reflection-order limit removed arrivals within the duration.
 - **Audition.** Play a dry clip through the room.
   - Play starts at once with the latest response, even while a newer one is being generated; the new
@@ -143,7 +219,8 @@ script before an archive is written.
     `RoomCAD/Sources/Audition/Clips/CREDITS.md`, which ships inside the app. Files are mixed to mono, converted to the
     response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
-  beside it.
+  beside it. Exports are always full quality: if the current response is a preview or out of date, the
+  full one is generated first and then written.
 
 ## Room presets
 
@@ -161,6 +238,11 @@ script before an archive is written.
 | Stone church | 36 × 14 × 16 m | Limestone walls and vault, wooden pews over the floor |
 | L-shaped living room | 8 × 6 × 2.6 m L | Carpet, plastered walls; the listener round the corner |
 | Fan-shaped hall | 16 → 10 m wide, 20 m deep, 8 m high | Stage at the narrow end, audience seating, wooden walls |
+| Shoebox concert hall | 26 × 18 × 14 m, and an 8 m stage house | Balcony round three sides, upholstered seats, wooden linings |
+| Raked auditorium | 26 m deep, 18 → 32 m wide, 10–13 m high | Raked seating, rear tier, sloping ceiling, brick walls |
+
+The last two are built from solids. They have six materials, labelled audience, floors, walls,
+ceiling, stage floor and stage walls, instead of six box surfaces.
 
 Every surface's absorption comes from the published table below. Scattering comes from a published
 set where one fits: theatre audience in the hall, and rows of desks in the office and classroom.
@@ -221,7 +303,10 @@ Example.roomcad/
 ```
 
 `scene.json` holds the room's size in metres (z up), each surface's material, and any openings. A material has a
-name, a reference and eight octave-band absorption coefficients. The file also holds the source and
+name, a reference and eight octave-band absorption coefficients. A room may also have fitted zones (name,
+corners, density, absorption per band and reference), and a floor plan
+(corners and one material per wall) or a mesh (vertices; faces, each a list of corners with a
+material index and whether it is open; the materials; and their labels). The file also holds the source and
 receivers, each with a UUID, name and position.
 
 `settings.json` holds the atmosphere and air-absorption switch. It also holds the sample rate,
@@ -255,7 +340,7 @@ saved again.
 `swift test --package-path RoomCAD` covers the following:
 
 - **RoomDocumentTests:**
-  - round trips, including per-band materials and moved documents on disk;
+  - round trips, including per-band materials, floor plans, meshes and moved documents on disk;
   - retained responses and when they go stale;
   - preserved unknown files and rejected documents;
   - responses too large to retain;
@@ -287,13 +372,33 @@ saved again.
     invalid settings and results that arrive during the wait;
   - invalid settings;
   - cancellation, and a newer generation replacing one in progress;
-  - the mapping between drawing and room coordinates, including clamping.
+  - the mapping between drawing and room coordinates, including clamping;
+  - the wording of generation progress and of the wave solver's engines;
+  - the 3D scene: its triangles cover the room's surfaces once, openings lie on their wall, and a
+    click from above selects the floor, and on the source the source;
+  - importing a model: an OBJ file read with its material names, scaled and turned upright, and points
+    outside a smaller room moved inside, clear of every surface;
+  - editing in 3D: surfaces numbered alike for boxes, plans and meshes, a material landing on the
+    surface chosen, and the source dragged across the room, raised with Option, and kept inside;
+    zones moved to the wall and no further, refused where they would overlap, and resized from the
+    nearest corner or the top; openings held within their surface; and both dragged in the view;
+  - pushing surfaces: a box's walls, floor and ceiling and a plan's walls, with everything shifted
+    when a low wall moves, steps refused when the room would be invalid, a hall's back wall pushed
+    through its mesh, and a Command-drag in the view that pushes the east wall without moving the
+    camera;
+  - plan corners: moved out, moved past the origin with everything shifting, refused where walls
+    would cross, and dragged by their handle in the view;
+  - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
-`RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen. It also renders
-the audition waveform with its playhead, and a generated response's envelope, decay table and
-diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
-coincide in one projection; labels now move apart. Form controls and toolbars do not render
+`RoomCAD --snapshot FILE.png [PRESET]` renders the starter room's 3D view, plan and section offscreen,
+or a preset's, given its identifier such as `raked-auditorium`. The 3D view is rendered from its
+starting camera with the first surface selected, and its caption below it. It also renders
+the audition waveform with its playhead, and a generated response's envelope, spectrum, early
+arrivals, decay table and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
+coincide in one projection; labels now move apart. It also showed the two halls' outlines, with
+their stage houses, balconies, rake and rear tier, as intended. The 3D snapshots of the L-shaped room
+and the raked auditorium show the cutaway, the openings, the points and the highlighted selection. Form controls and toolbars do not render
 offscreen.
 
 ## Limitations

@@ -83,6 +83,24 @@ struct StructureUniforms {
     float anchorCohesion;         // Pa
     float anchorCohesionSlip;     // m of sliding over which cohesion is lost
     float anchorFriction;
+    // Bars that slip in their concrete (`BondSlip`): 0 for perfect bond. The bond-slip curve.
+    uint bondSlip;
+    float bondPeak;      // Pa
+    float bondResidual;  // Pa
+    float bondS1;        // m
+    float bondS2;
+    float bondS3;
+    float bondAlpha;
+    // 1: a crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured, instead
+    // of keeping `shearRetention` of the concrete's.
+    uint crackShearStiffness;
+    // Bond lost where bars have yielded (Model Code 2010): the plastic strain at the bars'
+    // ultimate strength, and the exponent b = (2 - f_u / f_y)^2. Zero range: no reduction.
+    float bondYieldRange;
+    float bondYieldExponent;
+    // 1: bars take their strain rate as their own stretching rate averaged over their debonded
+    // length, not the element's (see `StructureModel.barRateAlongBars`).
+    uint barRateAlongBars;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -175,8 +193,9 @@ struct MaterialParameters {
     float steelStress[8];   // ... against stress
     float concreteRateCompression;
     float concreteRateTension;
-    float steelRateYield;
-    float steelRateUltimate;
+    float steelRateYield;     // the bars' rate exponents (Malvar and Crawford), or with
+    float steelRateUltimate;  // `steelRateLog` the coefficients of the CEB's logarithmic law
+    uint steelRateLog;
     float crackBand;            // length a crack's opening is smeared over
     float interlockStrength;    // aggregate-interlock shear capacity of a closed crack
     float interlockWidthScale;  // its decay with crack width, per metre
@@ -205,6 +224,7 @@ constant uint maxMaterials = 8;
 // Set when the pipeline is built: true for a structure of one material, which lets the compiler
 // fold the per-element lookup away.
 constant bool singleMaterial [[function_constant(0)]];
+constant bool finiteConnections [[function_constant(1)]];
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
@@ -707,6 +727,16 @@ static inline float tablePressure(const device float2 *table, uint count, float 
 // plastic strain `plastic` (updated) and cyclic history `bar`: the measured curve while loaded
 // one way, the cyclic law once reversed, with the strength raised by the strain rate. `root` is
 // the bars' stretch, and `yield` their current yield stress.
+// The bars' strain-rate factors at yield (x) and at ultimate (y).
+static inline float2 steelRateFactors(float strainRate, constant MaterialParameters &m) {
+    if (m.steelRateLog != 0u) {
+        float logarithm = log(max(strainRate, 5e-5f) / 5e-5f);
+        return 1.0f + float2(m.steelRateYield, m.steelRateUltimate) * logarithm;
+    }
+    float rate = max(strainRate, 1e-4f) / 1e-4f;
+    return float2(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate));
+}
+
 static inline float smearedBar(float green, thread float &plastic, device BarHistory &bar, float strainRate,
                                constant MaterialParameters &m, thread float &root, thread float &yield) {
     // Stretch of the fibre from its Green-Lagrange strain, without cancellation.
@@ -720,8 +750,8 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
     float first = m.steelStress[0];
     float top = m.steelStress[m.steelPoints - 1];
     float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
-    float rate = max(strainRate, 1e-4f) / 1e-4f;
-    float factor = mix(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate), along);
+    float2 factors = steelRateFactors(strainRate, m);
+    float factor = mix(factors.x, factors.y, along);
     yield *= factor;
     if (plastic == 0.0f) {
         // Not yet yielded: elastic, and no history to keep.
@@ -732,7 +762,7 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
         }
     } else {
         float inelastic = plastic;
-        stress = cycleBar(bar, fibre, inelastic, yield, slope * factor, first * pow(rate, m.steelRateYield), m);
+        stress = cycleBar(bar, fibre, inelastic, yield, slope * factor, first * factors.x, m);
         plastic = inelastic;
     }
     return stress;
@@ -762,6 +792,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device int *patchOfTile [[buffer(21)]],
                               const device Cell *fineAir [[buffer(22)]],
                               const device uchar *fineAirMask [[buffer(23)]],
+                              const device float4 *slips [[buffer(24)]],
+                              device float4 *barForces [[buffer(25)]],
+                              device float4 *barRateOut [[buffer(26)]],
+                              const device float4 *barRateBefore [[buffer(27)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -796,9 +830,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float3 g0 = float3(0.0f);
     float3 g1 = float3(0.0f);
     float3 g2 = float3(0.0f);
+    // With bond slip, the change in the bars' slip across the element along each axis.
+    float3 slipChange = float3(0.0f);
     for (uint a = 0; a < 8; ++a) {
         uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
-        StructureNode node = nodes[nodeMap[corner.x + nodesX * (corner.y + nodesY * corner.z)]];
+        uint cornerNode = nodeMap[corner.x + nodesX * (corner.y + nodesY * corner.z)];
+        StructureNode node = nodes[cornerNode];
+        if (u.bondSlip != 0) {
+            float3 s = cornerSign(a);
+            slipChange += 0.25f * s * float3(slips[3 * cornerNode].x, slips[3 * cornerNode + 1].x,
+                                             slips[3 * cornerNode + 2].x);
+        }
         float3 displacement = float3(node.displacement);
         x[a] = origin + float3(corner) * u.h + displacement;
         v[a] = node.velocity;
@@ -908,8 +950,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
         float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
         float3x3 latticeStrain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
-        // The bars lie along the lattice axes and are strained along them.
-        float3 barStrain = float3(latticeStrain[0][0], latticeStrain[1][1], latticeStrain[2][2]);
+        // The bars lie along the lattice axes and are strained along them, and by how far they
+        // slip further at one face of the element than at the other.
+        float3 barStrain = float3(latticeStrain[0][0], latticeStrain[1][1], latticeStrain[2][2]) + slipChange / u.h;
         // With oriented cracks the concrete works in its crack axes (columns of `frame`), set
         // when it first cracks; before that, and without them, in the lattice axes. Axes that
         // still turn with the principal directions are stored with the sign bit of w set (q and
@@ -945,6 +988,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float instantaneous = sqrt((2.0f / 3.0f) * (dxx * dxx + dyy * dyy + dzz * dzz
                                                      + 2.0f * (dxy * dxy + dyz * dyz + dzx * dzx)));
         state.strainRate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.strainRate);
+        // The stretching rate along each lattice axis, averaged as the effective rate is: what a
+        // bar along that axis strains at here.
+        float3 axisRate = float3(0.0f);
+        if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+            float3 before = barRateBefore[compact].xyz;
+            axisRate = before + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (abs(float3(dxx, dyy, dzz)) - before);
+            barRateOut[compact] = float4(axisRate, 0.0f);
+        }
         float3 history = float3(state.crackStrain);
         float worst = max(history.x, max(history.y, history.z));
         // Once a crack has formed, strain gathers in it at a rate that depends on the element
@@ -963,6 +1014,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // own fracture energy. The other planes keep the unit's.
         float3 planeFactor = float3(tensionFactor);
         float3 planeSoftening = float3(m.crackSoftening);
+        // The length each plane's opening is smeared over, from which its crack width is read.
+        float3 planeBand = float3(m.crackBand);
         for (int j = 0; j < 3; ++j) {
             if (((joints >> j) & 1u) != 0u) {
                 planeFactor[j] *= m.jointStrength;
@@ -1069,6 +1122,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     float crossed = ((u.barAxes & 1u) != 0u ? normal.x : 0.0f)
                         + ((u.barAxes & 2u) != 0u ? normal.y : 0.0f) + ((u.barAxes & 4u) != 0u ? normal.z : 0.0f);
                     planeSoftening[i] = mix(m.crackSofteningAlone, m.crackSoftening, min(2.0f * crossed, 1.0f));
+                    planeBand[i] = mix(u.h, m.crackBand, min(2.0f * crossed, 1.0f));
                 }
             }
         }
@@ -1211,8 +1265,23 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float3 opening = history - planeOnset;
             float opened = max(opening[a], opening[b]);
             if (opened > 0.0f) {
-                float width = opened * m.crackBand;
+                // Its width as the crack's own: one gathered in a row of elements is as wide as
+                // its opening over that row, not over the crack spacing.
+                float band = opening[a] >= opening[b] ? planeBand[a] : planeBand[b];
+                float width = opened * band;
                 float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+                // The crack's shear stiffness: a fixed share of the concrete's, or, measured on
+                // cracks in plain concrete by Walraven and Reinhardt (1981), k = 1.8 w^-0.8 +
+                // (0.234 w^-0.707 - 0.20) f_cc MPa per mm of slip for a crack w mm wide in concrete
+                // of cube strength f_cc MPa, acting in series with the concrete across the band.
+                float retention = m.shearRetention;
+                if (u.crackShearStiffness != 0) {
+                    float millimetres = max(width * 1000.0f, 0.01f);
+                    float cube = m.compressiveStrength / 0.8e6f;
+                    float stiffness = 1e9f * (1.8f * pow(millimetres, -0.8f)
+                                              + max(0.234f * pow(millimetres, -0.707f) - 0.20f, 0.0f) * cube);
+                    retention = 1.0f / (1.0f + m.mu / (stiffness * band));
+                }
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
                 int across = opening[a] >= opening[b] ? a : b;
@@ -1254,14 +1323,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
                     }
                 }
-                float trial = m.shearRetention * stress;
+                float trial = retention * stress;
                 stress = clamp(trial, -interlock, interlock);
                 // A crack slid past what interlock and dowels hold has slid for good: the faces
                 // ride over, grind and jam, and do not spring back. Without this the crack was a
                 // nonlinear spring that returned all the work of sliding, and a beam hinged on a
                 // diagonal crack sprang back past where it started.
                 if (slides && !jointed && trial != stress) {
-                    slip += (trial - stress) / (m.shearRetention * m.mu);
+                    slip += (trial - stress) / (retention * m.mu);
                 }
             }
             // A mortar joint slides by Coulomb friction: along it the shear is held to the
@@ -1399,6 +1468,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3 ratio = float3(steel[compact].ratio);
         float3 plastic = float3(state.steelPlastic);
         float3 intact = float3(0.0f);
+        float3 barForce = float3(0.0f);  // each axis's bar force through the element, in N
+        float3 bondLeft = float3(1.0f);  // the share of the bond its bars keep along each axis
         float steelCapacity = 0.0f;
         for (int j = 0; j < 3; ++j) {
             if (ratio[j] <= 0.0f || fabs(plastic[j]) > 1e8f) {
@@ -1407,7 +1478,31 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float root;
             float yield;
             float own = plastic[j];
-            float stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], state.strainRate, m, root, yield);
+            // A bar strains at the rate of its debonded length, not of the one element a crack
+            // runs through, whose rate grows as the mesh is refined.
+            float barRate = state.strainRate;
+            if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+                int3 dims = int3(u.ex, u.ey, u.ez);
+                int r = int(ceil(m.barReach - 0.5f));
+                float sum = axisRate[j];
+                float weights = 1.0f;
+                for (int offset = -r; offset <= r; ++offset) {
+                    int3 cell = int3(tid);
+                    cell[j] += offset;
+                    if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
+                        continue;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uint compactOther = cellElement[other];
+                    if (carriesBars(flags[other]) && steel[compactOther].ratio[j] > 0.0f) {
+                        float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+                        sum += weight * barRateBefore[compactOther][j];
+                        weights += weight;
+                    }
+                }
+                barRate = sum / weights;
+            }
+            float stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], barRate, m, root, yield);
             plastic[j] = own;
             // A bar slips in its concrete either side of a crack, so it is strained by the crack's
             // opening spread over a debonded length, not over the one element the crack happens
@@ -1448,8 +1543,20 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             steelCapacity += ratio[j] * yield;
             // Bar force per unit reference area, as a second Piola-Kirchhoff stress.
             material[j][j] += ratio[j] * stress / root;
+            barForce[j] = ratio[j] * stress / root * u.h * u.h;
+            // Bars that have yielded hold less well (Model Code 2010, 6.1.1.3):
+            // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate,
+            // b = (2 - f_u / f_y)^2.
+            if (u.bondSlip != 0 && u.bondYieldRange > 0.0f && plastic[j] > 0.0f) {
+                float a = min(plastic[j] / u.bondYieldRange, 1.0f);
+                bondLeft[j] = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));
+            }
         }
         state.steelPlastic = plastic;
+        if (u.bondSlip != 0) {
+            barForces[2 * compact] = float4(barForce, 0.0f);
+            barForces[2 * compact + 1] = float4(bondLeft, 0.0f);
+        }
 
         // Inclined bars, strained along their own direction, which ruptures by the same rule
         // with the debonded length measured along them (each diagonal step is an element's
@@ -1613,6 +1720,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     if (eroded) {
         flags[element] = elementFailing;
         failureGate[0] = 1;
+        if (u.bondSlip != 0) {
+            barForces[2 * compact] = float4(0.0f);
+            barForces[2 * compact + 1] = float4(1.0f);
+        }
         for (uint a = 0; a < 8; ++a) {
             out.force[a] = float3(0.0f);
         }
@@ -2087,66 +2198,195 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
 }
 
 // Gathers element forces at every node and advances velocity and position.
+// Bond stress (Pa) at slip `s` for bars whose slip has reached `largest` either way, with
+// `plastic` the slip left when the bond is unloaded; updates both. The envelope is the Model
+// Code's (`BondSlip`), linear to a fiftieth of s1 so that its stiffness is finite; inside it the
+// bond unloads and reloads at that stiffness.
+static inline float bondStress(float s, thread float &plastic, thread float &largest, float left,
+                               constant StructureUniforms &u) {
+    float s0 = 0.02f * u.bondS1;
+    float stiffness = u.bondPeak * pow(0.02f, u.bondAlpha) / s0;
+    largest = max(largest, fabs(s));
+    float x = largest;
+    float envelope;
+    if (x <= s0) {
+        envelope = stiffness * x;
+    } else if (x <= u.bondS1) {
+        envelope = u.bondPeak * pow(x / u.bondS1, u.bondAlpha);
+    } else if (x <= u.bondS2) {
+        envelope = u.bondPeak;
+    } else if (x < u.bondS3) {
+        envelope = u.bondPeak - (u.bondPeak - u.bondResidual) * (x - u.bondS2) / (u.bondS3 - u.bondS2);
+    } else {
+        envelope = u.bondResidual;
+    }
+    envelope *= left;  // bars that have yielded hold less
+    float stress = stiffness * (s - plastic);
+    if (fabs(stress) > envelope) {
+        stress = sign(stress) * envelope;
+        plastic = s - stress / stiffness;
+    }
+    return stress;
+}
+
+// Relaxes the bars' slip at a node towards equilibrium between the bar forces of the elements
+// around it and the bond (`BondSlip`). `slips` holds (slip, its rate, plastic slip, largest slip)
+// for each axis, three per node; `slipSupport` the bond's area at the node along each axis (xyz)
+// and, at the next entry, the slip's stiffness along each. The slip's mass is scaled so that it
+// is stable at the time step, and it is damped at 0.7 of critical. A node held along an axis, or
+// moved as set, grips its bars there: they do not slip.
+static inline void relaxSlip(uint index, uint3 tid, uint nodeFlags, device float4 *slips, const device float4 *slipSupport,
+                             const device float4 *barForces, device uchar *flags, const device uint *cellElement,
+                             float dt, constant StructureUniforms &u) {
+    float3 area = slipSupport[2 * index].xyz;
+    float3 stiffness = slipSupport[2 * index + 1].xyz;
+    int3 dims = int3(u.ex, u.ey, u.ez);
+    float3 force = float3(0.0f);
+    float3 left = float3(0.0f);  // the share of bond the bars keep, summed over the elements
+    float3 counted = float3(0.0f);
+    for (uint a = 0; a < 8; ++a) {
+        int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
+        if (any(cell < 0) || any(cell >= dims)) {
+            continue;
+        }
+        int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
+        uchar flag = flags[element];
+        if (flag != 1u && flag != 4u && flag != 5u) {  // active, bare or baring
+            continue;
+        }
+        // The node is corner `a` of the element: on its far face along j where bit j is set,
+        // where the bar's tension pulls the slip back.
+        uint compact = cellElement[element];
+        float3 bars = barForces[2 * compact].xyz;
+        float3 carrying = float3(bars != 0.0f);
+        left += carrying * barForces[2 * compact + 1].xyz;
+        counted += carrying;
+        float3 side = float3((a & 1u) != 0u ? -1.0f : 1.0f, (a & 2u) != 0u ? -1.0f : 1.0f,
+                             (a & 4u) != 0u ? -1.0f : 1.0f);
+        force += 0.25f * side * bars;
+    }
+    float step = u.criticalStep;
+    for (int j = 0; j < 3; ++j) {
+        if (area[j] <= 0.0f) {
+            continue;
+        }
+        if ((nodeFlags & 8u) != 0u || (nodeFlags & (1u << uint(j))) != 0u) {
+            slips[3 * index + j] = float4(0.0f);
+            continue;
+        }
+        float4 state = slips[3 * index + j];
+        float plastic = state.z;
+        float largest = state.w;
+        float share = counted[j] > 0.0f ? left[j] / counted[j] : 1.0f;
+        float bond = bondStress(state.x, plastic, largest, share, u) * area[j];
+        float mass = stiffness[j] * step * step;
+        float damping = 1.4f * stiffness[j] * step;
+        float rate = (state.y + dt * (force[j] - bond) / mass) / (1.0f + dt * damping / mass);
+        slips[3 * index + j] = float4(state.x + dt * rate, rate, plastic, largest);
+    }
+}
+
+// A connection of a body's base to the ground (`Anchorage`), as both solvers' uniforms give it.
+struct AnchorLaw {
+    float kn;            // Pa/m
+    float ks;            // Pa/m
+    float tension;       // Pa
+    float plateau;       // m of opening held at full tension
+    float opening;       // m of opening at which tension is gone
+    float cohesion;      // Pa
+    float cohesionSlip;  // m of sliding over which cohesion is lost
+    float friction;
+    float bearing;       // Pa the ground bears before it yields and settles; 0: without limit
+    float unused[3];     // to 48 bytes, as `AnchorageParameters`
+};
+
+AnchorLaw anchorLaw(constant StructureUniforms &u) {
+    return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
+                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
+                     {0.0f, 0.0f, 0.0f}};
+}
+
 // Fraction of an anchorage's tensile strength left once it has opened by `peak`: all of it to
 // the end of the plateau, then falling linearly to nothing. Matches `Anchorage.envelope`.
-float anchorEnvelope(float peak, constant StructureUniforms &u) {
-    float plateau = max(u.anchorPlateau, u.anchorTension / u.anchorNormalStiffness);
-    float end = max(u.anchorOpening, plateau);
+float anchorEnvelope(float peak, AnchorLaw law) {
+    float plateau = max(law.plateau, law.tension / law.kn);
+    float end = max(law.opening, plateau);
     if (peak <= plateau) {
         return 1.0f;
     }
     return peak >= end ? 0.0f : (end - peak) / (end - plateau);
 }
 
-// A node's connection to the ground (`Anchorage`): two float4 per node, (tributary area, slip x,
-// slip y, wear) and (the force the connection put on the node in the last substep, the largest
-// opening so far). Wear is the fraction of the cohesion that sliding has rubbed away. The area
-// is zero for nodes without a connection. Updates the state and returns the force on the node.
-float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u) {
-    float3 displacement = float3(node.displacement);
-    float4 state = anchors[2 * index];
-    float area = state.x;
-    float2 slip = state.yz;
-    float wear = state.w;
-    float peak = anchors[2 * index + 1].w;
-    float kn = u.anchorNormalStiffness;
-    float ks = u.anchorShearStiffness;
-    float opening = displacement.z;
+// The traction (shear x, shear y, normal; normal positive in tension) a point of the joint
+// carries when its side of the joint has moved by `displacement` and rises at `rise` m/s.
+// `damper` (Pa s/m) damps the bearing as contacts are. `state` is (slip x, slip y, wear, largest
+// opening so far), wear being the fraction of the strength that sliding has rubbed away; and
+// `settlement` how far the ground has yielded under it (negative, down). Both are updated.
+float3 anchorTraction(thread float4 &state, thread float &settlement, float3 displacement, float rise, float damper,
+                      AnchorLaw law) {
+    float2 slip = state.xy;
+    float wear = state.z;
+    float peak = state.w;
+    // Opening from where the ground has settled to.
+    float opening = displacement.z - settlement;
 
-    // Across the joint: a stiff bearing in compression, damped as contacts are; in tension,
-    // elastic to the strength, then the envelope, unloading towards the origin. Sliding wears
-    // the tension as it wears the cohesion.
-    float normal;  // traction, positive in tension
+    // Across the joint: a stiff bearing in compression, damped; in tension, elastic to the
+    // strength, then the envelope, unloading towards the origin. Sliding wears the tension as it
+    // wears the cohesion.
+    float normal;
     if (opening <= 0.0f) {
-        float damper = 2.0f * u.contactDamping * sqrt(kn * node.mass / area);
-        normal = min(kn * opening + damper * node.velocity.z, 0.0f);
-    } else if (u.anchorTension > 0.0f) {
+        // Ground that bears no more than `bearing` yields, and the base settles for good.
+        float bearing = law.kn * opening;
+        if (law.bearing > 0.0f && bearing < -law.bearing) {
+            settlement = displacement.z + law.bearing / law.kn;
+            bearing = -law.bearing;
+        }
+        normal = min(bearing + damper * rise, 0.0f);
+        if (law.bearing > 0.0f) {
+            normal = max(normal, -law.bearing);
+        }
+    } else if (law.tension > 0.0f) {
         peak = max(peak, opening);
-        float onset = u.anchorTension / kn;
+        float onset = law.tension / law.kn;
         normal = (1.0f - wear)
-            * (peak <= onset ? kn * opening : u.anchorTension * anchorEnvelope(peak, u) * opening / peak);
+            * (peak <= onset ? law.kn * opening : law.tension * anchorEnvelope(peak, law) * opening / peak);
     } else {
         normal = 0.0f;
     }
 
     // Along it: elastic about the slip so far, up to Mohr-Coulomb. Opening takes the cohesion
     // as it takes the tension, and sliding wears it.
-    float2 shear = ks * (displacement.xy - slip);
-    float cohesion = u.anchorCohesion * (1.0f - wear) * (u.anchorTension > 0.0f ? anchorEnvelope(peak, u) : 1.0f);
-    float limit = cohesion + u.anchorFriction * max(-normal, 0.0f);
+    float2 shear = law.ks * (displacement.xy - slip);
+    float cohesion = law.cohesion * (1.0f - wear) * (law.tension > 0.0f ? anchorEnvelope(peak, law) : 1.0f);
+    float limit = cohesion + law.friction * max(-normal, 0.0f);
     float magnitude = length(shear);
     if (magnitude > limit) {
-        float slide = (magnitude - limit) / ks;
+        float slide = (magnitude - limit) / law.ks;
         float2 direction = shear / magnitude;
         slip += slide * direction;
-        if (u.anchorCohesion > 0.0f) {
-            wear = u.anchorCohesionSlip > 0.0f ? min(1.0f, wear + slide / u.anchorCohesionSlip) : 1.0f;
+        if (law.cohesion > 0.0f) {
+            wear = law.cohesionSlip > 0.0f ? min(1.0f, wear + slide / law.cohesionSlip) : 1.0f;
         }
         shear = limit * direction;
     }
-    float3 force = -area * float3(shear, normal);
-    anchors[2 * index] = float4(area, slip, wear);
-    anchors[2 * index + 1] = float4(force, peak);
+    state = float4(slip, wear, peak);
+    return float3(shear, normal);
+}
+
+// A lattice node's connection to the ground: three float4 per node, (tributary area, slip x,
+// slip y, wear), (the force the connection put on the node in the last substep, the largest
+// opening so far) and (the ground's settlement, unused). The area is zero for nodes without a
+// connection. Updates the state and returns the force on the node.
+float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u, AnchorLaw law) {
+    float4 stored = anchors[3 * index];
+    float area = stored.x;
+    float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
+    float settlement = anchors[3 * index + 2].x;
+    float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
+    float3 force = -area * anchorTraction(state, settlement, float3(node.displacement), node.velocity.z, damper, law);
+    anchors[3 * index] = float4(area, state.xyz);
+    anchors[3 * index + 1] = float4(force, state.w);
+    anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);
     return force;
 }
 
@@ -2168,6 +2408,10 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device InterfaceLink *links [[buffer(15)]],
                            const device float4 *interfaceLoads [[buffer(16)]],
                            device float4 *anchors [[buffer(17)]],
+                           device float4 *slips [[buffer(18)]],
+                           const device float4 *slipSupport [[buffer(19)]],
+                           const device float4 *barForces [[buffer(20)]],
+                           const device AnchorLaw *anchorLaws [[buffer(21)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2241,9 +2485,12 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (contactEnabled(u, failureGate)) {
         force += float3(contact[threadIndex]);
     }
-    bool anchoredNode = u.anchored != 0 && anchors[2 * threadIndex].x > 0.0f;
+    if (u.bondSlip != 0) {
+        relaxSlip(threadIndex, tid, node.flags, slips, slipSupport, barForces, flags, cellElement, dt, u);
+    }
+    bool anchoredNode = finiteConnections && u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f;
     if (anchoredNode) {
-        force += anchorForce(anchors, threadIndex, node, u);
+        force += anchorForce(anchors, threadIndex, node, u, anchorLaws[threadIndex]);
     }
 
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));

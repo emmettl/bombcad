@@ -80,6 +80,7 @@ def release(args):
     if archive.exists():
         raise ValueError(f"Archive already exists: {archive.name}. Move it aside explicitly before retrying.")
     run("make", "check")
+    run("make", "release-smoke")
     run("make", "app", "CONFIGURATION=release")
     if run("git", "status", "--porcelain", capture=True).strip():
         raise ValueError("The build changed the source checkout; review and commit the changes before releasing.")
@@ -95,6 +96,8 @@ def release(args):
     architecture = run("lipo", "-archs", str(app / "Contents/MacOS" / EXECUTABLE), capture=True).strip()
     if architecture != "arm64":
         raise ValueError("This release channel expects an arm64 build.")
+    run("codesign", "--force", "--sign", identity, "--options", "runtime", "--timestamp",
+        str(app / "Contents/MacOS/IfcConvert"))
     run("codesign", "--force", "--sign", identity, "--options", "runtime", "--timestamp", str(app))
     run("codesign", "--verify", "--deep", "--strict", str(app))
     with tempfile.TemporaryDirectory(prefix="bombcad-notary-", dir=ROOT / "dist") as temporary:

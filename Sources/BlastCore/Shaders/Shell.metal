@@ -64,7 +64,23 @@ struct ShellUniforms {
     uint fluidBlocksX;
     uint fluidBlocksY;
     uint crackSlip;  // 1: shear past a crack's interlock slides it for good, and it rides up
+    // The base's connection to the ground (`Anchorage`), as in `StructureUniforms`.
+    uint anchored;
+    float anchorNormalStiffness;
+    float anchorShearStiffness;
+    float anchorTension;
+    float anchorPlateau;
+    float anchorOpening;
+    float anchorCohesion;
+    float anchorCohesionSlip;
+    float anchorFriction;
 };
+
+AnchorLaw anchorLaw(constant ShellUniforms &u) {
+    return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
+                     u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
+                     {0.0f, 0.0f, 0.0f}};
+}
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
 // the removal width where no intact bars cross the plane; where they do, the slip at which the
@@ -563,8 +579,8 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     float first = m.steelStress[0];
     float top = m.steelStress[m.steelPoints - 1];
     float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
-    float ratio = max(rate, 1e-4f) / 1e-4f;
-    float factor = mix(pow(ratio, m.steelRateYield), pow(ratio, m.steelRateUltimate), along);
+    float2 factors = steelRateFactors(rate, m);
+    float factor = mix(factors.x, factors.y, along);
     yield *= factor;
     if (plastic == 0.0f) {
         if (fabs(stress) > yield) {
@@ -573,7 +589,7 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
             stress = m.steelModulus * (fibre - plastic);
         }
     } else {
-        stress = cycleBar(bar.history, fibre, plastic, yield, slope * factor, first * pow(ratio, m.steelRateYield), m);
+        stress = cycleBar(bar.history, fibre, plastic, yield, slope * factor, first * factors.x, m);
     }
     float averaged = (plastic * spread.x + spread.y);
     if (fabs(averaged) > m.steelStrain[m.steelPoints - 1]) {
@@ -1638,6 +1654,11 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device int *debrisArea [[buffer(17)]],
                        const device uint *interfaceLink [[buffer(18)]],
                        device float4 *interfaceLoads [[buffer(19)]],
+                       const device uint *anchorStart [[buffer(20)]],
+                       const device float4 *anchorPoints [[buffer(21)]],
+                       device float4 *anchorState [[buffer(22)]],
+                       device float4 *anchorForces [[buffer(23)]],
+                       const device AnchorLaw *anchorLaws [[buffer(24)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1674,6 +1695,28 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         interfaceLoads[2 * link + 1] = float4(moment, 0.0f);
         return;
     }
+    // A node on a connected base: the connection acts at points of its footprint (through a
+    // wall's thickness, or over a column's section), each moving with the node's rotation, so
+    // that the base can open at its heel while it bears at its toe.
+    bool anchoredNode = finiteConnections && u.anchored != 0 && anchorStart[n + 1] > anchorStart[n];
+    if (anchoredNode) {
+        for (uint f = anchorStart[n]; f < anchorStart[n + 1]; ++f) {
+            AnchorLaw law = anchorLaws[f];
+            float4 point = anchorPoints[f];
+            float3 arm = float3(point.xy, 0.0f);
+            float3 turn = rotationOffset(node.rotation, arm);
+            float rise = node.velocity.z + cross(float3(node.spin), arm + turn).z;
+            float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / point.w);
+            float4 state = anchorState[f];
+            float settlement = anchorForces[f].w;  // the ground's, kept beside the force
+            float3 pointForce =
+                -point.z * anchorTraction(state, settlement, float3(node.displacement) + turn, rise, damper, law);
+            anchorState[f] = state;
+            anchorForces[f] = float4(pointForce, settlement);
+            force += pointForce;
+            moment += cross(arm + turn, pointForce);
+        }
+    }
     // Loose debris is part of no element the air loads, so the air pushes it directly, as solid
     // debris is; its volume is its share of the elements it belonged to.
     float3 airForce = float3(0.0f);
@@ -1709,7 +1752,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         velocity.z = max(velocity.z, 0.0f);
     }
     float referenceHeight = reference[n].z;
-    if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f) {
+    if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f && !anchoredNode) {
         displacement.z = -referenceHeight;
         velocity.z = max(velocity.z, 0.0f);
         velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);

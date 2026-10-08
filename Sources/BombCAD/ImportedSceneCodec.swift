@@ -9,6 +9,14 @@ enum ImportedSceneCodec {
         var encodingVersion = 1
         var scenario: Scenario
         var imports: [Instance]?
+
+        init(scenario: Scenario, imports: [Instance]?) {
+            self.scenario = scenario
+            self.imports = imports
+            // An older reader must not silently replace finite region connections with clamps.
+            encodingVersion =
+                scenario.structure?.supportAnchorages.contains(where: { $0 != nil }) == true ? 2 : 1
+        }
     }
 
     struct SourceMesh: Codable {
@@ -27,11 +35,13 @@ enum ImportedSceneCodec {
 
         init(_ mesh: ImportedMesh) {
             self.mesh = mesh
+            encodingVersion = mesh.buildingElements == nil ? 1 : 2
             parts = mesh.parts.map { PartIdentity(id: $0.id, name: $0.name) }
         }
 
         func validate() throws {
-            guard format == "dev.simulationkit.source-mesh", encodingVersion == 1,
+            guard format == "dev.simulationkit.source-mesh", encodingVersion == 1 || encodingVersion == 2,
+                encodingVersion == (mesh.buildingElements == nil ? 1 : 2),
                 coordinateSpace == "source",
                 parts == mesh.parts.map({ PartIdentity(id: $0.id, name: $0.name) })
             else {
@@ -150,7 +160,7 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", header.encodingVersion == 1 else {
+        guard header.format == "dev.bombcad.scene", (1...2).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
@@ -169,7 +179,7 @@ enum ImportedSceneCodec {
             if sources[asset.id] == nil {
                 let sourceHeader = try JSONDecoder().decode(Header.self, from: sourceData)
                 guard sourceHeader.format == "dev.simulationkit.source-mesh",
-                    sourceHeader.encodingVersion == 1
+                    [1, 2].contains(sourceHeader.encodingVersion)
                 else {
                     throw ProjectFileError.invalid("Unsupported source-mesh encoding for \(instance.name).")
                 }
@@ -201,6 +211,9 @@ enum ImportedSceneCodec {
             throw ProjectFileError.invalid("Imported model instance IDs must be unique.")
         }
         for model in models {
+            guard model.source.buildingElements == nil || model.behavior == .rigid else {
+                throw ProjectFileError.invalid("IFC building instances must use rigid behavior.")
+            }
             let p = model.preview
             guard model.scale.isFinite, model.scale > 0,
                 [model.corner.x, model.corner.y, model.corner.z].allSatisfy({ $0.isFinite && $0 >= 0 }),

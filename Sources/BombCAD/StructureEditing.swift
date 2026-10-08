@@ -103,6 +103,11 @@ enum StructureEditing {
         body.autoReinforce()
         body.reinforcement.append(contentsOf: custom)
         try validateMaterials(body)
+        try body.baseAnchorage?.validate()
+        guard body.supportAnchorages.count <= body.supports.count else {
+            throw invalid("A connection references a missing support region.")
+        }
+        for law in body.supportAnchorages.compactMap({ $0 }) { try law.validate() }
         guard
             (body.solids + body.openings + body.supports).allSatisfy({ box in
                 [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].allSatisfy(\.isFinite)

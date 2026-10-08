@@ -1,4 +1,4 @@
-.PHONY: build app run test roomcad-test roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ci-test check release-check release
+.PHONY: build app run test release-smoke roomcad-test roomcad-validate roomcad-app roomcad-icon roomcad-release-check roomcad-release lint format icons ifc-converter ci-test check release-check release
 
 CONFIGURATION ?= release
 
@@ -14,12 +14,30 @@ app:
 run: app
 	open dist/BombCAD.app
 
-test:
+ifc-converter:
+	python3 Scripts/prepare-ifc-converter.py
+
+test: ifc-converter
 	swift test
+
+# The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
+# that slip and base connections. `swift test` builds for debugging, and the optimiser has
+# miscompiled code that ran correctly there.
+release-smoke:
+	swift build -c release --product blastbench
+	.build/release/blastbench shear --layers 12
+	.build/release/blastbench shear --layers 12 --bond pullout
+	.build/release/blastbench slab --shells 1
+	.build/release/blastbench anchorage --standoff 25 --bases clamped,dowelled,soil --time 0.05
+	.build/release/blastbench anchorage --shells --standoff 25 --bases clamped,soil --time 0.05
 
 roomcad-test:
 	swift test --package-path RoomCAD
 	python3 RoomCAD/Scripts/test-release.py
+
+roomcad-validate:
+	swift run -c release --package-path RoomCAD acousticbench --bras-cr2
+	swift run -c release --package-path RoomCAD acousticbench --bras-cr3
 
 roomcad-app:
 	bash RoomCAD/Scripts/build-app.sh "$(CONFIGURATION)"

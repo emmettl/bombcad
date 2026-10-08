@@ -38,7 +38,7 @@ struct ContentView: View {
                         if dropTargeted {
                             RoundedRectangle(cornerRadius: 12).stroke(.blue, lineWidth: 3)
                                 .overlay {
-                                    Text("Drop an OBJ or STL model").font(.title2).padding().background(
+                                    Text("Drop an OBJ, STL or IFC model").font(.title2).padding().background(
                                         .regularMaterial, in: .rect(cornerRadius: 8))
                                 }
                                 .padding(12).allowsHitTesting(false)
@@ -102,7 +102,7 @@ struct ContentView: View {
                 {
                     isImporting = true
                 }.disabled(importLoader.isLoading || model.sweep.isActive)
-                    .help("Open one OBJ or STL model, or drop it into the viewport.")
+                    .help("Open one OBJ, STL or IFC model, or drop it into the viewport.")
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -137,6 +137,7 @@ struct ContentView: View {
             isPresented: $isImporting,
             allowedContentTypes: [
                 UTType(filenameExtension: "obj") ?? .data, UTType(filenameExtension: "stl") ?? .data,
+                UTType(filenameExtension: "ifc") ?? .data,
             ]
         ) { result in
             guard case .success(let url) = result else { return }
@@ -148,7 +149,13 @@ struct ContentView: View {
                 get: { model.inspectedImport }, set: { if $0 == nil { model.inspectedImportID = nil } }),
             onDismiss: { sourceInspectorVisible = false }
         ) { imported in
-            ModelImportView(mesh: imported.source, filename: imported.name, existing: imported, model: model)
+            if imported.source.buildingSourceData != nil {
+                IFCImportFlow(
+                    mesh: imported.source, filename: imported.name, existing: imported, model: model)
+            } else {
+                ModelImportView(
+                    mesh: imported.source, filename: imported.name, existing: imported, model: model)
+            }
         }
         .sheet(
             item: Binding(
@@ -156,10 +163,12 @@ struct ContentView: View {
                 set: { if $0 == nil { importLoader.dismissResult() } }),
             onDismiss: { importLoader.presentationDismissed() }
         ) { loaded in
-            if let mesh = loaded.inspection.validatedMesh {
+            if let building = loaded.building {
+                IFCImportFlow(prepared: building, filename: loaded.filename, model: model)
+            } else if let mesh = loaded.inspection?.validatedMesh {
                 ModelImportView(mesh: mesh, filename: loaded.filename, model: model)
-            } else {
-                ImportRecoveryView(filename: loaded.filename, inspection: loaded.inspection) { url in
+            } else if let inspection = loaded.inspection {
+                ImportRecoveryView(filename: loaded.filename, inspection: inspection) { url in
                     importLoader.retryAfterDismissal(url)
                 }
             }

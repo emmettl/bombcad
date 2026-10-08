@@ -15,9 +15,16 @@ struct HelpCommands: Commands {
 private enum HelpTopic: String, CaseIterable, Identifiable {
     case gettingStarted = "Getting started"
     case projects = "Editing and saving projects"
+    case importing = "Importing models"
 
     var id: Self { self }
-    var icon: String { self == .gettingStarted ? "play.circle" : "doc.text" }
+    var icon: String {
+        switch self {
+        case .gettingStarted: "play.circle"
+        case .projects: "doc.text"
+        case .importing: "cube.box"
+        }
+    }
 
     var sections: [(title: String, text: String)] {
         switch self {
@@ -54,6 +61,41 @@ private enum HelpTopic: String, CaseIterable, Identifiable {
                 (
                     "About the model",
                     "BombCAD is an experimental study of simulation numerics and performance, not a design tool. Results depend on grid resolution, material assumptions and supports. Peak pressures can be under-resolved, and collapse and debris have not been validated against tests."
+                ),
+            ]
+        case .importing:
+            [
+                (
+                    "Open your model",
+                    "Choose Import Model… in the toolbar or drop one local OBJ, STL or IFC file into the viewport. Export closed, watertight volumes from your CAD tool. Triangles or convex planar polygons are supported; textures and OBJ visual materials are ignored. Checking runs in the background and can be cancelled. For OBJ/STL material editing, start with Open ground and enable Deformable solid; the layout must not already contain another deformable structure. Leaving it off creates rigid obstacles."
+                ),
+                (
+                    "Import an IFC building",
+                    "IFC files are converted locally to metres, Z up, and imported as rigid obstacles. The app includes its converter; no file is uploaded. Choose physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors and windows before conversion. Building, storey, type and text filters change the list; checkboxes and Include/Exclude matching change inclusion. Choices are retained with the source. Choose IFC elements… revisits them from the preview or source inspector. Each subset is rebased to its own bounds, so review placement again. Spaces, furnishings, site/proxy markers and other types are excluded. The Parts browser preserves element names, types, available storey labels and GlobalIds, and searches all of them. IFC completeness and the exported report distinguish exclusions, unsupported types, selected elements without geometry, grid losses and cells covered by other elements. Inventory follows the decomposition tree; uncontained products may be absent. Check omissions against your CAD model and compare Source against Simulation. Touching elements stay distinct in the source, while overlapping sampled cells count once. Material properties, supports and structural connections are not inferred."
+                ),
+                (
+                    "Confirm scale and placement",
+                    "Under Units & placement, choose the source units and enable Y is the source up axis when appropriate. Check the dimensions in metres and the reference grid before proceeding. Unit suggestions require your choice. Centre moves the footprint without changing its height; On ground changes only its height. Expand domain to fit stages a larger domain and checks its memory cost. The preview shows surrounding geometry and flags overlaps, blocked charge locations and disconnected or floating components."
+                ),
+                (
+                    "Review feature-size warnings",
+                    "Compare Source, Simulation and Warnings to see what the grid preserves. Thin walls may disappear or change thickness, and narrow gaps may close. Select a warning to focus its region. Compare grids shows occupied cells, sampled volume, recovered parts and estimated air memory without applying changes. Preview finer grid advances the chosen grid. A recovered part or stable volume does not prove adequate resolution: features below two cells across still need attention, even on Fine. Highlighted regions are approximate and can miss features; simplify or enlarge unresolved geometry when a suitable grid is unavailable."
+                ),
+                (
+                    "Assign physical materials",
+                    "The Parts browser names complete OBJ shells; STL components receive generic names. Select several parts to assign or reset a material together, or copy and paste a material. Parts without an override use the model default. Advanced exposes material properties. Isolate selected parts changes only the preview; all parts still import. A shell with no sampled cells may be a cavity boundary or a lost feature. Cavity walls use the enclosing solid’s material. Rigid obstacles ignore structural materials. Fix nodes at the model’s base restrains the lowest plane; review disconnected components separately."
+                ),
+                (
+                    "Repair rejected geometry",
+                    "For OBJ/STL, open edges, non-manifold surfaces, self-intersections, overlapping solids and ambiguous contacts open the defect inspector and remain blocked from the simulation. Focus the highlighted defect or export a repair report with source triangle numbers. Close holes and Boolean-union overlapping volumes in your CAD tool, export again, then use Choose repaired file. IFC element failures identify the element name and GlobalId in the chooser. Repair the source, or explicitly Exclude invalid element and retry; no failed solid is silently skipped. If the converter cannot determine units, import remains blocked until you re-export correct project/context and unit definitions. BombCAD does not fill holes or join solids automatically. Nested shells represent cavities and further nested shells represent solid islands. If checking exceeds a model-size or work limit, simplify the source before retrying."
+                ),
+                (
+                    "Apply, save and edit again",
+                    "Review the geometry and placement warnings, then Apply. Save Project keeps source geometry, transforms, part materials and warnings; IFC projects also retain original IFC bytes and element metadata in the .bombcad project, so reopening does not need the original OBJ/STL file. Turn off Place Charge and reset after a run to select an imported model in the viewport, or choose Inspect / edit source… in Edit layout. Attached sources regenerate when the grid changes. Geometry, reinforcement and custom-support edits detach the structure to preserve your edits; Undo restores its source link. Import profiles reuse units, behavior, base restraint and materials matched by part name; placement and grid remain specific to the current import."
+                ),
+                (
+                    "Try the repository examples",
+                    "The repository’s Samples/Importer folder includes a cube, named parts with a thin panel, disconnected STL blocks, a narrow gap, an enclosed cavity, a millimetre/Y-up column, and broken/repaired pairs. Its Buildings subfolder contains a real IFC house and matching mesh reference, a two-storey duplex, structural beams, an imperial column and a unit-detection failure case. Its README lists settings and expected results. Start with unit-cube.obj, then named-parts.obj and Compare grids to see why feature-size warnings matter. These files are available in the repository and are not bundled with the app."
                 ),
             ]
         case .projects:

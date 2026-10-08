@@ -250,6 +250,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             scenario.structure.map({ $0.elementSize.isFinite && $0.elementSize > 0 }) ?? true
         else { throw ProjectFileError.invalid("Project geometry or atmosphere is invalid.") }
         if let body = scenario.structure {
+            try body.baseAnchorage?.validate()
+            guard body.supportAnchorages.count <= body.supports.count else {
+                throw ProjectFileError.invalid("A connection references a missing support region.")
+            }
+            for law in body.supportAnchorages.compactMap({ $0 }) { try law.validate() }
             let parts = Set(
                 (scenario.importedModels ?? []).filter { $0.behavior == .deformable }.flatMap { model in
                     model.source.parts.map { StructureModel.SourcePart(modelID: model.id, partID: $0.id) }

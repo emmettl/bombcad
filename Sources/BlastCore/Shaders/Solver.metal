@@ -132,7 +132,7 @@ enum AirModel { airIdeal = 0, airThermallyPerfect = 1, airDissociating = 2 };
 // The gas model, when a kernel is compiled for one: the other models' code is then left out of
 // it, which spares the kernels that run on every cell the registers it would hold. Kernels
 // compiled without it read the model from their uniforms.
-constant uint airModelConstant [[function_constant(1)]];
+constant uint airModelConstant [[function_constant(2)]];
 static inline uint airModelOf(uint model) {
     return is_function_constant_defined(airModelConstant) ? airModelConstant : model;
 }

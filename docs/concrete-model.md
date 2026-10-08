@@ -193,6 +193,13 @@ lattice axes the body has bars along: the crack spacing once its normal is withi
 an axis, the element size when it lies square to all of them, and a blend between. Bending and
 shear cracks, whose normals lie along or close to the bars, are as they were.
 
+A crack's width, from which its aggregate interlock is read (see
+[Shear across cracks](#shear-across-cracks)), is its strain over the same ℓ. It used to be read
+over the crack spacing for every plane, so that a split along the bars of a beam on 25 mm
+elements was taken as four times as wide as it was, and held together by a fraction of the
+interlock it had: Saatci's beam without stirrups split along its bars under a drop it survived
+(see [Validation](validation.md#beams-struck-by-a-falling-weight)).
+
 ## Compression and confinement
 
 Compression follows, for a compressive strain ε with peak strain ε_c and strength f_c,
@@ -270,8 +277,33 @@ transmit shear, from the modified compression field theory:
 v = 0.18 √f_c / (0.31 + 24 w / (a + 16))    (MPa, mm)
 
 where a is the largest aggregate size (16 mm by default) and w is the crack width, taken as the
-crack strain times the band width ℓ. A hairline crack carries about 0.58 √f_c, close to the
+crack strain times its plane's band width ℓ (see [Cracking](#cracking)). A hairline crack carries about 0.58 √f_c, close to the
 tensile strength; a 1 mm crack carries about 30% of that.
+
+**A crack's shear stiffness** (an option, `StructureModel.crackShearStiffness`). A quarter of
+the concrete's shear stiffness, kept however wide the crack, suits a crack smeared over many
+elements. A crack in one element (in plain concrete, or with bars that slip) is a discrete
+crack, and Walraven and Reinhardt measured how stiff those are in shear: k = 1.8 w^−0.8 +
+(0.234 w^−0.707 − 0.20) f_cc MPa per mm of slip, for a crack w mm wide in concrete of cube
+strength f_cc MPa (taken as f_c / 0.8): the slope of their eq. 1a (*HERON* 26(1A), 1981), whose
+offset, a shear of −f_cc/30 before the faces engage, is left out. With the option the crack acts in series with the
+concrete across the band: the cracked plane keeps 1 / (1 + G / (k ℓ)) of the concrete's shear
+stiffness, which on 46 mm elements of 23 MPa concrete is 0.07 at 0.2 mm and 0.01 at 1 mm. A
+cube cracked open and sheared a little keeps that share within 15% (`ConcreteModelTests`).
+
+It matters less than the cap. Vecchio and Shim's beam OA1 with bars that slip carries 453 kN
+with it (136%) against 472 without, and Janney's beam with slip 103% (failing at 45 mm) against
+107% (42 mm); the contest slab is unchanged (105 mm perfectly bonded, 90 mm with slip). The
+cap decides OA1: with slip and the measured stiffness, and no dowel action, it carries 447 and
+463 kN on 12 and 24 elements through its depth at the full cap; 413 kN (124%) at half of it; 361
+and 358 kN (109% and 108%) at a fifth; and 296 kN (89%) at a twentieth. Its shear strength no
+longer depends on the mesh, but on the interlock cap. Walraven and Reinhardt's push-off tests
+check that cap directly: their fitted laws give the shear and the stress across a crack for
+each width and slip, and where the stress across vanishes, as the cap assumes, a crack in their
+34 N/mm² (cube) concrete carried 1.94, 1.57 and 0.75 MPa at 0.2, 0.4 and 1 mm. A cube of the
+model's 30 MPa concrete cracked open and sheared carries 2.13, 1.61 and 0.92 MPa: 3% to 24%
+more (`ConcreteModelTests`). The cap is a little generous, but not five times. A fifth of the cap was not adopted: nothing measured supports it,
+and it breaks Janney's beam at 27 mm instead of the measured 42.
 
 This term was added after a model without it failed. With no shear transfer across cracks, a
 flexurally cracked slab with no steel through its thickness cannot pass shear between its
@@ -365,19 +397,95 @@ still open; with it they reach about −100 MPa.
 
 The default steel has a 500 MPa yield, 575 MPa ultimate at 7.5% strain and rupture at 12%.
 
+### Bars that slip (an option)
+
+By default bars are perfectly bonded: they stretch with their element. Real bars slip in their
+concrete near a crack, which lets the concrete between cracks shed its tension to them and so
+sets how far apart cracks form. Perfectly bonded smeared bars cannot do this, so the model
+spreads each crack over the crack spacing instead (above), and on elements coarser than half
+that spacing it cannot separate cracks at all. `StructureModel.bondSlip` (`BondSlip`) lets the
+bars along the lattice axes slip:
+
+- each node carries the slip of its bars along each axis, relative to the concrete; an
+  element's bars are strained by the concrete's stretch plus the change in slip across it;
+- the bond resists slip with the fib Model Code 2010's bond–slip law (§6.1.1, good bond), for
+  pull-out (bars confined), splitting (unconfined) or splitting held by stirrups, over the
+  bars' surface, 4 ρ / d per unit volume for bars of diameter d. Its power-law start is made
+  linear to a fiftieth of s₁, so that its stiffness is finite, and it unloads at that
+  stiffness;
+- a crack crossed by bars then softens over its own element, as in plain concrete, and a bar's
+  rupture is judged in its own element, its strain spread along it by the slip;
+- held or driven nodes grip their bars: they do not slip there;
+- where bars have yielded they hold less well: the bond is scaled by the Model Code's
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), a = (ε_s − ε_y) / (ε_su − ε_y), b = (2 − f_u / f_y)²
+  (as quoted from the Model Code by J. Santos and A. A. Henriques, *Engineering Structures* 86,
+  2015, 72–83; first written from memory without the square), with a the bars' plastic strain
+  over that at their ultimate strength, averaged over the elements around each node
+  (`BondSlip.yieldedBondLoss`, on by default).
+
+Bars weigh far too little for the time step, so the slip does not follow their inertia. It is
+relaxed towards equilibrium each step, with a mass scaled to the step and 70% of critical
+damping. Its stiffness for that counts each element's bars eight times over: an element ties
+the slip at each corner to all eight, and counted once the slip rang at about ±40 kN in a tie
+pulled to 30 kN. The slip lags the load by some tens of steps, tens of microseconds. Inclined
+bars, shells and beams stay perfectly bonded, and the bond's peak follows the body's main
+concrete.
+
+**A reinforced tie** (`BondSlipTests`): 1 m long, 100 mm square, 2% of 12 mm bars, pulled to
+1.5 mm. With slip it cracks at 31–34 kN, as when bonded, then at discrete places: eight cracks
+on both 20 mm and 10 mm elements, 120–145 mm apart, within the Model Code's l_t to 2 l_t (83 to
+167 mm, with the mean bond stress while cracks form, 1.8 f_ctm). At 1.5 mm it carries 69 and
+71 kN, within 6% of the Model Code's tension stiffening (73 kN, β = 0.4). Perfectly bonded, the
+same tie cracks along its whole length at once. Pulled past yield (50 mm square, 1% of steel,
+on 10 mm elements), its bars yield over 0.20 m of its length with the bond lost at yield and
+0.15 m without: with hardening from 500 to only 575 MPa, yield spreads some 16 mm / Ω_y either
+side of a crack, under one element on coarser meshes.
+
+**The structural tests** (`--bond pullout` on `blastbench beam`, `shear`, `slab` and `impact`):
+
+| Test | Perfect bond | With slip |
+|---|---|---|
+| Janney's beam, 12 elements through | 41.6 kN m (100%), fails at 51 mm | 44.3 kN m (107%), fails at 42 mm, as the test did |
+| Vecchio and Shim's OA1, 12 / 24 through | 456 / 367 kN (137% / 111%) | 472 / 489 kN (142% / 147%); splitting bond 490 kN on 12 |
+| The contest slab, 8 through | 104 mm (97%), 65 mm left | 88 mm (82%), 53 mm left |
+| Saatci's SS0a-1 (light drop, no stirrups), 16 / 24 through | 16.8 / 19.7 mm, 279 / 1,935 elements removed | splitting bond: 12.0 / 11.0 mm, none removed (9.3 mm measured) |
+| Saatci's heavy drops with stirrups, 16 through | 31.5–37.5 mm | splitting bond: 30.0–32.2 mm (35.3–39.5 measured) |
+
+With slip the shear beam cracks as the test did on both meshes, in flexure–shear cracks about
+200 mm apart that lean towards the load as they climb (`--map`), and its strength no longer
+depends on the mesh. But the diagonal crack never runs through the compression zone: the beam
+reaches its bending strength instead, 42–47% above the measured shear failure. The 11% of the
+fine mesh with perfect bond came from the smeared band, not from cracks like the test's. The
+crack's shear (aggregate interlock) decides it: with interlock for 1 mm aggregate instead of
+the measured 20 mm the beam carries 436 kN; dowel action barely matters. The slab with slip is
+stiffer and keeps less of its deflection. Losing bond where the bars yield does not change it
+(88 mm either way). What does is the cracks keeping to one element each: with slip but cracks
+spread over the crack spacing, as without it, the slab reaches 98 mm (91%). Its cracks show why
+(`blastbench slab --map`): perfectly bonded, the whole of its middle cracks as one field over
+95 elements; with slip, the cracks stand about seven elements (90 mm) apart, as the Model Code
+puts them for bars in the concrete around them in bending, over a zone a fifth shorter, and the
+concrete between them still carries tension at blast rates. Whether the test slab cracked so is
+not known. Under impact, slip lets Saatci's beam without stirrups come through the light drop
+whole, as the test beam did, where perfectly bonded it splits along its bars, and still breaks
+it under the heavy drop, as in the test; but it stiffens the beams with stirrups by a fifth under the heavy drops. So
+the option stays off until the shear across discrete cracks, and the slab, are understood.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
 at those rates. With `rateDependent` set, strengths are multiplied by a dynamic increase factor
-that depends on a running average (50 steps) of the element's effective strain rate ε̇:
+that depends on a running average (50 steps) of the element's effective strain rate ε̇, or for
+the bars of their own stretching rate along their debonded length (below):
 
 | Material and mode    | Factor                                                      | Source                    |
 |----------------------|-------------------------------------------------------------|---------------------------|
 | Concrete compression | (ε̇ / 30×10⁻⁶)^(1.026 α), α = 1 / (5 + 9 f_c / 10 MPa), below 30 /s; cube-root law above | CEB-FIP Model Code 1990 |
 | Concrete tension     | (ε̇ / 10⁻⁶)^0.018 below 10 /s; 0.0062 (ε̇ / 10⁻⁶)^(1/3) above | fib Model Code 2010 (default) |
 | Concrete tension, as an option | (ε̇ / 10⁻⁶)^δ, δ = 1 / (1 + 8 f_c / 10 MPa), below 1 /s; cube-root law above | Malvar and Ross, 1998 |
-| Steel yield          | (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa             | Malvar and Crawford, 1998 |
-| Steel ultimate       | (ε̇ / 10⁻⁴)^α, α = 0.019 − 0.009 f_y / 414 MPa             | Malvar and Crawford, 1998 |
+| Steel yield          | 1 + (6 / f_y) ln(ε̇ / 5×10⁻⁵), f_y in MPa                   | CEB Bulletin 187, 1988; fib Model Code 2010 (default) |
+| Steel ultimate       | 1 + (7 / f_u) ln(ε̇ / 5×10⁻⁵), f_u in MPa                   | the same |
+| Steel yield, as an option | (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa        | Malvar and Crawford, 1998 |
+| Steel ultimate, as an option | (ε̇ / 10⁻⁴)^α, α = 0.019 − 0.009 f_y / 414 MPa     | Malvar and Crawford, 1998 |
 
 The factor raises strength without changing stiffness. Two details matter:
 
@@ -399,10 +507,34 @@ The factor raises strength without changing stiffness. Two details matter:
   stirrups a quarter too stiff on every mesh and the close-in slabs' spall needing 17–21 MPa,
   where spalling tests find 10–15. The fib Model Code 2010's (1.3 times at 5 per second, 2.9 at
   100) brings the beams within −5% to +15%, the contest slab from 93% to 97% of its peak and
-  the close-in slab further down; but under it a beam without stirrups breaks, splitting along
-  its bars, under a drop the test beam survived (see
+  the close-in slab further down; but under it a beam without stirrups loses elements, and on
+  fine meshes splits along its bars, under a drop the test beam survived (see
   [Validation](validation.md#beams-struck-by-a-falling-weight)). The Model Code's is the
   default; it errs, there, towards damage.
+- The **steel law** (`steelRateLaw`) sets how much of a struck beam's deflection is the bars'
+  yielding, and so how much it keeps. Malvar and Crawford's raises a 400 MPa bar's yield 1.39
+  times at 1 per second and 1.49 at 9; the CEB's, which the fib Model Code 2010 re-adopted,
+  1.15 and 1.18. Tension tests of HRB400 bars (F. Lin, Y. Dong, X. Kuang and L. Lu,
+  *Materials* 9, 2016, 1013) found 1.20 at 3 per second and 1.25 at 9.3, within 7% of the
+  CEB's, where Malvar and Crawford's overestimated the yield by a fifth. Under Malvar and
+  Crawford's, Ando's beam struck at 4 m/s and bent through 26 mm yields its bars 6.4 mm, where
+  pushed slowly to the same deflection it yields them 11 mm and keeps the test's 22.6 mm: the
+  bars, too strong at the rate, hold the beam elastic and it springs back. The CEB's is the
+  default: Saatci's heavy drops come within −6% to 0% on 16 elements (−11% to −5% under
+  Malvar and Crawford's), left 14–18 mm down against 18 (12–15 mm), and Ando's faster peaks
+  within 13% on average (18%); the contest slab peaks 5–15% high (it was 3% low) but follows
+  its record more closely (4–8 mm root-mean-square, against 9–12), and its shells go a
+  quarter too far (15%).
+- The **bars' strain rate is their own, over their debonded length**
+  (`StructureModel.barRateAlongBars`, on by default): each element keeps a running average of
+  its stretching rate along each lattice axis, and a bar along that axis takes the mean of it
+  over the window its rupture is judged over, half the crack spacing either side. Taken
+  instead from the effective strain rate of the element a crack runs through, which grows as
+  the mesh is refined, the rate made the bars strongest just where a hinge localised. Under
+  Malvar and Crawford's steep law that held the contest slab's mid-span hinge; under the
+  CEB's it did not, and a 25 mm strip of the slab ran away on fine meshes (180 mm and still
+  going at 80 ms on 16 elements, 153 mm on 32), and the full slab fell apart on 32. Over the
+  debonded length the strip peaks at 121, 127 and 131 mm on 8, 16 and 32 elements.
 
 Until the fix described in step 14 below, the compressive law above 30 per second omitted the
 normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
@@ -712,6 +844,31 @@ matter.
    reclosing to within about 7%. Saatci's beams are left 12–14 mm down against 18 mm (7 mm
    before), the chamber's roof 15 mm up against 7 mm; the contest slab, Janney's beam and
    Vecchio and Shim's OA1, which bend or fail as their cracks first slide, are unchanged.
+26. **Each crack's width over its own band** (see Cracking). Step 24 softened a crack that no
+   bar crosses over its own element, but its width, which sets its aggregate interlock, was
+   still read over the crack spacing: a split along the bars of a beam without stirrups was
+   taken as four to six times as wide as it was. Rerunning every test on the defaults of the
+   time found Saatci's beam without stirrups still broken under the light drop it survived,
+   split along its bars. With the width read over the crack's own band it comes through on 16
+   elements (16.8 mm against 9.3, where it had broken at 22.4 mm), though it still splits on
+   24. Ando's beams without stirrups, struck at 3–6 m/s, come within 18% of the measured peaks
+   on average on 16 elements, where they had gone 44% too far (58% on 24, from 108%), but
+   spring back to about half the measured residual. The beams with stirrups, the contest slab, OA1, the chamber and the close-in slabs
+   are unchanged; Janney's beam holds where it had failed at 52 mm on 24 elements.
+27. **Why struck beams spring back** (see Strain-rate effects). A beam without stirrups pushed
+   slowly keeps its deflection as the test's did; the same beam struck yields its bars about
+   half as far and springs back, held elastic by bars that Malvar and Crawford's law makes 1.4
+   times as strong at the rate, a fifth more than tension tests of bars find. The CEB's law
+   for the bars brings the impacts closer, but left the slab's hinge to run away on fine
+   meshes. Spreading the bars' steel through the concrete about them, tried first, made the
+   beams converge with the mesh but too stiff (see
+   [Validation](validation.md#beams-struck-by-a-falling-weight)).
+28. **The bars' strain rate over their debonded length, and the CEB's law by default.** The
+   runaway hinge came from the bars' rate: taken from the one element a crack runs through, it
+   grew as the mesh was refined, and Malvar and Crawford's steep law had made the bars there
+   strong enough to hold. Averaged over the debonded length, as their rupture is, the strip
+   converges under the CEB's law (121, 127 and 131 mm on 8, 16 and 32 elements), and that law,
+   which tension tests of bars support, became the default.
 
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
@@ -721,9 +878,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 ## Limitations
 
 1. **Validated against three tests**: a one-way slab under a uniform blast load, a beam bent
-   slowly to failure, and a beam without stirrups failing in shear (see limitation 4). On the slab the peak is 100, 101, 107 and 105 mm
-   as the elements through the thickness go from 4 to 8 to 16 to 32: converged at about
-   105 mm, 3% below the measurement. On the beam the peak moment is 99% and 97% of the
+   slowly to failure, and a beam without stirrups failing in shear (see limitation 4). On the slab the peak is 114, 113, 121 and 124 mm with 4, 8, 16 and 32 elements through
+   the thickness, 5–15% above the measurement, the finest losing 1.4% of its elements (under Malvar and Crawford's law for the bars it was
+   100, 101, 107 and 105 mm on 4 to 32, converged about 3% below). On the beam the peak moment is 99% and 97% of the
    measured on 12 and 24 elements through the depth; six elements run 20% strong. Results for
    members in bending should still be checked at more than one mesh. Nothing in shear,
    punching or direct shear has been compared with a test.
@@ -744,7 +901,36 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    elements through the depth: shear strength needs a finer mesh than bending does, about 24
    elements through a member's depth. On coarser meshes the diagonal crack cannot cut through
    the compression zone, and the load arches to the supports over the bars until they yield;
-   neither interlock nor dowel action accounts for it. Beams check each section's shear
+   neither interlock nor dowel action accounts for it, nor the strut's crushing: cracked
+   concrete made weaker in compression by the tension across it, 1 / (0.8 + 170 ε₁) of its
+   strength as in the modified compression field theory (Vecchio and Collins, 1986), left the
+   12-element beam's peak at 456 kN and its curve within 1%.
+
+   The cracks themselves show the difference (`blastbench shear --map 8.5` draws them through
+   the middle of the width). On 24 elements through the depth the beam cracks as the tests do,
+   in discrete bands two to four elements wide and 115–140 mm apart, many of them inclined, the
+   inclined ones reaching a third of the depth from the top. On 12 elements (46 mm) cracks that
+   far apart are two elements apart, which the lattice cannot separate: the whole tension zone
+   cracks as one field, vertical in the middle and inclined towards the supports in bands up to
+   ten elements wide, which reach as high as the fine mesh's cracks but as a smeared field. With
+   no discrete diagonal crack there is none to run through the compression zone.
+
+   Crack tracking was tried for this (kept on the branch `experiment/crack-tracking`): within
+   one to three elements of a crack, an element might crack only where a neighbouring crack's
+   plane passed through it, after M. Cervera and M. Chiumenti (2006) and M. Cervera, L. Pelà,
+   R. Clemente and P. Roca (2010). It narrowed the cracks in the middle of the span but left
+   the inclined bands, which grow from flexural cracks turning, and the peak at 455–460 kN for
+   every radius; and it stiffened the cracked beam (167 kN at 2 mm against 153), since the
+   blocked elements beside a crack, tied to smeared bars that cannot slip, carried tension of
+   several times the concrete's strength. Without bond slip, so that concrete between cracks
+   can shed its tension to the bars, tracked cracks do not suit reinforced concrete on this
+   lattice. A plain concrete beam 200 mm deep notched to half its depth, which forms one crack,
+   peaks at 2.22, 1.96 and 1.91 kN on 25, 12.5 and 6.25 mm elements, with or without tracking:
+   the crack band holds roughly, 16% strong at eight elements through the depth, so how a single
+   crack advances accounts for part of the coarse beam's excess at most. Bars that slip (see
+   [Reinforcement](#bars-that-slip-an-option)) do separate cracks on coarse elements, and make
+   the beam's strength the same on both meshes, but 42–47% strong: with discrete cracks the
+   shear they carry by interlock keeps the diagonal crack from running. Beams check each section's shear
    instead (see the [shell model](shell-model.md#materials)). Dowel
    action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
@@ -826,8 +1012,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
   would add damping, though the slab suggests they are not the first-order problem.
-- **Bond slip**, so that bond governs crack spacing instead of its being assumed, and a bar's
-  stress as well as its rupture is spread over its debonded length.
+- **Bond slip, by default.** It is an option (see
+  [bars that slip](#bars-that-slip-an-option)): it gives the Model Code's crack spacing on any
+  mesh, but leaves the shear beam OA1 42–47% strong and the slab 18% stiff. It needs a direct
+  test of interlock across one crack and the test slab's crack pattern before it can be the
+  default; and inclined bars, shells and beams that slip too.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete close to a charge, and a
   close-in test to check it.

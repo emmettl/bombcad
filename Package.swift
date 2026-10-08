@@ -18,7 +18,8 @@ let package = Package(
         .target(
             name: "BlastCore",
             dependencies: [
-                .product(name: "SceneModel", package: "SimulationKit")
+                .product(name: "SceneModel", package: "SimulationKit"),
+                .product(name: "GeometryImport", package: "SimulationKit"),
             ], resources: [.copy("Shaders")]),
         .target(
             name: "BlastRender",
@@ -30,6 +31,7 @@ let package = Package(
             name: "BombCAD",
             dependencies: [
                 "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "SimulationKit"),
+                .product(name: "SceneRender", package: "SimulationKit"),
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(

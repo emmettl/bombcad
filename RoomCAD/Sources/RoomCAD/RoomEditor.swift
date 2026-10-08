@@ -11,14 +11,20 @@ final class RoomEditor {
     /// The settings being generated, while a run is in progress.
     private(set) var generatingSettings: RoomResponseSettings?
     private(set) var summary: ResponseSummary?
+    /// The stage of the generation in progress and how far it has got, such as "Tracing rays 40%".
+    private(set) var progressText: String?
     /// The most recent failure, shown until the next attempt.
     var message: String?
+    private var watcher: Task<Void, Never>?
     private var work: Task<RoomResponse, Error>?
     private var analysis: Task<Void, Never>?
     private var delivery: Task<Void, Never>?
 
     /// Generates a response in the background and hands it to `deliver` unless cancelled.
-    func generate(_ settings: RoomResponseSettings, deliver: @escaping @MainActor (RoomResponse) -> Void) {
+    func generate(
+        _ settings: RoomResponseSettings, quality: GenerationQuality = .full,
+        deliver: @escaping @MainActor (RoomResponse) -> Void
+    ) {
         cancel()
         message = nil
         do {
@@ -29,16 +35,26 @@ final class RoomEditor {
         }
         isGenerating = true
         generatingSettings = settings
+        let progress = GenerationProgress()
         let work = Task.detached(priority: .userInitiated) {
-            try await RoomResponseGenerator.generate(settings)
+            try await RoomResponseGenerator.generate(settings, quality: quality, progress: progress)
         }
         self.work = work
+        watcher?.cancel()
+        watcher = Task {
+            while !Task.isCancelled, self.work == work {
+                self.progressText = Self.describe(progress.current)
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
         delivery = Task {
             defer {
                 if self.work == work {
                     self.work = nil
                     self.isGenerating = false
                     self.generatingSettings = nil
+                    self.watcher?.cancel()
+                    self.progressText = nil
                 }
             }
             do {
@@ -53,9 +69,17 @@ final class RoomEditor {
         }
     }
 
+    /// "Tracing rays 40%", or nil before the first stage.
+    static func describe(_ current: (stage: GenerationProgress.Stage?, fraction: Double)) -> String? {
+        current.stage.map { "\($0.rawValue) \(Int((current.fraction * 100).rounded()))%" }
+    }
+
     func cancel() {
         work?.cancel()
         work = nil
+        watcher?.cancel()
+        watcher = nil
+        progressText = nil
         isGenerating = false
         generatingSettings = nil
     }
@@ -65,14 +89,15 @@ final class RoomEditor {
     /// invalid settings, do nothing.
     /// `needed` is asked again after the delay, in case a response arrived meanwhile.
     func regenerate(
-        _ settings: RoomResponseSettings, after delay: Duration = .milliseconds(400),
-        needed: @MainActor () -> Bool = { true }, deliver: @escaping @MainActor (RoomResponse) -> Void
+        _ settings: RoomResponseSettings, quality: GenerationQuality = .full,
+        after delay: Duration = .milliseconds(400), needed: @MainActor () -> Bool = { true },
+        deliver: @escaping @MainActor (RoomResponse) -> Void
     ) async {
         if let generatingSettings, generatingSettings != settings { cancel() }
         guard generatingSettings != settings, (try? settings.validate()) != nil else { return }
         try? await Task.sleep(for: delay)
         guard !Task.isCancelled, generatingSettings != settings, needed() else { return }
-        generate(settings, deliver: deliver)
+        generate(settings, quality: quality, deliver: deliver)
     }
 
     /// Recomputes the summary shown for `result`, or clears it.

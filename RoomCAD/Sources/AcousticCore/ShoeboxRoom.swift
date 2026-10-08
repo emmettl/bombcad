@@ -103,6 +103,14 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
     public var floor, ceiling: SurfaceMaterial
     /// A floor plan with its own walls, or nil for a box. Its corners lie within `[0, size.x] × [0, size.y]`.
     public var plan: FloorPlan?
+    /// A room of any shape, which takes the place of the box's surfaces and any plan. Its corners lie
+    /// within `[0, size]`.
+    public var mesh: RoomMesh?
+    /// Zones of scattering objects, such as seating or ornament; nil or empty for none.
+    public var fittings: [FittingZone]?
+
+    /// The fitted zones, if any.
+    var zones: [FittingZone] { fittings ?? [] }
 
     public init(size: SIMD3<Double>, material: SurfaceMaterial) {
         self.size = size
@@ -134,7 +142,7 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
         }
     }
 
-    public var volume: Double { (plan?.area ?? size.x * size.y) * size.z }
+    public var volume: Double { mesh?.volume ?? (plan?.area ?? size.x * size.y) * size.z }
 
     public func area(_ surface: Surface) -> Double {
         switch surface {
@@ -152,11 +160,13 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
     /// Whether a point lies strictly inside the room.
     public func contains(_ point: SIMD3<Double>) -> Bool {
         guard all(point .> 0) && all(point .< size) else { return false }
+        if let mesh { return MeshGeometry.of(mesh).contains(point) }
         return plan?.contains([point.x, point.y]) ?? true
     }
 
     /// Shortest distance from a point inside the room to its boundary.
     public func clearance(_ point: SIMD3<Double>) -> Double {
+        if let mesh { return MeshGeometry.of(mesh).clearance(point) }
         let vertical = min(point.z, size.z - point.z)
         guard let plan else { return min(vertical, point.x, point.y, size.x - point.x, size.y - point.y) }
         return min(vertical, plan.distanceToWalls([point.x, point.y]))
@@ -167,6 +177,28 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
             throw AcousticError.invalid("Room dimensions must be between 0.5 m and 500 m.")
         }
         for surface in Surface.allCases { try self[surface].validate() }
+        if let mesh {
+            guard plan == nil else {
+                throw AcousticError.invalid("A room has either a floor plan or a mesh, not both.")
+            }
+            try mesh.validate()
+            let (low, high) = mesh.bounds
+            guard all(low .>= -1e-9), all(high .<= size + 1e-9) else {
+                throw AcousticError.invalid("The room's mesh must lie within its size.")
+            }
+        }
+        for zone in zones {
+            try zone.validate()
+            guard all(zone.low .>= -1e-9), all(zone.high .<= size + 1e-9) else {
+                throw AcousticError.invalid("The fitted zone \(zone.name) must lie within the room's size.")
+            }
+        }
+        for (i, a) in zones.enumerated() {
+            for b in zones[(i + 1)...] where all(a.low .< b.high - 1e-9) && all(b.low .< a.high - 1e-9) {
+                throw AcousticError.invalid(
+                    "The fitted zones \(a.name) and \(b.name) overlap; they may only touch.")
+            }
+        }
         if let plan {
             try plan.validate()
             let (low, high) = plan.bounds
@@ -192,7 +224,8 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
         }
     }
 
-    /// `T = 24 ln(10) V / (c (A + 4 m V))`, with `m` the energy attenuation of air per metre.
+    /// `T = 24 ln(10) V / (c (A + A_f + 4 m V))`, with `A_f` the fitted zones' absorption area and `m`
+    /// the energy attenuation of air per metre.
     private func statisticalDecay(
         atmosphere: Atmosphere, airAbsorption: Bool, absorptionArea: (Int) -> Double
     ) -> [Double?] {
@@ -201,7 +234,8 @@ public struct ShoeboxRoom: Codable, Equatable, Sendable {
             let air =
                 airAbsorption
                 ? 2 * atmosphere.amplitudeAttenuationPerMetre(frequency: OctaveBands.centres[band]) : 0
-            let area = absorptionArea(band) + 4 * air * volume
+            let fitted = zones.reduce(0) { $0 + $1.absorptionArea[band] }
+            let area = absorptionArea(band) + fitted + 4 * air * volume
             return area > 0 ? 24 * log(10) * volume / (c * area) : nil
         }
     }

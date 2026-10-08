@@ -111,6 +111,9 @@ public enum ImpactBenchmark {
         /// holds the beam's own faces over the bearing length instead, which resists its ends'
         /// turning.
         public var supportPlates: Float?
+        /// Each bar's steel spread through the concrete about it, out to the nearest face and as
+        /// far the other way, rather than through the one row of elements at its height.
+        public var spreadBars = false
     }
 
     public static func specimen(_ test: Test) -> Specimen {
@@ -155,10 +158,12 @@ public enum ImpactBenchmark {
         for index in 1..<solids.count { model.setMaterial(.structuralSteel, of: index) }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
+            let reach = s.spreadBars ? max(min(bar.height, s.depth - bar.height), h / 2) : h / 2
             var band = beam
-            band.min.z = base + bar.height - h / 2
-            band.max.z = base + bar.height + h / 2
-            bands.append(ReinforcementLayer(region: band, ratio: SIMD3(bar.area / (s.width * h), 0, 0)))
+            band.min.z = base + bar.height - reach
+            band.max.z = base + bar.height + reach
+            bands.append(
+                ReinforcementLayer(region: band, ratio: SIMD3(bar.area / (s.width * 2 * reach), 0, 0)))
         }
         if let stirrups = s.stirrups {
             // Two legs each way, smeared through the section.
@@ -191,11 +196,14 @@ public enum ImpactBenchmark {
     /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
-        adjust: (inout StructureModel) -> Void = { _ in }
+        spreadBars: Bool = false, adjust: (inout StructureModel) -> Void = { _ in },
+        inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
-        try run(
-            device: device, specimen: specimen(test), weight: test.weight, speed: impactSpeed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust)
+        var specimen = specimen(test)
+        specimen.spreadBars = spreadBars
+        return try run(
+            device: device, specimen: specimen, weight: test.weight, speed: impactSpeed,
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 
     /// Strikes `specimen` at mid-span with `weight` kilograms at `speed` metres per second, as
@@ -204,7 +212,8 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float,
         elementsThroughDepth: Int = 16,
-        duration: Double = 0.2, bounce: Bool = true, adjust: (inout StructureModel) -> Void = { _ in }
+        duration: Double = 0.2, bounce: Bool = true, push: Float? = nil,
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         let length = specimen.length
         let depth = specimen.depth
@@ -232,18 +241,31 @@ public enum ImpactBenchmark {
         let bearing = max(Int((bearingLength / 2 / h).rounded()), 0)
         let bearingNodes = supports.map { (($0 - bearing)...($0 + bearing)) }
         var struck: [Int] = []
+        var struckAt: [(Int, Int)] = []
         for i in (middle - reach)...(middle + reach) {
             for j in 0...solver.ey {
-                if let n = solver.storedNode(i, j, top) { struck.append(n) }
+                if let n = solver.storedNode(i, j, top) {
+                    struck.append(n)
+                    struckAt.append((i, j))
+                }
             }
         }
+        // With `push`, the plate is driven down slowly instead, and damped, until the beam's
+        // middle has gone down that far; then drawn back until it no longer pushes, and let go.
+        let pushRate: Float = 0.05
+        if push != nil { solver.damping = 100 }
         solver.mutateNodes { nodes in
             // The weight's momentum, shared with the plate's top nodes it strikes.
             let carried = struck.reduce(Float(0)) { $0 + nodes[$1].mass }
             let speed = weight * impact / (weight + carried)
             for n in struck {
-                nodes[n].mass += weight / Float(struck.count)
-                nodes[n].velocity = SIMD3(0, 0, -speed)
+                if push != nil {
+                    nodes[n].isPushedVertically = true
+                    nodes[n].velocity = SIMD3(0, 0, -pushRate)
+                } else {
+                    nodes[n].mass += weight / Float(struck.count)
+                    nodes[n].velocity = SIMD3(0, 0, -speed)
+                }
             }
             if plateRows > 0 {
                 // The plates are held along their centre lines, under the bottom plate and over
@@ -288,11 +310,34 @@ public enum ImpactBenchmark {
         var history: [SIMD2<Float>] = []
         var reactions: [SIMD2<Float>] = []
         let stepsPerSample = max(1, Int(0.0001 / solver.criticalTimeStep))
-        var attached = true
-        while solver.time < duration {
+        var attached = push == nil
+        // Pushing: 0 down, 1 drawn back, 2 let go and settling (until `settled`).
+        var phase = 0
+        var settled = Double.infinity
+        var pushForce: Float = 0
+        while solver.time < (push.map { Double(3 * $0 / pushRate) } ?? duration), solver.time < settled {
             solver.advance(steps: stepsPerSample)
             history.append(
                 SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, beamBottom).z))
+            if let push {
+                let force = struckAt.reduce(Float(0)) { $0 + solver.nodalForce($1.0, $1.1, top).z }
+                if phase == 0 { pushForce = max(pushForce, force) }
+                if phase == 0 && history.last!.y >= push {
+                    phase = 1
+                    solver.mutateNodes { nodes in
+                        for n in struck { nodes[n].velocity = SIMD3(0, 0, pushRate) }
+                    }
+                } else if phase == 1 && force <= 0 {
+                    phase = 2
+                    settled = solver.time + 0.1
+                    solver.mutateNodes { nodes in
+                        for n in struck {
+                            nodes[n].isPushedVertically = false
+                            nodes[n].velocity = .zero
+                        }
+                    }
+                }
+            }
             if attached && bounce {
                 // The weight rides the plate down and leaves it once the plate turns back up:
                 // its mass comes off, carrying away its share of the plate's (by then nearly
@@ -332,6 +377,7 @@ public enum ImpactBenchmark {
             reactions.append(reaction)
         }
         let elapsed = ContinuousClock.now - start
+        inspect(solver)
         let window = max(
             1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
         var peakReaction: Float = 0
@@ -341,7 +387,9 @@ public enum ImpactBenchmark {
                 peakReaction = max(peakReaction, abs(mean).max())
             }
         }
-        let tail = history.filter { Double($0.x) >= duration - 0.03 }
+        let end = push == nil ? duration : Double(history.last?.x ?? 0)
+        let tail = history.filter { Double($0.x) >= end - 0.03 }
+        if push != nil { peakReaction = pushForce }
         return Result(
             history: history, peak: history.map(\.y).max() ?? 0,
             residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)), peakReaction: peakReaction,
@@ -506,10 +554,14 @@ public enum ImpactBenchmark {
 
     public static func run(
         device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
-        adjust: (inout StructureModel) -> Void = { _ in }
+        spreadBars: Bool = false, specimen change: (inout Specimen) -> Void = { _ in },
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
-        try run(
-            device: device, specimen: specimen(test), weight: 300, speed: test.speed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust)
+        var specimen = specimen(test)
+        specimen.spreadBars = spreadBars
+        change(&specimen)
+        return try run(
+            device: device, specimen: specimen, weight: 300, speed: test.speed,
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 }

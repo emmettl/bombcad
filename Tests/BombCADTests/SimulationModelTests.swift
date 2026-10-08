@@ -242,14 +242,17 @@ struct SimulationModelTests {
         model.select(.blastWall)
         model.settings.chargeMass = 500
         model.settingsChanged()
-        try await waitUntil { model.structureSummary != nil && model.time == 0 && model.traces.count == 3 }
+        try await waitUntil {
+            model.experimentIsReady && model.structureSummary != nil && model.traces.count == 3
+        }
         #expect(model.structureSummary?.erodedElements == 0)
         #expect(model.structureSubsteps > 0)
 
         model.speed = .unlimited
         model.duration = 0.06
         model.run()
-        try await waitUntil { !model.isRunning && model.time > 0.05 }
+        // 7 s on an M4 Max, 20 s on the CI mini's M4, and longer when other tests share the GPU.
+        try await waitUntil(timeout: .seconds(120)) { !model.isRunning && model.time > 0.05 }
         let summary = try #require(model.structureSummary)
         #expect(model.errorMessage == nil)
         #expect(!summary.hasBlownUp)
@@ -463,7 +466,9 @@ struct SimulationModelTests {
         let model = try await makeModel()
         model.select(.blastWall)
         model.settingsChanged()
-        try await waitUntil { model.structureSummary != nil && model.time == 0 && model.traces.count == 3 }
+        try await waitUntil {
+            model.experimentIsReady && model.structureSummary != nil && model.traces.count == 3
+        }
         model.speed = .unlimited
         model.duration = 0.02
         model.run()

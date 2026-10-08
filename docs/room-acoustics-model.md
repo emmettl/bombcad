@@ -1,7 +1,6 @@
 # Room-acoustics model
 
-RoomCAD's first acoustic backend generates impulse responses of rectangular rooms for
-convolution reverb. It lives in the separate `RoomCAD` package: `Sources/AcousticCore` holds the
+RoomCAD's first acoustic backend generates impulse responses of rooms for convolution reverb. It lives in the separate `RoomCAD` package: `Sources/AcousticCore` holds the
 model and `Sources/ImpulseResponseKit` holds the response format and WAV files. It covers milestone
 M2 and the scattering part of M4 of the [RoomCAD roadmap](roomcad-roadmap.md). The app that edits rooms and generates responses is
 described in [RoomCAD app and documents](roomcad-app.md).
@@ -132,6 +131,193 @@ Tests check the floor-plan code against the box and against geometry:
 An L (8 × 6 m less 4 × 3 m), a T and a fan-shaped hall decay within about 10% of their Eyring estimates
 at 1 kHz.
 
+## Rooms of any shape
+
+A room can also be a closed mesh (`RoomMesh`): flat polygonal faces whose normals point into the
+room, each with a material, and any of them open. That covers sloping ceilings, raked floors,
+balconies, galleries, stage houses and attics. The mesh replaces the box's surfaces and any floor
+plan; its bounding box must lie within the room's size. A mesh is checked before use:
+
+- each face must be flat (within 2 cm) and have area;
+- the faces must close: their areas, weighted by their normals, sum to zero;
+- the normals must point inwards, which makes the enclosed volume positive.
+
+Faces that lie in one plane are grouped (`MeshGeometry`), and a bounding-volume hierarchy speeds up
+the ray queries. Each part of the model uses the mesh as follows:
+
+- **Image sources.** After Borish (1984), images are mirrored in planes rather than faces, so a wall
+  cut into many faces adds no images. An image can only be mirrored in a plane it lies in front of.
+  It is valid for a receiver only if, traced back from the receiver, its path meets each mirroring
+  plane within one of that plane's faces, that face is not open, and no other face blocks any leg.
+  That hides reflections behind a balcony front or round the corner of a stage. Images grow level by
+  level up to the order that fits 100,000 images.
+- **Rays.** Rays find the nearest face through the hierarchy, reflect about its normal, and scatter
+  around it. A ray that reaches an open face leaves the room.
+- **Wave solver.** A cell is simulated if its centre is inside the mesh, found by counting the
+  mesh's crossings along the cell's vertical column. Each face between a simulated cell and one that
+  is not takes the impedance of the nearest mesh face, or of air if that face is open. As with floor
+  plans, walls not aligned with the grid become staircases.
+- **Inside and clearance.** A point is inside if a ray from it crosses the mesh an odd number of
+  times. The source and receivers must be inside.
+
+### Building rooms from solids
+
+Writing a closed mesh by hand is error-prone, so rooms are built from pieces of air with
+constructive solid geometry (`Solid`). It follows Evan Wallace's csg.js, which uses binary space
+partitioning trees. The pieces are boxes and extrusions of a polygon along an axis, each face with a
+material. They can be joined, subtracted or intersected. A balcony, for example, is a slab
+subtracted from the hall's air, and the stage house is a box joined to it.
+
+`Solid.room` makes the result into a room. It welds vertices within 10 µm, turns the faces to point
+inwards, and drops slivers that the cuts leave. A face's material can be "open".
+
+Two room presets are built this way (`HallShapes`):
+
+- **A shoebox concert hall**, 26 × 18 × 14 m: a balcony along both sides and the back, and a raised
+  stage house, 8 m deep, behind a proscenium.
+- **A raked auditorium**: a fan-shaped plan, 26 m deep and 18 to 32 m wide, with seating rising 6 m
+  to the back under a sloping ceiling, and a rear tier above the stalls. It is the intersection of
+  an extruded long section and an extruded fan plan, less the tier.
+
+Both hall presets have six materials: audience, other floors, walls, ceiling, stage floor and stage
+walls. Measured scenes describe their geometry the same way (see
+[the chamber music hall](roomcad-validation.md#a-larger-room-the-chamber-music-hall)).
+
+### Pushing a surface
+
+`RoomMesh.pushingPlane` moves the plane of one face along its normal: every corner on that plane
+moves, every face on it goes with them, and the faces that meet it stretch. The result is refused
+if a face would no longer be flat, if a moving corner's path would cross another face, or if the
+room would fail its checks. Tests push a box's wall out and refuse pulling it through the opposite
+wall, lower an L-shaped room's floor, and raise a hall's highest ceiling.
+
+### Importing a model
+
+`RoomImport` turns the polygons of a model file into a room. The app reads OBJ and STL files with
+SimulationKit's GeometryImport, the reader BombCAD uses too. The model must be the closed surface of
+the room's air: a box, a hall or any shape drawn as one solid, or as the inside surface of a building's
+room. Then:
+
+- **Units and axes.** The model is scaled to metres and, if it was drawn with y up, turned so z is
+  up.
+- **Welding.** Corners closer than 0.1 mm become one, so an STL file's separate triangles join up.
+  Faces that collapse to a line or point are left out.
+- **Flatness.** A polygon that is not flat within a millimetre is cut into triangles. Concave
+  polygons, such as an L-shaped floor, stay whole.
+- **Orientation.** A solid's faces usually point out; if the enclosed volume comes out negative, every
+  face is turned to point into the room.
+- **Materials.** Faces take one material per name in the file: the OBJ material, else its group,
+  else its object. Each starts as the room's current wall material and keeps its name as a label.
+- **Checks.** Every edge must belong to exactly two faces. An edge with one face leaves a gap; an edge
+  with more than two means more than one surface, such as a building's inside and outside walls.
+  Either is refused, with a count of the edges at fault. At most 50,000 faces are taken.
+
+Tests import a solid drawn in centimetres with y up, an L-shaped room given as separate triangles and
+as polygons with a concave floor, an open box, two boxes sharing an edge, and a box with one corner
+raised, which is cut into triangles where it is warped.
+
+### Tests
+
+Tests check the mesh code against the box and the floor plan:
+
+- A box and an L-shaped plan, built as meshes, have the right volume, area and inward normals. Inside
+  and clearance agree with the plan's at 2,000 random points.
+- Open, turned and bent meshes are rejected, as is a room with both a mesh and a plan.
+- A box as a mesh has exactly the box's image sources up to the third order. An L-shaped mesh has
+  the plan's image sources, including the ones hidden round the corner.
+- A box and an L as meshes give the same scattered energy within 5%, and the same wave field to
+  within 10⁻⁸ of its energy.
+- A whole response for a box as a mesh matches the box's own within 0.5 dB in every band.
+- Boxes cut into fragments by solid operations keep the box's image sources. A raked hall with a
+  balcony is watertight.
+
+## Fitted zones
+
+Chairs, desks, pews, pillars, ornament and hanging lights scatter sound, but they are too many and
+too small to model as surfaces. A fitted zone describes them statistically, after Ondet and Barbry
+(1989): a box of the room, with two numbers.
+
+- **Density, q.** This is how often sound meets an object, per metre travelled. In the zone, sound
+  travelling d metres meets one with probability 1 − e^(−qd). For objects scattered at random, q is
+  their total surface area over four times the zone's volume, because a convex object's mean
+  cross-section over all directions is a quarter of its surface (Cauchy's formula). The density is the
+  same in every band: the objects are taken to be large beside the wavelength. That holds for most
+  furniture above the wave solver's crossover, which handles the bands below it.
+- **Absorption, α.** This is the fraction of the energy lost at each encounter, per band. The rest
+  scatters equally in every direction.
+
+Zones lie within the room's size and may touch but not overlap.
+
+Each part of the model uses the zones as follows:
+
+- **Rays.** In a zone, a ray meets an object after a random optical depth, drawn from an exponential
+  distribution. There it loses α, leaves in a random direction, and from then on counts as scattered.
+- **Image sources.** Each keeps only the energy that crosses the zones without meeting an object:
+  e^(−∫q dl) along its actual path. In a box, that path is the straight line to the image, folded
+  back into the room at each wall it crosses. In a floor plan, the path turns at each wall
+  reflection, and its height folds at the floor and ceiling. In a mesh, it runs through the
+  reflection points. The rays carry the energy the image sources lose, so it is counted once.
+- **Estimates and the wave solver.** A zone adds 4qαV of absorption area, like air, to the Sabine and
+  Eyring estimates. The wave solver's bands are matched to those estimates, so they include it.
+
+In the app, **Objects** in the inspector adds, edits and removes zones. **Add Seating Zone**
+starts from an estimate for upholstered seats over the middle of the floor: one seat to 0.55 m² of
+floor, each with 1.5 m² of surface, giving about 0.76 per metre. Their absorption is left at zero,
+because the floor's audience material already accounts for it. Zones are drawn as hatched brown boxes
+in the plan and section.
+
+Tests check zones against exact results:
+
+- The direct sound loses exactly e^(−qd) of its energy crossing d metres of a zone.
+- A folded box path starts at the receiver, ends at the source, keeps the image's distance, and turns
+  once per reflection.
+- Box, floor-plan and mesh image sources lose the same energy to a zone, to within 10⁻⁹, in a box
+  and in an L-shaped room.
+- In a rigid room full of objects that absorb nothing, the rays still fill the room at the diffuse
+  rate 4πc/V, within 3%.
+- In a rigid room full of objects that absorb α, the response decays at cqα, as Sabine's formula with
+  4qαV predicts, within 4%. Much denser objects make sound spread through the room by diffusion. A
+  receiver away from the source then sees the room's decay only once the energy has spread, so its
+  decay looks a few percent longer.
+
+## Matching a measured reverberation time
+
+Absorption is often fitted to a measured reverberation time with Eyring's formula, as BRAS did for
+its fitted materials. That formula takes the sound field to be diffuse. Where absorption is
+concentrated, as on an audience floor, or surfaces scatter little, a room decays more slowly than the
+formula says, and so does RoomCAD's model of it. Absorption fitted with the formula then leaves the
+simulated decay too long. In BRAS's chamber music hall, even with every surface scattering fully, the
+model decays 4–13% more slowly than Eyring's estimate from 500 Hz to 2 kHz.
+
+`AbsorptionCalibration` fits absorption with the model instead:
+
+1. It simulates the room and measures T30 in each band at every receiver.
+2. It scales every surface's absorption, and every fitted zone's, by one factor per band, keeping
+   their proportions until one reaches 0.99; beyond that, the others keep scaling. The first factor
+   is the ratio of the absorption area the target implies to the area the simulated time implies,
+   both by Sabine's formula with the room's air. A room that is not diffuse answers less than
+   Sabine's formula says, so later steps measure how strongly the time answered the last change,
+   T ∝ f^(−b), and solve for the target with that (a secant step).
+3. Where the time hardly answered the last change, or went the wrong way, as it can in a band the
+   wave solver holds or where the decay is noisy, the step falls back to Sabine's ratio.
+4. It repeats until every band with a target is within 2%, or after five steps, and keeps, in each
+   band, the step that came closest. Each band's absorption barely changes another's decay, so the
+   bands are chosen apart.
+
+A step never doubles or halves the absorption, and never takes a surface past 0.99. A target beyond
+reach, shorter than the room can decay with every surface at 0.99 or longer than with none, is
+reported as missed.
+
+Bands without a target keep their absorption. In the app, **Match Reverberation Time** takes a
+target for any band and fits the room at preview quality, usually in three or four simulations.
+
+A test fits a room with an absorbing floor and little scattering to 1.2 s from 250 Hz to 2 kHz. Its
+decay as given is about 1.5 s, against Eyring's 0.9 s. Sabine's ratio alone closes the gap slowly;
+with the secant steps the fit is within 3% after three simulations. The floor and walls keep their
+ratio, bands without a target keep their absorption, and Eyring's formula, given the fitted
+absorption, predicts a faster decay than the simulated one. A second test stands a synthetic decay in for the model, with one band
+whose time jumps about from step to step, and checks that the band keeps its closest step.
+
 ## Openings
 
 An opening is a rectangle on one surface, such as an open door, window or hatch, given by its centre
@@ -194,10 +380,33 @@ fill the room, at least 10 per wavelength at the top of the crossover's transiti
   resampling.
 - **Walls.** Walls are locally reacting, with a real normalized impedance ξ, treated semi-implicitly
   so any ξ > 0 is stable. Published coefficients are random-incidence values, so ξ is found by
-  inverting Paris's statistical absorption, α = (8/ξ)[1 + 1/(1 + ξ) − (2/ξ) ln(1 + ξ)]. The value is
-  averaged over the bands the solver covers, and is at most about 0.951 for a real impedance. Using
+  inverting Paris's statistical absorption, α = (8/ξ)[1 + 1/(1 + ξ) − (2/ξ) ln(1 + ξ)], which is at
+  most about 0.951 for a real impedance. Using
   the normal-incidence relation instead made the walls absorb about half as much again at α = 0.3, and
   left the wave part 1.5–5.6 dB too quiet at the crossover.
+- **Frequency-dependent walls.** Each octave band below the crossover's top gets the impedance its own
+  absorption gives. Bands whose impedances agree on every boundary share a run, so a room of
+  frequency-independent materials needs one run and one with several distinct bands needs one per band.
+  Each run's spectrum is kept only in its own bands, through the same octave weights the geometrical
+  model uses, which sum to one.
+- **Decay matched to a diffuse field.** Published absorption coefficients are diffuse-field values, and
+  the geometrical model uses them that way. In the solver a wall is a locally reacting impedance. By
+  Morse's first-order theory, a mode loses only half as much energy to a wall it grazes as to one it
+  strikes. Axial and tangential modes therefore outlast a diffuse field, and a bare-walled box's decay
+  in a band is 20–60% longer than Eyring's estimate for the same coefficients. The measured seminar
+  room ([RoomCAD against a measured room](roomcad-validation.md)) decayed at the diffuse rate, because
+  real rooms mix grazing and oblique energy through their irregularities, furniture and surfaces that
+  are not locally reacting.
+
+  Each run therefore also records 24 probes, spread through the room by a Halton sequence and kept
+  0.3 m clear of every boundary. Their summed energy in each band gives the room's average T30.
+  Where that is longer than Eyring's estimate for the band, with air absorption and openings, the
+  band's response is damped by e^(−Δt) from the direct sound's arrival, so that it decays at Eyring's
+  rate. Every mode in the band is damped alike, so the modes' frequencies, their spatial pattern and
+  their differences in decay remain, and the response never decays more slowly than before. In boxes
+  whose absorption is uniform, on the floor and ceiling only, or on one wall, the damped decay at
+  receivers other than the probes was within 12% of Eyring's estimate; bare, it was 20–60% longer. The
+  bare decay of each band is reported with the response.
 - **Source and calibration.** The source injects volume velocity, a Gaussian derivative with no net
   volume. Each receiver's spectrum, taken at its exact sample times, is divided by the free-field
   pressure 1 m away, ρ·j2πf·Q(f)/4π. That gives the geometrical model's units and time origin.
@@ -207,11 +416,30 @@ fill the room, at least 10 per wavelength at the top of the crossover's transiti
 - **Blending.** The two models are blended with complementary zero-phase half-cosine crossovers
   (±0.5 octave), which sum to one.
 
-`WavePlan` chooses the crossover: twice the Schroeder frequency, between 80 and 250 Hz, lowered until
-the work fits a budget of 4 × 10⁹ cell updates. Work grows as frequency to the fourth power. If even
-60 Hz doesn't fit, the solver is skipped with a note: the stone church's modes are dense above about
-60 Hz anyway. A fixed crossover from 40 to 500 Hz can be set instead. The solver runs on the CPU's
-cores; small grids use one thread.
+`WavePlan` chooses the crossover: three times the Schroeder frequency, where modes have become dense,
+between 80 and 500 Hz (250 Hz without a GPU). It is lowered until the work, counting every run, fits a
+budget of 1.5 × 10¹⁰ cell updates on the GPU or 4 × 10⁹ on the CPU (half that for a floor plan, whose
+masked grid costs about twice as much per cell). Work grows as frequency to the fourth power. If even
+60 Hz doesn't fit, as in a 120 × 80 × 30 m hangar, the solver is skipped with a note. A fixed crossover
+from 40 to 500 Hz can be set instead.
+
+`MetalWaveSolver` runs the same scheme on the GPU in single precision, as Metal compute kernels
+compiled when first used: one for velocity, one for pressure with the walls, and two for the source and
+receivers, 128 steps to a command buffer. Box and plan share one layout, in which every cell carries
+its six faces' wall coefficients, so the GPU has no separate plan path. It reaches about 3.6 × 10⁹ cell
+updates a second on large grids, limited by memory bandwidth. Without a GPU the CPU solver runs as
+before, on the CPU's cores, with small grids on one thread.
+
+Other apps can keep the GPU busy and slow a run many times over. Each run therefore starts on the GPU
+and, after a quarter of a second, projects its pace to the end. If what remains would take over a
+second, and more than 1.5 times as long as the whole run on the CPU, the run is abandoned and redone
+on the CPU. The CPU's time is estimated by timing a few steps of the same grid. The crossover and grid
+don't change, so the response doesn't depend on which engine ran it, beyond single-precision rounding.
+Each run decides afresh, so the GPU is used again once it frees up.
+
+With a separate process saturating the GPU, the L-shaped living room's runs projected to about 30 s
+each on the GPU and took 6.5 s on the CPU, which the estimate predicted within about 20%. The response
+view says how many runs used each engine.
 
 Tests check the solver against theory:
 
@@ -224,19 +452,91 @@ Tests check the solver against theory:
   reflection coefficient gives (6% in a release build).
 - Far from the source, a cardioid facing it hears it within 10% of an omni. Facing away, or side-on as
   a figure of eight, it hears under 3%.
+- With absorption 0.2 in the 63 Hz band and 0.6 above, the first axial mode (43 Hz) and the third
+  (129 Hz) each decay within 10% of the rate their own band's impedance gives.
+- The GPU and CPU solvers agree to within 10⁻¹⁰ of the energy, in a box and in an L-shaped plan with a
+  door, for omni and cardioid receivers.
+- The rule itself is tested on its own. End to end, a delay after each GPU command buffer stands in for
+  a busy GPU: a long run moves to the CPU and gives exactly the CPU's result, while a run with under a
+  second left when judged stays on the GPU.
 - The impedance inversion reproduces the absorption, and rooms over budget skip the solver.
+- Yee's dispersion relation gives the second-order phase-velocity error along an axis, and less on
+  diagonals. For every grid RoomCAD chooses, waves at the crossover travel within 1% of c.
+- Over 50,000 steps on either engine, a rigid room keeps ringing at the same strength and an anechoic
+  one dies away, so the walls are stable and passive.
+- Matched to the diffuse decay, a box decays within 12% of Eyring's estimate at receivers other than
+  the probes, with uniform absorption or with absorption on the floor and ceiling only.
 
-Across the presets, the two models' energy just below the crossover agrees within 1.5 dB, except in the
-chamber music hall (−4.3 dB). There the listener sits over a large absorbent floor of seats, where
-sound passing over the seats cancels at low frequencies, the "seat dip" known from concert halls. Only
-the wave model can show this, so the difference is probably physical, but it has not been checked
-against a measurement. Generation with the solver takes 0.7–5.5 s for the presets.
+On an M-series Mac the presets' crossovers run from 69 Hz (stone church) to 457 Hz (vocal booth), with
+one to four runs, and generation with the solver takes 1.4–5.3 s in a release build. Every preset now
+gets a wave part; before the GPU solver, the halls and the church were skipped.
+
+In the octave band holding each preset's crossover, the two models' energy at the listeners agrees
+within 2 dB, and their T30 within 15%. The stone church is the exception: its crossover (69 Hz) lies
+in the 63 Hz band, where the wave part is 4 dB louder and decays over 16.7 s against the geometrical
+model's 10.5 s. Eyring's estimate is 18.8 s.
+
+Below the crossover, where only the wave solver is heard, its energy is up to 3.4 dB lower than the
+geometrical model's. The geometrical model decays more slowly there, up to twice Eyring's estimate in
+the classroom at 63 Hz, because the presets' surfaces scatter little at low frequencies. The wave
+solver's decay is matched to Eyring's. There are two exceptions at 63 Hz:
+
+- The L-shaped living room is 5.4 dB louder in the wave model. The listener is round the corner from
+  the source, and at 63 Hz (5.4 m) sound diffracts round it, which the geometrical model leaves out.
+- The stone church is 4.0 dB louder (above). Source and listener are both within about a quarter
+  wavelength of the floor, which raises the level near a boundary (the Waterhouse effect); the
+  diffuse tail assumes a uniform field.
+
+Both are probably physical, but neither has been checked against a measurement.
+
+### Accuracy
+
+`acousticbench --wave-accuracy` measures how faithfully the solver carries a travelling wave, the
+benchmark that roadmap milestone M3 asks for.
+
+**Dispersion.** On Yee's grid a wave of frequency f travels slightly slower than sound, by an amount
+that grows with frequency and is largest along the grid's axes (`WaveAccuracy`). A room mode is low by
+about the same fraction. RoomCAD sizes the cells for 10 points per wavelength at the top of the
+crossover's transition, so the crossover itself has about 14. For a 250 Hz crossover (9.7 cm cells,
+83 µs steps) the errors are:
+
+| Frequency | Points per wavelength | Axis | Face diagonal | Body diagonal |
+|---|---|---|---|---|
+| 63 Hz | 57 | −0.05% | −0.02% | −0.01% |
+| 125 Hz | 28 | −0.19% | −0.08% | −0.05% |
+| 177 Hz | 20 | −0.38% | −0.17% | −0.10% |
+| 250 Hz | 14 | −0.76% | −0.34% | −0.20% |
+| 354 Hz | 10 | −1.53% | −0.68% | −0.40% |
+
+Below the crossover, which is where the solver is heard, mode frequencies are therefore within 1%,
+the roadmap's target. Each response reports its own worst error at the crossover.
+
+**Travelling waves.** A pulse travels from the centre of a large anechoic box (30 m for a 100 Hz
+crossover, 20 m for 250 Hz) to receivers 1, 2, 3.5 and 5 m away, along an axis and along the body
+diagonal. Each response is windowed before the walls' first reflection. The solver's part of it is
+divided by the geometrical model's exact direct sound, at a quarter, half, 0.71 and all of the
+crossover frequency.
+
+- **Amplitude.** The error is within 0.36 dB everywhere, against the roadmap's 1 dB over the declared
+  test distance of 5 m.
+- **Phase.** The phase lag grows with distance as the dispersion relation predicts. Along an axis at
+  5 m, at a 250 Hz crossover, it is 9.9° measured against 10.0° predicted, and 3.4° against 3.5° at
+  177 Hz. On the diagonal at 5 m, it is 2.8° against 2.6°. At the lowest frequencies the window, a
+  little shorter than a period, adds up to 3° of its own.
+
+So the solver's usable band is everything below its crossover. There, amplitude is within 0.4 dB
+over 5 m, and phase velocity and mode frequencies within 1%. The scheme is linear, so these hold at
+any level. Each export's model description states the crossover and the phase-velocity error there.
 
 Limitations of the solver:
 
-- The wall impedance is real and the same at every frequency below the crossover.
+- The wall impedance is real, and constant within each octave band.
+- Walls are locally reacting. The decay matching above makes each band decay, on average, as a
+  diffuse field would. It does not model how real surfaces absorb at grazing incidence, so which modes
+  decay faster than others may differ from a real room. In a room that really is a smooth, bare box,
+  matching makes the low end decay faster than it would.
 - There is no air absorption, which is negligible there.
-- It models a bare box: no furniture, scattering or openings.
+- It models bare walls: no furniture or scattering. Openings are walls of ξ = 1.
 - The grid's dispersion grows towards the top frequency.
 
 ## Rendering
@@ -343,6 +643,31 @@ a reference room and exports its responses. Its results on the development Mac:
 | Anechoic energy more than 1 ms after the arrival | 10⁻³² without the high-pass; 2.9 × 10⁻⁴ with it |
 | Reference room, 2 receivers × 1.5 s | about 4.0 million arrivals per receiver, 5.7 s; with scattering, 6.0 s including 40,000 rays |
 
+### Comparison with a measured room
+
+[RoomCAD against measured rooms](roomcad-validation.md) compares RoomCAD with ten measured responses
+in each of two rooms from the BRAS database. In the 145 m³ seminar room:
+
+- **Reverberation.** With only published absorption data, the reverberation time from 250 Hz to
+  2 kHz is within 12%, and clarity within about one just-noticeable difference.
+- **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
+  frequencies within about 1.5%.
+- **Early reflections.** These follow the measured pattern at most positions (correlation 0.61,
+  against 0.22 for the wrong position).
+- **Low-frequency decay.** The bare wave solver's was about 30% too long. With each band matched to
+  the diffuse decay, T30, EDT, clarity and definition at 63 and 125 Hz are within about 2 JND.
+
+In the 3,100 m³ chamber music hall, built from solids, with absorption fitted to this model:
+
+- **Clarity and definition.** C80, D50 and centre time are within about one JND from 500 Hz to 4 kHz.
+- **Reverberation.** The decay is 13–40% too long, because the simplified hall lacks the pillars,
+  ornament and chairs that scatter sound in the real one.
+
+`RoomParameters` computes the ISO 3382-1 parameters it uses: EDT, T20, T30, C50, C80, D50 and
+centre time, with Lundeby's noise compensation for measured responses.
+
+### Playback in Driftbox
+
 The exported stereo file was also played through Driftbox's own engine. That code is independent of
 RoomCAD: native Driftbox's WAV decoder and its zero-latency `PartitionedConvolver`. Convolving a noise
 burst matched direct convolution to 3 × 10⁻⁷ of the peak, and an impulse input reproduced the
@@ -401,9 +726,13 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 
 ## Limitations
 
-- **Geometry.** Rooms are boxes or floor plans with vertical walls and a flat floor and ceiling.
-  Sloping ceilings, curved walls, furniture and coupled spaces are not modelled. A floor plan's image
-  sources reach only modest orders, with rays carrying the rest.
+- **Geometry.** Rooms are boxes, floor plans with vertical walls, or closed meshes of flat faces.
+  Curved walls are approximated by flat faces. Pillars, furniture and ornament can stand as fitted
+  zones, boxes of statistically scattering objects; their density must be estimated, and they scatter
+  equally in every band and direction. Coupled spaces work only as one mesh.
+  A floor plan's or mesh's image sources reach only modest orders, with rays carrying the rest.
+- **Meshes in the app.** A mesh comes from a preset or a measured scene. The app shows it and edits
+  its materials, but it cannot edit its shape. Openings in a mesh are open faces, not rectangles.
 - **Scattering.** Published scattering values exist only for a few surfaces (seven presets). Others
   are inputs, and the starter room's are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
   exaggerated (above).
@@ -426,16 +755,22 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 - **Materials.** Presets give published random-incidence absorption from 125 Hz, extended to 63 Hz
   and, where missing, to 8 kHz (see [the app's presets](roomcad-app.md#material-presets)). The bench's
   α = 0.2 is illustrative.
-- **Performance.** Generation runs on the CPU's cores, but not on the GPU.
+- **Performance.** The wave solver runs on the GPU; image sources and ray tracing run on the CPU's
+  cores.
 
 ## Future work
 
 The roadmap orders the work as follows:
 
-- a bounded, labelled late tail if auditioning needs one (M2 item 4);
 - more sourced scattering data (M5);
-- frequency-dependent wall impedance and a GPU wave solver, for higher crossovers and larger rooms;
-- comparison with measured room responses (M4 item 5).
+- wave-solver walls that also absorb at grazing incidence, such as extended-reaction or
+  frequency-dependent complex impedances, checked against the measured room;
+- fitted zones that follow a raked floor or a wall, rather than boxes, and sourced densities for
+  common furnishings;
+- the remaining BRAS auditorium, CR4, built from solids.
+
+A synthetic late tail (M2 item 4) is no longer needed: rays carry every reflection beyond the image
+sources' order.
 
 The ray tracer and image sources could run on the GPU.
 
@@ -443,16 +778,27 @@ The ray tracer and image sources could run on the GPU.
 
 - J. B. Allen and D. A. Berkley, "Image method for efficiently simulating small-room acoustics",
   *J. Acoust. Soc. Am.* 65 (4), 943–950, 1979.
+- J. Borish, "Extension of the image model to arbitrary polyhedra", *J. Acoust. Soc. Am.* 75 (6),
+  1827–1836, 1984, for image sources in rooms of any shape.
+- A. M. Ondet and J. L. Barbry, "Modeling of sound propagation in fitted workshops using ray
+  tracing", *J. Acoust. Soc. Am.* 85 (2), 787–796, 1989, for fitted zones.
+- E. Wallace, csg.js (https://github.com/evanw/csg.js, MIT licence), for constructive solid geometry
+  with binary space partitioning trees.
 - ISO 9613-1:1993, *Acoustics — Attenuation of sound during propagation outdoors — Part 1:
   Calculation of the absorption of sound by the atmosphere*. The equations are as transcribed by
   [sengpielaudio](https://sengpielaudio.com/LuftdaempfungFormel.htm).
 - ISO 3382-1:2009, *Acoustics — Measurement of room acoustic parameters — Part 1: Performance
-  spaces*, for Schroeder backward integration and T30.
+  spaces*, for Schroeder backward integration, T30 and the other room-acoustic parameters.
 - H. Kuttruff, *Room Acoustics*, 6th edn, CRC Press, 2016, for the Sabine and Eyring formulae, the
   Schroeder frequency, decay in non-diffuse rooms, the correction for the spread of free path
   lengths, and ray tracing with diffuse reflection.
 - M. Vorländer, *Auralization: Fundamentals of Acoustics, Modelling, Simulation, Algorithms and
   Acoustic Virtual Reality*, Springer, 2008, annex, for the material presets, via the pyroomacoustics
   materials database (https://github.com/LCAV/pyroomacoustics, MIT licence).
+- L. Aspöck, M. Vorländer, F. Brinkmann, D. Ackermann and S. Weinzierl, *Benchmark for Room
+  Acoustical Simulation (BRAS)*, TU Berlin and RWTH Aachen, 2020, DOI 10.14279/depositonce-6726.3,
+  CC BY-SA 4.0, for the measured seminar room and chamber music hall.
+- A. Lundeby, T. E. Vigran, H. Bietz and M. Vorländer, "Uncertainties of measurements in room
+  acoustics", *Acustica* 81, 344–355, 1995, for noise compensation in measured decay.
 - ISO 17497-1:2004, *Acoustics — Sound-scattering properties of surfaces — Part 1: Measurement of the
   random-incidence scattering coefficient in a reverberation room*, for the definition of s.

@@ -105,6 +105,9 @@ public final class StructureSolver {
     /// Bar plastic strains along each axis, written in alternate substeps like `crushBuffers`, so
     /// that rupture can be judged over a debonded length.
     private let barPlasticBuffers: [MTLBuffer]
+    /// Each element's stretching rate along the lattice axes, for bars that take their rate
+    /// over their debonded length (`StructureModel.barRateAlongBars`), even and odd substeps.
+    private let barRateBuffers: [MTLBuffer]
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
     /// Per material, the most steel any of its elements holds along one direction (the largest
@@ -139,9 +142,17 @@ public final class StructureSolver {
     let contactForceBuffer: MTLBuffer
     /// Non-zero once any element has failed.
     private let failureGateBuffer: MTLBuffer
-    /// The base's connection to the ground, two `SIMD4<Float>` per node (see `anchorForce` in
+    /// Bars that slip (`StructureModel.bondSlip`): each node's slip state along each axis (three
+    /// `SIMD4<Float>`: slip, its rate, plastic slip, largest slip); the bond's area and the slip's
+    /// stiffness at each node along each axis (two `SIMD4<Float>`); and each element's bar force
+    /// along each axis. Placeholders with perfect bond.
+    private var slipBuffer: MTLBuffer
+    private var slipSupportBuffer: MTLBuffer
+    private var barForceBuffer: MTLBuffer
+    /// The base's connection to the ground, three `SIMD4<Float>` per node (see `anchorForce` in
     /// Structure.metal); a placeholder when the base is clamped or free.
     private let anchorBuffer: MTLBuffer
+    private let anchorLawBuffer: MTLBuffer
     /// The connection's stiffnesses per unit area, when the base has one.
     private let anchorStiffness: (normal: Float, shear: Float)?
     /// The largest square angular frequency, in 1/s², of a node on its connection alone.
@@ -181,7 +192,11 @@ public final class StructureSolver {
         var single = model.materials.count == 1 && !model.materials.contains(where: showsJoints)
         constants.setConstantValue(&single, type: .bool, index: 0)
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
-        nodePipeline = try pipeline("structureNodes")
+        // Keep the general connection law out of kernels for ordinary clamped/free bodies.
+        let nodeConstants = MTLFunctionConstantValues()
+        var connected = model.connectionStiffness != nil
+        nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
+        nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")
         contactForcePipeline = try pipeline("contactForces")
@@ -296,11 +311,7 @@ public final class StructureSolver {
         let averagesCrushing = materials.contains { Self.crushRadius(of: $0, elementSize: h) > 0 }
         let crushLength = averagesCrushing ? elements * 16 : 16
         let materialIndex = try buffer(elements, "structure material indices")
-        elementMaterials.withUnsafeBytes { bytes in
-            if let base = bytes.baseAddress, !bytes.isEmpty {
-                materialIndex.contents().copyMemory(from: base, byteCount: bytes.count)
-            }
-        }
+        materialIndex.copy(elementMaterials)
         materialIndexBuffer = materialIndex
         crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
         let spreadsRupture = materials.contains { Self.barReach(of: $0, elementSize: h) > 0 }
@@ -308,6 +319,11 @@ public final class StructureSolver {
         barPlasticBuffers = [
             try buffer(barPlasticLength, "bar plastic strain, even"),
             try buffer(barPlasticLength, "bar plastic strain, odd"),
+        ]
+        let barRateLength = spreadsRupture && model.barRateAlongBars ? elements * 16 : 16
+        barRateBuffers = [
+            try buffer(barRateLength, "bar strain rate, even"),
+            try buffer(barRateLength, "bar strain rate, odd"),
         ]
 
         // Smear each reinforcement layer into the elements it overlaps, in proportion to the
@@ -362,11 +378,7 @@ public final class StructureSolver {
         }
         func indexBuffer(_ indices: [UInt32], _ label: String) throws -> MTLBuffer {
             let result = try buffer(indices.count * MemoryLayout<UInt32>.stride, label)
-            indices.withUnsafeBytes { bytes in
-                if let base = bytes.baseAddress, !bytes.isEmpty {
-                    result.contents().copyMemory(from: base, byteCount: bytes.count)
-                }
-            }
+            result.copy(indices)
             return result
         }
         densestSteel = densest
@@ -418,24 +430,80 @@ public final class StructureSolver {
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         contactForceBuffer = try buffer(nodeList.count * 12, "contact forces")
         failureGateBuffer = try buffer(16, "failure gate")
-        if let anchorage = model.baseAnchorage, model.fixedBase {
-            anchorStiffness = anchorage.stiffness(material: model.material, elementSize: h)
-            anchorBuffer = try buffer(nodeList.count * 32, "anchors")
+        // Placeholders, replaced once the body is set up if its bars slip (`setUpBondSlip`).
+        slipSupportBuffer = try buffer(16, "slip support")
+        slipBuffer = try buffer(16, "bar slip")
+        barForceBuffer = try buffer(16, "bar forces")
+        try model.validateAnchorages()
+        if let stiffness = model.connectionStiffness {
+            anchorStiffness = stiffness
+            anchorBuffer = try buffer(nodeList.count * 48, "anchors")
         } else {
             anchorStiffness = nil
             anchorBuffer = try buffer(16, "anchors")
         }
+        anchorLawBuffer = try buffer(
+            (anchorStiffness != nil ? max(nodeList.count, 1) : 1) * MemoryLayout<AnchorageParameters>.stride,
+            "connection laws")
+        try setUpBondSlip()
         reset()
         if let anchorStiffness {
             let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
-            let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+            let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
             mutateNodes { nodes in
-                for n in 0..<nodeCount where anchors[2 * n].x > 0 && nodes[n].mass > 0 {
+                for n in 0..<nodeCount where anchors[3 * n].x > 0 && nodes[n].mass > 0 {
                     anchorFrequencySquared = max(
-                        anchorFrequencySquared, stiffest * anchors[2 * n].x / nodes[n].mass)
+                        anchorFrequencySquared, stiffest * anchors[3 * n].x / nodes[n].mass)
                 }
             }
         }
+    }
+
+    /// With bars that slip, makes their buffers: the slip state, each element's bar forces, and
+    /// the bond's area at each node along each axis, a share of the bars' surface in the elements
+    /// around it (4 rho / d per unit volume), with the slip's stiffness there, from the bars' own
+    /// stretch across those elements and the bond's initial stiffness. An element's bars tie the
+    /// slip at each of its corners to that at all eight, so the stretch counts eight times its
+    /// own corner's share, E_s rho h / 16 (a Gershgorin bound): counted once, the slip rang
+    /// without settling. (Done after the initialiser has set everything else up: written inline
+    /// there, the loop made the optimised build trap, as one did in `ShellSolver`'s.)
+    private func setUpBondSlip() throws {
+        guard let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) else { return }
+        let h = model.elementSize
+        let law = bond.law(compressiveStrength: model.material.compressiveStrength)
+        let bondStiffness = law.peak * pow(0.02, law.alpha) / (0.02 * law.s1)
+        let barModulus = model.material.steel?.youngsModulus ?? 200e9
+        let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
+        let ratios = steelBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: max(elementCount, 1))
+        let nodeMap = nodeMapBuffer.contents().bindMemory(
+            to: UInt32.self, capacity: (ex + 1) * (ey + 1) * (ez + 1))
+        var support = [SIMD4<Float>](repeating: .zero, count: 2 * max(nodeCount, 1))
+        for n in 0..<elementCount {
+            let (i, j, k) = elementCoordinates(Int(instances[n]))
+            let ratio = SIMD3(ratios[n].x, ratios[n].y, ratios[n].z)
+            guard any(ratio .> 0) else { continue }
+            let area = 4 * ratio / bond.barDiameter * (h * h * h / 8)
+            let stiffness = barModulus * h / 2 * ratio + bondStiffness * area
+            for corner in 0..<8 {
+                let lattice =
+                    (i + (corner & 1)) + (ex + 1)
+                    * ((j + ((corner >> 1) & 1)) + (ey + 1) * (k + ((corner >> 2) & 1)))
+                let node = Int(nodeMap[lattice])
+                support[2 * node] += SIMD4(area, 0)
+                support[2 * node + 1] += SIMD4(stiffness, 0)
+            }
+        }
+        func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
+            guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
+                throw BlastError.allocationFailed("\(label) (\(length) bytes)")
+            }
+            buffer.label = label
+            return buffer
+        }
+        slipSupportBuffer = try buffer(support.count * 16, "slip support")
+        slipSupportBuffer.copy(support)
+        slipBuffer = try buffer(3 * nodeCount * 16, "bar slip")
+        barForceBuffer = try buffer(max(elementCount, 1) * 32, "bar forces")
     }
 
     // MARK: - State
@@ -454,9 +522,11 @@ public final class StructureSolver {
             flags[Int(instances[n])] = ElementFlag.active.rawValue
         }
         memset(stateBuffer.contents(), 0, stateBuffer.length)
+        memset(slipBuffer.contents(), 0, slipBuffer.length)
+        memset(barForceBuffer.contents(), 0, barForceBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
-        for crushBuffer in crushBuffers + barPlasticBuffers {
+        for crushBuffer in crushBuffers + barPlasticBuffers + barRateBuffers {
             memset(crushBuffer.contents(), 0, crushBuffer.length)
         }
 
@@ -466,8 +536,10 @@ public final class StructureSolver {
         // A connected base gets each ground node's share of the base area instead of a clamp.
         let anchored = anchorStiffness != nil
         let anchors = anchorBuffer.contents().bindMemory(
-            to: SIMD4<Float>.self, capacity: max(2 * nodeCount, 1))
+            to: SIMD4<Float>.self, capacity: max(3 * nodeCount, 1))
         if anchored { memset(anchorBuffer.contents(), 0, anchorBuffer.length) }
+        let laws = anchorLawBuffer.contents().bindMemory(
+            to: AnchorageParameters.self, capacity: max(nodeCount, 1))
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
             for n in 0..<elementCount {
@@ -477,12 +549,16 @@ public final class StructureSolver {
                 for corner in 0..<8 {
                     let index = nodeIndex(i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
                     nodes[index].mass += cornerMass
-                    if onGround && k + ((corner >> 2) & 1) == 0 {
-                        if anchored {
-                            anchors[2 * index].x += h * h / 4
-                        } else {
-                            nodes[index].isFixed = true
-                        }
+                    let nk = k + ((corner >> 2) & 1)
+                    let point = referencePosition(i + (corner & 1), j + ((corner >> 1) & 1), nk)
+                    // Tributary area on exposed lower faces; finite supports never pin interior nodes.
+                    if anchored && corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil),
+                        let law = model.connection(at: point)
+                    {
+                        anchors[3 * index].x += h * h / 4
+                        laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
+                    } else if onGround && nk == 0 && model.baseAnchorage == nil {
+                        nodes[index].isFixed = true
                     }
                 }
             }
@@ -494,16 +570,13 @@ public final class StructureSolver {
     /// region ending on a face holds the nodes on it).
     private func holdSupports() {
         guard !model.supports.isEmpty else { return }
-        let slack = 1e-3 * model.elementSize
         mutateNodes { nodes in
             for k in 0...ez {
                 for j in 0...ey {
                     for i in 0...ex {
                         guard let n = storedNode(i, j, k) else { continue }
                         let p = referencePosition(i, j, k)
-                        if model.supports.contains(where: {
-                            all(p .>= $0.min - slack) && all(p .<= $0.max + slack)
-                        }) {
+                        if model.isClampedBySupport(at: p) {
                             nodes[n].isFixed = true
                         }
                     }
@@ -653,8 +726,9 @@ public final class StructureSolver {
 
     /// The state of the base's connection to the ground, when it has one (`Anchorage`).
     public struct AnchorSummary: Sendable {
-        /// Nodes tied to the ground, and those whose tie has lost all its strength (none for a
-        /// body resting on the ground, which has none to lose).
+        /// Nodes tied to the ground (for shells, points of their footprint), and those whose tie
+        /// has lost all its strength (none for a body resting on the ground, which has none to
+        /// lose).
         public var nodes = 0
         public var separated = 0
         /// The fraction of the tie's strength lost, averaged over the base area.
@@ -666,26 +740,32 @@ public final class StructureSolver {
         /// The largest slip and the largest opening of any node, in metres.
         public var maxSlip: Float = 0
         public var maxOpening: Float = 0
+        /// The deepest the ground has yielded and let the base settle for good, in metres.
+        public var maxSettlement: Float = 0
     }
 
     /// The connection's state after the last step, or nil when the base is clamped or free.
     public func anchorSummary() -> AnchorSummary? {
-        guard let anchorStiffness, let anchorage = model.baseAnchorage else { return nil }
-        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * nodeCount)
+        guard anchorStiffness != nil else { return nil }
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
         let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
         var summary = AnchorSummary()
         var area: Float = 0
         var centre = SIMD3<Float>.zero
         var points: [(SIMD3<Float>, SIMD3<Float>)] = []
         mutateNodes { nodes in
-            for n in 0..<nodeCount where anchors[2 * n].x > 0 {
-                let state = anchors[2 * n]
-                let force = SIMD3(anchors[2 * n + 1].x, anchors[2 * n + 1].y, anchors[2 * n + 1].z)
+            for n in 0..<nodeCount where anchors[3 * n].x > 0 {
+                let state = anchors[3 * n]
+                let force = SIMD3(anchors[3 * n + 1].x, anchors[3 * n + 1].y, anchors[3 * n + 1].z)
+                summary.maxSettlement = max(summary.maxSettlement, -anchors[3 * n + 2].x)
                 let index = Int(lattice[n])
                 let (i, j) = (index % (ex + 1), (index / (ex + 1)) % (ey + 1))
-                let position = referencePosition(i, j, 0)
+                let k = index / ((ex + 1) * (ey + 1))
+                let position = referencePosition(i, j, k)
+                guard let anchorage = model.connection(at: position), !nodes[n].isFixed else { continue }
+                let stiffness = anchorage.stiffness(material: model.material, elementSize: model.elementSize)
                 let remaining = anchorage.remaining(
-                    peak: anchors[2 * n + 1].w, wear: state.w, normalStiffness: anchorStiffness.normal)
+                    peak: anchors[3 * n + 1].w, wear: state.w, normalStiffness: stiffness.normal)
                 summary.nodes += 1
                 if remaining <= 0 { summary.separated += 1 }
                 summary.meanDamage += state.x * (1 - remaining)
@@ -702,6 +782,56 @@ public final class StructureSolver {
         centre /= area
         summary.moment = points.reduce(.zero) { $0 + simd_cross($1.0 - centre, $1.1) }
         return summary
+    }
+
+    /// Actual un-clamped bearing area assigned to a finite support, in square metres.
+    /// Read only while the GPU is idle, as with `anchorSummary()`.
+    public func supportBearingArea(at support: Int) -> Float {
+        guard anchorStiffness != nil, model.supports.indices.contains(support) else { return 0 }
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
+        let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
+        var area: Float = 0
+        mutateNodes { nodes in
+            for n in nodes.indices where !nodes[n].isFixed && anchors[3 * n].x > 0 {
+                let index = Int(lattice[n])
+                let point = referencePosition(
+                    index % (ex + 1), (index / (ex + 1)) % (ey + 1), index / ((ex + 1) * (ey + 1)))
+                if model.finiteSupportIndex(at: point) == support { area += anchors[3 * n].x }
+            }
+        }
+        return area
+    }
+
+    /// Concrete's cracks in the slice of elements at lattice row `j`, top row first, one character an
+    /// element: `.` none open past `threshold` (a strain), else the crack plane's direction in
+    /// the x–z plane (`|` vertical, `-` horizontal, `/` and `\\` inclined), and a space where
+    /// there is no element (`x` where one has been removed). A diagnostic.
+    public func crackMap(row j: Int, threshold: Float = 1e-3) -> [String] {
+        (0..<ez).reversed().map { k in
+            String(
+                (0..<ex).map { i -> Character in
+                    guard let n = compactIndex(i, j, k) else { return " " }
+                    if flag(i, j, k) != .active && flag(i, j, k) != .bare { return "x" }
+                    let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+                    let history = SIMD3(
+                        (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) })
+                    let widest =
+                        history.x >= history.y && history.x >= history.z
+                        ? 0 : (history.y >= history.z ? 1 : 2)
+                    guard history[widest] > threshold else { return "." }
+                    let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
+                    var axis = SIMD3<Float>.zero
+                    axis[widest] = 1
+                    let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
+                    let normal =
+                        simd_length(rotation.vector) > 0.5 ? simd_normalize(rotation).act(axis) : axis
+                    let angle = atan2(normal.z, normal.x) * 180 / .pi  // of the normal from x
+                    let folded = angle < -90 ? angle + 180 : (angle > 90 ? angle - 180 : angle)
+                    if abs(folded) < 22.5 { return "|" }
+                    if abs(folded) > 67.5 { return "-" }
+                    return folded > 0 ? "\\" : "/"
+                })
+        }
     }
 
     /// Total linear momentum of the body in kg m/s.
@@ -857,7 +987,7 @@ public final class StructureSolver {
         var parameters = zip(materials, jointed).map { material, jointed in
             Self.parameters(
                 for: material, elementSize: model.elementSize, hourglassCoefficient: hourglassCoefficient,
-                jointed: jointed)
+                jointed: jointed, bondSlip: model.bondSlip != nil)
         }
         guard elementCount > 0 else { return }
         // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
@@ -915,6 +1045,10 @@ public final class StructureSolver {
             encoder.setBuffer(fluid?.refinement?.patchOfTile ?? placeholderBuffer, offset: 0, index: 21)
             encoder.setBuffer(fluid?.refinement?.fine ?? placeholderBuffer, offset: 0, index: 22)
             encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 23)
+            encoder.setBuffer(slipBuffer, offset: 0, index: 24)
+            encoder.setBuffer(barForceBuffer, offset: 0, index: 25)
+            encoder.setBuffer(barRateBuffers[substep % 2], offset: 0, index: 26)
+            encoder.setBuffer(barRateBuffers[1 - substep % 2], offset: 0, index: 27)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -961,6 +1095,10 @@ public final class StructureSolver {
             encoder.setBuffer(interface?.links ?? placeholderBuffer, offset: 0, index: 15)
             encoder.setBuffer(interface?.loads ?? placeholderBuffer, offset: 0, index: 16)
             encoder.setBuffer(anchorBuffer, offset: 0, index: 17)
+            encoder.setBuffer(slipBuffer, offset: 0, index: 18)
+            encoder.setBuffer(slipSupportBuffer, offset: 0, index: 19)
+            encoder.setBuffer(barForceBuffer, offset: 0, index: 20)
+            encoder.setBuffer(anchorLawBuffer, offset: 0, index: 21)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             afterNodes?(substep)
@@ -1011,8 +1149,31 @@ public final class StructureSolver {
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
-        if let anchorStiffness, let anchorage = model.baseAnchorage {
+        uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
+        uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0
+        if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
+            let law = bond.law(compressiveStrength: model.material.compressiveStrength)
+            uniforms.bondSlip = 1
+            uniforms.bondPeak = law.peak
+            uniforms.bondResidual = law.residual
+            uniforms.bondS1 = law.s1
+            uniforms.bondS2 = law.s2
+            uniforms.bondS3 = law.s3
+            uniforms.bondAlpha = law.alpha
+            // Bond lost where bars have yielded, from their curve: the plastic strain at their
+            // ultimate strength, and b = (2 - f_u / f_y)^2.
+            if bond.yieldedBondLoss, let steel = model.material.steel,
+                let top = steel.curve.max(by: { $0.y < $1.y }), top.x > 0
+            {
+                uniforms.bondYieldRange = top.x
+                let excess = 2 - top.y / steel.curve[0].y
+                uniforms.bondYieldExponent = max(excess * excess, 0.1)
+            }
+        }
+        if anchorStiffness != nil {
             uniforms.anchored = 1
+        }
+        if let anchorStiffness, let anchorage = model.baseAnchorage {
             uniforms.anchorNormalStiffness = anchorStiffness.normal
             uniforms.anchorShearStiffness = anchorStiffness.shear
             uniforms.anchorTension = anchorage.tensileStrength
@@ -1080,7 +1241,7 @@ public final class StructureSolver {
     /// its masonry is meshed as units and mortar joints.
     static func parameters(
         for material: StructureMaterial, elementSize h: Float, hourglassCoefficient: Float = 1,
-        jointed: Bool = false
+        jointed: Bool = false, bondSlip: Bool = false
     ) -> MaterialParameters {
         var parameters = MaterialParameters(
             density: material.density,
@@ -1107,7 +1268,9 @@ public final class StructureSolver {
         parameters.compressiveStrength = fc
         parameters.tensileStrength = ft
         parameters.crackOnset = onset
-        let band = material.steel == nil ? h : max(h, material.crackSpacing)
+        // Bars spread cracking over the crack spacing, unless they slip, when the slip spreads
+        // their strain and each crack keeps to its own element.
+        let band = material.steel == nil || bondSlip ? h : max(h, material.crackSpacing)
         let fractureEnergy = units?.fractureEnergy ?? material.fractureEnergy
         parameters.crackSoftening = max(fractureEnergy / (band * ft) - onset / 2, onset / 2)
         parameters.crackSofteningAlone = max(fractureEnergy / (h * ft) - onset / 2, onset / 2)
@@ -1136,7 +1299,7 @@ public final class StructureSolver {
         parameters.tensionRateLaw = material.tensionRateLaw == .modelCode2010 ? 1 : 0
         parameters.crackDilatancy = material.crackDilatancy
         parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
-        parameters.barReach = Self.barReach(of: material, elementSize: h)
+        parameters.barReach = bondSlip ? 0 : Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak
         parameters.crushEnd = end
         // The crack strain at which the removal width is reached in one element. (It was once
@@ -1172,9 +1335,16 @@ public final class StructureSolver {
             let megapascals = material.compressiveStrength / 1e6
             parameters.concreteRateCompression = 1 / (5 + 9 * megapascals / 10)
             parameters.concreteRateTension = 1 / (1 + 8 * megapascals / 10)
-            if let steel = material.steel {
-                parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
-                parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
+            if let steel = material.steel, material.steelRateDependent {
+                switch material.steelRateLaw {
+                case .malvarCrawford:
+                    parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
+                    parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
+                case .ceb:
+                    parameters.steelRateLog = 1
+                    parameters.steelRateYield = 6 / (steel.yieldStress / 1e6)
+                    parameters.steelRateUltimate = 7 / (steel.ultimateStress / 1e6)
+                }
             }
         }
         return parameters

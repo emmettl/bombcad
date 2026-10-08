@@ -1,7 +1,8 @@
 # RoomCAD and convolution reverb roadmap
 
 Status: October 2026. The initial shared-package extraction is implemented:
-`Packages/SimulationKit` supplies SceneModel (Box and Grid) and SceneView (OrbitCamera).
+`Packages/SimulationKit` supplies SceneModel (Box and Grid), SceneView (OrbitCamera) and SceneRender
+(scene geometry, picking, a mesh renderer and the orbit controls both apps use).
 BombCAD consumes it with compatibility aliases.
 
 The first acoustic backend is implemented in the separate `RoomCAD` package. It covers M2 items 1–3
@@ -9,7 +10,8 @@ and 5: a rectangular-room image-source model with octave-band absorption, air at
 stereo 32-bit float WAV export with a JSON description. Driftbox's own convolver plays the exported
 files. See [Room-acoustics model](room-acoustics-model.md). A first RoomCAD app with versioned `.roomcad`
 documents is also implemented (M1 items 3 and 4); see [RoomCAD app and documents](roomcad-app.md).
-The wave solver and the Driftbox rack effect remain proposed work.
+A wave solver for low frequencies (M3) and broadband hybrid responses (M4 items 1–4) are implemented
+too. The Driftbox rack effect remains proposed work.
 
 The save-file foundation is also implemented: DocumentKit and BombCAD's `.bombcad` document workflow
 persist scene, run and view settings, with container integrity checks. See [Save files](save-files.md).
@@ -39,9 +41,9 @@ existing sources; this document does not prescribe a migration of the current ch
 | SceneModel | Geometry, transforms, openings and shared scene identifiers | Both apps |
 | SceneView | Shared camera, bounds framing and viewport mathematics; implemented first | Both apps |
 | DocumentKit | Versioned document containers and asset handling; foundation implemented | Both apps |
-| GeometryImport | File readers, source meshes, parts, transforms and geometric diagnostics | Both apps |
+| GeometryImport | File readers, source meshes, parts, transforms and geometric diagnostics; the OBJ and STL reader implemented | Both apps |
 | MetalSupport | Reusable device, buffer, shader-loading and dispatch utilities | Both solvers and rendering |
-| SceneRender | Camera, selection, geometry and generic field rendering | Both apps |
+| SceneRender | Camera controls, selection, geometry and rendering; scene geometry, picking, a mesh renderer and the orbit controls implemented | Both apps |
 | BlastCore | Blast equations, charges, measurements and validation | BombCAD |
 | AcousticCore | Sources, acoustic propagation, boundaries and room-response generation | RoomCAD |
 | ImpulseResponseKit | Response data, channel mapping, audio I/O and conditioning | RoomCAD; potentially Driftbox |
@@ -63,7 +65,10 @@ in BombCAD until RoomCAD needs them and their dependencies can be extracted clea
 The integrated BombCAD importer is a major shared foundation: OBJ/STL parsing, scale and axis
 conversion, placement, mesh diagnostics, preview overlays and selection can serve both apps.
 Its current implementation lives in BlastCore and BombCAD; extract the shared pieces when
-RoomCAD needs them.
+RoomCAD needs them. The OBJ and STL reader is now shared: SimulationKit's GeometryImport returns a
+file's polygons with their object, group and material names. BlastCore applies its own rules to them,
+as before: planar convex polygons, fanned into triangles, enclosing solids. RoomCAD turns them into
+a closed room. Placement, diagnostics, preview overlays and selection remain in BombCAD.
 
 Keep the source mesh, stable part identifiers and material-group references as the canonical
 import. Voxel boxes are derived data for a particular solver and resolution. RoomCAD's
@@ -203,8 +208,22 @@ Progress (October 2026):
   and documented in [Room-acoustics model](room-acoustics-model.md#output). The defaults are
   48 kHz, one channel per receiver, emission at frame 0, a common gain only, and both complete and
   reflections-only content.
-- **Still open.** Fixed performance budgets and a measured reference room are not yet chosen. The
-  acousticbench reference room is illustrative.
+- **Measured reference rooms (item 5).** These are the seminar room CR2 and the chamber music hall
+  CR3 of the BRAS database; see [RoomCAD against measured rooms](roomcad-validation.md). The acousticbench reference room remains
+  illustrative.
+- **Performance budgets (item 5).** On a Mac Studio (M4 Max, 14 cores, 36 GB):
+  - each of the first ten room presets generates within 6 s with the wave solver, while no other app
+    is loading the GPU (1.4–5.3 s measured);
+  - while another app kept the GPU busy, the slowest preset took 10.4 s, with runs moving to the CPU
+    as needed. In a later run with every wave run on the CPU and the machine shared, the presets took
+    4.7–16.1 s, and the two halls built from solids 10.9 and 4.7 s. Their times with the GPU free
+    have not been measured;
+  - peak memory for all twelve presets in one process, with the bundled clips loaded, is 596 MB;
+  - preparing the longest bundled clip (11.2 s) for auditioning through any preset takes 0.06 s.
+    Playback then mixes two prepared buffers, so auditioning adds no measurable CPU load.
+
+  `acousticbench --presets` measures these. The decay matching's probes add no measurable time. The
+  measured-room comparison takes about 6 minutes.
 
 ### M1 — Create the shared foundation and RoomCAD scaffold
 
@@ -236,7 +255,9 @@ Items 1, 2, 5 and 6 are not done:
 
 - **Item 1.** The 2D drawings need no shared camera.
 - **Item 2.** Rendering is not shared yet.
-- **Item 5.** AcousticCore uses Accelerate, not Metal.
+- **Item 5.** AcousticCore's wave solver uses Metal through its own small kernels, compiled when
+  first used. Nothing is shared with BombCAD's Metal code yet, since a shared utility would serve
+  one user only.
 - **Item 6.** GeometryImport extraction waits for imported rooms.
 
 There are no shared shader resources yet.
@@ -275,7 +296,8 @@ Eyring's estimate. The decay matches what specular reflection predicts, but M4's
 needed before the reverb sounds like a real room. Item 6 (preview) is implemented in the RoomCAD
 app. It has a dry clip, a live wet/dry balance and optional loudness matching, and it plays through
 two synchronized players; see [RoomCAD app and documents](roomcad-app.md#the-window). Item 4 (late
-tail) is not done.
+tail) is no longer needed: rays carry every reflection beyond the image sources' order, so finite order
+does not truncate the decay.
 
 ### M3 — Establish a trustworthy low-frequency wave solver
 
@@ -300,8 +322,17 @@ Progress (October 2026): a CPU FDTD solver is implemented in `AcousticCore`, wit
 impedance walls and a calibrated source. Rigid-room modes are within 0.25% of the analytical values,
 and free-field level within 0.03 dB with no timing offset. Axial decay between absorbing walls is
 within 6% of theory. The crossover's top is resolved at 10 points per wavelength, and work is
-budgeted. It runs on the CPU rather than the GPU, and a fuller benchmark report (phase and directional
-error against distance) is not done. See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
+budgeted. Walls take each octave band's own impedance, one run per group of bands that agree. A Metal
+version runs the same scheme on the GPU, matching the CPU to single precision at about 3.6 × 10⁹ cell
+updates a second, so every preset, the stone church included, now gets a wave part. The measured
+seminar room showed the bare solver's low-frequency decay to be about 30% too long, because its locally
+reacting walls take only half as much energy from modes that graze them. Each band's response is now
+damped to Eyring's diffuse decay, measured by probes spread through the room; the modal structure is
+kept. `acousticbench --wave-accuracy` is the benchmark report. Below the crossover, amplitude is within
+0.36 dB over 5 m along an axis and the body diagonal. Phase lag matches Yee's dispersion relation, and
+phase velocity and mode frequencies are within 1% (0.76% at a 250 Hz crossover along an axis). Long
+runs on either engine are stable and passive. See
+[Room-acoustics model](room-acoustics-model.md#accuracy). See [Room-acoustics model](room-acoustics-model.md#low-frequencies-the-wave-solver).
 
 ### M4 — Generate broadband hybrid room responses
 
@@ -330,14 +361,40 @@ between its Eyring and Sabine times instead of 50–70% longer. See
 
 Items 2–4 are implemented with the M3 solver:
 
-- **Crossover.** An automatic crossover at twice the Schroeder frequency, within 80–250 Hz and the
-  budget.
+- **Crossover.** An automatic crossover at three times the Schroeder frequency, within 80–500 Hz on
+  the GPU (80–250 Hz on the CPU) and the budget.
 - **Alignment.** Time origins and gain conventions are aligned by deconvolving the source against free
   field.
-- **Blending.** Complementary zero-phase crossovers sum to one. The two models agree within 1.5 dB at
-  the crossover across the presets, except for an apparent seat dip in the chamber hall.
+- **Blending.** Complementary zero-phase crossovers sum to one. Below the crossover the two models
+  agree within 2.3 dB across the presets, except at 63 Hz in the L-shaped room (diffraction round the
+  corner) and the stone church (the floor's boundary gain).
 
-Item 5 (comparison with measured rooms) and item 6's validated band are not done.
+Item 5 is done for two measured rooms: [RoomCAD against measured rooms](roomcad-validation.md)
+compares ten measured responses in each of a 145 m³ seminar room and a 3,100 m³ chamber music hall
+from the BRAS database. In the seminar room:
+
+- **Reverberation.** With published absorption data, reverberation time from 250 Hz to 2 kHz is
+  within 12%, and clarity and definition within about one just-noticeable difference.
+- **Modes.** The wave solver reproduces the room's modal fine structure at each position, with mode
+  frequencies within about 1.5%.
+- **Early reflections.** These follow the measured pattern at most positions (correlation 0.61,
+  against 0.22 for the wrong position).
+- **Low-frequency decay.** At first, the wave solver's decay at 63–125 Hz was 18–32% too long. Its
+  locally reacting walls take only half as much energy from modes that graze them as from modes that
+  strike them. With each band now matched to the diffuse decay, the fitted materials give T30 within
+  about 10% at 63 Hz and 2% at 125 Hz.
+
+In the chamber music hall, built from solids, with absorption fitted to the simplified model:
+
+- **Clarity and definition.** C80, D50 and centre time are within about one JND from 500 Hz to 4 kHz.
+- **Reverberation.** The decay is 13–40% too long. The simplified hall lacks the pillars, ornament
+  and chairs that scatter sound in the real one, and more scattering takes away about half the excess.
+- **Low frequencies.** At 63 Hz the wave solver gives the measured T30.
+
+BRAS's third room, the auditorium CR4, is not yet modelled. Listening comparisons are not done.
+Item 6 is done: every export's metadata keeps the settings, random seed and crossover. It also states
+the usable band, and, with the wave solver, its phase-velocity error at the crossover and that its decay
+was matched to Eyring's.
 
 ### M5 — Make RoomCAD useful for designing and auditioning spaces
 
@@ -349,15 +406,62 @@ Item 5 (comparison with measured rooms) and item 6's validated band are not done
 4. Add presets, repeatable export settings, cancellation and caching keyed by scene and solver
    settings. Distinguish preview quality from export quality.
 5. Test editing, export and auditioning on screen with rooms of different sizes and decay times.
+6. Show the room in 3D with BombCAD's model view: orbit, zoom and select surfaces, with the source,
+   receivers, openings and materials drawn on the room. This extracts the view into SceneRender (see
+   [Architecture and sharing](#architecture-and-sharing)) once a mesh room gives it a second
+   consumer. It changes how the room is seen and edited, not the model.
 
 Done when: a user can build, save, reopen, audition and export a room without editing code,
 and can see the output's frequency coverage and modelling assumptions.
 
 Progress (October 2026): the RoomCAD app covers saving, reopening, auditioning and export without
-code. Item 2 has started: 90 absorption and 7 scattering presets come from the annex of Vorländer's
-*Auralization*, via pyroomacoustics. Bands outside the published range are extended and labelled in
-each material's reference. Most surfaces still need scattering values. See
-[RoomCAD app and documents](roomcad-app.md#material-presets).
+code.
+
+- **Item 1.** Rooms are boxes, floor plans with vertical walls (L, T, trapezoid or any outline), or
+  closed meshes of any shape. Boxes and plans take openings such as doors and windows; a mesh's
+  faces can be open. Meshes are built from pieces of air with constructive solid geometry: two
+  presets, a shoebox concert hall with balconies and a raked auditorium with a rear tier, and the
+  measured chamber music hall are built this way. Each backend's supported geometry is documented in
+  [Room-acoustics model](room-acoustics-model.md#rooms-of-any-shape). OBJ and STL models can be
+  imported as rooms, through the reader BombCAD shares. The app shows a mesh and edits its materials
+  but not its shape; editing solids in the app remains to do.
+- **Item 2.** This has started: 90 absorption and 7 scattering presets come from the annex of
+  Vorländer's *Auralization*, via pyroomacoustics. Bands outside the published range are extended
+  and labelled in each material's reference. Most surfaces still need scattering values. See
+  [RoomCAD app and documents](roomcad-app.md#material-presets). Objects too many or too small to
+  model as surfaces, such as chairs, desks, pews and ornament, can be added as fitted zones, with
+  their density and absorption stated (see
+  [Fitted zones](room-acoustics-model.md#fitted-zones)). **Match Reverberation Time** fits the
+  absorption to measured times by simulating the room, since Eyring's formula misjudges rooms that are
+  not diffuse. PTB's absorption database was considered but not bundled: it is compiled from
+  manufacturers' data without an open licence.
+- **Item 3.** This is done. The app shows each channel's envelope, spectrum, early arrivals (an
+  energy-time curve above 500 Hz) and octave-band decay. It also shows:
+  - the generation's stage and progress while it runs;
+  - the wave solver's crossover, engine and approximate memory;
+  - T30 only where the band's decay reaches −35 dB.
+- **Item 4.** There are twelve whole-room presets, and regeneration runs in the background and is
+  cancelled when the room changes. Responses are kept with their settings and marked stale when the
+  settings change. While a room is edited, previews spend a quarter of the wave solver's budget and
+  rays and arrive two to four times sooner. The full-quality response follows once editing pauses,
+  and exports are always full quality.
+- **Item 5.** Testing on screen has been done only by the user, who confirmed that the window,
+  audition, waveform and space bar work. The app is otherwise checked by offscreen snapshots.
+- **Item 6.** The first version is done. SimulationKit's new SceneRender library holds:
+  - scene geometry: lit and translucent triangles and lines, with pick numbers;
+  - picking by ray against the triangles seen from the front;
+  - a Metal renderer with four-sample anti-aliasing and offscreen snapshots;
+  - the orbit, pan, zoom and click controls, moved from BombCAD, which now uses them from there.
+
+  RoomCAD's 3D view uses all of it to draw any room as a cutaway coloured by material, with
+  openings, fitted zones, the source and the receivers, and to select them with a click. In the view,
+  a selected surface's material can be chosen from the published presets, and the source and
+  receivers dragged, across the room or with Option up and down. Fitted zones and openings move and,
+  with Command, resize by dragging, held within the room or their surface. The controls let an app
+  take a drag for an object instead of the camera, with Option and Command passed on; BombCAD keeps
+  orbiting. Any room's walls, floor and ceiling push and pull with Command-drag: a box's or plan's
+  surfaces, or a mesh's planes. A floor plan's corners drag by handles at the top of their edges.
+  Still to do: adding and removing pieces of a hall, which needs the document to keep them. BombCAD's blast renderer remains its own.
 
 ### M6 — Add a convolution reverb to Driftbox rack
 

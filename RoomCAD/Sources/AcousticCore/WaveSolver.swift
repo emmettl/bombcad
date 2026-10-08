@@ -22,6 +22,22 @@ struct WaveSolver {
     let atmosphere: Atmosphere
     /// Open areas, given the impedance of air (ξ = 1).
     let openings: [Opening]
+    /// Octave bands whose mean absorption sets each wall's impedance; nil means all the bands the solver
+    /// covers. `responses` runs once per group of bands with the same impedances.
+    var impedanceBands: [Int]?
+    /// Where to run: the GPU when there is one, or the CPU.
+    var engine = Engine.automatic
+    /// Whether `responses` damps each band so the room's modes decay, averaged over the room, at the
+    /// diffuse rate their absorption gives (see `responses`); off only to test the bare boundary model.
+    var matchesDiffuseDecay = true
+
+    /// `automatic` uses the GPU when there is one and moves a run to the CPU when other work slows the
+    /// GPU too much; `gpu` keeps a run on the GPU however slow, for comparing the two; `cpu` never uses
+    /// the GPU.
+    enum Engine: Sendable { case automatic, gpu, cpu }
+
+    /// For tests: extra seconds after each GPU command buffer, standing in for other work on the GPU.
+    var gpuDelay: TimeInterval = 0
 
     /// Grid points per wavelength at `topFrequency`.
     static let pointsPerWavelength = 10.0
@@ -60,6 +76,10 @@ struct WaveSolver {
         decimation = m
     }
 
+    /// About how much memory a run takes, in bytes: per cell, pressure and three velocities in single
+    /// precision, six face coefficients and a flag on the GPU, and the layout they are built from.
+    var memoryEstimate: Int { cells.x * cells.y * cells.z * 72 }
+
     /// Work for `duration` seconds, in cell updates.
     func cost(duration: Double) -> Double {
         Double(cells.x * cells.y * cells.z) * duration / timeStep
@@ -75,7 +95,9 @@ struct WaveSolver {
     }
 
     func impedance(material: SurfaceMaterial) -> Double {
-        let bands = OctaveBands.centres.indices.filter { OctaveBands.centres[$0] <= topFrequency * 1.2 }
+        let bands =
+            impedanceBands
+            ?? OctaveBands.centres.indices.filter { OctaveBands.centres[$0] <= topFrequency * 1.2 }
         let absorption = material.absorption
         let alpha = bands.map { absorption[$0] }.reduce(0, +) / Double(max(bands.count, 1))
         guard alpha > 0 else { return .infinity }
@@ -117,8 +139,8 @@ struct WaveSolver {
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
         stop: @Sendable () -> Bool
     ) -> [[Double]]? {
-        if room.plan != nil {
-            return simulatePlan(source: source, receivers: receivers, steps: steps, stop: stop)
+        if room.plan != nil || room.mesh != nil {
+            return simulateMasked(source: source, receivers: receivers, steps: steps, stop: stop)
         }
         let nx = cells.x
         let ny = cells.y
@@ -292,62 +314,254 @@ extension WaveSolver {
     /// model's units and weighted by `weight(f)`: the crossover's low-pass and the low-frequency cutoff.
     ///
     /// `fftLength` must be a power of two at least `frames` plus room for the decay to finish; the
-    /// solver runs `fftLength / decimation` steps so its spectrum shares the audio spectrum's bins.
+    /// solver runs `fftLength / decimation` steps so its spectrum shares the audio spectrum's bins. Also
+    /// says how many of the runs used the GPU and, for each octave band covered, the room's T30 in the
+    /// bare simulation and the diffuse decay it was matched to.
+    ///
+    /// Published absorption coefficients are diffuse-field values, and the geometrical model uses them
+    /// that way. In the solver a wall is a locally reacting impedance, and by Morse's first-order theory a
+    /// mode loses only half as much energy to a wall it grazes as to one it strikes, so axial and
+    /// tangential modes outlast a diffuse field. In the measured seminar room (docs/roomcad-validation.md)
+    /// this made the solver's decay at 63–125 Hz 18–32% longer than measured, while the measurement
+    /// agreed with the diffuse decay: real rooms mix grazing and oblique energy by their irregularities,
+    /// furniture and surfaces that are not locally reacting. Each run therefore also records 24 probes
+    /// spread through the room, whose energy gives the room's average decay in each band; where that is
+    /// slower than Eyring's decay for the band's absorption, the band's response is damped by e^(-Δt) from
+    /// the direct sound's arrival on, to match it. Every mode in the band is damped alike, so the modes' frequencies, their spatial
+    /// pattern and their differences in decay remain.
     func responses(
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], frames: Int,
-        fftLength: Int, weight: (Double) -> Double, stop: @Sendable () -> Bool
-    ) -> [[Float]]? {
+        fftLength: Int, progress: GenerationProgress? = nil, weight: (Double) -> Double,
+        stop: @Sendable () -> Bool
+    ) -> (channels: [[Float]], gpuRuns: Int, decay: [Int: (bare: Double?, diffuse: Double?)])? {
         let steps = fftLength / decimation
-        guard
-            let recorded = simulate(source: source, receivers: receivers, steps: steps, stop: stop)
-        else { return nil }
         let dt = timeStep
         let fft = RealFFT(length: steps)
         let half = steps / 2
         // The injected volume velocity at its sample times, (n + 1/2) dt.
         let q = fft.forward((0..<steps).map { pulse((Double($0) + 0.5) * dt) })
         let audio = RealFFT(length: fftLength)
-        return recorded.map { samples in
-            let p = fft.forward(samples)
-            var real = [Double](repeating: 0, count: fftLength / 2)
-            var imag = [Double](repeating: 0, count: fftLength / 2)
-            for k in 1..<half {
-                let f = Double(k) / (Double(steps) * dt)
-                let w = weight(f)
-                guard w > 0 else { continue }
-                // Pressure was recorded at (n + 1) dt and the pulse injected at (n + 1/2) dt.
-                let pPhase = -2 * Double.pi * Double(k) / Double(steps)
-                let qPhase = -Double.pi * Double(k) / Double(steps)
-                let pr = p.real[k] * cos(pPhase) - p.imag[k] * sin(pPhase)
-                let pi = p.real[k] * sin(pPhase) + p.imag[k] * cos(pPhase)
-                let qr = q.real[k] * cos(qPhase) - q.imag[k] * sin(qPhase)
-                let qi = q.real[k] * sin(qPhase) + q.imag[k] * cos(qPhase)
-                // Free-field pressure 1 m away, without the travel time: j 2πf Q / 4π (ρ = 1).
-                let scale = 2 * Double.pi * f / (4 * Double.pi)
-                let rr = -qi * scale
-                let ri = qr * scale
-                let norm = rr * rr + ri * ri
-                guard norm > 1e-30 else { continue }
-                // H = P / reference, in the audio FFT's forward scaling (vDSP scales by 2).
-                real[k] = 2 * w * (pr * rr + pi * ri) / norm
-                imag[k] = 2 * w * (pi * rr - pr * ri) / norm
+        var output = Array(repeating: [Double](repeating: 0, count: frames), count: receivers.count)
+        var gpuRuns = 0
+        var decay: [Int: (bare: Double?, diffuse: Double?)] = [:]
+        let probes = probePositions().map { (position: $0, microphone: Microphone.omni) }
+        let diffuse = room.withOpenings(openings).eyringReverberationTime(
+            atmosphere: atmosphere, airAbsorption: true)
+        // Walls absorb differently in each octave band: one run per group of bands with the same
+        // impedances, each kept only in its own bands. The band weights sum to one, so together they
+        // cover the spectrum once.
+        let groups = bandGroups
+        for group in groups {
+            var solver = self
+            solver.impedanceBands = group
+            guard
+                let run = solver.run(
+                    source: source, receivers: receivers + (matchesDiffuseDecay ? probes : []), steps: steps,
+                    stop: stop)
+            else {
+                return nil
             }
-            let signal = audio.inverse(real: real, imag: imag)
-            return (0..<frames).map { Float(signal[$0]) }
+            if run.onGPU { gpuRuns += 1 }
+            progress?.advance(by: 1 / Double(groups.count))
+            // The transfer function of each recorded signal, H = P / free-field reference, in the audio FFT's
+            // scaling, at the solver's bins.
+            func transfer(_ samples: [Double]) -> (real: [Double], imag: [Double]) {
+                let p = fft.forward(samples)
+                var real = [Double](repeating: 0, count: half)
+                var imag = real
+                for k in 1..<half {
+                    let f = Double(k) / (Double(steps) * dt)
+                    // Pressure was recorded at (n + 1) dt and the pulse injected at (n + 1/2) dt.
+                    let pPhase = -2 * Double.pi * Double(k) / Double(steps)
+                    let qPhase = -Double.pi * Double(k) / Double(steps)
+                    let pr = p.real[k] * cos(pPhase) - p.imag[k] * sin(pPhase)
+                    let pi = p.real[k] * sin(pPhase) + p.imag[k] * cos(pPhase)
+                    let qr = q.real[k] * cos(qPhase) - q.imag[k] * sin(qPhase)
+                    let qi = q.real[k] * sin(qPhase) + q.imag[k] * cos(qPhase)
+                    // Free-field pressure 1 m away, without the travel time: j 2πf Q / 4π (ρ = 1).
+                    let scale = 2 * Double.pi * f / (4 * Double.pi)
+                    let rr = -qi * scale
+                    let ri = qr * scale
+                    let norm = rr * rr + ri * ri
+                    guard norm > 1e-30 else { continue }
+                    // vDSP scales the forward transform by 2.
+                    real[k] = 2 * (pr * rr + pi * ri) / norm
+                    imag[k] = 2 * (pi * rr - pr * ri) / norm
+                }
+                return (real, imag)
+            }
+            // Each band's extra damping, from the probes' summed energy in the band, above 20 Hz, over the
+            // response's length: the zero-phase band filter wraps its ringing before an arrival round to the
+            // end of the run.
+            var damping: [Int: Double] = [:]
+            if matchesDiffuseDecay {
+                let spectra = run.signals[receivers.count...].map(transfer)
+                let length = min(frames / decimation, steps)
+                for band in group {
+                    var energy = [Double](repeating: 0, count: length)
+                    for spectrum in spectra {
+                        var real = [Double](repeating: 0, count: half)
+                        var imag = real
+                        for k in 1..<half {
+                            let f = Double(k) / (Double(steps) * dt)
+                            let w =
+                                OctaveBands.weight(band: band, frequency: f)
+                                * OctaveBands.rise(f, crossover: 20)
+                            real[k] = spectrum.real[k] * w
+                            imag[k] = spectrum.imag[k] * w
+                        }
+                        let signal = fft.inverse(real: real, imag: imag)
+                        for n in 0..<length { energy[n] += signal[n] * signal[n] }
+                    }
+                    let parameters = RoomParameters.measure(
+                        energy: energy, sampleRate: sampleRate / decimation, noiseCompensated: false)
+                    let bare = parameters.t30 ?? parameters.t20
+                    decay[band] = (bare, diffuse[band])
+                    if let bare, let target = diffuse[band], target > 0, target < bare {
+                        // Energy decays at 6 ln 10 / T; amplitude at half that.
+                        damping[band] = 3 * log(10) * (1 / target - 1 / bare)
+                    }
+                }
+            }
+            for r in receivers.indices {
+                let h = transfer(run.signals[r])
+                // Damping starts with the direct sound, which it leaves alone.
+                let direct = simd_distance(receivers[r].position, source) / atmosphere.soundSpeed
+                for band in group {
+                    var real = [Double](repeating: 0, count: fftLength / 2)
+                    var imag = real
+                    for k in 1..<half {
+                        let f = Double(k) / (Double(steps) * dt)
+                        let w = weight(f) * OctaveBands.weight(band: band, frequency: f)
+                        real[k] = h.real[k] * w
+                        imag[k] = h.imag[k] * w
+                    }
+                    let signal = audio.inverse(real: real, imag: imag)
+                    let delta = damping[band] ?? 0
+                    let rate = Double(sampleRate)
+                    for n in 0..<frames {
+                        output[r][n] += signal[n] * exp(-delta * max(Double(n) / rate - direct, 0))
+                    }
+                }
+            }
         }
+        return (output.map { $0.map(Float.init) }, gpuRuns, decay)
     }
+
+    /// Points spread through the room for measuring its average decay: the first `count` points of a
+    /// Halton sequence that lie at least `clearance` inside every boundary.
+    func probePositions(count: Int = 24) -> [SIMD3<Double>] {
+        let clearance = min(0.3, 0.2 * room.size.min())
+        func radicalInverse(_ i: Int, _ base: Int) -> Double {
+            var (i, f, result) = (i, 1.0, 0.0)
+            while i > 0 {
+                f /= Double(base)
+                result += f * Double(i % base)
+                i /= base
+            }
+            return result
+        }
+        var points: [SIMD3<Double>] = []
+        var i = 1
+        while points.count < count, i < 4096 {
+            let unit = SIMD3(radicalInverse(i, 2), radicalInverse(i, 3), radicalInverse(i, 5))
+            let point = SIMD3(repeating: clearance) + unit * (room.size - 2 * clearance)
+            i += 1
+            if room.plan != nil || room.mesh != nil {
+                guard room.contains(point), room.clearance(point) >= clearance else { continue }
+            }
+            points.append(point)
+        }
+        return points
+    }
+
+    /// Simulates on the GPU when there is one and the engine allows it, otherwise on the CPU, and says
+    /// which it used.
+    ///
+    /// Other work can share the GPU and slow a run many times over. Once a GPU run has shown its pace, if
+    /// what remains would take over a second and more than half as long again as the whole run on the CPU,
+    /// timed over a few steps of the same grid, the run is abandoned and redone on the CPU. The grid and
+    /// crossover stay the same, so the result does not depend on which engine ran it.
+    func run(
+        source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
+        stop: @Sendable () -> Bool
+    ) -> (signals: [[Double]], onGPU: Bool)? {
+        if engine != .cpu, let gpu = MetalWaveSolver.shared {
+            var cpuSeconds: Double?
+            let result = gpu.simulate(self, source: source, receivers: receivers, steps: steps, stop: stop) {
+                done, elapsed in
+                engine == .automatic
+                    && Self.abandonsGPU(done: done, steps: steps, elapsed: elapsed) {
+                        if let cpuSeconds { return cpuSeconds }
+                        let estimate = cpuSecondsEstimate(source: source, receivers: receivers, steps: steps)
+                        cpuSeconds = estimate
+                        return estimate
+                    }
+            }
+            if let result { return (result, true) }
+            if stop() { return nil }
+        }
+        return simulate(source: source, receivers: receivers, steps: steps, stop: stop).map { ($0, false) }
+    }
+
+    /// Seconds a GPU run goes before its pace is judged.
+    static let gpuTrial = 0.25
+
+    /// Whether a GPU run that has done `done` of `steps` steps in `elapsed` seconds should give way to the
+    /// CPU: once it has run for `gpuTrial`, if what remains would take over a second and more than 1.5
+    /// times as long as `cpuSeconds()`, the whole run on the CPU, which is only asked for then.
+    static func abandonsGPU(done: Int, steps: Int, elapsed: TimeInterval, cpuSeconds: () -> Double) -> Bool {
+        guard elapsed > gpuTrial, done > 0 else { return false }
+        let remaining = elapsed / Double(done) * Double(steps - done)
+        return remaining > 1 && remaining > 1.5 * cpuSeconds()
+    }
+
+    /// Seconds the CPU would take for `steps` steps, from a short run of about 5 × 10⁷ cell updates.
+    func cpuSecondsEstimate(
+        source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int
+    ) -> Double {
+        let trial = min(max(Int(5e7 / Double(cells.x * cells.y * cells.z)), 8), 256, steps)
+        let start = Date()
+        _ = simulate(source: source, receivers: receivers, steps: trial, stop: { false })
+        return Date().timeIntervalSince(start) / Double(trial) * Double(steps)
+    }
+
+    /// Whether `run` will use the GPU.
+    var usesGPU: Bool { engine != .cpu && MetalWaveSolver.shared != nil }
+
+    /// The octave bands below the crossover's top, grouped by the impedances their absorption gives every
+    /// boundary.
+    var bandGroups: [[Int]] {
+        let included = OctaveBands.centres.indices.filter { band in
+            band == 0 || OctaveBands.crossovers[band - 1] / 2.squareRoot() < topFrequency
+        }
+        var groups: [(key: [Double], bands: [Int])] = []
+        for band in included {
+            var solver = self
+            solver.impedanceBands = [band]
+            let materials = Surface.allCases.map { room[$0] } + (room.plan?.walls ?? [])
+            let key = materials.map { solver.impedance(material: $0) }
+            if let index = groups.firstIndex(where: { $0.key == key }) {
+                groups[index].bands.append(band)
+            } else {
+                groups.append((key, [band]))
+            }
+        }
+        return groups.map(\.bands)
+    }
+
 }
 
 extension WaveSolver {
-    /// The same scheme for a room with a floor plan: cells whose centres lie inside the plan are simulated,
-    /// and every face between a simulated cell and one that is not, or the floor or ceiling, is a wall
-    /// with the impedance of the nearest plan wall (or air, in an opening): a staircase approximation of
-    /// walls that are not aligned with the grid.
-    func simulatePlan(
+    /// The same scheme for a room with a floor plan or a mesh: cells whose centres lie inside the room are
+    /// simulated, and every face between a simulated cell and one that is not is a wall with the
+    /// impedance of the nearest wall, plan wall or mesh face (or air, in an opening or open face): a
+    /// staircase approximation of walls that are not aligned with the grid. It shares its layout with the
+    /// GPU solver.
+    func simulateMasked(
         source: SIMD3<Double>, receivers: [(position: SIMD3<Double>, microphone: Microphone)], steps: Int,
         stop: @Sendable () -> Bool
     ) -> [[Double]]? {
-        let plan = room.plan!
         let nx = cells.x
         let ny = cells.y
         let nz = cells.z
@@ -356,55 +570,9 @@ extension WaveSolver {
         let c = atmosphere.soundSpeed
         let dt = timeStep
         let index = { (i: Int, j: Int, k: Int) in i + nx * (j + ny * k) }
-        let centre = { (i: Int, j: Int) in SIMD2((Double(i) + 0.5) * spacing.x, (Double(j) + 0.5) * spacing.y)
-        }
-        var inside = [Bool](repeating: false, count: plane)
-        for j in 0..<ny { for i in 0..<nx { inside[i + nx * j] = plan.contains(centre(i, j)) } }
-        let active = { (i: Int, j: Int) in i >= 0 && i < nx && j >= 0 && j < ny && inside[i + nx * j] }
-
-        // β = c dt / (2 ξ d) on each boundary face of each simulated cell; -1 marks a face to a neighbour.
-        let wallImpedance = plan.walls.map { impedance(material: $0) }
-        func beta(_ xi: Double, _ depth: Double) -> Float {
-            let value = c * dt / (2 * xi * depth)
-            return value.isFinite ? Float(value) : 0
-        }
-        func wallFace(_ point: SIMD2<Double>, height: Double, depth: Double) -> Float {
-            let wall = plan.nearestWall(point)
-            let start = plan.start(wall)
-            let along = simd_dot(point - start, simd_normalize(plan.end(wall) - start))
-            let open = openings.contains { $0.wall == wall && $0.contains([along, height]) }
-            return beta(open ? 1 : wallImpedance[wall], depth)
-        }
-        let floorXi = impedance(.floor)
-        let ceilingXi = impedance(.ceiling)
-        func levelFace(_ surface: Surface, _ point: SIMD2<Double>) -> Float {
-            let open = openings.contains { $0.wall == nil && $0.surface == surface && $0.contains(point) }
-            return beta(open ? 1 : (surface == .floor ? floorXi : ceilingXi), spacing.z)
-        }
-        var faces = Array(repeating: [Float](repeating: -1, count: count), count: 6)
-        for k in 0..<nz {
-            let height = (Double(k) + 0.5) * spacing.z
-            for j in 0..<ny {
-                for i in 0..<nx where inside[i + nx * j] {
-                    let at = index(i, j, k)
-                    let here = centre(i, j)
-                    if !active(i - 1, j) {
-                        faces[0][at] = wallFace(here - [spacing.x / 2, 0], height: height, depth: spacing.x)
-                    }
-                    if !active(i + 1, j) {
-                        faces[1][at] = wallFace(here + [spacing.x / 2, 0], height: height, depth: spacing.x)
-                    }
-                    if !active(i, j - 1) {
-                        faces[2][at] = wallFace(here - [0, spacing.y / 2], height: height, depth: spacing.y)
-                    }
-                    if !active(i, j + 1) {
-                        faces[3][at] = wallFace(here + [0, spacing.y / 2], height: height, depth: spacing.y)
-                    }
-                    if k == 0 { faces[4][at] = levelFace(.floor, here) }
-                    if k == nz - 1 { faces[5][at] = levelFace(.ceiling, here) }
-                }
-            }
-        }
+        let layout = gridLayout(source: source, receivers: receivers)
+        let inside = layout.inside.map { $0 == 1 }
+        let faces = (0..<6).map { Array(layout.faces[($0 * count)..<(($0 + 1) * count)]) }
 
         let p = UnsafeMutablePointer<Float>.allocate(capacity: count)
         let ux = UnsafeMutablePointer<Float>.allocate(capacity: count)
@@ -413,35 +581,14 @@ extension WaveSolver {
         for field in [p, ux, uy, uz] { field.initialize(repeating: 0, count: count) }
         defer { for field in [p, ux, uy, uz] { field.deallocate() } }
 
-        // Trilinear weights over simulated cells only, renormalized.
-        func weights(_ point: SIMD3<Double>) -> [(Int, Float)] {
-            let g = point / spacing - 0.5
-            let base = SIMD3<Int>(
-                min(max(Int(g.x.rounded(.down)), 0), nx - 2), min(max(Int(g.y.rounded(.down)), 0), ny - 2),
-                min(max(Int(g.z.rounded(.down)), 0), nz - 2))
-            let f = simd_clamp(g - SIMD3<Double>(base), SIMD3(repeating: 0), SIMD3(repeating: 1))
-            var result: [(Int, Double)] = []
-            for corner in 0..<8 {
-                let o = SIMD3<Int>(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1)
-                guard inside[(base.x + o.x) + nx * (base.y + o.y)] else { continue }
-                let w = (o.x == 1 ? f.x : 1 - f.x) * (o.y == 1 ? f.y : 1 - f.y) * (o.z == 1 ? f.z : 1 - f.z)
-                result.append((index(base.x + o.x, base.y + o.y, base.z + o.z), w))
-            }
-            let total = result.reduce(0) { $0 + $1.1 }
-            guard total > 0 else {
-                // Fall back to the nearest simulated cell in the same layer.
-                let k = min(max(Int(point.z / spacing.z), 0), nz - 1)
-                let nearest = (0..<plane).filter { inside[$0] }.min {
-                    simd_distance(centre($0 % nx, $0 / nx), [point.x, point.y])
-                        < simd_distance(centre($1 % nx, $1 / nx), [point.x, point.y])
-                }!
-                return [(nearest + plane * k, 1)]
-            }
-            return result.map { ($0.0, Float($0.1 / total)) }
+        // Trilinear weights over simulated cells, from the layout; its source weights include c² dt / V.
+        let sourceWeights = Array(zip(layout.sourceCells, layout.sourceWeights))
+        let receiverWeights = receivers.indices.map { r in
+            Array(
+                zip(
+                    layout.receiverCells[(8 * r)..<(8 * r + 8)], layout.receiverWeights[(8 * r)..<(8 * r + 8)]
+                ))
         }
-        let cellVolume = spacing.x * spacing.y * spacing.z
-        let sourceWeights = weights(source)
-        let receiverWeights = receivers.map { weights($0.position) }
         let receiverCells = receivers.map { receiver -> SIMD3<Int> in
             let g = receiver.position / spacing
             return SIMD3(
@@ -474,12 +621,11 @@ extension WaveSolver {
                 for k in (slab * nz / slabs)..<((slab + 1) * nz / slabs) {
                     for j in 0..<ny {
                         let row = nx * (j + ny * k)
-                        let flat = nx * j
-                        for i in 0..<nx where inside[flat + i] {
+                        for i in 0..<nx where inside[row + i] {
                             let at = row + i
-                            if i < nx - 1, inside[flat + i + 1] { ux[at] -= kx * (p[at + 1] - p[at]) }
-                            if j < ny - 1, inside[flat + i + nx] { uy[at] -= ky * (p[at + nx] - p[at]) }
-                            if k < nz - 1 { uz[at] -= kz * (p[at + plane] - p[at]) }
+                            if i < nx - 1, inside[at + 1] { ux[at] -= kx * (p[at + 1] - p[at]) }
+                            if j < ny - 1, inside[at + nx] { uy[at] -= ky * (p[at + nx] - p[at]) }
+                            if k < nz - 1, inside[at + plane] { uz[at] -= kz * (p[at + plane] - p[at]) }
                         }
                     }
                 }
@@ -488,7 +634,7 @@ extension WaveSolver {
                 for k in (slab * nz / slabs)..<((slab + 1) * nz / slabs) {
                     for j in 0..<ny {
                         let row = nx * (j + ny * k)
-                        for i in 0..<nx where inside[nx * j + i] {
+                        for i in 0..<nx where inside[row + i] {
                             let at = row + i
                             var divergence: Float = 0
                             var wall: Float = 0
@@ -504,7 +650,7 @@ extension WaveSolver {
                 }
             }
             let q = pulse((Double(n) + 0.5) * dt)
-            for (cell, w) in sourceWeights { p[cell] += Float(c * c * dt * q / cellVolume) * w }
+            for (cell, w) in sourceWeights { p[cell] += Float(q) * w }
             for (r, receiver) in receivers.enumerated() {
                 var value = 0.0
                 for (cell, w) in receiverWeights[r] { value += Double(p[cell]) * Double(w) }

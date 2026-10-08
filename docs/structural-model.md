@@ -120,6 +120,25 @@ the ground over its share of the base (a quarter of each element face it touches
   times compression, then slides. Opening takes the cohesion away as it takes the tension, and
   sliding wears both away over a given slip.
 
+Support regions can also carry independent `Anchorage` laws (`supportAnchorages`, aligned
+with `supports`; null entries retain ideal clamping). Finite connections act on exposed lower
+solid faces or lower wall/vertical-column footprint points selected by each region. The law
+uses each point’s reference height as a stationary horizontal bearing plane. Regions select
+initial attachment points; they do not bound the bearing plane after sliding or separation.
+Side-facing joints, finite footing contact extents and connections between moving components
+are not represented. Ideal support clamps take precedence over finite laws; among finite
+regions the last region wins. See [editing supports](structural-editing.md#restraints) for the
+app controls, active bearing-area diagnostics and save/undo behavior.
+
+Shells and beams have one node through a wall's thickness or a column's section, so there the
+connection acts at points of the footprint instead: nine through the thickness at each node on
+a wall's base, over half of each element edge it ends, and nine by nine over a column's
+section, from face to face with the trapezoid rule's weights. Each point moves with its node's
+rotation, so a wall can open at its heel while it bears at its toe, and the node takes the
+points' moment as well as their force. (Points at the middles of nine strips put the toe 7/16
+of the thickness out instead of at the face, and a shell wall resting on the ground rocked
+42% further than the rigid estimate; from face to face it is within 9%, as solid elements are.)
+
 Once nothing is left the node only rests on the ground: it bears on it, slides on it with
 Coulomb friction, and lifts off and lands again anywhere on it. By default the springs are as
 stiff as one more element of the body's material, E / h and G / h per unit area, which leaves
@@ -132,6 +151,7 @@ Three connections are provided:
 | Resting on the ground | none | none | 0.6 | nothing to lose |
 | Construction joint | 1 MPa | 1.3 MPa | 0.7 | 40 J/m² opening (80 µm); 1 mm of slip |
 | Dowelled (starter bars, ratio ρ) | ρ f_y (at least 1 MPa) | 1.3 MPa + 0.7 ρ f_y | 0.7 | held to 20 mm, gone at 40 mm; 20 mm of slip |
+| On soil (a Winkler bed) | none | none | 0.5 | bears 600 kPa, then settles for good |
 
 The joint's cohesion and friction are those of a rough joint in Eurocode 2, EN 1992-1-1
 §6.2.5 (c = 0.45 of a C30 concrete's mean tensile strength, μ = 0.7), its tensile strength and
@@ -147,7 +167,10 @@ the joint opens and let go past twice the plateau; a resting block holds a push 
 friction and accelerates at (F − μW)/m within 10% at 130%, with the friction force averaging
 μW within 10%; a construction joint holds 70% of its cohesion and friction and slides through
 at 130%; and a tall block resting on the ground holds 70% of the push that tips it, while at
-130% its heel rises as a rigid block rocking about its toe would, within 15%.
+130% its heel rises as a rigid block rocking about its toe would, within 15%. The same wall
+meshed with shells bears its weight within 3%, holds at 70%, rocks within 20% of the rigid
+block at 130% (9% in fact), and stands on a construction joint; a column of beam elements
+bears its weight and, set turning, rocks on one edge of its foot.
 
 **A freestanding wall** (`AnchorageStudy`, `blastbench anchorage`). The deformable-wall
 preset's wall, 3 m high and 250 mm thick with a 565 mm²/m mat near each face, as a 1 m strip
@@ -176,22 +199,74 @@ impulse for 50 kg of TNT, uniform over its face, with no air and no clearing, fo
 "Over" is a wall rotating away from its base past 0.7 m of sway at 0.5 s; "rising" one still
 rotating away. No element failed in any run; each takes about 2.5 s.
 
+Meshed with shells of 125 mm (`blastbench anchorage --shells`, about 1.4 s a run) the wall
+does the same on every base: peak sway 210, 69, 29 and 10 mm clamped, 248, 78, 33 and 12 mm
+on starter bars, and over, or still going over, on a plain joint or resting, at 6, 10, 15 and
+25 m.
+
 Where the wall is cast on starter bars the clamped base is a fair stand-in at a distance: the
 peak sway is within 10% of the clamped wall's at 15 and 25 m, 21% more at 10 m and 39% more at
 6 m, where the bars yield and the heel lifts 17 mm, and the wall ends no further over. Without
 bars it is not. A plain construction joint cracks through under every pulse here, even the
 58 kPa one at 25 m that sways the clamped wall 11 mm, and the wall then rocks on its toe as if
 it stood loose. Resting on the ground it rocks up at every distance; at 25 m it is given about
-200 J per metre against the 92 J it takes to tip it, so it goes over. A wall that stands
-clamped can therefore be thrown over if its base is not tied into its footing. This is a
-comparison of support assumptions, not a validation: no measured wall is reproduced, the load
-is idealised, and the footing itself is rigid.
+200 J per metre against the 92 J it takes to tip it, so it goes over. Under this pulse a wall
+that stands clamped can be thrown over if its base is not tied into its footing. But the pulse
+overstates the load, as the air shows (below). This is a comparison of support assumptions,
+not a validation: no measured wall is reproduced, and the footing itself is rigid.
 
-**Not modelled.** The ground is rigid and flat: there is no footing, soil, embedment or
-foundation rotation, only the joint at z = 0. The connection has no rate dependence and no
+**Loaded by the air** (`AnchorageStudy.runCoupled`, `blastbench anchorage --air`). The same
+section as a wall 12 m long, the charge on the ground in front of the middle of its length,
+loaded by the air solver on 0.25 m cells for 1 s. The air reaches 12 m beyond the wall, its
+ends and the charge, and 18 m up: with 2 m and 7 m its open boundaries sent back enough of the
+wave to load the wall's back face, and at 25 m the clamped wall swayed 12.0 mm against 4.9 to
+5.5 mm with 12 or 20 m, and walls on weak bases were thrown back towards the charge. On 0.125 m
+cells the clamped wall sways within 1 to 2 mm of the 0.25 m answer.
+
+| Base | 10 m, pulse | 10 m, air | 25 m, pulse | 25 m, air |
+|---|---|---|---|---|
+| clamped | 64 mm | 22 mm | 11 mm | 5 mm |
+| starter bars | 77 mm | 22 mm | 11 mm | 7 mm |
+| construction joint | over | 287 mm, still going | 310 mm, still going | 7 mm, stands |
+| resting | over | 237 mm, still going | 327 mm, still going | 7 mm, stands |
+| on soil (600 kPa, 50 MN/m³) | over | 593 mm, still going | 399 mm, still going | 9 mm, then 50 mm back |
+
+The face's positive impulse is the Kingery–Bulmash reflected impulse (946 Pa s against 929 at
+10 m, 312 against 331 at 25 m), but its peak is low on these cells (281 kPa against 434). The
+pulse leaves out what reaches the back: the wave runs over the 3 m wall and round its ends and
+loads the back face, and the negative phase follows. Over the 50 ms from arrival the net
+impulse through the wall at mid-height, front less back, is 290 Pa s at 10 m, a third of the
+face's, and about nothing at 25 m. So the clamped wall sways a third as far, and at 25 m every
+wall stands that the pulse throws over; at 10 m, walls without bars are still rotating away
+after 1 s, more slowly than under the pulse.
+A freestanding wall's base still decides close in, but a reflected pulse on its face alone, as
+for a wall that is part of a closed building, overstates its load.
+
+**On soil.** With a bearing capacity the ground under the base yields once pressed harder
+than that, and the base settles into it for good; unloaded, it springs back from where it
+settled. `Anchorage.soil()` makes the connection a Winkler bed: a subgrade modulus for its
+stiffness (50 MN/m³ by default, along the base as well as across it), an ultimate bearing
+pressure (600 kPa), friction (0.5) and no tension, values within the ranges foundation texts
+give for a medium dense sand under a footing about a metre wide, written from memory and not
+measured for any site. Checks (`AnchorageTests`): a block pressed by 200 kPa settles (w + p) / k
+within 3%; pressed past its bearing it sinks for as long as the load stays, and keeps more than
+10 mm of it once unloaded; a block pushed with half the moment that would lift its heel turns
+by M / (k I) within 10%, I the second moment of its base as its nodes carry it (b³ L / 12 times
+1 + 2 / n² for n elements across); a wall on soft ground (100 kPa) tips once the push's moment
+passes W (b − W / (q L)) / 2, its toe crushing the soil, at a little over half what tips it on
+rigid ground (at 1.3 times that moment it is over by 1 s; at 0.8 times it leans 20 mm and
+stays); and a shell wall on soil settles W / (k t L) within 5%. Without a footing the
+freestanding wall on soil goes over in every case of the study above, as it does resting on
+rigid ground: its 250 mm base is the same lever either way.
+
+**Not modelled.** The ground is flat, and rigid unless it is given a bearing capacity. There is
+no embedment, and a footing is whatever the structure's own solids make of one. The Winkler bed
+is the simplest of soils: it has no mass, no radiation damping, no rate dependence and no
+layers, its springs do not interact, and it neither softens nor hardens as it settles. The connection has no rate dependence and no
 dilatancy, the bars' yield is a plateau of the joint as a whole rather than bars at the faces,
-and opening and sliding interact only through the shared loss of strength. Shells (and the
-shell part of a mixed body) keep a clamped base, as do support regions (`supports`).
+and opening and sliding interact only through the shared loss of strength. Support regions
+(`supports`) hold their nodes still unless given a connection of their own, which acts as a
+horizontal bearing (see [structural editing](structural-editing.md)).
 
 ## Failure and removal
 

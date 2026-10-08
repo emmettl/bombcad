@@ -15,9 +15,14 @@ import Foundation
 /// slides on it with Coulomb friction and lifts off. The bearing is damped as the solver's
 /// contacts are.
 ///
-/// The law has no rate dependence, no dilatancy and no rotational stiffness of its own (a solid
-/// body's base rocks through the opening of its nodes on one side). It applies to solid elements;
-/// shells keep a clamped base.
+/// With a `bearingCapacity`, the ground under the base yields once pressed harder than that, and
+/// the base settles into it for good; unloaded, it springs back from where it settled. Over soil
+/// (`soil(...)`) the connection is a Winkler bed: a subgrade modulus for its stiffness, a bearing
+/// capacity, friction and no tension.
+///
+/// The law has no rate dependence, no dilatancy and no rotational stiffness of its own: a solid
+/// body's base rocks through the opening of its nodes on one side, and a shell's or a column's
+/// through points of its footprint that turn with its node (`ShellMesh.baseFibres`).
 public struct Anchorage: Sendable, Hashable, Codable {
     /// Normal stiffness per unit area in Pa/m; nil takes the body material's E / h, as stiff as
     /// one more element of the body, which leaves its time step unchanged.
@@ -37,12 +42,15 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var cohesionSlip: Float
     /// Coefficient of friction, on the joint and on the ground once it has separated.
     public var friction: Float
+    /// Pressure in Pa the ground bears before it yields and the base settles; nil bears any.
+    public var bearingCapacity: Float?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,
         tensionPlateau: Float = 0, tensionOpening: Float, cohesion: Float, cohesionSlip: Float,
-        friction: Float
+        friction: Float, bearingCapacity: Float? = nil
     ) {
+        self.bearingCapacity = bearingCapacity
         self.normalStiffness = normalStiffness
         self.shearStiffness = shearStiffness
         self.tensileStrength = tensileStrength
@@ -58,6 +66,23 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// ground.
     public static func resting(friction: Float = 0.6) -> Self {
         Self(tensileStrength: 0, tensionOpening: 0, cohesion: 0, cohesionSlip: 0, friction: friction)
+    }
+
+    /// A footing on soil, as a Winkler bed: the ground's stiffness, its subgrade modulus in Pa/m
+    /// (a reaction of that many pascals per metre of settlement), the same along the base; its
+    /// ultimate bearing pressure in Pa; friction; and no tension. The defaults are for a medium
+    /// dense sand under a footing about a metre wide: 50 MN/m³, 600 kPa and 0.5, within the
+    /// ranges foundation texts give for such a sand (J. E. Bowles, *Foundation Analysis and
+    /// Design*, for one), written from memory and not measured for any site.
+    public static func soil(
+        subgradeModulus: Float = 50e6, bearingCapacity: Float = 600e3, friction: Float = 0.5
+    )
+        -> Self
+    {
+        Self(
+            normalStiffness: subgradeModulus, shearStiffness: subgradeModulus, tensileStrength: 0,
+            tensionOpening: 0, cohesion: 0, cohesionSlip: 0, friction: friction,
+            bearingCapacity: bearingCapacity)
     }
 
     /// An unreinforced construction joint, as of a wall cast on its footing: 1 MPa of tension lost
@@ -124,6 +149,8 @@ public enum BaseConnection: String, CaseIterable, Sendable {
     case joint
     /// Standing on the ground without any connection.
     case resting
+    /// On a footing over soil that can settle and yield (`Anchorage.soil()`).
+    case soil
 
     /// The starter bars' ratio of `dowelled`.
     public static let dowelRatio: Float = 2 * 565e-6 / 0.25
@@ -134,6 +161,7 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .dowelled: .dowelled(ratio: Self.dowelRatio)
         case .joint: .constructionJoint
         case .resting: .resting()
+        case .soil: .soil()
         }
     }
 
@@ -143,20 +171,119 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .dowelled: "Starter bars"
         case .joint: "Construction joint"
         case .resting: "Resting on the ground"
+        case .soil: "On soil"
         }
     }
 
-    /// The connection `anchorage` is, or the nearest: any other with a plateau counts as starter
-    /// bars, any other with strength as a joint, and any without as resting.
+    /// The connection `anchorage` is, or the nearest: any with a bearing capacity counts as soil,
+    /// any other with a plateau as starter bars, any other with strength as a joint, and any
+    /// without as resting.
     public init(_ anchorage: Anchorage?) {
         guard let anchorage else {
             self = .clamped
             return
         }
-        if anchorage.tensileStrength <= 0 && anchorage.cohesion <= 0 {
+        if anchorage.bearingCapacity != nil {
+            self = .soil
+        } else if anchorage.tensileStrength <= 0 && anchorage.cohesion <= 0 {
             self = .resting
         } else {
             self = anchorage.tensionPlateau > 0 ? .dowelled : .joint
+        }
+    }
+}
+
+// The same law layout consumed by both Metal node kernels (`AnchorLaw`).
+struct AnchorageParameters {
+    var stiffnessAndTension: SIMD4<Float>
+    var failureAndFriction: SIMD4<Float>
+    /// The ground's bearing capacity (zero: without limit), then padding.
+    var bearing: SIMD4<Float>
+
+    init(_ law: Anchorage, material: StructureMaterial, elementSize: Float) {
+        let stiffness = law.stiffness(material: material, elementSize: elementSize)
+        stiffnessAndTension = SIMD4(
+            stiffness.normal, stiffness.shear, law.tensileStrength, law.tensionPlateau)
+        failureAndFriction = SIMD4(law.tensionOpening, law.cohesion, law.cohesionSlip, law.friction)
+        bearing = SIMD4(law.bearingCapacity ?? 0, 0, 0, 0)
+    }
+}
+
+extension Anchorage {
+    /// Reject invalid laws before they reach a GPU, including laws loaded from a document.
+    public func validate() throws {
+        let values = [
+            tensileStrength, tensionPlateau, tensionOpening, cohesion, cohesionSlip, friction,
+            bearingCapacity ?? 0,
+        ]
+        guard values.allSatisfy({ $0.isFinite && $0 >= 0 }),
+            tensionOpening >= tensionPlateau,
+            normalStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,
+            shearStiffness.map({ $0.isFinite && $0 > 0 }) ?? true
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "Connection values must be finite and nonnegative, stiffness must be positive, and final opening cannot precede the strength plateau."
+            )
+        }
+    }
+}
+
+extension StructureModel {
+    /// Nil entries retain ideal clamping. Finite region connections are horizontal bearings.
+    public func anchorage(ofSupport index: Int) -> Anchorage? {
+        supportAnchorages.indices.contains(index) ? supportAnchorages[index] : nil
+    }
+
+    public mutating func setAnchorage(_ law: Anchorage?, ofSupport index: Int) {
+        guard supports.indices.contains(index) else { return }
+        while supportAnchorages.count <= index { supportAnchorages.append(nil) }
+        supportAnchorages[index] = law
+    }
+
+    public mutating func removeSupport(at index: Int) {
+        guard supports.indices.contains(index) else { return }
+        supports.remove(at: index)
+        if supportAnchorages.indices.contains(index) { supportAnchorages.remove(at: index) }
+    }
+
+    func containsSupport(_ index: Int, at point: SIMD3<Float>) -> Bool {
+        let slack = 1e-3 * elementSize
+        let box = supports[index]
+        return (0..<3).allSatisfy { point[$0] >= box.min[$0] - slack && point[$0] <= box.max[$0] + slack }
+    }
+
+    func isClampedBySupport(at point: SIMD3<Float>) -> Bool {
+        supports.indices.contains { anchorage(ofSupport: $0) == nil && containsSupport($0, at: point) }
+    }
+
+    /// An ideal clamp takes precedence, followed by the last finite support, then the ground.
+    func connection(at point: SIMD3<Float>) -> Anchorage? {
+        guard !isClampedBySupport(at: point) else { return nil }
+        if let index = finiteSupportIndex(at: point) { return anchorage(ofSupport: index) }
+        return fixedBase && abs(point.z) < 1e-4 ? baseAnchorage : nil
+    }
+
+    func finiteSupportIndex(at point: SIMD3<Float>) -> Int? {
+        guard !isClampedBySupport(at: point) else { return nil }
+        return supports.indices.reversed().first {
+            anchorage(ofSupport: $0) != nil && containsSupport($0, at: point)
+        }
+    }
+
+    func validateAnchorages() throws {
+        guard supportAnchorages.count <= supports.count else {
+            throw ImportedMesh.ImportError.invalid("A connection references a missing support region.")
+        }
+        try baseAnchorage?.validate()
+        for law in supportAnchorages.compactMap({ $0 }) { try law.validate() }
+    }
+
+    var connectionStiffness: (normal: Float, shear: Float)? {
+        let laws = (fixedBase ? [baseAnchorage].compactMap { $0 } : []) + supportAnchorages.compactMap { $0 }
+        guard !laws.isEmpty else { return nil }
+        return laws.reduce((normal: Float(0), shear: Float(0))) { result, law in
+            let value = law.stiffness(material: material, elementSize: elementSize)
+            return (max(result.normal, value.normal), max(result.shear, value.shear))
         }
     }
 }

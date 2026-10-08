@@ -48,6 +48,23 @@ titles; the authors, journals and years should be enough to find each one.
   paper says only that diagonal bars were "arranged along the chamfered surfaces". The model
   leaves them out, and the joints decide whether its roof holds.
 
+## 2b. A freestanding wall under an open-air charge
+
+- **Where:** a field test of a wall standing on its own footing, not held at its top. Found
+  (2026-10-08) but not readable here, behind the publishers' bot checks: "Experimental and
+  numerical study on protective effect of RC blast wall against air shock wave", *Defence
+  Technology* (2022, open access, ScienceDirect S2214914722002434), which measured the reflected
+  pressure on a reinforced concrete blast wall and the diffracted pressure behind it from TNT
+  3 m away; the cantilever-wall tests of Keys and Clubley, and of Ahmad et al., on the
+  pressures behind a cantilever blast wall; and the scaled masonry walls of M. Hayman's thesis
+  (McMaster University), which were held in frames rather than freestanding.
+- **Needed:** the wall's section, reinforcement and footing; the charge and its position; the
+  pressures in front of and behind the wall; and its deflection or rotation, peak and left.
+- **Use:** the coupled wall study (`blastbench anchorage --air`) found that the wave wrapping
+  over and round a freestanding wall, loading its back face, cuts its sway to a third of a
+  pulse on its face alone (see [base connections](structural-model.md#base-connections)).
+  Pressures behind a wall would check that; a deflection record would check its base too.
+
 ## 2a. Shear across cracks at high rates
 
 - **Where:** any test of shear across a crack (push-off specimens) loaded quickly, or a
@@ -66,12 +83,8 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Ten values in the code were written from memory and should be checked against the original.
+Eight values in the code were written from memory and should be checked against the original.
 
-- **TNT's heats of detonation and combustion.** P. W. Cooper, *Explosives Engineering*,
-  Wiley-VCH, 1996, or any standard table. Needed: the heat of combustion of TNT (taken as about
-  15 MJ/kg) and its heat of detonation (about 4.6 to 5 MJ/kg), whose difference, 10 MJ/kg, is
-  the afterburn energy.
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
   **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2); ASTM E1300 or a
@@ -89,11 +102,12 @@ Ten values in the code were written from memory and should be checked against th
   and strain and the constants K₁, K₂, K₃ (taken as 0.8 GPa, 0.1, and 85, −171, 208 GPa), used
   in `compactionPressure` in `Structure.metal`. A close-in or contact-charge test on a concrete
   slab would then check it.
-- **Vibrational temperatures of N2 and O2** (3390 K and 2270 K), used for hot air in
-  `Solver.metal`, and **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and
-  59,500 K, ρ<sub>d</sub> 130 and 150 g/cm³, from Vincenti and Kruger's *Introduction to
-  Physical Gas Dynamics*), used for dissociating air; any text on statistical thermodynamics,
-  or the NIST-JANAF tables, to check them.
+- **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and 59,500 K, ρ<sub>d</sub> 130
+  and 150 g/cm³, from Vincenti and Kruger's *Introduction to Physical Gas Dynamics*), used for
+  dissociating air in `Solver.metal`; any text on statistical thermodynamics, or the NIST-JANAF
+  tables, to check them. (The vibrational temperatures of N2 and O2 used for hot air, 3390 K
+  and 2270 K, are checked: a table of diatomic properties from Georgia Tech's AE 6765 gives
+  3393 K and 2274 K.)
 
 - **Dowel strength.** B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and
   dowels embedded in concrete", *Bygningsstatiske Meddelelser* 34 (1963), or fib Model Code
@@ -113,9 +127,12 @@ Ten values in the code were written from memory and should be checked against th
   (ε̇ / 10⁻⁶)^0.018 to 10 per second and 0.0062 (ε̇ / 10⁻⁶)^(1/3) above, for every strength.
   Needed: the law as printed, and whether the code gives one for fracture energy.
 
-- **Crack dilatancy.** J. C. Walraven, "Fundamental analysis of aggregate interlock",
-  *Journal of the Structural Division, ASCE* 107 (1981), or his thesis (Delft, 1980). Needed:
-  how far a crack opens as it slides, taken as half the slip (`crackDilatancy` 0.5).
+- **Crack dilatancy.** How far a crack opens as it slides, taken as half the slip
+  (`crackDilatancy` 0.5). Walraven and Reinhardt's average crack opening paths (*HERON* 26(1A),
+  1981, Fig. 10; see Obtained) open by about 0.75 to 0.9 of the slip at 2 mm in concretes of
+  20 to 38 N/mm², and about 0.3 in one of 56 N/mm², but their cracks were held shut by bars
+  across them, so the free crack's path is still wanted. The 0.5 has been left, since the
+  beams struck by a falling weight were checked with it.
 
 - **Karsan–Jirsa unloading.** I. D. Karsan and J. O. Jirsa, "Behavior of concrete under
   compressive loadings", *Journal of the Structural Division*, ASCE 95(ST12) (1969) 2543–2563.
@@ -132,6 +149,24 @@ Ten values in the code were written from memory and should be checked against th
 ## Obtained
 
 Supplied by hand during development, and now in use:
+
+- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996 (supplied as a scan): TNT's heat of
+  combustion, 821 kcal/mol with the water liquid (Table 9.3, p. 130), 15.1 MJ/kg; its heat of
+  detonation and afterburn heat (Table 9.4 and §9.6, pp. 132–133); and the closed vessel worked
+  through on pp. 153–158. See the [air-blast model](air-blast-model.md#sources).
+
+- J. C. Walraven and H. W. Reinhardt, "Theory and experiments on the mechanical behaviour of
+  cracks in plain and reinforced concrete subjected to shear loading", *HERON* 26(1A) (1981),
+  open access from the TU Delft repository: their push-off tests and the fit to them,
+  τ = −f_cc/30 + [1.8 w^−0.80 + (0.234 w^−0.707 − 0.20) f_cc] Δ (eq. 1a, w and Δ in mm), whose
+  slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
+  Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
+  were restrained, so their cracks carried compression, which the interlock cap leaves out;
+  where its laws give no stress across the crack, the model's cap is 3% to 24% above them.
+- J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
+  effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
+  (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,
+  Ω_y = 1 − 0.85 (1 − e^(−5 aᵇ)), b = (2 − f_t / f_y)², which corrected the exponent.
 
 - M. M. Swisdak, *Simplified Kingery Airblast Calculations* (1994): the Kingery–Bulmash
   polynomials, in `KingeryBulmash.swift`.

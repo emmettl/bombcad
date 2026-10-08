@@ -172,10 +172,22 @@ extension ShoeboxRoom {
     /// Every boundary with its area and material: the six faces of a box, or a plan's walls with its
     /// floor and ceiling.
     public var boundaries: [(area: Double, material: SurfaceMaterial)] {
+        if let mesh { return mesh.faces.indices.map { (mesh.normalAndArea($0).area, mesh.material(of: $0)) } }
         guard let plan else { return Surface.allCases.map { (area($0), self[$0]) } }
         return plan.corners.indices.map { (plan.length($0) * size.z, plan.walls[$0]) } + [
             (plan.area, floor), (plan.area, ceiling),
         ]
+    }
+
+    /// This room with its mesh's bounding box as its size, moved so its corners fill `[0, size]`.
+    public func fittingMesh() -> ShoeboxRoom {
+        guard var mesh else { return self }
+        let (low, high) = mesh.bounds
+        mesh.vertices = mesh.vertices.map { $0 - low }
+        var room = self
+        room.mesh = mesh
+        room.size = high - low
+        return room
     }
 
     /// This room with its plan's bounding box as its size, so a plan's corners fill `[0, size]`.

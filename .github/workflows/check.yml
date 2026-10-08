@@ -8,9 +8,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
+# left no run complete. GitHub keeps only the newest waiting push queued behind it.
 concurrency:
   group: check
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
