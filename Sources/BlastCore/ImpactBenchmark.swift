@@ -191,11 +191,11 @@ public enum ImpactBenchmark {
     /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
-        adjust: (inout StructureModel) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         try run(
             device: device, specimen: specimen(test), weight: test.weight, speed: impactSpeed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 
     /// Strikes `specimen` at mid-span with `weight` kilograms at `speed` metres per second, as
@@ -204,7 +204,8 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float,
         elementsThroughDepth: Int = 16,
-        duration: Double = 0.2, bounce: Bool = true, adjust: (inout StructureModel) -> Void = { _ in }
+        duration: Double = 0.2, bounce: Bool = true, adjust: (inout StructureModel) -> Void = { _ in },
+        inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         let length = specimen.length
         let depth = specimen.depth
@@ -332,6 +333,7 @@ public enum ImpactBenchmark {
             reactions.append(reaction)
         }
         let elapsed = ContinuousClock.now - start
+        inspect(solver)
         let window = max(
             1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
         var peakReaction: Float = 0
@@ -506,10 +508,10 @@ public enum ImpactBenchmark {
 
     public static func run(
         device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
-        adjust: (inout StructureModel) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         try run(
             device: device, specimen: specimen(test), weight: 300, speed: test.speed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 }

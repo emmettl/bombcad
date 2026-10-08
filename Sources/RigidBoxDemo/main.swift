@@ -7,6 +7,22 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--piston-crossings") {
+        let results = try ExperimentalPistonCrossingStudy.run()
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/piston-crossings.json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(to: output, options: .atomic)
+        for r in results {
+            print(
+                "dx \(r.cellLength), piston \(r.pistonVelocity): \(r.gridCrossings) crossings, \(r.remeshes) repartitions, \(r.steps) steps, energy residual \(r.energyBudgetResidual) J"
+            )
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--piston") {
         let results = try ExperimentalPistonStudy.run()
         let output = URL(

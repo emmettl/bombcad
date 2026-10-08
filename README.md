@@ -329,6 +329,12 @@ equal/opposite pressure work and impulse. Six cases compress or expand total vol
 10% at 0.25, 0.5 and 1 m/s, checking conservation and approach to the quasi-static
 adiabatic pressure. This reference keeps constant wall area and fixed cell topology;
 cell crossings and general time-varying apertures remain to be coupled.
+`--piston-crossings` writes `.build/piston-crossings.json`, advancing a planar piston
+through three or six grid boundaries on two grids. A quarter-volume end cell merges
+with its neighbour before closure and splits during expansion. Piecewise-constant
+repartitioning conserves extensive mass, momentum and energy. This bounds end-cell
+stiffness but changes spatial diffusion; general box geometry and varying apertures
+are not yet coupled to the physical flux reference.
 
 ## Headline results
 
