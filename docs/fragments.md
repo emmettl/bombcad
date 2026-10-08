@@ -48,7 +48,10 @@ any field left out takes its default:
 - **Tracers** are massless and go with the air.
 - **Impacts** are recorded where a fragment first meets the ground, a rigid block or the
   structure's starting outline: the point, time, speed and energy. A fragment does not load what
-  it hits, and the structure's outline does not move. Beyond the air's domain the air is still.
+  it hits, and the structure's outline does not move. Every independent structure contributes
+  its starting regions; impacts in multiple-structure scenes include the stable `objectID`.
+  The optional owner table and impact ID preserve decoding of older single-structure streams
+  and results. Beyond the air's domain the air is still.
 
 ## Running alongside the blast
 

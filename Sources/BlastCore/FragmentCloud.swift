@@ -83,6 +83,8 @@ public struct FragmentImpact: Codable, Sendable, Equatable {
     public var energy: Float
     /// `ground`, `block <n>` or `structure`.
     public var surface: String
+    /// Owner of an impacted structure in a multiple-body scene; absent in legacy results.
+    public var objectID: UUID? = nil
 }
 
 /// What fragments need of a scene: the charge, the domain, and what they can hit.
@@ -92,12 +94,18 @@ public struct FragmentScene: Codable, Sendable, Equatable {
     public var blocks: [Box]
     /// The structure's outline as it starts; fragments do not see it move.
     public var structure: [Box]
+    /// One owner per starting structural region. Absent for legacy and single-body scenes.
+    public var structureOwners: [UUID]?
 
     public init(_ scenario: Scenario) {
         charge = scenario.charge
         domain = scenario.domainSize
         blocks = scenario.rigidBoxes
-        structure = scenario.structure?.solids ?? []
+        let bodies = scenario.structuralObjects.sorted { $0.id.uuidString < $1.id.uuidString }
+        structure = bodies.flatMap { $0.structure!.solids }
+        structureOwners =
+            bodies.count > 1
+            ? bodies.flatMap { body in body.structure!.solids.map { _ in body.id } } : nil
     }
 }
 
@@ -122,6 +130,7 @@ public struct FragmentCloud: Sendable {
     public let launchSpeed: Float
     let blocks: [Box]
     let structure: [Box]
+    let structureOwners: [UUID]?
     let gravity = SIMD3<Float>(0, 0, -9.81)
 
     public var fragmentCount: Int { particles.lazy.filter { $0.mass > 0 }.count }
@@ -138,6 +147,7 @@ public struct FragmentCloud: Sendable {
         launchSpeed = speed
         blocks = scene.blocks
         structure = scene.structure
+        structureOwners = scene.structureOwners?.count == scene.structure.count ? scene.structureOwners : nil
         var particles: [Particle] = []
         // Mott: P(mass > m) = exp(-√(m/μ)), whose mean is 2μ; scaled after to the casing's mass.
         let mu = spec.count > 0 ? spec.casingMass / Float(2 * spec.count) : 0
@@ -179,11 +189,12 @@ public struct FragmentCloud: Sendable {
     }
 
     /// Particles placed directly, for tests.
-    init(particles: [Particle], blocks: [Box] = [], structure: [Box] = []) {
+    init(particles: [Particle], blocks: [Box] = [], structure: [Box] = [], structureOwners: [UUID]? = nil) {
         self.particles = particles
         launchSpeed = 0
         self.blocks = blocks
         self.structure = structure
+        self.structureOwners = structureOwners?.count == structure.count ? structureOwners : nil
     }
 
     /// The box a consumer needs air over to carry every airborne particle `ahead` seconds on,
@@ -258,7 +269,8 @@ public struct FragmentCloud: Sendable {
                         impacts.append(
                             FragmentImpact(
                                 fragment: index, time: t, position: hit.point, speed: speed,
-                                energy: 0.5 * particle.mass * speed * speed, surface: hit.surface))
+                                energy: 0.5 * particle.mass * speed * speed, surface: hit.surface,
+                                objectID: hit.objectID))
                     }
                     particle.velocity = .zero
                     break
@@ -311,22 +323,26 @@ public struct FragmentCloud: Sendable {
 
     /// Where a straight step first meets the ground, a block or the structure.
     private func hit(from start: SIMD3<Float>, to end: SIMD3<Float>) -> (
-        point: SIMD3<Float>, surface: String
+        point: SIMD3<Float>, surface: String, objectID: UUID?
     )? {
-        var best: (fraction: Float, surface: String)?
+        var best: (fraction: Float, surface: String, objectID: UUID?)?
         if end.z <= 0, start.z > 0 {
-            best = (start.z / (start.z - end.z), "ground")
+            best = (start.z / (start.z - end.z), "ground", nil)
         } else if end.z <= 0 {
-            best = (0, "ground")
+            best = (0, "ground", nil)
         }
         for (n, box) in blocks.enumerated() {
-            if let f = entry(start, end, box), f < (best?.fraction ?? .infinity) { best = (f, "block \(n)") }
+            if let f = entry(start, end, box), f < (best?.fraction ?? .infinity) {
+                best = (f, "block \(n)", nil)
+            }
         }
-        for box in structure {
-            if let f = entry(start, end, box), f < (best?.fraction ?? .infinity) { best = (f, "structure") }
+        for (index, box) in structure.enumerated() {
+            if let f = entry(start, end, box), f < (best?.fraction ?? .infinity) {
+                best = (f, "structure", structureOwners?[index])
+            }
         }
         guard let best else { return nil }
-        return (start + (end - start) * best.fraction, best.surface)
+        return (start + (end - start) * best.fraction, best.surface, best.objectID)
     }
 
     /// The fraction of the way from `start` to `end` where the segment enters `box`, if it does.

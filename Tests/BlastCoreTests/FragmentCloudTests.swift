@@ -29,6 +29,46 @@ private func uniform(
 
 @Suite("Fragments and air slices")
 struct FragmentCloudTests {
+    @Test("Fragment scenes include every structural owner and preserve legacy decoding")
+    func structuralOwners() throws {
+        var scenario = Scenario(
+            name: "Two walls", domainSize: SIMD3(repeating: 100), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(10, 50, 5)),
+            structure: StructureModel(
+                solids: [Box(x: 40...41, y: 40...60, height: 10)],
+                material: .plainConcrete, elementSize: 0.5))
+        let second = try scenario.addStructureObject(
+            StructureModel(
+                solids: [Box(x: 20...21, y: 40...60, height: 10)],
+                material: .plainConcrete, elementSize: 0.5), name: "Near wall")
+        let scene = FragmentScene(scenario)
+        #expect(scene.structure.count == 2 && scene.structureOwners?.count == 2)
+        try scenario.reorderObjects(scenario.objects.map(\.id).reversed())
+        #expect(FragmentScene(scenario) == scene)
+        let restored = try JSONDecoder().decode(FragmentScene.self, from: JSONEncoder().encode(scene))
+        #expect(restored == scene)
+        var cloud = FragmentCloud(
+            particles: [
+                .init(position: SIMD3(10, 50, 5), velocity: SIMD3(500, 0, 0), mass: 0.02, area: 1e-4)
+            ],
+            structure: restored.structure, structureOwners: restored.structureOwners)
+        let (a, b) = uniform(density: 0, duration: 0.1)
+        cloud.advance(from: a, to: b)
+        let impact = try #require(cloud.impacts.first)
+        #expect(impact.objectID == second && impact.surface == "structure")
+        #expect(abs(impact.position.x - 20) < 1e-3)
+        let legacy = Data(
+            "{\"fragment\":0,\"time\":0.1,\"position\":[20,50,5],\"speed\":500,\"energy\":2500,\"surface\":\"structure\"}"
+                .utf8)
+        #expect(try JSONDecoder().decode(FragmentImpact.self, from: legacy).objectID == nil)
+        var raw = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(scene)) as? [String: Any])
+        raw.removeValue(forKey: "structureOwners")
+        #expect(
+            try JSONDecoder().decode(FragmentScene.self, from: JSONSerialization.data(withJSONObject: raw))
+                .structureOwners == nil)
+    }
+
     @Test("Gurney speeds and Mott masses")
     func launch() {
         var spec = FragmentSpec()
