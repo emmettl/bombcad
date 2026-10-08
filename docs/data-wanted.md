@@ -83,7 +83,7 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Nine values in the code were written from memory and should be checked against the original.
+Eight values in the code were written from memory and should be checked against the original.
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
@@ -102,11 +102,12 @@ Nine values in the code were written from memory and should be checked against t
   and strain and the constants K₁, K₂, K₃ (taken as 0.8 GPa, 0.1, and 85, −171, 208 GPa), used
   in `compactionPressure` in `Structure.metal`. A close-in or contact-charge test on a concrete
   slab would then check it.
-- **Vibrational temperatures of N2 and O2** (3390 K and 2270 K), used for hot air in
-  `Solver.metal`, and **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and
-  59,500 K, ρ<sub>d</sub> 130 and 150 g/cm³, from Vincenti and Kruger's *Introduction to
-  Physical Gas Dynamics*), used for dissociating air; any text on statistical thermodynamics,
-  or the NIST-JANAF tables, to check them.
+- **Lighthill's dissociation constants** (θ<sub>d</sub> 113,000 and 59,500 K, ρ<sub>d</sub> 130
+  and 150 g/cm³, from Vincenti and Kruger's *Introduction to Physical Gas Dynamics*), used for
+  dissociating air in `Solver.metal`; any text on statistical thermodynamics, or the NIST-JANAF
+  tables, to check them. (The vibrational temperatures of N2 and O2 used for hot air, 3390 K
+  and 2270 K, are checked: a table of diatomic properties from Georgia Tech's AE 6765 gives
+  3393 K and 2274 K.)
 
 - **Dowel strength.** B. H. Rasmussen, "The carrying capacity of transversely loaded bolts and
   dowels embedded in concrete", *Bygningsstatiske Meddelelser* 34 (1963), or fib Model Code
