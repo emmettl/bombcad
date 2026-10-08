@@ -66,7 +66,9 @@ logging to `~/bombcad-nightly-trigger/trigger.log`. A scheduled run that finds o
 in that time skips itself, so the suite runs once whichever comes first.
 
 Starting a run needs `gh` on the mini signed in to an account that can run the workflow (`gh auth
-login`); asking which runs have started does not, the repository being public.
+login`); asking which runs have started does not, the repository being public. `gh` keeps its token
+in the login keychain, which an SSH session cannot open, so over SSH it reports the token invalid;
+the agent runs in the logged-in session, where it is signed in.
 
 ## Setting up the runner
 
