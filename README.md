@@ -371,6 +371,22 @@ with its neighbour before closure and splits during expansion. Piecewise-constan
 repartitioning conserves extensive mass, momentum and energy. This bounds end-cell
 stiffness but changes spatial diffusion; general box geometry and varying apertures
 are not yet coupled to the physical flux reference.
+`--piston-sensitivity` writes `.build/piston-sensitivity.json`, comparing matched 20 m/s
+compression/expansion on two grids, two CFL limits and three merge fractions (24 cases).
+It records wall work, conservation budgets and 64 pressure/velocity samples along the
+final tube. Changing merge thresholds has a small effect on mean pressure in this study,
+but local profiles and grid spacing still matter; the comparison is not blast validation.
+`--piston-transients` writes `.build/piston-transients.json`, with profiles at 0.5, 2, 5
+and 15 ms on 0.1, 0.05 and 0.025 m grids at two CFL limits. Complete cell profiles are
+included alongside 64 samples. `python3 Scripts/summarize-piston-transients.py` compares
+pressure by exact overlaps of the piecewise-constant profiles, using the finest run as a
+numerical reference. Snapshot times split integration steps, and budgets are recorded at
+every snapshot. Early wave profiles remain more grid-sensitive than final mean pressure.
+`--piston-wave` writes `.build/piston-wave.json`, comparing numerical conserved cell averages
+against an analytical initial piston shock or rarefaction at 0.5 and 0.8 ms, before wall
+reflections. Four grids down to 0.0125 m and two CFL limits expose pressure, density,
+momentum, energy and wall-work errors. Refinement reduces pressure error, but first-order
+wave diffusion remains appreciable; conservation alone is not an accuracy validation.
 
 ## Headline results
 
