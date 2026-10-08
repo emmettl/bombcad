@@ -49,13 +49,23 @@ measurements, in four configurations:
 
 - the initial materials with the wave solver;
 - BRAS's fitted materials with the wave solver;
-- materials fitted to this model, with the wave solver and without it.
+- materials fitted to this model, with the wave solver and without it;
+- for a scene with fitted zones, the same with them;
+- materials fitted by simulating this model, with the wave solver.
 
 BRAS fitted its materials to its own model, with its own volume and areas, in third octaves.
 **Fitted to this model** instead takes the initial materials and scales their absorption in each
 octave so that Eyring's formula, with this model's volume, areas and air, gives the measured mean
 T30 (`ValidationScene.refitting`). This is what a designer with a measurement would do. The two
 fitted sets differ by up to 10% in Eyring's estimate here.
+
+**Fitted by simulating this model** goes one step further. It takes the set fitted to this model and
+scales its absorption in each band until RoomCAD's own simulated T30 matches the measured mean
+(`AbsorptionCalibration`; see
+[Matching a measured reverberation time](room-acoustics-model.md#matching-a-measured-reverberation-time)).
+The fit simulates one driver of loudspeaker 1 at all five microphones. With T30 matched by
+construction, what remains to compare is the shape of the decay: EDT, clarity, definition and centre
+time.
 
 It analyses the measured and the simulated responses in the same way. Each one is timed in each
 octave band from that band's own onset, the first sample within 20 dB of the band's peak. This
@@ -195,6 +205,32 @@ window recesses, sills and fittings, which add reflections of their own. One pai
 microphone 2, doesn't correlate at all. Two of the measured responses from loudspeaker 2 have a weak
 direct sound and strong arrivals near 10 and 16 ms that the model lacks.
 
+### Fitted by simulating the model
+
+The fit took three simulations. The absorption rose by 4–25% from 125 Hz to 2 kHz, most at 250 Hz,
+and by 13% at 8 kHz; it fell by 2% at 63 Hz.
+
+| | | 63 Hz | 125 Hz | 250 Hz | 500 Hz | 1 kHz | 2 kHz | 4 kHz | 8 kHz |
+|---|---|---|---|---|---|---|---|---|---|
+| T30 (s) | Measured | 1.71 ± 0.47 | 1.40 ± 0.12 | 1.72 ± 0.14 | 2.02 ± 0.04 | 1.94 ± 0.04 | 1.75 ± 0.02 | 1.57 ± 0.01 | 1.03 ± 0.02 |
+| | Simulated | 1.73 (+0.2) | 1.35 (−0.8) | 1.72 (−0.0) | 2.01 (−0.1) | 1.94 (−0.0) | 1.75 (−0.0) | 1.57 (+0.0) | 0.97 (−1.2) |
+| EDT (s) | Measured | 1.36 ± 0.27 | 1.41 ± 0.23 | 1.45 ± 0.10 | 1.98 ± 0.14 | 1.90 ± 0.07 | 1.72 ± 0.05 | 1.58 ± 0.03 | 0.68 ± 0.03 |
+| | Simulated | 1.62 (+3.8) | 1.32 (−1.2) | 1.63 (+2.5) | 2.05 (+0.7) | 2.01 (+1.1) | 1.71 (−0.1) | 1.56 (−0.3) | 1.01 (+9.6) |
+| C80 (dB) | Measured | 2.7 ± 2.4 | 0.8 ± 2.0 | 1.0 ± 1.3 | −1.4 ± 0.7 | −0.8 ± 0.6 | −0.1 ± 0.6 | 0.2 ± 0.4 | 6.8 ± 0.5 |
+| | Simulated | 0.4 (−2.3) | 2.2 (+1.5) | −1.8 (−2.7) | −1.2 (+0.2) | −1.5 (−0.8) | −0.3 (−0.2) | 0.5 (+0.3) | 3.4 (−3.4) |
+| D50 | Measured | 0.48 ± 0.14 | 0.36 ± 0.09 | 0.42 ± 0.12 | 0.30 ± 0.05 | 0.32 ± 0.04 | 0.36 ± 0.03 | 0.36 ± 0.02 | 0.69 ± 0.03 |
+| | Simulated | 0.41 (−1.4) | 0.46 (+2.1) | 0.29 (−2.6) | 0.31 (+0.1) | 0.28 (−0.7) | 0.34 (−0.3) | 0.38 (+0.3) | 0.52 (−3.4) |
+
+- **500 Hz to 4 kHz.** With T30 matched, EDT, C80, D50 and centre time are all within about 1.1 JND.
+  The model's decay has the right shape there.
+- **250 Hz.** Clarity is still 2.7 JND low and EDT 2.5 JND long, better than with Eyring-fitted
+  materials (3.9 and 7.3 JND). This band lies just above the wave solver's crossover, where the
+  geometrical model's nearly specular decay is too slow at first.
+- **8 kHz.** The early decay is still far too slow, as with every material set: probably the
+  dodecahedron's directivity, as above.
+- **Low frequencies and early reflections.** These are unchanged: fine structure 0.63, early
+  reflections 0.61.
+
 ## A larger room: the chamber music hall
 
 ### The room
@@ -308,6 +344,35 @@ Clarity, definition and centre time change by less than a JND. The early reflect
 0.45 ± 0.18, as before. Doubling each chair's surface did not shorten the decay further in a shorter
 probe.
 
+### Fitted by simulating the model
+
+The fit kept, in each band, the closest of six simulations. The absorption rose by 12–61% from
+125 Hz to 8 kHz, most at 250 and 500 Hz. At 63 Hz, which the wave solver holds, the time answered
+the absorption erratically, and the fit lowered it by 40% to reach the measured 1.98 s.
+
+| | | 63 Hz | 125 Hz | 250 Hz | 500 Hz | 1 kHz | 2 kHz | 4 kHz | 8 kHz |
+|---|---|---|---|---|---|---|---|---|---|
+| T30 (s) | Measured | 1.98 ± 0.25 | 1.62 ± 0.07 | 1.45 ± 0.04 | 1.29 ± 0.03 | 1.33 ± 0.03 | 1.32 ± 0.01 | 1.06 ± 0.02 | 0.72 ± 0.03 |
+| | Simulated | 1.92 (−0.6) | 1.77 (+1.9) | 1.42 (−0.3) | 1.30 (+0.0) | 1.35 (+0.2) | 1.35 (+0.5) | 1.08 (+0.5) | 0.74 (+0.6) |
+| EDT (s) | Measured | 1.62 ± 0.23 | 1.58 ± 0.20 | 1.37 ± 0.09 | 1.34 ± 0.10 | 1.31 ± 0.08 | 1.24 ± 0.04 | 1.04 ± 0.04 | 0.53 ± 0.06 |
+| | Simulated | 1.64 (+0.2) | 1.45 (−1.6) | 1.24 (−1.8) | 1.10 (−3.6) | 1.27 (−0.5) | 1.27 (+0.5) | 1.04 (−0.1) | 0.70 (+6.3) |
+| C80 (dB) | Measured | 0.4 ± 2.2 | 0.4 ± 1.0 | 0.8 ± 2.1 | 1.6 ± 1.5 | 1.7 ± 0.7 | 1.6 ± 0.6 | 3.3 ± 0.8 | 9.0 ± 1.4 |
+| | Simulated | −0.2 (−0.5) | 1.8 (+1.4) | 2.4 (+1.6) | 3.4 (+1.9) | 2.7 (+0.9) | 2.2 (+0.7) | 3.6 (+0.3) | 6.4 (−2.5) |
+| D50 | Measured | 0.42 ± 0.14 | 0.36 ± 0.11 | 0.42 ± 0.14 | 0.43 ± 0.12 | 0.43 ± 0.07 | 0.42 ± 0.05 | 0.52 ± 0.06 | 0.76 ± 0.06 |
+| | Simulated | 0.38 (−0.8) | 0.49 (+2.6) | 0.45 (+0.6) | 0.56 (+2.4) | 0.52 (+1.7) | 0.48 (+1.4) | 0.55 (+0.5) | 0.67 (−1.7) |
+
+- **T30.** It now matches within 0.6 JND, except at 125 Hz (+9%).
+- **The shape of the decay.** From 1 to 4 kHz, EDT, clarity and centre time are within about 1.3
+  JND. At 500 Hz, though, the early decay is now too fast: EDT is 3.6 JND short, and clarity and
+  definition about 2 JND high. With Eyring-fitted materials, EDT and T30 were both too long. The
+  simulated decay sags, falling quickly at first and more slowly later, where the measured one
+  falls in a straight line. Matching one end of it leaves the other wrong. That is what a room
+  that mixes its sound too little does: early on, sound meets the absorbing audience often; later,
+  what is left travels between the walls and ceiling and meets it less. It points the same way as
+  the diagnosis above: the simplified hall needs the scattering its smooth surfaces and missing
+  objects lack.
+- **Early reflections.** These correlate at 0.47 ± 0.26, as before.
+
 ## What the comparison shows
 
 1. **Mid frequencies.** In the seminar room, from 250 Hz to 2 kHz, with only published material data,
@@ -318,7 +383,9 @@ probe.
    geometrical model decays more slowly than the measurement, because the simplified rooms are not
    fully diffuse: 7–17% from 125 to 500 Hz in the seminar room, and 13–40% in the chamber music hall.
    Fitting materials to a measured T30 should therefore be done with RoomCAD itself rather than with
-   Eyring's formula.
+   Eyring's formula, which `AbsorptionCalibration` now does. In the seminar room, absorption fitted
+   that way leaves EDT, clarity, definition and centre time within about 1.1 JND from 500 Hz to 4 kHz.
+   In the chamber music hall, it shows the simplified hall's decay sagging at 500 Hz.
 3. **Scattering by objects.** A hall simplified to smooth surfaces needs the scattering of its
    pillars, ornament and seating put back. Raising every surface's scattering to at least 0.5 halves
    the chamber music hall's excess decay.
