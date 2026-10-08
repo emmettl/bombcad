@@ -40,9 +40,28 @@ final class RoomViewport: OrbitControlling {
     /// Frames the camera on the room from a three-quarter view above it.
     func frame() {
         guard let size = framedSize else { return }
-        camera = OrbitCamera.framing(Box(min: .zero, max: SIMD3<Float>(size)))
-        // Closer than the shared framing, which leaves room around a blast scene.
-        camera.distance = max(3, 1.05 * simd_length(SIMD3<Float>(size)))
+        camera = Self.framing(SIMD3<Float>(size), aspectRatio: 1.6)
+    }
+
+    /// The shared three-quarter view, as close as it can be with every corner of the room within the
+    /// middle 85% of a view of the given aspect ratio.
+    static func framing(_ size: SIMD3<Float>, aspectRatio: Float) -> OrbitCamera {
+        var camera = OrbitCamera.framing(Box(min: .zero, max: size))
+        let corners = (0..<8).map { i in
+            SIMD3<Float>(i & 1 == 0 ? 0 : size.x, i & 2 == 0 ? 0 : size.y, i & 4 == 0 ? 0 : size.z)
+        }
+        camera.distance = 0.5 * simd_length(size)
+        while camera.distance < 600 {
+            let projection = MeshRenderer.viewProjection(camera, aspectRatio: aspectRatio)
+            let fits = corners.allSatisfy { corner in
+                let clip = projection * SIMD4(corner, 1)
+                return clip.w > 0 && abs(clip.x / clip.w) <= 0.85 && abs(clip.y / clip.w) <= 0.85
+            }
+            if fits { break }
+            camera.distance *= 1.05
+        }
+        camera.distance = max(camera.distance, 3)
+        return camera
     }
 
     func select(_ item: RoomScene.Item?) {

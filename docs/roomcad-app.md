@@ -86,7 +86,8 @@ script before an archive is written.
   - a click selects a surface, zone, source or receiver, highlights it in orange, and names it in a
     caption: a surface's material, area, and absorption and scattering at 1 kHz.
 
-  The view frames the room when it opens and when the room's size changes. Editing is done in the
+  The view frames the room when it opens and when the room's size changes: from a three-quarter view
+  above, as close as it can be with every corner within the middle 85% of the view. Editing is done in the
   inspector as before. The camera controls and renderer are shared with BombCAD (see
   [the roadmap](roomcad-roadmap.md#architecture-and-sharing)).
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,

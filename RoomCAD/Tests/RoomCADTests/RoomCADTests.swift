@@ -375,4 +375,12 @@ func roomScene() throws {
     viewport.show(settings)
     #expect(viewport.selected == nil)
     #expect(RoomScene.Item(pick: RoomScene.Item.zone(2).pick) == .zone(2))
+    // The framing keeps every corner of a long hall in view.
+    let camera = RoomViewport.framing([40, 20, 12], aspectRatio: 2)
+    let projection = MeshRenderer.viewProjection(camera, aspectRatio: 2)
+    for i in 0..<8 {
+        let corner = SIMD3<Float>(i & 1 == 0 ? 0 : 40, i & 2 == 0 ? 0 : 20, i & 4 == 0 ? 0 : 12)
+        let clip = projection * SIMD4(corner, 1)
+        #expect(abs(clip.x / clip.w) <= 0.85 && abs(clip.y / clip.w) <= 0.85)
+    }
 }
