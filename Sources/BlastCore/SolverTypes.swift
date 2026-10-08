@@ -23,6 +23,11 @@ public enum RiemannSolver: UInt32, Sendable, CaseIterable {
 }
 
 public struct SolverConfiguration: Sendable, Hashable {
+    /// Coarse boundary storage for multiple structures, read by `setStructures`.
+    /// Automatic keeps dense storage when smaller; a single body retains its dense path.
+    public var bodyCouplingLayout: BodyCouplingLayout = .automatic
+    /// Zero reserves twice the initial padded tile footprint. Positive values set a bounded pool.
+    public var bodyCouplingTileCapacity = 0
     /// Ratio of specific heats of the (ideal) gas.
     public var gamma: Float = 1.4
     /// Courant number per directional sweep.
@@ -186,6 +191,7 @@ struct SolverUniforms {
     var boxMaxX: Float = 0
     var boxMaxY: Float = 0
     var boxMaxZ: Float = 0
+    var couplingMapCount: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -353,6 +359,8 @@ public struct BatchResult: Sendable {
     public var reachedLimit = false
     /// A conservative independent-body overlap was detected; this run cannot continue.
     public var unsupportedInteraction = false
+    /// Local boundary storage could not cover the current geometry; no completed result is valid.
+    public var couplingCapacityExceeded = false
 }
 
 public enum BlastError: Error, CustomStringConvertible {

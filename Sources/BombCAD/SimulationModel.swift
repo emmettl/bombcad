@@ -1458,7 +1458,11 @@ final class SimulationModel {
             batchSize = min(max(Int(ideal.rounded()), 1), 64)
         }
 
-        if failed || !result.isStable {
+        if result.couplingCapacityExceeded {
+            errorMessage =
+                "Local coupling storage could not cover the moving geometry. Reset the run or use a smaller scene."
+            isRunning = false
+        } else if failed || !result.isStable {
             errorMessage = "The solution became unstable. Reset, or try a smaller charge or a finer grid."
             isRunning = false
         }
@@ -1506,6 +1510,11 @@ final class SimulationModel {
         if solver.interObjectContactDetected {
             errorMessage =
                 "Independent structures entered overlapping envelopes or resolved cells. Inter-object contact is unsupported; reset and separate the bodies."
+            isRunning = false
+        }
+        if solver.couplingCapacityExceeded {
+            errorMessage =
+                "Local coupling storage could not cover the moving geometry. The run stopped before a completed result could be captured."
             isRunning = false
         }
         if samples, structureSummary?.hasBlownUp != true, lastSampleTime != solver.time,

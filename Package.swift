@@ -39,7 +39,7 @@ let package = Package(
                 .product(name: "SceneRender", package: "continuumkit"),
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
-        .executableTarget(name: "SceneBench", dependencies: ["BlastCore"]),
+        .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
         .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"]),

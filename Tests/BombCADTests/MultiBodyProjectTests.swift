@@ -199,6 +199,12 @@ struct MultiBodyEditorTests {
         let archive = try ProjectDocument(model: model).makeArchive()
         let reopened = try ProjectDocument(archive: archive)
         #expect(reopened.savedRuns == model.savedRuns)
+        var historical = run
+        historical.solverVersion = SavedSimulationRun.previousMultiBodySolverVersion
+        var historicalDocument = ProjectDocument(scenario: scene)
+        historicalDocument.savedRuns = [historical]
+        let historicalRoundTrip = try ProjectDocument(archive: historicalDocument.makeArchive())
+        #expect(historicalRoundTrip.savedRuns[0].solverVersion == "blast-solver-3")
         for object in scene.structuralObjects {
             #expect(run.csv().contains(object.id.uuidString))
             #expect(model.resultsCSV().contains(object.id.uuidString))

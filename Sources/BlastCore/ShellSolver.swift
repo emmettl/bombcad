@@ -62,6 +62,7 @@ struct ShellUniforms {
     var anchorCohesion: Float = 0
     var anchorCohesionSlip: Float = 0
     var anchorFriction: Float = 0
+    var couplingMapCount: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -890,6 +891,7 @@ public final class ShellSolver {
             encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 8)
             encoder.setBuffer(fluid.control, offset: 0, index: 9)
             encoder.setBuffer(failureGateBuffer, offset: 0, index: 10)
+            encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 11)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
@@ -1039,6 +1041,7 @@ public final class ShellSolver {
             encoder.setBuffer(fibreStateBuffer, offset: 0, index: 22)
             encoder.setBuffer(fibreForceBuffer, offset: 0, index: 23)
             encoder.setBuffer(fibreLawBuffer, offset: 0, index: 24)
+            encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 25)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if !mesh.ties.isEmpty {
@@ -1161,6 +1164,7 @@ public final class ShellSolver {
             // Debris is loaded only where the air can be given the reaction.
             if debrisDrag, fluid.exchange != nil, fluid.debrisArea != nil, let region = fluid.exchangeRegion {
                 uniforms.debrisLoading = 1
+                uniforms.couplingMapCount = fluid.couplingMapCount
                 (uniforms.exchangeX, uniforms.exchangeY, uniforms.exchangeZ) =
                     (Int32(region.origin.x), Int32(region.origin.y), Int32(region.origin.z))
                 (uniforms.exchangeNx, uniforms.exchangeNy, uniforms.exchangeNz) =

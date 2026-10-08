@@ -39,12 +39,17 @@ public final class BlastSolver {
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
     public var couplingStatistics: CouplingStatistics {
-        let cells = couplingRegion.map { $0.dims.x * $0.dims.y * $0.dims.z } ?? 0
+        let cells = denseCouplingCells
+        let active =
+            tiledCoupling.map { min(Int(wallVelocityBuffer.contents().load(as: UInt32.self)), $0.capacity) }
+            ?? 0
         return CouplingStatistics(
-            layout: "dense", denseCells: cells, capacityCells: cells, activeTiles: 0, tileCapacity: 0,
+            layout: tiledCoupling == nil ? "dense" : "tiled", denseCells: cells,
+            capacityCells: tiledCoupling?.capacityCells ?? cells,
+            activeTiles: active, tileCapacity: tiledCoupling?.capacity ?? 0,
             bytes: (occupancyBuffer?.length ?? 0) + (combinedOccupancyBuffer?.length ?? 0)
                 + (debrisExchangeBuffer?.length ?? 0) + (debrisAreaBuffer?.length ?? 0)
-                + (hasBody ? wallVelocityBuffer.length : 0))
+                + (couplingTiles?.length ?? 0) + (hasBody ? wallVelocityBuffer.length : 0))
     }
 
     /// Measures only repeated boundary composition/remasking on the current geometry.
@@ -63,7 +68,17 @@ public final class BlastSolver {
     }
     public var interObjectContactDetected: Bool {
         interactionBuffer?.contents().load(as: UInt32.self) != nil
-            && interactionBuffer!.contents().load(as: UInt32.self) != 0
+            && interactionBuffer!.contents().load(as: UInt32.self) & 1 != 0
+    }
+    private var tiledCoupling: TiledCoupling?
+    private var couplingTiles: MTLBuffer?
+    private var denseCouplingCells = 0
+    private let allocateCouplingPipeline: MTLComputePipelineState
+    private let wakeCouplingPipeline: MTLComputePipelineState
+    private let haltCouplingPipeline: MTLComputePipelineState
+    public var couplingCapacityExceeded: Bool {
+        guard tiledCoupling != nil else { return false }
+        return wallVelocityBuffer.contents().load(fromByteOffset: 4, as: UInt32.self) != 0
     }
     private var combinedOccupancyBuffer: MTLBuffer?
     private var interactionBuffer: MTLBuffer?
@@ -209,6 +224,9 @@ public final class BlastSolver {
         visualizationPipeline = try pipeline("updateVisualization")
         splatPipeline = try pipeline("splatStructure")
         bodyComposePipeline = try pipeline("composeBodyOccupancy")
+        allocateCouplingPipeline = try pipeline("allocateCouplingTiles")
+        wakeCouplingPipeline = try pipeline("wakeCouplingTiles")
+        haltCouplingPipeline = try pipeline("haltCouplingCapacity")
         haltInteractionPipeline = try pipeline("haltBodyInteraction")
         clearEnvelopesPipeline = try pipeline("clearBodyEnvelopes")
         solidEnvelopePipeline = try pipeline("solidBodyEnvelope")
@@ -438,6 +456,9 @@ public final class BlastSolver {
         }
         bodies = compiled
         couplingRegion = nil
+        tiledCoupling = nil
+        couplingTiles = nil
+        denseCouplingCells = 0
         occupancyBuffer = nil
         combinedOccupancyBuffer = nil
         interactionBuffer = nil
@@ -462,15 +483,26 @@ public final class BlastSolver {
         let margin = SIMD3<Float>(4, 4, 3)
         let low = grid.cell(containing: bounds.min - margin)
         let high = grid.cell(containing: bounds.max + margin)
-        let origin = SIMD3(low.i, low.j, low.k)
-        let dims = SIMD3(high.i - low.i + 1, high.j - low.j + 1, high.k - low.k + 1)
+        var origin = SIMD3(low.i, low.j, low.k)
+        var dims = SIMD3(high.i - low.i + 1, high.j - low.j + 1, high.k - low.k + 1)
         // Four counters per cell: the number of elements in it and the sum of their velocities.
-        let regionCells = dims.x * dims.y * dims.z
+        denseCouplingCells = dims.x * dims.y * dims.z
+        if bodies.count > 1, configuration.bodyCouplingLayout != .dense {
+            let plan = try TiledCoupling(
+                grid: grid, bodies: bodies, requestedCapacity: configuration.bodyCouplingTileCapacity)
+            if configuration.bodyCouplingLayout == .tiled || plan.bytes < denseCouplingCells * 80 {
+                tiledCoupling = plan
+                origin = .zero
+                dims = SIMD3(grid.nx, grid.ny, grid.nz)
+            }
+        }
+        let regionCells = tiledCoupling?.capacityCells ?? denseCouplingCells
+        let wallWords = 3 * regionCells + (tiledCoupling?.wallHeaderWords ?? 0)
         guard
             let occupancy = device.makeBuffer(
                 length: 4 * regionCells * MemoryLayout<UInt32>.stride, options: .storageModeShared),
             let wallVelocity = device.makeBuffer(
-                length: 3 * regionCells * MemoryLayout<Float>.stride, options: .storageModeShared),
+                length: wallWords * MemoryLayout<Float>.stride, options: .storageModeShared),
             // Momentum and energy per cell, each a 64-bit sum in two words.
             let exchange = device.makeBuffer(
                 length: 8 * regionCells * MemoryLayout<UInt32>.stride, options: .storageModeShared),
@@ -496,6 +528,13 @@ public final class BlastSolver {
             bodyEnvelopeBuffer = envelopes
         }
         wallVelocityBuffer = wallVelocity
+        if let plan = tiledCoupling {
+            guard let tiles = device.makeBuffer(length: plan.capacity * 4, options: .storageModeShared)
+            else { throw BlastError.allocationFailed("coupling page table") }
+            memset(tiles.contents(), 0xFF, tiles.length)
+            couplingTiles = tiles
+            memset(wallVelocity.contents().advanced(by: 8), 0xFF, plan.mapCount * 4)
+        }
         debrisExchangeBuffer = exchange
         debrisAreaBuffer = debrisArea
         resetDebrisExchange()
@@ -520,6 +559,8 @@ public final class BlastSolver {
             threshold: 1, ex: 0, ey: 0, fluidCell: grid.cellSize, h: 0, originX: 0, originY: 0, originZ: 0,
             gamma: configuration.gamma, ambientDensity: ambientDensity,
             ambientPressure: configuration.ambientPressure, airModel: configuration.airModel.rawValue)
+        uniforms.couplingMapCount = UInt32(tiledCoupling?.mapCount ?? 0)
+        uniforms.couplingTileCapacity = UInt32(tiledCoupling?.capacity ?? 0)
         if let refinement {
             uniforms.refineRatio = UInt32(refinement.ratio)
             uniforms.blocksX = UInt32(refinement.tileDims.x)
@@ -609,6 +650,45 @@ public final class BlastSolver {
         }
     }
 
+    private func encodeWakeCoupling(_ encoder: MTLComputeCommandEncoder) {
+        guard tiledCoupling != nil, tilesEnabled else { return }
+        var uniforms = makeUniforms()
+        encoder.setComputePipelineState(wakeCouplingPipeline)
+        encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 0)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 1)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 2)
+        encoder.dispatchThreads(
+            MTLSize(width: tileDims.x * tileDims.y * tileDims.z, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(
+                width: wakeCouplingPipeline.threadExecutionWidth, height: 1, depth: 1))
+    }
+    private func encodeAllocateCoupling(_ encoder: MTLComputeCommandEncoder) {
+        guard let plan = tiledCoupling, let couplingTiles, let bodyEnvelopeBuffer, let region = couplingRegion
+        else { return }
+        var uniforms = couplingUniforms(region)
+        var count = UInt32(bodies.count)
+        encoder.setComputePipelineState(allocateCouplingPipeline)
+        encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 0)
+        encoder.setBuffer(couplingTiles, offset: 0, index: 1)
+        encoder.setBuffer(bodyEnvelopeBuffer, offset: 0, index: 2)
+        encoder.setBytes(&count, length: 4, index: 3)
+        encoder.setBytes(&uniforms, length: MemoryLayout<CouplingUniforms>.stride, index: 4)
+        encoder.dispatchThreads(
+            MTLSize(width: plan.mapCount, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(
+                width: allocateCouplingPipeline.threadExecutionWidth, height: 1, depth: 1))
+        encodeWakeCoupling(encoder)
+    }
+    private func couplingSize(_ region: (origin: SIMD3<Int>, dims: SIMD3<Int>)) -> MTLSize {
+        tiledCoupling.map { MTLSize(width: $0.capacityCells, height: 1, depth: 1) }
+            ?? MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z)
+    }
+    private func couplingThreads(_ pipeline: MTLComputePipelineState) -> MTLSize {
+        tiledCoupling == nil
+            ? regionThreads(pipeline)
+            : MTLSize(width: pipeline.threadExecutionWidth, height: 1, depth: 1)
+    }
+
     private func encodeInteractionCheck(_ encoder: MTLComputeCommandEncoder) {
         guard let interactionBuffer, let bounds = bodyEnvelopeBuffer else { return }
         var count = UInt32(bodies.count)
@@ -619,6 +699,15 @@ public final class BlastSolver {
         encoder.dispatchThreads(
             MTLSize(width: bodies.count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        if tiledCoupling != nil {
+            encoder.setComputePipelineState(haltCouplingPipeline)
+            encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 0)
+            encoder.setBuffer(interactionBuffer, offset: 0, index: 1)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+            encoder.dispatchThreads(
+                MTLSize(width: 1, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        }
         encoder.setComputePipelineState(haltInteractionPipeline)
         encoder.setBuffer(interactionBuffer, offset: 0, index: 0)
         encoder.setBuffer(controlBuffer, offset: 0, index: 1)
@@ -636,15 +725,16 @@ public final class BlastSolver {
         encoder.setBuffer(debrisExchangeBuffer, offset: 0, index: 1)
         encoder.setBytes(&uniforms, length: MemoryLayout<CouplingUniforms>.stride, index: 2)
         encoder.setBuffer(debrisAreaBuffer, offset: 0, index: 3)
+        encoder.setBuffer(couplingTiles ?? refinementPlaceholder, offset: 0, index: 4)
         encoder.dispatchThreads(
-            MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z),
-            threadsPerThreadgroup: regionThreads(debrisExchangePipeline))
+            couplingSize(region), threadsPerThreadgroup: couplingThreads(debrisExchangePipeline))
     }
 
     /// Encodes one update of the solid mask from the structure's current shape, and of the fine
     /// cells' outline too where the air is refined, unless `fine` is false.
     private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true) {
         guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
+        encodeAllocateCoupling(encoder)
         var uniforms = couplingUniforms(region)
         if !fine { uniforms.refineRatio = 0 }
         let length = MemoryLayout<CouplingUniforms>.stride
@@ -664,6 +754,7 @@ public final class BlastSolver {
                 encoder.setBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
                 encoder.setBuffer(patches, offset: 0, index: 6)
                 encoder.setBuffer(fineOccupancy, offset: 0, index: 7)
+                encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
                 encoder.dispatchThreads(
                     MTLSize(width: structure.elementCount, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(
@@ -684,6 +775,7 @@ public final class BlastSolver {
                     encoder.setBytes(&beams, length: 4, index: 6)
                     encoder.setBuffer(patches, offset: 0, index: 7)
                     encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
+                    encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 9)
                     encoder.dispatchThreads(
                         MTLSize(width: shells.beamCount, height: 1, depth: 1),
                         threadsPerThreadgroup: MTLSize(
@@ -700,6 +792,7 @@ public final class BlastSolver {
                 encoder.setBytes(&count, length: 4, index: 6)
                 encoder.setBuffer(patches, offset: 0, index: 7)
                 encoder.setBuffer(fineOccupancy, offset: 0, index: 8)
+                encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 9)
                 if shells.elementCount > 0 {
                     encoder.dispatchThreads(
                         MTLSize(width: shells.elementCount, height: 1, depth: 1),
@@ -710,7 +803,7 @@ public final class BlastSolver {
 
             if let combined = combinedOccupancyBuffer, let interactionBuffer {
                 var threshold = uniforms.threshold
-                var cells = UInt32(region.dims.x * region.dims.y * region.dims.z)
+                var cells = UInt32(tiledCoupling?.capacityCells ?? denseCouplingCells)
                 encoder.setComputePipelineState(bodyComposePipeline)
                 encoder.setBuffer(occupancyBuffer, offset: 0, index: 0)
                 encoder.setBuffer(combined, offset: 0, index: 1)
@@ -733,11 +826,13 @@ public final class BlastSolver {
         let composed = combinedOccupancyBuffer ?? occupancyBuffer
         if fine, bodies.count > 1 { refinement?.encodePublishBodies(encoder, uniforms: makeUniforms()) }
 
-        let size = MTLSize(width: region.dims.x, height: region.dims.y, depth: region.dims.z)
+        let size = couplingSize(region)
         let width = remaskPreparePipeline.threadExecutionWidth
-        let group = MTLSize(
-            width: width, height: max(1, remaskPreparePipeline.maxTotalThreadsPerThreadgroup / width),
-            depth: 1)
+        let group =
+            tiledCoupling == nil
+            ? MTLSize(
+                width: width, height: max(1, remaskPreparePipeline.maxTotalThreadsPerThreadgroup / width),
+                depth: 1) : couplingThreads(remaskPreparePipeline)
         encoder.setComputePipelineState(remaskPreparePipeline)
         encoder.setBuffer(maskBuffer, offset: 0, index: 0)
         encoder.setBuffer(rigidMaskBuffer, offset: 0, index: 1)
@@ -745,12 +840,14 @@ public final class BlastSolver {
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 3)
         encoder.setBytes(&uniforms, length: length, index: 4)
         encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 5)
+        encoder.setBuffer(couplingTiles ?? refinementPlaceholder, offset: 0, index: 6)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
         encoder.setComputePipelineState(remaskApplyPipeline)
         encoder.setBuffer(maskBuffer, offset: 0, index: 0)
         encoder.setBuffer(composed, offset: 0, index: 1)
         encoder.setBytes(&uniforms, length: length, index: 2)
+        encoder.setBuffer(couplingTiles ?? refinementPlaceholder, offset: 0, index: 3)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
         if fine, let refinement {
@@ -790,12 +887,22 @@ public final class BlastSolver {
         lastFluidStep = 0
         checkpointSubsteps = 0
         for body in bodies { body.reset() }
+        if let plan = tiledCoupling {
+            let header = wallVelocityBuffer.contents().bindMemory(to: UInt32.self, capacity: 2)
+            header[0] = min(header[0], UInt32(plan.capacity))
+            header[1] = 0
+            if let occupancyBuffer { memset(occupancyBuffer.contents(), 0, occupancyBuffer.length) }
+            if let combinedOccupancyBuffer {
+                memset(combinedOccupancyBuffer.contents(), 0, combinedOccupancyBuffer.length)
+            }
+        }
         if let interactionBuffer { memset(interactionBuffer.contents(), 0, interactionBuffer.length) }
 
         if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
             // Mark the undeformed structure in the solid mask.
+            encodeBodyEnvelopes(encoder, clear: true)
             encodeRemask(encoder, fine: false)
             encoder.endEncoding()
             commandBuffer.commit()
@@ -819,7 +926,7 @@ public final class BlastSolver {
         tilesEnabled = configuration.skipStillAir
         memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
         tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
-        if tilesEnabled, let region = couplingRegion {
+        if tilesEnabled, tiledCoupling == nil, let region = couplingRegion {
             // Around the structure the mask moves and debris trades with the air, so those
             // tiles are always swept.
             let reach = 2
@@ -841,6 +948,7 @@ public final class BlastSolver {
             let encoder = commandBuffer.makeComputeCommandEncoder()
         else { return }
         var uniforms = makeUniforms()
+        encodeWakeCoupling(encoder)
         encoder.setComputePipelineState(measurePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
@@ -948,7 +1056,7 @@ public final class BlastSolver {
         steps: Int, timeLimit: Double? = nil, updateVisualization: Bool = false
     ) -> MTLCommandBuffer? {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
-        guard !interObjectContactDetected else { return nil }
+        guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
         let steps = batchSteps(steps)
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -974,6 +1082,8 @@ public final class BlastSolver {
         let substeps = min(checkpointSubsteps, structureSubsteps)
         for step in 0..<steps {
             encodeBodyEnvelopes(encoder, clear: true)
+            if !airIsAsleep { encodeAllocateCoupling(encoder) }
+            if tiledCoupling != nil { encodeInteractionCheck(encoder) }
             let globalStep = stepCount + step
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
             var uniforms = makeUniforms(cfl: configuration.cfl * ramp)
@@ -1087,6 +1197,8 @@ public final class BlastSolver {
                     airModel: configuration.airModel,
                     exchange: asleep ? nil : debrisExchangeBuffer, debrisArea: debrisAreaBuffer,
                     exchangeRegion: couplingRegion)
+                binding.couplingMap = tiledCoupling == nil ? nil : wallVelocityBuffer
+                binding.couplingMapCount = UInt32(tiledCoupling?.mapCount ?? 0)
                 if let refinement {
                     binding.refinement = (
                         refinement.patchOfTile, refinement.fine[0], refinement.fineMask, refinement.ratio,
@@ -1218,7 +1330,8 @@ public final class BlastSolver {
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, stoppedShort: control.stopped == 1,
-            reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected)
+            reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected,
+            couplingCapacityExceeded: couplingCapacityExceeded)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -1250,6 +1363,7 @@ public final class BlastSolver {
             }
         }
         total.unsupportedInteraction = interObjectContactDetected
+        total.couplingCapacityExceeded = couplingCapacityExceeded
         return total
     }
 
@@ -1269,6 +1383,7 @@ public final class BlastSolver {
             if result.steps == 0 || !result.isStable { break }
         }
         total.unsupportedInteraction = interObjectContactDetected
+        total.couplingCapacityExceeded = couplingCapacityExceeded
         return total
     }
 
@@ -1379,7 +1494,8 @@ public final class BlastSolver {
             + (hasBody
                 ? wallVelocityBuffer.length + (occupancyBuffer?.length ?? 0)
                     + (debrisExchangeBuffer?.length ?? 0) + (debrisAreaBuffer?.length ?? 0) : 0)
-            + (combinedOccupancyBuffer?.length ?? 0) + (interactionBuffer?.length ?? 0)
+            + (combinedOccupancyBuffer?.length ?? 0) + (couplingTiles?.length ?? 0)
+            + (interactionBuffer?.length ?? 0)
             + (bodyEnvelopeBuffer?.length ?? 0)
             + (experimentalBoxCentre == nil ? 0 : wallVelocityBuffer.length)
     }
@@ -1427,6 +1543,7 @@ public final class BlastSolver {
                 1 / max(configuration.afterburnTime * cbrt(max(largestCharge, 1e-3)), 1e-9)
         }
         if let region = couplingRegion, configuration.movingWalls {
+            uniforms.couplingMapCount = UInt32(tiledCoupling?.mapCount ?? 0)
             uniforms.regionX = UInt32(region.origin.x)
             uniforms.regionY = UInt32(region.origin.y)
             uniforms.regionZ = UInt32(region.origin.z)

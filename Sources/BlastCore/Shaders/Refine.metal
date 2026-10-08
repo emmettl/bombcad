@@ -165,13 +165,7 @@ static inline void addFlux(device float *registers, uint slot, Flux f, uint axis
 
 // Velocity of the solid in coarse cell `cell`: zero outside the region where solids move.
 static inline float3 wallVelocityOf(const device float *wallVelocity, int3 cell, constant SolverUniforms &u) {
-    int3 local = cell - int3(u.regionX, u.regionY, u.regionZ);
-    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
-    if (any(local < 0) || any(local >= dims)) {
-        return float3(0.0f);
-    }
-    uint at = 3u * uint(local.x + dims.x * (local.y + dims.y * local.z));
-    return float3(wallVelocity[at], wallVelocity[at + 1], wallVelocity[at + 2]);
+    return movingWallVelocity(wallVelocity, cell, u);
 }
 
 // Its speed along the sweep.

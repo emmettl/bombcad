@@ -287,6 +287,9 @@ extension BlastSolver {
         setGauges(cells: gaugeCells, points: scenario.gauges.map(\.position))
         restart()
         if interObjectContactDetected { throw SceneObjectError.interObjectContact }
+        if couplingCapacityExceeded {
+            throw BlastError.allocationFailed("local coupling tiles for the current geometry")
+        }
         if scenario.structuralObjects.count > 1, configuration.refinement > 1, refinement == nil {
             throw BlastError.allocationFailed("multi-body air refinement")
         }
