@@ -1,17 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// `BombCAD run …` runs a project without a window (see `HeadlessRun`); anything else opens the app.
+/// `BombCAD run …` runs a project without a window (see `HeadlessRun`), `BombCAD sweep …` runs a
+/// sweep (see `HeadlessSweep`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`); anything else opens the app.
 @main
 enum BombCADMain {
     static func main() {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        guard arguments.first == "run" else {
+        switch arguments.first {
+        case "run":
+            Task { @MainActor in
+                exit(await HeadlessRun.main(Array(arguments.dropFirst())))
+            }
+        case "sweep":
+            Task { @MainActor in
+                exit(await HeadlessSweep.main(Array(arguments.dropFirst())))
+            }
+        case "worker":
+            Task { @MainActor in
+                exit(await SweepWorker.main())
+            }
+        default:
             BombCADApp.main()
             return
-        }
-        Task { @MainActor in
-            exit(await HeadlessRun.main(Array(arguments.dropFirst())))
         }
         dispatchMain()
     }

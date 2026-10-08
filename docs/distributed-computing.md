@@ -15,6 +15,12 @@ machines' published specifications, not measurements of a distributed solver.
   machines over Thunderbolt 5 might run the 0.125 m street event about 1.8 times as fast.
 - **It is essential only for problems too big for one machine**, such as a city block at
   0.0625 m (about a terabyte of state). There it would scale almost perfectly.
+- **Separate models on separate machines** (the air on one, a fragment model on another,
+  exchanging a little each frame) scale better than a split grid, but at most twice as fast,
+  only when the models cost about the same; with this pair of machines the Studio's own CPU is
+  the better second worker. See [Separate models](#separate-models-on-separate-machines).
+  Most of the effects in the [long-term vision](long-term-vision.md) separate this way; three
+  pairings do not. See [The long-term vision's effects](#the-long-term-visions-effects).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
   size. [`BombCAD run`](run-comparison.md#headless-runs) is the building block for the last.
@@ -103,6 +109,124 @@ The usual pattern holds:
    would need every reduction done in a fixed order, independent of how the grid is cut, to keep
    that.
 
+## Separate models on separate machines
+
+Instead of cutting one model's grid, each machine could run a different model, exchanging a
+little at each frame: the air on one, say, and a model of fragments flying ballistically on
+another. This was weighed in October 2026; nothing is built.
+
+**How it would work.** At each exchange, every simulated millisecond for instance, the air's
+machine sends what the fragments need: the pressure, density and air velocity where each
+fragment is. If the fragments act back on the air, their forces or blockage come back.
+
+**Why it scales better than a split grid.**
+
+- **Little data.** Ten thousand fragments at a few numbers each is a few hundred kilobytes an
+  exchange, against megabytes of boundary cells every step.
+- **Infrequent exchanges.** One a frame, not three a step. On the medium street grid a
+  simulated millisecond is about six air steps and some 12 ms of the M4 Max's time, so a 0.1 to
+  0.2 ms round trip over Thunderbolt IP is about 1%.
+- **But send samples, not fields.** The whole medium grid's air is about 170 MB, more than 50 ms
+  over this link: the air's machine should sample where the fragments are, or send only the
+  region around them.
+
+**The limit.** Two models side by side take as long as the slower of them instead of their sum,
+so the most they can gain is a factor of two, when they cost the same.
+
+- Fragments are usually cheap: thousands of particles with drag, gravity and ground impacts are
+  little next to millions of air cells, so moving them saves almost nothing.
+- They become expensive with contact between fragments or with the structure, break-up, or
+  millions of pieces; then the gain approaches two.
+- The mini is 3.2 to 4.5 times slower than the M4 Max ([Performance](performance.md#other-macs)):
+  it should take the cheaper model, and the split pays only if that model runs there in less
+  time than the air takes on the Studio.
+
+**The direction of the coupling decides most.**
+
+- **One way**, the air pushing the fragments but not the reverse, is the usual approximation
+  when fragments fill little of the air. Nothing waits on the fragment model, which can trail
+  behind, or run after the simulation from saved frames, as the
+  [volume export](usd-export.md#the-air) writes them: no coupling at run time, on any machine.
+- **Both ways**, each model must use the other's state from the previous exchange for the two to
+  overlap. That is standard, and stable when the fragments are much denser than air, as concrete
+  is; a millisecond is short beside a heavy fragment's response to the air.
+
+**Built, as a trial.** A cased charge's fragments, flown one way through blocks of the air
+streamed each frame, on this Mac or on the mini: see [Fragments](fragments.md). Over Thunderbolt,
+1.6 GB of air went to the mini at about 200 MB/s without the run waiting for it, the result was
+the same to the last bit, and, as expected, the fragments are too cheap for moving them to gain
+anything: one CPU core keeps up with a few thousand.
+
+**Better first.** The Studio's CPU is mostly idle while its GPU runs the air, and its cores could
+step tens of thousands of ballistic fragments a millisecond without any network. A second queue
+on the same GPU would help little: the air solver already uses nearly all its bandwidth.
+
+**Air and structure split this way**, the coupling BombCAD already has, gain less:
+
+- The structure is about three quarters of a coupled building run, so overlapping the two gains
+  at most about 1.33 times, on two equal machines.
+- They exchange every air step, not every millisecond, so latency counts again, and the loads
+  and the structure's motion lag a step.
+- On the mini, 3.2 times slower for the structure, the structure would hold everything up.
+
+## The long-term vision's effects
+
+Which of the effects in the [long-term vision](long-term-vision.md) could run apart from the
+blast in this way, judged by the same tests: which way the coupling runs, how often, and how much
+must pass. Most separate, because they happen on different time scales: prompt radiation in
+microseconds, the thermal flash over milliseconds to seconds, the blast in milliseconds, collapse
+over seconds, the fireball's rise over seconds to minutes, fire over minutes to hours, fallout
+over hours to days. Effects that overlap in time and act on each other must run together; those
+that only follow from the blast can trail it, or come after it, elsewhere. None of these models
+exists yet except the blast and the structures.
+
+| Effect | Coupling to the blast | Separable? |
+|---|---|---|
+| Structural response in a detailed study | Both ways, every air step | No: at most about 1.33 times (above). One GPU. |
+| Fragments and debris | Mostly one way: the air pushes them; failed elements hand them over | Yes: alongside, on another machine or the CPU, or afterwards from saved frames |
+| Simplified buildings across a wide area, as obstacles | Both ways: they shield and redirect the blast | No: they belong in the air's solve. Deriving them from detailed studies is independent runs, which scale perfectly. |
+| Damage to those buildings | In effect one way, if most collapse comes after the main blast has passed (an assumption to state) | Yes: each driven by its recorded loads, as independent jobs |
+| The early fireball (expansion, afterburning) | It is the hot gas in the air model | No: the same solver |
+| The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state |
+| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)) |
+| Material heating and fire | Driven by the radiation; the blast's wind disturbs it only weakly | Yes: after the event |
+| Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures |
+| The crater and ground shock near the charge | Both ways, in the first milliseconds: the ground loads and vents the blast, and throws soil into it | No near the charge; yes for thrown soil once airborne, ballistic like fragments, unless its dust loading of the air matters |
+| Prompt radiation | None with the flow; depends on the geometry and the air's density | Yes, entirely: before, alongside or independently |
+| Fallout and plumes | One way, from the risen cloud and the weather | Yes, in sequence, after the rise |
+
+So only three pairings need one solver on one GPU: the blast with detailed structures, with the
+crater near the charge, and with the early fireball. These are where faster single machines
+matter. Thermal radiation, fragments, thrown soil and distant ground shock are concurrent and
+one-way, suited to a second machine or the CPU, with small exchanges each frame. The fireball's
+rise, fire and fallout are a chain of hand-overs after the blast: they speed up a set of
+scenarios, not one run. Wide-area studies are better placed than they look: deriving simplified
+buildings and assessing each building's damage are independent runs, and only the air's solve
+over the whole area must be one computation, the case where splitting a single grid eventually
+pays ([When it pays](#when-it-pays)).
+
+**Adding machines.** More hardware, a second and stronger mini or another Studio, can take on
+the separable models, but a run cannot finish sooner than its inseparable core: with X the time
+of the blast and whatever must share its solver, and Y that of everything separable, one machine
+takes X + Y and enough machines approach X, a gain of at most (X + Y) / X. Today Y is nothing.
+As expensive effects arrive (thermal radiation over a city, every building's damage, fire), extra
+machines absorb them and keep a run near the blast's own time: they let the scope grow without
+the run slowing, rather than making any one model faster.
+
+- Models alongside the blast take a machine each, or several where they divide (thermal
+  radiation by patches of surface, fragments by groups); the slowest share sets the pace.
+- Independent jobs, each building's damage or deriving simplified buildings, scale almost in
+  proportion to the machines, like sweeps.
+- Hand-overs in sequence (the fireball's rise, fire, fallout) do not shorten one scenario; they
+  raise the throughput of several, as a production line does.
+- Work goes by cost: a stronger machine takes the heaviest separable model, the present mini
+  (3.2 to 4.5 times slower) the lightest or the independent jobs.
+- The blast's machine sends every consumer its share each frame: samples, kilobytes to megabytes,
+  are fine; whole fields to many consumers would fill its link.
+- One larger machine does some of this already, on its CPU or spare GPU, so extra machines pay
+  once one machine is full; the inseparable core stays on one GPU, where a faster machine is
+  the only help, until its grid outgrows it.
+
 ## Better first
 
 - **A bigger single GPU.** An M3 Ultra (80-core GPU, 819 GB/s, up to 512 GB) would run about
@@ -113,10 +237,10 @@ The usual pattern holds:
   ([Performance](performance.md#structural-solver)).
 - **Independent runs.** A sweep's cases, a grid-sensitivity study or an uncertainty ensemble are
   separate runs: only the project goes out and the result comes back, so the link does not
-  matter and the scaling is perfect. On the Studio and the mini together a sweep would finish
-  about a fifth sooner (the mini completes about one case in five), and more usefully the mini
-  could take a long study overnight. This needs the app to send cases to another Mac running
-  `BombCAD run` and read back the saved runs; not built.
+  matter and the scaling is perfect. Built in October 2026 for sweeps: see
+  [Sharing a sweep with another Mac](run-comparison.md#sharing-a-sweep-with-another-mac). Six
+  equal cases took 18.5 s on the Studio and the mini together against 22.1 s on the Studio
+  alone, the mini running one, with identical results.
 
 ## Sources
 

@@ -5,6 +5,10 @@ struct AppSettingsView: View {
     @AppStorage(AppPreferences.Key.detailedCharge) private var detailedCharge = false
     @AppStorage(AppPreferences.Key.sharpShocks) private var sharpShocks = false
     @AppStorage(AppPreferences.Key.playbackSpeed) private var playbackSpeed = PlaybackSpeed.x100.rawValue
+    @AppStorage(AppPreferences.Key.sweepHost) private var sweepHost = ""
+    @AppStorage(AppPreferences.Key.sweepUsesRemote) private var sweepUsesRemote = false
+    @State private var connection = ""
+    @State private var testing = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,6 +50,24 @@ struct AppSettingsView: View {
                         "The starting playback speed for new windows. You can change it in each window’s Run tab."
                     )
                 }
+
+                Section {
+                    TextField("SSH host", text: $sweepHost, prompt: Text("my-mac.local"))
+                        .autocorrectionDisabled()
+                    Toggle("Share sweeps with this Mac", isOn: $sweepUsesRemote)
+                    HStack {
+                        Button(testing ? "Testing…" : "Test Connection") { test() }
+                            .disabled(testing || sweepHost.trimmingCharacters(in: .whitespaces).isEmpty)
+                        Text(connection).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } header: {
+                    Text("Sweeps on another Mac")
+                } footer: {
+                    Text(
+                        "Sweep cases are shared with an Apple silicon Mac reached over SSH without a password. BombCAD sends it a copy of itself the first time. A slower Mac is given only the cases it will finish before this one."
+                    )
+                }
             }
             .formStyle(.grouped)
 
@@ -56,11 +78,29 @@ struct AppSettingsView: View {
                     detailedCharge = false
                     sharpShocks = false
                     playbackSpeed = PlaybackSpeed.x100.rawValue
+                    sweepUsesRemote = false
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .frame(width: 480, height: 400)
+        .frame(width: 480, height: 560)
+    }
+
+    private func test() {
+        let host = sweepHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        testing = true
+        connection = "Connecting to \(host)…"
+        Task {
+            do {
+                let worker = try await RemoteSweepWorker.connect(host: host)
+                let hello = worker.hello
+                worker.close()
+                connection = "Ready: \(hello?.device ?? "a Metal device"), \(hello?.operatingSystem ?? "")"
+            } catch {
+                connection = error.localizedDescription
+            }
+            testing = false
+        }
     }
 }

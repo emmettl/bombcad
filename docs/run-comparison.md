@@ -43,6 +43,52 @@ owns the simulation. Cases create no individual editor undo steps, and existing 
 survives. The sweep plan/progress are transient; reopening restores completed results, not a queue
 or a running simulation.
 
+## Sharing a sweep with another Mac
+
+A sweep can share its cases with another Apple silicon Mac, such as a Mac mini on the desk.
+In Settings, under Sweeps on another Mac, enter its SSH host name or alias, turn on Share sweeps
+with this Mac, and use Test Connection. The sweep dialog then offers to share each sweep with it.
+SSH must log in without a password, with a key, as for any batch connection.
+
+**What happens.** At a sweep's start, BombCAD connects over SSH. The first time for each build it
+copies its own executable and resource bundles to `~/Library/Caches/BombCAD/remote/<hash>` on
+the other Mac (the three newest builds are kept), so the other Mac always runs this solver and
+nothing need be installed there. It then starts `BombCAD worker` there, which takes cases over
+the SSH connection one at a time and answers with progress and results; no port is opened. A
+returned run is kept only if its input fingerprint matches the case's, so the other Mac is known
+to have run exactly that case. It records its own device, so the Compare view shows which Mac
+ran what.
+
+**Who runs what.** Cases wait largest first, by cells times steps. This Mac takes the largest;
+the other Mac takes the smallest it should finish before this Mac has finished everything else,
+starting from the assumption that it is 3.5 times slower (the CI Mac mini's M4 against an M4
+Max) and measuring the ratio once each has finished a case. A slower Mac is therefore given only
+cases it will not hold the sweep up with: in a sweep of equal cases it takes one when there are
+at least five, and in a grid sweep the coarse ones. Results are kept in the sweep's order,
+whichever Mac finishes first.
+
+**When things go wrong.** If the other Mac cannot be reached, the sweep runs here only and says
+why. If it fails a case (out of memory, say), the case runs here and so does the rest. Cancelling
+the sweep cancels the other Mac's case too, and if this Mac stops or the connection drops, the
+worker's input closes and it stops its case and exits.
+
+**Measured.** Six charge masses, 50 to 200 kg, in the street canyon on the medium grid, with the
+Mac Studio (M4 Max) and the CI mini (M4) over Thunderbolt: 22.1 s alone and 18.5 s shared, the
+mini running one case. Every result was identical, the mini's included, to the last bit.
+
+`BombCAD sweep` runs the same without a window:
+
+```bash
+swift run -c release BombCAD sweep Example.bombcad --masses 50,100,200 --remote my-mac.local --out Example-swept.bombcad
+```
+
+with `--grids coarse,medium` instead of `--masses`, `--prefix` for the results' names and
+`--ratio` for the starting estimate of how much slower the other Mac is.
+
+Limits: one other Mac at a time (the code takes a list of workers in principle); the
+structure's work is not counted in a case's cost; and a shared Mac's other work, such as CI on
+the mini, slows its cases, which only shifts what the scheduler gives it.
+
 ## Measurements and interpretation
 
 For a multi-body run, the overall structural trace is the largest displacement across
@@ -118,7 +164,10 @@ device, each gauge's peak and the structure's largest deflection.
 | `--duration <s>` | Changes the simulated duration |
 | `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
 | `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
-| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd` and `--vdb`, 1 by default |
+| `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
+| `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
+| `--fragment-results <file>` | Writes the fragments' impacts as JSON |
+| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb` and `--fragments`, 1 by default |
 
 The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
 file. With `--out`, the project must have room for another run (16 at most). A legacy layout
@@ -152,7 +201,7 @@ index, and JSON layout export continues to omit this project-level result collec
 ## Verification
 
 ```sh
-swift test --filter 'HeadlessRun|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
+swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|Fragment|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
 ```
 
 Tests cover actual Metal runs, explicit change tracking, stable historical inputs, fixed-time

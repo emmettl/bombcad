@@ -171,6 +171,10 @@ final class SimulationModel {
     /// How often `onSample` is called in a run without a structure, a whole number of
     /// `structureSampleInterval`s: each sample stops the run, so the fewer the better.
     @ObservationIgnored var airSampleInterval = structureSampleInterval
+    /// While this says so, the run waits before its next batch: a consumer of its frames has
+    /// fallen behind. Checked every couple of milliseconds; the main thread is not blocked.
+    @ObservationIgnored var holdBatches: (() -> Bool)?
+    @ObservationIgnored private var waitingForHold = false
     @ObservationIgnored private var lastSampleTime: Double?
     private var samples: Bool { structureSummary != nil || onSample != nil }
     private var sampleInterval: Double {
@@ -1118,6 +1122,31 @@ final class SimulationModel {
         savedRuns.append(run)
     }
 
+    /// Keeps a run made elsewhere, as by a sweep worker on another Mac, with the checks
+    /// `keepRun` makes.
+    func addRun(_ run: SavedSimulationRun) throws {
+        guard savedRuns.count < SavedSimulationRun.maximumRuns,
+            !savedRuns.contains(where: {
+                $0.id == run.id || $0.name.localizedCaseInsensitiveCompare(run.name) == .orderedSame
+            })
+        else {
+            throw ProjectFileError.invalid("There is no room for \(run.name), or its name is taken.")
+        }
+        try run.validate()
+        var document = ProjectDocument(model: self)
+        document.savedRuns.append(run)
+        _ = try document.makeArchive()
+        savedRuns.append(run)
+    }
+
+    /// Puts the runs named in `names` in that order, in the places they already take.
+    func orderRuns(_ names: [String]) {
+        let rank = Dictionary(names.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        let places = savedRuns.indices.filter { rank[savedRuns[$0].name] != nil }
+        let ordered = places.map { savedRuns[$0] }.sorted { rank[$0.name]! < rank[$1.name]! }
+        for (place, run) in zip(places, ordered) { savedRuns[place] = run }
+    }
+
     func renameRun(id: UUID, name: String) {
         guard !sweep.isActive else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1246,6 +1275,17 @@ final class SimulationModel {
     /// Commits the next batch of steps if the run is active and the GPU is free.
     private func pump() {
         guard isRunning, !batchInFlight, let solver else { return }
+        if let holdBatches, holdBatches() {
+            if !waitingForHold {
+                waitingForHold = true
+                Task {
+                    try? await Task.sleep(for: .milliseconds(2))
+                    waitingForHold = false
+                    pump()
+                }
+            }
+            return
+        }
 
         var limit = duration
         if speed != .unlimited {

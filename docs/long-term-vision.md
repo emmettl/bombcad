@@ -105,6 +105,11 @@ These are statements of research scope. Specific formulations, numerical methods
 implementation commitments belong in separate proposals once the intended questions and
 available evidence are clear.
 
+Most of these effects can run apart from the blast, on other hardware or after it, because they
+happen on different time scales or act on the blast only weakly; the early fireball, the crater
+near a charge and detailed structures cannot. [Distributed computing](distributed-computing.md#the-long-term-visions-effects)
+sorts them.
+
 ## Credibility as a product feature
 
 BombCAD should make the standing of a result as accessible as the result itself. Users
