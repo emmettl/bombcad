@@ -382,6 +382,11 @@ included alongside 64 samples. `python3 Scripts/summarize-piston-transients.py` 
 pressure by exact overlaps of the piecewise-constant profiles, using the finest run as a
 numerical reference. Snapshot times split integration steps, and budgets are recorded at
 every snapshot. Early wave profiles remain more grid-sensitive than final mean pressure.
+`--piston-wave` writes `.build/piston-wave.json`, comparing numerical conserved cell averages
+against an analytical initial piston shock or rarefaction at 0.5 and 0.8 ms, before wall
+reflections. Four grids down to 0.0125 m and two CFL limits expose pressure, density,
+momentum, energy and wall-work errors. Refinement reduces pressure error, but first-order
+wave diffusion remains appreciable; conservation alone is not an accuracy validation.
 
 ## Headline results
 

@@ -707,6 +707,33 @@ These profiles expose spatial and phase errors hidden by final mean-pressure com
 Next, check the initial compression/expansion wave against an analytical planar-piston
 solution before extending to arbitrary swept-box aperture and topology changes.
 
+An analytical initial planar-piston wave reference is now implemented from the
+[Euler shock and rarefaction relations](https://www.clawpack.org/riemann_book/html/Euler.html).
+Compression has a constant shocked state behind a moving front; expansion has an isentropic
+fan and constant wall state. The reference rejects times after the leading wave reaches
+the opposite wall, and currently excludes vacuum gaps. It integrates conserved cell averages
+after splitting at wave boundaries. Four-point Gaussian quadrature integrates the degree-seven
+fan states for gamma 1.4; pressure is derived from those averaged conserved quantities.
+
+`--piston-wave` compares 20 m/s compression/expansion on 0.1, 0.05, 0.025 and 0.0125 m grids
+at CFL 0.4 and 0.2, taking snapshots at 0.5 and 0.8 ms. Pressure and density L1 errors are
+normalised by incident pressure/density times final gas volume; momentum uses incident
+density times piston speed and volume, and energy uses incident internal-energy density
+times volume. Wall work is compared with the constant analytical wall pressure times wall
+area, speed and elapsed time. All sixteen cases save incrementally.
+
+At CFL 0.2 and 0.8 ms, pressure L1 errors fall from 1.212% to 0.542% in compression
+and 1.959% to 0.908% in expansion across the four grids. Finest-grid momentum L1 errors
+remain 6.725% and 9.875% under the stated normalisation. Finest-grid wall-work errors
+are below 0.01%, while gas-plus-wall energy residuals stay below 0.000000000001 J.
+Four tests check analytical jump conditions, integrated mass/impulse/work budgets, reference
+scope and decreasing numerical pressure error with refinement. All pass.
+
+These checks reveal substantial first-order wave diffusion despite tight global budgets;
+they do not validate freely moving blast objects. Next, reduce spatial flux diffusion with
+an opt-in limited reconstruction and repeat the analytical wave checks before combining
+general box aperture and topology changes.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,
