@@ -297,8 +297,12 @@ with it (136%) against 472 without, and Janney's beam with slip 103% (failing at
 cap decides OA1: with slip and the measured stiffness, and no dowel action, it carries 447 and
 463 kN on 12 and 24 elements through its depth at the full cap; 413 kN (124%) at half of it; 361
 and 358 kN (109% and 108%) at a fifth; and 296 kN (89%) at a twentieth. Its shear strength no
-longer depends on the mesh, but on the interlock cap, which has not been checked against a
-measurement in this model. A fifth of the cap was not adopted: nothing measured supports it,
+longer depends on the mesh, but on the interlock cap. Walraven and Reinhardt's push-off tests
+check that cap directly: their fitted laws give the shear and the stress across a crack for
+each width and slip, and where the stress across vanishes, as the cap assumes, a crack in their
+34 N/mm² (cube) concrete carried 1.94, 1.57 and 0.75 MPa at 0.2, 0.4 and 1 mm. A cube of the
+model's 30 MPa concrete cracked open and sheared carries 2.13, 1.61 and 0.92 MPa: 3% to 24%
+more (`ConcreteModelTests`). The cap is a little generous, but not five times. A fifth of the cap was not adopted: nothing measured supports it,
 and it breaks Janney's beam at 27 mm instead of the measured 42.
 
 This term was added after a model without it failed. With no shear transfer across cracks, a

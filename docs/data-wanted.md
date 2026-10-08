@@ -143,7 +143,8 @@ Supplied by hand during development, and now in use:
   τ = −f_cc/30 + [1.8 w^−0.80 + (0.234 w^−0.707 − 0.20) f_cc] Δ (eq. 1a, w and Δ in mm), whose
   slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
   Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
-  were restrained, so their cracks carried compression, which the interlock cap leaves out.
+  were restrained, so their cracks carried compression, which the interlock cap leaves out;
+  where its laws give no stress across the crack, the model's cap is 3% to 24% above them.
 - J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
   effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
   (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,
