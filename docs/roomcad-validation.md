@@ -346,7 +346,7 @@ probe.
 
 ### Fitted by simulating the model
 
-The fit kept, in each band, the closest of six simulations. The absorption rose by 12–61% from
+The fit kept, in each band, the closest of six simulations. The absorption rose by 10–61% from
 125 Hz to 8 kHz, most at 250 and 500 Hz. At 63 Hz, which the wave solver holds, the time answered
 the absorption erratically, and the fit lowered it by 40% to reach the measured 1.98 s.
 
