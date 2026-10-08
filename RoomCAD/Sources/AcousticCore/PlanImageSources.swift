@@ -62,7 +62,13 @@ struct PlanImageSources {
 
     /// Whether the plan path from `image` to `receiver` is real, as described above.
     func isValid(_ index: Int, in images: [Image], receiver: SIMD2<Double>) -> Bool {
+        pathPoints(index, in: images, receiver: receiver) != nil
+    }
+
+    /// The plan path from `receiver` back to the source through each reflection point, if it is real.
+    func pathPoints(_ index: Int, in images: [Image], receiver: SIMD2<Double>) -> [SIMD2<Double>]? {
         var target = receiver
+        var points = [receiver]
         var current = index
         var arrivingWall: Int? = nil
         while images[current].parent >= 0 {
@@ -71,14 +77,16 @@ struct PlanImageSources {
             // Where the line from the target to this image crosses its last wall, within the wall.
             let a = plan.start(wall)
             let b = plan.end(wall)
-            guard let t = raySegment(target, image.position - target, a, b), t < 1 else { return false }
+            guard let t = raySegment(target, image.position - target, a, b), t < 1 else { return nil }
             let point = target + (image.position - target) * t
-            guard unobstructed(target, point, except: [wall, arrivingWall]) else { return false }
+            guard unobstructed(target, point, except: [wall, arrivingWall]) else { return nil }
             target = point
+            points.append(point)
             arrivingWall = wall
             current = image.parent
         }
-        return unobstructed(target, [source.x, source.y], except: [arrivingWall])
+        guard unobstructed(target, [source.x, source.y], except: [arrivingWall]) else { return nil }
+        return points + [[source.x, source.y]]
     }
 
     /// Whether the segment p–q crosses no wall other than those listed.
@@ -113,13 +121,15 @@ extension ImageSourceModel {
             ? OctaveBands.centres.map { atmosphere.amplitudeAttenuationPerMetre(frequency: $0) }
             : Array(repeating: 0, count: bands)
         let flat = SIMD2(receiver.x, receiver.y)
+        let zones = room.zones
         var summary = Summary()
         var gains = [Double](repeating: 0, count: bands)
         for (index, image) in images.enumerated() {
             if index % 4096 == 0, stop() { break }
             let horizontal = image.position - flat
             let h2 = simd_length_squared(horizontal)
-            guard h2 <= reach * reach, generator.isValid(index, in: images, receiver: flat) else { continue }
+            guard h2 <= reach * reach, let planPath = generator.pathPoints(index, in: images, receiver: flat)
+            else { continue }
             var planGains = [Double](repeating: 1, count: bands)
             for wall in image.walls { for b in 0..<bands { planGains[b] *= wallGains[wall][b] } }
             for z in zs {
@@ -131,6 +141,13 @@ extension ImageSourceModel {
                 var spreading = 1 / r
                 if !microphone.isOmni {
                     spreading *= microphone.gain(from: SIMD3(horizontal.x, horizontal.y, z.offset) / r)
+                }
+                if !zones.isEmpty {
+                    spreading *= exp(
+                        -zones.depth(
+                            along: Self.planPath(
+                                planPath, from: receiver.z, to: receiver.z + z.offset, height: room.size.z))
+                            / 2)
                 }
                 var audible = false
                 for b in 0..<bands {
@@ -152,5 +169,29 @@ extension ImageSourceModel {
             if let nearest = deepest.min(), nearest < reach { summary.orderLimitedAfter = nearest / c }
         }
         return summary
+    }
+
+    /// The path in 3D of a plan path whose height, unfolded, runs from `from` to `to`: it turns at
+    /// each plan reflection and wherever it meets the floor or ceiling.
+    static func planPath(_ plan: [SIMD2<Double>], from: Double, to: Double, height: Double) -> [SIMD3<Double>]
+    {
+        var lengths = [0.0]
+        for (a, b) in zip(plan, plan.dropFirst()) { lengths.append(lengths.last! + simd_distance(a, b)) }
+        let total = lengths.last!
+        var breaks = total > 0 ? lengths.dropFirst().dropLast().map { $0 / total } : []
+        foldBreaks(from: from, to: to, length: height, into: &breaks)
+        breaks.sort()
+        var segment = 0
+        return ([0.0] + breaks + [1.0]).map { t in
+            var flat = plan[0]
+            if total > 0 {
+                let along = t * total
+                while segment < plan.count - 2, lengths[segment + 1] < along { segment += 1 }
+                let span = lengths[segment + 1] - lengths[segment]
+                let f = span > 0 ? (along - lengths[segment]) / span : 0
+                flat = plan[segment] + (plan[segment + 1] - plan[segment]) * min(max(f, 0), 1)
+            }
+            return SIMD3(flat.x, flat.y, fold(from + t * (to - from), length: height))
+        }
     }
 }

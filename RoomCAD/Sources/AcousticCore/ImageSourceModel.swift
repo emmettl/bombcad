@@ -63,6 +63,7 @@ public struct ImageSourceModel: Sendable {
             airAbsorption
             ? OctaveBands.centres.map { atmosphere.amplitudeAttenuationPerMetre(frequency: $0) }
             : Array(repeating: 0, count: bands)
+        let zones = room.zones
         var summary = Summary()
         var nearestOmitted = Double.infinity
         var gains = [Double](repeating: 0, count: bands)
@@ -108,6 +109,11 @@ public struct ImageSourceModel: Sendable {
                     if !microphone.isOmni {
                         spreading *= microphone.gain(from: SIMD3(x.offset, y.offset, z.offset) / r)
                     }
+                    if !zones.isEmpty {
+                        let image = receiver + SIMD3(x.offset, y.offset, z.offset)
+                        spreading *= exp(
+                            -zones.depth(along: Self.boxPath(from: receiver, to: image, size: room.size)) / 2)
+                    }
                     var audible = false
                     for b in 0..<bands {
                         let g = x.gains[b] * y.gains[b] * z.gains[b] * spreading * exp(-air[b] * r)
@@ -122,6 +128,20 @@ public struct ImageSourceModel: Sendable {
         }
         if nearestOmitted.isFinite { summary.orderLimitedAfter = nearestOmitted / c }
         return summary
+    }
+
+    /// The path in the room from `receiver` to the source of the image at `image`: the straight line
+    /// between them folded back into the box at each wall it crosses.
+    static func boxPath(from receiver: SIMD3<Double>, to image: SIMD3<Double>, size: SIMD3<Double>) -> [SIMD3<
+        Double
+    >] {
+        var breaks: [Double] = []
+        for a in 0..<3 { foldBreaks(from: receiver[a], to: image[a], length: size[a], into: &breaks) }
+        breaks.sort()
+        return ([0.0] + breaks + [1.0]).map { t in
+            let u = receiver + (image - receiver) * t
+            return SIMD3(fold(u.x, length: size.x), fold(u.y, length: size.y), fold(u.z, length: size.z))
+        }
     }
 
     /// For each position, the lowest reflection order at or after it.

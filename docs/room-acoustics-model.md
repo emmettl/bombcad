@@ -1,7 +1,6 @@
 # Room-acoustics model
 
-RoomCAD's first acoustic backend generates impulse responses of rectangular rooms for
-convolution reverb. It lives in the separate `RoomCAD` package: `Sources/AcousticCore` holds the
+RoomCAD's first acoustic backend generates impulse responses of rooms for convolution reverb. It lives in the separate `RoomCAD` package: `Sources/AcousticCore` holds the
 model and `Sources/ImpulseResponseKit` holds the response format and WAV files. It covers milestone
 M2 and the scattering part of M4 of the [RoomCAD roadmap](roomcad-roadmap.md). The app that edits rooms and generates responses is
 described in [RoomCAD app and documents](roomcad-app.md).
@@ -131,6 +130,160 @@ Tests check the floor-plan code against the box and against geometry:
 
 An L (8 × 6 m less 4 × 3 m), a T and a fan-shaped hall decay within about 10% of their Eyring estimates
 at 1 kHz.
+
+## Rooms of any shape
+
+A room can also be a closed mesh (`RoomMesh`): flat polygonal faces whose normals point into the
+room, each with a material, and any of them open. That covers sloping ceilings, raked floors,
+balconies, galleries, stage houses and attics. The mesh replaces the box's surfaces and any floor
+plan; its bounding box must lie within the room's size. A mesh is checked before use:
+
+- each face must be flat (within 2 cm) and have area;
+- the faces must close: their areas, weighted by their normals, sum to zero;
+- the normals must point inwards, which makes the enclosed volume positive.
+
+Faces that lie in one plane are grouped (`MeshGeometry`), and a bounding-volume hierarchy speeds up
+the ray queries. Each part of the model uses the mesh as follows:
+
+- **Image sources.** After Borish (1984), images are mirrored in planes rather than faces, so a wall
+  cut into many faces adds no images. An image can only be mirrored in a plane it lies in front of.
+  It is valid for a receiver only if, traced back from the receiver, its path meets each mirroring
+  plane within one of that plane's faces, that face is not open, and no other face blocks any leg.
+  That hides reflections behind a balcony front or round the corner of a stage. Images grow level by
+  level up to the order that fits 100,000 images.
+- **Rays.** Rays find the nearest face through the hierarchy, reflect about its normal, and scatter
+  around it. A ray that reaches an open face leaves the room.
+- **Wave solver.** A cell is simulated if its centre is inside the mesh, found by counting the
+  mesh's crossings along the cell's vertical column. Each face between a simulated cell and one that
+  is not takes the impedance of the nearest mesh face, or of air if that face is open. As with floor
+  plans, walls not aligned with the grid become staircases.
+- **Inside and clearance.** A point is inside if a ray from it crosses the mesh an odd number of
+  times. The source and receivers must be inside.
+
+### Building rooms from solids
+
+Writing a closed mesh by hand is error-prone, so rooms are built from pieces of air with
+constructive solid geometry (`Solid`). It follows Evan Wallace's csg.js, which uses binary space
+partitioning trees. The pieces are boxes and extrusions of a polygon along an axis, each face with a
+material. They can be joined, subtracted or intersected. A balcony, for example, is a slab
+subtracted from the hall's air, and the stage house is a box joined to it.
+
+`Solid.room` makes the result into a room. It welds vertices within 10 µm, turns the faces to point
+inwards, and drops slivers that the cuts leave. A face's material can be "open".
+
+Two room presets are built this way (`HallShapes`):
+
+- **A shoebox concert hall**, 26 × 18 × 14 m: a balcony along both sides and the back, and a raised
+  stage house, 8 m deep, behind a proscenium.
+- **A raked auditorium**: a fan-shaped plan, 26 m deep and 18 to 32 m wide, with seating rising 6 m
+  to the back under a sloping ceiling, and a rear tier above the stalls. It is the intersection of
+  an extruded long section and an extruded fan plan, less the tier.
+
+Both hall presets have six materials: audience, other floors, walls, ceiling, stage floor and stage
+walls. Measured scenes describe their geometry the same way (see
+[the chamber music hall](roomcad-validation.md#a-larger-room-the-chamber-music-hall)).
+
+### Tests
+
+Tests check the mesh code against the box and the floor plan:
+
+- A box and an L-shaped plan, built as meshes, have the right volume, area and inward normals. Inside
+  and clearance agree with the plan's at 2,000 random points.
+- Open, turned and bent meshes are rejected, as is a room with both a mesh and a plan.
+- A box as a mesh has exactly the box's image sources up to the third order. An L-shaped mesh has
+  the plan's image sources, including the ones hidden round the corner.
+- A box and an L as meshes give the same scattered energy within 5%, and the same wave field to
+  within 10⁻⁸ of its energy.
+- A whole response for a box as a mesh matches the box's own within 0.5 dB in every band.
+- Boxes cut into fragments by solid operations keep the box's image sources. A raked hall with a
+  balcony is watertight.
+
+## Fitted zones
+
+Chairs, desks, pews, pillars, ornament and hanging lights scatter sound, but they are too many and
+too small to model as surfaces. A fitted zone describes them statistically, after Ondet and Barbry
+(1989): a box of the room, with two numbers.
+
+- **Density, q.** This is how often sound meets an object, per metre travelled. In the zone, sound
+  travelling d metres meets one with probability 1 − e^(−qd). For objects scattered at random, q is
+  their total surface area over four times the zone's volume, because a convex object's mean
+  cross-section over all directions is a quarter of its surface (Cauchy's formula). The density is the
+  same in every band: the objects are taken to be large beside the wavelength. That holds for most
+  furniture above the wave solver's crossover, which handles the bands below it.
+- **Absorption, α.** This is the fraction of the energy lost at each encounter, per band. The rest
+  scatters equally in every direction.
+
+Zones lie within the room's size and may touch but not overlap.
+
+Each part of the model uses the zones as follows:
+
+- **Rays.** In a zone, a ray meets an object after a random optical depth, drawn from an exponential
+  distribution. There it loses α, leaves in a random direction, and from then on counts as scattered.
+- **Image sources.** Each keeps only the energy that crosses the zones without meeting an object:
+  e^(−∫q dl) along its actual path. In a box, that path is the straight line to the image, folded
+  back into the room at each wall it crosses. In a floor plan, the path turns at each wall
+  reflection, and its height folds at the floor and ceiling. In a mesh, it runs through the
+  reflection points. The rays carry the energy the image sources lose, so it is counted once.
+- **Estimates and the wave solver.** A zone adds 4qαV of absorption area, like air, to the Sabine and
+  Eyring estimates. The wave solver's bands are matched to those estimates, so they include it.
+
+In the app, **Objects** in the inspector adds, edits and removes zones. **Add Seating Zone**
+starts from an estimate for upholstered seats over the middle of the floor: one seat to 0.55 m² of
+floor, each with 1.5 m² of surface, giving about 0.76 per metre. Their absorption is left at zero,
+because the floor's audience material already accounts for it. Zones are drawn as hatched brown boxes
+in the plan and section.
+
+Tests check zones against exact results:
+
+- The direct sound loses exactly e^(−qd) of its energy crossing d metres of a zone.
+- A folded box path starts at the receiver, ends at the source, keeps the image's distance, and turns
+  once per reflection.
+- Box, floor-plan and mesh image sources lose the same energy to a zone, to within 10⁻⁹, in a box
+  and in an L-shaped room.
+- In a rigid room full of objects that absorb nothing, the rays still fill the room at the diffuse
+  rate 4πc/V, within 3%.
+- In a rigid room full of objects that absorb α, the response decays at cqα, as Sabine's formula with
+  4qαV predicts, within 4%. Much denser objects make sound spread through the room by diffusion. A
+  receiver away from the source then sees the room's decay only once the energy has spread, so its
+  decay looks a few percent longer.
+
+## Matching a measured reverberation time
+
+Absorption is often fitted to a measured reverberation time with Eyring's formula, as BRAS did for
+its fitted materials. That formula takes the sound field to be diffuse. Where absorption is
+concentrated, as on an audience floor, or surfaces scatter little, a room decays more slowly than the
+formula says, and so does RoomCAD's model of it. Absorption fitted with the formula then leaves the
+simulated decay too long. In BRAS's chamber music hall, even with every surface scattering fully, the
+model decays 4–13% more slowly than Eyring's estimate from 500 Hz to 2 kHz.
+
+`AbsorptionCalibration` fits absorption with the model instead:
+
+1. It simulates the room and measures T30 in each band at every receiver.
+2. It scales every surface's absorption, and every fitted zone's, by one factor per band, keeping
+   their proportions until one reaches 0.99; beyond that, the others keep scaling. The first factor
+   is the ratio of the absorption area the target implies to the area the simulated time implies,
+   both by Sabine's formula with the room's air. A room that is not diffuse answers less than
+   Sabine's formula says, so later steps measure how strongly the time answered the last change,
+   T ∝ f^(−b), and solve for the target with that (a secant step).
+3. Where the time hardly answered the last change, or went the wrong way, as it can in a band the
+   wave solver holds or where the decay is noisy, the step falls back to Sabine's ratio.
+4. It repeats until every band with a target is within 2%, or after five steps, and keeps, in each
+   band, the step that came closest. Each band's absorption barely changes another's decay, so the
+   bands are chosen apart.
+
+A step never doubles or halves the absorption, and never takes a surface past 0.99. A target beyond
+reach, shorter than the room can decay with every surface at 0.99 or longer than with none, is
+reported as missed.
+
+Bands without a target keep their absorption. In the app, **Match Reverberation Time** takes a
+target for any band and fits the room at preview quality, usually in three or four simulations.
+
+A test fits a room with an absorbing floor and little scattering to 1.2 s from 250 Hz to 2 kHz. Its
+decay as given is about 1.5 s, against Eyring's 0.9 s. Sabine's ratio alone closes the gap slowly;
+with the secant steps the fit is within 3% after three simulations. The floor and walls keep their
+ratio, bands without a target keep their absorption, and Eyring's formula, given the fitted
+absorption, predicts a faster decay than the simulated one. A second test stands a synthetic decay in for the model, with one band
+whose time jumps about from step to step, and checks that the band keeps its closest step.
 
 ## Openings
 
@@ -459,8 +612,8 @@ a reference room and exports its responses. Its results on the development Mac:
 
 ### Comparison with a measured room
 
-[RoomCAD against a measured room](roomcad-validation.md) compares RoomCAD with ten measured responses
-in a 145 m³ seminar room from the BRAS database:
+[RoomCAD against measured rooms](roomcad-validation.md) compares RoomCAD with ten measured responses
+in each of two rooms from the BRAS database. In the 145 m³ seminar room:
 
 - **Reverberation.** With only published absorption data, the reverberation time from 250 Hz to
   2 kHz is within 12%, and clarity within about one just-noticeable difference.
@@ -470,6 +623,12 @@ in a 145 m³ seminar room from the BRAS database:
   against 0.22 for the wrong position).
 - **Low-frequency decay.** The bare wave solver's was about 30% too long. With each band matched to
   the diffuse decay, T30, EDT, clarity and definition at 63 and 125 Hz are within about 2 JND.
+
+In the 3,100 m³ chamber music hall, built from solids, with absorption fitted to this model:
+
+- **Clarity and definition.** C80, D50 and centre time are within about one JND from 500 Hz to 4 kHz.
+- **Reverberation.** The decay is 13–40% too long, because the simplified hall lacks the pillars,
+  ornament and chairs that scatter sound in the real one.
 
 `RoomParameters` computes the ISO 3382-1 parameters it uses: EDT, T20, T30, C50, C80, D50 and
 centre time, with Lundeby's noise compensation for measured responses.
@@ -534,9 +693,13 @@ furnished room, decays between the Eyring and Sabine estimates. About 75% of its
 
 ## Limitations
 
-- **Geometry.** Rooms are boxes or floor plans with vertical walls and a flat floor and ceiling.
-  Sloping ceilings, curved walls, furniture and coupled spaces are not modelled. A floor plan's image
-  sources reach only modest orders, with rays carrying the rest.
+- **Geometry.** Rooms are boxes, floor plans with vertical walls, or closed meshes of flat faces.
+  Curved walls are approximated by flat faces. Pillars, furniture and ornament can stand as fitted
+  zones, boxes of statistically scattering objects; their density must be estimated, and they scatter
+  equally in every band and direction. Coupled spaces work only as one mesh.
+  A floor plan's or mesh's image sources reach only modest orders, with rays carrying the rest.
+- **Meshes in the app.** A mesh comes from a preset or a measured scene. The app shows it and edits
+  its materials, but it cannot edit its shape. Openings in a mesh are open faces, not rectangles.
 - **Scattering.** Published scattering values exist only for a few surfaces (seven presets). Others
   are inputs, and the starter room's are illustrative. With little scattering, decay is too long and flutter between parallel surfaces is
   exaggerated (above).
@@ -569,7 +732,9 @@ The roadmap orders the work as follows:
 - more sourced scattering data (M5);
 - wave-solver walls that also absorb at grazing incidence, such as extended-reaction or
   frequency-dependent complex impedances, checked against the measured room;
-- comparison with larger measured rooms, which needs geometry beyond vertical walls.
+- fitted zones that follow a raked floor or a wall, rather than boxes, and sourced densities for
+  common furnishings;
+- the remaining BRAS auditorium, CR4, built from solids.
 
 A synthetic late tail (M2 item 4) is no longer needed: rays carry every reflection beyond the image
 sources' order.
@@ -580,6 +745,12 @@ The ray tracer and image sources could run on the GPU.
 
 - J. B. Allen and D. A. Berkley, "Image method for efficiently simulating small-room acoustics",
   *J. Acoust. Soc. Am.* 65 (4), 943–950, 1979.
+- J. Borish, "Extension of the image model to arbitrary polyhedra", *J. Acoust. Soc. Am.* 75 (6),
+  1827–1836, 1984, for image sources in rooms of any shape.
+- A. M. Ondet and J. L. Barbry, "Modeling of sound propagation in fitted workshops using ray
+  tracing", *J. Acoust. Soc. Am.* 85 (2), 787–796, 1989, for fitted zones.
+- E. Wallace, csg.js (https://github.com/evanw/csg.js, MIT licence), for constructive solid geometry
+  with binary space partitioning trees.
 - ISO 9613-1:1993, *Acoustics — Attenuation of sound during propagation outdoors — Part 1:
   Calculation of the absorption of sound by the atmosphere*. The equations are as transcribed by
   [sengpielaudio](https://sengpielaudio.com/LuftdaempfungFormel.htm).
@@ -593,7 +764,7 @@ The ray tracer and image sources could run on the GPU.
   materials database (https://github.com/LCAV/pyroomacoustics, MIT licence).
 - L. Aspöck, M. Vorländer, F. Brinkmann, D. Ackermann and S. Weinzierl, *Benchmark for Room
   Acoustical Simulation (BRAS)*, TU Berlin and RWTH Aachen, 2020, DOI 10.14279/depositonce-6726.3,
-  CC BY-SA 4.0, for the measured seminar room.
+  CC BY-SA 4.0, for the measured seminar room and chamber music hall.
 - A. Lundeby, T. E. Vigran, H. Bietz and M. Vorländer, "Uncertainties of measurements in room
   acoustics", *Acustica* 81, 344–355, 1995, for noise compensation in measured decay.
 - ISO 17497-1:2004, *Acoustics — Sound-scattering properties of surfaces — Part 1: Measurement of the

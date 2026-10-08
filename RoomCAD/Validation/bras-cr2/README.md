@@ -11,7 +11,7 @@ Benchmark for Room Acoustical Simulation (BRAS):
 BRAS is licensed under the Creative Commons Attribution-ShareAlike 4.0 International licence
 (https://creativecommons.org/licenses/by-sa/4.0/). These derived files are distributed under the same
 licence. They do not contain BRAS's impulse responses or models;
-`RoomCAD/Scripts/fetch-bras-cr2.py` fetches the files they were derived from into `RoomCAD/.cache`,
+`RoomCAD/Scripts/fetch-bras.py` fetches the files they were derived from into `RoomCAD/.cache`,
 which git ignores.
 
 ## `scene.json`

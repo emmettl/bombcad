@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Fetch the parts of the BRAS database used to compare RoomCAD with the measured seminar room CR2.
+"""Fetch the parts of the BRAS database used to compare RoomCAD with measured rooms: the seminar room CR2,
+the chamber music hall CR3 and the auditorium CR4.
 
 BRAS (Benchmark for Room Acoustical Simulation, Aspöck et al., TU Berlin and RWTH Aachen) is published
 under CC BY-SA 4.0 at https://depositonce.tu-berlin.de/items/38410727-febb-4769-8002-9c710ba393c4.
 Its archives are large, so this reads each archive's directory and then only the members needed, with
-HTTP range requests: about 7.5 MB instead of 850 MB. Files land in RoomCAD/.cache/bras-cr2, which git
-ignores; RoomCAD's repository keeps only numbers derived from them, with attribution.
+HTTP range requests: about 6 MB for CR2 and 40-50 MB each for CR3 and CR4, instead of 2 GB. Files land in
+RoomCAD/.cache/bras-cr2, -cr3 and -cr4, which git ignores; RoomCAD's repository keeps only what is derived
+from them, with attribution.
 
-Usage: python3 RoomCAD/Scripts/fetch-bras-cr2.py
+Usage: python3 RoomCAD/Scripts/fetch-bras.py [CR2] [CR3] [CR4]   (all three by default)
 """
 
 import pathlib
@@ -17,23 +19,33 @@ import urllib.request
 import zlib
 
 BITSTREAMS = "https://api-depositonce.tu-berlin.de/server/api/core/bitstreams"
-ARCHIVES = {
-    "scene": (f"{BITSTREAMS}/53c3cf64-3547-4aa6-946b-1b4755729f2a/content", 615_751_495),
-    "surfaces": (f"{BITSTREAMS}/b2970524-fb10-482a-ab14-f07da5ad7615/content", 235_694_104),
+SCENES = {
+    "CR2": (f"{BITSTREAMS}/53c3cf64-3547-4aa6-946b-1b4755729f2a/content", 615_751_495, "CR2 small room (seminar room)"),
+    "CR3": (f"{BITSTREAMS}/e7b13112-0306-4596-9d9f-c6db057b0552/content", 739_877_895, "CR3 medium room (chamber music hall)"),
+    "CR4": (f"{BITSTREAMS}/bad0610b-293c-47cb-9926-c30c32f9b4c8/content", 785_106_943, "CR4 large room (auditorium)"),
 }
-SCENE = "1 Scene descriptions/CR2 small room (seminar room)/"
-WANTED = {
-    "scene": lambda name: name.startswith(SCENE)
-    and (
+SURFACES = (f"{BITSTREAMS}/b2970524-fb10-482a-ab14-f07da5ad7615/content", 235_694_104)
+CACHE = pathlib.Path(__file__).resolve().parent.parent / ".cache"
+
+
+def wanted_scene(scene, folder, name):
+    """The scene's dodecahedron RIRs, its model with positions and pictures of it, and its drawings."""
+    if not name.startswith(f"1 Scene descriptions/{folder}/"):
+        return False
+    return (
         ("RIRs/wav/" in name and name.endswith("_Dodecahedron.wav"))
-        or name.endswith("Geometry/CR2_RIR_Dodecahedron.skp")
-        or name.endswith("Geometry/CR2_RIR_Dodecahedron.png")
-        or name.endswith("Geometry/CR2_ModelSimplifications.pdf")
+        or name.endswith(f"Geometry/{scene}_RIR_Dodecahedron.skp")
+        or name.endswith(f"Geometry/{scene}_RIR_Dodecahedron.png")
+        or name.endswith(f"Geometry/{scene}_ModelSimplifications.pdf")
         or name.endswith("Pictures/Details/0_roomPlan.pdf")
-    ),
-    "surfaces": lambda name: "/_csv/" in name and "mat_CR2_" in name and name.endswith(".csv"),
-}
-DESTINATION = pathlib.Path(__file__).resolve().parent.parent / ".cache" / "bras-cr2"
+        or (scene != "CR2" and name.endswith((f"Pictures/{scene}_Overview1.jpg", f"Pictures/{scene}_Overview2.jpg")))
+    )
+
+
+def wanted_surface(scene, name):
+    """The scene's materials, initial and fitted, and its material descriptions."""
+    return (("/_csv/" in name and f"mat_{scene}_" in name and name.endswith(".csv"))
+            or name.endswith(f"_descr/mat_{scene}.txt"))
 
 
 def read_range(url, start, end):
@@ -93,24 +105,41 @@ def extract(url, method, compressed, uncompressed, offset):
     return data
 
 
-def main():
+def fetch(url, size, wanted, destination_for):
     total = 0
-    for archive, (url, size) in ARCHIVES.items():
-        for name, method, compressed, uncompressed, offset in members(url, size):
-            if name.endswith("/") or not WANTED[archive](name):
-                continue
-            target = DESTINATION / archive / pathlib.PurePosixPath(name).name
+    for name, method, compressed, uncompressed, offset in members(url, size):
+        if name.endswith("/") or not wanted(name):
+            continue
+        target = destination_for(name)
+        if target.exists() and target.stat().st_size == uncompressed:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(extract(url, method, compressed, uncompressed, offset))
+        total += compressed
+        print(f"{target.relative_to(CACHE)} ({uncompressed:,} bytes)")
+    return total
+
+
+def main():
+    scenes = sys.argv[1:] or list(SCENES)
+    total = 0
+    for scene in scenes:
+        url, size, folder = SCENES[scene]
+        destination = CACHE / f"bras-{scene.lower()}"
+        total += fetch(
+            url, size, lambda name: wanted_scene(scene, folder, name),
+            lambda name: destination / "scene" / pathlib.PurePosixPath(name).name)
+
+        def surface_target(name):
+            leaf = pathlib.PurePosixPath(name).name
             if "fitted_estimates" in name:
-                target = DESTINATION / "fitted" / target.name
-            elif "initial_estimates" in name:
-                target = DESTINATION / "initial" / target.name
-            if target.exists() and target.stat().st_size == uncompressed:
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(extract(url, method, compressed, uncompressed, offset))
-            total += compressed
-            print(f"{target.relative_to(DESTINATION)} ({uncompressed:,} bytes)")
-    print(f"Fetched {total:,} bytes into {DESTINATION}.")
+                return destination / "fitted" / leaf
+            if "initial_estimates" in name:
+                return destination / "initial" / leaf
+            return destination / "descr" / leaf
+
+        total += fetch(*SURFACES, lambda name: wanted_surface(scene, name), surface_target)
+    print(f"Fetched {total:,} bytes into {CACHE}.")
 
 
 if __name__ == "__main__":

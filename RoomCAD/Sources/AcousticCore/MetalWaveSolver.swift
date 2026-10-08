@@ -184,14 +184,13 @@ final class MetalWaveSolver: @unchecked Sendable {
                                  device const uchar* inside [[buffer(4)]], constant Grid& g [[buffer(5)]],
                                  uint3 id [[thread_position_in_grid]]) {
             if (id.x >= g.nx || id.y >= g.ny || id.z >= g.nz) return;
-            uint flat = id.x + g.nx * id.y;
-            if (!inside[flat]) return;
             uint plane = g.nx * g.ny;
-            uint at = flat + plane * id.z;
+            uint at = id.x + g.nx * id.y + plane * id.z;
+            if (!inside[at]) return;
             float here = p[at];
-            if (id.x + 1 < g.nx && inside[flat + 1]) ux[at] -= g.kx * (p[at + 1] - here);
-            if (id.y + 1 < g.ny && inside[flat + g.nx]) uy[at] -= g.ky * (p[at + g.nx] - here);
-            if (id.z + 1 < g.nz) uz[at] -= g.kz * (p[at + plane] - here);
+            if (id.x + 1 < g.nx && inside[at + 1]) ux[at] -= g.kx * (p[at + 1] - here);
+            if (id.y + 1 < g.ny && inside[at + g.nx]) uy[at] -= g.ky * (p[at + g.nx] - here);
+            if (id.z + 1 < g.nz && inside[at + plane]) uz[at] -= g.kz * (p[at + plane] - here);
         }
 
         // Pressure from the divergence, with each boundary face's semi-implicit wall term; a face value
@@ -201,11 +200,10 @@ final class MetalWaveSolver: @unchecked Sendable {
                                  device const uchar* inside [[buffer(4)]], device const float* faces [[buffer(5)]],
                                  constant Grid& g [[buffer(6)]], uint3 id [[thread_position_in_grid]]) {
             if (id.x >= g.nx || id.y >= g.ny || id.z >= g.nz) return;
-            uint flat = id.x + g.nx * id.y;
-            if (!inside[flat]) return;
             uint plane = g.nx * g.ny;
             uint count = plane * g.nz;
-            uint at = flat + plane * id.z;
+            uint at = id.x + g.nx * id.y + plane * id.z;
+            if (!inside[at]) return;
             float divergence = 0;
             float wall = 0;
             float f;
@@ -252,7 +250,7 @@ extension WaveSolver {
     /// Everything the GPU needs about the grid, built from the same rules as the CPU solvers.
     struct GridLayout {
         var count: Int
-        /// One flag per column (i, j): whether its cells are simulated.
+        /// One flag per cell: whether it is simulated.
         var inside: [UInt8]
         /// Six faces per cell, in the order -x, +x, -y, +y, -z, +z, each laid out over all cells; -1 marks a
         /// face to a neighbour, otherwise the wall term β = c dt / (2 ξ d).
@@ -277,19 +275,45 @@ extension WaveSolver {
         let count = plane * nz
         let c = atmosphere.soundSpeed
         let dt = timeStep
-        let centre = { (i: Int, j: Int) in SIMD2((Double(i) + 0.5) * spacing.x, (Double(j) + 0.5) * spacing.y)
-        }
-        var inside = [UInt8](repeating: 1, count: plane)
+        let centre = { (i: Int, j: Int, k: Int) in (SIMD3(Double(i), Double(j), Double(k)) + 0.5) * spacing }
+        // Cells whose centres lie in the room: every cell of a box, whole columns of a plan, and for a
+        // mesh the stretches of each column between where a vertical line enters and leaves it.
+        var inside = [UInt8](repeating: 1, count: count)
+        let mesh = room.mesh.map(MeshGeometry.of)
         if let plan = room.plan {
-            for j in 0..<ny { for i in 0..<nx { inside[i + nx * j] = plan.contains(centre(i, j)) ? 1 : 0 } }
+            for j in 0..<ny {
+                for i in 0..<nx where !plan.contains([centre(i, j, 0).x, centre(i, j, 0).y]) {
+                    for k in 0..<nz { inside[i + nx * (j + ny * k)] = 0 }
+                }
+            }
+        } else if let mesh {
+            for j in 0..<ny {
+                for i in 0..<nx {
+                    let point = centre(i, j, 0)
+                    let crossings = mesh.verticalCrossings(x: point.x, y: point.y)
+                    for k in 0..<nz {
+                        let z = centre(i, j, k).z
+                        let below = crossings.filter { $0 < z }.count
+                        inside[i + nx * (j + ny * k)] = below % 2 == 1 ? 1 : 0
+                    }
+                }
+            }
         }
-        let active = { (i: Int, j: Int) in i >= 0 && i < nx && j >= 0 && j < ny && inside[i + nx * j] == 1 }
+        let active = { (i: Int, j: Int, k: Int) in
+            i >= 0 && i < nx && j >= 0 && j < ny && k >= 0 && k < nz && inside[i + nx * (j + ny * k)] == 1
+        }
         func beta(_ xi: Double, _ depth: Double) -> Float {
             let value = c * dt / (2 * xi * depth)
             return value.isFinite ? Float(value) : 0
         }
         let surfaceImpedance = Dictionary(uniqueKeysWithValues: Surface.allCases.map { ($0, impedance($0)) })
         let wallImpedance = room.plan?.walls.map { impedance(material: $0) } ?? []
+        // Air in an open face, otherwise the face's material.
+        let faceImpedance = room.mesh.map { mesh in
+            mesh.faces.indices.map {
+                mesh.faces[$0].open ? 1 : impedance(material: mesh.materials[mesh.faces[$0].material])
+            }
+        }
         // A box face: the surface's impedance, or air's in an opening.
         func boxFace(_ surface: Surface, _ point: SIMD3<Double>) -> Float {
             let (a, b) = surface.planeAxes
@@ -308,37 +332,29 @@ extension WaveSolver {
             return beta(open ? 1 : wallImpedance[wall], depth)
         }
         var faces = [Float](repeating: -1, count: 6 * count)
+        let steps: [(SIMD3<Int>, Int)] = [
+            ([-1, 0, 0], 0), ([1, 0, 0], 0), ([0, -1, 0], 1), ([0, 1, 0], 1), ([0, 0, -1], 2),
+            ([0, 0, 1], 2),
+        ]
         for k in 0..<nz {
-            let height = (Double(k) + 0.5) * spacing.z
             for j in 0..<ny {
-                for i in 0..<nx where inside[i + nx * j] == 1 {
+                for i in 0..<nx where inside[i + nx * (j + ny * k)] == 1 {
                     let at = i + nx * (j + ny * k)
-                    let here = centre(i, j)
-                    let point = SIMD3(here.x, here.y, height)
-                    if room.plan != nil {
-                        if !active(i - 1, j) {
-                            faces[at] = planFace(here - [spacing.x / 2, 0], height: height, depth: spacing.x)
+                    let point = centre(i, j, k)
+                    for (side, (step, axis)) in steps.enumerated()
+                    where !active(i + step.x, j + step.y, k + step.z) {
+                        let face = point + SIMD3<Double>(step) * spacing / 2
+                        if let mesh, let faceImpedance {
+                            faces[side * count + at] = beta(
+                                faceImpedance[mesh.nearestFace(face)], spacing[axis])
+                        } else if room.plan != nil, axis < 2 {
+                            faces[side * count + at] = planFace(
+                                [face.x, face.y], height: face.z, depth: spacing[axis])
+                        } else {
+                            let surface: Surface = [.west, .east, .south, .north, .floor, .ceiling][side]
+                            faces[side * count + at] = boxFace(surface, point)
                         }
-                        if !active(i + 1, j) {
-                            faces[count + at] = planFace(
-                                here + [spacing.x / 2, 0], height: height, depth: spacing.x)
-                        }
-                        if !active(i, j - 1) {
-                            faces[2 * count + at] = planFace(
-                                here - [0, spacing.y / 2], height: height, depth: spacing.y)
-                        }
-                        if !active(i, j + 1) {
-                            faces[3 * count + at] = planFace(
-                                here + [0, spacing.y / 2], height: height, depth: spacing.y)
-                        }
-                    } else {
-                        if i == 0 { faces[at] = boxFace(.west, point) }
-                        if i == nx - 1 { faces[count + at] = boxFace(.east, point) }
-                        if j == 0 { faces[2 * count + at] = boxFace(.south, point) }
-                        if j == ny - 1 { faces[3 * count + at] = boxFace(.north, point) }
                     }
-                    if k == 0 { faces[4 * count + at] = boxFace(.floor, point) }
-                    if k == nz - 1 { faces[5 * count + at] = boxFace(.ceiling, point) }
                 }
             }
         }
@@ -354,10 +370,18 @@ extension WaveSolver {
                 let o = SIMD3<Int>(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1)
                 let cell = (base.x + o.x) + nx * ((base.y + o.y) + ny * (base.z + o.z))
                 let w = (o.x == 1 ? f.x : 1 - f.x) * (o.y == 1 ? f.y : 1 - f.y) * (o.z == 1 ? f.z : 1 - f.z)
-                result.append((cell, inside[(base.x + o.x) + nx * (base.y + o.y)] == 1 ? w : 0))
+                result.append((cell, inside[cell] == 1 ? w : 0))
             }
             let total = result.reduce(0) { $0 + $1.1 }
-            guard total > 0 else { return result.map { ($0.0, 0) } }
+            guard total > 0 else {
+                // Outside every simulated cell round it: the nearest simulated cell, padded to eight.
+                let nearest =
+                    (0..<count).filter { inside[$0] == 1 }.min {
+                        simd_distance_squared(centre($0 % nx, ($0 / nx) % ny, $0 / plane), point)
+                            < simd_distance_squared(centre($1 % nx, ($1 / nx) % ny, $1 / plane), point)
+                    } ?? 0
+                return [(nearest, 1)] + Array(repeating: (nearest, 0), count: 7)
+            }
             return result.map { ($0.0, Float($0.1 / total)) }
         }
         let injection = Float(c * c * dt / (spacing.x * spacing.y * spacing.z))

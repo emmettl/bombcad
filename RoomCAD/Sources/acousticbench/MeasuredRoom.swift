@@ -2,25 +2,39 @@ import AcousticCore
 import Foundation
 import ImpulseResponseKit
 
-/// Compares RoomCAD with the measured seminar room CR2 of the BRAS database.
+/// Compares RoomCAD with a measured room of the BRAS database: the seminar room CR2 or the chamber music
+/// hall CR3.
 ///
-///   acousticbench --bras-cr2 [--update-fixture] [--reuse-simulation]
+///   acousticbench --bras-cr2 | --bras-cr3 [--update-fixture] [--reuse-simulation]
 ///
 /// With `--update-fixture`, the measured responses are read from the cache that
-/// `RoomCAD/Scripts/fetch-bras-cr2.py` fills, and the parameters derived from them are written to
-/// `RoomCAD/Validation/bras-cr2/measured.json`. Otherwise that file is used, so the comparison runs without
+/// `RoomCAD/Scripts/fetch-bras.py` fills, and the parameters derived from them are written to
+/// `RoomCAD/Validation/bras-crN/measured.json`. Otherwise that file is used, so the comparison runs without
 /// the download.
 enum MeasuredRoom {
-    static let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Validation/bras-cr2")
-    static let cache = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        .deletingLastPathComponent().appendingPathComponent(".cache/bras-cr2/scene")
+    /// The scene compared, such as "CR2".
+    nonisolated(unsafe) static var scene = "CR2"
+    static var package: URL {
+        URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+    static var directory: URL { package.appendingPathComponent("Validation/bras-\(scene.lowercased())") }
+    static var cache: URL { package.appendingPathComponent(".cache/bras-\(scene.lowercased())/scene") }
 
     /// Pairs measured with the dodecahedron.
     static let pairs = ["LS1", "LS2"].flatMap { s in (1...5).map { (s, "MP\($0)") } }
-    /// What is simulated: a name, the material set and whether the wave solver is used.
+    /// What is simulated: a name, the material set, whether the wave solver is used and whether the
+    /// scene's fitted zones (its chairs) are. "fitted" is BRAS's set, fitted to its own models; "refitted"
+    /// is the initial set fitted the same way to the simplified room simulated here
+    /// (`ValidationScene.refitting`). "With chairs" runs only for scenes with fitted zones. "calibrated" is
+    /// "refitted" scaled further until this model's own simulated T30 matches the measured
+    /// (`AbsorptionCalibration`).
     static let configurations = [
-        ("initial", "initial", true), ("fitted", "fitted", true), ("fitted, no wave solver", "fitted", false),
+        ("initial", "initial", true, false), ("fitted by BRAS", "fitted", true, false),
+        ("fitted to this model", "refitted", true, false),
+        ("fitted to this model, no wave solver", "refitted", false, false),
+        ("fitted to this model, with chairs", "refitted", true, true),
+        ("fitted by simulating this model", "calibrated", true, false),
     ]
     static var names: [String] { configurations.map(\.0) }
 
@@ -65,10 +79,10 @@ enum MeasuredRoom {
     static func updateFixture() throws {
         var pairs: [String: Pair] = [:]
         for (source, receiver) in Self.pairs {
-            let url = cache.appendingPathComponent("CR2_RIR_\(source)_\(receiver)_Dodecahedron.wav")
+            let url = cache.appendingPathComponent("\(scene)_RIR_\(source)_\(receiver)_Dodecahedron.wav")
             guard FileManager.default.fileExists(atPath: url.path) else {
                 throw ImpulseResponseError.invalid(
-                    "\(url.lastPathComponent) is missing; run python3 RoomCAD/Scripts/fetch-bras-cr2.py first."
+                    "\(url.lastPathComponent) is missing; run python3 RoomCAD/Scripts/fetch-bras.py first."
                 )
             }
             let audio = try WAVFile.decode(Data(contentsOf: url))
@@ -77,7 +91,7 @@ enum MeasuredRoom {
         }
         let fixture = Fixture(
             description: "Parameters derived by RoomCAD's acousticbench from the measured dodecahedron room "
-                + "impulse responses of BRAS scene CR2 (Aspöck et al., TU Berlin and RWTH Aachen), "
+                + "impulse responses of BRAS scene \(scene) (Aspöck et al., TU Berlin and RWTH Aachen), "
                 + "CC BY-SA 4.0. See README.md.",
             bandCentres: OctaveBands.centres, pairs: pairs)
         let encoder = JSONEncoder()
@@ -87,9 +101,31 @@ enum MeasuredRoom {
     }
 
     static func run(reuse: Bool) throws {
-        let scene = try ValidationScene.load(directory.appendingPathComponent("scene.json"))
         let fixture = try JSONDecoder().decode(
             Fixture.self, from: Data(contentsOf: directory.appendingPathComponent("measured.json")))
+        let measuredT30 = OctaveBands.centres.indices.map { band in
+            statistics(fixture.pairs.values.map { $0.parameters[band].t30 })?.mean
+        }
+        let withZones = try ValidationScene.load(directory.appendingPathComponent("scene.json"))
+            .refitting("initial", to: measuredT30, as: "refitted")
+        var scene = withZones
+        scene.fittings = nil
+        if !reuse {
+            let probe = scene.settings(
+                set: "refitted", source: "LS1", driver: 1, receivers: (1...5).map { "MP\($0)" }, duration: 3.5
+            )
+            let (_, steps, best) = try AbsorptionCalibration.fit(probe, to: measuredT30)
+            for (index, step) in steps.enumerated() {
+                print(
+                    "Calibration step \(index): T30 "
+                        + step.reverberationTime.map { format($0, 2) }.joined(separator: ", ") + "; factors "
+                        + step.factors.map { format($0, 3) }.joined(separator: ", "))
+            }
+            print(
+                "Calibrated: T30 " + best.reverberationTime.map { format($0, 2) }.joined(separator: ", ")
+                    + "; factors " + best.factors.map { format($0, 3) }.joined(separator: ", "))
+            scene = scene.scaling("refitted", by: best.factors, as: "calibrated")
+        }
         let receivers = (1...5).map { "MP\($0)" }
         var simulated: [String: [String: Pair]] = [:]
         // The simulated analysis is kept beside the download, so the report can be reworked without
@@ -100,10 +136,10 @@ enum MeasuredRoom {
             report(fixture, simulated, scene: scene)
             return
         }
-        for (set, materials, wave) in configurations {
+        for (set, materials, wave, zones) in configurations where !zones || withZones.fittings != nil {
             for source in ["LS1", "LS2"] {
                 let start = Date()
-                let result = try scene.generate(
+                let result = try (zones ? withZones : scene).generate(
                     set: materials, source: source, receivers: receivers, duration: 3.5,
                     lowFrequencyModel: wave)
                 let responses = cache.deletingLastPathComponent().appendingPathComponent("simulated")
@@ -163,7 +199,7 @@ enum MeasuredRoom {
                 line += s.map { " \(format($0.mean, 2)) ± \(format($0.deviation, 2)) |" } ?? " — |"
             }
             print(line)
-            for set in names {
+            for set in names where simulated[set] != nil {
                 var line = "| | \(set) |"
                 for band in OctaveBands.centres.indices {
                     let m = statistics(measured.map { value($0.parameters[band]) })
@@ -187,7 +223,7 @@ enum MeasuredRoom {
         print(
             "\nLow-frequency fine structure, 30–175 Hz (correlation of 1/24-octave levels less their octave "
                 + "mean; the simulated spectrum also read with its frequencies scaled)")
-        for set in names {
+        for set in names where simulated[set] != nil {
             let matched = keys.map {
                 ResponseComparison.correlation(
                     fine(fixture.pairs[$0]!.lowFrequencyLevels), fine(simulated[set]![$0]!.lowFrequencyLevels)
@@ -224,7 +260,7 @@ enum MeasuredRoom {
         print(
             "\nEarly reflections above 500 Hz, 1.5–19.5 ms after the direct sound (correlation of levels in "
                 + "1 ms bins)")
-        for set in names {
+        for set in names where simulated[set] != nil {
             let matched = keys.map {
                 ResponseComparison.correlation(fixture.pairs[$0]!.early, simulated[set]![$0]!.early)
             }

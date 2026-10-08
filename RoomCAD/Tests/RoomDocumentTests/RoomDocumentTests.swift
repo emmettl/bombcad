@@ -309,4 +309,17 @@ struct RoomDocumentScatteringTests {
         #expect(loaded.settings == project.settings)
         #expect(loaded.settings.room.plan?.corners.count == 6)
     }
+
+    @Test("A hall built from solids keeps its mesh, materials and labels when saved")
+    func meshRoom() throws {
+        let preset = try #require(RoomPresets.all.first { $0.id == "raked-auditorium" })
+        let project = RoomProject(settings: preset.applied(to: RoomDocumentTests.settings))
+        try project.settings.validate()
+        let loaded = try RoomProject(
+            archive: ProjectArchive(fileWrapper: project.makeArchive().fileWrapper()))
+        #expect(loaded.settings == project.settings)
+        let mesh = try #require(loaded.settings.room.mesh)
+        #expect(mesh.labels == HallShapes.labels)
+        #expect(abs(loaded.settings.room.volume - project.settings.room.volume) < 1e-9)
+    }
 }

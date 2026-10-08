@@ -10,6 +10,9 @@ import simd
 /// once. The reflection is chosen at random with probability `p` (the surface's mean scattering), and
 /// per-band weights `s/p` or `(1 - s)/(1 - p)` keep every band's expectation exact.
 ///
+/// In a fitted zone a ray meets objects at random, after Ondet and Barbry: it loses the objects'
+/// absorption and leaves in a uniformly random direction, and from then on counts as scattered.
+///
 /// Receivers are spheres, sized with the room, weighted by their microphone's squared gain towards
 /// where each ray comes from. A ray crossing one deposits its energy times the chord length over the
 /// sphere's volume inside the room, scaled so a free-field source gives `1/r²`: the same units as the
@@ -66,7 +69,8 @@ struct DiffuseRayTracer {
             count: receivers.count)
         guard
             rayCount > 0,
-            room.scatters || specularOrderLimit < Int.max || specularWallLimit < Int.max || !openings.isEmpty,
+            room.scatters || specularOrderLimit < Int.max || specularWallLimit < Int.max || !openings.isEmpty
+                || !room.zones.isEmpty,
             !stop()
         else {
             return energy
@@ -87,6 +91,9 @@ struct DiffuseRayTracer {
             openings.filter { $0.surface == surface && $0.wall == nil }
         }
         let plan = room.plan
+        let zones = room.zones
+        let mesh = room.mesh.map(MeshGeometry.of)
+        let meshMaterials = room.mesh.map { mesh in mesh.faces.indices.map { mesh.material(of: $0) } }
         let openingsByWall = plan.map { plan in
             plan.corners.indices.map { wall in openings.filter { $0.wall == wall } }
         }
@@ -116,7 +123,8 @@ struct DiffuseRayTracer {
                 var scattered = false
                 var reflections = 0
                 var wallReflections = 0
-                // The plan wall last reflected from, which the ray cannot meet again straight away.
+                // The plan wall or mesh face last reflected from, which the ray cannot meet again straight
+                // away.
                 var lastWall = -1
                 for b in 0..<bands { weights[b] = 1 / Double(rayCount) }
 
@@ -125,7 +133,16 @@ struct DiffuseRayTracer {
                     var hit = Double.infinity
                     var axis = 0
                     var planWall = -1
-                    if let plan {
+                    var meshFace = -1
+                    if let mesh {
+                        // A ray that slips through a seam between faces has left the room.
+                        guard
+                            let found = mesh.nearestHit(
+                                origin: position, direction: direction, excluding: lastWall)
+                        else { break }
+                        hit = found.t
+                        meshFace = found.face
+                    } else if let plan {
                         if direction.z != 0 {
                             hit = max(0, ((direction.z > 0 ? room.size.z : 0) - position.z) / direction.z)
                             axis = 2
@@ -152,7 +169,17 @@ struct DiffuseRayTracer {
                             }
                         }
                     }
-                    let segment = min(hit, reach - travelled)
+                    var segment = min(hit, reach - travelled)
+                    // An object in a fitted zone met before the boundary ends this flight there.
+                    var encounter: Int?
+                    if !zones.isEmpty,
+                        let met = zones.encounter(
+                            origin: position, direction: direction, limit: segment,
+                            budget: -log(1 - random.nextUnit()))
+                    {
+                        segment = met.distance
+                        encounter = met.zone
+                    }
                     if scattered || reflections > specularOrderLimit || wallReflections > specularWallLimit {
                         for (r, (receiver, microphone)) in receivers.enumerated() {
                             // Chord of the segment through the receiver's sphere.
@@ -179,9 +206,38 @@ struct DiffuseRayTracer {
                         }
                     }
                     travelled += segment
+                    if let zone = encounter {
+                        // Absorbed in part, the rest scattered equally in every direction.
+                        position += direction * segment
+                        for b in 0..<bands { weights[b] *= 1 - zones[zone].absorption[b] }
+                        let z = 1 - 2 * random.nextUnit()
+                        let angle = 2 * Double.pi * random.nextUnit()
+                        let ring = (1 - z * z).squareRoot()
+                        direction = SIMD3(ring * cos(angle), ring * sin(angle), z)
+                        scattered = true
+                        lastWall = -1
+                        if (weights.max() ?? 0) * Double(rayCount) < 1e-15 { break }
+                        continue
+                    }
                     guard segment == hit else { break }
                     position += direction * hit
                     reflections += 1
+                    if let mesh, meshFace >= 0 {
+                        // A mesh face: out if it is open, otherwise reflected about its normal.
+                        if mesh.faces[meshFace].open { break }
+                        let normal = mesh.faces[meshFace].normal
+                        let diffuse = reflect(
+                            material: meshMaterials![meshFace], weights: &weights, random: &random)
+                        if diffuse {
+                            scattered = true
+                            direction = lambert(aroundAny: normal, &random)
+                        } else {
+                            direction -= 2 * simd_dot(direction, normal) * normal
+                        }
+                        lastWall = meshFace
+                        if (weights.max() ?? 0) * Double(rayCount) < 1e-15 { break }
+                        continue
+                    }
                     if let plan, planWall >= 0 {
                         // A plan wall: out through an opening, or reflected about the wall's normal.
                         let start = plan.start(planWall)

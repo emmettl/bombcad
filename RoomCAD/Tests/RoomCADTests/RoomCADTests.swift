@@ -3,7 +3,10 @@ import AppKit
 import CoreGraphics
 import Foundation
 import RoomDocument
+import SceneRender
+import SceneView
 import Testing
+import simd
 
 @testable import RoomCAD
 
@@ -296,4 +299,88 @@ func progressText() {
     #expect(RoomEditor.describe((nil, 0)) == nil)
     #expect(RoomEditor.describe((.rays, 0.404)) == "Tracing rays 40%")
     #expect(RoomEditor.describe((.waveSolver, 1)) == "Wave solver 100%")
+}
+
+@MainActor
+@Test("Fitting absorption applies a room that meets the target and reports how far it scaled")
+func fitAbsorption() async throws {
+    var settings = RoomProject.starter
+    settings.lowFrequencyModel = false
+    settings.duration = 1.2
+    // Quick enough for a test: few image sources, the rays carry the rest.
+    settings.maximumReflectionOrder = 8
+    settings.diffuseRays = 5_000
+    let fitter = AbsorptionFitter()
+    fitter.fit(settings, to: Array(repeating: nil, count: 8)) { _ in Issue.record("Nothing to fit") }
+    #expect(fitter.status == "Enter a target time in at least one band.")
+    var fitted: ShoeboxRoom?
+    fitter.fit(settings, to: [nil, nil, nil, 0.5, 0.5, nil, nil, nil]) { fitted = $0 }
+    #expect(fitter.isRunning)
+    while fitter.isRunning { try await Task.sleep(for: .milliseconds(50)) }
+    let room = try #require(fitted)
+    // The starter living room decays faster than 0.5 s, so the fit takes absorption away in the
+    // bands asked for and leaves the others.
+    #expect(room.floor.absorption[4] < settings.room.floor.absorption[4])
+    #expect(room.floor.absorption[6] == settings.room.floor.absorption[6])
+    let status = try #require(fitter.status)
+    #expect(status.hasPrefix("Absorption scaled ×0."), "\(status)")
+    #expect(status.hasSuffix("of the targets."))
+}
+
+@MainActor
+@Test(
+    "The 3D scene covers the room's surfaces once, colours them by material, and a click selects what it hits"
+)
+func roomScene() throws {
+    var settings = RoomProject.starter
+    settings.openings = [Opening(name: "Door", surface: .north, centre: [2, 1], size: [0.9, 2])]
+    settings.room.fittings = [RoomInspector.seating(in: settings.room.size)]
+    let scene = RoomScene(settings: settings)
+    // The triangles' area is the room's surface area.
+    var area = 0.0
+    var vertices = scene.geometry.solid.makeIterator()
+    while let a = vertices.next(), let b = vertices.next(), let c = vertices.next() {
+        guard a.pick < 6 else { continue }
+        area += Double(simd_length(simd_cross(b.point - a.point, c.point - a.point))) / 2
+    }
+    #expect(abs(area / settings.room.surfaceArea - 1) < 1e-4)
+    #expect(scene.names == ["West wall", "East wall", "South wall", "North wall", "Floor", "Ceiling"])
+    // Walls of one material share a colour.
+    let colours = Dictionary(grouping: scene.geometry.solid.filter { $0.pick < 6 }, by: \.pick).mapValues {
+        $0[0].colour
+    }
+    #expect(colours[0] == colours[1] || settings.room.west != settings.room.east)
+    // The door lies on the north wall, just inside it.
+    let door = try #require(RoomScene.corners(of: settings.openings[0], in: settings.room))
+    #expect(door.allSatisfy { abs($0.y - (settings.room.size.y - 0.01)) < 1e-12 })
+
+    // From above the middle of the room, through the ceiling, which is seen from behind: the seating
+    // zone is translucent, so the floor is hit.
+    let viewport = RoomViewport()
+    viewport.show(settings)
+    let size = SIMD3<Float>(settings.room.size)
+    viewport.camera = OrbitCamera(
+        target: SIMD3(size.x * 0.55, size.y * 0.5, 0), distance: 20, azimuth: 0, elevation: 1.55)
+    viewport.click(ndc: [0, 0], aspectRatio: 1)
+    #expect(viewport.selected == .surface(4))
+    #expect(viewport.caption?.hasPrefix("Floor: ") == true)
+    // Clicking the source.
+    let source = SIMD3<Float>(settings.source.position)
+    viewport.camera = OrbitCamera(target: source, distance: 4, azimuth: 0.3, elevation: 0.4)
+    viewport.click(ndc: [0, 0], aspectRatio: 1)
+    #expect(viewport.selected == .source)
+    // A room with fewer receivers drops a selection that no longer exists.
+    viewport.select(.receiver(1))
+    settings.receivers.removeLast()
+    viewport.show(settings)
+    #expect(viewport.selected == nil)
+    #expect(RoomScene.Item(pick: RoomScene.Item.zone(2).pick) == .zone(2))
+    // The framing keeps every corner of a long hall in view.
+    let camera = RoomViewport.framing([40, 20, 12], aspectRatio: 2)
+    let projection = MeshRenderer.viewProjection(camera, aspectRatio: 2)
+    for i in 0..<8 {
+        let corner = SIMD3<Float>(i & 1 == 0 ? 0 : 40, i & 2 == 0 ? 0 : 20, i & 4 == 0 ? 0 : 12)
+        let clip = projection * SIMD4(corner, 1)
+        #expect(abs(clip.x / clip.w) <= 0.85 && abs(clip.y / clip.w) <= 0.85)
+    }
 }

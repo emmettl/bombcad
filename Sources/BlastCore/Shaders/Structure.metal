@@ -190,8 +190,9 @@ struct MaterialParameters {
     float steelStress[8];   // ... against stress
     float concreteRateCompression;
     float concreteRateTension;
-    float steelRateYield;
-    float steelRateUltimate;
+    float steelRateYield;     // the bars' rate exponents (Malvar and Crawford), or with
+    float steelRateUltimate;  // `steelRateLog` the coefficients of the CEB's logarithmic law
+    uint steelRateLog;
     float crackBand;            // length a crack's opening is smeared over
     float interlockStrength;    // aggregate-interlock shear capacity of a closed crack
     float interlockWidthScale;  // its decay with crack width, per metre
@@ -723,6 +724,16 @@ static inline float tablePressure(const device float2 *table, uint count, float 
 // plastic strain `plastic` (updated) and cyclic history `bar`: the measured curve while loaded
 // one way, the cyclic law once reversed, with the strength raised by the strain rate. `root` is
 // the bars' stretch, and `yield` their current yield stress.
+// The bars' strain-rate factors at yield (x) and at ultimate (y).
+static inline float2 steelRateFactors(float strainRate, constant MaterialParameters &m) {
+    if (m.steelRateLog != 0u) {
+        float logarithm = log(max(strainRate, 5e-5f) / 5e-5f);
+        return 1.0f + float2(m.steelRateYield, m.steelRateUltimate) * logarithm;
+    }
+    float rate = max(strainRate, 1e-4f) / 1e-4f;
+    return float2(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate));
+}
+
 static inline float smearedBar(float green, thread float &plastic, device BarHistory &bar, float strainRate,
                                constant MaterialParameters &m, thread float &root, thread float &yield) {
     // Stretch of the fibre from its Green-Lagrange strain, without cancellation.
@@ -736,8 +747,8 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
     float first = m.steelStress[0];
     float top = m.steelStress[m.steelPoints - 1];
     float along = clamp((yield - first) / max(top - first, 1.0f), 0.0f, 1.0f);
-    float rate = max(strainRate, 1e-4f) / 1e-4f;
-    float factor = mix(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate), along);
+    float2 factors = steelRateFactors(strainRate, m);
+    float factor = mix(factors.x, factors.y, along);
     yield *= factor;
     if (plastic == 0.0f) {
         // Not yet yielded: elastic, and no history to keep.
@@ -748,7 +759,7 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
         }
     } else {
         float inelastic = plastic;
-        stress = cycleBar(bar, fibre, inelastic, yield, slope * factor, first * pow(rate, m.steelRateYield), m);
+        stress = cycleBar(bar, fibre, inelastic, yield, slope * factor, first * factors.x, m);
         plastic = inelastic;
     }
     return stress;

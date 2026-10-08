@@ -40,7 +40,9 @@ listed in [Validation](validation.md), and a street snapshot. Each night's outpu
 
 The times are the mini's, not the M4 Max figures in [Performance](performance.md): the M4 has
 a third of the GPU cores and under a quarter of the memory bandwidth (120 against 546 GB/s),
-so expect runs to take three to four times as long. `swift test` takes about 8 minutes there, building
+and runs take 3.2 to 4.9 times as long ([Other Macs](performance.md#other-macs)). The mini is
+not a quiet machine (other projects' CI, and an app on its desktop that uses the GPU), so a time
+flagged slower may be another job. `swift test` takes about 8 minutes there, building
 included (262 tests, all passing on 2026-10-07). The largest run
 in the suite needs about 4 GB of GPU memory.
 
@@ -88,6 +90,15 @@ workflow runs on pull requests, but a pull request from a fork could add a workf
 that does. In Settings → Actions → General, under fork pull request workflows, require approval
 for all external contributors, and never approve a run that touches `.github/workflows` without
 reading it.
+
+## The first nights
+
+The first scheduled run, on 7 October, started at 23:27 UTC, four and a half hours after its
+19:00 schedule: GitHub's schedules can run late, and it may clash with Scrimply's nightly from
+about 01:30. It failed: every structural command crashed at once in the release build
+(fixed the same night in 4ccfdb4, which also added `make release-smoke`). The air ran: the
+benchmarks in 35 s, `validate` in 17.5 minutes and `closeair` in 2.5. How long the whole suite
+takes is still to be seen.
 
 ## Not done
 

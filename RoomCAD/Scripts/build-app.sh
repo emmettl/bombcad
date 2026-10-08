@@ -25,11 +25,15 @@ cp ../LICENSE "$app/Contents/Resources/LICENSE"
 cp THIRD-PARTY-NOTICES.md "$app/Contents/Resources/THIRD-PARTY-NOTICES.md"
 # Resource bundles, such as the bundled dry recordings. SwiftPM's accessor looks in the app's Resources
 # directory; nothing may sit at the app's root, or signing fails.
-for bundle in "$binary_directory"/RoomCAD_*.bundle; do
+for bundle in "$binary_directory"/RoomCAD_*.bundle "$binary_directory"/SimulationKit_*.bundle; do
   cp -R "$bundle" "$app/Contents/Resources/"
 done
 test -f "$app/Contents/Resources/RoomCAD_Audition.bundle/Contents/Resources/Clips/clips.json" || {
   echo "The app is missing its bundled clips." >&2
+  exit 1
+}
+test -f "$app/Contents/Resources/SimulationKit_SceneRender.bundle/Contents/Resources/Shaders/Scene.metal" || {
+  echo "The app is missing the 3D view's shader." >&2
   exit 1
 }
 codesign --force --sign - "$app"

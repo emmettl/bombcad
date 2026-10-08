@@ -189,8 +189,12 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     public var concreteRateFactor: Float = 1
     public var steelRateFactor: Float = 1
     /// Raise strength with the local strain rate: CEB-FIP 1990 for concrete in compression,
-    /// Malvar and Ross (1998) in tension, Malvar and Crawford (1998) for reinforcement.
+    /// `tensionRateLaw` in tension and `steelRateLaw` for reinforcement.
     public var rateDependent = false
+    /// With `rateDependent`, raise the bars' strength too; off, they keep their static curve.
+    public var steelRateDependent = true
+    /// With `rateDependent`, the law that raises the bars' strength with strain rate.
+    public var steelRateLaw: SteelRateLaw = .malvarCrawford
     /// Masonry: the units it is laid in and the joints between them (see `MasonryUnits`). The
     /// strengths above are then the wall's as a whole, used where the elements are too coarse
     /// to show the joints.
@@ -838,6 +842,18 @@ public enum TensionRateLaw: String, Codable, Sendable, CaseIterable {
     case modelCode2010
 }
 
+public enum SteelRateLaw: String, Codable, Sendable, CaseIterable {
+    /// L. J. Malvar and J. E. Crawford (1998): (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa at
+    /// yield and 0.019 − 0.009 f_y / 414 MPa at ultimate: 1.39 at yield at 1 per second for
+    /// 400 MPa bars.
+    case malvarCrawford
+    /// CEB Bulletin 187 (1988), re-adopted by the fib Model Code 2010: 1 + (6 / f_y)
+    /// ln(ε̇ / 5 × 10⁻⁵) at yield and 1 + (7 / f_u) ln(ε̇ / 5 × 10⁻⁵) at ultimate, strengths in
+    /// MPa: 1.15 at yield at 1 per second for 400 MPa bars. Closer to tension tests of bars, but
+    /// the contest slab's hinge runs away on fine meshes under it (docs/concrete-model.md).
+    case ceb
+}
+
 public enum ElementFlag: UInt8, Sendable {
     case empty = 0
     case active = 1
@@ -991,6 +1007,7 @@ struct MaterialParameters {
     var concreteRateTension: Float = 0
     var steelRateYield: Float = 0
     var steelRateUltimate: Float = 0
+    var steelRateLog: UInt32 = 0
     var crackBand: Float = 1
     var interlockStrength: Float = 0
     var interlockWidthScale: Float = 0
@@ -1113,6 +1130,8 @@ extension StructureMaterial {
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)
+        steelRateDependent = try value(.steelRateDependent, steelRateDependent)
+        steelRateLaw = try value(.steelRateLaw, steelRateLaw)
         units = try container.decodeIfPresent(MasonryUnits.self, forKey: .units)
         // Glass saved before this property existed is still drawn as glass.
         isTransparent = try value(.isTransparent, name.localizedCaseInsensitiveContains("glass"))

@@ -74,12 +74,33 @@ script before an archive is written.
 
 ## The window
 
+- **Plan and Section, or 3D.** A switch above the drawings chooses between them.
+- **3D.** The room as a cutaway, rendered with Metal:
+  - its surfaces are coloured by material, and the walls nearest the camera are left out, so the
+    inside shows from any side;
+  - open faces and openings are translucent green, and fitted zones translucent brown boxes;
+  - the source is an orange sphere and the receivers blue ones, each directional microphone with a
+    line along its aim;
+  - drag to orbit, shift-drag or right-drag to pan, and pinch or scroll to zoom; **Reset View**
+    frames the room again;
+  - a click selects a surface, zone, source or receiver, highlights it in orange, and names it in a
+    caption: a surface's material, area, and absorption and scattering at 1 kHz.
+
+  The view frames the room when it opens and when the room's size changes: from a three-quarter view
+  above, as close as it can be with every corner within the middle 85% of the view. Editing is done in the
+  inspector as before. The camera controls and renderer are shared with BombCAD (see
+  [the roadmap](roomcad-roadmap.md#architecture-and-sharing)).
 - **Plan and section.** Drawings of the room, looking down and looking north, with 1 m grid lines,
   the source in orange and receivers in blue. Drag a point to move it. Moves snap to centimetres and
-  stay 5 cm inside the walls.
+  stay 5 cm inside the walls. A room of any shape (a mesh) is drawn as its outline edges projected
+  onto each view, over its dashed bounding box.
 - **Inspector.** Edits everything that affects the response:
   - room dimensions, or with **Shape** a floor plan (L, T or trapezoid to start from). Its corners
     can be edited as numbers or dragged by their handles in the plan view, which numbers its walls;
+  - for a room of any shape, built from solids by a preset (see
+    [Rooms of any shape](room-acoustics-model.md#rooms-of-any-shape)): its size is shown but not
+    edited, and each of its materials is edited with its label and area. **Shape** turns it back into
+    a box or a floor plan. Its openings are open faces, so the openings list is not offered;
   - each surface's absorption and scattering, either one value for all bands or band by band, with the
     material's name and reference;
   - whole rooms from **Load Room Preset…** (see below);
@@ -87,6 +108,10 @@ script before an archive is written.
     in 11 categories, and **Scattering preset** inside chooses one of 7 measured scattering sets (see
     below);
   - the source and receiver positions and names, with receivers added or removed (1 to 16);
+  - under **Objects**, fitted zones: boxes of chairs, desks, pews or ornament that scatter sound,
+    each with its corners, how often sound meets an object per metre, and the objects' absorption
+    (see [Fitted zones](room-acoustics-model.md#fitted-zones)). **Add Seating Zone** starts from an
+    estimate for upholstered seats. Zones are drawn as hatched brown boxes;
   - openings: open doors, windows or hatches on any surface, or any numbered wall of a plan, by name,
     place, centre and size (see
     [Openings](room-acoustics-model.md#openings)). They are drawn as green gaps in the walls or as
@@ -95,6 +120,11 @@ script before an archive is written.
     Pair** for A–B, XY, ORTF, NOS or Blumlein (see
     [Microphones](room-acoustics-model.md#microphones)). Directional microphones show their aim as an
     arrow in the drawings;
+  - **Match Reverberation Time:** a target T30 for any band, and **Fit Absorption**, which scales
+    every surface's absorption in those bands, keeping their proportions, until the simulated T30
+    meets the targets (see
+    [Matching a measured reverberation time](room-acoustics-model.md#matching-a-measured-reverberation-time)).
+    It simulates at preview quality and reports each step; **Stop** cancels it;
   - sample rate, duration, maximum reflection order and content;
   - low cut, the number of diffuse rays and the random seed;
   - the wave solver for low frequencies, on for new documents, with an automatic or fixed crossover;
@@ -175,6 +205,11 @@ script before an archive is written.
 | Stone church | 36 × 14 × 16 m | Limestone walls and vault, wooden pews over the floor |
 | L-shaped living room | 8 × 6 × 2.6 m L | Carpet, plastered walls; the listener round the corner |
 | Fan-shaped hall | 16 → 10 m wide, 20 m deep, 8 m high | Stage at the narrow end, audience seating, wooden walls |
+| Shoebox concert hall | 26 × 18 × 14 m, and an 8 m stage house | Balcony round three sides, upholstered seats, wooden linings |
+| Raked auditorium | 26 m deep, 18 → 32 m wide, 10–13 m high | Raked seating, rear tier, sloping ceiling, brick walls |
+
+The last two are built from solids. They have six materials, labelled audience, floors, walls,
+ceiling, stage floor and stage walls, instead of six box surfaces.
 
 Every surface's absorption comes from the published table below. Scattering comes from a published
 set where one fits: theatre audience in the hall, and rows of desks in the office and classroom.
@@ -235,7 +270,10 @@ Example.roomcad/
 ```
 
 `scene.json` holds the room's size in metres (z up), each surface's material, and any openings. A material has a
-name, a reference and eight octave-band absorption coefficients. The file also holds the source and
+name, a reference and eight octave-band absorption coefficients. A room may also have fitted zones (name,
+corners, density, absorption per band and reference), and a floor plan
+(corners and one material per wall) or a mesh (vertices; faces, each a list of corners with a
+material index and whether it is open; the materials; and their labels). The file also holds the source and
 receivers, each with a UUID, name and position.
 
 `settings.json` holds the atmosphere and air-absorption switch. It also holds the sample rate,
@@ -269,7 +307,7 @@ saved again.
 `swift test --package-path RoomCAD` covers the following:
 
 - **RoomDocumentTests:**
-  - round trips, including per-band materials and moved documents on disk;
+  - round trips, including per-band materials, floor plans, meshes and moved documents on disk;
   - retained responses and when they go stale;
   - preserved unknown files and rejected documents;
   - responses too large to retain;
@@ -302,13 +340,20 @@ saved again.
   - invalid settings;
   - cancellation, and a newer generation replacing one in progress;
   - the mapping between drawing and room coordinates, including clamping;
-  - the wording of generation progress and of the wave solver's engines.
+  - the wording of generation progress and of the wave solver's engines;
+  - the 3D scene: its triangles cover the room's surfaces once, openings lie on their wall, and a
+    click from above selects the floor, and on the source the source;
+  - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.
-`RoomCAD --snapshot FILE.png` renders the starter room's plan and section offscreen. It also renders
+`RoomCAD --snapshot FILE.png [PRESET]` renders the starter room's 3D view, plan and section offscreen,
+or a preset's, given its identifier such as `raked-auditorium`. The 3D view is rendered from its
+starting camera with the first surface selected, and its caption below it. It also renders
 the audition waveform with its playhead, and a generated response's envelope, spectrum, early
 arrivals, decay table and diagnostics. That was used to check the drawing code. It caught overlapping labels where receivers
-coincide in one projection; labels now move apart. Form controls and toolbars do not render
+coincide in one projection; labels now move apart. It also showed the two halls' outlines, with
+their stage houses, balconies, rake and rear tier, as intended. The 3D snapshots of the L-shaped room
+and the raked auditorium show the cutaway, the openings, the points and the highlighted selection. Form controls and toolbars do not render
 offscreen.
 
 ## Limitations

@@ -30,6 +30,9 @@ let package = Package(
             dependencies: [
                 "AcousticCore", "ImpulseResponseKit", "RoomDocument", "Audition",
                 .product(name: "DocumentKit", package: "SimulationKit"),
+                .product(name: "SceneModel", package: "SimulationKit"),
+                .product(name: "SceneView", package: "SimulationKit"),
+                .product(name: "SceneRender", package: "SimulationKit"),
             ]),
         .executableTarget(
             name: "acousticbench", dependencies: ["AcousticCore", "ImpulseResponseKit", "Audition"]),
@@ -42,7 +45,13 @@ let package = Package(
                 .product(name: "DocumentKit", package: "SimulationKit"),
             ]),
         .testTarget(name: "AuditionTests", dependencies: ["Audition", "AcousticCore", "ImpulseResponseKit"]),
-        .testTarget(name: "RoomCADTests", dependencies: ["RoomCAD", "RoomDocument", "AcousticCore"]),
+        .testTarget(
+            name: "RoomCADTests",
+            dependencies: [
+                "RoomCAD", "RoomDocument", "AcousticCore",
+                .product(name: "SceneRender", package: "SimulationKit"),
+                .product(name: "SceneView", package: "SimulationKit"),
+            ]),
     ],
     swiftLanguageModes: [.v6]
 )

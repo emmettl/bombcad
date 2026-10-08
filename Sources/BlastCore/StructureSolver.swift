@@ -1334,9 +1334,16 @@ public final class StructureSolver {
             let megapascals = material.compressiveStrength / 1e6
             parameters.concreteRateCompression = 1 / (5 + 9 * megapascals / 10)
             parameters.concreteRateTension = 1 / (1 + 8 * megapascals / 10)
-            if let steel = material.steel {
-                parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
-                parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
+            if let steel = material.steel, material.steelRateDependent {
+                switch material.steelRateLaw {
+                case .malvarCrawford:
+                    parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
+                    parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
+                case .ceb:
+                    parameters.steelRateLog = 1
+                    parameters.steelRateYield = 6 / (steel.yieldStress / 1e6)
+                    parameters.steelRateUltimate = 7 / (steel.ultimateStress / 1e6)
+                }
             }
         }
         return parameters
