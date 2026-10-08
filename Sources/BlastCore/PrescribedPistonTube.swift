@@ -4,6 +4,7 @@ import simd
 /// A small end cell is joined to its neighbour at a configurable volume fraction.
 /// This changes spatial diffusion; it is not a general moving cut-cell solver.
 enum PrescribedPistonTube {
+    enum Reconstruction: String, Codable, Sendable { case constant, minmod }
     enum Failure: Error { case invalidGeometry, stepLimit }
     struct Snapshot {
         let time: Double
@@ -11,10 +12,12 @@ enum PrescribedPistonTube {
         let wallWork: Double
         let wallImpulse: SIMD3<Double>
         let steps: Int
+        let rejectedSteps: Int
     }
     struct Result {
         let cells: [FractionalGasTransport.Cell]
         let steps: Int
+        let rejectedSteps: Int
         let remeshes: Int
         let gridCrossings: Int
         let wallWork: Double
@@ -26,7 +29,8 @@ enum PrescribedPistonTube {
     static func run(
         cellLength h: Double, area: Double, length: Double, pistonVelocity: Double, duration: Double,
         density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000,
-        mergeFraction: Double = 0.25, cfl: Double = 0.4, outputTimes: [Double] = []
+        mergeFraction: Double = 0.25, cfl: Double = 0.4, outputTimes: [Double] = [],
+        reconstruction: Reconstruction = .constant
     ) throws -> Result {
         let finalLength = length + pistonVelocity * duration
         guard h.isFinite && h > 0, area.isFinite && area > 0, length.isFinite && length > 0,
@@ -78,15 +82,19 @@ enum PrescribedPistonTube {
         events.sort { $0.time < $1.time }
         var elapsed = 0.0
         var steps = 0
+        var rejectedSteps = 0
         var remeshes = 0
         var wallWork = 0.0
         var wallImpulse = SIMD3<Double>.zero
         var snapshots: [Snapshot] = []
         for event in events {
             while elapsed < event.time {
-                let faces = (0..<max(0, cells.count - 1)).map {
-                    FractionalEulerFlux.Face(a: $0, b: $0 + 1, normal: SIMD3(1, 0, 0), area: area)
-                }
+                let faces =
+                    reconstruction == .minmod
+                    ? LimitedTubeFlux.faces(cells, area: area)
+                    : (0..<max(0, cells.count - 1)).map {
+                        FractionalEulerFlux.Face(a: $0, b: $0 + 1, normal: SIMD3(1, 0, 0), area: area)
+                    }
                 let walls = [
                     FractionalEulerFlux.Wall(cell: 0, normal: SIMD3(-1, 0, 0), area: area),
                     .init(
@@ -94,12 +102,34 @@ enum PrescribedPistonTube {
                         velocity: SIMD3(pistonVelocity, 0, 0)),
                 ]
                 let limit = try FractionalEulerFlux.maximumStep(cells, faces: faces, walls: walls, cfl: cfl)
-                let step = min(limit, event.time - elapsed)
+                var step = min(limit, event.time - elapsed)
                 guard steps < maximumSteps && step > 0 && elapsed + step > elapsed else {
                     throw Failure.stepLimit
                 }
-                let result = try FractionalEulerFlux.advanceWithWalls(
-                    cells, faces: faces, walls: walls, duration: step, cfl: cfl)
+                let result: FractionalEulerFlux.Result
+                if reconstruction == .minmod {
+                    var accepted: FractionalEulerFlux.Result?
+                    for _ in 0..<24 {
+                        do {
+                            accepted = try LimitedTubeFlux.advance(
+                                cells, area: area, walls: walls,
+                                duration: step, cfl: cfl)
+                            break
+                        } catch FractionalEulerFlux.Failure.unstableStep {
+                            rejectedSteps += 1
+                            step /= 2
+                        } catch FractionalGasTransport.Failure.invalidState {
+                            rejectedSteps += 1
+                            step /= 2
+                        }
+                        guard step > 0 && elapsed + step > elapsed else { throw Failure.stepLimit }
+                    }
+                    guard let accepted else { throw Failure.stepLimit }
+                    result = accepted
+                } else {
+                    result = try FractionalEulerFlux.advanceWithWalls(
+                        cells, faces: faces, walls: walls, duration: step, cfl: cfl)
+                }
                 cells = result.cells
                 wallWork += result.wallWork.reduce(0, +)
                 wallImpulse += result.wallImpulses.reduce(.zero, +)
@@ -113,11 +143,12 @@ enum PrescribedPistonTube {
                 snapshots.append(
                     Snapshot(
                         time: event.time, cells: cells, wallWork: wallWork,
-                        wallImpulse: wallImpulse, steps: steps))
+                        wallImpulse: wallImpulse, steps: steps, rejectedSteps: rejectedSteps))
             }
         }
         return Result(
-            cells: cells, steps: steps, remeshes: remeshes, gridCrossings: crossings,
+            cells: cells, steps: steps, rejectedSteps: rejectedSteps, remeshes: remeshes,
+            gridCrossings: crossings,
             wallWork: wallWork, wallImpulse: wallImpulse, initialAmount: initialAmount,
             snapshots: snapshots)
     }

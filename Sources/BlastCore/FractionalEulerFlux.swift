@@ -1,6 +1,6 @@
 import simd
 
-/// First-order ideal-gas Rusanov flux for positive fractional volumes.
+/// Ideal-gas Rusanov flux for positive fractional volumes, with optional supplied face traces.
 /// Faces are paired internal/periodic interfaces; planar walls use exact local wall pressure.
 /// Constant-area planar walls may move within an interval of fixed cell topology.
 /// This reference is separate from the app's air solver.
@@ -11,6 +11,19 @@ enum FractionalEulerFlux {
         let b: Int
         let normal: SIMD3<Double>  // Unit normal from a to b.
         let area: Double
+        let leftState: FractionalGasTransport.Cell?
+        let rightState: FractionalGasTransport.Cell?
+        init(
+            a: Int, b: Int, normal: SIMD3<Double>, area: Double,
+            leftState: FractionalGasTransport.Cell? = nil, rightState: FractionalGasTransport.Cell? = nil
+        ) {
+            self.a = a
+            self.b = b
+            self.normal = normal
+            self.area = area
+            self.leftState = leftState
+            self.rightState = rightState
+        }
     }
     struct Wall {
         let cell: Int
@@ -47,7 +60,14 @@ enum FractionalEulerFlux {
                 abs(simd_length_squared(face.normal) - 1) < 1e-12,
                 cells[face.a].volume > 0 && cells[face.b].volume > 0
             else { throw Failure.invalidFace }
-            let rate = face.area * signal(cells[face.a], cells[face.b], normal: face.normal)
+            let a = face.leftState ?? cells[face.a]
+            let b = face.rightState ?? cells[face.b]
+            guard a.volume > 0 && b.volume > 0 else { throw Failure.invalidFace }
+            if face.leftState != nil || face.rightState != nil {
+                _ = try FractionalGasTransport.advance(
+                    [a, b], newVolumes: [a.volume, b.volume], transfers: [])
+            }
+            let rate = face.area * signal(a, b, normal: face.normal)
             guard rate.isFinite else { throw Failure.invalidFace }
             rates[face.a] += rate
             rates[face.b] += rate
@@ -88,8 +108,8 @@ enum FractionalEulerFlux {
         guard duration <= limit else { throw Failure.unstableStep }
         var amounts = cells.map(\.amount)
         for face in faces where face.area > 0 {
-            let a = cells[face.a]
-            let b = cells[face.b]
+            let a = face.leftState ?? cells[face.a]
+            let b = face.rightState ?? cells[face.b]
             let jump = b.amount / b.volume - a.amount / a.volume
             let flux =
                 0.5 * (physical(a, normal: face.normal) + physical(b, normal: face.normal))
