@@ -102,8 +102,12 @@ script before an archive is written.
     south or floor surface moves, or a plan grows past its origin, everything inside shifts with it,
     so it keeps its place against the surfaces that stay. A step that would leave a point, zone or
     opening outside, or the room under half a metre, is refused. The camera stays put while editing.
-    A plain drag on a surface still orbits, and a room of any shape, from a preset or a model, keeps
-    its shape.
+    A plain drag on a surface still orbits.
+
+    In a room of any shape, from a preset or a model, the face under the pointer moves with every
+    face on its plane, and the corners on that plane drag the faces that meet them. A shoebox hall's
+    back wall or a stage house's roof moves this way. A step is refused if it would bend a face, as
+    moving one plane of a raked floor's neighbour can, or take a corner through another face;
 
   The view frames the room when it opens and when the room's size changes: from a three-quarter view
   above, as close as it can be with every corner within the middle 85% of the view. Everything else
@@ -374,8 +378,9 @@ saved again.
     zones moved to the wall and no further, refused where they would overlap, and resized from the
     nearest corner or the top; openings held within their surface; and both dragged in the view;
   - pushing surfaces: a box's walls, floor and ceiling and a plan's walls, with everything shifted
-    when a low wall moves, steps refused when the room would be invalid, meshes left alone, and a
-    Command-drag in the view that pushes the east wall without moving the camera;
+    when a low wall moves, steps refused when the room would be invalid, a hall's back wall pushed
+    through its mesh, and a Command-drag in the view that pushes the east wall without moving the
+    camera;
   - fitting absorption to a target reverberation time, and refusing to fit without one.
 
 The window itself has not been checked on screen; its layout and controls are unverified by eye.

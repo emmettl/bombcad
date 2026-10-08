@@ -117,6 +117,34 @@ public struct RoomMesh: Codable, Equatable, Sendable {
         return result
     }
 
+    /// The mesh with the plane of `face` moved `distance` out of the room, or in for a negative one:
+    /// every corner on that plane moves along its normal, taking with it every face on the plane and
+    /// stretching the faces that meet it. Nil if that would bend a face, pass a corner through another
+    /// face, or leave the room invalid.
+    public func pushingPlane(of face: Int, by distance: Double) -> RoomMesh? {
+        guard faces.indices.contains(face), distance.isFinite else { return nil }
+        let normal = normalAndArea(face).normal
+        let offset = simd_dot(normal, vertices[faces[face].corners[0]])
+        let moving = vertices.indices.filter { abs(simd_dot(normal, vertices[$0]) - offset) < 1e-6 }
+        guard distance != 0 else { return self }
+        let shift = -normal * distance
+        // Faces lying on the plane, and those meeting each corner, are passed by the corner's path.
+        let onPlane = faces.indices.filter { f in
+            faces[f].corners.allSatisfy { abs(simd_dot(normal, vertices[$0]) - offset) < 1e-6 }
+        }
+        let geometry = MeshGeometry.of(self)
+        for v in moving {
+            let meeting = faces.indices.filter { faces[$0].corners.contains(v) }
+            guard geometry.unobstructed(vertices[v], vertices[v] + shift, excluding: onPlane + meeting) else {
+                return nil
+            }
+        }
+        var result = self
+        for v in moving { result.vertices[v] += shift }
+        guard (try? result.validate()) != nil else { return nil }
+        return result
+    }
+
     /// The material a face presents: its own, or air for an open face.
     public func material(of face: Int) -> SurfaceMaterial {
         faces[face].open ? .anechoic : materials[faces[face].material]

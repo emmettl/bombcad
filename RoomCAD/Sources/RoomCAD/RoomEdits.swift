@@ -262,12 +262,23 @@ extension RoomResponseSettings {
     /// These settings with surface `index` (numbered as in `RoomScene.surfaces(of:)`) pushed out of the
     /// room by `distance` metres, or pulled in for a negative one: a box's wall, floor or ceiling, or a
     /// plan's wall, with its two corners, or its floor or ceiling. What is inside keeps its place
-    /// relative to the surfaces that do not move. Nil for a mesh, whose shape is not edited here, or if
-    /// the result would not be a valid room.
-    func pushingSurface(_ index: Int, by distance: Double) -> RoomResponseSettings? {
-        guard room.mesh == nil else { return nil }
+    /// relative to the surfaces that do not move. In a mesh, `face` says which face's plane moves (see
+    /// `RoomMesh.pushingPlane`). Nil if the result would not be a valid room.
+    func pushingSurface(_ index: Int, face: Int? = nil, by distance: Double) -> RoomResponseSettings? {
         let step = (distance * 100).rounded() / 100
         var result = self
+        if let mesh = room.mesh {
+            guard let face, mesh.faces.indices.contains(face), mesh.faces[face].material == index,
+                let pushed = mesh.pushingPlane(of: face, by: step)
+            else { return nil }
+            result.room.mesh = pushed
+            // Keep the mesh starting at the origin, shifting everything with it.
+            let (low, high) = pushed.bounds
+            result = result.translating(by: -low)
+            result.room.size = high - low
+            guard (try? result.validate()) != nil else { return nil }
+            return result
+        }
         // The floor and ceiling are the box's last two surfaces, and a plan's too.
         let floorIndex = room.plan.map { $0.corners.count } ?? 4
         if let plan = room.plan, index < plan.corners.count {

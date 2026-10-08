@@ -183,6 +183,14 @@ Both hall presets have six materials: audience, other floors, walls, ceiling, st
 walls. Measured scenes describe their geometry the same way (see
 [the chamber music hall](roomcad-validation.md#a-larger-room-the-chamber-music-hall)).
 
+### Pushing a surface
+
+`RoomMesh.pushingPlane` moves the plane of one face along its normal: every corner on that plane
+moves, every face on it goes with them, and the faces that meet it stretch. The result is refused
+if a face would no longer be flat, if a moving corner's path would cross another face, or if the
+room would fail its checks. Tests push a box's wall out and refuse pulling it through the opposite
+wall, lower an L-shaped room's floor, and raise a hall's highest ceiling.
+
 ### Importing a model
 
 `RoomImport` turns the polygons of a model file into a room. The app reads OBJ and STL files with

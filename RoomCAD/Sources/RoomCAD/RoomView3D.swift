@@ -29,7 +29,7 @@ final class RoomViewport: OrbitControlling {
     /// A surface being pushed or pulled: the settings when it was grabbed, where, and its normal into
     /// the room.
     @ObservationIgnored private var pushing:
-        (index: Int, start: RoomResponseSettings, point: SIMD3<Double>, normal: SIMD3<Double>)?
+        (index: Int, face: Int, start: RoomResponseSettings, point: SIMD3<Double>, normal: SIMD3<Double>)?
 
     /// Shows `settings`' room, framing the camera on it the first time and whenever its size changes.
     func show(_ settings: RoomResponseSettings) {
@@ -132,8 +132,8 @@ final class RoomViewport: OrbitControlling {
                 RoomScene.Item.init)
         else { return false }
         if case .surface(let index) = item {
-            guard modifiers.contains(.resize), shown.room.mesh == nil, let scene,
-                let face = scene.mesh.faces.indices.first(where: { scene.mesh.faces[$0].material == index })
+            guard modifiers.contains(.resize), let scene,
+                let face = Self.face(of: index, in: scene.mesh, under: ray)
             else { return false }
             let normal = scene.mesh.normalAndArea(face).normal
             guard
@@ -142,7 +142,7 @@ final class RoomViewport: OrbitControlling {
                     normal: normal)
             else { return false }
             select(item)
-            pushing = (index, shown, point, normal)
+            pushing = (index, face, shown, point, normal)
             return true
         }
         guard let anchor = anchor(of: item, in: shown),
@@ -169,7 +169,9 @@ final class RoomViewport: OrbitControlling {
             guard abs(along) < 0.999 else { return }
             let w = pushing.point - SIMD3<Double>(ray.origin)
             let t = (along * simd_dot(direction, w) - simd_dot(pushing.normal, w)) / (1 - along * along)
-            if let pushed = pushing.start.pushingSurface(pushing.index, by: -t) { edit(pushed) }
+            // A mesh's face keeps its number as its plane moves; a box or plan is numbered by surface.
+            let face = pushing.start.room.mesh == nil ? nil : pushing.face
+            if let pushed = pushing.start.pushingSurface(pushing.index, face: face, by: -t) { edit(pushed) }
             return
         }
         guard let dragging, let shown, let anchor = anchor(of: dragging.item, in: shown) else { return }
@@ -217,6 +219,34 @@ final class RoomViewport: OrbitControlling {
     func endDrag() {
         dragging = nil
         pushing = nil
+    }
+
+    /// The face of material `index` that a ray meets first from its inside, if any.
+    static func face(
+        of index: Int, in mesh: RoomMesh, under ray: (origin: SIMD3<Float>, direction: SIMD3<Float>)
+    ) -> Int? {
+        let origin = SIMD3<Double>(ray.origin)
+        let direction = SIMD3<Double>(ray.direction)
+        var nearest = Double.infinity
+        var found: Int?
+        for (corners, face) in mesh.triangles() where mesh.faces[face].material == index {
+            let (a, b, c) = (mesh.vertices[corners.x], mesh.vertices[corners.y], mesh.vertices[corners.z])
+            let e1 = b - a
+            let e2 = c - a
+            let h = simd_cross(direction, e2)
+            let det = simd_dot(e1, h)
+            guard abs(det) > 1e-12, simd_dot(simd_cross(e1, e2), direction) < 0 else { continue }
+            let s = origin - a
+            let u = simd_dot(s, h) / det
+            let q = simd_cross(s, e1)
+            let v = simd_dot(direction, q) / det
+            let t = simd_dot(e2, q) / det
+            if u >= 0, v >= 0, u + v <= 1, t > 0, t < nearest {
+                nearest = t
+                found = face
+            }
+        }
+        return found
     }
 
     /// Where a ray meets a plane in front of it, if it does.

@@ -231,4 +231,35 @@ struct RoomMeshTests {
             }
         }
     }
+
+    @Test("Pushing a mesh's plane moves its corners along its normal, refusing to bend or tangle the room")
+    func pushingPlanes() throws {
+        let box = try #require(Self.meshRoom(ShoeboxRoom(size: [5, 4, 3], material: Self.plaster)).mesh)
+        // Face 1 is the east wall: out by half a metre adds 4 × 3 × 0.5 m³.
+        let wider = try #require(box.pushingPlane(of: 1, by: 0.5))
+        #expect(abs(wider.volume - 66) < 1e-9)
+        #expect(abs(wider.bounds.max.x - 5.5) < 1e-12)
+        // Pulled in past the west wall: the corners would cross it.
+        #expect(box.pushingPlane(of: 1, by: -6) == nil)
+        // An L-shaped room's inner corner wall pushed into the notch, and its floor down.
+        let l = try #require(Self.meshRoom(Self.lShape).mesh)
+        let floor = l.faces.count - 2
+        let deeper = try #require(l.pushingPlane(of: floor, by: 0.4))
+        #expect(abs(deeper.volume - l.volume - 0.4 * 36) < 1e-9)
+        // A hall: its highest ceiling raised.
+        let hall = try #require(
+            RoomPresets.all.first { $0.id == "shoebox-concert-hall" }?.applied(
+                to: RoomResponseSettings(
+                    room: Self.lShape, source: RoomPoint(name: "S", position: [1, 1, 1]),
+                    receivers: [RoomPoint(name: "R", position: [2, 2, 1])])
+            ).room.mesh)
+        // The highest face pointing down: the stage house's roof.
+        let ceilings = hall.faces.indices.filter { hall.normalAndArea($0).normal.z < -0.99 }
+        let top = try #require(
+            ceilings.max {
+                hall.vertices[hall.faces[$0].corners[0]].z < hall.vertices[hall.faces[$1].corners[0]].z
+            })
+        let raised = try #require(hall.pushingPlane(of: top, by: 1))
+        #expect(raised.volume > hall.volume)
+    }
 }

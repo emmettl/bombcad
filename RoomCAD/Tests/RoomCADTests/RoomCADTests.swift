@@ -602,9 +602,17 @@ func pushSurfaces() throws {
     #expect(plan.corners.allSatisfy { $0.x >= 0 && $0.y >= 0 })
     #expect(abs(plan.area - l.room.plan!.area - 0.4 * l.room.plan!.length(wall)) < 1e-9)
     #expect(abs(simd_distance(pushed.source.position, l.source.position) - 0.4) < 1e-9)
-    // A mesh's shape is not edited this way.
-    let hall = try #require(RoomPresets.all.first { $0.id == "raked-auditorium" }).applied(to: box)
+    // In a mesh, a face says which plane moves; without one nothing does.
+    let hall = try #require(RoomPresets.all.first { $0.id == "shoebox-concert-hall" }).applied(to: box)
     #expect(hall.pushingSurface(0, by: 0.5) == nil)
+    let mesh = try #require(hall.room.mesh)
+    // The hall's back wall: the face of the walls material furthest east, pointing west.
+    let walls = mesh.faces.indices.filter { mesh.normalAndArea($0).normal.x < -0.99 }
+    let back = try #require(
+        walls.max { mesh.vertices[mesh.faces[$0].corners[0]].x < mesh.vertices[mesh.faces[$1].corners[0]].x })
+    let longer = try #require(hall.pushingSurface(mesh.faces[back].material, face: back, by: 2))
+    #expect(abs(longer.room.size.x - hall.room.size.x - 2) < 1e-9)
+    #expect(longer.source == hall.source)
 }
 
 @MainActor
