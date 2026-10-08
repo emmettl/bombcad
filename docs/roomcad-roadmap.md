@@ -212,10 +212,12 @@ Progress (October 2026):
     (1.4–5.3 s measured);
   - while another app kept the GPU busy, the slowest preset took 10.4 s, with runs moving to the CPU
     as needed;
-  - peak memory for all ten presets in one process is 310 MB.
+  - peak memory for all ten presets in one process, with the bundled clips loaded, is 550 MB;
+  - preparing the longest bundled clip (11.2 s) for auditioning through any preset takes 0.06 s.
+    Playback then mixes two prepared buffers, so auditioning adds no measurable CPU load.
 
-  `acousticbench --presets` measures these. The measured-room comparison takes about 6 minutes.
-  Preview CPU use while auditioning is not yet measured.
+  `acousticbench --presets` measures these. The decay matching's probes add no measurable time. The
+  measured-room comparison takes about 6 minutes.
 
 ### M1 — Create the shared foundation and RoomCAD scaffold
 
