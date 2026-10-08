@@ -470,3 +470,23 @@ struct WaveAccuracyTests {
         }
     }
 }
+
+@Test("A preview spends a quarter of the wave solver's budget and rays, and says it is a preview")
+func previewQuality() throws {
+    var settings = RoomResponseSettings(
+        room: ShoeboxRoom(size: [9, 7, 3.2], material: .uniform(0.1, name: "Plaster")),
+        source: RoomPoint(name: "S", position: [2, 2, 1.5]),
+        receivers: [RoomPoint(name: "R", position: [6, 4, 1.2])], duration: 0.2, diffuseRays: 8_000,
+        lowFrequencyModel: true)
+    settings.room[.floor].scattering = Array(repeating: 0.3, count: OctaveBands.count)
+    let full = try RoomResponseGenerator.generate(settings)
+    let preview = try RoomResponseGenerator.generate(settings, quality: .preview)
+    #expect(full.diagnostics.quality == .full && preview.diagnostics.quality == .preview)
+    let fullCrossover = try #require(full.diagnostics.waveCrossover)
+    let previewCrossover = try #require(preview.diagnostics.waveCrossover)
+    // Work grows as the fourth power of the crossover.
+    #expect(previewCrossover <= fullCrossover)
+    #expect(try #require(preview.diagnostics.diffuseRays) < #require(full.diagnostics.diffuseRays))
+    #expect(preview.response.metadata.model.hasPrefix("Preview quality."))
+    #expect(!full.response.metadata.model.hasPrefix("Preview"))
+}

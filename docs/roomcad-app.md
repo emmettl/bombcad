@@ -105,8 +105,12 @@ script before an archive is written.
 - **Response.**
   - The response regenerates in the background 0.4 s after any input that affects it changes, so
     dragging or typing starts one run once you pause. A run for older inputs is cancelled at once.
-  - A new document generates on opening. **Generate** (⌘R) forces a run, and **Cancel** (⌘.) stops
-    one.
+  - That run is a preview. It spends a quarter of the wave solver's budget, which lowers its crossover
+    by about a sixth, and uses a quarter of the rays, so it arrives two to four times sooner. Once the
+    inputs have stayed the same for 1.5 s after a preview, the full-quality response follows. Until
+    then the status reads "Preview quality".
+  - A new document generates on opening, a preview and then the full response. **Generate** (⌘R)
+    forces a full-quality run, and **Cancel** (⌘.) stops one.
   - Export settings don't affect the response, since they are applied on export, so they don't start
     a run.
   - While a run is in progress the response is marked "Updating…"; until it finishes, the previous one
@@ -152,7 +156,8 @@ script before an archive is written.
     `RoomCAD/Sources/Audition/Clips/CREDITS.md`, which ships inside the app. Files are mixed to mono, converted to the
     response's sample rate and cut to 60 s.
 - **Export WAV** (⌘E). Writes the conditioned response as 32-bit float WAV, with its JSON description
-  beside it.
+  beside it. Exports are always full quality: if the current response is a preview or out of date, the
+  full one is generated first and then written.
 
 ## Room presets
 

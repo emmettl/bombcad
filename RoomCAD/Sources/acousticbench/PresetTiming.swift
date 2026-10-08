@@ -23,8 +23,8 @@ enum PresetTiming {
         print(
             "Auditioning \(clip.name), \(format(Double(clip.samples.count) / Double(base.sampleRate), 1)) s long"
         )
-        print("| Preset | Duration | Generation | Wave solver | Audition preparation |")
-        print("|---|---|---|---|---|")
+        print("| Preset | Duration | Generation | Wave solver | Preview | Audition preparation |")
+        print("|---|---|---|---|---|---|")
         var slowest = 0.0
         var slowestAudition = 0.0
         for preset in RoomPresets.all {
@@ -38,13 +38,18 @@ enum PresetTiming {
                 d.waveCrossover.map {
                     "below \(Int($0.rounded())) Hz, \(d.waveGPURuns ?? 0) of \(d.waveRuns ?? 0) runs on the GPU"
                 } ?? "skipped"
+            let previewStart = Date()
+            let preview = try RoomResponseGenerator.generate(settings, quality: .preview)
+            let previewSeconds = Date().timeIntervalSince(previewStart)
+            let previewWave =
+                preview.diagnostics.waveCrossover.map { ", below \(Int($0.rounded())) Hz" } ?? ""
             let auditionStart = Date()
             _ = try AuditionPreview(clip: clip, response: result.response)
             let audition = Date().timeIntervalSince(auditionStart)
             slowestAudition = max(slowestAudition, audition)
             print(
                 "| \(preset.name) | \(format(settings.duration, 1)) s | \(format(seconds, 1)) s | \(wave) | "
-                    + "\(format(audition, 2)) s |")
+                    + "\(format(previewSeconds, 1)) s\(previewWave) | \(format(audition, 2)) s |")
         }
         var usage = rusage()
         getrusage(RUSAGE_SELF, &usage)

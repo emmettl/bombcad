@@ -87,6 +87,11 @@ public struct RoomProject: Equatable, Sendable {
         return result.settings == settings && result.response.metadata.generator == RoomResponse.generatorName
     }
 
+    /// Whether the retained response is current and at full quality, as export needs.
+    public var isResultFinal: Bool {
+        isResultCurrent && result?.diagnostics.quality != .preview
+    }
+
     // MARK: - Payloads
 
     struct Scene: Codable, Equatable {

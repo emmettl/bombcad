@@ -201,6 +201,8 @@ public struct RoomResponseDiagnostics: Codable, Equatable, Sendable {
     public var waveDispersion: Double?
     /// About how much memory the wave solver's grid took, in bytes.
     public var waveMemory: Int?
+    /// Preview or full quality; nil for responses made before there were previews, which were full.
+    public var quality: GenerationQuality?
     /// Why the wave solver was not used although asked for, if so.
     public var waveNote: String?
     /// In a room with a floor plan, the wall reflections and total reflections the image sources reached.
@@ -294,12 +296,13 @@ public enum RoomResponseGenerator {
     /// frame 0, as pressure relative to the free-field pressure 1 m from the source.
     ///
     /// The work runs on several cores. Throws `CancellationError` if the calling task is cancelled.
-    public static func generate(_ settings: RoomResponseSettings, progress: GenerationProgress? = nil)
-        async throws -> RoomResponse
-    {
+    public static func generate(
+        _ settings: RoomResponseSettings, quality: GenerationQuality = .full,
+        progress: GenerationProgress? = nil
+    ) async throws -> RoomResponse {
         let flag = CancellationFlag()
         return try await withTaskCancellationHandler {
-            try generate(settings, cancellation: flag, progress: progress)
+            try generate(settings, cancellation: flag, quality: quality, progress: progress)
         } onCancel: {
             flag.cancel()
         }
@@ -322,7 +325,7 @@ public enum RoomResponseGenerator {
     /// Generates synchronously; `cancellation`, or cancelling the calling task, stops it.
     public static func generate(
         _ settings: RoomResponseSettings, cancellation: CancellationFlag = CancellationFlag(),
-        progress: GenerationProgress? = nil
+        quality: GenerationQuality = .full, progress: GenerationProgress? = nil
     ) throws -> RoomResponse {
         try settings.validate()
         let start = Date()
@@ -342,7 +345,9 @@ public enum RoomResponseGenerator {
         let includeDirect = settings.content == .complete
         var tracer = DiffuseRayTracer(
             room: settings.room, source: settings.source.position, atmosphere: settings.atmosphere,
-            airAbsorption: settings.airAbsorption, rayCount: settings.diffuseRays, seed: settings.randomSeed)
+            airAbsorption: settings.airAbsorption,
+            rayCount: quality == .preview ? settings.diffuseRays / 4 : settings.diffuseRays,
+            seed: settings.randomSeed)
         tracer.openings = settings.openings
         // A floor plan's image sources reach the wall order that fits their budget, and a few floor and
         // ceiling reflections beyond; rays carry every other specular path.
@@ -452,7 +457,10 @@ public enum RoomResponseGenerator {
         if settings.lowFrequencyModel {
             let waveStart = Date()
             let fftLength = BandRenderer(sampleRate: settings.sampleRate, frames: frames).fftLength
-            if let plan = WavePlan(settings: settings, schroeder: schroeder, fftLength: fftLength) {
+            if let plan = WavePlan(
+                settings: settings, schroeder: schroeder, fftLength: fftLength,
+                budgetScale: quality == .preview ? 0.25 : 1)
+            {
                 let crossover = plan.crossover
                 let cutoff = settings.lowFrequencyCutoff
                 progress?.begin(.waveSolver)
@@ -501,7 +509,7 @@ public enum RoomResponseGenerator {
                 ? tracer.tracedRays : 0, waveCrossover: wave?.crossover,
             waveCells: wave?.cells, waveSeconds: wave?.seconds, waveRuns: wave?.runs,
             waveGPURuns: wave?.gpuRuns, waveBareDecay: wave?.bareDecay, waveDispersion: wave?.dispersion,
-            waveMemory: wave?.memory,
+            waveMemory: wave?.memory, quality: quality,
             waveNote: waveNote,
             planWallOrder: planImages?.wallOrder, planTotalOrder: planImages?.totalOrder)
 
@@ -522,21 +530,32 @@ public enum RoomResponseGenerator {
                 upperHz: BandRenderer.passbandFraction * Double(settings.sampleRate)),
             // With the wave solver, the low frequencies are modelled as waves, not approximated.
             approximateBelowHz: wave == nil ? schroeder : nil,
-            model: wave.map {
-                String(
-                    format:
-                        "Finite-difference wave solver below %.0f Hz, with phase velocity within %.1f%% of the "
-                        + "speed of sound there and its decay matched to Eyring's estimate in each band; above "
-                        + "it, geometrical acoustics (image sources for specular paths, ray tracing for "
-                        + "scattered energy).", $0.crossover, abs($0.dispersion ?? 0) * 100)
-            }
-                ?? "Geometrical acoustics (image sources for specular paths, ray tracing for scattered energy); "
-                + "low-frequency behaviour is approximate.",
+            model: (quality == .preview ? "Preview quality. " : "")
+                + (wave.map {
+                    String(
+                        format:
+                            "Finite-difference wave solver below %.0f Hz, with phase velocity within %.1f%% of the "
+                            + "speed of sound there and its decay matched to Eyring's estimate in each band; above "
+                            + "it, geometrical acoustics (image sources for specular paths, ray tracing for "
+                            + "scattered energy).", $0.crossover, abs($0.dispersion ?? 0) * 100)
+                }
+                    ?? "Geometrical acoustics (image sources for specular paths, ray tracing for scattered energy); "
+                    + "low-frequency behaviour is approximate."),
             assumptions: RoomResponse.assumptions, generator: RoomResponse.generatorName)
         return RoomResponse(
             response: try ImpulseResponse(channels: channels, metadata: metadata), settings: settings,
             diagnostics: diagnostics)
     }
+}
+
+/// How thoroughly a response is generated.
+public enum GenerationQuality: String, Codable, Sendable {
+    /// For export and listening: the wave solver's full budget and all the rays.
+    case full
+    /// For quick updates while a room is edited: a quarter of the wave solver's budget, which lowers its
+    /// crossover by about a sixth, and a quarter of the rays, which leaves more noise in the scattered
+    /// energy.
+    case preview
 }
 
 /// What a generation is doing and how far it has got, for showing progress; any thread may read it.
@@ -582,7 +601,7 @@ struct WavePlan {
     static let cpuBudget = 4e9
 
     /// Nil if even the lowest useful crossover is too much work.
-    init?(settings: RoomResponseSettings, schroeder: Double?, fftLength: Int) {
+    init?(settings: RoomResponseSettings, schroeder: Double?, fftLength: Int, budgetScale: Double = 1) {
         let span = Double(fftLength) / Double(settings.sampleRate)
         func solver(_ crossover: Double) -> WaveSolver {
             WaveSolver(
@@ -601,7 +620,8 @@ struct WavePlan {
         var candidate = solver(250)
         let gpu = candidate.usesGPU
         // A floor plan's masked grid costs about twice as much per cell on the CPU.
-        let budget = gpu ? Self.gpuBudget : Self.cpuBudget / (settings.room.plan == nil ? 1 : 2)
+        let budget =
+            budgetScale * (gpu ? Self.gpuBudget : Self.cpuBudget / (settings.room.plan == nil ? 1 : 2))
         // Three times the Schroeder frequency, where modes have become dense, within 80 to 500 Hz on the GPU
         // (250 Hz on the CPU).
         var f = min(max(3 * (schroeder ?? 125), 80), gpu ? 500 : 250)

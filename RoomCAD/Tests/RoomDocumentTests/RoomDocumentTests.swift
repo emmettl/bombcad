@@ -50,6 +50,20 @@ struct RoomDocumentTests {
         #expect(starter.estimatedImageCount < 3_000_000)
     }
 
+    @Test("A preview is current but not final, and stays a preview when the document reopens")
+    func preview() throws {
+        var project = RoomProject(settings: Self.settings)
+        project.result = try RoomResponseGenerator.generate(project.settings, quality: .preview)
+        #expect(project.isResultCurrent && !project.isResultFinal)
+        let loaded = try reopened(project)
+        #expect(loaded.isResultCurrent && !loaded.isResultFinal)
+        project.result = try RoomResponseGenerator.generate(project.settings)
+        #expect(project.isResultFinal)
+        // A response saved before previews existed has no quality and was made in full.
+        project.result?.diagnostics.quality = nil
+        #expect(project.isResultFinal)
+    }
+
     @Test("A retained response reopens, and only changes to its inputs make it stale")
     func retainedResult() throws {
         var project = RoomProject(settings: Self.settings)

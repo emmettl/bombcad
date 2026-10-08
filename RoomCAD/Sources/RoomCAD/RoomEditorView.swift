@@ -19,6 +19,14 @@ struct RoomEditorView: View {
 
     private var project: RoomProject { document.project }
 
+    /// How long the inputs must stay the same before a preview is refined to full quality.
+    static let refinementDelay = Duration.seconds(1.5)
+
+    private struct Refinement: Equatable {
+        var settings: RoomResponseSettings
+        var needed: Bool
+    }
+
     var body: some View {
         HSplitView {
             VSplitView {
@@ -61,10 +69,21 @@ struct RoomEditorView: View {
             editor.cancel()
             player.stop()
         }
-        // Keep the response up to date: regenerate in the background shortly after the inputs change.
+        // Keep the response up to date: a quick preview shortly after the inputs change, then, once they
+        // have stayed the same for a moment, the full-quality response.
         .task(id: project.settings) {
             guard !project.isResultCurrent else { return }
-            await editor.regenerate(project.settings, needed: { !project.isResultCurrent }, deliver: deliver)
+            await editor.regenerate(
+                project.settings, quality: .preview, needed: { !project.isResultCurrent }, deliver: deliver)
+        }
+        .task(
+            id: Refinement(
+                settings: project.settings, needed: project.isResultCurrent && !project.isResultFinal)
+        ) {
+            guard project.isResultCurrent, !project.isResultFinal else { return }
+            await editor.regenerate(
+                project.settings, quality: .full, after: Self.refinementDelay,
+                needed: { project.isResultCurrent && !project.isResultFinal }, deliver: deliver)
         }
         // Show the clip through the current room as soon as there is one.
         .task(id: project.result?.settings) {
@@ -151,8 +170,11 @@ struct RoomEditorView: View {
         if editor.isGenerating {
             Text(project.result == nil ? "Generating…" : "Updating…").foregroundStyle(.secondary)
         } else if project.result != nil {
-            if project.isResultCurrent {
+            if project.isResultFinal {
                 Text("Up to date").foregroundStyle(.green)
+            } else if project.isResultCurrent {
+                Text("Preview quality; the full response follows when editing pauses").foregroundStyle(
+                    .secondary)
             } else {
                 Text("Out of date: the inputs have changed since it was generated").foregroundStyle(.orange)
             }
@@ -193,6 +215,8 @@ struct RoomEditorView: View {
         }
     }
 
+    /// Exports the full-quality response, generating it first if the current one is a preview or out of
+    /// date.
     private func exportWAV() {
         guard let result = project.result else { return }
         let panel = NSSavePanel()
@@ -202,10 +226,20 @@ struct RoomEditorView: View {
         panel.nameFieldStringValue = "\(base) \(suffix).wav"
         panel.message = "The response's description is saved beside it as JSON."
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try project.export.conditioned(result).write(wav: url)
-        } catch {
-            editor.message = "Export failed: \(error.localizedDescription)"
+        let write = { (result: RoomResponse) in
+            do {
+                try project.export.conditioned(result).write(wav: url)
+            } catch {
+                editor.message = "Export failed: \(error.localizedDescription)"
+            }
+        }
+        if project.isResultFinal {
+            write(result)
+        } else {
+            editor.generate(project.settings, quality: .full) { result in
+                deliver(result)
+                write(result)
+            }
         }
     }
 }

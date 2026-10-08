@@ -413,7 +413,9 @@ code.
   - T30 only where the band's decay reaches −35 dB.
 - **Item 4.** There are ten whole-room presets, and regeneration runs in the background and is
   cancelled when the room changes. Responses are kept with their settings and marked stale when the
-  settings change. Preview and export use the same quality.
+  settings change. While a room is edited, previews spend a quarter of the wave solver's budget and
+  rays and arrive two to four times sooner. The full-quality response follows once editing pauses,
+  and exports are always full quality.
 - **Item 5.** Testing on screen has been done only by the user, who confirmed that the window,
   audition, waveform and space bar work. The app is otherwise checked by offscreen snapshots.
 
