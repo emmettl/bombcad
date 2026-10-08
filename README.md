@@ -392,6 +392,11 @@ minmod primitive reconstruction on the nonuniform tube cells and a two-stage con
 time update. It preserves gas/wall impulse and work accounting and records accepted steps
 and retries. Finest-grid pressure errors roughly halve in the wave study, at extra cost;
 the constant-state reference remains the default.
+The reconstructed mode now takes a 1% margin below the first-stage limit and retries at
+the reported second-stage limit, rather than always halving. `--piston-wave --limited
+--halving` reproduces the previous controller in `.build/piston-wave-limited-halving.json`.
+The report records which controller was used. Stage-limit selection substantially reduces
+compression retries while retaining analytical accuracy and gas/wall budgets.
 
 ## Headline results
 

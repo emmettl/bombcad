@@ -9,13 +9,17 @@ do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--piston-wave") {
         let limited = arguments.contains("--limited")
+        let halving = arguments.contains("--halving")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? (limited ? ".build/piston-wave-limited.json" : ".build/piston-wave.json"))
+                ?? (limited
+                    ? (halving
+                        ? ".build/piston-wave-limited-halving.json" : ".build/piston-wave-limited.json")
+                    : ".build/piston-wave.json"))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalPistonWaveStudy.Result] = []
-        _ = try ExperimentalPistonWaveStudy.run(limited: limited) { r in
+        _ = try ExperimentalPistonWaveStudy.run(limited: limited, halving: halving) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             print(

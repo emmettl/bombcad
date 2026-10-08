@@ -5,6 +5,39 @@ import simd
 
 @Suite("Limited tube reconstruction")
 struct LimitedTubeFluxTests {
+    @Test("Stage-limit control avoids repeated halving while preserving compression budgets")
+    func stepControl() throws {
+        let old = try PrescribedPistonTube.run(
+            cellLength: 0.0125, area: 0.01, length: 0.655,
+            pistonVelocity: -20, duration: 0.0008, cfl: 0.2, reconstruction: .minmod, stepControl: .halving)
+        let improved = try PrescribedPistonTube.run(
+            cellLength: 0.0125, area: 0.01, length: 0.655,
+            pistonVelocity: -20, duration: 0.0008, cfl: 0.2, reconstruction: .minmod)
+        #expect(Double(improved.steps) < 0.6 * Double(old.steps))
+        #expect(improved.rejectedSteps < old.rejectedSteps / 10)
+        for run in [old, improved] {
+            let amount = run.cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
+            #expect(abs(amount[0] / run.initialAmount[0] - 1) < 1e-12)
+            #expect(abs(amount[4] - run.initialAmount[4] + run.wallWork) < 1e-9)
+            #expect(simd_length(SIMD3(amount[1], amount[2], amount[3]) + run.wallImpulse) < 1e-12)
+        }
+        #expect(abs(improved.wallWork / old.wallWork - 1) < 1e-4)
+    }
+
+    @Test(
+        "Stronger compression and expansion remain positive across cell crossings",
+        arguments: [-100.0, 100.0])
+    func strongerMotion(speed: Double) throws {
+        let run = try PrescribedPistonTube.run(
+            cellLength: 0.05, area: 0.01,
+            length: speed < 0 ? 0.655 : 0.355, pistonVelocity: speed, duration: 0.003,
+            cfl: 0.2, reconstruction: .minmod)
+        let amount = run.cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
+        #expect(run.cells.allSatisfy { $0.amount[0] > 0 && $0.pressure() > 0 })
+        #expect(abs(amount[0] / run.initialAmount[0] - 1) < 1e-11)
+        #expect(abs(amount[4] - run.initialAmount[4] + run.wallWork) < 1e-8)
+        #expect(simd_length(SIMD3(amount[1], amount[2], amount[3]) + run.wallImpulse) < 1e-11)
+    }
     @Test("Limited two-stage waves reduce finest-grid analytical pressure error")
     func analyticalImprovement() throws {
         let baseline = try ExperimentalPistonWaveStudy.run()

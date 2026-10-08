@@ -772,6 +772,30 @@ second-stage compression bound. Next, choose timesteps using the stage limits to
 unnecessary retries, then check stronger waves and merge-policy sensitivity before general
 moving-box aperture coupling or any default change.
 
+The reconstructed tube now reports a failed second stage's allowable duration, instead
+of losing that information in a generic unstable-step error. Stage-aware control starts
+with a 1% margin below the first-stage acoustic bound; on a second-stage violation, it
+retries at 99% of the smaller stage limit/current duration. Invalid gas states still trigger
+halving, and every stage remains subject to validation and the 24-attempt budget. Event
+times continue to cap the duration. This improves scheduling without relaxing a stability
+or positivity check. The constant-state mode is unchanged.
+
+`--piston-wave --limited --halving` retains the previous controller and writes a separate
+comparison report; each trajectory now records its step-control mode. Across the sixteen
+wave cases, rejected trials fall from 2091 to 274 (about 87% fewer). At finest-grid CFL 0.2,
+compression drops from 802 accepted steps/787 retries to 412 steps/no retries, and expansion
+from 400 steps/24 retries to 392 steps/no retries. At CFL 0.4, compression still has 168
+retries, so more headroom may be useful for rapid stage changes. These are work counts,
+not measured speedups; reconstructed steps still require two flux stages and limit checks.
+
+Finest-grid pressure errors at 0.8 ms change by less than 0.0005 percentage points between
+controllers. Conservation budgets remain within floating-point precision. Regression tests
+check the reduction in accepted steps/retries, unchanged wall work and gas budgets, and
+positive conservative cell crossings at prescribed speeds of -100 and +100 m/s. All nineteen
+selected limited/flux/tube/analytical tests pass. Stronger-motion tests check robustness and
+budgets, not analytical accuracy. Next, extend the analytical wave study to stronger motion
+and compare merge policies before general moving-box aperture coupling.
+
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.
    Keep rendering geometry separate from simple collision shapes. Implement translation,

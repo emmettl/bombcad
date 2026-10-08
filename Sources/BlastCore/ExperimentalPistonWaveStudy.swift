@@ -19,9 +19,12 @@ public enum ExperimentalPistonWaveStudy {
         public let cfl: Double
         public let pistonVelocity: Double
         public let reconstruction: String
+        public let stepControl: String
         public let frames: [Frame]
     }
-    public static func run(limited: Bool = false, progress: (Result) throws -> Void = { _ in }) throws
+    public static func run(
+        limited: Bool = false, halving: Bool = false, progress: (Result) throws -> Void = { _ in }
+    ) throws
         -> [Result]
     {
         var results: [Result] = []
@@ -34,7 +37,8 @@ public enum ExperimentalPistonWaveStudy {
                     let run = try PrescribedPistonTube.run(
                         cellLength: h, area: 0.01, length: start,
                         pistonVelocity: speed, duration: 0.0008, cfl: cfl, outputTimes: [0.0005, 0.0008],
-                        reconstruction: limited ? .minmod : .constant)
+                        reconstruction: limited ? .minmod : .constant,
+                        stepControl: halving ? .halving : .stageAware)
                     let frames = try run.snapshots.map { snapshot in
                         let totalVolume = snapshot.cells.reduce(0) { $0 + $1.volume }
                         var x = 0.0
@@ -65,7 +69,9 @@ public enum ExperimentalPistonWaveStudy {
                     }
                     let result = Result(
                         cellLength: h, cfl: cfl, pistonVelocity: speed,
-                        reconstruction: limited ? "minmod" : "constant", frames: frames)
+                        reconstruction: limited ? "minmod" : "constant",
+                        stepControl: limited ? (halving ? "halving" : "stageAware") : "singleStage",
+                        frames: frames)
                     results.append(result)
                     try progress(result)
                 }

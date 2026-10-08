@@ -5,6 +5,7 @@ import simd
 /// This changes spatial diffusion; it is not a general moving cut-cell solver.
 enum PrescribedPistonTube {
     enum Reconstruction: String, Codable, Sendable { case constant, minmod }
+    enum StepControl: String, Codable, Sendable { case halving, stageAware }
     enum Failure: Error { case invalidGeometry, stepLimit }
     struct Snapshot {
         let time: Double
@@ -30,7 +31,7 @@ enum PrescribedPistonTube {
         cellLength h: Double, area: Double, length: Double, pistonVelocity: Double, duration: Double,
         density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000,
         mergeFraction: Double = 0.25, cfl: Double = 0.4, outputTimes: [Double] = [],
-        reconstruction: Reconstruction = .constant
+        reconstruction: Reconstruction = .constant, stepControl: StepControl = .stageAware
     ) throws -> Result {
         let finalLength = length + pistonVelocity * duration
         guard h.isFinite && h > 0, area.isFinite && area > 0, length.isFinite && length > 0,
@@ -102,7 +103,8 @@ enum PrescribedPistonTube {
                         velocity: SIMD3(pistonVelocity, 0, 0)),
                 ]
                 let limit = try FractionalEulerFlux.maximumStep(cells, faces: faces, walls: walls, cfl: cfl)
-                var step = min(limit, event.time - elapsed)
+                let margin = reconstruction == .minmod && stepControl == .stageAware ? 0.99 : 1.0
+                var step = min(margin * limit, event.time - elapsed)
                 guard steps < maximumSteps && step > 0 && elapsed + step > elapsed else {
                     throw Failure.stepLimit
                 }
@@ -115,6 +117,9 @@ enum PrescribedPistonTube {
                                 cells, area: area, walls: walls,
                                 duration: step, cfl: cfl)
                             break
+                        } catch LimitedTubeFlux.Failure.stageLimit(let stageLimit) {
+                            rejectedSteps += 1
+                            step = stepControl == .stageAware ? min(0.99 * step, 0.99 * stageLimit) : step / 2
                         } catch FractionalEulerFlux.Failure.unstableStep {
                             rejectedSteps += 1
                             step /= 2
