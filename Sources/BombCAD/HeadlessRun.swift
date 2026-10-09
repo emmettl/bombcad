@@ -16,6 +16,7 @@ enum HeadlessRun {
                            [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
                            [--cloud <spec.json> [--cloud-results <file.json>]]
+                           [--ground-shock <spec.json> [--ground-results <file.json>]]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
@@ -29,7 +30,9 @@ enum HeadlessRun {
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
         fireball's rise and cloud, followed for minutes after; the cloud goes into the USD scene,
-        after the run's frames, and, with --cloud-results, a JSON file.
+        after the run's frames, and, with --cloud-results, a JSON file. --ground-shock estimates
+        the ground's shaking under chosen points from the overpressure the run records on the
+        ground, frame by frame; --ground-results writes it as JSON.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
         never modified.
         """
@@ -56,6 +59,10 @@ enum HeadlessRun {
         /// The fireball's rise and cloud after the run, and where its results go.
         var cloud: CloudSpec?
         var cloudResults: URL?
+        /// Ground points whose shaking to estimate from the air on the ground, and where the
+        /// estimates go.
+        var groundShock: GroundShockSpec?
+        var groundResults: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
 
@@ -72,7 +79,7 @@ enum HeadlessRun {
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
-                            "cloud-results",
+                            "cloud-results", "ground-shock", "ground-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -161,13 +168,23 @@ enum HeadlessRun {
             if options.cloudResults != nil, options.cloud == nil {
                 throw ProjectFileError.invalid("--cloud-results needs --cloud.")
             }
+            if let path = values["ground-shock"] {
+                let spec = try JSONDecoder().decode(
+                    GroundShockSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.groundShock = spec
+            }
+            options.groundResults = values["ground-results"].map { URL(filePath: $0) }
+            if options.groundResults != nil, options.groundShock == nil {
+                throw ProjectFileError.invalid("--ground-results needs --ground-shock.")
+            }
             if let text = values["frame-interval"] {
                 guard
                     options.usd != nil || options.vdb != nil || options.fragments != nil
-                        || options.thermal != nil
+                        || options.thermal != nil || options.groundShock != nil
                 else {
                     throw ProjectFileError.invalid(
-                        "--frame-interval needs --usd, --vdb, --fragments or --thermal.")
+                        "--frame-interval needs --usd, --vdb, --fragments, --thermal or --ground-shock.")
                 }
                 guard let interval = Int(text), interval > 0 else {
                     throw ProjectFileError.invalid(
@@ -180,7 +197,7 @@ enum HeadlessRun {
             }
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
-                options.thermalResults, options.cloudResults,
+                options.thermalResults, options.cloudResults, options.groundResults,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -227,7 +244,7 @@ enum HeadlessRun {
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, stream: String?, thermal: ThermalResult?,
-        cloud: CloudResult?
+        cloud: CloudResult?, ground: GroundShockResult?
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -248,7 +265,12 @@ enum HeadlessRun {
         if let url = options.cloudResults, let cloud = result.cloud {
             try JSONEncoder().encode(cloud).write(to: url, options: .withoutOverwriting)
         }
-        return (result.run, result.fragments, result.stream, result.thermal, result.cloud)
+        if let url = options.groundResults, let ground = result.ground {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(ground).write(to: url, options: .withoutOverwriting)
+        }
+        return (result.run, result.fragments, result.stream, result.thermal, result.cloud, result.ground)
     }
 
     /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
@@ -260,10 +282,11 @@ enum HeadlessRun {
         consumer injected: (any LiveConsumer)? = nil
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?,
-        thermal: ThermalResult?, cloud: CloudResult?
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
+        try options.groundShock?.validate(domain: inputs.scenario.domainSize)
         guard document.savedRuns.count < SavedSimulationRun.maximumRuns else {
             throw ProjectFileError.invalid(
                 "The project already keeps \(SavedSimulationRun.maximumRuns) runs; remove one first.")
@@ -284,7 +307,7 @@ enum HeadlessRun {
         // there.
         let framed =
             options.vdb != nil || options.fragments != nil || injected != nil || options.thermal != nil
-            || (options.usd != nil && inputs.scenario.structure != nil)
+            || options.groundShock != nil || (options.usd != nil && inputs.scenario.structure != nil)
         // Before the inputs load, which sets the first sample time. The cloud needs only the
         // last sample, at the end of the run, which then stops nowhere else.
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
@@ -313,6 +336,8 @@ enum HeadlessRun {
         }
         defer { if !finished { consumer?.cancel() } }
         let thermal = options.thermal.map { ThermalStudy(spec: $0, scene: FragmentScene(inputs.scenario)) }
+        // The ground's points take a sample each a frame, cheap enough to take in line.
+        var ground = options.groundShock.map(GroundShockConsumer.init)
         var heldSince: ContinuousClock.Instant?
         var held = Duration.zero
         let streamStart = ContinuousClock.now
@@ -354,6 +379,9 @@ enum HeadlessRun {
                     try scene?.append(solver.structureSurface(), volume: volume)
                     if let thermal, let spec = options.thermal {
                         thermal.add(solver.fireball(luminousTemperature: spec.luminousTemperature))
+                    }
+                    if let region = ground?.region(cellSize: solver.grid.cellSize) {
+                        ground?.consume(solver.groundSlice(low: region.low, high: region.high))
                     }
                     if let consumer {
                         // From the report `lag` frames back, always in by now, so that the air
@@ -431,7 +459,9 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (run, document, fragments, stream, thermalResult, cloud)
+        return (
+            run, document, fragments, stream, thermalResult, cloud, ground?.result(frameInterval: interval)
+        )
     }
 
     /// The fireball's radiation, reckoned frame by frame on a queue of its own so that the run
@@ -526,6 +556,7 @@ enum HeadlessRun {
             if let stream = result.stream { print("  " + stream) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }
             for line in result.cloud?.summary ?? [] { print("  " + line) }
+            if let ground = result.ground { print("  " + ground.summary) }
             return 0
         } catch {
             FileHandle.standardError.write(Data("Run failed: \(error.localizedDescription)\n".utf8))

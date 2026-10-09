@@ -196,6 +196,12 @@ struct GroundShockTests {
         never.consume(hit)
         let covered = never.result(frameInterval: 0.001).points[4]
         #expect(covered.covered && covered.responses[0].verticalVelocity == 0 && covered.history == [0])
+        // A blast laid down at time zero is over the point before the solver keeps a peak.
+        var laid = GroundShockConsumer(spec: spec)
+        laid.consume(uniformSlice(time: 0, overpressure: 2000, peak: 0, impulse: 0))
+        laid.consume(uniformSlice(time: 0.001, overpressure: 500, peak: 1500, impulse: 1))
+        let early = laid.result(frameInterval: 0.001).points[0]
+        #expect(early.peakOverpressure == 2000 && early.arrival == 0)
         // Through JSON and back, as `--ground-results` writes it.
         let decoded = try JSONDecoder().decode(GroundShockResult.self, from: JSONEncoder().encode(result))
         #expect(decoded == result)

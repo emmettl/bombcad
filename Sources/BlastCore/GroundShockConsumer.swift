@@ -90,6 +90,9 @@ public struct GroundShockConsumer: Sendable {
     public private(set) var bytes = 0
     private var histories: [[Float]]
     private var latest: [GroundSlice.Sample?]
+    /// The highest overpressure each point has seen: the solver's peak, or a frame's value where
+    /// higher, as in the blast laid down at time zero, before the solver's first step.
+    private var peaks: [Float]
     private var arrivals: [Double?]
     private var air = (density: Float(1.225), pressure: Float(101_325), gamma: Float(1.4))
 
@@ -98,6 +101,7 @@ public struct GroundShockConsumer: Sendable {
         points = spec.allPoints
         histories = Array(repeating: [], count: points.count)
         latest = Array(repeating: nil, count: points.count)
+        peaks = Array(repeating: 0, count: points.count)
         arrivals = Array(repeating: nil, count: points.count)
     }
 
@@ -117,14 +121,15 @@ public struct GroundShockConsumer: Sendable {
             histories[n].append(sample?.overpressure ?? 0)
             guard let sample else { continue }
             latest[n] = sample
-            if arrivals[n] == nil, sample.peak >= spec.arrivalThreshold { arrivals[n] = slice.time }
+            peaks[n] = max(peaks[n], sample.peak, sample.overpressure)
+            if arrivals[n] == nil, peaks[n] >= spec.arrivalThreshold { arrivals[n] = slice.time }
         }
     }
 
     public func result(frameInterval: Double) -> GroundShockResult {
         let points = self.points.indices.map { n in
             let sample = latest[n]
-            let peak = max(sample?.peak ?? 0, 0)
+            let peak = peaks[n]
             let impulse = max(sample?.impulse ?? 0, 0)
             let speed = AirInducedGroundShock.frontSpeed(
                 overpressure: peak, ambientPressure: air.pressure, ambientDensity: air.density,
