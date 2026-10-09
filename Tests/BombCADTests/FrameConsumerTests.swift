@@ -32,7 +32,10 @@ private struct Frames {
             from: Data(
                 #"{"points": [[9, 8], [13, 8]], "line": {"from": [4, 4], "to": [14, 4], "count": 5}, "depths": [0, 1]}"#
                     .utf8))
-        kinds = [.fragments(fragments, scene, live: false), .thermal(thermal, scene), .groundShock(ground)]
+        kinds = [
+            .fragments(fragments, scene, live: false), .thermal(thermal, scene, live: false),
+            .groundShock(ground, live: false),
+        ]
 
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
         let groundRegion = GroundShockConsumer(spec: ground).region(cellSize: 0.25)
@@ -100,6 +103,45 @@ struct FrameConsumerTests {
         second.close()
         await firstServer.value
         await secondServer.value
+    }
+
+    @Test("Live sessions send each model's state back after every frame, the same as here")
+    func live() async throws {
+        let frames = try Frames()
+        let kinds: [ConsumerKind] = frames.kinds.map { kind in
+            switch kind {
+            case .fragments(let spec, let scene, _): .fragments(spec, scene, live: true)
+            case .thermal(let spec, let scene, _): .thermal(spec, scene, live: true)
+            case .groundShock(let spec, _): .groundShock(spec, live: true)
+            }
+        }
+        let here = kinds.map { LocalFrameConsumer($0) }
+        let (worker, server) = localWorker()
+        _ = try await worker.start()
+        let there = kinds.map { RemoteFrameConsumer(client: worker, kind: $0, ownsClient: false) }
+        // Before any frame, both start from the same state.
+        #expect(zip(here, there).allSatisfy { $0.live == $1.live && $0.live != nil })
+        for frame in frames.inputs {
+            for (n, input) in frame.enumerated() {
+                here[n].send(input)
+                there[n].send(input)
+            }
+        }
+        let deadline = ContinuousClock.now + .seconds(30)
+        while !(here + there as [any FrameConsumer]).allSatisfy(\.caughtUp) {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        // Caught up, each has its last frame's state in.
+        #expect(zip(here, there).allSatisfy { $0.live == $1.live })
+        #expect(here[0].fragmentLive?.positions.count == 220)
+        #expect(here[1].thermalLive?.frames == 8)
+        #expect(here[2].groundShockLive?.frames == 8)
+        for consumer in here + there as [any FrameConsumer] {
+            _ = try await consumer.finish(frameInterval: 0.001)
+        }
+        worker.close()
+        await server.value
     }
 
     @Test("Reports count the frames taken; a frame of the wrong kind fails the session, not the others")

@@ -9,21 +9,29 @@ do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--initial-wall-traces") {
         let decompose = arguments.contains("--decompose")
-        let volumeFits = arguments.contains("--volume-fit")
+        let sweep = arguments.contains("--stencil-sweep")
+        let volumeFits = arguments.contains("--volume-fit") || sweep
+        let suffix =
+            sweep ? "-stencil-sweep" : (volumeFits ? "-volume-fit" : (decompose ? "-decomposition" : ""))
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/initial-wall-traces\(volumeFits ? "-volume-fit" : (decompose ? "-decomposition" : "")).json"
+                ?? ".build/initial-wall-traces\(suffix).json"
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalInitialWallTraceStudy.Result] = []
-        _ = try ExperimentalInitialWallTraceStudy.run(decompose: decompose, volumeFits: volumeFits) { r in
-            completed.append(r)
-            try encoder.encode(completed).write(to: output, options: .atomic)
-            print(
-                "dx \(r.cellSize), rotation \(r.rotation): supplied force/torque error \(r.supplied.relativeForceError)/\(r.supplied.relativeTorqueError), limited \(r.limited.relativeForceError)/\(r.limited.relativeTorqueError)"
-            )
-            fflush(stdout)
+        for rings in (sweep ? [1, 2, 3] : [2]) {
+            _ = try ExperimentalInitialWallTraceStudy.run(
+                rotations: sweep ? [0, 0.1, 0.23, 0.4] : [0, 0.23], decompose: decompose,
+                volumeFits: volumeFits, stencilRings: rings
+            ) { r in
+                completed.append(r)
+                try encoder.encode(completed).write(to: output, options: .atomic)
+                print(
+                    "dx \(r.cellSize), rotation \(r.rotation), stencil rings \(rings): supplied force/torque error \(r.supplied.relativeForceError)/\(r.supplied.relativeTorqueError), limited \(r.limited.relativeForceError)/\(r.limited.relativeTorqueError)"
+                )
+                fflush(stdout)
+            }
         }
         print("Wrote \(output.path)")
         exit(0)

@@ -24,6 +24,28 @@ enum FiniteVolumePressureFit {
             let terms = basis((point - cell.centre) / scale, covariance: covariance)
             return cell.average + zip(coefficients, terms).reduce(0) { $0 + $1.0 * $1.1 }
         }
+
+        /// One factor scales every mean-free polynomial term. This bounds the supplied
+        /// control points and preserves the volume average; it is not a bound everywhere
+        /// between those points. No pointwise clamp changes the polynomial's integral.
+        func limited(at points: [SIMD3<Double>]) -> BoundedFit {
+            precondition(volumeAware)
+            var factor = 1.0
+            for point in points {
+                let delta = value(at: point) - cell.average
+                if delta > 0 { factor = min(factor, (upper - cell.average) / delta) }
+                if delta < 0 { factor = min(factor, (lower - cell.average) / delta) }
+            }
+            return .init(fit: self, factor: max(0, min(1, factor)))
+        }
+    }
+    struct BoundedFit {
+        let fit: Fit
+        let factor: Double
+
+        func value(at point: SIMD3<Double>) -> Double {
+            fit.cell.average + factor * (fit.value(at: point) - fit.cell.average)
+        }
     }
     static let zero = simd_double3x3(columns: (.zero, .zero, .zero))
 

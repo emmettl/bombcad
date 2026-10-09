@@ -38,13 +38,16 @@ it should be used to judge the safety of a real structure.
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
-| 10 | Only selected app panels have had a static visual review               | Other layouts and native interactions may still have problems | Below |
+| 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
 and its rendering is checked through offscreen snapshots. An initial static panel review now
-covers the Run sidebar, saved-run comparison and Export for Rendering sheet in light and dark
-appearances. Native file dialogs, keyboard focus, scrolling and the other panels still need
-interactive review.
+covers the Run sidebar, saved-run comparison, Export for Rendering sheet, linked-part layout
+editor, import loading state, Settings and Help content in light and dark appearances. The
+Help sidebar's selected labels and dark contrast have also been checked in a native window;
+the earlier offscreen rendering problem was a capture artifact. An isolated release app has
+passed a zero-charge layout JSON import, native package save, close and reopen at time zero.
+Keyboard focus, scrolling and the other panels still need broader interactive review.
 
 ## Planned work
 
@@ -194,14 +197,15 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas, which needs afterburning and hot air to make a fireball of plausible size, shown in
-   the app as it goes and reckoned there or on another Mac; the fireball's [rise and
+   the app as it goes and reckoned there or on another Mac, on the GPU's ray-tracing hardware;
+   the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, within a
    factor of 1.6 (1.4 in neutral turbulence) of an empirical fit to high-explosive cloud heights;
    and [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional
    estimate fed the overpressure on the rigid ground each frame and drawn in the app. Next:
-   radiation on the GPU's ray-tracing hardware, a fireball that is not one sphere, the cloud
+   a fireball that is not one sphere, the cloud
    against measured clouds over time, a layered soil column and a comparison with measured
    ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
    went. The crater and the ground shock near the charge act back on the blast and remain
@@ -1715,10 +1719,93 @@ baseline loads. The six-case independent summary audits all three modes at full/
 duration; the largest load change is `8.1e-8` of the reference norm. Release generation
 succeeds with main's existing concurrency warnings, and formatting/diff checks are clean.
 
-Next, test a bound that retains the volume-aware polynomial's group average and compare
-both local pressure and net loads, including sensitivity to stencil extent and resolution.
-Only after that isolated gate should an experimental numerical update be considered and
-the evolved load histories reassessed. Spatial load accuracy remains a
+The volume-fit probe now also compares two bounds on that same moment-aware quadratic.
+One uses every wall sample as a control point; the other additionally uses internal and
+outer face centres, wall-patch centres and positive gas-volume quadrature nodes. Each
+group receives a single factor in [0, 1], scaling all mean-free linear/quadratic terms
+about its supplied average. There is no pointwise pressure clamp. Bounds hold at the
+audited control points, not everywhere between them. Neither policy changes gas stages.
+
+Both remove below-ambient profile undershoots and stencil violations within diagnostic
+tolerance at all wall samples in the six cases. The stronger policy also passes the
+face/volume control-point audit. Direct
+weighted-volume evaluation at both probe durations retains group pressure averages with
+a maximum residual of `1.8e-13`, normalized by max(1 Pa, absolute excess average).
+The largest normalized control-point bound violation is `7.2e-18`. Independent polynomial
+tests check retained averages on unequal rotated volumes with an active limiter, as well
+as inactive and zero-width bounds. Existing baseline loads remain identical.
+
+Force/torque errors for the bounded moment-aware fits are:
+
+| Cell size / orientation | Wall controls | Wall, face and volume controls |
+|---|---|---|
+| 0.2 m / aligned | 73.9% / 56.8% | 64.1% / 71.1% |
+| 0.2 m / rotated | 36.2% / 22.6% | 34.4% / 22.6% |
+| 0.1 m / aligned | 1.62% / 6.27% | 1.53% / 6.61% |
+| 0.1 m / rotated | 1.38% / 1.38% | 1.29% / 1.64% |
+| 0.05 m / aligned | 0.281% / 0.504% | 0.281% / 0.504% |
+| 0.05 m / rotated | 0.656% / 0.584% | 0.656% / 0.584% |
+
+On the fine grid, bounds remove undershoots while preserving nearly all of the raw
+quadratic load result. The stronger policy's area-weighted factors are about 0.80 there,
+with 44–45% of sampled body area limited; substantial limiting of quiet regions therefore
+has little effect on net loads. At 0.1 m, its factors are 0.46/0.43 and pressure L1 errors
+9.75%/5.33%. At 0.2 m, factors fall to 0.17/0.21; pressure L1 errors remain 68.1%/38.2%.
+Coarse curvature is still unresolved, and the existing fine aligned reconstruction still
+has smaller force/torque errors. Average retention and sampled bounds do not establish
+universal accuracy, continuous positivity, evolved-state consistency or shock stability.
+
+All 113 CPU-only tests in 22 suites pass. The independent six-case summary audits all five
+volume-fit modes and both bound policies at full/half duration; load changes stay below
+`8.1e-8` of the reference norm. Release generation succeeds with main's existing warnings,
+and strict formatting/diff checks are clean.
+
+The `--stencil-sweep` probe now measures that sensitivity in 36 cases: graph distances
+one, two and three; orientations 0, 0.1, 0.23 and 0.4 radians about the same fixed axis;
+and 0.2/0.1/0.05 m cells. Every case repeats at half duration. Neighbours are unique,
+exclude the central group and have deterministic ordering. Only the diagnostic fit and
+its stencil extrema change; geometry, matched initial packets and supplied/constant/
+existing bounded loads remain identical across depths. Default two-ring diagnostic
+loads also reproduce the preceding six-case report exactly.
+
+One-ring quadratic fits lack sufficient independent information on 98.4–100% of sampled
+body area and fall back to linear there. No quadratic fallback occurs on the two- or
+three-ring body stencils. Area-weighted neighbour counts span about 5.2–6.0, 19.0–24.3
+and 46.7–63.3 respectively. Greater rank support therefore does not itself establish
+greater pressure accuracy. The following are the worst errors across the four orientations
+for the existing reconstruction and the stronger bounded volume-aware policy:
+
+| Cell size | Existing force / torque / L1 | One ring | Two rings | Three rings |
+|---|---|---|---|---|
+| 0.2 m | 70.9% / 98.8% / 77.8% | 66.7% / 80.8% / 74.2% | 64.1% / 71.1% / 68.1% | 60.8% / 76.1% / 66.0% |
+| 0.1 m | 19.0% / 23.0% / 19.2% | 20.2% / 22.7% / 20.4% | 2.61% / 6.61% / 9.75% | 11.3% / 17.3% / 13.6% |
+| 0.05 m | 2.88% / 5.12% / 3.33% | 3.00% / 4.86% / 3.40% | 1.06% / 1.26% / 1.43% | 1.11% / 0.944% / 1.93% |
+
+Two rings improve medium-grid force, torque and local pressure errors in all four
+orientations relative to existing traces. On the fine grid they improve all three metrics
+in each rotated case, while the aligned case still favours the existing reconstruction;
+its one-ring diagnostic fallback is better again (0.021% force, 0.083% torque, 0.696% L1).
+Three rings worsen medium-grid results relative to two in every orientation and worsen
+fine-grid local pressure errors in every orientation, despite some lower net torque
+errors. Coarse errors remain large for every stencil. These comparisons favour the compact
+two-ring quadratic as a candidate, rather than selecting a wider fit by one favourable
+net-load metric. They cover this smooth pulse and four orientations, not all translations,
+pressure profiles or shock/contact configurations.
+
+All 116 CPU-only tests in 23 suites pass. Added checks cover graph distance/cycles,
+invalid depth rejection, the new orientations, recorded rank fallbacks, unchanged
+baseline loads and both duration limits. The independent 36-case summary checks whole-face
+integrals, all five fit modes, both bound policies and cross-stencil invariance. Maximum
+duration sensitivity is `5.2e-7` of the reference norm; retained-average and control-bound
+residuals stay below `8.7e-13`/`4.4e-17`, with geometric moments below `5.6e-15`.
+Release generation succeeds with main's existing warnings, and formatting/diff checks
+are clean. No numerical transport policy has changed.
+
+Next, develop an isolated two-ring reconstruction of all five conserved gas densities,
+with volume moments, retained group inventories and a common positivity bound for the
+sampled EOS states. A scalar pressure fit is insufficient when density and velocity vary.
+Only after those checks should it enter an experimental numerical update with paired
+gas/body budgets, evolved load histories and shock response. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
@@ -1803,9 +1890,10 @@ horizontal bearing planes; they do not model a footing's finite contact extents.
 of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
 for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
-sideways for solid elements. Still open: joints at angles to the lattice, and on shells;
-connections between moving components other than a footing; embedment; and a measured case
-(FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
+sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
+the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
+tenth as much. Still open: settlement under cyclic rocking; joints at angles to the lattice, and
+on shells; connections between moving components other than a footing; embedment. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
@@ -1826,14 +1914,22 @@ two collapsing over several seconds.
 - Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
   a misleading layout selector, which displayed the last preset choice after opening another
   project. The menu now shows the actual scene name and offers built-in layouts as replacement
-  actions. The Run sidebar, comparison and export panels have been inspected in both appearances.
+  actions. The review also covers linked-part editing, import loading, Settings and Help content
+  in both appearances. During loading, the import sheet no longer reports that its preview is
+  unavailable while also saying it is updating. Native dark-appearance checks now confirm Help
+  topic selection and readable sidebar labels without a styling change. A temporary zero-charge
+  layout imported as a separate document, saved through the native panel and reopened with its
+  inputs intact at time zero. Import errors now identify missing JSON fields, wrong value types
+  and null values by path; malformed JSON has a separate syntax message.
   Reproduce these static captures with
   `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
   The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
-  `dark`, and checks that capture leaves saved inputs unchanged. It expands the requested size
+  `dark`, and checks that capture leaves saved inputs unchanged. Settings captures use and remove
+  a temporary defaults suite. The import capture records the initial loading state rather than
+  waiting for asynchronous preview completion. The helper expands the requested size
   to the view's fitting size, so these captures do not verify scrolling at the minimum window
-  size. The Metal viewport and native interaction remain separate checks; the helper is skipped
-  during ordinary test runs.
+  size. Animated Metal rendering, completed import previews and broader native interaction
+  remain separate checks; the helper is skipped during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,

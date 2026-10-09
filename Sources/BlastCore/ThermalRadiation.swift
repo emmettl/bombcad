@@ -199,11 +199,11 @@ public struct ThermalExposure: Sendable {
     let cone: [SIMD3<Float>]
     private var lastIrradiance: [Float]?
 
-    /// `visibility` tests what blocks the receivers' view, by default on the CPU.
+    /// `visibility` tests what blocks the receivers' view, by default `defaultVisibility`'s.
     public init(spec: ThermalSpec, scene: FragmentScene, visibility: (any ThermalVisibility)? = nil) {
         self.spec = spec
         receivers = Self.receivers(scene: scene, spec: spec)
-        self.visibility = visibility ?? CPUThermalVisibility(occluders: Self.occluders(scene))
+        self.visibility = visibility ?? Self.defaultVisibility(occluders: Self.occluders(scene))
         chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
@@ -231,20 +231,30 @@ public struct ThermalExposure: Sendable {
         let power = Float(Double(spec.emissivity) * Self.stefanBoltzmann * pow(Double(frame.temperature), 4))
         let chunk = 256
         let chunks = (receivers.count + chunk - 1) / chunk
-        var views = [[View]](repeating: [], count: chunks)
+        // Each chunk's rays and their weights, laid out a chunk at a time and then put end to end.
         var rays = [[ThermalRay]](repeating: [], count: chunks)
-        views.withUnsafeMutableBufferPointer { views in
+        var weights = [[Float]](repeating: [], count: chunks)
+        let views = [View](unsafeUninitializedCapacity: receivers.count) { views, count in
             rays.withUnsafeMutableBufferPointer { rays in
-                DispatchQueue.concurrentPerform(iterations: chunks) { c in
-                    var chunkViews: [View] = []
-                    var chunkRays: [ThermalRay] = []
-                    for n in c * chunk..<min((c + 1) * chunk, receivers.count) {
-                        chunkViews.append(view(from: receivers[n], frame, power: power, rays: &chunkRays))
+                weights.withUnsafeMutableBufferPointer { weights in
+                    DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                        let range = c * chunk..<min((c + 1) * chunk, receivers.count)
+                        var chunkRays: [ThermalRay] = []
+                        var chunkWeights: [Float] = []
+                        chunkRays.reserveCapacity(range.count * cone.count)
+                        chunkWeights.reserveCapacity(range.count * cone.count)
+                        for n in range {
+                            (views.baseAddress! + n).initialize(
+                                to: view(
+                                    from: receivers[n], frame, power: power, rays: &chunkRays,
+                                    weights: &chunkWeights))
+                        }
+                        rays[c] = chunkRays
+                        weights[c] = chunkWeights
                     }
-                    views[c] = chunkViews
-                    rays[c] = chunkRays
                 }
             }
+            count = receivers.count
         }
         var offsets = [0]
         for chunkRays in rays { offsets.append(offsets.last! + chunkRays.count) }
@@ -257,10 +267,14 @@ public struct ThermalExposure: Sendable {
         }
         let visible = visibility.visible(all)
         result.withUnsafeMutableBufferPointer { result in
-            DispatchQueue.concurrentPerform(iterations: chunks) { c in
-                var next = offsets[c]
-                for (k, view) in views[c].enumerated() {
-                    result[c * chunk + k] = irradiance(view, visible: visible, from: &next, power: power)
+            visible.withUnsafeBufferPointer { visible in
+                DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                    let chunkVisible = UnsafeBufferPointer(rebasing: visible[offsets[c]..<offsets[c + 1]])
+                    var next = 0
+                    for n in c * chunk..<min((c + 1) * chunk, receivers.count) {
+                        result[n] = irradiance(
+                            views[n], visible: chunkVisible, weights: weights[c], from: &next)
+                    }
                 }
             }
         }
@@ -275,32 +289,40 @@ public struct ThermalExposure: Sendable {
     /// and well behaved right up to its surface.
     func irradiance(at receiver: ThermalReceiver, _ frame: FireballFrame, power: Float) -> Float {
         var rays: [ThermalRay] = []
-        let view = view(from: receiver, frame, power: power, rays: &rays)
+        var weights: [Float] = []
+        let view = view(from: receiver, frame, power: power, rays: &rays, weights: &weights)
         var next = 0
-        return irradiance(view, visible: visibility.visible(rays), from: &next, power: power)
+        return visibility.visible(rays).withUnsafeBufferPointer { visible in
+            irradiance(view, visible: visible, weights: weights, from: &next)
+        }
     }
 
-    /// What one receiver sees of the fireball before anything in the way is known: either its
-    /// irradiance, or the rays to test and what each counts for.
-    enum View {
-        case settled(Float)
-        /// `weights` holds the cosine on the receiver of each ray it added, in order; `solidAngle`
-        /// is the cone's.
-        case sampled(weights: [Float], solidAngle: Float)
+    /// What one receiver sees of the fireball before anything in the way is known.
+    struct View {
+        /// Its irradiance where that needs no rays: inside the fireball, or with all of it below
+        /// the receiver's horizon.
+        var settled: Float?
+        /// How many rays it added.
+        var rays = 0
+        /// The irradiance is `scale` times the sum of the visible rays' weights, held to `cap`.
+        var scale: Float = 1
+        var cap: Float = .infinity
     }
 
-    /// One receiver's view of `frame`'s fireball, adding the rays it needs tested to `rays`.
-    func view(from receiver: ThermalReceiver, _ frame: FireballFrame, power: Float, rays: inout [ThermalRay])
-        -> View
-    {
+    /// One receiver's view of `frame`'s fireball, adding the rays it needs tested to `rays` and the
+    /// cosine of each on the receiver to `weights`.
+    func view(
+        from receiver: ThermalReceiver, _ frame: FireballFrame, power: Float, rays: inout [ThermalRay],
+        weights: inout [Float]
+    ) -> View {
         let radius = frame.radius
         let x = receiver.position
         let toCentre = frame.centre - x
         let d = simd_length(toCentre)
         // Inside the fireball, surrounded by it: the hemisphere above radiates in full.
-        if d <= radius { return .settled(power) }
+        if d <= radius { return View(settled: power) }
         // The whole sphere is below this surface's horizon.
-        if simd_dot(receiver.normal, toCentre) < -radius { return .settled(0) }
+        if simd_dot(receiver.normal, toCentre) < -radius { return View(settled: 0) }
         let axis = toCentre / d
         let cosHalfAngle = sqrt(max(0, 1 - (radius / d) * (radius / d)))
         let solidAngle = 2 * Float.pi * (1 - cosHalfAngle)
@@ -308,7 +330,7 @@ public struct ThermalExposure: Sendable {
         let helper: SIMD3<Float> = abs(axis.z) < 0.9 ? SIMD3(0, 0, 1) : SIMD3(1, 0, 0)
         let u = simd_normalize(simd_cross(axis, helper))
         let v = simd_cross(axis, u)
-        var weights: [Float] = []
+        let first = rays.count
         for sample in cone {
             let cosine = 1 - sample.x * (1 - cosHalfAngle)
             let sine = sqrt(max(0, 1 - cosine * cosine))
@@ -321,23 +343,19 @@ public struct ThermalExposure: Sendable {
             rays.append(ThermalRay(origin: x, direction: direction, length: distance))
             weights.append(cosReceiver)
         }
-        return .sampled(weights: weights, solidAngle: solidAngle)
+        return View(rays: rays.count - first, scale: power / .pi * solidAngle / Float(cone.count), cap: power)
     }
 
-    /// The irradiance from a receiver's view, its rays' visibility starting at `next`, which it
-    /// moves past them.
-    func irradiance(_ view: View, visible: [Bool], from next: inout Int, power: Float) -> Float {
-        switch view {
-        case .settled(let irradiance):
-            return irradiance
-        case .sampled(let weights, let solidAngle):
-            var sum: Float = 0
-            for weight in weights {
-                if visible[next] { sum += weight }
-                next += 1
-            }
-            return min(power / .pi * sum * solidAngle / Float(cone.count), power)
-        }
+    /// The irradiance from a receiver's view, its rays' visibility and weights starting at `next`,
+    /// which it moves past them.
+    func irradiance(
+        _ view: View, visible: UnsafeBufferPointer<Bool>, weights: [Float], from next: inout Int
+    ) -> Float {
+        if let settled = view.settled { return settled }
+        var sum: Float = 0
+        for k in next..<next + view.rays where visible[k] { sum += weights[k] }
+        next += view.rays
+        return min(view.scale * sum, view.cap)
     }
 
     /// What can block a receiver's view besides the ground: the blocks and the structure's starting

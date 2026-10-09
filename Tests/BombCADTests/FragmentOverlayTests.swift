@@ -77,7 +77,7 @@ struct FragmentOverlayTests {
     func keptFragments() async throws {
         let (model, kept) = try await run(airOnly(), fragments: spec())
         let fragments = try #require(kept.fragments)
-        let live = try #require(model.fragments?.live)
+        let live = try #require(model.fragments?.fragmentLive)
         #expect(fragments.spec == spec() && fragments.impacts == live.impacts && !fragments.impacts.isEmpty)
         #expect(fragments.impacts.count + fragments.airborne <= 300 && fragments.launchSpeed > 1000)
         #expect(fragments.summary.hasPrefix("Fragments: 300 at "))
@@ -122,7 +122,7 @@ struct FragmentOverlayTests {
             try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
-        let live = try #require(model.fragments?.live)
+        let live = try #require(model.fragments?.fragmentLive)
         #expect(live.positions.count == 340 && live.fragmentCount == 300)
         #expect(abs(live.time - 0.01) < 1e-6)
         // A frame at the start, one as the run passes each millisecond, and one at the end, as a
@@ -165,11 +165,11 @@ struct FragmentOverlayTests {
                 try await Task.sleep(for: .milliseconds(5))
             }
             let consumer = try #require(model.fragments as? RemoteFrameConsumer)
-            while consumer.live.map({ abs($0.time - 0.01) > 1e-6 }) ?? true {
+            while consumer.fragmentLive.map({ abs($0.time - 0.01) > 1e-6 }) ?? true {
                 try #require(ContinuousClock.now < deadline)
                 try await Task.sleep(for: .milliseconds(5))
             }
-            let live = try #require(consumer.live)
+            let live = try #require(consumer.fragmentLive)
             #expect(live.positions.count == 340 && !live.impacts.isEmpty)
             #expect(model.fragmentDots(showFragments: true, showTracers: true).count > 0)
             model.reset()

@@ -73,8 +73,8 @@ protocol FrameConsumer: AnyObject, Sendable {
     var report: ConsumerReport { get }
     /// Its report after `frame`, or before the first frame for a negative one; nil if not yet in.
     func report(after frame: Int) -> ConsumerReport?
-    /// The particles as of the last frame consumed, for fragments flown live.
-    var live: FragmentLive? { get }
+    /// The model's state as of the last frame consumed, for a live kind.
+    var live: ConsumerLive? { get }
     /// Sends the next frame's input.
     func send(_ input: ConsumerInput)
     /// Waits for every frame sent to be consumed, and returns what the consumer found.
@@ -84,6 +84,15 @@ protocol FrameConsumer: AnyObject, Sendable {
 }
 
 extension FrameConsumer {
+    /// The particles as of the last frame consumed, for fragments flown live.
+    var fragmentLive: FragmentLive? { live?.fragments }
+    /// The receivers as of the last frame consumed, for thermal radiation reckoned live.
+    var thermalLive: ThermalLive? { live?.thermal }
+    /// The ground points' estimates as of the last frame consumed, for ground shock live.
+    var groundShockLive: GroundShockResult? { live?.groundShock }
+    /// Whether every frame sent has been consumed.
+    var caughtUp: Bool { report.frame >= sent - 1 }
+
     /// The fragments' result, from a fragment consumer.
     func fragments(frameInterval: Double) async throws -> FragmentResult {
         guard case .fragments(let result) = try await finish(frameInterval: frameInterval) else {
@@ -103,7 +112,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
     private var history: [ConsumerReport]
     private var count = 0
     private var total = 0
-    private var current: FragmentLive?
+    private var current: ConsumerLive?
     private var failure: Error?
 
     /// A live fragment consumer keeps the particles' latest positions to draw, and only those: a
@@ -124,7 +133,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { lock.withLock { latest } }
-    var live: FragmentLive? { lock.withLock { current } }
+    var live: ConsumerLive? { lock.withLock { current } }
 
     func send(_ input: ConsumerInput) {
         lock.withLock {
@@ -140,8 +149,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
                 return
             }
             let report = engine.report
-            let live: FragmentLive? =
-                if case .air(let slice) = input { engine.live(time: slice.time) } else { nil }
+            let live = engine.live(time: input.time)
             lock.withLock {
                 latest = report
                 history.append(report)
@@ -166,7 +174,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
 }
 
 /// A consumer on another Mac, through a worker: frames go out over its connection as they come,
-/// and its reports, and for fragments flown live their particles' positions, come back after each.
+/// and its reports, and for a live kind its model's state, come back after each.
 /// Several may share one worker, which runs each on a queue of its own.
 final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     let id = UUID()
@@ -178,7 +186,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     private var history: [ConsumerReport]
     private var count = 0
     private var total = 0
-    private var current: FragmentLive?
+    private var current: ConsumerLive?
     /// Whether the connection is this consumer's to close when done, or shared, as by the app.
     private let ownsClient: Bool
 
@@ -203,13 +211,10 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
                 }
             },
             live: { [weak self] header, payload in
-                guard let self else { return }
-                var live = self.lock.withLock { self.current } ?? FragmentLive()
-                guard (try? live.read(payload)) != nil else { return }
-                live.time = header.time
-                live.fragmentCount = header.fragmentCount
-                live.impacts += header.impacts
-                self.lock.withLock { self.current = live }
+                guard let self, let live = self.lock.withLock({ self.current }),
+                    let next = try? live.updated(by: header, payload: payload)
+                else { return }
+                self.lock.withLock { self.current = next }
             })
     }
 
@@ -220,7 +225,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { lock.withLock { latest } }
-    var live: FragmentLive? { lock.withLock { current } }
+    var live: ConsumerLive? { lock.withLock { current } }
 
     func send(_ input: ConsumerInput) {
         lock.withLock {

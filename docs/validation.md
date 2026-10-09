@@ -58,6 +58,7 @@ swift run -c release blastbench chamber
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 13% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -1445,6 +1446,15 @@ suggest, and springs back far further; its peak wall pressures are within the lo
 the gauge positions allow. One test, one measured residual, and two pieces of detailing that
 had to be assumed: the chamber shows how the model behaves at a full-scale joint, not that it
 is right there.
+
+## A footing rocked on dry sand
+
+S. Gajan and B. L. Kutter's centrifuge test SSG02_03, from the FoRCy database: a 29 Mg shear
+wall on a 2.8 × 0.65 m surface footing on dry Nevada sand at 80% relative density, pushed
+slowly to and fro through five packets of rising amplitude. On sand of 80 MPa the footing's
+moment follows the test within 6% to 14 mrad and levels off at the rigid footing's capacity,
+7–17% below the test's at 30 to 60 mrad; it settles a tenth as much as the sand did. Details,
+the 40 MPa run and why: [footings](structural-model.md#footings) (`blastbench rocking`).
 
 ## Consistency across air grids
 

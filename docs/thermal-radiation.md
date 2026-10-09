@@ -68,16 +68,17 @@ of `BombCAD run --thermal`, which stops at each; for a study that repeats exactl
 
 The receivers are reckoned on a queue of their own, here or on the other Mac; the run may get up
 to four frames ahead of them, and then waits, as for the fragments. On the street's 10,500
-receivers that is about a tenth of a second a frame on the Mac Studio, so at the default playback
-speed of 100 times slower, about the same pace as the run. A sweep's cases on this Mac reckon it
+receivers that is a few milliseconds a frame on the Mac Studio (see [Measured](#measured)), well
+ahead of the run. A sweep's cases on this Mac reckon it
 too, as they fly any fragments, and wait for the last frames before they are kept; cases sent to
 other Macs run the blast alone.
 
-On another Mac it is a session of `BombCAD worker`: version 3 of the worker protocol sends the
-fireball, a few numbers a frame, and each receiver's fluence and peak irradiance so far come back
-after each frame, as raw floats, to draw. The receivers are laid out on both sides from the same
+On another Mac it is a session of `BombCAD worker`, of the kind any model fed by the blast uses
+(see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)):
+the fireball goes out, a few numbers a frame, and in the app each receiver's fluence and peak
+irradiance so far come back after each frame, as raw floats, to draw. The receivers are laid out on both sides from the same
 scene and description, and the worker's result is the same as this Mac's for the same frames, to
-the last bit.
+the last bit, whether either Mac tests the receivers' view on its GPU or its CPU.
 
 ## The model
 
@@ -97,6 +98,10 @@ the last bit.
   counted where it is above the receiver's horizon and reaches the sphere above the ground with
   no block or structure (its starting outline) in the way. For a sphere in full view this is
   the exact (r/d)² cos θ εσT⁴ at any distance; a receiver inside the fireball gets all of εσT⁴.
+  Whether each direction is clear is tested on the GPU's ray-tracing hardware where the Mac has
+  it, and otherwise on the CPU's cores, with the same answer ([Ray
+  tracing](ray-tracing.md#in-bombcad-the-fireballs-radiation)); `BOMBCAD_THERMAL_VISIBILITY=cpu`
+  in the environment keeps it on the CPU.
 - **The fluence** at each receiver is the irradiance integrated over the frames by the trapezium
   rule; the peak irradiance is the highest at any frame.
 - **The receivers** lie over the ground, `groundSpacing` apart, and over every face of the blocks
@@ -119,7 +124,7 @@ times are rough:
 | Gas | Largest fireball | Luminous until | Radiated (ε = 1) | Highest fluence | Run, without and with |
 |---|---|---|---|---|---|
 | Default (cold air, no afterburning) | 4.2 m across, at 1 ms | 44 ms | 0.4 MJ, under 1% | 8 kJ/m², ground | 4 to 7 s and 6.5 s |
-| Afterburning and hot air | 14.6 m across, still growing at 170 ms | the run's end | 78 MJ, 19% | 182 kJ/m², ground; 171 kJ/m², a block's face | 8.3 s and 28.3 s |
+| Afterburning and hot air | 14.6 m across, still growing at 170 ms | the run's end | 78 MJ, 19% | 182 kJ/m², ground; 171 kJ/m², a block's face | 8.3 s and 28.3 s; later, less loaded, 10.5 s and 11.5 s |
 
 **The gas model decides the answer.** With the default gas the charge's products cool by
 expanding as cold air would, so the luminous region is a few metres across and gone within
@@ -131,10 +136,30 @@ study. Since the radiated energy is not taken from the gas, its 19% at emissivit
 bound that a lower emissivity scales down in proportion.
 
 Without a structure, each frame stops the run, ending a time step there (1,856 steps instead of
-1,780 with afterburning), as for [fragments](fragments.md#running-alongside-the-blast). The cost
-is the receivers: about 10,500 of them in the street, each sampling 128 directions against six
-blocks each frame on the CPU's cores, on a queue of its own so that the run does not wait for it
-until the end. Ray tracing on the GPU ([Ray tracing](ray-tracing.md)) would take most of it.
+1,780 with afterburning), as for [fragments](fragments.md#running-alongside-the-blast). The
+receivers, about 10,500 of them in the street, each sampling 128 directions against six blocks,
+are reckoned on a queue of their own, so the run does not wait for them until the end.
+
+**The receivers on the GPU.** Measured on the afterburning street later the same day, the M4 Max
+loaded by other work (load averages of 13 to 51), each build run four times, interleaved, with
+the CPU time from `time` and the GPU time from the process's `accumulatedGPUTime` in the
+I/O Registry:
+
+| `BombCAD run`, 0.17 s | Wall | CPU time | Of it the radiation's |
+|---|---|---|---|
+| Without `--thermal` | 9.8 to 12.0 s | 0.5 to 0.7 s | |
+| With, before the GPU test | 11.0 to 12.6 s | 3.6 to 4.3 s | about 3.4 s |
+| With, the visibility tested on the CPU | 11.6 to 12.1 s | 3.6 to 4.2 s | about 3.4 s |
+| With, the visibility tested on the GPU | 11.6 to 12.5 s | 2.7 to 3.2 s | about 2.4 s |
+
+The run takes as long either way: the receivers were never what it waited for. What the GPU
+saves is the CPU's cores, a third of the radiation's CPU time, for a few hundredths of a second of
+GPU time over the run, too little to see against the blast's 4 to 7 s (and other sessions' work
+inflating it). `blastbench thermal --frames 171` times the receivers alone, on a sphere growing to
+15 m across: 12 ms of the cores' time a frame on the CPU (1.6 ms of wall time), 5 ms with the
+visibility on the GPU (1.3 ms), which takes it in 0.16 to 0.22 ms. The rest is laying out the
+rays and summing them, still on the CPU; a fireball that is not one sphere will add the search
+for where each ray meets it. The two tests agreed to the bit on every receiver.
 
 ## Output
 
@@ -157,6 +182,12 @@ until the end. Ray tracing on the GPU ([Ray tracing](ray-tracing.md)) would take
   cells, 0.5 kg of TNT starts at under 800 K, below the default luminous temperature.
 - Only the coarse grid's cells, also where refinement sharpens the blast.
 - `BombCAD run --thermal` reckons it on this Mac only; the app can send it to another Mac.
+- The GPU's and the CPU's visibility tests have agreed to the bit on every scene tried, but only
+  the M4 Max's GPU has been tried; on an M1 or M2, ray tracing runs in software and may be slower
+  than the CPU.
+- Only the visibility test is on the GPU; laying out the rays and summing them take most of the
+  receivers' CPU time. Following each ray to where it meets a fireball that is not one sphere,
+  tens of milliseconds a frame on the CPU, is the next candidate for the GPU.
 - The receivers are drawn as dots, not painted onto the surfaces.
 - Receivers on the structure's starting outline do not follow it as it moves or fails.
 
