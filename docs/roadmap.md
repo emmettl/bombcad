@@ -1924,7 +1924,12 @@ two collapsing over several seconds.
   to the view's fitting size, so these captures do not verify scrolling at the minimum window
   size. A separate [native import review](native-interface-review.md#completed-obj-preview)
   covers a completed small OBJ preview, its display controls, part search and cancellation;
-  this is not a check of every importer or window size. Animated run rendering and broader
+  this is not a check of every importer or window size. The helper also writes fixed viewport
+  captures of the main content at its 1000 × 640 point minimum and a short editing form;
+  these show clipping without fitting-size expansion, and have been reviewed in both
+  appearances. They exclude native chrome and toolbar, and do not check scrolling or focus.
+  See the [capture procedure and limits](native-interface-review.md#constrained-offscreen-captures).
+  Animated run rendering and broader
   native interaction remain separate checks; the helper is skipped during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
