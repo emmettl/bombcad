@@ -2,6 +2,27 @@ import Foundation
 import Metal
 import simd
 
+/// Compact diagnostics for one stationary building. The positive scalar sum includes every
+/// valid interior/exterior face; it is not a resultant vector impulse or structural reaction.
+public struct EnvelopeExposureSummary: Codable, Equatable, Sendable, Identifiable {
+    public var id: UUID
+    public var name: String
+    public var elapsedS: Double
+    public var airCellSizeM: Float
+    public var faceCount: Int
+    public var invalidFaceCount = 0
+    public var areaM2: Double = 0
+    public var validAreaM2: Double = 0
+    public var peakPositivePa: Float = 0
+    public var surfacePositiveImpulseNS: Double = 0
+    public var forceN = SIMD3<Double>.zero
+    public var signedImpulseNS = SIMD3<Double>.zero
+
+    public var meanPositiveImpulsePaS: Double? {
+        validAreaM2 > 0 ? surfacePositiveImpulseNS / validAreaM2 : nil
+    }
+}
+
 public struct EnvelopeSurfaceExposure: Codable, Sendable {
     public var positionM: SIMD3<Float>
     /// Outward from solid into air. Pressure force on the solid is -p A n.
@@ -138,6 +159,35 @@ final class EnvelopeExposure {
                     areaM2: grid.cellSize * grid.cellSize, overpressurePa: record.x,
                     peakPositivePa: record.y, positiveImpulsePaS: record.z,
                     signedImpulsePaS: integrals[index], invalid: record.w != 0))
+        }
+        return result
+    }
+
+    /// Reduces GPU records without constructing the full per-face geometry on the CPU.
+    func summaries(grid: Grid, elapsed: Double) -> [EnvelopeExposureSummary] {
+        let records = values.contents().bindMemory(to: SIMD4<Float>.self, capacity: faces.count)
+        let integrals = signed.contents().bindMemory(to: Float.self, capacity: faces.count)
+        var result = objects.map {
+            EnvelopeExposureSummary(
+                id: $0.id, name: $0.name,
+                elapsedS: elapsed, airCellSizeM: grid.cellSize, faceCount: 0)
+        }
+        let area = Double(grid.cellSize * grid.cellSize)
+        for (index, face) in faces.enumerated() {
+            let owner = owners[index]
+            result[owner].faceCount += 1
+            result[owner].areaM2 += area
+            let record = records[index]
+            if record.w != 0 {
+                result[owner].invalidFaceCount += 1
+                continue
+            }
+            result[owner].validAreaM2 += area
+            result[owner].peakPositivePa = max(result[owner].peakPositivePa, record.y)
+            result[owner].surfacePositiveImpulseNS += Double(record.z) * area
+            let direction: Double = face.positive != 0 ? -1 : 1
+            result[owner].forceN[Int(face.axis)] += direction * Double(record.x) * area
+            result[owner].signedImpulseNS[Int(face.axis)] += direction * Double(integrals[index]) * area
         }
         return result
     }

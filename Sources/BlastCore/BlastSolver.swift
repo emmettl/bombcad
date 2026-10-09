@@ -69,6 +69,11 @@ public final class BlastSolver {
         return envelopeExposure?.snapshot(grid: grid, elapsed: time)
     }
 
+    public func envelopeExposureSummaries() -> [EnvelopeExposureSummary]? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeExposure?.summaries(grid: grid, elapsed: time)
+    }
+
     func clearEnvelopeExposure() {
         envelopeExposure = nil
         envelopeNeedsInitialSample = false

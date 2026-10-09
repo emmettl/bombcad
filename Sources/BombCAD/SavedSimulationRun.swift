@@ -114,6 +114,7 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     var bodyResponses: [BodyResponse]? = nil
     var fragments: Fragments? = nil
     var groundShock: GroundShock? = nil
+    var envelopeExposure: [EnvelopeExposureSummary]? = nil
 
     static func fingerprint(_ scenario: Scenario, settings: ProjectRunSettings) throws -> String {
         struct Inputs: Encodable {
@@ -144,6 +145,25 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             gauges.allSatisfy({ valid($0.points) }),
             (structure == nil) == (scenario.structure == nil)
         else { throw ProjectFileError.invalid("Invalid saved run inputs, identity or measurement history.") }
+        if let results = envelopeExposure {
+            let owners = scenario.envelopeObjects
+            let dx = Resolution(rawValue: settings.resolution)!.cellSize
+            let cells = scenario.grid(cellSize: dx).cellCount
+            guard !results.isEmpty, scenario.structuralObjects.isEmpty,
+                results.count == owners.count, Set(results.map(\.id)).count == results.count,
+                Set(results.map(\.id)) == Set(owners.map(\.id)),
+                results.allSatisfy({ r in
+                    r.name == scenario.object(id: r.id)?.name && r.elapsedS.isFinite
+                        && abs(r.elapsedS - elapsedTime) < 1e-6 && r.airCellSizeM == dx
+                        && r.faceCount > 0 && r.faceCount <= 6 * cells && r.invalidFaceCount == 0
+                        && r.areaM2.isFinite && r.areaM2 > 0 && r.validAreaM2 == r.areaM2
+                        && abs(r.areaM2 - Double(r.faceCount) * Double(dx * dx)) < max(1e-6, r.areaM2 * 1e-6)
+                        && r.peakPositivePa.isFinite && r.peakPositivePa >= 0
+                        && r.surfacePositiveImpulseNS.isFinite && r.surfacePositiveImpulseNS >= 0
+                        && (0..<3).allSatisfy { r.forceN[$0].isFinite && r.signedImpulseNS[$0].isFinite }
+                })
+            else { throw ProjectFileError.invalid("Invalid saved building surface exposure or ownership.") }
+        }
         if scenario.structuralObjects.count > 1 || bodyResponses != nil {
             let responses = bodyResponses ?? []
             let objects = scenario.structuralObjects
@@ -253,6 +273,23 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             let label = field("Fragment \(impact.fragment) on \(impact.surface)")
             lines.append("\(field(name)),\(label),\(impact.time * 1000),\(impact.energy),J")
         }
+        for building in envelopeExposure ?? [] {
+            let label = "\(building.name) [\(building.id.uuidString)]"
+            let measurements = [
+                (" peak surface overpressure", Double(building.peakPositivePa) / 1000, "kPa"),
+                (" mean positive surface impulse", building.meanPositiveImpulsePaS ?? 0, "Pa s"),
+                (" summed positive surface loading", building.surfacePositiveImpulseNS, "N s"),
+                (" force x", building.forceN.x, "N"), (" force y", building.forceN.y, "N"),
+                (" force z", building.forceN.z, "N"),
+                (" signed impulse x", building.signedImpulseNS.x, "N s"),
+                (" signed impulse y", building.signedImpulseNS.y, "N s"),
+                (" signed impulse z", building.signedImpulseNS.z, "N s"),
+            ]
+            for (quantity, value, unit) in measurements {
+                lines.append(
+                    "\(field(name)),\(field(label + quantity)),\(building.elapsedS * 1000),\(value),\(unit)")
+            }
+        }
         for point in groundShock?.result.points ?? [] {
             guard let arrival = point.arrival else { continue }
             let place = String(format: "Ground (%.2f, %.2f)", point.position.x, point.position.y)
@@ -296,9 +333,11 @@ enum SavedRunStore {
                 throw ProjectFileError.invalid("Missing saved run \(id).")
             }
             let record = try JSONDecoder().decode(Record.self, from: data)
-            guard record.format == "dev.bombcad.run", [1, 2].contains(record.encodingVersion),
+            guard record.format == "dev.bombcad.run", [1, 2, 3].contains(record.encodingVersion),
                 record.result.id == id,
-                (record.result.scenario.structuralObjects.count > 1) == (record.encodingVersion == 2),
+                (record.result.envelopeExposure != nil) == (record.encodingVersion == 3),
+                record.encodingVersion == 3
+                    || (record.result.scenario.structuralObjects.count > 1) == (record.encodingVersion == 2),
                 record.result.scenario.importedModels == nil, record.result.scenario == record.scene.scenario
             else { throw ProjectFileError.invalid("Unsupported or conflicting saved run payload.") }
             var input = archive
@@ -342,7 +381,8 @@ enum SavedRunStore {
             var stored = run
             stored.scenario.importedModels = nil
             var record = Record(result: stored, scene: scene)
-            record.encodingVersion = run.scenario.structuralObjects.count > 1 ? 2 : 1
+            record.encodingVersion =
+                run.envelopeExposure != nil ? 3 : run.scenario.structuralObjects.count > 1 ? 2 : 1
             files[path(run.id)] = try ProjectArchive.encodeJSON(record)
         }
         files[indexPath] = try ProjectArchive.encodeJSON(Index(runs: runs.map(\.id)))

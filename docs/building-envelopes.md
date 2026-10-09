@@ -56,9 +56,40 @@ nothing. A changed solid/fluid pair marks the receiver invalid.
 Snapshots retain current overpressure (Pa), peak positive overpressure (Pa), positive pressure
 impulse (Pa s) and signed pressure impulse (Pa s). Summing `-normal × area × overpressure`
 gives an estimated force in N; using signed impulse gives an estimated vector impulse in N s.
-Signed accumulation preserves suction and cancellation between opposite faces. Ordinary runs
-allocate no surface recorder. The headless study exports surface diagnostics and load
-histories; the viewport does not yet display these surface quantities.
+Signed accumulation preserves suction and cancellation between opposite faces. The core
+recorder is opt-in. The app automatically enables it for scenes containing envelopes without
+deformable structures; other ordinary scenes allocate no surface recorder. Mixed scenes
+continue to run, with the inspection restriction shown in the sidebar.
+
+The Run tab's **Building surface exposure** section selects an owner and shows its recorded
+window, resolved area, maximum surface overpressure, area-weighted mean positive impulse,
+summed positive loading, current force vector and signed impulse vector. The positive scalar
+sum integrates pressure impulse over every resolved interior/exterior face; it is not the
+resultant vector impulse. Readouts refresh alongside the chart, up to ten times a second.
+The GPU still records every fluid endpoint, so display cadence does not skip integrals.
+
+Pause a run to **Export surface records…** as JSON, with individual face locations, normals,
+areas and pressure exposure. Exports are snapshots of the current finite observation window.
+Reset clears the live results. The viewport continues to show the existing pressure and
+impulse fields; the numerical surface inspector does not add a separate surface colour map.
+
+**Keep Run** stores compact per-building summaries with stable owner IDs. They appear in
+saved-run inspection and CSV exports, where their values are labelled at the end of the
+recorded window. Individual face arrays are exported separately rather than embedded in
+every kept result. Results containing these summaries use saved-run encoding version 3;
+earlier records remain readable and retain their encoding when they lack surface results.
+These diagnostics do not enter the numerical input fingerprint.
+
+Headless runs collect the same summaries. To write full surface records alongside a kept run:
+
+```sh
+.build/release/BombCAD run envelope-layout.json --duration 0.12 --out envelope-run.bombcad --envelope-results surfaces.json --csv exposure.csv
+```
+
+`--envelope-results` requires a scene containing only stationary envelopes and at least one
+resolved exposed face per owner. It refuses a pre-existing destination. Unavailable surface
+recording does not prevent ordinary blast runs, but an explicitly requested surface export
+fails with its reason instead of writing absent results as zeros.
 
 ## Matched building study
 
