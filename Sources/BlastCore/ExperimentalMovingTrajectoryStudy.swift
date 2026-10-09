@@ -51,6 +51,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let densityProfile: String
         public let densityAmplitude: Double?
         public let reconstruction: String
+        public let timeIntegration: String
         public let displacement: SIMD3<Double>
         public let referenceDryToWetCells: Int
         public let referenceWetToDryCells: Int
@@ -86,7 +87,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2], duration: Double = 0.0008, velocityScale: Double = 100,
         nearCrossing: Bool = false, maximumStep: Double = 0.000008,
-        limited: Bool = false,
+        limited: Bool = false, secondOrder: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite, duration > 0, duration <= 0.1,
@@ -110,7 +111,8 @@ public enum ExperimentalMovingTrajectoryStudy {
                 for cfl in cfls {
                     let result = try solve(
                         h: h, angle: angle, start: start, duration: duration,
-                        velocityScale: velocityScale, cfl: cfl, maximumStep: maximumStep, limited: limited)
+                        velocityScale: velocityScale, cfl: cfl, maximumStep: maximumStep, limited: limited,
+                        secondOrder: secondOrder)
                     results.append(result)
                     try progress(result)
                 }
@@ -162,7 +164,8 @@ public enum ExperimentalMovingTrajectoryStudy {
     }
     static func solve(
         h: Double, angle: Double, start: Double, duration: Double, velocityScale: Double,
-        cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false
+        cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false,
+        secondOrder: Bool = false
     ) throws -> Result {
         let clock = Date()
         let velocity = velocityScale * ExperimentalMovingGroupsStudy.velocity
@@ -239,14 +242,21 @@ public enum ExperimentalMovingTrajectoryStudy {
                                         .init(
                                             volume: 1, density: reference.density(at: point, time: elapsed),
                                             velocity: velocity, pressure: reference.pressure)
-                                    } : nil)
+                                    } : nil,
+                                reconstructionExteriorAtEnd: limited && secondOrder
+                                    ? { _, point in
+                                        .init(
+                                            volume: 1,
+                                            density: reference.density(at: point, time: elapsed + step),
+                                            velocity: velocity, pressure: reference.pressure)
+                                    } : nil, timeIntegration: secondOrder ? .heun : .euler)
                         } else {
                             r = try MovingGroupedGasFlux.advance(
                                 domain.plan,
                                 exterior: .init(
                                     volume: 1, density: 1.225, velocity: velocity, pressure: 101325),
                                 cfl: cfl,
-                                limited: limited
+                                limited: limited, timeIntegration: secondOrder ? .heun : .euler
                             )
                         }
                         let plan = domain.plan
@@ -352,6 +362,7 @@ public enum ExperimentalMovingTrajectoryStudy {
             cellSize: h, rotation: angle, cfl: cfl, startPathTime: start, duration: duration,
             velocity: velocity, densityProfile: reference == nil ? "uniform" : "quadratic-advection",
             densityAmplitude: reference?.amplitude, reconstruction: limited ? "limited" : "constant",
+            timeIntegration: secondOrder ? "heun" : "euler",
             displacement: body.position - initialPosition,
             referenceDryToWetCells: transitions.opening, referenceWetToDryCells: transitions.closing,
             maximumMembers: maximumMembers,

@@ -218,6 +218,7 @@ enum MovingConnectedGasGroups {
 /// acoustic/contraction CFL are checked by the existing Euler reference, then final member
 /// volumes receive conservative group packets. Nonuniform temporal accuracy is not validated.
 enum MovingGroupedGasFlux {
+    enum TimeIntegration: String { case euler, heun }
     struct Result {
         let cells: [FractionalGasTransport.Cell]
         let wallImpulses: [SIMD3<Double>]
@@ -231,13 +232,15 @@ enum MovingGroupedGasFlux {
     }
     static func advance(
         _ plan: MovingConnectedGasGroups.Plan, exterior: FractionalGasTransport.Cell,
-        cfl: Double = 0.2, limited: Bool = false
+        cfl: Double = 0.2, limited: Bool = false, timeIntegration: TimeIntegration = .euler
     ) throws -> Result {
         guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
         _ = try FractionalGasTransport.advance([exterior], newVolumes: [exterior.volume], transfers: [])
         return try advance(
             plan, exteriorAt: { _ in exterior }, cfl: cfl, limited: limited,
-            reconstructionExteriorAt: limited ? { _, _ in exterior } : nil)
+            reconstructionExteriorAt: limited ? { _, _ in exterior } : nil,
+            reconstructionExteriorAtEnd: limited ? { _, _ in exterior } : nil,
+            timeIntegration: timeIntegration)
     }
     /// Boundary-specific supplied states permit spatial/time-dependent reservoirs. The
     /// caller owns trace quadrature; numerical transfers remain paired and audited.
@@ -247,25 +250,90 @@ enum MovingGroupedGasFlux {
         cfl: Double = 0.2, limited: Bool = false,
         reconstructionExteriorAt: (
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
-        )? = nil
+        )? = nil,
+        reconstructionExteriorAtEnd: (
+            (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
+        )? = nil, timeIntegration: TimeIntegration = .euler
     ) throws -> Result {
-        var cells = plan.cells
-        if limited && (plan.oldCentres == nil || reconstructionExteriorAt == nil) {
+        // Reservoir states are interval averages, sampled once and reused in both stages.
+        // Endpoint point states below are ONLY for the reconstruction stencil.
+        let supplied = try plan.boundaries.map { boundary -> FractionalGasTransport.Cell? in
+            boundary.geometry.owner == 0 ? try exteriorAt(boundary) : nil
+        }
+        let first = try stage(
+            plan, inventories: plan.cells, centres: plan.oldCentres, supplied: supplied,
+            cfl: cfl, limited: limited, reconstructionExteriorAt: reconstructionExteriorAt)
+        var updated = first.cells
+        var impulses = first.wallImpulses
+        var work = first.wallWork
+        var reservoir = first.reservoirExchange
+        var limit = first.maximumStep
+        for n in updated.indices {
+            guard abs(updated[n].volume - plan.finalVolumes[n]) <= 1e-8 * plan.finalVolumes[n] else {
+                throw MovingConnectedGasGroups.Failure.invalidGeometry
+            }
+            updated[n] = .init(volume: plan.finalVolumes[n], amount: updated[n].amount)
+        }
+        if timeIntegration == .heun {
+            // Frozen interval geometry: V1=V0+dV, V2=V0+2*dV. Averaging old and
+            // stage-two EXTENSIVE inventories gives V1, preserving comoving constant
+            // states and the geometric conservation law. Never scatter between stages.
+            let second = try stage(
+                plan, inventories: updated, centres: plan.finalCentres, supplied: supplied,
+                cfl: cfl, limited: limited, reconstructionExteriorAt: reconstructionExteriorAtEnd)
+            updated = updated.indices.map {
+                .init(
+                    volume: plan.finalVolumes[$0],
+                    amount: 0.5 * (plan.cells[$0].amount + second.cells[$0].amount))
+            }
+            _ = try FractionalGasTransport.advance(updated, newVolumes: plan.finalVolumes, transfers: [])
+            impulses = zip(first.wallImpulses, second.wallImpulses).map { 0.5 * ($0 + $1) }
+            work = zip(first.wallWork, second.wallWork).map { 0.5 * ($0 + $1) }
+            reservoir = 0.5 * (first.reservoirExchange + second.reservoirExchange)
+            limit = min(first.maximumStep, second.maximumStep)
+        }
+        let scattered = limited ? try LimitedMovingGroupScatter.scatter(plan, updated: updated) : nil
+        return Result(
+            cells: try scattered?.cells ?? plan.scatter(updated), wallImpulses: impulses,
+            wallWork: work, reservoirExchange: reservoir, maximumStep: limit,
+            scatterLimitedGroups: scattered?.limitedGroups ?? 0,
+            scatterPositivityReducedGroups: scattered?.positivityReducedGroups ?? 0,
+            scatterRankDeficientGroups: scattered?.rankDeficientGroups ?? 0)
+    }
+    private struct Stage {
+        let cells: [FractionalGasTransport.Cell]
+        let wallImpulses: [SIMD3<Double>]
+        let wallWork: [Double]
+        let reservoirExchange: SIMD8<Double>
+        let maximumStep: Double
+    }
+    /// One conservative Euler stage. Stage two can have extrapolated volumes, so only
+    /// the public interval update checks endpoint geometry and scatters to raw cells.
+    private static func stage(
+        _ plan: MovingConnectedGasGroups.Plan, inventories: [FractionalGasTransport.Cell],
+        centres suppliedCentres: [SIMD3<Double>]?, supplied: [FractionalGasTransport.Cell?],
+        cfl: Double, limited: Bool,
+        reconstructionExteriorAt: (
+            (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
+        )?
+    ) throws -> Stage {
+        var cells = inventories
+        if limited && (suppliedCentres == nil || reconstructionExteriorAt == nil) {
             throw MovingConnectedGasGroups.Failure.invalidGeometry
         }
-        var centres = plan.oldCentres ?? []
-        var reconstructionStates = plan.cells
+        var centres = suppliedCentres ?? []
+        var reconstructionStates = inventories
         var reconstructionFaces = plan.faces
         var faces = plan.faces.map {
             FractionalEulerFlux.Face(a: $0.a, b: $0.b, normal: $0.normal, area: $0.area)
         }
         var walls: [FractionalEulerFlux.Wall] = []
-        for boundary in plan.boundaries {
+        for (index, boundary) in plan.boundaries.enumerated() {
             let b = boundary.geometry
             if b.owner == 1 {
                 walls.append(.init(cell: b.cell, normal: b.normal, area: b.area, velocity: plan.velocity))
             } else {
-                let exterior = try exteriorAt(boundary)
+                let exterior = supplied[index]!
                 guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
                 _ = try FractionalGasTransport.advance(
                     [exterior], newVolumes: [exterior.volume], transfers: [])
@@ -308,21 +376,10 @@ enum MovingGroupedGasFlux {
         let limit = try FractionalEulerFlux.maximumStep(cells, faces: faces, walls: walls, cfl: cfl)
         let advanced = try FractionalEulerFlux.advanceWithWalls(
             cells, faces: faces, walls: walls, duration: plan.duration, cfl: cfl)
-        var updated: [FractionalGasTransport.Cell] = []
-        for n in plan.cells.indices {
-            guard abs(advanced.cells[n].volume - plan.finalVolumes[n]) <= 1e-8 * plan.finalVolumes[n] else {
-                throw MovingConnectedGasGroups.Failure.invalidGeometry
-            }
-            updated.append(.init(volume: plan.finalVolumes[n], amount: advanced.cells[n].amount))
-        }
         var reservoir = SIMD8<Double>.zero
         for n in plan.cells.count..<cells.count { reservoir += cells[n].amount - advanced.cells[n].amount }
-        let scattered = limited ? try LimitedMovingGroupScatter.scatter(plan, updated: updated) : nil
-        return Result(
-            cells: try scattered?.cells ?? plan.scatter(updated), wallImpulses: advanced.wallImpulses,
-            wallWork: advanced.wallWork, reservoirExchange: reservoir, maximumStep: limit,
-            scatterLimitedGroups: scattered?.limitedGroups ?? 0,
-            scatterPositivityReducedGroups: scattered?.positivityReducedGroups ?? 0,
-            scatterRankDeficientGroups: scattered?.rankDeficientGroups ?? 0)
+        return Stage(
+            cells: Array(advanced.cells.prefix(plan.cells.count)), wallImpulses: advanced.wallImpulses,
+            wallWork: advanced.wallWork, reservoirExchange: reservoir, maximumStep: limit)
     }
 }

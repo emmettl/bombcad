@@ -9,13 +9,14 @@ do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--moving-entropy") {
         let limited = arguments.contains("--limited")
+        let secondOrder = arguments.contains("--heun")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/moving-entropy\(limited ? "-limited" : "").json")
+                ?? ".build/moving-entropy\(limited ? "-limited" : "")\(secondOrder ? "-heun" : "").json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalMovingTrajectoryStudy.Result] = []
-        _ = try ExperimentalMovingEntropyStudy.run(limited: limited) { r in
+        _ = try ExperimentalMovingEntropyStudy.run(limited: limited, secondOrder: secondOrder) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             let f = r.frames.last!
@@ -31,9 +32,10 @@ do {
         let window = arguments.contains("--ambient-window")
         let halving = arguments.contains("--halving")
         let limited = arguments.contains("--limited")
+        let secondOrder = arguments.contains("--heun")
         let stem =
             "moving-trajectory" + (window ? "-ambient-window" : "") + (halving ? "-halving" : "")
-            + (limited ? "-limited" : "")
+            + (limited ? "-limited" : "") + (secondOrder ? "-heun" : "")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/\(stem).json")
         let encoder = JSONEncoder()
@@ -42,7 +44,7 @@ do {
         _ = try ExperimentalMovingTrajectoryStudy.run(
             cfls: halving ? [0.2, 0.1] : [0.2],
             duration: window ? 0.000064 : 0.0008, velocityScale: window ? 1 : 100, nearCrossing: window,
-            limited: limited
+            limited: limited, secondOrder: secondOrder
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
