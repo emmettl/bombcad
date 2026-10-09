@@ -5,8 +5,9 @@ import simd
 
 @testable import BlastCore
 
-/// Rigid footings on soil (`Footing`, `FootingBed`) against theory: the half-space's static
-/// stiffness, and a footing's heel lifting and its toe bearing.
+/// Rigid footings on soil (`Footing`, `FootingBed`, `FootingImpedance`) against theory: the
+/// half-space's static stiffness, a footing's heel lifting and its toe bearing, and the cones'
+/// dynamic stiffness.
 @Suite("Footings")
 struct FootingTests {
     let device: MTLDevice
@@ -255,5 +256,146 @@ struct FootingTests {
         let above = try sway(1.3 * tipping)
         #expect(below.late < 0.03 && abs(below.late - below.early) < 0.01, "\(below)")
         #expect(above.late > 2 * above.early && above.late > 0.3, "\(above)")
+    }
+
+    // MARK: - The soil's mass and radiation damping
+
+    /// Drives `solver` at about ω rad/s, `force(sin ωt)` setting the load each 1/48 of a period,
+    /// for `warm` periods and then `measured` more, and returns the frequency it drove at (a
+    /// whole number of steps to a period) and the complex amplitudes X of the signals `read`
+    /// gives over the measured periods, as u(t) = Im(X e^(iωt)). The force grows from nothing
+    /// over the first `ramp` periods, so as to set little free vibration going.
+    private func drive(
+        _ solver: StructureSolver, omega: Double, warm: Int, measured: Int, ramp: Int = 0,
+        force: (Float) -> Void, read: () -> [Float]
+    ) -> (omega: Double, amplitudes: [Complex]) {
+        let chunks = 48
+        let dt = Double(solver.criticalTimeStep)
+        let stepsPerChunk = max(1, Int((2 * Double.pi / omega / dt / Double(chunks)).rounded()))
+        let period = Double(chunks * stepsPerChunk) * dt
+        let omega = 2 * Double.pi / period
+        var sums: [Complex] = []
+        var last: (time: Double, values: [Float])?
+        for chunk in 0..<((warm + measured) * chunks) {
+            let middle = (Double(chunk) + 0.5) * period / Double(chunks)
+            let growth = ramp > 0 ? min(1, middle / (Double(ramp) * period)) : 1
+            force(Float(growth * sin(omega * middle)))
+            solver.advance(steps: stepsPerChunk)
+            let now = (time: Double(chunk + 1) * period / Double(chunks), values: read())
+            if sums.isEmpty { sums = now.values.map { _ in Complex(0) } }
+            if chunk >= warm * chunks, let last {
+                // u(t) = X_r sin + X_i cos: X_r = (2/T) ∫ u sin, X_i = (2/T) ∫ u cos, by trapezoids.
+                let dt = now.time - last.time
+                for k in sums.indices {
+                    let a = Double(last.values[k])
+                    let b = Double(now.values[k])
+                    sums[k] =
+                        sums[k]
+                        + Complex(
+                            dt / 2 * (a * sin(omega * last.time) + b * sin(omega * now.time)),
+                            dt / 2 * (a * cos(omega * last.time) + b * cos(omega * now.time)))
+                }
+            }
+            last = now
+        }
+        let span = Double(measured) * period
+        return (omega, sums.map { Complex(2 * $0.real / span, 2 * $0.imaginary / span) })
+    }
+
+    /// A 1 m block on a 1.5 m square footing 0.5 m thick on the medium dense sand.
+    private func impedanceBlock(soil: Soil = Soil(bearingCapacity: nil, friction: 2)) throws
+        -> StructureSolver
+    {
+        let solver = try block(
+            SIMD3(1, 1, 1), footing: Footing(overhang: SIMD2(0.25, 0.25), thickness: 0.5, soil: soil))
+        solver.damping = 200
+        solver.advance(steps: steps(solver, seconds: 0.15))
+        solver.damping = 0
+        return solver
+    }
+
+    @Test("Driven up and down, a footing answers as the vertical cone's impedance says")
+    func verticalImpedance() throws {
+        let soil = Soil(bearingCapacity: nil, friction: 2)
+        let bed = FootingBed(width: 1.5, length: 1.5, soil: soil)
+        let probe = try impedanceBlock(soil: soil)
+        let mass = Double(bodyMass(probe) + probe.footingSummaries()[0].mass)
+        let natural = (Double(bed.stiffness[0]) / mass).squareRoot()
+        for ratio in [0.5, 1.0, 2.0] {
+            let solver = try impedanceBlock(soil: soil)
+            // A body force a sin ωt on everything, the footing too: F = -M a sin ωt (downward).
+            let a: Float = 2
+            let (omega, response) = drive(
+                solver, omega: ratio * natural, warm: 6, measured: 4,
+                force: { solver.gravity = 9.81 + a * $0 },
+                read: { [solver.footingSummaries()[0].displacement.z] })
+            let x = response[0]
+            // F = Im(-M a e^(iωt)), so X = -M a / (S - ω² M).
+            let measured = Complex(-mass * Double(a)) / x + Complex(omega * omega * mass)
+            let expected = bed.impedance.dynamicStiffness(.vertical, omega: omega)
+            #expect(
+                (measured - expected).magnitude < 0.05 * expected.magnitude,
+                "ω = \(ratio) ω₀: \(measured) against \(expected)")
+        }
+    }
+
+    @Test("Pushed to and fro, a footing sways and rocks as the cones' impedances say")
+    func rockingImpedance() throws {
+        let soil = Soil(bearingCapacity: nil, friction: 2)
+        let bed = FootingBed(width: 1.5, length: 1.5, soil: soil)
+        let probe = try impedanceBlock(soil: soil)
+        let footing = probe.footingSummaries()[0]
+        // The rigid body about the base centre O: mass, height of its centre, and moment of
+        // inertia about y through O, from the block's node masses and the footing's box.
+        var mass = Double(footing.mass)
+        var moment = Double(footing.mass) * 0.25
+        var inertia = Double(footing.mass) * (1.5 * 1.5 + 0.5 * 0.5) / 12 + Double(footing.mass) * 0.25 * 0.25
+        probe.mutateNodes { nodes in
+            for k in 0...probe.ez {
+                for j in 0...probe.ey {
+                    for i in 0...probe.ex {
+                        guard let n = probe.storedNode(i, j, k) else { continue }
+                        let x = Double(i) * 0.25 - 0.5
+                        let z = Double(k) * 0.25 + 0.5
+                        mass += Double(nodes[n].mass)
+                        moment += Double(nodes[n].mass) * z
+                        inertia += Double(nodes[n].mass) * (x * x + z * z)
+                    }
+                }
+            }
+        }
+        let h = moment / mass
+        let lever = 1.0  // the push, at the block's mid-height
+        let natural = (Double(bed.stiffness[4]) / inertia).squareRoot()
+        for ratio in [0.6, 1.6] {
+            let solver = try impedanceBlock(soil: soil)
+            let p: Float = 5000
+            let (omega, response) = drive(
+                solver, omega: ratio * natural, warm: 20, measured: 4,
+                force: { value in
+                    solver.appliedLoad = PressureLoad(
+                        axis: 0, positiveSide: false, history: [SIMD2(0, p * value), SIMD2(1e6, p * value)])
+                },
+                read: {
+                    let f = solver.footingSummaries()[0]
+                    return [f.displacement.x, f.rotation.y]
+                })
+            // [S_h - ω² M, -ω² M h; -ω² M h, S_r - ω² I_O - M g h] [X, Θ] = [F, F lever].
+            let sh = bed.impedance.dynamicStiffness(.horizontalX, omega: omega)
+            let sr = bed.impedance.dynamicStiffness(.rockingY, omega: omega)
+            let a11 = sh - Complex(omega * omega * mass)
+            let a12 = Complex(-omega * omega * mass * h)
+            let a22 = sr - Complex(omega * omega * inertia + mass * 9.81 * h)
+            let f = Complex(Double(p))
+            let det = a11 * a22 - a12 * a12
+            let sway = (f * a22 - a12 * f * Complex(lever)) / det
+            let rock = (a11 * f * Complex(lever) - a12 * f) / det
+            #expect(
+                (response[1] - rock).magnitude < 0.07 * rock.magnitude,
+                "ω = \(ratio) ω₀: rotation \(response[1]) against \(rock)")
+            #expect(
+                (response[0] - sway).magnitude < 0.07 * sway.magnitude,
+                "ω = \(ratio) ω₀: sway \(response[0]) against \(sway)")
+        }
     }
 }

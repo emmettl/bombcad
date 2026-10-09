@@ -318,6 +318,20 @@ values within the ranges foundation texts give, not measured for any site. Its s
 stiffnesses are G. Gazetas's for a rigid rectangle (1991), which agree with the rigid disk's
 within 1% in translation and 9% in rocking for a square.
 
+**The soil's mass and radiation damping** (`Soil.radiationDamping`, on by default) follow
+J. P. Wolf's cones (*Foundation Vibration Analysis Using Simple Physical Models*, 1994), each
+fitted to the bed's static stiffness K: a cone of apex height z₀ = ρ c² A / K carries the waves
+away at c, the shear speed along the base and, across it and in rocking, the dilatational speed
+up to ν = 1/3 and twice the shear speed beyond. In translation that is a dashpot ρ c A beside
+the spring; spread over the bed in proportion to its springs and driven by the base centre's
+velocity, so that a point's dashpot never pulls it below nothing before the footing's does.
+Rocking radiates little at low frequency, so the rocking cone is a dashpot ρ c I to an internal
+rotary mass ρ I z₀, moved exactly over each step, which reproduces Wolf's dynamic stiffness
+K [1 − b²/(3 (1 + b²))] + i ω ρ c I b²/(1 + b²), b = ω z₀ / c; it is scaled by the share of the
+bed's rocking stiffness still bearing. Past ν = 1/3 the footing carries Wolf's trapped masses,
+2.4 (ν − 1/3) ρ A r₀ vertically and 1.2 (ν − 1/3) ρ I r₀ in rocking. Without them the soil is
+massless springs damped as contacts are (30% of critical on the footing and what it carries).
+
 **Checks** (`FootingTests`, a stiff elastic block or wall cast on starter bars):
 
 - the bed gives the half-space's vertical and both rocking stiffnesses within 1% under a
@@ -331,7 +345,15 @@ within 1% in translation and 9% in rocking for a square.
   towards the toe;
 - a 3 m wall 250 mm thick on a footing 1.25 m wide, of solid elements or shells, holds 0.8 of
   the push whose moment about the footing's toe is W B / 2, and goes over at 1.3 of it; that
-  push is more than five times what tips the wall about its own toe.
+  push is more than five times what tips the wall about its own toe;
+- driven up and down at half, once and twice its natural frequency on the sand, a block on a
+  footing answers with the vertical cone's dynamic stiffness within 5% (its imaginary part, the
+  radiation damping, is 0.58 of critical);
+- pushed to and fro on its face at 0.6 and 1.6 times its rocking frequency, it sways and turns
+  as the two coupled equations of a rigid body on the horizontal and rocking cones say, within
+  7% in amplitude and phase together; with the dashpots spread by area instead of by
+  stiffness, the lightly loaded middle of the bed slid near the coupled resonance and the
+  footing lagged twice as far.
 
 **On the freestanding wall** (`blastbench anchorage --bases footing`), the study's 1 m strip of
 wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand with its mass:
@@ -343,7 +365,9 @@ wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand wit
 | 15 m | 130 mm | −69 mm | 37 mrad | 40 mm | 1.8 mm | 7 mm |
 | 25 m | 43 mm | 28 mm | 12 mrad | 12 mm | 0.8 mm | 1.8 mm |
 
-The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
+Without the soil's mass (`--massless`) the peak sway is within 1.5% at every distance and the
+footing turns within 0.5%: rocking on its toe radiates little, and the toe's crushing and the
+heel's lift do the rest. The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
 on the footing's toe, which crushes the sand. Clamped, the wall sways 200, 65, 29 and 11 mm;
 on the Winkler bed of `Anchorage.soil()` under its own 250 mm base it goes over at every
 distance. The footing is what keeps it up at 10 m and beyond, but it rocks. At 10 m the pulse's
