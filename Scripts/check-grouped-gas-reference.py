@@ -19,6 +19,7 @@ SOURCES = [
     "ExperimentalPistonWaveStudy", "PlanarPistonWave", "PrescribedPistonTube",
 ]
 TESTS = [
+    "SampledMovingGasFluxTests",
     "MovingPressureQuadratureTests",
     "MovingTimeIntegrationTests",
     "LimitedMovingReconstructionTests",

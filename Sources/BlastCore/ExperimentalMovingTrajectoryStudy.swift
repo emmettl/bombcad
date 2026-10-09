@@ -40,6 +40,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let scatterLimitedGroups: Int
         public let scatterPositivityReducedGroups: Int
         public let scatterRankDeficientGroups: Int
+        public let wallSampleFallbacks: Int
     }
     public struct Result: Codable, Sendable {
         public let cellSize: Double
@@ -52,6 +53,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let densityAmplitude: Double?
         public let reconstruction: String
         public let timeIntegration: String
+        public let wallIntegration: String
         public let displacement: SIMD3<Double>
         public let referenceDryToWetCells: Int
         public let referenceWetToDryCells: Int
@@ -87,7 +89,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2], duration: Double = 0.0008, velocityScale: Double = 100,
         nearCrossing: Bool = false, maximumStep: Double = 0.000008,
-        limited: Bool = false, secondOrder: Bool = false,
+        limited: Bool = false, secondOrder: Bool = false, surfaceQuadrature: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite, duration > 0, duration <= 0.1,
@@ -112,7 +114,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                     let result = try solve(
                         h: h, angle: angle, start: start, duration: duration,
                         velocityScale: velocityScale, cfl: cfl, maximumStep: maximumStep, limited: limited,
-                        secondOrder: secondOrder)
+                        secondOrder: secondOrder, surfaceQuadrature: surfaceQuadrature)
                     results.append(result)
                     try progress(result)
                 }
@@ -165,7 +167,7 @@ public enum ExperimentalMovingTrajectoryStudy {
     static func solve(
         h: Double, angle: Double, start: Double, duration: Double, velocityScale: Double,
         cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false,
-        secondOrder: Bool = false
+        secondOrder: Bool = false, surfaceQuadrature: Bool = false
     ) throws -> Result {
         let clock = Date()
         let velocity = velocityScale * ExperimentalMovingGroupsStudy.velocity
@@ -218,6 +220,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         var scatterLimited = 0
         var scatterReduced = 0
         var scatterDeficient = 0
+        var wallSampleFallbacks = 0
         for target in [0.25, 0.5, 0.75, 1.0].map({ $0 * duration }) {
             while elapsed < target {
                 guard steps < 10000 else { throw Failure.stepLimit }
@@ -227,7 +230,8 @@ public enum ExperimentalMovingTrajectoryStudy {
                     let domain = try ExperimentalMovingGroupsStudy.domain(
                         h: h, angle: angle,
                         start: 0, duration: step, previous: cells, prescribedBody: body,
-                        prescribedVelocity: velocity, reconstruct: limited)
+                        prescribedVelocity: velocity, reconstruct: limited,
+                        surfaceQuadrature: surfaceQuadrature)
                     do {
                         let r: MovingGroupedGasFlux.Result
                         if let reference {
@@ -291,12 +295,11 @@ public enum ExperimentalMovingTrajectoryStudy {
                         scatterLimited += r.scatterLimitedGroups
                         scatterReduced += r.scatterPositivityReducedGroups
                         scatterDeficient += r.scatterRankDeficientGroups
+                        wallSampleFallbacks += r.wallSampleFallbacks
                         var packet = SIMD8<Double>.zero
-                        for (n, boundary) in plan.boundaries.filter({ $0.geometry.owner == 1 }).enumerated() {
+                        for n in r.wallImpulses.indices {
                             let impulse = r.wallImpulses[n]
-                            let angular = simd_cross(
-                                boundary.geometry.centroid - body.position
-                                    - boundary.meanTime * velocity, impulse)
+                            let angular = r.wallMomentImpulses[n] - simd_cross(body.position, impulse)
                             packet += SIMD8(
                                 0, impulse.x, impulse.y, impulse.z, r.wallWork[n],
                                 angular.x, angular.y, angular.z)
@@ -356,13 +359,14 @@ public enum ExperimentalMovingTrajectoryStudy {
                     bodyWork: loads.value[4],
                     impulseWorkResidual: loads.value[4] - simd_dot(velocity, impulse), transport: transport,
                     scatterLimitedGroups: scatterLimited, scatterPositivityReducedGroups: scatterReduced,
-                    scatterRankDeficientGroups: scatterDeficient))
+                    scatterRankDeficientGroups: scatterDeficient, wallSampleFallbacks: wallSampleFallbacks))
         }
         return Result(
             cellSize: h, rotation: angle, cfl: cfl, startPathTime: start, duration: duration,
             velocity: velocity, densityProfile: reference == nil ? "uniform" : "quadratic-advection",
             densityAmplitude: reference?.amplitude, reconstruction: limited ? "limited" : "constant",
             timeIntegration: secondOrder ? "heun" : "euler",
+            wallIntegration: surfaceQuadrature ? "surfaceTimeQuadrature" : "centroid",
             displacement: body.position - initialPosition,
             referenceDryToWetCells: transitions.opening, referenceWetToDryCells: transitions.closing,
             maximumMembers: maximumMembers,

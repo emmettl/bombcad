@@ -552,7 +552,13 @@ independent box integrals. Positive surface/time quadrature follows the moving w
 centre of mass through clipping events; it recovers impulse, torque and work to roundoff.
 Centroid evaluation loses pressure/lever-arm covariance and temporal variance. This probe
 prescribes affine pressure with a quadratic time envelope; it does not evolve gas or validate
-a blast. The sampled load kernel is available separately from the moving-group flux update.
+a blast. Add `--surface-quadrature` to the moving-entropy or moving-trajectory commands to use
+these wall samples in the numerical update. With `--heun`, each sample interpolates the
+two stage pressure packets at its actual time; the same correction reaches gas momentum
+and energy. Torque uses each sample's position relative to the translating centre of mass.
+The corresponding summary scripts accept `--surface-quadrature` (and the trajectory summary
+also needs `--limited --heun` for that report). A nonuniform-pressure interval test checks
+paired loads, while sustained pressure-load convergence remains a separate benchmark.
 
 ## Headline results
 
