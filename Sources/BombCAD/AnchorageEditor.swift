@@ -5,6 +5,8 @@ import SwiftUI
 struct AnchorageEditor: View {
     let title: String
     @Binding var law: Anchorage?
+    /// Whether the joint may face another way than down (a support region's, not the ground's).
+    var turns = false
 
     private var choice: String {
         if law == nil { return BaseConnection.clamped.rawValue }
@@ -27,6 +29,21 @@ struct AnchorageEditor: View {
             }
             .labelsHidden().accessibilityLabel(title)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        if law != nil && turns {
+            Picker(
+                "Joint faces",
+                selection: Binding(
+                    get: { law?.side ?? .below },
+                    set: { side in
+                        guard var candidate = law else { return }
+                        candidate.side = side == .below ? nil : side
+                        law = candidate
+                    })
+            ) {
+                ForEach(JointSide.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .accessibilityLabel("Joint faces")
         }
         if law != nil {
             DisclosureGroup("Connection properties") {

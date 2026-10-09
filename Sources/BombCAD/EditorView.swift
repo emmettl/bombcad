@@ -234,7 +234,7 @@ struct EditorView: View {
                         if model.selection == .support(row.reference) {
                             AnchorageEditor(
                                 title: "Support connection",
-                                law: supportLawBinding(row.reference))
+                                law: supportLawBinding(row.reference), turns: true)
                             if model.editedStructure?.anchorage(ofSupport: index) != nil,
                                 let area = model.supportBearingArea(at: index)
                             {

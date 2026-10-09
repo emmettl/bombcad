@@ -124,4 +124,76 @@ struct SupportConnectionTests {
         invalid.tensionPlateau = 0.03
         #expect(throws: ImportedMesh.ImportError.self) { try invalid.validate() }
     }
+
+    /// A 1 m block raised 2 m off the ground, tied to a support across the face on `side` by
+    /// `law`, hung under gravity for 0.3 s: its mean vertical displacement, and the bearing area.
+    private func hang(_ side: JointSide, law: Anchorage) throws -> (drop: Float, area: Float) {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        var body = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 2), max: SIMD3(1, 1, 3))], material: material(), elementSize: 0.25,
+            fixedBase: false)
+        var face = Box(min: SIMD3(-0.01, -0.01, 1.99), max: SIMD3(1.01, 1.01, 3.01))
+        face.min[side.axis] = side.direction < 0 ? face.min[side.axis] : face.max[side.axis] - 0.02
+        face.max[side.axis] = face.min[side.axis] + 0.02
+        body.supports = [face]
+        var law = law
+        law.side = side
+        body.supportAnchorages = [law]
+        let solver = try StructureSolver(device: device, model: body)
+        let area = solver.supportBearingArea(at: 0)
+        // Gravity comes on over 20 ms, so as not to strike the joint.
+        for n in 1...20 {
+            solver.gravity = 9.81 * Float(n) / 20
+            solver.advance(steps: max(1, Int((0.001 / Double(solver.criticalTimeStep)).rounded())))
+        }
+        solver.advance(steps: Int((0.28 / Double(solver.criticalTimeStep)).rounded()))
+        var drop: Float = 0
+        solver.mutateNodes { nodes in drop = nodes.reduce(0) { $0 + $1.uz } / Float(nodes.count) }
+        return (drop, area)
+    }
+
+    @Test("A block on a vertical joint hangs by its cohesion: it holds W below c A and slides down above")
+    func verticalJoint() throws {
+        let weight: Float = 2400 * 9.81  // per square metre of joint
+        for side in [JointSide.negativeX, .positiveY] {
+            // Without friction: the block's moment presses the joint's lower half, and friction
+            // there would hold it as well.
+            func law(_ cohesion: Float) -> Anchorage {
+                Anchorage(
+                    tensileStrength: 1e6, tensionOpening: 1e-3, cohesion: cohesion, cohesionSlip: 1e-3,
+                    friction: 0)
+            }
+            let holds = try hang(side, law: law(weight / 0.7))
+            let slides = try hang(side, law: law(weight / 1.3))
+            // Only the face on that side is tied: 1 m².
+            #expect(abs(holds.area - 1) < 1e-4)
+            #expect(holds.drop > -1e-3, "\(side): \(holds.drop)")
+            #expect(slides.drop < -0.1, "\(side): \(slides.drop)")
+        }
+        // With friction, the pressed half holds it: the moment W b / 2 bears on the lower third
+        // with about 0.75 W, whose friction adds 0.45 W to the cohesion.
+        let rough = Anchorage(
+            tensileStrength: 1e6, tensionOpening: 1e-3, cohesion: weight / 1.3, cohesionSlip: 1e-3,
+            friction: 0.6)
+        #expect(try hang(.negativeX, law: rough).drop > -1e-3)
+    }
+
+    @Test("A block under a soffit joint hangs by its tension: it holds W below f_t A and falls away above")
+    func soffitJoint() throws {
+        let weight: Float = 2400 * 9.81
+        func law(_ tension: Float) -> Anchorage {
+            Anchorage(
+                tensileStrength: tension, tensionOpening: 1e-3, cohesion: 0, cohesionSlip: 0, friction: 0)
+        }
+        let holds = try hang(.above, law: law(weight / 0.7))
+        let falls = try hang(.above, law: law(weight / 1.3))
+        #expect(abs(holds.area - 1) < 1e-4)
+        #expect(holds.drop > -1e-3, "\(holds.drop)")
+        #expect(falls.drop < -0.1, "\(falls.drop)")
+        // A footing stands only under a body, and the ground's connection is only under it.
+        var footed = Anchorage.resting()
+        footed.footing = Footing()
+        footed.side = .above
+        #expect(throws: ImportedMesh.ImportError.self) { try footed.validate() }
+    }
 }

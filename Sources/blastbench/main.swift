@@ -24,6 +24,7 @@ import simd
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
+//                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json] [--air thermal] [--afterburn]
@@ -1535,6 +1536,12 @@ func runAnchorage() throws {
             + (flag("air") ? "12 m long, loaded by the air" : "Kingery–Bulmash reflected pulse, no air")
             + "; \(format(Double(duration), 1)) s"
     )
+    if flag("panel") {
+        print(
+            "As a panel 3 m long resting on the ground between two columns, its vertical edges tied to them\n"
+                + "by each connection in turn; sway at the top's middle; ties, slip and moment are of all its joints."
+        )
+    }
     if !flag("air") {
         print(
             "The pulse loads the face alone. A freestanding wall's back face is loaded too, as the wave wraps\n"
@@ -1578,17 +1585,22 @@ func runAnchorage() throws {
                     margin: option("margin").flatMap { Float($0) } ?? 12,
                     domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
                     progress: flag("progress") ? { print("    " + $0) } : nil)
-                : try AnchorageStudy.run(
-                    device: device, base: base, mass: mass, standoff: standoff, duration: duration,
-                    elementSize: h,
-                    shells: shells, soil: soil)
+                : flag("panel")
+                    ? try AnchorageStudy.run(
+                        device: device, base: .resting, mass: mass, standoff: standoff, duration: duration,
+                        elementSize: h, edges: base)
+                    : try AnchorageStudy.run(
+                        device: device, base: base, mass: mass, standoff: standoff, duration: duration,
+                        elementSize: h,
+                        shells: shells, soil: soil)
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
                         + "\(format(Double(r.duration) * 1000, 1)) ms, "
                         + "\(format(Double(r.pressure * r.duration) / 2, 0)) Pa s")
                 print(
-                    pad("base", 22) + pad("peak sway", 11) + pad("final", 10) + pad("uplift", 10)
+                    pad(flag("panel") ? "edges" : "base", 22) + pad("peak sway", 11) + pad("final", 10)
+                        + pad("uplift", 10)
                         + pad("slip", 10) + pad("tie failed", 12) + pad("base M", 12) + pad("eroded", 8)
                         + pad("run time", 9))
                 header = true

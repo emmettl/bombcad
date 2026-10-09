@@ -453,7 +453,10 @@ public final class ShellSolver {
         var fibreLaws: [AnchorageParameters] = []
         if let stiffness = model.connectionStiffness {
             anchorStiffness = stiffness
-            let lists = mesh.baseFibres(across: Self.fibresAcross) { model.connection(at: $0) != nil }
+            // Shells and columns are tied only under them.
+            let lists = mesh.baseFibres(across: Self.fibresAcross) {
+                model.connection(at: $0).map { ($0.side ?? .below) == .below } ?? false
+            }
             for (n, list) in lists.enumerated() {
                 let area = list.reduce(0) { $0 + $1.z }
                 fibreGeometry += list.map { SIMD4($0.x, $0.y, $0.z, area) }

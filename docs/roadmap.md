@@ -1681,9 +1681,10 @@ horizontal bearing planes; they do not model a footing's finite contact extents.
 [structural editing](structural-editing.md#restraints). A base can now stand on a rigid footing
 of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
 for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
-impedance ([footings](structural-model.md#footings)). Still open: arbitrary joint orientations
-and connections between moving components other than a footing; embedment; and a measured
-case (FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
+impedance ([footings](structural-model.md#footings)); and support joints can face up or
+sideways for solid elements. Still open: joints at angles to the lattice, and on shells;
+connections between moving components other than a footing; embedment; and a measured case
+(FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.

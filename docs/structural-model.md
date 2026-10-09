@@ -137,10 +137,44 @@ the ground over its share of the base (a quarter of each element face it touches
 Support regions can also carry independent `Anchorage` laws (`supportAnchorages`, aligned
 with `supports`; null entries retain ideal clamping). Finite connections act on exposed lower
 solid faces or lower wall/vertical-column footprint points selected by each region. The law
-uses each point’s reference height as a stationary horizontal bearing plane. Regions select
-initial attachment points; they do not bound the bearing plane after sliding or separation.
-Side-facing joints, finite footing contact extents and connections between moving components
-are not represented. Ideal support clamps take precedence over finite laws; among finite
+uses each point’s reference position as a stationary bearing plane, horizontal unless the
+region's joint faces another way (below). Regions select initial attachment points; they do
+not bound the bearing plane after sliding or separation. A footing ([below](#footings)) is a
+connection to a moving component with a finite plan; other connections between moving
+components are not represented.
+
+**Joints facing other ways** (`Anchorage.side`, `JointSide`). A support region's joint can be
+over the body (a soffit it hangs from) or against one of its faces across x or y (a vertical
+joint, as of a panel cast between columns), as well as under it. It then ties the exposed
+lattice faces of solid elements that face that way, and the law acts in the joint's own frame:
+opening and tension across it, Mohr–Coulomb shear in its plane. The ground's connection and a
+footing are under the body only, and shells and beam columns are tied only under them. Checks
+(`SupportConnectionTests`): a 1 m block hung on a vertical joint facing −x or +y (1 m² tied,
+the face on that side only) holds its weight with a cohesion of 1/0.7 of it and slides down
+with 1/1.3 of it, without friction; with friction 0.6 the lower third, pressed by the block's
+moment with about 0.75 W, holds it at 1/1.3 too; and a block under a soffit joint holds with a
+tensile strength of 1/0.7 of its weight and falls away with 1/1.3.
+
+`blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
+ground between two columns that do not move, its vertical edges tied to them by each connection
+in turn, under the same pulse (sway at the top's middle):
+
+| Edges | 6 m | 10 m | 15 m | 25 m |
+|---|---|---|---|---|
+| clamped | 11.2 mm | 4.8 mm | 1.9 mm | 0.6 mm |
+| starter bars | 12.3 mm | 5.2 mm | 2.3 mm | 0.8 mm |
+| construction joint | 13.1 mm | 6.0 mm | 3.1 mm | 1.1 mm |
+| resting against them | 22.0 mm | 11.7 mm | 6.8 mm | 3.2 mm |
+
+A panel tied at its edges sways a tenth or less of what the freestanding strip does. A plain
+construction joint along its edges loses all its strength at 68% of the panel's tied points
+at 6 to 15 m (28% at 25 m; the points of its resting base, which have none to lose, count
+among them), and the panel then hangs on what is left. Even resting against the columns, without any tie,
+it stands at every distance where the freestanding wall goes over: as it bends between rigid
+columns it arches, pressing its edges into them (62 kN of friction along the edges of a 3 m
+panel at 10 m, with no ties at all), the arching action that holds infill walls wedged between
+stiff frames. Columns that give, or gaps at the edges, would take that away; the panel's
+columns here are rigid. About 3 s a run. Ideal support clamps take precedence over finite laws; among finite
 regions the last region wins. See [editing supports](structural-editing.md#restraints) for the
 app controls, active bearing-area diagnostics and save/undo behavior.
 

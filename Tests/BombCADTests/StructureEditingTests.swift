@@ -255,6 +255,33 @@ struct StructuralEditorWorkflowTests {
         }
     }
 
+    @Test(
+        "A support joint facing sideways saves as scene version 5, reopens and undoes; one with a footing is refused"
+    )
+    func turnedJointEditing() throws {
+        let model = try model()
+        model.addSupport()
+        model.recordEdit()
+        let before = model.settings.scenario
+        var law = Anchorage.constructionJoint
+        law.side = .negativeX
+        model.setSupportAnchorage(law, at: 0)
+        let turned = model.settings.scenario
+        #expect(turned.structure?.anchorage(ofSupport: 0)?.side == .negativeX)
+        let archive = try ProjectDocument(model: model).makeArchive()
+        let payload = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self, from: #require(archive.files["scene.json"]))
+        #expect(payload.encodingVersion == 5)
+        #expect(try ProjectDocument(archive: archive).scenario == turned)
+        model.undo()
+        #expect(model.settings.scenario == before)
+        model.redo()
+        #expect(model.settings.scenario == turned)
+        law.footing = Footing()
+        model.setSupportAnchorage(law, at: 0)
+        #expect(model.settings.scenario == turned)
+    }
+
     @Test("Ground restraint can stay source-managed; custom support and part reinforcement detach")
     func supportAndReinforcement() throws {
         let model = try model()

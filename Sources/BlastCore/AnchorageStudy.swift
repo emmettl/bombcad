@@ -110,15 +110,38 @@ public enum AnchorageStudy {
     /// Runs the wall on `base` for `duration` seconds after a charge of `mass` kg of TNT bursts
     /// on the ground `standoff` metres in front of it, meshed with solid elements of
     /// `elementSize`, or with shells of that size if `shells`.
+    ///
+    /// With `edges`, the wall is instead a panel as long as it is high, between two columns that
+    /// do not move, its vertical edges tied to them by `edges` across joints facing along it
+    /// (`JointSide`; clamped, starter bars, a construction joint, or resting against them), and
+    /// its top's sway is at mid-length. Solid elements only.
     public static func run(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 6, duration: Float = 0.5,
-        elementSize: Float = 0.0625, shells: Bool = false, soil: Soil? = nil
+        elementSize: Float = 0.0625, shells: Bool = false, soil: Soil? = nil, edges: BaseConnection? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
+        let length = edges == nil ? Self.length : height
         let wall = Box(min: .zero, max: SIMD3(thickness, length, height))
         var model = StructureModel(solids: [wall], elementSize: elementSize, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: barArea, depth: 0.04)
         model.baseAnchorage = anchorage(base, soil: soil)
+        if let edges {
+            guard !shells, edges.anchorage?.footing == nil, edges != .soil else {
+                throw ImportedMesh.ImportError.invalid(
+                    "A panel's edges are joints of solid elements, not soil.")
+            }
+            let slack = 0.01 * elementSize
+            for side in [JointSide.negativeY, .positiveY] {
+                let y: Float = side == .negativeY ? 0 : length
+                model.supports.append(
+                    Box(
+                        min: SIMD3(-slack, y - slack, -slack),
+                        max: SIMD3(thickness + slack, y + slack, height + slack)))
+                var law = edges.anchorage
+                law?.side = side
+                model.supportAnchorages.append(law)
+            }
+        }
         let solver: Body
         if shells {
             model.elementKind = .shell

@@ -2301,7 +2301,7 @@ struct AnchorLaw {
     float cohesionSlip;  // m of sliding over which cohesion is lost
     float friction;
     float bearing;       // Pa the ground bears before it yields and settles; 0: without limit
-    float unused[3];     // to 48 bytes, as `AnchorageParameters`
+    float normal[3];     // across the joint into the body, when it is not under it; zero: up
 };
 
 AnchorLaw anchorLaw(constant StructureUniforms &u) {
@@ -2387,7 +2387,21 @@ float3 anchorForce(device float4 *anchors, uint index, StructureNode node, const
     float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
     float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 force = -area * anchorTraction(state, settlement, float3(node.displacement), node.velocity.z, damper, law);
+    float3 normal = float3(law.normal[0], law.normal[1], law.normal[2]);
+    float3 force;
+    if (all(normal == 0.0f)) {
+        force = -area * anchorTraction(state, settlement, float3(node.displacement), node.velocity.z, damper, law);
+    } else {
+        // A joint facing another way: the law in its own frame, two directions along it and
+        // its normal across.
+        float3 along = normalize(cross(abs(normal.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f), normal));
+        float3 other = cross(normal, along);
+        float3 displacement = float3(node.displacement);
+        float3 local = anchorTraction(
+            state, settlement, float3(dot(displacement, along), dot(displacement, other), dot(displacement, normal)),
+            dot(float3(node.velocity), normal), damper, law);
+        force = -area * (local.x * along + local.y * other + local.z * normal);
+    }
     anchors[3 * index] = float4(area, state.xyz);
     anchors[3 * index + 1] = float4(force, state.w);
     anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);

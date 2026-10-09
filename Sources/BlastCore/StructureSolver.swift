@@ -579,6 +579,15 @@ public final class StructureSolver {
         if anchored { memset(anchorBuffer.contents(), 0, anchorBuffer.length) }
         let laws = anchorLawBuffer.contents().bindMemory(
             to: AnchorageParameters.self, capacity: max(nodeCount, 1))
+        let turned = model.hasTurnedJoints
+        // Whether `corner` of the element at `element` lies on its face on `side` with no element
+        // beyond it.
+        func exposed(_ side: JointSide, corner: Int, element: (Int, Int, Int)) -> Bool {
+            guard (corner >> side.axis) & 1 == (side.direction < 0 ? 0 : 1) else { return false }
+            var beyond = [element.0, element.1, element.2]
+            beyond[side.axis] += side.direction
+            return compactIndex(beyond[0], beyond[1], beyond[2]) == nil
+        }
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
             for n in 0..<elementCount {
@@ -590,9 +599,11 @@ public final class StructureSolver {
                     nodes[index].mass += cornerMass
                     let nk = k + ((corner >> 2) & 1)
                     let point = referencePosition(i + (corner & 1), j + ((corner >> 1) & 1), nk)
-                    // Tributary area on exposed lower faces; finite supports never pin interior nodes.
-                    if anchored && corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil),
-                        let law = model.connection(at: point)
+                    // Tributary area on exposed faces on the joint's side (lower faces, unless a
+                    // support's joint faces another way); finite supports never pin interior nodes.
+                    if anchored && (turned || corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil)),
+                        let law = model.connection(at: point),
+                        exposed(law.side ?? .below, corner: corner, element: (i, j, k))
                     {
                         anchors[3 * index].x += h * h / 4
                         laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
@@ -814,7 +825,9 @@ public final class StructureSolver {
                 let ground = footings?.footing(ofEntity: n).map {
                     footings!.displacement(ofPointAt: position, footing: $0).z
                 }
-                summary.maxOpening = max(summary.maxOpening, nodes[n].uz - (ground ?? 0))
+                let across = (anchorage.side ?? .below).normal
+                summary.maxOpening = max(
+                    summary.maxOpening, simd_dot(nodes[n].displacement, across) - (ground ?? 0))
                 area += state.x
                 centre += state.x * position
                 points.append((position, force))
