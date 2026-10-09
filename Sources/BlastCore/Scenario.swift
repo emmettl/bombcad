@@ -65,6 +65,8 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// them; the explicit standalone rigid-box driver can consume one definition.
     /// Optional so layouts predating rigid-object definitions continue to decode unchanged.
     public var rigidObjects: [RigidObjectDefinition]?
+    /// Experimental simplified cars, inert like `rigidObjects`. Optional for older layouts.
+    public var rigidCars: [RigidCarDefinition]?
     /// Import diagnostics persist with the layout: voxelisation cannot recover lost geometry.
     public var importNotes: [String]?
     public var importedModels: [ImportedModel]?
@@ -127,7 +129,7 @@ extension Scenario {
     public static let physicsInputEncoding = CodingUserInfoKey(rawValue: "dev.bombcad.physics-input")!
 
     private enum CodingKeys: String, CodingKey {
-        case name, domainSize, boxes, rigidObjects, importNotes, importedModels, charge,
+        case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
             additionalStructures, buildingEnvelopes
     }
@@ -159,6 +161,7 @@ extension Scenario {
             gauges: try c.decode([Gauge].self, forKey: .gauges),
             structure: try c.decodeIfPresent(StructureModel.self, forKey: .structure),
             rigidObjects: try c.decodeIfPresent([RigidObjectDefinition].self, forKey: .rigidObjects))
+        rigidCars = try c.decodeIfPresent([RigidCarDefinition].self, forKey: .rigidCars)
         importNotes = try c.decodeIfPresent([String].self, forKey: .importNotes)
         importedModels = try c.decodeIfPresent([ImportedModel].self, forKey: .importedModels)
         additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
@@ -208,6 +211,7 @@ extension Scenario {
         try c.encode(domainSize, forKey: .domainSize)
         try c.encode(boxes, forKey: .boxes)
         try c.encodeIfPresent(rigidObjects, forKey: .rigidObjects)
+        try c.encodeIfPresent(rigidCars, forKey: .rigidCars)
         try c.encodeIfPresent(importNotes, forKey: .importNotes)
         try c.encodeIfPresent(importedModels, forKey: .importedModels)
         try c.encode(charge, forKey: .charge)

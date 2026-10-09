@@ -230,7 +230,7 @@ convert into fresh reference mechanics state. Definitions validate on constructi
 older layouts without them still open. JSON and project-package round trips are tested. A
 nonzero centre-of-mass offset requires explicit inertia. These saved inputs are not yet used
 by the app renderer or blast solver. `swift run rigidboxdemo` generates a self-contained HTML
-replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping.
+replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping (now followed by five car cases).
 Playback and scrubbing use recorded Swift trajectories, with no second physics implementation
 in the viewer. This supplies milestone 1's standalone box demonstration.
 
@@ -1745,7 +1745,20 @@ extraction.
    all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
    contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
    rocking and tipping; distinguish these mechanical checks from validation against a blast
-   experiment. Crushing, wheel rotation and fragmentation are later extensions.
+   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done, not
+   coupled to the air: `RigidCarBody`, the box reference with the box as the shell and four
+   tyre contacts at the corners of a wheelbase × track rectangle, each with its own load and
+   Coulomb friction; the shell's corners catch a car that has tipped. `RigidCarDefinition`
+   saves the locked wheels and rigid suspension explicitly, as `Scenario.rigidCars` beside
+   rigid objects. Rigid suspension leaves four tyre loads indeterminate; the reported split is
+   the one equal tyre stiffnesses give, which leaves the motion unchanged. Tests check rest
+   loads against statics, the sliding threshold μW, load transfer of μWh/L under braking and
+   μWh/t sliding sideways, a sideways push holding below the static stability factor t/2h and
+   tipping above it, rocking back below the balance angle atan(t/2h) and tipping onto the side
+   above it, no energy gain, first-order timestep convergence and saved-file round trips.
+   These are mechanical checks; none is a validation against a blast experiment, and the
+   illustrative saloon's values are typical magnitudes, not a measured car. `swift run
+   rigidboxdemo` adds five car cases to the replay. Next: the car under the air, as the box.)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress

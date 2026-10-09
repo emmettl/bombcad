@@ -22,51 +22,80 @@ input[type=range]{width:100%;margin:16px 0}.readout{display:flex;flex-wrap:wrap;
 <button id="play" type="button">Play</button>
 <label>Playback <select id="rate"><option value="0.25">¼ speed</option><option value="0.5">½ speed</option><option value="1" selected>Real time</option></select></label>
 </div>
-<p id="description" class="description"></p><div class="note">● Centre of mass · Side view (metres)</div>
+<p id="description" class="description"></p><div class="note" id="legend">● Centre of mass · Side view (metres)</div>
 <svg id="scene" viewBox="0 0 840 330" role="img" aria-label="Side view of a rigid box on the ground">
 <title>Rigid box side view</title>
 <g id="grid"></g>
 <line x1="48" y1="275" x2="805" y2="275" stroke="var(--line)"/>
 <polygon id="box" fill="var(--box)" fill-opacity="0.28" stroke="var(--box)" stroke-width="2"/>
+<g id="tyres"></g>
 <circle id="com" r="4" fill="var(--dot)"/>
 
 
 </svg>
 <label for="time">Simulation time</label><input id="time" type="range" min="0" max="2" step="0.02" value="0">
 <div class="readout" id="readout" aria-live="off"></div>
-<p class="note">Side view along the y axis. All cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound. The model uses small positional corrections and needs timestep convergence checks. Cars, suspension, crushing and object-to-object collisions are not represented.</p>
+<p class="note"><span id="view-note">Side view along the y axis.</span> <span id="case-note">Box cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.</span> The model uses small positional corrections and needs timestep convergence checks. Suspension, rolling wheels, crushing and object-to-object collisions are not represented.</p>
 </main>
 <script>
 const recordings = __RECORDINGS__;
 const select = document.getElementById('case'), play = document.getElementById('play'), slider = document.getElementById('time'), rate = document.getElementById('rate');
 const polygon = document.getElementById('box'), com = document.getElementById('com'), description = document.getElementById('description'), readout = document.getElementById('readout');
-const grid = document.getElementById('grid');
+const grid = document.getElementById('grid'), tyres = document.getElementById('tyres'), caseNote = document.getElementById('case-note');
+const boxNote = caseNote.textContent;
+const carNote = 'Car cases: 1500 kg saloon, wheelbase 2.7 m, track 1.55 m, centre of mass 0.55 m up; all wheels locked, rigid suspension; static friction 0.8, sliding friction 0.7; no rebound. These are mechanical checks, not validation against a blast experiment.';
+if (recordings.some(r=>r.frames[0].tyres)) { document.title='Rigid box and car mechanics · BombCAD'; document.querySelector('h1').textContent='Rigid box and car mechanics'; }
 let current=0, time=0, playing=false, last=0, animation;
 const scene=document.getElementById('scene');
-let scale=100, bottom=275;
-const px=x=>48+(x+1.5)*scale, pz=z=>bottom-scale*z;
+let scale=100, bottom=275, left=-1.5;
+const front=()=>recordings[current].view==='front';
+const across=p=>front()?p[1]:p[0];
+const px=x=>48+(x-left)*scale, pz=z=>bottom-scale*z;
 function layout(){
- const width=scene.clientWidth||840, height=Math.max(260,(width-70)/6.5*2.5+70);
- scale=(width-70)/6.5;bottom=height-45;scene.setAttribute('viewBox',`0 0 ${width} ${height}`);
+ // Boxes keep their original frame, widened if a recording leaves it; cars fit their own.
+ const car=Boolean(recordings[current].frames[0].tyres);
+ let lo=car?Infinity:-1.5, hi=car?-Infinity:5, top=car?2:2.5;
+ for (const f of recordings[current].frames) for (const p of f.corners.concat(f.tyres||[])) { lo=Math.min(lo,across(p)-0.5); hi=Math.max(hi,across(p)+0.5); top=Math.max(top,p[2]+0.3); }
+ if(hi-lo<6.5){const middle=(hi+lo)/2;lo=middle-3.25;hi=middle+3.25}
+ const width=scene.clientWidth||840, height=Math.max(260,(width-70)/(hi-lo)*top+70);
+ left=lo;scale=(width-70)/(hi-lo);bottom=height-45;scene.setAttribute('viewBox',`0 0 ${width} ${height}`);
  grid.innerHTML='';
- for(let x=-1;x<=5;x++)grid.insertAdjacentHTML('beforeend',`<line x1="${px(x)}" y1="25" x2="${px(x)}" y2="${bottom}" stroke="var(--line)" opacity="0.15"/><text x="${px(x)}" y="${bottom+23}" text-anchor="middle">${x}</text>`);
- for(let z=0;z<=2;z++)grid.insertAdjacentHTML('beforeend',`<line x1="48" y1="${pz(z)}" x2="${width-20}" y2="${pz(z)}" stroke="var(--line)" opacity="${z===0?1:0.15}"/><text x="28" y="${pz(z)+5}" text-anchor="middle">${z}</text>`);
- grid.insertAdjacentHTML('beforeend',`<text x="${width-50}" y="${height-5}">x (m)</text><text x="12" y="16">z (m)</text>`);
+ const every=hi-lo>14?2:1;
+ for(let x=Math.ceil(lo/every)*every;x<=hi;x+=every)grid.insertAdjacentHTML('beforeend',`<line x1="${px(x)}" y1="25" x2="${px(x)}" y2="${bottom}" stroke="var(--line)" opacity="0.15"/><text x="${px(x)}" y="${bottom+23}" text-anchor="middle">${x}</text>`);
+ for(let z=0;z<=top;z++)grid.insertAdjacentHTML('beforeend',`<line x1="48" y1="${pz(z)}" x2="${width-20}" y2="${pz(z)}" stroke="var(--line)" opacity="${z===0?1:0.15}"/><text x="28" y="${pz(z)+5}" text-anchor="middle">${z}</text>`);
+ grid.insertAdjacentHTML('beforeend',`<text x="${width-50}" y="${height-5}">${front()?'y':'x'} (m)</text><text x="12" y="16">z (m)</text>`);
  const ground=scene.querySelector(':scope > line');ground.setAttribute('x2',width-20);ground.setAttribute('y1',bottom);ground.setAttribute('y2',bottom);
+ document.getElementById('view-note').textContent=front()?'Front view along the x axis.':'Side view along the y axis.';
+ document.getElementById('legend').textContent=`● Centre of mass${recordings[current].frames[0].tyres?' · Tyres shaded by load':''} · ${front()?'Front':'Side'} view (metres)`;
+ caseNote.textContent=recordings[current].frames[0].tyres?carNote:boxNote;
  draw();
 }
 recordings.forEach((r,i)=>{let option=document.createElement('option');option.value=i;option.textContent=r.name;select.append(option)});
 function draw(){
  const recording=recordings[current], frame=recording.frames[recording.frames.reduce((best,f,i)=>Math.abs(f.time-time)<Math.abs(recording.frames[best].time-time)?i:best,0)];
- polygon.setAttribute('points',[0,1,5,4].map(i=>`${px(frame.corners[i][0])},${pz(frame.corners[i][2])}`).join(' '));
- com.setAttribute('cx',px(frame.centreOfMass[0]));com.setAttribute('cy',pz(frame.centreOfMass[2]));
+ polygon.setAttribute('points',(front()?[0,2,6,4]:[0,1,5,4]).map(i=>`${px(across(frame.corners[i]))},${pz(frame.corners[i][2])}`).join(' '));
+ com.setAttribute('cx',px(across(frame.centreOfMass)));com.setAttribute('cy',pz(frame.centreOfMass[2]));
+ tyres.innerHTML='';
+ if (frame.tyres) {
+  // A 0.6 m wheel standing on each contact, along the body's own axes from the shell corners.
+  const c=frame.corners, unit=(a,b)=>{const d=[0,1,2].map(k=>c[b][k]-c[a][k]),n=Math.hypot(...d);return d.map(v=>v/n)};
+  const up=unit(0,4), side=front()?unit(0,2):unit(0,1);
+  frame.tyres.forEach((t,n)=>{
+   const load=frame.tyreLoads?frame.tyreLoads[n]:0, opacity=Math.min(0.85,0.1+load/6000);
+   const at=(s,u)=>[0,1,2].map(k=>t[k]+s*side[k]+u*up[k]);
+   const shape=front()?[[-0.1,0],[0.1,0],[0.1,0.6],[-0.1,0.6]]:Array.from({length:16},(_,k)=>[0.3*Math.sin(k*Math.PI/8),0.3-0.3*Math.cos(k*Math.PI/8)]);
+   tyres.insertAdjacentHTML('beforeend',`<polygon points="${shape.map(([s,u])=>{const p=at(s,u);return `${px(across(p))},${pz(p[2])}`}).join(' ')}" fill="var(--text)" fill-opacity="${opacity}" stroke="var(--text)" stroke-width="1.5"/>`);
+  });
+ }
  slider.max=recording.frames.at(-1).time;slider.step=Number(slider.max)/100;slider.value=frame.time;description.textContent=recording.description;
  const stamp=Number(slider.max)<0.1?`${(frame.time*1000).toFixed(2)} ms`:`${frame.time.toFixed(2)} s`;
- readout.textContent=`Time ${stamp}   ·   Position x ${frame.centreOfMass[0].toFixed(2)} m   ·   Speed ${frame.speed.toFixed(2)} m/s   ·   Total energy ${frame.energy.toFixed(2)} J`;
+ const energy=Math.abs(frame.energy)>=1000?`${(frame.energy/1000).toFixed(2)} kJ`:`${frame.energy.toFixed(2)} J`;
+ const loads=frame.tyreLoads?`   ·   Tyre loads FL ${frame.tyreLoads.map((l,n)=>`${['','FR ','RL ','RR '][n]}${(l/1000).toFixed(2)}`).join(' ')} kN`:'';
+ readout.textContent=`Time ${stamp}   ·   Position ${front()?'y':'x'} ${across(frame.centreOfMass).toFixed(2)} m   ·   Speed ${frame.speed.toFixed(2)} m/s   ·   Total energy ${energy}${loads}`;
  document.getElementById('scene').setAttribute('aria-label',`${recording.name}: time ${frame.time.toFixed(2)} seconds, speed ${frame.speed.toFixed(2)} metres per second`);
 }
 function stop(){playing=false;play.textContent='Play';if(animation!==undefined)cancelAnimationFrame(animation)}
-select.onchange=()=>{stop();current=Number(select.value);time=0;draw()};
+select.onchange=()=>{stop();current=Number(select.value);time=0;layout()};
 slider.oninput=()=>{stop();time=Number(slider.value);draw()};
 play.onclick=()=>{if(playing){stop();return}if(time>=Number(slider.max))time=0;playing=true;play.textContent='Pause';last=performance.now();animation=requestAnimationFrame(tick)};
 function tick(now){if(!playing)return;time=Math.min(Number(slider.max),time+Math.min((now-last)/1000,0.1)*Number(rate.value));last=now;draw();if(time>=Number(slider.max)){stop();return}animation=requestAnimationFrame(tick)}
