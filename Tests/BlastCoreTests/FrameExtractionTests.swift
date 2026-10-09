@@ -67,6 +67,41 @@ struct FrameExtractionTests {
         #expect(differing <= shape.fills.count / 100, "\(differing) of \(shape.fills.count)")
     }
 
+    @Test("The GPU's cells of the fireball, with its unburnt products, agree with the CPU's")
+    func cells() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let scenario = Scenario(
+            name: "Cells", domainSize: SIMD3(8, 8, 8), boxes: [Box(min: SIMD3(5, 2, 0), max: SIMD3(6, 6, 3))],
+            charge: Charge(mass: 1, position: SIMD3(3, 4, 1)))
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.125)
+        solver.configuration.afterburning = true
+        solver.configuration.airModel = .thermallyPerfect
+        try solver.load(scenario)
+        var spec = ThermalSpec()
+        spec.luminousTemperature = 1500
+        solver.frameRequest = FrameRequest(thermal: spec)
+        #expect(solver.frameRequest.fireballCells)
+        solver.advance(until: 0.002)
+        #expect(
+            solver.frameExtractor?.luminousCells(
+                luminous: 1500, time: solver.time, steps: solver.stepCount, count: solver.grid.cellCount)
+                != nil)
+        let gpu = try #require(solver.fireball(for: spec).cells)
+        solver.frameExtractor?.invalidate()
+        let cpu = try #require(solver.fireball(for: spec).cells)
+        #expect(gpu.voxelSize == 0.125 && gpu.first == cpu.first && gpu.counts == cpu.counts)
+        #expect(gpu.products != nil && cpu.products != nil)
+        #expect(abs(gpu.volume / solver.fireball(luminousTemperature: 1500).volume - 1) < 1e-6)
+        // Nearly all the same; the rest a kelvin or a cell's edge apart.
+        let differing = gpu.fills.indices.filter {
+            gpu.fills[$0] != cpu.fills[$0] || abs(Int(gpu.temperatures[$0]) - Int(cpu.temperatures[$0])) > 1
+                || abs(Float(gpu.products![$0]) - Float(cpu.products![$0])) > 0.01 * Float(cpu.products![$0])
+                    + 1e-3
+        }.count
+        #expect(differing <= gpu.fills.count / 100, "\(differing) of \(gpu.fills.count)")
+        #expect(gpu.products!.contains { $0 > 0 })
+    }
+
     @Test("The same run cuts out the same air, and asking makes no difference to the blast")
     func repeatable() throws {
         let first = try blast()

@@ -13,8 +13,18 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     public var groundSpacing: Float = 2
     /// Points on the fireball's surface sampled for each receiver's view of it.
     public var samples = 128
-    /// The fireball as its own shape, or as one equivalent sphere, for comparison.
-    public var fireball = FireballModel.shape
+    /// The fireball cell by cell as a partly transparent volume, or as its own opaque shape or
+    /// one equivalent sphere, each radiating at `emissivity`.
+    public var fireball = FireballModel.volume
+    /// The volume's grey absorption coefficient for the luminous gas itself, its water vapour and
+    /// carbon dioxide, in 1/m: an assumption (see docs/thermal-radiation.md).
+    public var absorption: Float = 0.1
+    /// The volume's soot, as a share of the mass of its unburnt detonation products, which only
+    /// afterburning keeps track of: 0.185 for TNT, whose products by the H₂O–CO rule keep half its
+    /// carbon as soot. Zero leaves the soot out.
+    public var sootYield: Float = 0.185
+    /// The volume's step through the gas, as a share of its voxels' edge.
+    public var marchStep: Float = 0.5
 
     public init() {}
 
@@ -31,12 +41,17 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
             try values.decodeIfPresent(Float.self, forKey: .groundSpacing) ?? defaults.groundSpacing
         samples = try values.decodeIfPresent(Int.self, forKey: .samples) ?? defaults.samples
         fireball = try values.decodeIfPresent(FireballModel.self, forKey: .fireball) ?? defaults.fireball
+        absorption = try values.decodeIfPresent(Float.self, forKey: .absorption) ?? defaults.absorption
+        sootYield = try values.decodeIfPresent(Float.self, forKey: .sootYield) ?? defaults.sootYield
+        marchStep = try values.decodeIfPresent(Float.self, forKey: .marchStep) ?? defaults.marchStep
     }
 
     public func validate() throws {
         guard luminousTemperature.isFinite, luminousTemperature > 300, emissivity.isFinite, emissivity > 0,
             emissivity <= 1, surfaceSpacing.isFinite, surfaceSpacing >= 0.05, groundSpacing.isFinite,
-            groundSpacing >= 0.05, (16...4096).contains(samples)
+            groundSpacing >= 0.05, (16...4096).contains(samples), absorption.isFinite,
+            (0...1000).contains(absorption), sootYield.isFinite, (0...1).contains(sootYield),
+            marchStep.isFinite, (0.05...2).contains(marchStep)
         else {
             throw CocoaError(
                 .coderInvalidValue,
@@ -61,10 +76,16 @@ public struct FireballFrame: Codable, Sendable, Equatable {
     /// The luminous gas's shape; nil where no block of it is half luminous, and in the frames a
     /// result keeps (see `withoutShape`).
     public var shape: FireballShape?
+    /// The luminous gas cell by cell, for the volume model; nil unless asked for, and in the
+    /// frames a result keeps.
+    public var cells: LuminousCells?
+    /// What the fireball radiated at this moment, in watts, as the volume model measured it
+    /// round it (see `ThermalExposure.radiatedPower`); nil where it was not.
+    public var radiatedPower: Double?
 
     public init(
         time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float,
-        shape: FireballShape? = nil
+        shape: FireballShape? = nil, cells: LuminousCells? = nil
     ) {
         self.time = time
         self.volume = volume
@@ -72,16 +93,25 @@ public struct FireballFrame: Codable, Sendable, Equatable {
         self.temperature = temperature
         self.hottest = hottest
         self.shape = shape
+        self.cells = cells
     }
 
     /// The equivalent sphere's radius.
     public var radius: Float { Float(cbrt(3 * volume / (4 * .pi))) }
 
-    /// The frame without its shape, as a result keeps it: tens of kilobytes a frame is too much
-    /// to save with a run.
+    /// The frame without its cells, as they travel apart from it.
+    public var withoutCells: FireballFrame {
+        var frame = self
+        frame.cells = nil
+        return frame
+    }
+
+    /// The frame without its shape or cells, as a result keeps it: tens of kilobytes to
+    /// megabytes a frame is too much to save with a run.
     public var withoutShape: FireballFrame {
         var frame = self
         frame.shape = nil
+        frame.cells = nil
         return frame
     }
 }
@@ -91,7 +121,12 @@ extension BlastSolver {
     /// blocks of two cells a side. Summed on the GPU if the batch that ended now was asked for it
     /// (see `frameRequest`); otherwise read from the state, spread across the CPU's cores, so call
     /// it only while no batch is in flight.
-    public func fireball(luminousTemperature: Float) -> FireballFrame {
+    public func fireball(for spec: ThermalSpec) -> FireballFrame {
+        fireball(luminousTemperature: spec.luminousTemperature, cells: spec.fireball == .volume)
+    }
+
+    /// As `fireball(for:)`; with `cells`, the luminous gas cell by cell too, for the volume model.
+    public func fireball(luminousTemperature: Float, cells: Bool = false) -> FireballFrame {
         let blocks =
             frameExtractor?.fireballBlocks(luminous: luminousTemperature, time: time, steps: stepCount)
             ?? cpuLuminousBlocks(luminousTemperature: luminousTemperature)
@@ -113,7 +148,8 @@ extension BlastSolver {
         return FireballFrame(
             time: time, volume: count * pow(Double(h), 3), centre: SIMD3<Float>(position / count) * h,
             temperature: Float(pow(fourth / count, 0.25)), hottest: hottest,
-            shape: FireballShape(blocks: blocks, grid: grid))
+            shape: FireballShape(blocks: blocks, grid: grid),
+            cells: cells ? luminousCells(blocks, luminousTemperature: luminousTemperature) : nil)
     }
 }
 
@@ -206,10 +242,11 @@ public struct ThermalSurfaceGrid: Sendable, Equatable {
 }
 
 /// The fireball's radiation on a scene's surfaces, frame by frame: the irradiance at each
-/// receiver, its peak and its time integral, the fluence. The fireball radiates from the surface
-/// of its equivalent sphere as a grey body, and each receiver sees what of that surface is above
-/// its own horizon, above the ground and not hidden behind a block or the structure's starting
-/// outline. The air between is taken as transparent.
+/// receiver, its peak and its time integral, the fluence. The fireball is a partly transparent
+/// volume whose cells emit and absorb (`ThermalMedium`), or an opaque grey body, its own shape or
+/// its equivalent sphere; each receiver sees what of it is above its own horizon, above the ground
+/// and not hidden behind a block or the structure's starting outline. The air between is taken as
+/// transparent.
 public struct ThermalExposure: Sendable {
     public static let stefanBoltzmann = 5.670_374e-8
 
@@ -222,6 +259,9 @@ public struct ThermalExposure: Sendable {
     public private(set) var frames: [FireballFrame] = []
     /// What stands between the receivers and the fireball.
     let visibility: any ThermalVisibility
+    /// The volume model's march through the fireball, and the receivers as it takes them.
+    let march: (any ThermalMarch)?
+    let receiverSet: ThermalReceiverSet
     /// The charge's energy, in joules, to set the radiated energy against.
     let chargeEnergy: Double
     /// Points spread evenly over a cone, each as the fraction of the way to its rim in the
@@ -231,11 +271,29 @@ public struct ThermalExposure: Sendable {
 
     /// `visibility` tests what blocks the receivers' view, by default `defaultVisibility`'s.
     public init(spec: ThermalSpec, scene: FragmentScene, visibility: (any ThermalVisibility)? = nil) {
+        self.init(spec: spec, scene: scene, visibility: visibility, march: nil)
+    }
+
+    /// `march` follows rays through the volume, by default `defaultMarch`'s, sharing the
+    /// visibility's acceleration structure where it has one.
+    init(
+        spec: ThermalSpec, scene: FragmentScene, visibility: (any ThermalVisibility)?,
+        march: (any ThermalMarch)?
+    ) {
         self.spec = spec
         receivers = Self.receivers(scene: scene, spec: spec)
-        self.visibility = visibility ?? Self.defaultVisibility(occluders: Self.occluders(scene))
+        let occluders = Self.occluders(scene)
+        let visibility = visibility ?? Self.defaultVisibility(occluders: occluders)
+        self.visibility = visibility
         chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
+        receiverSet = ThermalReceiverSet(receivers)
+        self.march =
+            spec.fireball != .volume
+            ? nil
+            : march
+                ?? Self.defaultMarch(
+                    occluders: occluders, spiral: cone, visibility: visibility as? MetalThermalVisibility)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
         fluence = [Double](repeating: 0, count: receivers.count)
     }
@@ -243,19 +301,36 @@ public struct ThermalExposure: Sendable {
     /// Adds the fireball at the next frame, integrating the irradiance since the last by the
     /// trapezium rule.
     public mutating func add(_ frame: FireballFrame) {
-        let now = irradiance(frame)
+        let medium = self.medium(frame)
+        let now =
+            medium.map { march!.irradiance($0, receivers: receiverSet, occluded: true) } ?? irradiance(frame)
         if let last = frames.last, let before = lastIrradiance {
             let step = frame.time - last.time
             for n in receivers.indices { fluence[n] += 0.5 * Double(before[n] + now[n]) * step }
         }
         for n in receivers.indices { peakIrradiance[n] = max(peakIrradiance[n], now[n]) }
-        frames.append(frame.withoutShape)
+        var kept = frame.withoutShape
+        // Measured only for the volume; the opaque models keep their equivalent sphere's.
+        kept.radiatedPower = medium.map { radiatedPower(frame, medium: $0) }
+        frames.append(kept)
         lastIrradiance = now
+    }
+
+    /// The fireball of `frame` as the volume model marches it, if that is the model and the frame
+    /// has its cells.
+    func medium(_ frame: FireballFrame) -> ThermalMedium? {
+        guard spec.fireball == .volume, march != nil, frame.volume > 0, let cells = frame.cells else {
+            return nil
+        }
+        return ThermalMedium(cells, spec: spec)
     }
 
     /// The irradiance at every receiver from `frame`'s fireball: every receiver's rays toward it,
     /// gathered across the CPU's cores, tested together, then summed.
     public func irradiance(_ frame: FireballFrame) -> [Float] {
+        if let medium = medium(frame), let march {
+            return march.irradiance(medium, receivers: receiverSet, occluded: true)
+        }
         var result = [Float](repeating: 0, count: receivers.count)
         guard frame.volume > 0, frame.temperature > 0 else { return result }
         let power = Float(Double(spec.emissivity) * Self.stefanBoltzmann * pow(Double(frame.temperature), 4))
@@ -345,7 +420,8 @@ public struct ThermalExposure: Sendable {
         from receiver: ThermalReceiver, _ frame: FireballFrame, power: Float, rays: inout [ThermalRay],
         weights: inout [Float]
     ) -> View {
-        if spec.fireball == .shape, let shape = frame.shape {
+        // The volume falls back on the shape where a frame has no cells.
+        if spec.fireball != .sphere, let shape = frame.shape {
             return view(from: receiver, shape, rays: &rays, weights: &weights)
         }
         let radius = frame.radius
@@ -513,12 +589,15 @@ public struct ThermalResult: Codable, Sendable, Equatable {
         self.chargeEnergy = chargeEnergy
     }
 
-    /// What the fireball radiated through the run, in joules: its emissive power over the part of
-    /// its sphere above the ground, by the trapezium rule. Nothing takes this energy out of the
-    /// gas, so a share of the charge's energy beyond what fireballs are seen to radiate shows the
-    /// emissivity is too high.
+    /// What the fireball radiated through the run, in joules, by the trapezium rule: as each
+    /// frame measured it (`FireballFrame.radiatedPower`), or where a frame did not, from its
+    /// equivalent sphere, its emissive power over the part above the ground. Nothing takes this
+    /// energy out of the gas, so a share of the charge's energy beyond what fireballs are seen to
+    /// radiate shows the emissivity, or the volume's absorption, is too high.
     public var radiatedEnergy: Double {
+        let measured = isRadiationMeasured
         let power = fireball.map { frame -> Double in
+            if measured { return frame.radiatedPower ?? 0 }
             guard frame.volume > 0 else { return 0 }
             let r = Double(frame.radius)
             // The sphere's area above z = 0: a cap of height r + z, between none and all of it.
@@ -533,6 +612,12 @@ public struct ThermalResult: Codable, Sendable, Equatable {
         }
     }
 
+    /// Whether every frame with a fireball measured what it radiated.
+    public var isRadiationMeasured: Bool {
+        fireball.contains { $0.radiatedPower != nil }
+            && fireball.allSatisfy { $0.radiatedPower != nil || $0.volume == 0 }
+    }
+
     /// The largest fireball, and each surface's highest peak irradiance and fluence.
     public var summary: [String] {
         var lines: [String] = []
@@ -544,10 +629,18 @@ public struct ThermalResult: Codable, Sendable, Equatable {
                         "Fireball: largest %.1f m across at %.1f ms, %.0f K (hottest gas %.0f K); luminous until %.1f ms",
                     2 * largest.radius, largest.time * 1000, largest.temperature, largest.hottest,
                     lasting * 1000))
+            let how =
+                spec.fireball == .volume
+                ? (isRadiationMeasured
+                    ? String(format: "from its cells, absorbing %g/m", spec.absorption)
+                        + (spec.sootYield > 0
+                            ? String(format: " and soot %g of its products", spec.sootYield) : "")
+                    : "as its equivalent sphere, not measured from its cells")
+                : String(format: "at emissivity %.2f", spec.emissivity)
             lines.append(
                 String(
-                    format: "  radiated %.1f MJ, %.0f%% of the charge's energy, at emissivity %.2f",
-                    radiatedEnergy / 1e6, 100 * radiatedEnergy / max(chargeEnergy, 1), spec.emissivity))
+                    format: "  radiated %.1f MJ, %.1f%% of the charge's energy, %@",
+                    radiatedEnergy / 1e6, 100 * radiatedEnergy / max(chargeEnergy, 1), how))
         } else {
             lines.append("Fireball: no gas reached the luminous temperature")
         }

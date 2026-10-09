@@ -1673,7 +1673,7 @@ final class SimulationModel {
             solver.time >= nextFireballTime - 1e-9 || solver.time >= duration - 1e-9,
             solver.time > (fireballFrames.last?.time ?? -1) + 1e-9
         else { return }
-        let frame = solver.fireball(luminousTemperature: spec.luminousTemperature)
+        let frame = solver.fireball(for: spec)
         fireballFrames.append(frame.withoutShape)
         thermal.send(.fireball(frame))
         nextFireballTime = (floor(solver.time / 0.001 + 1e-6) + 1) * 0.001

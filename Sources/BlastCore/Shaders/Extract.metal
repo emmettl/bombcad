@@ -114,3 +114,28 @@ kernel void extractFireballBlocks(
     blocks[2 * slot] = uint4(index, as_type<uint>(cells), as_type<uint>(fourth), as_type<uint>(hottest));
     blocks[2 * slot + 1] = as_type<uint4>(float4(position, air));
 }
+
+// Every cell's luminous gas, for the fireball as a volume: in the low 16 bits its temperature if
+// it is air at least `luminous` kelvin hot, rounded to the kelvin, and otherwise zero; in the high
+// 16, the density of its unburnt detonation products in kg/m³ as a half float, zero without
+// afterburning or where it is not luminous. The host reads back only the luminous blocks' box.
+kernel void extractLuminousCells(
+    device const StepControl &control [[buffer(0)]],
+    device const Cell *state [[buffer(1)]],
+    device const uchar *mask [[buffer(2)]],
+    device const float2 *species [[buffer(3)]],
+    device uint *cells [[buffer(4)]],
+    constant float &luminous [[buffer(5)]],
+    constant uint &hasSpecies [[buffer(6)]],
+    constant SolverUniforms &u [[buffer(7)]],
+    uint3 id [[thread_position_in_grid]])
+{
+    if (control.stopped != 2 || id.x >= u.nx || id.y >= u.ny || id.z >= u.nz) {
+        return;
+    }
+    uint index = id.x + u.nx * (id.y + u.ny * id.z);
+    float t = mask[index] != 0 ? 0.0f : luminousTemperatureOf(state[index], luminous, u);
+    uint kelvin = t == 0.0f ? 0u : clamp(uint(rint(t)), 1u, 65535u);
+    float products = kelvin != 0u && hasSpecies != 0u ? max(species[index].x, 0.0f) : 0.0f;
+    cells[index] = kelvin | (uint(as_type<ushort>(half(min(products, 65504.0f)))) << 16);
+}

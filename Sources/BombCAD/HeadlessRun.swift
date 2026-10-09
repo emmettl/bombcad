@@ -453,7 +453,7 @@ enum HeadlessRun {
                     solver.frameRequest = FrameRequest()
                     return
                 }
-                var request = FrameRequest(fireball: options.thermal?.luminousTemperature)
+                var request = FrameRequest(thermal: options.thermal)
                 if let consumer = fragmentFeed?.consumer {
                     let frame = Int(index)
                     let basis = consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
@@ -509,7 +509,7 @@ enum HeadlessRun {
                                 .air(solver.airSlice(region: region.box, stride: region.stride)))
                         case .thermal(let spec, _, _):
                             feed.consumer.send(
-                                .fireball(solver.fireball(luminousTemperature: spec.luminousTemperature)))
+                                .fireball(solver.fireball(for: spec)))
                         case .groundShock(let spec, _):
                             let region = GroundShockConsumer(spec: spec).region(
                                 cellSize: solver.grid.cellSize)

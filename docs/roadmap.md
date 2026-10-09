@@ -201,15 +201,15 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
-   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac, on
-   the GPU's ray-tracing hardware; the fireball's [rise and
+   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
+   its luminous cells marched on the GPU as a partly transparent volume; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
    their first two minutes, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
    manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: following the fireball's shape on the GPU too, the cloud's growth once
+   drawn in the app. Next: taking the radiated heat out of the gas, the cloud's growth once
    it stops rising, and a layered soil column and a comparison with measured
    ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
@@ -1869,7 +1869,10 @@ times the preceding limited reference in these runs (including shared-machine lo
 It remains opt-in through `--conserved-quadratic`. Ordinary transport defaults are retained;
 improved initial traces do not establish superior evolved loads in every orientation.
 `Scripts/check-grouped-gas-reference.py --release` provides optimized verification of the
-complete reference suite. All 126 CPU reference tests in 25 suites pass on the final
+complete reference suite. The three conserved refinement comparisons (stationary shock on
+0.1/0.05 m, density advection on 0.2/0.1 m, moving piston on 0.2/0.1 m) run only in such
+optimized builds: they take seconds to minutes there, but in a debug `swift test` the piston
+alone needs hours. Debug runs instead check every budget on one coarse grid. All 126 CPU reference tests in 25 suites pass on the final
 source, including moving-shock work, exact density advection and the preceding default
 transport regressions; the repository release CLI also builds successfully. The reports
 and summary commands in the README reproduce

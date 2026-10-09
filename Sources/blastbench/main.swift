@@ -30,9 +30,12 @@ import simd
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
-//                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
+//                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
+//                        [--thermal-variants a.json,b.json]]
+//                       [--air thermal] [--afterburn]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
-//   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
+//                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -676,23 +679,41 @@ func runSnapshot() throws {
         try spec.validate()
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
-    // With --thermal-compare, the same frames reckoned with the other fireball model too, and
+    // With --thermal-compare, the same frames reckoned with another fireball model too (the
+    // shape against the volume, the sphere against the shape, or --thermal-compare-with's), and
     // each timed.
     var other = thermal.map { exposure in
         var spec = exposure.spec
-        spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        if let model = option("thermal-compare-with").flatMap(FireballModel.init(rawValue:)) {
+            spec.fireball = model
+        } else {
+            spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        }
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
     if !flag("thermal-compare") { other = nil }
+    // With --thermal-variants a.json,b.json, the same frames reckoned under each description too.
+    var variants = try (option("thermal-variants")?.split(separator: ",") ?? []).map { path in
+        let spec = try JSONDecoder().decode(
+            ThermalSpec.self, from: Data(contentsOf: URL(fileURLWithPath: String(path))))
+        try spec.validate()
+        return (name: String(path), exposure: ThermalExposure(spec: spec, scene: FragmentScene(scenario)))
+    }
     var thermalSeconds = (0.0, 0.0)
     var fireballSeconds = 0.0
+    // What the compared model's fireball radiated, measured round it as the volume's is.
+    var otherRadiated: [(time: Double, power: Double)] = []
     var largestShape: FireballShape?
+    var largestCells: LuminousCells?
     func feedThermal() {
         guard var exposure = thermal else { return }
         let extracting = ContinuousClock.now
-        let frame = solver.fireball(luminousTemperature: exposure.spec.luminousTemperature)
+        let frame = solver.fireball(for: exposure.spec)
         fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
         if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
+        if let cells = frame.cells, cells.fills.count > largestCells?.fills.count ?? 0 {
+            largestCells = cells
+        }
         var started = ContinuousClock.now
         exposure.add(frame)
         thermalSeconds.0 += (ContinuousClock.now - started) / .seconds(1)
@@ -701,15 +722,17 @@ func runSnapshot() throws {
             started = ContinuousClock.now
             compared.add(frame)
             thermalSeconds.1 += (ContinuousClock.now - started) / .seconds(1)
+            otherRadiated.append((frame.time, compared.radiatedPower(frame)))
             other = compared
         }
+        for n in variants.indices { variants[n].exposure.add(frame) }
     }
     feedFragments()
     feedGround()
     feedThermal()
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
-    if let thermal { solver.frameRequest.fireball = thermal.spec.luminousTemperature }
+    if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -757,6 +780,21 @@ func runSnapshot() throws {
                 shades: values.map(ThermalQuantity.shade)))
         print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
+        // What it had radiated by each of a few moments.
+        let result = thermal.result
+        if result.isRadiationMeasured {
+            var line = "  radiated by"
+            for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
+                var sum = 0.0
+                for (a, b) in zip(result.fireball, result.fireball.dropFirst()) where b.time <= moment + 1e-9
+                {
+                    sum += 0.5 * ((a.radiatedPower ?? 0) + (b.radiatedPower ?? 0)) * (b.time - a.time)
+                }
+                line += String(
+                    format: " %.0f ms: %.1f%%;", moment * 1000, 100 * sum / max(result.chargeEnergy, 1))
+            }
+            print(line)
+        }
         if let other {
             print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
             for line in other.result.summary { print(line) }
@@ -767,8 +805,26 @@ func runSnapshot() throws {
                     thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
                     other.spec.fireball.rawValue,
                     thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
-            // Each receiver's fluence by the shape against the sphere's, by surface.
-            let (shape, sphere) = thermal.spec.fireball == .shape ? (thermal, other) : (other, thermal)
+            for exposure in [thermal, other] {
+                if let gpu = exposure.marchGPUSeconds {
+                    print(
+                        String(
+                            format: "  The %@'s march: %.2f ms of GPU time a frame",
+                            exposure.spec.fireball.rawValue,
+                            1000 * gpu / Double(max(exposure.frames.count, 1))))
+                }
+            }
+            let measured = zip(otherRadiated, otherRadiated.dropFirst()).reduce(0.0) {
+                $0 + 0.5 * ($1.0.power + $1.1.power) * ($1.1.time - $1.0.time)
+            }
+            print(
+                String(
+                    format:
+                        "As its %@, measured round it as the volume is: radiated %.1f MJ, %.1f%% of the charge's energy",
+                    other.spec.fireball.rawValue, measured / 1e6,
+                    100 * measured / max(other.result.chargeEnergy, 1)))
+            // Each receiver's fluence by the first model against the second, by surface.
+            let (shape, sphere) = (thermal, other)
             var surfaces: [String] = []
             for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
                 surfaces.append(receiver.surface)
@@ -785,10 +841,29 @@ func runSnapshot() throws {
                 print(
                     String(
                         format:
-                            "  %@: mean fluence %.1f kJ/m² as the shape, %.1f as the sphere (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d shape, %d sphere",
-                        surface, a / Double(indices.count) / 1000, b / Double(indices.count) / 1000,
+                            "  %@: mean fluence %.1f kJ/m² as the %@, %.1f as the %@ (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d, %d",
+                        surface, a / Double(indices.count) / 1000, shape.spec.fireball.rawValue,
+                        b / Double(indices.count) / 1000, sphere.spec.fireball.rawValue,
                         100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
             }
+        }
+        for variant in variants {
+            print("The same frames, as \(variant.name) describes them:")
+            for line in variant.exposure.result.summary { print(line) }
+        }
+        if let largestCells {
+            print(
+                String(
+                    format: "Largest cells: %d by %d by %d voxels %.3f m a side, %.2f MB a frame",
+                    largestCells.counts.x,
+                    largestCells.counts.y, largestCells.counts.z, largestCells.voxelSize,
+                    Double(largestCells.binary.count) / 1e6))
+        }
+        let unburnt = solver.speciesTotals()
+        if unburnt.fuel > 0 {
+            print(
+                String(
+                    format: "Unburnt products left: %.1f kg of %.1f kg", unburnt.fuel, scenario.charge.mass))
         }
         if let largestShape {
             print(
@@ -1874,14 +1949,41 @@ func runThermal() throws {
     var spec = ThermalSpec()
     if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
     try spec.validate()
+    if let model = option("model").flatMap(FireballModel.init(rawValue:)) { spec.fireball = model }
+    if let absorption = option("absorption").flatMap({ Float($0) }) { spec.absorption = absorption }
+    try spec.validate()
     let count = option("frames").flatMap { Int($0) } ?? 60
     let frames = (0..<count).map { n -> FireballFrame in
         let s = Float(n) / Float(max(count - 1, 1))
         let radius = 0.5 + 7 * s
-        return FireballFrame(
+        let centre = scenario.charge.position + SIMD3(0, 0, radius * 0.5)
+        var frame = FireballFrame(
             time: Double(n) * 0.001, volume: 4 / 3 * Double.pi * pow(Double(radius), 3),
-            centre: scenario.charge.position + SIMD3(0, 0, radius * 0.5), temperature: 2200 - 400 * s,
-            hottest: 2500)
+            centre: centre, temperature: 2200 - 400 * s, hottest: 2500)
+        guard spec.fireball == .volume else { return frame }
+        // For the volume, the sphere in cells 0.25 m a side, above the ground, 2,500 K at its
+        // centre and cooler outwards.
+        let size: Float = 0.25
+        let low = simd_max(centre - radius - size, SIMD3(-1, -1, 0))
+        let first = SIMD3<Int32>((low / size).rounded(.down))
+        let last = SIMD3<Int32>(((centre + radius + size) / size).rounded(.up))
+        let counts = last &- first
+        var fills: [UInt8] = []
+        var temperatures: [UInt16] = []
+        for k in 0..<counts.z {
+            for j in 0..<counts.y {
+                for i in 0..<counts.x {
+                    let x = (SIMD3<Float>(first &+ SIMD3(i, j, k)) + 0.5) * size
+                    let d = simd_distance(x, centre)
+                    fills.append(d <= radius ? 255 : 0)
+                    temperatures.append(d <= radius ? UInt16(2500 - 600 * s * d / radius) : 0)
+                }
+            }
+        }
+        frame.cells = LuminousCells(
+            voxelSize: size, first: first, counts: counts, fills: fills, temperatures: temperatures,
+            products: nil)
+        return frame
     }
     /// Times the visibility test within each frame.
     final class Timed: ThermalVisibility, @unchecked Sendable {
@@ -1901,6 +2003,30 @@ func runThermal() throws {
     let occluders = ThermalExposure.occluders(scene)
     let metal = MetalThermalVisibility(occluders: occluders)
     print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
+    if spec.fireball == .volume {
+        // The march on the GPU, then on the CPU; each frame's irradiance and what it radiated.
+        var answers: [[Float]] = []
+        for name in ["GPU", "CPU"] {
+            if name == "CPU" { setenv("BOMBCAD_THERMAL_VISIBILITY", "cpu", 1) }
+            var exposure = ThermalExposure(spec: spec, scene: scene)
+            let started = ContinuousClock.now
+            for frame in frames { exposure.add(frame) }
+            let total = (ContinuousClock.now - started) / .seconds(1)
+            answers.append(exposure.peakIrradiance)
+            print(
+                "\(name): \(exposure.receivers.count) receivers, \(format(total / Double(count) * 1000, 1)) ms a frame"
+                    + (exposure.marchGPUSeconds.map {
+                        ", \(format($0 / Double(count) * 1000, 2)) ms of it the GPU's"
+                    } ?? ""))
+        }
+        unsetenv("BOMBCAD_THERMAL_VISIBILITY")
+        let largest = answers[1].max() ?? 0
+        let worst = zip(answers[0], answers[1]).map { abs($0 - $1) }.max() ?? 0
+        print(
+            "Largest difference in peak irradiance: \(format(Double(worst / max(largest, 1)) * 100, 3))% of the highest"
+        )
+        return
+    }
     var answers: [[Float]] = []
     for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
         + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
