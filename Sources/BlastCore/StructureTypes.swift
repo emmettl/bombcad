@@ -524,6 +524,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether shear that a crack's interlock and dowels cannot hold slides it for good, as a
     /// masonry joint slides, instead of springing back when the load comes off.
     public var crackSlip = true
+    /// With `crackSlip`, whether what a crack has slid by still counts in the strain whose
+    /// principal values open cracks, as it always has: sliding along a crack then also opens it,
+    /// and the plane across the slide. Off, the slide is the crack's alone, as a second crack's
+    /// opening is. Solid elements only.
+    public var slipWidensCracks = true
     /// Bars that slip in their concrete, by the Model Code's bond-slip law (see `BondSlip`); nil
     /// bonds them perfectly. Solid elements' bars along the lattice axes only.
     public var bondSlip: BondSlip?

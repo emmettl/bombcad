@@ -812,30 +812,46 @@ public final class StructureSolver {
     /// there is no element (`x` where one has been removed). A diagnostic.
     public func crackMap(row j: Int, threshold: Float = 1e-3) -> [String] {
         (0..<ez).reversed().map { k in
-            String(
-                (0..<ex).map { i -> Character in
-                    guard let n = compactIndex(i, j, k) else { return " " }
-                    if flag(i, j, k) != .active && flag(i, j, k) != .bare { return "x" }
-                    let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
-                    let history = SIMD3(
-                        (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) })
-                    let widest =
-                        history.x >= history.y && history.x >= history.z
-                        ? 0 : (history.y >= history.z ? 1 : 2)
-                    guard history[widest] > threshold else { return "." }
-                    let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
-                    var axis = SIMD3<Float>.zero
-                    axis[widest] = 1
-                    let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
-                    let normal =
-                        simd_length(rotation.vector) > 0.5 ? simd_normalize(rotation).act(axis) : axis
-                    let angle = atan2(normal.z, normal.x) * 180 / .pi  // of the normal from x
-                    let folded = angle < -90 ? angle + 180 : (angle > 90 ? angle - 180 : angle)
-                    if abs(folded) < 22.5 { return "|" }
-                    if abs(folded) > 67.5 { return "-" }
-                    return folded > 0 ? "\\" : "/"
-                })
+            String((0..<ex).map { i in crackSymbol(i, j, k, threshold: threshold, plan: false) })
         }
+    }
+
+    /// The same for the layer of elements `k`, in plan, the last row along y first: the crack
+    /// plane's direction in the x–y plane (`|` across x, `-` across y). What a photograph of a
+    /// slab's face shows.
+    public func crackPlan(layer k: Int, threshold: Float = 1e-3) -> [String] {
+        (0..<ey).reversed().map { j in
+            String((0..<ex).map { i in crackSymbol(i, j, k, threshold: threshold, plan: true) })
+        }
+    }
+
+    /// The largest crack opening (strain) of element (i, j, k), zero where there is none.
+    public func crackOpening(_ i: Int, _ j: Int, _ k: Int) -> Float {
+        guard let n = compactIndex(i, j, k), flag(i, j, k) == .active || flag(i, j, k) == .bare else {
+            return 0
+        }
+        let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+        return (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) }.max() ?? 0
+    }
+
+    private func crackSymbol(_ i: Int, _ j: Int, _ k: Int, threshold: Float, plan: Bool) -> Character {
+        guard let n = compactIndex(i, j, k) else { return " " }
+        if flag(i, j, k) != .active && flag(i, j, k) != .bare { return "x" }
+        let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+        let history = SIMD3((0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) })
+        let widest = history.x >= history.y && history.x >= history.z ? 0 : (history.y >= history.z ? 1 : 2)
+        guard history[widest] > threshold else { return "." }
+        let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
+        var axis = SIMD3<Float>.zero
+        axis[widest] = 1
+        let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
+        let normal = simd_length(rotation.vector) > 0.5 ? simd_normalize(rotation).act(axis) : axis
+        // The angle of the normal from x, in the plane drawn.
+        let angle = atan2(plan ? normal.y : normal.z, normal.x) * 180 / .pi
+        let folded = angle < -90 ? angle + 180 : (angle > 90 ? angle - 180 : angle)
+        if abs(folded) < 22.5 { return "|" }
+        if abs(folded) > 67.5 { return "-" }
+        return folded > 0 ? "\\" : "/"
     }
 
     /// Total linear momentum of the body in kg m/s.
@@ -1159,7 +1175,7 @@ public final class StructureSolver {
         uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
-        uniforms.crackSlip = model.crackSlip ? 1 : 0
+        uniforms.crackSlip = model.crackSlip ? (model.slipWidensCracks ? 1 : 2) : 0
         uniforms.barAxes = barAxes
         uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
         uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0

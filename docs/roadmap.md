@@ -107,7 +107,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    the cap is 3% to 24% above what an unpressed crack carried, not five times. Bond lost where bars yield (now part of slip) spreads yield
    along them but leaves the slab at 88 mm; its stiffness with slip comes from cracks that keep
    to one element each, 90 mm apart over a shorter zone (98 mm if spread over the crack spacing).
-   A direct test of interlock across one crack, and the test slab's crack pattern, come next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   Driven along Walraven and Reinhardt's measured crack paths, a crack carries its cap alone, a
+   twentieth to a fifth of what theirs carried pressed shut by their restraint, which the model
+   cannot do; and with slip the slab cracks as a photograph of the test shows, ten cracks over
+   600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
@@ -1686,6 +1689,9 @@ two collapsing over several seconds.
   switched off by default; the rest were removed. The lesson: trace a failing element before
   changing the model.
 
+- **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
+  read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
+  depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.
 - **Fixed design factors for strain rate** (UFC 3-340-02): deliberately conservative; they
   predict 121 mm for the slab test against 108 mm measured. The strain-rate laws are the
   default; the factors remain available as an option.

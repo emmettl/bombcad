@@ -15,11 +15,12 @@ import simd
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
-//               [--bond pullout|splitting|confined] [--crack-shear]   (also on beam and slab)
+//               [--bond pullout|splitting|confined] [--crack-shear] [--slide-apart]   (also on beam and slab)
+//   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
-//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map]
+//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
@@ -163,6 +164,8 @@ func applyRateOptions(_ model: inout StructureModel) {
     if flag("element-bar-rate") { model.barRateAlongBars = false }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
+    // `--slide-apart`: what a crack has slid by no longer counts as opening it.
+    if flag("slide-apart") { model.slipWidensCracks = false }
     applyRateOptions(&model.material)
     model.solidMaterial = model.solidMaterial.map {
         $0.map {
@@ -832,7 +835,8 @@ func runBeam() throws {
             device: device, elementsThroughDepth: layers,
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
             unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
-            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear")
+            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear"),
+            slipWidensCracks: !flag("slide-apart")
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
@@ -1256,7 +1260,8 @@ func runShearBeam() throws {
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
             crackShearStiffness: flag("crack-shear"),
-            mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
+            mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 },
+            slipWidensCracks: !flag("slide-apart")
         ) { material in
             if let dowel { material.dowelFactor = dowel }
             // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
@@ -1293,6 +1298,137 @@ func runShearBeam() throws {
             pad("\(format(Double(tenths) / 10)) mm", 12) + pad(measured, 10)
                 + results.map { pad(format(Double($0.result.load(at: deflection)) / 1000, 0), 12) }.joined())
     }
+}
+
+func runPushOff() throws {
+    print(
+        "Walraven and Reinhardt's push-off tests (HERON 26(1A), 1981), mix 1, with external restraint bars:")
+    print("one crack driven along each specimen's measured opening and slip. Stresses in MPa; across")
+    print("the crack compressive positive. 'fit' is the paper's eqs. 1a/1b at the same opening and slip;")
+    print("'MCFT' the modified compression field theory's shear limit with the measured stress across.\n")
+    let names = option("specimens").map { $0.split(separator: ",").map(String.init) }
+    let size = option("size").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.05
+    func mpa(_ value: Float?) -> String { value.map { format(Double($0) / 1e6, 2) } ?? "-" }
+    for specimen in PushOffTest.specimens where names?.contains(specimen.name) ?? true {
+        // `--close`: then pushed back to 0.05 mm open, the slip held, and slid 0.5 mm further.
+        let end = SIMD2(specimen.finalSlip, 0.00005)
+        let beyond = flag("close") ? [end, end + SIMD2(0.0005, 0)] : []
+        let result = try PushOffTest.run(
+            device: device, specimen: specimen, size: size, crackShearStiffness: flag("crack-shear"),
+            beyond: beyond
+        ) { model in applyRateOptions(&model) }
+        if flag("close") {
+            let closing = result.samples.filter { $0.slip >= specimen.finalSlip - 1e-6 }
+            for sample in [closing.first, closing.dropFirst(closing.count / 2).first, closing.last]
+                .compactMap({ $0 })
+            {
+                print(
+                    "  closed: slip \(format(Double(sample.slip) * 1000, 2)) mm, open \(format(Double(sample.width) * 1000, 2)) mm: "
+                        + "shear \(format(Double(sample.shear) / 1e6, 2)), across \(format(Double(sample.normal) / 1e6, 2)) MPa"
+                )
+            }
+        }
+        let material = PushOffTest.material(for: specimen)
+        print(
+            "\(specimen.name): cube strength \(format(Double(specimen.cubeStrength) / 1e6)) MPa, "
+                + "initial width \(format(Double(specimen.initialWidth) * 1000, 2)) mm")
+        print(
+            pad("slip", 8) + pad("width", 8) + pad("shear", 8) + pad("model", 8) + pad("fit", 8)
+                + pad("MCFT", 8)
+                + pad("across", 9) + pad("model", 8) + pad("fit", 8))
+        var slips: [Float] = [0.1, 0.2, 0.4, 0.8, 1.2, 1.6, 2.0].map { $0 / 1000 }.filter {
+            $0 <= specimen.finalSlip
+        }
+        slips.append(specimen.finalSlip)
+        for slip in slips {
+            let width = specimen.width(at: slip)
+            let modelled = result.modelled(at: slip)
+            let pressed = specimen.measuredNormal(at: slip)
+            let limit = pressed.map {
+                PushOffTest.compressionFieldShear(
+                    width: width, pressure: $0, compressiveStrength: material.compressiveStrength,
+                    aggregate: material.aggregateSize)
+            }
+            print(
+                pad("\(format(Double(slip) * 1000, 2))", 8) + pad("\(format(Double(width) * 1000, 2))", 8)
+                    + pad(mpa(specimen.measuredShear(at: slip)), 8) + pad(mpa(modelled.shear), 8)
+                    + pad(
+                        mpa(
+                            PushOffTest.fittedShear(
+                                width: width, slip: slip, cubeStrength: specimen.cubeStrength)), 8)
+                    + pad(mpa(limit), 8) + pad(mpa(pressed), 9) + pad(mpa(modelled.normal), 8)
+                    + pad(
+                        mpa(
+                            PushOffTest.fittedNormal(
+                                width: width, slip: slip, cubeStrength: specimen.cubeStrength)), 8))
+        }
+        print("")
+    }
+}
+
+/// The cracks on the slab's unloaded face at 80 ms, in plan, wider than `--plan` millimetres (0.1
+/// by default; a crack's width is its strain over its band: the element with bars that slip, the
+/// crack spacing without), and where the cracking lies along the span: columns of elements cracked
+/// that wide across most of the width, whose opening, averaged across it, is the largest within
+/// an element either side, and the length of span holding nine tenths of the face's opening.
+func printSlabCrackPlan(_ solver: StructureSolver) {
+    let h = solver.model.elementSize
+    let band = solver.model.bondSlip != nil ? h : max(h, solver.model.material.crackSpacing)
+    let visible = (option("plan").flatMap { Float($0) } ?? 0.1) / 1000
+    let threshold = visible / band
+    print(
+        "  cracks wider than \(format(Double(visible) * 1000, 2)) mm on the unloaded face at 80 ms, in plan "
+            + "(supports at the ^):")
+    let supports = [6, 58].map { Int((Float($0) * 0.0254 / h).rounded()) }
+    print("    " + String((0..<solver.ex).map { supports.contains($0) ? "^" : " " }))
+    for row in solver.crackPlan(layer: 0, threshold: threshold) { print("    " + row) }
+    var mean = [Float](repeating: 0, count: solver.ex)
+    var share = [Float](repeating: 0, count: solver.ex)
+    for i in 0..<solver.ex {
+        for j in 0..<solver.ey {
+            let opening = solver.crackOpening(i, j, 0)
+            mean[i] += opening / Float(solver.ey)
+            if opening > threshold { share[i] += 1 / Float(solver.ey) }
+        }
+    }
+    let middle = Float(solver.ex) / 2
+    var lines: [(at: Float, width: Float)] = []
+    for i in 0..<solver.ex where share[i] > 0.5 {
+        let left = i > 0 ? mean[i - 1] : 0
+        let right = i + 1 < solver.ex ? mean[i + 1] : 0
+        if mean[i] >= left && mean[i] > right {
+            lines.append(((Float(i) + 0.5 - middle) * h, mean[i] * band))
+        }
+    }
+    print("  lines of cracking across the width (mm from mid-span: mean width across it, mm):")
+    print(
+        "    "
+            + lines.map { "\(format(Double($0.at) * 1000, 0)): \(format(Double($0.width) * 1000, 2))" }
+            .joined(separator: ", "))
+    let gaps = zip(lines, lines.dropFirst()).map { $1.at - $0.at }
+    if let first = lines.first, let last = lines.last, !gaps.isEmpty {
+        print(
+            "  \(lines.count) lines over \(format(Double(last.at - first.at) * 1000, 0)) mm, "
+                + "\(format(Double(gaps.reduce(0, +) / Float(gaps.count)) * 1000, 0)) mm apart on average")
+    }
+    // The shortest run of columns holding nine tenths of the opening along the face.
+    let total = mean.reduce(0, +)
+    var shortest = (from: 0, to: solver.ex - 1)
+    for from in 0..<solver.ex {
+        var sum: Float = 0
+        for to in from..<solver.ex {
+            sum += mean[to]
+            if sum >= 0.9 * total {
+                if to - from < shortest.to - shortest.from { shortest = (from, to) }
+                break
+            }
+        }
+    }
+    print(
+        "  nine tenths of the opening along the face within \(format(Double(shortest.to - shortest.from + 1) * Double(h) * 1000, 0)) mm, "
+            + "from \(format(Double((Float(shortest.from) - middle) * h) * 1000, 0)) to "
+            + "\(format(Double((Float(shortest.to + 1) - middle) * h) * 1000, 0)) mm; the face opened "
+            + "\(format(Double(total * h) * 1000, 1)) mm in all")
 }
 
 func runSlab() throws {
@@ -1391,7 +1527,10 @@ func runSlab() throws {
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
             crackShearStiffness: flag("crack-shear"),
             adjust: { applyRateOptions(&$0) },
-            adjustModel: { if flag("element-bar-rate") { $0.barRateAlongBars = false } },
+            adjustModel: {
+                if flag("element-bar-rate") { $0.barRateAlongBars = false }
+                if flag("slide-apart") { $0.slipWidensCracks = false }
+            },
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
@@ -1399,11 +1538,15 @@ func runSlab() throws {
                         for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
                     }
                 }
-                // `--map`: the cracks through the middle of the width at 80 ms.
-                : flag("map")
+                // `--map`: the cracks through the middle of the width at 80 ms; `--plan`, on the
+                // unloaded face, and where the cracks across the span lie.
+                : flag("map") || flag("plan")
                     ? { solver in
-                        print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
-                        for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                        if flag("map") {
+                            print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
+                            for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                        }
+                        if flag("plan") { printSlabCrackPlan(solver) }
                     } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
@@ -1578,6 +1721,7 @@ do {
     case "slab": try runSlab()
     case "beam": try runBeam()
     case "shear": try runShearBeam()
+    case "pushoff": try runPushOff()
     case "impact": try runImpact()
     case "closein": try runCloseIn()
     case "closeair": try runCloseAir()
