@@ -128,6 +128,9 @@ fresh run and clears undo across documents.
   Open Project accepts `.bombcad`; Import Layout JSON in the More menu opens a separate new,
   untitled project. Legacy JSON geometry gains object ownership when decoded.
   JSON originals are never the target of autosave.
+  Missing required layout JSON fields, incorrect value types and null values are reported with
+  their field paths; malformed JSON is reported as a syntax error. These diagnostics do not
+  change which layouts are accepted.
 - Save Project and Command-S save to the document's current location, asking for a name and
   location on the first save. Save As is in the More menu. Native File-menu commands provide
   New, Open, recent documents, Duplicate and Revert where supported by macOS.
