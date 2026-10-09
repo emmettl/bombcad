@@ -10,12 +10,17 @@ public enum RigidObjectDemo {
         public let centreOfMass: SIMD3<Double>
         public let speed: Double
         public let energy: Double
+        /// Car tyre contact points and their loads (N), FL, FR, RL, RR; absent for boxes.
+        public var tyres: [SIMD3<Double>]? = nil
+        public var tyreLoads: [Double]? = nil
     }
 
     public struct Recording: Codable, Sendable {
         public let name: String
         public let description: String
         public let frames: [Frame]
+        /// "front" looks along the x axis; absent means the side view along y.
+        public var view: String? = nil
     }
 
     /// Two seconds at 1 ms mechanics steps, sampled every 20 ms. Each case is independent.

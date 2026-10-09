@@ -38,11 +38,15 @@ it should be used to judge the safety of a real structure.
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
-| 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
+| 10 | Only selected app panels have had a static visual review               | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
-and its rendering is checked through offscreen snapshots, but its panels, text fields and file
-dialogs were written without being seen on screen.
+and its rendering is checked through offscreen snapshots. An initial static panel review now
+covers the Run sidebar, saved-run comparison, Export for Rendering sheet, linked-part layout
+editor, import loading state, Settings and Help content in light and dark appearances. The
+offscreen Help sidebar has unresolved selected-label rendering and dark contrast that need
+checking in a native window.
+Native file dialogs, keyboard focus, scrolling and the other panels still need interactive review.
 
 ## Planned work
 
@@ -226,7 +230,7 @@ convert into fresh reference mechanics state. Definitions validate on constructi
 older layouts without them still open. JSON and project-package round trips are tested. A
 nonzero centre-of-mass offset requires explicit inertia. These saved inputs are not yet used
 by the app renderer or blast solver. `swift run rigidboxdemo` generates a self-contained HTML
-replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping.
+replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping (now followed by five car cases).
 Playback and scrubbing use recorded Swift trajectories, with no second physics implementation
 in the viewer. This supplies milestone 1's standalone box demonstration.
 
@@ -1713,10 +1717,51 @@ baseline loads. The six-case independent summary audits all three modes at full/
 duration; the largest load change is `8.1e-8` of the reference norm. Release generation
 succeeds with main's existing concurrency warnings, and formatting/diff checks are clean.
 
-Next, test a bound that retains the volume-aware polynomial's group average and compare
-both local pressure and net loads, including sensitivity to stencil extent and resolution.
-Only after that isolated gate should an experimental numerical update be considered and
-the evolved load histories reassessed. Spatial load accuracy remains a
+The volume-fit probe now also compares two bounds on that same moment-aware quadratic.
+One uses every wall sample as a control point; the other additionally uses internal and
+outer face centres, wall-patch centres and positive gas-volume quadrature nodes. Each
+group receives a single factor in [0, 1], scaling all mean-free linear/quadratic terms
+about its supplied average. There is no pointwise pressure clamp. Bounds hold at the
+audited control points, not everywhere between them. Neither policy changes gas stages.
+
+Both remove below-ambient profile undershoots and stencil violations within diagnostic
+tolerance at all wall samples in the six cases. The stronger policy also passes the
+face/volume control-point audit. Direct
+weighted-volume evaluation at both probe durations retains group pressure averages with
+a maximum residual of `1.8e-13`, normalized by max(1 Pa, absolute excess average).
+The largest normalized control-point bound violation is `7.2e-18`. Independent polynomial
+tests check retained averages on unequal rotated volumes with an active limiter, as well
+as inactive and zero-width bounds. Existing baseline loads remain identical.
+
+Force/torque errors for the bounded moment-aware fits are:
+
+| Cell size / orientation | Wall controls | Wall, face and volume controls |
+|---|---|---|
+| 0.2 m / aligned | 73.9% / 56.8% | 64.1% / 71.1% |
+| 0.2 m / rotated | 36.2% / 22.6% | 34.4% / 22.6% |
+| 0.1 m / aligned | 1.62% / 6.27% | 1.53% / 6.61% |
+| 0.1 m / rotated | 1.38% / 1.38% | 1.29% / 1.64% |
+| 0.05 m / aligned | 0.281% / 0.504% | 0.281% / 0.504% |
+| 0.05 m / rotated | 0.656% / 0.584% | 0.656% / 0.584% |
+
+On the fine grid, bounds remove undershoots while preserving nearly all of the raw
+quadratic load result. The stronger policy's area-weighted factors are about 0.80 there,
+with 44–45% of sampled body area limited; substantial limiting of quiet regions therefore
+has little effect on net loads. At 0.1 m, its factors are 0.46/0.43 and pressure L1 errors
+9.75%/5.33%. At 0.2 m, factors fall to 0.17/0.21; pressure L1 errors remain 68.1%/38.2%.
+Coarse curvature is still unresolved, and the existing fine aligned reconstruction still
+has smaller force/torque errors. Average retention and sampled bounds do not establish
+universal accuracy, continuous positivity, evolved-state consistency or shock stability.
+
+All 113 CPU-only tests in 22 suites pass. The independent six-case summary audits all five
+volume-fit modes and both bound policies at full/half duration; load changes stay below
+`8.1e-8` of the reference norm. Release generation succeeds with main's existing warnings,
+and strict formatting/diff checks are clean.
+
+Next, measure sensitivity to stencil extent and additional box/grid alignments before
+choosing a reconstruction for an experimental numerical update. That update must handle
+conserved states, positivity and paired gas/body budgets, then reassess evolved load
+histories and shock response. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
@@ -1741,7 +1786,20 @@ extraction.
    all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
    contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
    rocking and tipping; distinguish these mechanical checks from validation against a blast
-   experiment. Crushing, wheel rotation and fragmentation are later extensions.
+   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done, not
+   coupled to the air: `RigidCarBody`, the box reference with the box as the shell and four
+   tyre contacts at the corners of a wheelbase × track rectangle, each with its own load and
+   Coulomb friction; the shell's corners catch a car that has tipped. `RigidCarDefinition`
+   saves the locked wheels and rigid suspension explicitly, as `Scenario.rigidCars` beside
+   rigid objects. Rigid suspension leaves four tyre loads indeterminate; the reported split is
+   the one equal tyre stiffnesses give, which leaves the motion unchanged. Tests check rest
+   loads against statics, the sliding threshold μW, load transfer of μWh/L under braking and
+   μWh/t sliding sideways, a sideways push holding below the static stability factor t/2h and
+   tipping above it, rocking back below the balance angle atan(t/2h) and tipping onto the side
+   above it, no energy gain, first-order timestep convergence and saved-file round trips.
+   These are mechanical checks; none is a validation against a blast experiment, and the
+   illustrative saloon's values are typical magnitudes, not a measured car. `swift run
+   rigidboxdemo` adds five car cases to the replay. Next: the car under the air, as the box.)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress
@@ -1798,7 +1856,23 @@ two collapsing over several seconds.
 
 ### Usability, in parallel
 
-- Review the app on screen and fix what is found.
+- Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
+  a misleading layout selector, which displayed the last preset choice after opening another
+  project. The menu now shows the actual scene name and offers built-in layouts as replacement
+  actions. The review also covers linked-part editing, import loading, Settings and Help content
+  in both appearances. During loading, the import sheet no longer reports that its preview is
+  unavailable while also saying it is updating. The completed import preview and Help sidebar's
+  selected labels and dark contrast still need native checks; no styling change is inferred from the offscreen
+  sidebar capture alone.
+  Reproduce these static captures with
+  `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
+  The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
+  `dark`, and checks that capture leaves saved inputs unchanged. Settings captures use and remove
+  a temporary defaults suite. The import capture records the initial loading state rather than
+  waiting for asynchronous preview completion. The helper expands the requested size
+  to the view's fitting size, so these captures do not verify scrolling at the minimum window
+  size. The Metal viewport and native interaction remain separate checks; the helper is skipped
+  during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,

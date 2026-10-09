@@ -36,7 +36,6 @@ enum SweepWorker {
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
                     jobs.sessions.removeValue(forKey: id)?.cancel()
-                    jobs.thermal[id] = nil
                 case .shutdown:
                     await jobs.stop()
                     return
@@ -50,30 +49,6 @@ enum SweepWorker {
                         continue
                     }
                     runner.finish(frameInterval: interval)
-                case .thermal(let session):
-                    jobs.thermal[session.id] = ThermalExposure(spec: session.spec, scene: session.scene)
-                case .fireball(let id, let frame):
-                    guard var exposure = jobs.thermal[id] else { continue }
-                    exposure.add(frame)
-                    jobs.thermal[id] = exposure
-                    let live = ThermalLive(exposure)
-                    writer.enqueue(
-                        .thermalLive(id, ThermalLiveHeader(frames: live.frames, time: live.time)),
-                        payload: live.payload)
-                case .finishThermal(let id):
-                    guard let exposure = jobs.thermal.removeValue(forKey: id) else {
-                        writer.enqueue(.failed(id, "No such thermal session."))
-                        continue
-                    }
-                    do {
-                        writer.enqueue(.thermalResult(id), payload: try JSONEncoder().encode(exposure.result))
-                    } catch {
-                        writer.enqueue(
-                            .failed(
-                                id,
-                                "The thermal radiation's result could not be sent: \(error.localizedDescription)"
-                            ))
-                    }
                 default:
                     continue
                 }
@@ -87,7 +62,6 @@ enum SweepWorker {
     private final class Jobs {
         var current: (id: UUID, task: Task<Void, Never>)?
         var sessions: [UUID: ConsumerRunner] = [:]
-        var thermal: [UUID: ThermalExposure] = [:]
 
         func stop() async {
             guard let task = current?.task else { return }
@@ -141,17 +115,14 @@ private final class ConsumerRunner: @unchecked Sendable {
             do {
                 let input = try ConsumerInput(header: header, payload: payload)
                 try engine.consume(input)
-                writer.enqueue(.report(id, engine.report))
-                if case .air(let slice) = input, let live = engine.live(time: slice.time) {
-                    let impacts = Array(live.impacts.dropFirst(impactsSent))
-                    impactsSent = live.impacts.count
-                    writer.enqueue(
-                        .live(
-                            id,
-                            LiveFrameHeader(
-                                time: live.time, fragmentCount: live.fragmentCount, impacts: impacts)),
-                        payload: live.payload)
+                // The live state before the report, so that a session reported caught up has its
+                // last frame's state in.
+                if let live = engine.live(time: input.time) {
+                    let (header, payload) = live.encoded(impactsSent: impactsSent)
+                    impactsSent = live.fragments?.impacts.count ?? 0
+                    writer.enqueue(.live(id, header), payload: payload)
                 }
+                writer.enqueue(.report(id, engine.report))
             } catch {
                 failure = error.localizedDescription
                 writer.enqueue(.failed(id, error.localizedDescription))

@@ -27,6 +27,7 @@ enum ExperimentalVolumePressureFitStudy {
         let geometry = FractionalBoxGeometry(body)
         let count = Int((2 / h).rounded())
         var samples: [Int: FiniteVolumePressureFit.Sample] = [:]
+        var volumeNodes: [Int: [FractionalBoxGeometry.VolumeNode]] = [:]
         var maximumResidual = 0.0
         for group in needed.sorted() {
             var volume = 0.0
@@ -39,6 +40,7 @@ enum ExperimentalVolumePressureFitStudy {
                         Double(member % count), Double((member / count) % count),
                         Double(member / (count * count)))
                 for node in geometry.gasQuadrature(lower: lower, cellSize: h) {
+                    if stencils[group] != nil { volumeNodes[group, default: []].append(node) }
                     let offset = node.point - centres[group]
                     volume += node.weight
                     first += node.weight * offset
@@ -60,9 +62,9 @@ enum ExperimentalVolumePressureFitStudy {
                 centre: centres[group], covariance: (1 / volume) * second,
                 average: plan.cells[group].pressure() - 101325)
         }
-        let kinds = ["twoRingLinear", "pointQuadratic", "volumeQuadratic"]
+        let rawKinds = ["twoRingLinear", "pointQuadratic", "volumeQuadratic"]
         var fits: [String: [Int: FiniteVolumePressureFit.Fit]] = [:]
-        for kind in kinds {
+        for kind in rawKinds {
             fits[kind] = Dictionary(
                 uniqueKeysWithValues: wallGroups.map { group in
                     (
@@ -74,6 +76,29 @@ enum ExperimentalVolumePressureFitStudy {
                     )
                 })
         }
+        var wallPoints: [Int: [SIMD3<Double>]] = [:]
+        for trace in traces { wallPoints[trace.cell, default: []].append(trace.point) }
+        var allPoints = wallPoints
+        for face in plan.faces {
+            for group in [face.a, face.b] where stencils[group] != nil {
+                allPoints[group, default: []].append(face.centroid)
+            }
+        }
+        for boundary in plan.boundaries where stencils[boundary.geometry.cell] != nil {
+            allPoints[boundary.geometry.cell, default: []].append(boundary.geometry.centroid)
+        }
+        for group in wallGroups { allPoints[group, default: []] += volumeNodes[group]!.map(\.point) }
+        let boundedKinds = ["volumeQuadraticWallBounded", "volumeQuadraticBounded"]
+        var bounded: [String: [Int: FiniteVolumePressureFit.BoundedFit]] = [:]
+        for kind in boundedKinds {
+            fits[kind] = fits["volumeQuadratic"]
+            let points = kind == "volumeQuadraticWallBounded" ? wallPoints : allPoints
+            bounded[kind] = Dictionary(
+                uniqueKeysWithValues: wallGroups.map { group in
+                    (group, fits["volumeQuadratic"]![group]!.limited(at: points[group]!))
+                })
+        }
+        let kinds = rawKinds + boundedKinds
         let area = traces.reduce(0) { $0 + $1.area }
         var modes: [ExperimentalInitialWallTraceStudy.DiagnosticMode] = []
         for kind in kinds {
@@ -88,7 +113,7 @@ enum ExperimentalVolumePressureFitStudy {
             var nonpositive = 0
             for trace in traces {
                 let fit = fits[kind]![trace.cell]!
-                let value = fit.value(at: trace.point)
+                let value = bounded[kind]?[trace.cell]?.value(at: trace.point) ?? fit.value(at: trace.point)
                 let point = trace.point - trace.time * plan.velocity
                 let exact = pressure(point)
                 let packet = trace.area * value * trace.normal
@@ -116,6 +141,38 @@ enum ExperimentalVolumePressureFitStudy {
                     nonpositivePressureSamples: nonpositive,
                     negativeExcessAreaFraction: negative / area, outsideStencilAreaFraction: outside / area))
         }
+        var bounds: [ExperimentalInitialWallTraceStudy.VolumeBoundDiagnostics] = []
+        for kind in boundedKinds {
+            let points = kind == "volumeQuadraticWallBounded" ? wallPoints : allPoints
+            var averageResidual = 0.0
+            var boundViolation = 0.0
+            for group in wallGroups {
+                let limited = bounded[kind]![group]!
+                let fit = limited.fit
+                let nodes = volumeNodes[group]!
+                let volume = nodes.reduce(0) { $0 + $1.weight }
+                // Direct nodal reduction audits the retained average, rather than
+                // assuming the algebraic basis identity also holds on clipped volumes.
+                let recovered = nodes.reduce(0) { $0 + $1.weight * limited.value(at: $1.point) } / volume
+                averageResidual = max(
+                    averageResidual, abs(recovered - fit.cell.average) / max(1, abs(fit.cell.average)))
+                for point in points[group]! {
+                    let value = limited.value(at: point)
+                    boundViolation = max(
+                        boundViolation,
+                        max(0, fit.lower - value, value - fit.upper) / max(1, abs(fit.lower), abs(fit.upper)))
+                }
+            }
+            bounds.append(
+                .init(
+                    kind: kind,
+                    meanFactor: traces.reduce(0) { $0 + $1.area * bounded[kind]![$1.cell]!.factor } / area,
+                    activeAreaFraction: traces.reduce(0) {
+                        $0 + (bounded[kind]![$1.cell]!.factor < 1 - 1e-12 ? $1.area : 0)
+                    } / area,
+                    maximumRelativeAverageResidual: averageResidual,
+                    maximumRelativeBoundViolation: boundViolation))
+        }
         return .init(
             modes: modes,
             quadraticFallbackAreaFraction: traces.reduce(0) {
@@ -130,6 +187,6 @@ enum ExperimentalVolumePressureFitStudy {
             meanStencilSize: traces.reduce(0) {
                 $0 + $1.area * Double(fits["volumeQuadratic"]![$1.cell]!.stencilSize)
             } / area,
-            maximumMomentResidual: maximumResidual)
+            maximumMomentResidual: maximumResidual, bounds: bounds)
     }
 }
