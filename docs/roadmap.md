@@ -1574,8 +1574,52 @@ closure still uses the original actual group-surface scale. Static callers retai
 original raw-cell check. The captured interval is tested with positive old/final group
 capacities and uniform pressure/velocity preservation through the sampled update.
 
-Next, isolate initial wall-trace error against independently integrated Gaussian surface
-loads, then assess the remaining spatial load error before free-body feedback. Local second-order time
+An initial Gaussian wall-trace probe now isolates the source of load error before any gas
+advance. Numerical stage preparation is shared with the moving flux update; a diagnostic
+accessor returns its actual initial wall states and evaluation points, without introducing
+a separate reconstruction implementation or changing the limiter. Known supplied pressure
+at those same points isolates clipping/surface quadrature from gas averaging and traces.
+Constant group states provide a further comparison. All use the matched-energy initial
+packets from the sustained-load study.
+
+The independent reference integrates the six whole, uncut rectangular faces with positive
+tensor Gauss rules, using body coordinates and orientation rather than grid clipping.
+Orders 16 and 32 agree within `7e-15` relative for this smooth Gaussian. Tests separately
+check polynomial moments, aligned Gaussian force/torque against erf integrals and first
+moments, and rotated affine force/offset-COM torque against the divergence theorem. An
+independent Python composite Simpson integral over the whole faces checks the rotated
+reference using Rodrigues rotation, without reusing Swift quadrature or numerical traces.
+
+Six `--initial-wall-traces` cases cover the same three grids and two rotations. Probe
+intervals h × `1e-9` s give negligible motion; repeating each at half duration changes
+loads by at most `8e-8` of the reference norm. Pressure supplied at comoving sample positions
+represents the known initial field. Ambient pressure is subtracted from diagnostics because
+its exact force and torque vanish on the closed box. No gas inventory is updated by this
+probe, and its reference does not prescribe later Euler evolution.
+
+With known supplied pressure, force errors are at most 0.039% and torque errors 0.157% on
+0.2 m cells, falling below 0.0004% for both on 0.05 m cells. Limited numerical traces are
+much less accurate on coarse grids: initial force errors are 70.9% aligned and 43.5%
+rotated on 0.2 m cells, then 19.0%/10.1% on 0.1 m cells and 0.105%/1.98% on 0.05 m
+cells. Corresponding torque errors are 98.8%/35.8%, 23.0%/13.7% and 0.195%/3.83%.
+These errors precede advection and are substantially larger than quadrature errors.
+
+Limited reconstruction worsens coarse-grid force and torque relative to constant group
+traces (constant force errors 52.0%/28.5% there), while improving both on finer grids.
+The coarse pulse curvature is not recovered by this reconstruction. Area-weighted limited
+pressure L1 errors are 77.8%/48.1%, 19.2%/10.9% and 0.706%/2.49% across the grids.
+This evidence localizes the initial load problem to state projection/grouping and numerical
+reconstruction rather than insufficient wall sampling; it does not yet separate the
+contributions of gradient fitting and the one-ring limiter.
+
+All 101 CPU-only tests in 20 suites pass. Additional checks verify diagnostic traces against
+actual Euler wall packets, negligible duration effects and reference/quadrature consistency.
+The independent six-case summary passes, strict Swift formatting and diff checks are clean,
+and the full release build succeeds with main's existing AirSlice concurrency warnings.
+
+Next, separate initial averaging, gradient-fitting and limiter errors before changing wall
+reconstruction, then reassess the evolved load histories. Spatial load accuracy remains a
+gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
 and velocity vary, especially near shocks and geometric contacts.

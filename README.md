@@ -570,6 +570,13 @@ positive states and complete gas/reservoir/body budgets. Pressure and velocity d
 are physical responses, not errors against an exact solution. The finest grid is a numerical
 comparison; this is not blast validation or free-body motion.
 
+`swift run -c release rigidboxdemo --initial-wall-traces` writes `.build/initial-wall-traces.json`.
+`python3 Scripts/summarize-initial-wall-traces.py` compares known supplied pressure, constant
+traces and the actual limited traces against independent integrals over the uncut box faces.
+The initial Gaussian load exposes substantial coarse-grid reconstruction error before any
+gas update; supplied-pressure quadrature errors are much smaller. Tiny-duration halving
+checks the instantaneous limit. This diagnoses initial traces, not the evolved load history.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
