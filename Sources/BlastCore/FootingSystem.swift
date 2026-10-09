@@ -198,6 +198,7 @@ final class FootingSystem {
         var soilMoment: SIMD4<Float> = .zero
         var jointForce: SIMD4<Float> = .zero
         var contact: SIMD4<Float> = .zero
+        var elastic: SIMD4<Float> = .zero
     }
 
     /// Layout matches `BedPoint` in Footing.metal.

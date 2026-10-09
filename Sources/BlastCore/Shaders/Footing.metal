@@ -81,6 +81,7 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
 
     // The body's pull on the footing through the connection, as the node pass left it.
     float3 jointForce = float3(0.0f);
+    float3 springs = float3(0.0f);  // the bed's springs alone, without its dashpots
     float3 jointMoment = float3(0.0f);
     for (uint m = c.ranges.z + worker; m < c.ranges.z + c.ranges.w; m += footingThreads) {
         uint entity = members[m];
@@ -118,12 +119,14 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
             }
             float2 stiffness = point.shearAndDamping.xy;
             float2 elastic = -stiffness * (displacement.xy - state.xy);
-            float limit = normal * c.totals.w;  // Coulomb friction
+            // Coulomb friction, on the point's share of all the soil bears, the echoes' too.
+            float limit = normal * c.totals.w * (s.elastic.w > 0.0f ? s.elastic.w : 1.0f);
             float size = length(elastic);
             if (size > limit) {
                 elastic *= limit / size;
                 state.xy = displacement.xy + elastic / stiffness;
             }
+            springs += float3(elastic, push);
             float2 shear = elastic - point.shearAndDamping.w * velocity.xy;
             float total = length(shear);
             if (total > limit) {
@@ -146,13 +149,13 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     }
 
     // Add up over the threadgroup: sums, then greatest and least.
-    threadgroup float sums[8][13];
+    threadgroup float sums[8][16];
     threadgroup float4 bounds[8];
     threadgroup float greatest[8][2];
-    float values[13] = {jointForce.x, jointForce.y, jointForce.z, jointMoment.x, jointMoment.y, jointMoment.z,
+    float values[16] = {jointForce.x, jointForce.y, jointForce.z, jointMoment.x, jointMoment.y, jointMoment.z,
                         soilForce.x,  soilForce.y,  soilForce.z,  soilMoment.x, soilMoment.y, soilMoment.z,
-                        bearing};
-    for (uint i = 0; i < 13; ++i) {
+                        bearing,      springs.x,    springs.y,    springs.z};
+    for (uint i = 0; i < 16; ++i) {
         float total = simd_sum(values[i]);
         if (lane == 0) {
             sums[group][i] = total;
@@ -174,8 +177,8 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
         return;
     }
     uint groups = (footingThreads + 31) / 32;
-    float total[13];
-    for (uint i = 0; i < 13; ++i) {
+    float total[16];
+    for (uint i = 0; i < 16; ++i) {
         total[i] = 0.0f;
         for (uint g = 0; g < groups; ++g) {
             total[i] += sums[g][i];
@@ -227,9 +230,14 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     float4 sampleCount = float4(s.velocity.w, s.spin.w, 0.0f, 0.0f);
     if (c.stiffness.w > 0.5f) {
         uint capacity = c.history.z;
-        float mode[5] = {s.centre.z + baseArm.z - c.base.z, s.centre.x + baseArm.x - c.base.x,
-                         s.centre.y + baseArm.y - c.base.y, tilt.x, tilt.y};
-        float rate[5] = {baseVelocity.z, baseVelocity.x, baseVelocity.y, tiltRate.x, tiltRate.y};
+        // The soil's own deformation under the footing, from its springs: not the footing's
+        // motion, which lifts and slides past what the soil carries. Its rate, from the last
+        // step's.
+        float3 elastic = float3(-total[13] / c.stiffness.y, -total[14] / c.stiffness.z, -total[15] / c.stiffness.x);
+        float3 elasticRate = s.elastic.w > 0.0f ? (elastic - s.elastic.xyz) / dt : float3(0.0f);
+        s.elastic.xyz = elastic;
+        float mode[5] = {elastic.z, elastic.x, elastic.y, tilt.x, tilt.y};
+        float rate[5] = {elasticRate.z, elasticRate.x, elasticRate.y, tiltRate.x, tiltRate.y};
         float stiffness[5] = {c.stiffness.x, c.stiffness.y, c.stiffness.z, c.moreStiffness.x, c.moreStiffness.y};
         float share[5] = {bearingShare.x, bearingShare.x, bearingShare.x, bearingShare.y, bearingShare.z};
         float time = s.centre.w;
@@ -279,6 +287,17 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
             }
             response[m] = mode[m] + delta;
             rate[m] += deltaRate;
+        }
+        // The echoes cannot make the soil pull on the footing, nor hold it past its friction.
+        // They bear part of its weight, which the bed's points take into their friction next
+        // step.
+        float normal = soilForce.z;
+        lumpedForce.z = max(lumpedForce.z, -normal);
+        s.elastic.w = normal > 0.0f ? max((normal + lumpedForce.z) / normal, 1e-3f) : 1.0f;
+        float2 sideways = soilForce.xy + lumpedForce.xy;
+        float grip = c.totals.w * (normal + lumpedForce.z);
+        if (length(sideways) > grip) {
+            lumpedForce.xy = sideways * (grip / max(length(sideways), 1e-30f)) - soilForce.xy;
         }
         // Record ũ and its rate at every sample time this step has reached.
         for (uint kind = 0; kind < 2; ++kind) {

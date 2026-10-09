@@ -2421,6 +2421,8 @@ struct FootingState {
     float4 soilMoment;   // its moment about the base centre; the largest lift of a point of the bed
     float4 jointForce;   // the body's force on the footing; the deepest the soil has yielded
     float4 contact;      // the bearing part of the base: least and greatest x, least and greatest y
+    float4 elastic;      // the soil's deformation under it, from its springs (z, x, y); over a layer, all the
+                         // soil bears over what the bed's points do (0 until set)
 };
 
 static inline float3 footingRotate(float4 q, float3 v) {

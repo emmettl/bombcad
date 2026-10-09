@@ -6,8 +6,8 @@ import simd
 @testable import BlastCore
 
 /// Rigid footings on soil (`Footing`, `FootingBed`, `FootingImpedance`) against theory: the
-/// half-space's static stiffness, a footing's heel lifting and its toe bearing, and the cones'
-/// dynamic stiffness.
+/// half-space's static stiffness, a footing's heel lifting and its toe bearing, the cones'
+/// dynamic stiffness, and a layer's.
 @Suite("Footings")
 struct FootingTests {
     let device: MTLDevice
@@ -209,17 +209,18 @@ struct FootingTests {
     }
 
     @Test(
-        "A wall on a footing tips about the footing's toe, M = W B / 2, not its own; of solids or shells",
-        arguments: [false, true])
-    func overturning(shells: Bool) throws {
+        "A wall on a footing tips about the footing's toe, M = W B / 2, not its own; of solids or shells, over a layer",
+        arguments: [(false, nil), (true, nil), (false, 2)] as [(Bool, Float?)])
+    func overturning(shells: Bool, layer: Float?) throws {
         // A 3 m wall 250 mm thick on a footing 1.25 m wide on stiff soil, a 1 m strip of it.
+        // Over a layer, the soil's echoes must not push a footing that lifts and turns this far.
         let (height, thickness): (Float, Float) = (3, 0.25)
         let size = SIMD3(thickness, 1, height)
         let footing = Footing(
             overhang: SIMD2(0.5, 0), thickness: 0.4,
             soil: Soil(
                 material: SoilMaterial(shearModulus: 400e6, poissonRatio: 0.3, density: 2000),
-                bearingCapacity: nil, friction: 1))
+                bearingCapacity: nil, friction: 1, layerDepth: layer))
         let width = thickness + 2 * footing.overhang.x
         /// The top's sway at 0.75 s and 1.5 s under a steady push `pressure` on the face.
         func sway(_ pressure: Float) throws -> (early: Float, late: Float) {
@@ -396,6 +397,127 @@ struct FootingTests {
             #expect(
                 (response[0] - sway).magnitude < 0.07 * sway.magnitude,
                 "ω = \(ratio) ω₀: sway \(response[0]) against \(sway)")
+        }
+    }
+
+    // MARK: - Layers
+
+    @Test("Over a layer on rock a footing is stiffer, as the cones' echoes and Kausel's stratum say")
+    func layerStatics() throws {
+        let depth: Float = 1.5
+        let layer = Soil(bearingCapacity: nil, friction: 2, layerDepth: depth)
+        let bed = FootingBed(width: 1.5, length: 1.5, soil: layer)
+        let impedance = bed.impedance
+        let factor = impedance.staticStiffness(.vertical) / impedance.stiffness[0]
+        // E. Kausel's stratum on rock, 1 + 1.28 r / d, for a disk of the footing's area.
+        let radius = (1.5 * 1.5 / Float.pi).squareRoot()
+        let kausel = 1 + 1.28 * radius / depth
+        #expect(factor > 1.3 && abs(factor / kausel - 1) < 0.12, "\(factor) against \(kausel)")
+        // Over a soft half-space instead of rock the layer is softer than on its own.
+        var soft = layer
+        soft.beneath = SoilMaterial(shearModulus: 10e6, poissonRatio: 0.3, density: 1800)
+        let softer = FootingBed(width: 1.5, length: 1.5, soil: soft).impedance
+        #expect(softer.staticStiffness(.vertical) < softer.stiffness[0])
+        // Massless, the bed is that much stiffer from the start; with mass, the echoes make it so.
+        var massless = layer
+        massless.radiationDamping = false
+        for soil in [massless, layer] {
+            let solver = try block(
+                SIMD3(1, 1, 1), footing: Footing(overhang: SIMD2(0.25, 0.25), thickness: 0.5, soil: soil))
+            solver.damping = 100
+            solver.advance(steps: steps(solver, seconds: 1))
+            let summary = try #require(solver.footingSummaries().first)
+            let weight = (bodyMass(solver) + summary.mass) * g
+            let expected = -weight / impedance.staticStiffness(.vertical)
+            #expect(
+                abs(summary.displacement.z / expected - 1) < 0.03,
+                "radiation \(soil.radiationDamping): \(summary.displacement.z) m against \(expected) m")
+        }
+    }
+
+    @Test(
+        "Pushed past its friction, a footing slides at (F − μ W) / M, on the half-space or over a layer",
+        arguments: [nil, 2] as [Float?])
+    func sliding(layer: Float?) throws {
+        let soil = Soil(bearingCapacity: nil, friction: 0.5, layerDepth: layer)
+        let solver = try block(
+            SIMD3(1, 1, 0.5), footing: Footing(overhang: SIMD2(0.5, 0.5), thickness: 0.3, soil: soil))
+        solver.damping = 200
+        solver.advance(steps: steps(solver, seconds: 0.1))
+        solver.damping = 0
+        let mass = bodyMass(solver) + solver.footingSummaries()[0].mass
+        let push = 1.3 * soil.friction * mass * g  // on the block's 1 × 0.5 m face
+        let start = Float(solver.time)
+        solver.appliedLoad = PressureLoad(
+            axis: 0, positiveSide: false,
+            history: [
+                SIMD2(0, 0), SIMD2(start, 0), SIMD2(start + 0.02, push / 0.5), SIMD2(start + 10, push / 0.5),
+            ])
+        solver.advance(steps: steps(solver, seconds: 0.1))
+        let early = try #require(solver.footingSummaries().first)
+        solver.advance(steps: steps(solver, seconds: 0.2))
+        let late = try #require(solver.footingSummaries().first)
+        let acceleration = (late.velocity.x - early.velocity.x) / 0.2
+        let expected = (push - soil.friction * mass * g) / mass
+        #expect(
+            abs(acceleration / expected - 1) < 0.15, "\(acceleration) m/s² against \(expected)")
+        #expect(abs(late.rotation.y) < 0.01 && late.uplift < 0.01)
+    }
+
+    @Test(
+        "Over any layer the soil never gives a footing energy: its impedance's imaginary part stays positive")
+    func layerPassivity() {
+        let beneath: [SoilMaterial?] = [
+            nil, .softRock, SoilMaterial(shearModulus: 10e6, poissonRatio: 0.3, density: 1800),
+        ]
+        for depth: Float in [0.3, 1, 3, 10] {
+            for below in beneath {
+                let soil = Soil(layerDepth: depth, beneath: below)
+                let impedance = FootingBed(width: 1.5, length: 1.5, soil: soil).impedance
+                for mode in FootingImpedance.Mode.allCases {
+                    let period = 2 * Double(depth) / Double(impedance.waveSpeed[mode.rawValue])
+                    let lowest = (1...4000).map { k -> Double in
+                        let omega = Double(k) * 20 * .pi / period / 4000
+                        return impedance.dynamicStiffness(mode, omega: omega).imaginary
+                            / (omega * Double(impedance.dashpot[mode.rawValue]))
+                    }.min()!
+                    #expect(
+                        lowest > -1e-4, "\(mode) over \(depth) m on \(String(describing: below)): \(lowest)")
+                }
+            }
+        }
+    }
+
+    @Test("Over a layer on rock a footing radiates little below the layer's cut-off, as its impedance says")
+    func layerImpedance() throws {
+        let soil = Soil(bearingCapacity: nil, friction: 2, layerDepth: 1.5)
+        let bed = FootingBed(width: 1.5, length: 1.5, soil: soil)
+        let probe = try impedanceBlock(soil: soil)
+        let mass = Double(bodyMass(probe) + probe.footingSummaries()[0].mass)
+        // The layer's first vertical mode, c / 4 d: below it no wave carries energy away.
+        let cutoff = 2 * Double.pi * Double(soil.material.coneWaveSpeed) / (4 * 1.5)
+        let halfSpace = FootingImpedance(width: 1.5, length: 1.5, soil: Soil(), stiffness: bed.stiffness)
+        let low = bed.impedance.dynamicStiffness(.vertical, omega: 0.4 * cutoff)
+        #expect(low.imaginary < 0.3 * halfSpace.dynamicStiffness(.vertical, omega: 0.4 * cutoff).imaginary)
+        for ratio in [0.4, 1.5] {
+            let solver = try impedanceBlock(soil: soil)
+            // The layer keeps the footing's own free vibration, which it hardly radiates; a little
+            // damping of the body's, i ω M c in the impedance, lets it die away.
+            let damping: Float = 20
+            solver.damping = damping
+            let a: Float = 2
+            let (omega, response) = drive(
+                solver, omega: ratio * cutoff, warm: 30, measured: 4, ramp: 10,
+                force: { solver.gravity = 9.81 + a * $0 },
+                read: { [solver.footingSummaries()[0].displacement.z] })
+            let x = response[0]
+            let measured = Complex(-mass * Double(a)) / x + Complex(omega * omega * mass)
+            let expected =
+                bed.impedance.dynamicStiffness(.vertical, omega: omega)
+                + Complex(0, omega * mass * Double(damping))
+            #expect(
+                (measured - expected).magnitude < 0.07 * expected.magnitude,
+                "ω = \(ratio) cut-off: \(measured) against \(expected)")
         }
     }
 }

@@ -332,6 +332,30 @@ bed's rocking stiffness still bearing. Past ν = 1/3 the footing carries Wolf's 
 2.4 (ν − 1/3) ρ A r₀ vertically and 1.2 (ν − 1/3) ρ I r₀ in rocking. Without them the soil is
 massless springs damped as contacts are (30% of critical on the footing and what it carries).
 
+**Layers** (`Soil.layerDepth`, `Soil.beneath`). The soil can be a layer d deep over rock, or
+over another half-space. A wave the footing sends down reflects at the layer's base, by
+R = (Z₁ − Z₂)/(Z₁ + Z₂) with Z = ρ c (−1 at rock), and returns after each round trip 2 d / c,
+weakened by the cone's spreading: in Wolf's cones with reflections the footing moves as
+u₀(t) = ũ(t) + 2 Σⱼ Rʲ z₀/(z₀ + 2 j d) ũ(t − 2 j d / c), ũ the half-space's motion under the
+same force. The footing kernel keeps ũ and its rate for each translation, sampled 32 times a
+round trip, and adds the half-space's force on ũ − u₀, a sum over ũ's past, to the bed's. It
+takes 64 echoes, the last third tapered away, each losing 1% more per round trip as to the
+soil's own damping: the echoes of a layer on rock alternate in sign, and the soil takes energy
+from the footing at low frequency only by a margin that the whole sum, smoothly ended, keeps.
+Cut off sharply, after the few echoes that reach 1% of the first (as at first), or with no
+loss, the soil fed the footing energy, and a footing driven for two seconds blew up. The
+echoes follow the soil's own deformation under the footing, the bed's spring force over its
+stiffness, not the footing's motion, which lifts and slides past what the soil carries: fed
+the footing's whole displacement, a wall at 10 m over 3 m of sand on rock slid 7 m and broke
+from its footing. They cannot make the soil pull, nor hold the footing past its friction, and
+the share of the weight they carry counts towards the friction of the bed's points. Rocking
+cones echo in the same way only with far too much energy and stiffness (they double the 1.5 m
+footing's rocking stiffness over 1.5 m of soil on rock, where Kausel's stratum adds 9.5%, and
+they feed it energy at every attenuation tried down to 30% a trip), so in
+rocking the layer only stiffens the bed, by E. Kausel's 1 + r / (6 d) for a stratum on rock,
+scaled by −R, and the half-space's rocking cone carries on. Without the soil's mass, the bed is
+given the layer's static stiffness from the start.
+
 **Checks** (`FootingTests`, a stiff elastic block or wall cast on starter bars):
 
 - the bed gives the half-space's vertical and both rocking stiffnesses within 1% under a
@@ -353,7 +377,23 @@ massless springs damped as contacts are (30% of critical on the footing and what
   as the two coupled equations of a rigid body on the horizontal and rocking cones say, within
   7% in amplitude and phase together; with the dashpots spread by area instead of by
   stiffness, the lightly loaded middle of the bed slid near the coupled resonance and the
-  footing lagged twice as far.
+  footing lagged twice as far;
+- over a layer 1.5 m deep on rock, the 1.5 m square footing's vertical stiffness is 1.81 times
+  the half-space's, 5% above E. Kausel's 1 + 1.28 r / d for a stratum on rock (1.72), and the
+  block settles under its weight within 3% of that, with the soil's mass (the echoes building it
+  up) and without (the bed);
+- pushed with 1.3 times its friction, a block on a footing slides at (F − μ W) / M within 15%,
+  on the half-space and over a layer 2 m deep on rock, where the bed's points alone bear only
+  about 56% of the weight and slid at twice that rate until they were given the echoes' share;
+  and the wall on its footing tips about the toe as above over a layer 2 m deep;
+- over layers 0.3 to 10 m deep, on rock, soft rock or a soft clay, the impedance's imaginary
+  part is nowhere negative in any mode, up to ten times the layer's lowest frequency: the soil
+  never gives the footing energy;
+- driven up and down at 0.4 and 1.5 times the layer's cut-off, c / 4 d, the block answers with
+  the layered cone's dynamic stiffness within 7%; below the cut-off the layer radiates under a
+  third of what the half-space does. Here the body is given a little mass-proportional damping
+  (20/s, i ω M c in the expected impedance), as the layer otherwise keeps the footing's own
+  free vibration going for longer than the test runs.
 
 **On the freestanding wall** (`blastbench anchorage --bases footing`), the study's 1 m strip of
 wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand with its mass:
@@ -367,13 +407,18 @@ wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand wit
 
 Without the soil's mass (`--massless`) the peak sway is within 1.5% at every distance and the
 footing turns within 0.5%: rocking on its toe radiates little, and the toe's crushing and the
-heel's lift do the rest. The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
+heel's lift do the rest. Over a layer 3 m deep (`--layer 3`) on rock the wall and footing rock
+further, 426 mm and 122 mrad at 10 m, 149 mm and 43 mrad at 15 m, as the stiffer ground under
+the toe gives back more of what it takes; over a soft clay (`--beneath clay`) a little less,
+338 mm and 96 mrad at 10 m. The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
 on the footing's toe, which crushes the sand. Clamped, the wall sways 200, 65, 29 and 11 mm;
 on the Winkler bed of `Anchorage.soil()` under its own 250 mm base it goes over at every
 distance. The footing is what keeps it up at 10 m and beyond, but it rocks. At 10 m the pulse's
 angular impulse about the toe, 5.3 kN m s, gives the wall and footing (9,250 kg m² about the
 toe) 1.5 kJ; rocking as a rigid block on its toe, they would rise until that has lifted their
-weight, at 0.09 rad, against 0.103 found on the yielding sand. Each run takes about 22 s.
+weight, at 0.09 rad, against 0.103 found on the yielding sand. Each run takes about 22 s, as
+on the other bases. Meshed with shells (`--shells`, 10 s a run) the wall and footing do the
+same within 1% at 10, 15 and 25 m and 2% at 6 m.
 
 **Not modelled.** The footing is rigid, rectangular, flat-bottomed and sits on the surface:
 there is no embedment and no soil against its sides. It is drawn nowhere in the app. The bed's
