@@ -1420,8 +1420,46 @@ budget. All 82 CPU-only tests in 16 suites pass, and the twelve advection cases 
 independent summary. Strict Swift formatting and diff checks are clean. The full release
 build succeeds with main's existing AirSlice concurrency warnings.
 
-Next, measure nonuniform moving-pressure-load convergence, including positive surface/time
-quadrature where centroid traces do not resolve force or torque. Local second-order time
+Known-pressure moving loads now isolate the surface/time quadrature gate. Optional wall
+samples combine positive degree-two triangle nodes with four positive Gauss nodes per
+clipping-event interval. Their weights are area × time, with actual world positions and
+relative times. They recover existing area, spatial first moments and time-weighted area;
+samples follow the translating wall plane rather than its time-averaged plane. Four time
+nodes integrate the degree-six products arising from clipped areas, moving lever arms
+and affine pressure with quadratic time coefficients. The original two-node geometric
+integrals remain unchanged when sampling is disabled.
+
+`--moving-pressure` imposes p(x,t) = b(s) + g(s)·(x − c0 − vt), s = t/T, on a translating
+0.8 × 0.6 × 0.4 m box with an offset centre of mass. Both b and g are quadratic in s.
+For this imposed trace, the divergence theorem gives impulse −VT(g0 + g1/2 + g2/3),
+angular impulse (c0 − COM0) × impulse, and work v·impulse. The rectangular box, rotated
+orientation and offset COM exercise force and torque separately. This pressure field is
+not a source-free Euler solution: no gas state or numerical reflection is evolved here.
+
+Twelve cases cover 0.4/0.2/0.1 m grids, aligned/rotated boxes and one/four time slices over
+0.8 ms at (300,100,−40) m/s. Joint centroid evaluation gives 2.84–3.49% impulse error and
+9.23–16.84% angular-impulse error with one slice. Four slices reduce impulse error to
+0.237–0.259%, but torque error still spans 0.65–9.42%; spatial refinement is not uniformly
+monotonic for centroid loads. Temporal subdivision alone does not remove surface covariance
+error. Positive samples match exact impulse, angular impulse and work within `4e-14`
+relative, and work/impulse consistency within `6e-12` J. Sample moment residuals remain
+below `2e-14` relative; minimum prescribed sample pressure exceeds 81 kPa. These load
+accuracy errors are separate from the roundoff-scale paired exchange budget.
+
+The sampled load kernel validates positive finite weights, time bounds, translating-plane
+positions, area/space/time moments and positive finite pressure. It provides the same
+pressure impulse and work with opposite signs as a gas reaction packet. Tests check exact
+local force/torque/time integration, a paired extensive gas-buffer update, transient wall
+intersections with clear endpoints, malformed samples/pressures and full-box exact loads.
+The independent Python summary uses Simpson integration of the quadratic gradient and
+Rodrigues rotation for the offset COM; it checks all twelve reports and their errors.
+All 86 CPU-only tests in 17 suites pass. Strict formatting and diff checks pass; the release
+build succeeds with the existing AirSlice warnings. Samples are opt-in and have not yet
+been connected to the numerical moving-group wall traces.
+
+Next, carry positive surface/time samples through numerical moving-group wall states,
+paired gas/body packets and torque about the translating COM. Then measure evolving
+nonuniform-pressure loads under spatial/time refinement. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
 and velocity vary, especially near shocks and geometric contacts.

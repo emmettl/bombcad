@@ -7,6 +7,24 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--moving-pressure") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-pressure.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingPressureStudy.Result] = []
+        _ = try ExperimentalMovingPressureStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation), slices \(r.timeSlices): centroid impulse/torque error \(r.centroid.relativeImpulseError)/\(r.centroid.relativeAngularImpulseError), sampled \(r.sampled.relativeImpulseError)/\(r.sampled.relativeAngularImpulseError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--moving-entropy") {
         let limited = arguments.contains("--limited")
         let secondOrder = arguments.contains("--heun")

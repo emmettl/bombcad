@@ -546,6 +546,14 @@ independently of clipping and regrouping. Maximum relative L1 change under CFL h
 falls from 5.81% to 0.087% in the twelve density-advection cases. Moving pressure-load
 accuracy remains a separate gate.
 
+`swift run -c release rigidboxdemo --moving-pressure` writes `.build/moving-pressure.json`.
+`python3 Scripts/summarize-moving-pressure.py` checks twelve known-pressure load cases against
+independent box integrals. Positive surface/time quadrature follows the moving wall and
+centre of mass through clipping events; it recovers impulse, torque and work to roundoff.
+Centroid evaluation loses pressure/lever-arm covariance and temporal variance. This probe
+prescribes affine pressure with a quadratic time envelope; it does not evolve gas or validate
+a blast. The sampled load kernel is available separately from the moving-group flux update.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
