@@ -530,9 +530,21 @@ Primitive face/wall reconstruction uses old gas-volume centroids and supplied ex
 stencil points. Conservative member reconstruction uses final gas centroids, bounds slopes
 and checks Euler positivity while preserving group packets. Density L1 errors fall to
 about 2.9%, 1.0–1.1% and 0.3–0.4% on the three grids, with fine-grid newly exposed-cell
-density errors around 1%. Time integration remains first-order. The same `--limited`
+density errors around 1%. This mode uses Euler time integration. The same `--limited`
 flag applies to moving trajectories; `python3 Scripts/summarize-moving-trajectory.py --limited`
 checks their fast and original-speed reports.
+
+Add `--heun` to `--moving-entropy --limited` for a separate two-stage report, and
+run `python3 Scripts/summarize-moving-entropy.py --heun` to compare its CFL sensitivity.
+The update averages extensive gas inventories and paired wall/reservoir exchanges, checks
+both stage limits and splits members only after acceptance. Old/final gas centroids and
+exterior stencil states belong to their respective stages; prescribed flux reservoirs keep
+the same interval-average states. `--heun` also applies to moving trajectories; run
+`python3 Scripts/summarize-moving-trajectory.py --limited --heun` after generating both
+halving reports. A local expanding-piston test checks second-order time convergence
+independently of clipping and regrouping. Maximum relative L1 change under CFL halving
+falls from 5.81% to 0.087% in the twelve density-advection cases. Moving pressure-load
+accuracy remains a separate gate.
 
 ## Headline results
 

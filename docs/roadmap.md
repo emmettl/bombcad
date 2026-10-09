@@ -1379,9 +1379,52 @@ backoff, deficient-neighbour fallback, affine interior face traces with exterior
 points, original-speed uniform crossings and limited advection refinement. Strict formatting
 and diff checks are clean. The release builds retain the incoming AirSlice concurrency warnings.
 
-Next, add consistent time integration while keeping endpoint volumes, trace locations,
-reservoir exchange and body loads paired through every stage. Recheck uniform preservation
-and the analytical advection matrix before nonuniform moving-pressure-load convergence.
+An opt-in `--heun` update now integrates interval-local moving groups in two stages.
+The time-averaged faces and wall measures remain fixed for the accepted interval. The
+first Euler stage takes old inventories at V0 to the true endpoint V1; the second starts
+there and temporarily extrapolates capacity to V2 = V0 + 2(V1 − V0). Averaging old and
+second-stage extensive inventories returns the true endpoint capacity V1. This preserves
+the moving geometric conservation law and uniform comoving states. No raw-member scatter
+occurs between stages; only the final averaged group packets are reconstructed/split.
+Both Euler stages and the final state must pass CFL/positivity checks transactionally.
+Wall impulse, wall work and reservoir exchange use the same half-stage weights as gas.
+
+Limited traces use old gas centroids/old-time exterior stencil points in stage one and
+final gas centroids/endpoint-time stencil points in stage two. Prescribed flux reservoirs
+are sampled once per interval and retain the same area/time averages in both stages,
+avoiding an additional time shift of already averaged boundary data. The default Euler
+mode and its separate reports remain available for comparisons.
+
+A single-group expanding piston separates temporal error from clipping, changing partitions
+and spatial reconstruction. An independent dense RK4 integration of its local pressure ODE,
+using V(t) directly, provides a reference. Halving steps from 4 to 8 to 16 to 32 gives
+rates between 1.9 and 2.1 for Heun, versus 0.9–1.1 for Euler. Every step preserves gas/wall
+momentum and energy, with work equal to piston speed times impulse. Additional tests check
+second-stage CFL rejection, one reservoir sample per patch, endpoint stencil evaluation
+and aligned/rotated uniform wet/dry regrouping with constant and limited reconstruction.
+
+The twelve `--moving-entropy --limited --heun` cases retain decreasing spatial errors:
+about 2.8–2.9%, 0.98–1.03% and 0.30–0.36% on the three grids. Observed spatial rates
+range from 1.47 to 1.71. Maximum relative L1 sensitivity under CFL halving falls from
+5.81% to 0.087%, with improvement at every grid/orientation. Fine-grid maximum newly
+exposed-cell density errors remain about 1.19% aligned and 0.96% rotated; time integration
+has not removed bounded member mixing near walls. Pressure stays within `5e-14` relative,
+velocity within `5e-12` m/s, and cumulative budget residuals below `7e-14` kg, `2e-11` N s
+and `3e-8` J. Paired work residuals stay below `5e-13` J. No member positivity backoff
+or rank fallback occurs. The entropy summary checks all three method matrices and verifies
+improved CFL sensitivity, along with independent integrals and geometric transition counts.
+
+Both two-stage uniform trajectory matrices pass all sixteen fast/original-speed cases,
+including every independently predicted wet/dry transition and cumulative reservoir/body
+budget. All 82 CPU-only tests in 16 suites pass, and the twelve advection cases pass the
+independent summary. Strict Swift formatting and diff checks are clean. The full release
+build succeeds with main's existing AirSlice concurrency warnings.
+
+Next, measure nonuniform moving-pressure-load convergence, including positive surface/time
+quadrature where centroid traces do not resolve force or torque. Local second-order time
+convergence does not establish second-order accuracy across changing group partitions and
+bounded member scatter. Frozen interval measures also require further checks when pressure
+and velocity vary, especially near shocks and geometric contacts.
 Constant-pressure advection does not measure blast-wave or pressure-load accuracy. The
 conservative reconstruction still does not preserve gas angular momentum. Coupled free-body
 velocity, rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary
