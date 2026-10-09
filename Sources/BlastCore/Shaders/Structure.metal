@@ -102,6 +102,7 @@ struct StructureUniforms {
     // length, not the element's (see `StructureModel.barRateAlongBars`).
     uint barRateAlongBars;
     uint couplingMapCount;
+    uint footings;  // rigid footings under connected bases (`FootingSystem`); 0: none
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -2393,6 +2394,81 @@ float3 anchorForce(device float4 *anchors, uint index, StructureNode node, const
     return force;
 }
 
+// A rigid footing under a connected base (`Footing`, `FootingSystem` in Swift, `footingStep` in
+// Footing.metal). Constants, laid out as `FootingSystem.Constants`.
+struct FootingConstants {
+    float4 rest;              // centre of mass at rest (xyz), mass
+    float4 inertia;           // principal moments about x, y, z through the centre; vertical trapped mass
+    float4 base;              // base centre less the centre of mass, at rest; 1: bed damped at its points
+    uint4 ranges;             // first bed point, bed points, first member, members
+    float4 rocking;           // cone dashpot about x, about y; its internal rotary mass about x, about y
+    float4 stiffness;         // bed's vertical, horizontal x, horizontal y; 1 over a layer with echoes
+    float4 moreStiffness;     // bed's rocking about x, about y; cone dashpot vertical, horizontal
+    float4 layer;             // round trips of the vertical and of the shear waves; sample intervals of each
+    uint4 history;            // first history value, first echo weight, samples kept per mode, echoes per mode
+    float4 totals;            // the bed's sum k, sum k x^2, sum k y^2 (about the base centre); friction
+    float4 unused;
+};
+
+// A footing's state, laid out as `FootingSystem.State`.
+struct FootingState {
+    float4 centre;       // displacement of the centre of mass; time since the start
+    float4 rotation;     // unit quaternion (x, y, z, w)
+    float4 velocity;     // of the centre of mass; samples written of the vertical waves
+    float4 spin;         // angular velocity; samples written of the shear waves
+    float4 cone;         // rates of the rocking cones' internal masses about x and y, then of the echoes'
+    float4 soilForce;    // the soil's force on the footing; the fraction of the bed bearing
+    float4 soilMoment;   // its moment about the base centre; the largest lift of a point of the bed
+    float4 jointForce;   // the body's force on the footing; the deepest the soil has yielded
+    float4 contact;      // the bearing part of the base: least and greatest x, least and greatest y
+};
+
+static inline float3 footingRotate(float4 q, float3 v) {
+    float3 t = 2.0f * cross(q.xyz, v);
+    return v + q.w * t + cross(q.xyz, t);
+}
+
+static inline float3 footingUnrotate(float4 q, float3 v) {
+    return footingRotate(float4(-q.xyz, q.w), v);
+}
+
+// A point of a body tied to a footing: it started at `rest`, is now at `position` and moves at
+// `velocity`. The connection acts across the footing's top as it does across the ground
+// (`anchorTraction`), in the footing's frame, which moves and turns with it. Returns the force on
+// the point, and writes the footing's reaction and its moment about the footing's centre to
+// `link`. `state` and `settlement` are as `anchorTraction`'s.
+static inline float3 footingJoint(thread float4 &state, thread float &settlement, float3 rest, float3 position,
+                                  float3 velocity, float area, float damper, AnchorLaw law, FootingConstants c,
+                                  FootingState s, device float4 *link) {
+    float3 centre = c.rest.xyz + s.centre.xyz;
+    float3 arm = footingRotate(s.rotation, rest - c.rest.xyz);
+    float3 held = centre + arm;
+    float3 heldVelocity = s.velocity.xyz + cross(s.spin.xyz, arm);
+    float3 relative = footingUnrotate(s.rotation, position - held);
+    float rise = footingUnrotate(s.rotation, velocity - heldVelocity).z;
+    float3 force = footingRotate(s.rotation, -area * anchorTraction(state, settlement, relative, rise, damper, law));
+    link[0] = float4(-force, 0.0f);
+    link[1] = float4(cross(held - centre, -force), 0.0f);
+    return force;
+}
+
+// `anchorForce` for a lattice node tied to a footing, from its reference position.
+float3 footingAnchorForce(device float4 *anchors, uint index, StructureNode node, float3 rest,
+                          constant StructureUniforms &u, AnchorLaw law, FootingConstants c, FootingState s,
+                          device float4 *links) {
+    float4 stored = anchors[3 * index];
+    float area = stored.x;
+    float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
+    float settlement = anchors[3 * index + 2].x;
+    float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
+    float3 force = footingJoint(state, settlement, rest, rest + float3(node.displacement), float3(node.velocity),
+                                area, damper, law, c, s, links + 2 * index);
+    anchors[3 * index] = float4(area, state.xyz);
+    anchors[3 * index + 1] = float4(force, state.w);
+    anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);
+    return force;
+}
+
 kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device ElementForces *forces [[buffer(1)]],
                            device uchar *flags [[buffer(2)]],
@@ -2416,6 +2492,10 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device float4 *barForces [[buffer(20)]],
                            const device AnchorLaw *anchorLaws [[buffer(21)]],
                            device atomic_uint *couplingMap [[buffer(22)]],
+                           const device uint *footingOf [[buffer(23)]],
+                           const device FootingConstants *footingConstants [[buffer(24)]],
+                           const device FootingState *footingStates [[buffer(25)]],
+                           device float4 *footingLinks [[buffer(26)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2494,7 +2574,14 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     bool anchoredNode = finiteConnections && u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f;
     if (anchoredNode) {
-        force += anchorForce(anchors, threadIndex, node, u, anchorLaws[threadIndex]);
+        uint footing = u.footings != 0 ? footingOf[threadIndex] : 0u;
+        if (footing == 0) {
+            force += anchorForce(anchors, threadIndex, node, u, anchorLaws[threadIndex]);
+        } else {
+            float3 rest = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
+            force += footingAnchorForce(anchors, threadIndex, node, rest, u, anchorLaws[threadIndex],
+                                        footingConstants[footing - 1], footingStates[footing - 1], footingLinks);
+        }
     }
 
     float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));

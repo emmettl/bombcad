@@ -274,13 +274,87 @@ freestanding wall on soil goes over in every case of the study above, as it does
 rigid ground: its 250 mm base is the same lever either way.
 
 **Not modelled.** The ground is flat, and rigid unless it is given a bearing capacity. There is
-no embedment, and a footing is whatever the structure's own solids make of one. The Winkler bed
-is the simplest of soils: it has no mass, no radiation damping, no rate dependence and no
-layers, its springs do not interact, and it neither softens nor hardens as it settles. The connection has no rate dependence and no
+no embedment. The Winkler bed of `Anchorage.soil()` is the simplest of soils: it has no mass,
+no radiation damping, no rate dependence and no layers, its springs do not interact, and it
+neither softens nor hardens as it settles; a footing ([below](#footings)) has a finite plan,
+mass, and soil with mass, radiation damping and a layer. The connection has no rate dependence and no
 dilatancy, the bars' yield is a plateau of the joint as a whole rather than bars at the faces,
 and opening and sliding interact only through the shared loss of strength. Support regions
 (`supports`) hold their nodes still unless given a connection of their own, which acts as a
 horizontal bearing (see [structural editing](structural-editing.md)).
+
+## Footings
+
+A connection can stand the base on a rigid footing instead of the ground (`Anchorage.footing`,
+`Footing`; `BaseConnection.footing` is a wall cast on starter bars onto a footing 0.4 m thick
+reaching 0.5 m beyond it on each side). The footing is a rigid body of its own, with its mass
+and moments of inertia, moved on the GPU by one threadgroup after each node pass
+(`FootingSystem`, `footingStep` in Footing.metal). The connection's law acts between the body
+and the footing's top as it does between the body and the ground, but in the footing's frame,
+which moves and turns with it: a wall can open at its heel on a footing that is itself
+lifting. The ground's connection makes one footing under all the base points it ties, and each
+support region with a footing its own; its plan is the box round those points, widened by
+`overhang` on each side. Solid elements' nodes and the footprint points of shell walls and beam
+columns are tied to it alike.
+
+The footing bears on the soil over its plan alone, through a bed of 17 × 17 points from edge
+to edge (`FootingBed`). Each bears in compression only, lifts off and lands again unstrained,
+slides with Coulomb friction, and yields past its share of the bearing capacity, settling for
+good. So the heel lifts once the moment passes the bed's kern, the contact shifts towards the
+toe as the footing turns, the toe crushes the soil, and the footing tips about its own toe,
+not the wall's. A bed of equal springs turns 2.5 times too easily for its vertical stiffness,
+as a rigid footing on an elastic half-space bears hardest at its edges, so each point's
+stiffness is its share of (1 − s²)^−a (1 − t²)^−b over the base (s and t from −1 to 1 across
+it; a = b = 1/2 is the rigid punch's pressure), each exponent set so that the bed turns about
+its axis as stiffly, against its vertical stiffness, as the half-space does. Along the base the
+springs take the same shares, so that the footing slides all at once. A footing more than
+about twice as long as it is wide turns about its long axis more stiffly than any bed of its
+width can; there the exponent stops at 0.95 and the bed is scaled to rock as stiffly as the
+half-space, which leaves it stiffer vertically (by 1.1 at twice as long, 1.6 at ten times).
+
+**The soil** (`Soil`, `SoilMaterial`) is an elastic half-space, medium dense sand by default
+(G = 40 MPa, ν = 0.3, 1,900 kg/m³, about 145 m/s in shear; 600 kPa bearing, friction 0.5),
+values within the ranges foundation texts give, not measured for any site. Its static
+stiffnesses are G. Gazetas's for a rigid rectangle (1991), which agree with the rigid disk's
+within 1% in translation and 9% in rocking for a square.
+
+**Checks** (`FootingTests`, a stiff elastic block or wall cast on starter bars):
+
+- the bed gives the half-space's vertical and both rocking stiffnesses within 1% under a
+  square footing, and both rocking stiffnesses under footings two and ten times as long as
+  wide, with the vertical within the factor above;
+- a block on a 1.5 m square footing settles W / K under its own and the footing's weight
+  within 3%, the soil bearing the weight within 2%;
+- pushed with moments of 0.1, 0.25 and 0.4 of W B, the footing turns within 5% of the bed's own
+  statics, a rigid plate on tensionless springs solved separately, with its bearing range the
+  same within one point of the bed; past the kern (0.4) its heel lifts and the contact moves
+  towards the toe;
+- a 3 m wall 250 mm thick on a footing 1.25 m wide, of solid elements or shells, holds 0.8 of
+  the push whose moment about the footing's toe is W B / 2, and goes over at 1.3 of it; that
+  push is more than five times what tips the wall about its own toe.
+
+**On the freestanding wall** (`blastbench anchorage --bases footing`), the study's 1 m strip of
+wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand with its mass:
+
+| Distance | Peak sway | At 0.5 s | Footing turned | Heel lifted | Slid | Rose |
+|---|---|---|---|---|---|---|
+| 6 m | over (1.38 m) | over | 398 mrad | 440 mm | 54 mm | 197 mm |
+| 10 m | 360 mm | 318 mm | 103 mrad | 115 mm | 8 mm | 44 mm |
+| 15 m | 130 mm | −69 mm | 37 mrad | 40 mm | 1.8 mm | 7 mm |
+| 25 m | 43 mm | 28 mm | 12 mrad | 12 mm | 0.8 mm | 1.8 mm |
+
+The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
+on the footing's toe, which crushes the sand. Clamped, the wall sways 200, 65, 29 and 11 mm;
+on the Winkler bed of `Anchorage.soil()` under its own 250 mm base it goes over at every
+distance. The footing is what keeps it up at 10 m and beyond, but it rocks. At 10 m the pulse's
+angular impulse about the toe, 5.3 kN m s, gives the wall and footing (9,250 kg m² about the
+toe) 1.5 kJ; rocking as a rigid block on its toe, they would rise until that has lifted their
+weight, at 0.09 rad, against 0.103 found on the yielding sand. Each run takes about 22 s.
+
+**Not modelled.** The footing is rigid, rectangular, flat-bottomed and sits on the surface:
+there is no embedment and no soil against its sides. It is drawn nowhere in the app. The bed's
+springs do not interact, and its points yield one by one with no rounding of the soil under
+the toe. One footing spans every point its connection ties, however far apart.
 
 ## Failure and removal
 

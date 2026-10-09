@@ -23,6 +23,7 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--stationary-walls]
@@ -1515,6 +1516,24 @@ func runAnchorage() throws {
             "The pulse loads the face alone. A freestanding wall's back face is loaded too, as the wave wraps\n"
                 + "over and round it, and it sways about a third as far at 10 m: see --air.")
     }
+    // The footing's soil: `--massless` without its mass and radiation damping; `--layer d` a layer
+    // d metres deep over rock (or `--beneath sand`, a looser sand, or `--beneath clay`, a soft
+    // clay, as a half-space).
+    var soil = Soil()
+    soil.radiationDamping = !flag("massless")
+    soil.layerDepth = option("layer").flatMap { Float($0) }
+    switch option("beneath") {
+    case "sand": soil.beneath = SoilMaterial(shearModulus: 20e6, poissonRatio: 0.3, density: 1800)
+    case "clay": soil.beneath = SoilMaterial(shearModulus: 10e6, poissonRatio: 0.45, density: 1700)
+    default: soil.beneath = nil
+    }
+    if soil != Soil() {
+        print(
+            "Footing on medium dense sand" + (soil.radiationDamping ? "" : " without its mass")
+                + (soil.layerDepth.map {
+                    " as a layer \(format(Double($0), 1)) m deep over " + (option("beneath") ?? "rock")
+                } ?? ""))
+    }
     for standoff in standoffs {
         print("")
         var header = false
@@ -1533,12 +1552,12 @@ func runAnchorage() throws {
                     device: device, base: base, mass: mass, standoff: standoff, duration: Double(duration),
                     cellSize: option("cell").flatMap { Float($0) } ?? 0.25, elementSize: h,
                     margin: option("margin").flatMap { Float($0) } ?? 12,
-                    domainHeight: option("height").flatMap { Float($0) } ?? 18,
+                    domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
                     progress: flag("progress") ? { print("    " + $0) } : nil)
                 : try AnchorageStudy.run(
                     device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                     elementSize: h,
-                    shells: shells)
+                    shells: shells, soil: soil)
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
@@ -1562,6 +1581,14 @@ func runAnchorage() throws {
                     + pad(failed, 12)
                     + pad(anchored ? "\(format(Double(r.peakBaseMoment) / 1000, 0)) kN m/m" : "-", 12)
                     + pad("\(r.summary.erodedElements)", 8) + pad("\(format(r.wallSeconds)) s", 9))
+            if base == .footing {
+                print(
+                    pad("", 22)
+                        + "footing: turned \(format(Double(r.footingRotation) * 1000, 2)) mrad, heel lifted "
+                        + "\(format(Double(r.footingUplift) * 1000, 2)) mm; at the end slid "
+                        + "\(format(Double(r.footingSlide) * 1000, 2)) mm, settled \(format(Double(r.footingSettlement) * 1000, 2)) mm"
+                )
+            }
             if flag("air") {
                 print(
                     pad("", 22)
