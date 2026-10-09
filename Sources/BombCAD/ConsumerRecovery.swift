@@ -123,6 +123,9 @@ final class ResilientFrameConsumer: FrameConsumer, @unchecked Sendable {
         weak var consumer: ResilientFrameConsumer?
     }
 
+    /// The other Mac's host.
+    var host: String { remote.host }
+
     /// Why the other Mac failed, after which frame it had reported, if it has.
     var fallback: (frame: Int, reason: String)? { lock.withLock { failure } }
 
@@ -131,6 +134,7 @@ final class ResilientFrameConsumer: FrameConsumer, @unchecked Sendable {
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
     var report: ConsumerReport { active.report }
+    var seconds: Double { active.seconds }
     func report(after frame: Int) -> ConsumerReport? { active.report(after: frame) }
     var live: ConsumerLive? { active.live }
 
@@ -213,14 +217,15 @@ final class ResilientFrameConsumer: FrameConsumer, @unchecked Sendable {
 }
 
 extension FrameConsumer {
-    /// Where the consumer runs, for a status line: " on <host>", or " here after frame <n>: <why>"
-    /// once another Mac failed it; empty here.
-    func placement(host: String?) -> String {
-        if let resilient = self as? ResilientFrameConsumer, let fallback = resilient.fallback {
+    /// Where the consumer runs, for a status line: " on <host>", or " here after frame <n>, <host>
+    /// having failed: <why>" once another Mac failed it; empty here.
+    var placement: String {
+        if let resilient = self as? ResilientFrameConsumer {
+            guard let fallback = resilient.fallback else { return " on \(resilient.host)" }
             return
-                " here after frame \(fallback.frame + 1), \(host ?? "the other Mac") having failed: \(fallback.reason)"
+                " here after frame \(fallback.frame + 1), \(resilient.host) having failed: \(fallback.reason)"
         }
-        guard self is RemoteFrameConsumer || self is ResilientFrameConsumer else { return "" }
-        return " on \(host ?? "another Mac")"
+        if let remote = self as? RemoteFrameConsumer { return " on \(remote.host)" }
+        return ""
     }
 }

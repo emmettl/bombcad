@@ -554,10 +554,11 @@ enum HeadlessRun {
             streams.append(
                 String(
                     format:
-                        "%@ %@: %d frames, %.1f MB (%.0f MB/s), %.2f ms a frame to feed; the run waited %.2f s of %.2f s for it",
+                        "%@ %@: %d frames, %.1f MB (%.0f MB/s), %.2f ms a frame to feed and %.2f ms to run; the run waited %.2f s of %.2f s for it",
                     name, feed.place, consumer.sent, Double(consumer.bytes) / 1e6,
                     Double(consumer.bytes) / 1e6 / max(running.seconds, 1e-9),
-                    1000 * feed.cost.seconds / Double(max(consumer.sent, 1)), feed.held.seconds,
+                    1000 * feed.cost.seconds / Double(max(consumer.sent, 1)),
+                    1000 * consumer.seconds / Double(max(consumer.sent, 1)), feed.held.seconds,
                     running.seconds)
                     + ((consumer as? ResilientFrameConsumer)?.fallback.map {
                         "; here after frame \($0.frame + 1), that Mac having failed: \($0.reason)"

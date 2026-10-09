@@ -82,7 +82,8 @@ func flakyWorker(dropAfter limit: Int = .max) -> SweepWorkerClient {
                     let frame = frames[id, default: -1] + 1
                     frames[id] = frame
                     try? writer.send(
-                        .report(id, ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0)))
+                        .report(
+                            id, ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0), 0))
                 case .finishConsumer: break loop
                 default: continue
                 }

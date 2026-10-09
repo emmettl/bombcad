@@ -11,7 +11,7 @@ final class SweepWorkerClient {
     private(set) var hello: SweepWorkerHello?
     /// Safe from any thread: frames go out in the order given.
     nonisolated let writer: SweepWorkerWriter
-    private var reports: [UUID: @Sendable (ConsumerReport) -> Void] = [:]
+    private var reports: [UUID: @Sendable (ConsumerReport, Double) -> Void] = [:]
     private var liveFrames: [UUID: @Sendable (ConsumerLive.Header, Data) -> Void] = [:]
     /// Consumer sessions to tell if they fail, or the connection does, before their result.
     private var sessionFailures: [UUID: @Sendable (Error) -> Void] = [:]
@@ -126,11 +126,12 @@ final class SweepWorkerClient {
         onClose()
     }
 
-    /// Starts a consumer session, whose reports go to `report`, for a live one its model's state
+    /// Starts a consumer session, whose reports, with its model's seconds on frames so far, go to
+    /// `report`, for a live one its model's state
     /// after each frame to `live`, and why it stopped to `failed` if it fails, or the connection
     /// does, before its result is asked for.
     func startConsumer(
-        _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void,
+        _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport, Double) -> Void,
         live: @escaping @Sendable (ConsumerLive.Header, Data) -> Void = { _, _ in },
         failed: @escaping @Sendable (Error) -> Void = { _ in }
     ) {
@@ -163,8 +164,8 @@ final class SweepWorkerClient {
 
     private func receive(_ message: SweepWorkerMessage, payload: Data) {
         switch message {
-        case .report(let id, let report):
-            reports[id]?(report)
+        case .report(let id, let report, let seconds):
+            reports[id]?(report, seconds)
         case .live(let id, let header):
             liveFrames[id]?(header, payload)
         case .outcome(let id):

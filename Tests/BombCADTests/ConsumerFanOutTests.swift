@@ -122,6 +122,8 @@ struct ConsumerFanOutTests {
         #expect(there.streams[0].hasPrefix("Fragments on first: 7 frames"))
         #expect(there.streams[1].hasPrefix("Thermal radiation on second: 7 frames"))
         #expect(there.streams[2].hasPrefix("Ground shock on second: 7 frames"))
+        // Each model's own time, measured where it ran.
+        #expect(there.streams.allSatisfy { $0.contains(" ms to run; ") })
     }
 
     @Test("A run whose other Mac drops carries its models on here, and says so")

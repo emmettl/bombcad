@@ -151,8 +151,8 @@ struct FragmentOverlayTests {
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
-        model.useFragmentWorker(worker, host: "the mini")
-        model.fragmentsOnRemote = true
+        model.useWorker(worker, host: "the mini")
+        model.fragmentsHost = "the mini"
         for _ in 0..<2 {
             let deadline = ContinuousClock.now + .seconds(60)
             while !model.experimentIsReady {
