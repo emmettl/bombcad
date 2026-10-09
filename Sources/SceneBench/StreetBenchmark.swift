@@ -135,6 +135,14 @@ enum StreetBenchmark {
                         directory: directory))
             }
             let sceneWithGravity = try StreetInteractionStudy.make(.street)
+            var openGround = sceneWithGravity
+            openGround.name = "Open-ground control"
+            openGround.objects = []
+            try write(openGround, to: directory.appending(path: "open-layout.json"))
+            observations.append(
+                try execute(
+                    device: device, scene: openGround, layout: "open", setting: settings[3],
+                    id: "open-control", purpose: "open-control", duration: duration, directory: directory))
             var sceneWithoutBlast = sceneWithGravity
             sceneWithoutBlast.charge.mass = 0
             observations.append(

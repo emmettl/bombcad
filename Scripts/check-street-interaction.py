@@ -16,7 +16,7 @@ def read(path):
     return json.loads(gzip.decompress(path.read_bytes()) if path.suffix == ".gz" else path.read_text())
 
 
-def compare_maps(a, b):
+def compare_maps(a, b, excluded=None):
     """Compare fixed physical probes; retain common fluid stencils only."""
     ratio = round(a["cellSizeM"] / b["cellSizeM"])
     require(ratio >= 1 and a["nx"] * ratio == b["nx"] and a["ny"] * ratio == b["ny"], "nested maps")
@@ -33,7 +33,7 @@ def compare_maps(a, b):
             index = i + j * a["nx"]
             indices = [i * ratio + di + b["nx"] * (j * ratio + dj)
                        for dj in range(ratio) for di in range(ratio)]
-            if a["everSolid"][index] or any(b["everSolid"][n] for n in indices):
+            if (excluded is not None and excluded[index]) or a["everSolid"][index] or any(b["everSolid"][n] for n in indices):
                 continue
             count += 1
             for key, totals in sums.items():
@@ -91,7 +91,7 @@ def check(directory):
                 require(arrival is None or 0 <= arrival <= run["durationS"] + 1e-7, f"{name}: arrival time")
         owners = [body["id"] for body in run["bodies"]]
         require(len(set(owners)) == len(owners), f"{name}: owners")
-        require(len(owners) == {"isolated": 1, "pair": 2, "street": 4}[run["layout"]], f"{name}: missing body")
+        require(len(owners) == {"open": 0, "isolated": 1, "pair": 2, "street": 4}[run["layout"]], f"{name}: missing body")
         for body in run["bodies"]:
             samples = body["samples"]
             require(samples and abs(samples[-1]["timeS"] - run["durationS"]) < 1e-7, f"{name}: body cutoff")
@@ -105,15 +105,19 @@ def check(directory):
             require(abs(gauge["peakPa"] - max(0, max(s[1] for s in samples))) < 0.1, f"{name}: gauge peak")
     summary = {"schemaVersion": 1, "sourceRevision": report["sourceRevision"], "comparisons": [], "conservation": []}
     if report["completeMatrix"]:
-        require(len(runs) == 23, "expected eighteen comparisons, three closed checks, gravity control and profile")
+        require(len(runs) == 24, "expected eighteen comparisons, three closed checks, open/gravity controls and profile")
         require(len(report["sourceRevision"]) == 40 and all(c in "0123456789abcdef" for c in report["sourceRevision"]), "source revision")
         for layout in ("isolated", "pair", "street"):
+            layout_maps = [maps[f"{layout}-{setting}"] for setting in ("coarse", "medium", "fine", "finest", "adaptive", "half-cfl")]
+            excluded = [any(plane["everSolid"][n] for plane in layout_maps) for n in range(len(layout_maps[0]["everSolid"]))]
             for setting in ("coarse", "medium", "fine", "adaptive", "half-cfl"):
                 reference = f"{layout}-fine" if setting == "half-cfl" else f"{layout}-finest"
                 name = f"{layout}-{setting}"
                 require(name in runs and reference in runs, "missing comparison")
                 require([b["id"] for b in runs[name]["bodies"]] == [b["id"] for b in runs[reference]["bodies"]], "owner changes")
-                summary["comparisons"].append({"run": name, "reference": reference, **compare_maps(maps[name], maps[reference])})
+                summary["comparisons"].append({"run": name, "reference": reference, **compare_maps(maps[name], maps[reference], excluded)})
+        summary["comparisonMask"] = "Per layout, exclude every probe whose stencil touched solid in any setting; also exclude source radius 3 m and edge margin 1 m."
+        require("open-control" in runs and runs["open-control"]["cellSizeM"] == 0.125, "open-ground reference")
         for name in ("closed-coarse", "closed-medium", "closed-fine"):
             run = runs[name]
             mass = abs(run["massFinalKg"] / run["massInitialKg"] - 1)
@@ -127,7 +131,7 @@ def check(directory):
         profile = runs["profiled-street"]
         require(profile.get("profile") and all(v > 0 for v in profile["profile"].values()), "profile counters")
         require(sum(profile["profile"].values()) <= profile["commandGPUS"] * 1.05, "profile exceeds GPU command intervals")
-        for key in ("peakPa", "positiveImpulsePaS", "everSolid"):
+        for key in ("peakPa", "positiveImpulsePaS", "everSolid", "arrivalS"):
             require(maps["street-finest"][key] == maps["profiled-street"][key], f"profiling changed {key}")
         require(all(s["removedElements"] == 0 for b in runs["gravity-control"]["bodies"] for s in b["samples"]), "gravity control failed")
     return summary

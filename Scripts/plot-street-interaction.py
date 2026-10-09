@@ -22,16 +22,16 @@ def render(directory, output):
     report = load(directory / "report.json")
     summary = load(directory / "sensitivity.json")
     runs = {r["id"]: r for r in report["observations"]}
-    layouts = ("isolated", "pair", "street")
+    layouts = ("open", "isolated", "pair", "street")
     plt.rcParams.update({"font.size": 10, "axes.titlesize": 12, "axes.labelsize": 10})
-    fig, axes = plt.subplots(3, 3, figsize=(13, 11), layout="constrained")
+    fig, axes = plt.subplots(4, 3, figsize=(13, 14), layout="constrained")
     keys = ("peakPa", "positiveImpulsePaS", "arrivalS")
     titles = ("Peak overpressure (kPa)", "Positive impulse (Pa s)", "Arrival at 1 kPa (ms)")
     scales = (1e-3, 1, 1e3)
     norms = (LogNorm(0.1, 1000), LogNorm(0.1, 1000), Normalize(0, report["durationS"] * 1000))
     images = []
     for row, layout in enumerate(layouts):
-        run = runs[f"{layout}-finest"]
+        run = runs["open-control" if layout == "open" else f"{layout}-finest"]
         data = load(directory / run["mapFile"])
         solids = np.array(data["everSolid"]).reshape(data["ny"], data["nx"])
         for column, key in enumerate(keys):
@@ -66,11 +66,12 @@ def render(directory, output):
     plt.close(fig)
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), layout="constrained")
-    colours = {"isolated": "#335f9d", "pair": "#cd6c25", "street": "#2b8260"}
+    colours = {"open": "#555555", "isolated": "#335f9d", "pair": "#cd6c25", "street": "#2b8260"}
     for index, ax in enumerate(axes.flat):
         for layout in layouts:
-            samples = np.array(runs[f"{layout}-finest"]["gaugeObservations"][index]["samples"])
-            ax.plot(samples[:, 0] * 1000, samples[:, 1] / 1000, label=layout, color=colours[layout], linewidth=1.4)
+            run = runs["open-control" if layout == "open" else f"{layout}-finest"]
+            samples = np.array(run["gaugeObservations"][index]["samples"])
+            ax.plot(samples[:, 0] * 1000, samples[:, 1] / 1000, label=layout, color=colours[layout], linewidth=1.4, linestyle="--" if layout == "open" else "-")
         gauge = runs["street-finest"]["gaugeObservations"][index]
         ax.set_title(f"{index + 1}. {gauge['name']} — nominal {gauge['positionM']} m")
         ax.set_xlabel("Time (ms)")
@@ -79,13 +80,13 @@ def render(directory, output):
         ax.set_xlim(0, 120)
         ax.legend()
     fig.suptitle("Neighbour geometry changes the pressure histories", fontsize=15)
-    fig.supxlabel("Containing-cell probes; vertical location differs from the interpolated map plane. Finite 120 ms window.", fontsize=9)
+    fig.supxlabel("Containing-cell probes; sampling centres differ from the map probes. Finite 120 ms window.", fontsize=9)
     fig.savefig(output / "histories.png", dpi=150)
     plt.close(fig)
 
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.5), layout="constrained")
     names = ("coarse", "medium", "fine", "adaptive", "half-cfl")
-    for layout in layouts:
+    for layout in ("isolated", "pair", "street"):
         rows = {r["run"]: r for r in summary["comparisons"]}
         for index, key in enumerate(("peakRelativeL1", "impulseRelativeL1", "arrivalMeanAbsoluteErrorS")):
             values = [rows[f"{layout}-{name}"][key] for name in names]
