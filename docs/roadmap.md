@@ -1898,8 +1898,8 @@ extraction.
    all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
    contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
    rocking and tipping; distinguish these mechanical checks from validation against a blast
-   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done, not
-   coupled to the air: `RigidCarBody`, the box reference with the box as the shell and four
+   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done: the
+   mechanics in `RigidCarBody`, the box reference with the box as the shell and four
    tyre contacts at the corners of a wheelbase × track rectangle, each with its own load and
    Coulomb friction; the shell's corners catch a car that has tipped. `RigidCarDefinition`
    saves the locked wheels and rigid suspension explicitly, as `Scenario.rigidCars` beside
@@ -1911,7 +1911,17 @@ extraction.
    above it, no energy gain, first-order timestep convergence and saved-file round trips.
    These are mechanical checks; none is a validation against a blast experiment, and the
    illustrative saloon's values are typical magnitudes, not a measured car. `swift run
-   rigidboxdemo` adds five car cases to the replay. Next: the car under the air, as the box.)
+   rigidboxdemo` adds five car cases to the replay. Coupled to the air as the box is:
+   `ExperimentalRigidCarSimulation` puts the shell in the air, held clear of the ground so the
+   blast reaches the underside, and drives the car with the air's impulse and torque; the
+   tyres are contact points only. Tests check ambient balance on the static tyre loads, the
+   momentum budget, the force and torque of a pressure gradient about the low centre of mass,
+   and a blast loading the far tyres. `swift run -c release rigidboxdemo --car-blast` replays
+   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.1 m air cells). These are not
+   converged: the 0.15 m gap under the shell spans at most one cell, and from 0.2 to 0.1 m
+   cells the 10 kg air impulse goes from 6.4 to 9.0 kN s sideways and from 8.2 to 3.7 kN s
+   up, and the car rocks to 25° and back instead of overturning. Next: resolve the gap
+   (refinement there, or a cut-cell floor), then the car on finer grids.)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress
