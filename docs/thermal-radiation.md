@@ -73,9 +73,10 @@ speed of 100 times slower, about the same pace as the run. A sweep's cases on th
 too, as they fly any fragments, and wait for the last frames before they are kept; cases sent to
 other Macs run the blast alone.
 
-On another Mac it is a session of `BombCAD worker`: version 3 of the worker protocol sends the
-fireball, a few numbers a frame, and each receiver's fluence and peak irradiance so far come back
-after each frame, as raw floats, to draw. The receivers are laid out on both sides from the same
+On another Mac it is a session of `BombCAD worker`, of the kind any model fed by the blast uses
+(see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)):
+the fireball goes out, a few numbers a frame, and in the app each receiver's fluence and peak
+irradiance so far come back after each frame, as raw floats, to draw. The receivers are laid out on both sides from the same
 scene and description, and the worker's result is the same as this Mac's for the same frames, to
 the last bit.
 
