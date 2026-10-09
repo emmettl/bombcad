@@ -529,6 +529,34 @@ do {
         print("Wrote \(output.path)")
         exit(0)
     }
+    if arguments.contains("--car-blast") {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        let fine = arguments.contains("--fine")
+        let destination = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-car-blast\(fine ? "-fine" : "")-demo.html")
+        let recordings = try RigidCarDemo.coupledRecordings(device: device, cellSize: fine ? 0.1 : 0.2)
+        let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
+        let html = try String(contentsOf: source, encoding: .utf8)
+            .replacingOccurrences(
+                of: "__RECORDINGS__", with: String(decoding: JSONEncoder().encode(recordings), as: UTF8.self)
+            )
+            .replacingOccurrences(
+                of: "Recorded from the Swift reference solver; no blast loading.",
+                with:
+                    "Experimental blast coupling: the car's shell in uniform ideal-gas air. Not grid-converged: the 0.15 m gap under the shell spans at most one air cell, and on 0.1 m cells (--fine) the 10 kg car rocks back instead of overturning."
+            )
+            .replacingOccurrences(
+                of: "<option value=\"1\" selected>Real time</option>",
+                with: "<option value=\"0.1\" selected>10× slow</option><option value=\"1\">Real time</option>"
+            )
+        try html.write(to: destination, atomically: true, encoding: .utf8)
+        print("Wrote \(destination.path) (\(recordings.count) cases)")
+        for recording in recordings { print("\(recording.name): \(recording.description)") }
+        exit(0)
+    }
     let refined = arguments.contains("--refined")
     let coupled = arguments.contains("--blast") || refined
     let destination = URL(

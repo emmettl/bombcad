@@ -124,6 +124,22 @@ struct ExperimentalRigidCarTests {
         #expect(abs(free.air.time - 0.015) < 1e-8)
     }
 
+    @Test("The blast replay records finite frames with tyres and loads at the requested end time")
+    func replay() throws {
+        let recordings = try RigidCarDemo.coupledRecordings(
+            device: device, charges: [(mass: 1, standoff: 1.5)], duration: 0.01)
+        let recording = try #require(recordings.first)
+        #expect(recordings.count == 1 && recording.view == "front")
+        #expect(abs(try #require(recording.frames.last).time - 0.01) < 1e-8)
+        #expect(recording.frames.count > 10)
+        for frame in recording.frames {
+            #expect(frame.speed.isFinite && frame.energy.isFinite && frame.tyres?.count == 4)
+            #expect((frame.corners + (frame.tyres ?? [])).allSatisfy { $0.z >= -1e-5 })
+        }
+        #expect(recording.frames.dropFirst().allSatisfy { $0.tyreLoads?.count == 4 })
+        #expect(recording.description.contains("0.2 m air cells"))
+    }
+
     @Test("The car driver needs exactly one car and nothing else that moves")
     func configuration() throws {
         var twoCars = try scenario()

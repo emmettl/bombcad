@@ -43,7 +43,7 @@ const select = document.getElementById('case'), play = document.getElementById('
 const polygon = document.getElementById('box'), com = document.getElementById('com'), description = document.getElementById('description'), readout = document.getElementById('readout');
 const grid = document.getElementById('grid'), tyres = document.getElementById('tyres'), caseNote = document.getElementById('case-note');
 const boxNote = caseNote.textContent;
-const carNote = 'Car cases: 1500 kg saloon, wheelbase 2.7 m, track 1.55 m, centre of mass 0.55 m up; all wheels locked, rigid suspension; static friction 0.8, sliding friction 0.7; no rebound. These are mechanical checks, not validation against a blast experiment.';
+const carNote = 'Car cases: 1500 kg saloon, wheelbase 2.7 m, track 1.55 m, centre of mass 0.55 m up; all wheels locked, rigid suspension; static friction 0.8, sliding friction 0.7; no rebound. Not validated against a blast experiment.';
 if (recordings.some(r=>r.frames[0].tyres)) { document.title='Rigid box and car mechanics · BombCAD'; document.querySelector('h1').textContent='Rigid box and car mechanics'; }
 let current=0, time=0, playing=false, last=0, animation;
 const scene=document.getElementById('scene');
