@@ -47,7 +47,11 @@ editor, import loading state, Settings and Help content in light and dark appear
 Help sidebar's selected labels and dark contrast have also been checked in a native window;
 the earlier offscreen rendering problem was a capture artifact. An isolated release app has
 passed a zero-charge layout JSON import, native package save, close and reopen at time zero.
-Keyboard focus, scrolling and the other panels still need broader interactive review.
+A completed OBJ import preview has also been reviewed in a native window, including display
+toggles, part search, scrolling and cancellation of a staged domain expansion. See the
+[native interface review](native-interface-review.md) for the procedure and its limits.
+Keyboard focus, scrolling at minimum window sizes and the other panels still need broader
+interactive review.
 
 ## Planned work
 
@@ -1918,8 +1922,10 @@ two collapsing over several seconds.
   a temporary defaults suite. The import capture records the initial loading state rather than
   waiting for asynchronous preview completion. The helper expands the requested size
   to the view's fitting size, so these captures do not verify scrolling at the minimum window
-  size. Animated Metal rendering, completed import previews and broader native interaction
-  remain separate checks; the helper is skipped during ordinary test runs.
+  size. A separate [native import review](native-interface-review.md#completed-obj-preview)
+  covers a completed small OBJ preview, its display controls, part search and cancellation;
+  this is not a check of every importer or window size. Animated run rendering and broader
+  native interaction remain separate checks; the helper is skipped during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,
