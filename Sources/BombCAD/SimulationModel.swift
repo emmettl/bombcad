@@ -341,6 +341,7 @@ final class SimulationModel {
     private(set) var fragmentLive: FragmentLive?
     @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
     @ObservationIgnored private var fragmentTime = -1.0
+    private static let fragmentFrameInterval = 0.001
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
     /// The fragments the current run flies, as they were when it started.
     @ObservationIgnored private var flownSpec: FragmentSpec?
@@ -1287,12 +1288,18 @@ final class SimulationModel {
         fragmentStatus = ""
     }
 
-    /// The air now, for the fragments, if they have not had this moment's yet.
-    private func sendFragmentFrame(_ solver: BlastSolver) {
+    /// The air now, for the fragments: at the start, then once a run passes each millisecond, as a
+    /// headless run sends it, not after every batch, which took a copy of the air on the main
+    /// thread while the GPU waited; and at the end (`last`).
+    private func sendFragmentFrame(_ solver: BlastSolver, last: Bool = false) {
         guard let fragments, solver.time > fragmentTime + 1e-9 else { return }
+        let interval = Self.fragmentFrameInterval
+        let next = fragmentTime < 0 ? 0 : (floor(fragmentTime / interval + 1e-6) + 1) * interval
+        guard last || solver.time >= next - 1e-9 else { return }
         fragmentTime = solver.time
         let region = fragments.report.region(
-            for: fragments.sent, interval: 0.001, domain: scenario.domainSize, cellSize: solver.grid.cellSize)
+            for: fragments.sent, interval: interval, domain: scenario.domainSize,
+            cellSize: solver.grid.cellSize)
         fragments.send(solver.airSlice(region: region.box, stride: region.stride))
     }
 
@@ -1479,10 +1486,10 @@ final class SimulationModel {
         let timeStep = liveStats.timeStep
         let needed = timeStep > 0 ? Int((remaining / timeStep).rounded(.up)) + 1 : 2
         var steps = max(1, min(batchSize, needed))
-        // Fragments take a frame at each batch's end: keep frames within about a millisecond, by
-        // taking fewer steps, never shorter ones, so the air is the same as without them.
+        // Fragments take a frame a millisecond: keep batches within one, so that frames are too,
+        // by taking fewer steps, never shorter ones, so the air is the same as without them.
         if fragments != nil, timeStep > 0 {
-            steps = min(steps, max(1, Int(0.001 / timeStep)))
+            steps = min(steps, max(1, Int(Self.fragmentFrameInterval / timeStep)))
         }
         guard
             let commandBuffer = solver.encodeBatch(steps: steps, timeLimit: limit, updateVisualization: true)
@@ -1506,7 +1513,8 @@ final class SimulationModel {
         guard let solver else { return }
         batchInFlight = false
         let result = solver.completeBatch()
-        sendFragmentFrame(solver)
+        let finished = solver.time >= duration - 1e-9
+        sendFragmentFrame(solver, last: finished)
 
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
@@ -1534,7 +1542,6 @@ final class SimulationModel {
             errorMessage = "The solution became unstable. Reset, or try a smaller charge or a finer grid."
             isRunning = false
         }
-        let finished = solver.time >= duration - 1e-9
         if !isRunning || finished || (now - lastProgressPublication).seconds >= Self.progressInterval {
             publishProgress()
         }
