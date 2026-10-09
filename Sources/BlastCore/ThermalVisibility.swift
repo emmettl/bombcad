@@ -4,16 +4,27 @@ import simd
 /// A segment from a receiver toward a point on the fireball: whether it gets there is what a
 /// `ThermalVisibility` answers.
 public struct ThermalRay: Sendable, Equatable {
-    public var origin: SIMD3<Float>
-    /// A unit vector.
-    public var direction: SIMD3<Float>
+    // Seven floats with no padding, as the GPU reads them: a frame has half a million.
+    private var originX, originY, originZ: Float
+    private var directionX, directionY, directionZ: Float
     /// How far along `direction` the segment runs, in metres.
     public var length: Float
 
     public init(origin: SIMD3<Float>, direction: SIMD3<Float>, length: Float) {
-        self.origin = origin
-        self.direction = direction
+        (originX, originY, originZ) = (origin.x, origin.y, origin.z)
+        (directionX, directionY, directionZ) = (direction.x, direction.y, direction.z)
         self.length = length
+    }
+
+    public var origin: SIMD3<Float> {
+        get { SIMD3(originX, originY, originZ) }
+        set { (originX, originY, originZ) = (newValue.x, newValue.y, newValue.z) }
+    }
+
+    /// A unit vector.
+    public var direction: SIMD3<Float> {
+        get { SIMD3(directionX, directionY, directionZ) }
+        set { (directionX, directionY, directionZ) = (newValue.x, newValue.y, newValue.z) }
     }
 
     /// The segment's far end.
@@ -37,15 +48,31 @@ public struct CPUThermalVisibility: ThermalVisibility {
     }
 
     public func visible(_ rays: [ThermalRay]) -> [Bool] {
+        visible(rays, until: { false })!
+    }
+
+    /// As `visible(_:)`, but given up, returning nil, once `stop` says so; it is asked between
+    /// chunks of a few thousand rays.
+    func visible(_ rays: [ThermalRay], until stop: () -> Bool) -> [Bool]? {
         let chunk = 4096
-        return [Bool](unsafeUninitializedCapacity: rays.count) { result, count in
-            DispatchQueue.concurrentPerform(iterations: (rays.count + chunk - 1) / chunk) { c in
-                for n in c * chunk..<min((c + 1) * chunk, rays.count) {
-                    (result.baseAddress! + n).initialize(to: visible(rays[n]))
+        let chunks = (rays.count + chunk - 1) / chunk
+        var stopped = false
+        let result = [Bool](unsafeUninitializedCapacity: rays.count) { result, count in
+            // Every element is written, stopped or not, so the array is always whole.
+            let stopping = Flag()
+            DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                let range = c * chunk..<min((c + 1) * chunk, rays.count)
+                if stopping.isSet || stop() {
+                    stopping.set()
+                    for n in range { (result.baseAddress! + n).initialize(to: false) }
+                    return
                 }
+                for n in range { (result.baseAddress! + n).initialize(to: visible(rays[n])) }
             }
+            stopped = stopping.isSet
             count = rays.count
         }
+        return stopped ? nil : result
     }
 
     /// Whether one ray's end is above the ground and no box lies across it.
@@ -74,4 +101,14 @@ public struct CPUThermalVisibility: ThermalVisibility {
         }
         return true
     }
+}
+
+/// A flag set once, from any thread.
+final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+
+    var isSet: Bool { lock.withLock { value } }
+
+    func set() { lock.withLock { value = true } }
 }
