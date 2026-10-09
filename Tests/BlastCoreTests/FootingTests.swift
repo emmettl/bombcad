@@ -520,4 +520,25 @@ struct FootingTests {
                 "ω = \(ratio) cut-off: \(measured) against \(expected)")
         }
     }
+
+    // MARK: - Measured
+
+    @Test(
+        "Rocked slowly, a footing on dry sand mobilizes the moment Gajan and Kutter's did, within 10% to 7 mrad"
+    )
+    func measuredRocking() throws {
+        // The first two packets (`blastbench rocking` runs all five), the push set every 4 ms.
+        let packets = Array(FootingRockingTest.packets.prefix(2))
+        let result = try FootingRockingTest.run(
+            device: device, shearModulus: 80e6, packets: packets, interval: 4e-3)
+        for (measured, model) in zip(packets, result.packets) {
+            #expect(abs(model.peakRotation / measured.peakRotation - 1) < 0.15, "\(measured.name) rotation")
+            // Pushing forward: the measured moment back was lopsided in the first packet.
+            #expect(
+                abs(model.moment.x / measured.moment.x - 1) < 0.1,
+                "\(measured.name): \(model.moment.x) against \(measured.moment.x)")
+        }
+        // It settles far less than the sand did (see docs/structural-model.md#footings).
+        #expect(result.packets[1].settlement < 0.3 * packets[1].settlement)
+    }
 }

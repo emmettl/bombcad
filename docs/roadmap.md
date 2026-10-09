@@ -1878,9 +1878,10 @@ horizontal bearing planes; they do not model a footing's finite contact extents.
 of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
 for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
-sideways for solid elements. Still open: joints at angles to the lattice, and on shells;
-connections between moving components other than a footing; embedment; and a measured case
-(FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
+sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
+the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
+tenth as much. Still open: settlement under cyclic rocking; joints at angles to the lattice, and
+on shells; connections between moving components other than a footing; embedment. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
