@@ -50,6 +50,32 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         var response: Structure
     }
 
+    /// A cased charge's fragments, flown alongside the run: what was flown and where it landed.
+    /// They do not act on the air, so they are no part of the inputs' fingerprint.
+    struct Fragments: Codable, Equatable, Sendable {
+        var spec: FragmentSpec
+        /// Metres a second.
+        var launchSpeed: Double
+        var impacts: [FragmentImpact]
+        /// Fragments still in flight when the run ended.
+        var airborne: Int
+        /// Joules.
+        var hardest: Double { Double(impacts.map(\.energy).max() ?? 0) }
+
+        var summary: String {
+            let count = spec.count.formatted()
+            let speed = Int(launchSpeed.rounded()).formatted()
+            var text = "Fragments: \(count) at \(speed) m/s; \(impacts.count.formatted()) landed"
+            if hardest > 0 {
+                text +=
+                    hardest >= 1e6
+                    ? String(format: ", hardest %.1f MJ", hardest / 1e6)
+                    : String(format: ", hardest %.0f kJ", hardest / 1e3)
+            }
+            return text
+        }
+    }
+
     var id = UUID()
     var name: String
     var capturedAt = Date()
@@ -65,6 +91,7 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     var gauges: [Gauge]
     var structure: Structure?
     var bodyResponses: [BodyResponse]? = nil
+    var fragments: Fragments? = nil
 
     static func fingerprint(_ scenario: Scenario, settings: ProjectRunSettings) throws -> String {
         struct Inputs: Encodable {
@@ -109,6 +136,20 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         && entry.response.maximumDamage.isFinite && entry.response.maximumDamage >= 0
                 }), scenario.structuralObjects.count <= 1 || solverVersion == Self.multiBodySolverVersion
             else { throw ProjectFileError.invalid("Invalid per-object response ownership or history.") }
+        }
+        if let fragments {
+            let spec = fragments.spec
+            guard (try? spec.validate()) != nil, fragments.launchSpeed.isFinite, fragments.launchSpeed >= 0,
+                fragments.airborne >= 0, fragments.impacts.count + fragments.airborne <= spec.count,
+                Set(fragments.impacts.map(\.fragment)).count == fragments.impacts.count,
+                fragments.impacts.allSatisfy({ impact in
+                    (0..<spec.count).contains(impact.fragment) && impact.time.isFinite && impact.time >= 0
+                        && impact.time <= elapsedTime + 1e-6 && impact.position.x.isFinite
+                        && impact.position.y.isFinite && impact.position.z.isFinite
+                        && impact.speed.isFinite && impact.speed >= 0 && impact.energy.isFinite
+                        && impact.energy >= 0 && !impact.surface.isEmpty && impact.surface.count <= 64
+                })
+            else { throw ProjectFileError.invalid("Invalid saved fragments.") }
         }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,
@@ -161,6 +202,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             for point in body.response.points {
                 lines.append("\(field(name)),\(label),\(point.time * 1000),\(point.value),mm")
             }
+        }
+        for impact in fragments?.impacts.sorted(by: { $0.time < $1.time }) ?? [] {
+            let label = field("Fragment \(impact.fragment) on \(impact.surface)")
+            lines.append("\(field(name)),\(label),\(impact.time * 1000),\(impact.energy),J")
         }
         return lines.joined(separator: "\n") + "\n"
     }

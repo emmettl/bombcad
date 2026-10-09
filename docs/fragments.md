@@ -68,6 +68,11 @@ and where fragments landed, from yellow at a joule to dark red at ten megajoules
 each kind can be hidden and the dots' size set. A line under the section counts the fragments in
 flight and landed, and the hardest impact.
 
+**Keep Run** keeps the fragments with the run: what was flown, its launch speed and every impact.
+Compare gives a line for each run that flew them, the run's CSV lists the impacts (time and
+energy in joules, by fragment and surface), and **Use this run's inputs** brings its casing back.
+They do not act on the air, so they are no part of the run's input fingerprint.
+
 ![Fragments, tracers and landings over the street canyon's blast at 24 ms, as the app draws them](street-fragments-app-24ms.png)
 
 **The air is untouched.** The app takes a frame at the end of each batch rather than stopping the
@@ -151,7 +156,7 @@ to centimetres across.
 - No break-up, no ricochet, no penetration; a fragment stops where it first hits.
 - Only the coarse grid's air, also where refinement sharpens the shock.
 - In the app, frames fall at batch ends, so its fragments vary a little from run to run (above).
-- Fragments are not kept with a saved run.
+- A kept run keeps the fragments' impacts, not their paths.
 
 ## Sources
 

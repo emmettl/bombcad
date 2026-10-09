@@ -319,6 +319,8 @@ final class SimulationModel {
     @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
     @ObservationIgnored private var fragmentTime = -1.0
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
+    /// The fragments the current run flies, as they were when it started.
+    @ObservationIgnored private var flownSpec: FragmentSpec?
     @ObservationIgnored private var fragmentWorker: SweepWorkerClient?
     @ObservationIgnored private var fragmentWorkerHost: String?
     private static let undoLimit = 100
@@ -633,7 +635,8 @@ final class SimulationModel {
         guard !sweep.isActive, let run = savedRuns.first(where: { $0.id == id }) else {
             throw ProjectFileError.invalid("Finish the sweep before restoring a saved run's inputs.")
         }
-        let inputs = SimulationInputs(scenario: run.scenario, settings: run.settings, fragments: fragmentSpec)
+        let inputs = SimulationInputs(
+            scenario: run.scenario, settings: run.settings, fragments: run.fragments?.spec)
         try inputs.validate()
         recordEdit()
         if inputs != currentInputs {
@@ -642,7 +645,7 @@ final class SimulationModel {
             redoStack.removeAll()
         }
         settledInputs = inputs
-        applyExperimentInputs(inputs)
+        applyInputs(inputs)
         camera = .framing(inputs.scenario)
     }
 
@@ -1133,7 +1136,16 @@ final class SimulationModel {
                 }, failedFraction: Double(summary.erodedFraction),
                 maximumDamage: Double(summary.maxDamage))
         }
-        let run = SavedSimulationRun(
+        var flown: SavedSimulationRun.Fragments?
+        if let fragments, let spec = flownSpec {
+            guard fragments.report.frame >= fragments.sent - 1, let live = fragments.live else {
+                throw ProjectFileError.invalid("The fragments are still landing; keep the run in a moment.")
+            }
+            flown = SavedSimulationRun.Fragments(
+                spec: spec, launchSpeed: Double(fragmentLaunchSpeed), impacts: live.impacts,
+                airborne: (0..<live.fragmentCount).filter { !live.landed[$0] }.count)
+        }
+        var run = SavedSimulationRun(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             solverVersion: scenario.structuralObjects.count > 1
                 ? SavedSimulationRun.multiBodySolverVersion : SavedSimulationRun.solverVersion,
@@ -1154,6 +1166,7 @@ final class SimulationModel {
                             failedFraction: Double(summary.erodedFraction),
                             maximumDamage: Double(summary.maxDamage)))
                 } : nil)
+        run.fragments = flown
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1231,6 +1244,7 @@ final class SimulationModel {
             consumer = LocalLiveConsumer(spec: spec, scene: scene, live: true)
         }
         fragments = consumer
+        flownSpec = spec
         fragmentLaunchSpeed = spec.launchSpeed(chargeMass: scenario.charge.mass)
         fragmentLive = consumer.live
         fragmentTime = -1
@@ -1245,6 +1259,7 @@ final class SimulationModel {
         if fragments != nil { holdBatches = nil }
         fragments?.cancel()
         fragments = nil
+        flownSpec = nil
         fragmentLive = nil
         fragmentStatus = ""
     }
