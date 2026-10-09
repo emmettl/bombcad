@@ -235,8 +235,8 @@ the run slowing, rather than making any one model faster.
 
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
-a plan, measured where it starts; built so far are one consumer on one other Mac, and the first
-two steps below.
+a plan, measured where it starts; built so far are the first three steps below, for headless
+runs.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
@@ -310,11 +310,28 @@ this side.
    until step 3. Thermal radiation also has sessions of its own on a worker, built alongside,
    which send every receiver back after each frame for the app to draw; folding them into these,
    with that live view as an option of the kind, belongs to step 3.
-3. **Fan-out.** One list of consumers replaces the run's three separate feeds; each is placed
-   here or on a host from the [sweep worker list](run-comparison.md#sharing-a-sweep-with-another-mac),
-   consumers on the same host sharing its connection, and the run waits only for the one
-   furthest behind. Each consumer's bytes, time a frame and the run's wait for it are printed. On the command line, `--consumer
-   fragments=<host>` and the like.
+3. **Fan-out.** (Done, for headless runs.) One list of consumers replaces the run's three
+   separate feeds (`HeadlessRun.Feed`); each runs here or on another Mac, placed with
+   `--consumer fragments=<where>,thermal=<where>,ground=<where>` (`local` or an SSH host; a host
+   alone still places the fragments), those on the same Mac sharing one connection to it. The
+   run waits only for whichever falls more than four frames behind, and prints for each its
+   frames, bytes, what a frame cost the run to feed, and how long the run waited for it. Each
+   gives the same result wherever it runs, as the tests check with the fragments on one
+   in-process worker and the other two sharing another. Measured on the street canyon, the
+   Studio quieter this time (load averages about 7), two rounds of each:
+
+   | Where | Fragments | Thermal radiation | Ground shock | Run | Waited |
+   |---|---|---|---|---|---|
+   | All here | 0.30 to 0.32 ms | 0.03 ms | 0.06 to 0.07 ms | 5.3 to 5.4 s | 0 s |
+   | All on the mini | 0.23 ms | 0.03 to 0.05 ms | 0.06 to 0.07 ms | 5.7 to 5.8 s | 0.02 to 0.04 s |
+   | Fragments on the mini | 0.24 to 0.27 ms | 0.04 to 0.05 ms | 0.07 to 0.08 ms | 5.7 to 5.8 s | 0.02 to 0.03 s |
+
+   Each column but the last two is what a frame cost the run to feed that model. About 0.4 ms a
+   frame in all, wherever they run, about 1% of the run; the fragments' air went at about
+   310 MB/s. Placing models on the mini added about 0.4 s, its connection at the start, and
+   saved nothing, as expected: these models are cheap. What the step buys is the means to
+   place an expensive one. The app still flies only its fragments, and reckons its thermal
+   radiation through its own sessions, here or on the first Mac in the list.
 4. **Placement and failure.** Placing consumers by their measured cost, as sweeps place cases,
    and in the app's Run tab. A consumer whose Mac drops now stops the run; optionally, each
    consumer's inputs could be kept on disk (about 1.6 GB for the fragments above) so that it can
