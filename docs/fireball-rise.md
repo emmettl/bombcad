@@ -9,10 +9,10 @@ sounding, in still or turbulent air. It is the hand-over in sequence that
 numbers from the air model's final state, and nothing passed back.
 
 **Standing: illustrative.** The cloud is a textbook integral model of a turbulent thermal, with
-coefficients from laboratory thermals, started from whatever the gas model leaves; it agrees in
-height, within a factor of about 1.6 in still air and 1.4 in neutral turbulence, with an
-empirical fit to high-explosive clouds (below), but nothing here has been compared with a
-measured cloud's growth over time. Use it to see roughly how high and wide the cloud of a charge
+coefficients from laboratory thermals, started from whatever the gas model leaves; its cloud's top
+agrees with the tops Church measured over 22 detonations of 54 to 1,270 kg of TNT, from half a
+minute to two minutes after each, to 4% on average and 21% shot by shot, as closely as his own
+fit, but falls behind them later, as the real clouds go on spreading (below). Use it to see roughly how high and wide the cloud of a charge
 goes, roughly where the wind takes it, and how that changes with the charge, the gas model and
 the weather, not for dispersion or hazard estimates.
 
@@ -231,6 +231,10 @@ The tests check the model against what it should reproduce exactly:
   the standard atmosphere's cloud to 0.5% in height and 1% in time. The afternoon's cloud goes
   higher than the dawn's, and `BombCAD cloud` follows a headless run's hand-over again in a
   sounding.
+- **Church's clouds.** Two minutes after his 22 shots, from the hand-overs of open-ground runs
+  with afterburning and in each shot's stability, the cloud's top is 1.04 times his measured top
+  on average, scattered no more than his fit (a geometric standard deviation under 1.24); without
+  afterburning, under three-quarters.
 - The standard atmosphere's pressure at the tropopause and at 20 km, a hot sphere in the air model
   handed over with its mass, place, temperature and buoyancy, and a headless run whose number of
   steps and gauges are the same with the cloud as without.
@@ -262,7 +266,8 @@ where it started.
 N = √((g / T)(g / c_p − Γ)) is the buoyancy frequency, 0.0105 per second in the standard
 atmosphere: in a stable fluid the stability alone sets the thermal's time. A larger charge goes
 higher in the same time. The added mass slows it: without it (`addedMass` 0) it stops at 298 s,
-at about the same height. No measured stabilisation time has been compared.
+at about the same height. In the more stable night air of Church's shots it stops 2¼ to 4 minutes
+after the detonation, where he saw high-explosive clouds stop by 2 to 3 (below).
 
 Afterburning and hot air, varying one thing at a time (the top of the cloud when it stops):
 
@@ -335,50 +340,88 @@ atmosphere's, not the explosion's. Real air is rarely saturated from the ground 
 lapse rate, and how far such a cloud goes depends on the layers above, which this atmosphere does
 not describe.
 
-**Against high-explosive clouds.** Church (1969) fitted the stabilised height of the clouds of
-chemical explosions as H = 92.6 W^0.25 m, W in kilograms of TNT, as quoted by Liolios (2008); the
-quotation does not say whether H is the centre or the top. With afterburning, in dry, still air:
+**In turbulent air**, from the same hand-overs (`BombCAD cloud`), in the standard atmosphere and
+without wind unless it says so, the cloud's centre and top when it stops rising:
 
-| Charge | Centre | Top | Across | Church's H |
-|---|---|---|---|---|
-| 10 kg | 209 m | 266 m | 114 m | 165 m |
-| 100 kg | 355 m | 453 m | 196 m | 293 m |
-| 1,000 kg | 586 m | 749 m | 326 m | 521 m |
+| Air | 10 kg | 100 kg | 1,000 kg |
+|---|---|---|---|
+| Still | 209 m, 266 m | 355 m, 453 m | 586 m, 749 m |
+| u* 0.2 m/s | 143 m, 226 m | 285 m, 408 m | 522 m, 705 m |
+| u* 0.4 m/s | 104 m, 208 m | 229 m, 375 m | 462 m, 666 m |
+| u* 0.4 m/s and a 5 m/s wind | 101 m, 208 m | 228 m, 377 m | 463 m, 670 m |
+| u* 0.3 m/s, w* 2 m/s, h 1.5 km | 97 m, 261 m | 204 m, 413 m | 395 m, 676 m |
 
-The cloud's centre is 1.1 to 1.3 times Church's height and its top 1.4 to 1.6 times, and both
-grow by a factor of 1.65 to 1.7 a decade of charge against the fit's 1.78, as a thermal whose
-buoyancy is in proportion to the charge must, (F / N²)^¼, apart from the start's finite size.
+The turbulence draws more air into the cloud, which is then wider and, being weaker, stops lower:
+by a third at 10 kg with u* 0.2 m/s, by a tenth at 1,000 kg, the smaller cloud rising more
+slowly, so that the turbulence's share of the air it draws in is larger; the centre's height
+then grows faster with the charge than in still air. It stops at the same time, 365 s, the
+stability alone still setting it. The convective case is the standard atmosphere's stable
+6.5 K/km with a mixed layer's turbulence, which a real afternoon does not have; the afternoon
+sounding below has both.
 
-Church's clouds rose through real air, which is never still. In turbulent air, from the same
-hand-overs (`BombCAD cloud`), still in the standard atmosphere and without wind unless it says
-so, the cloud's centre and top against Church's height:
+## Against Church's measured clouds
 
-| Air | 10 kg | 100 kg | 1,000 kg | A decade of charge |
-|---|---|---|---|---|
-| Still | 1.27, 1.62 | 1.21, 1.55 | 1.13, 1.44 | 1.67, 1.68 |
-| u* 0.2 m/s | 0.87, 1.37 | 0.97, 1.39 | 1.00, 1.35 | 1.91, 1.77 |
-| u* 0.4 m/s | 0.63, 1.26 | 0.78, 1.28 | 0.89, 1.28 | 2.11, 1.79 |
-| u* 0.4 m/s and a 5 m/s wind | 0.61, 1.26 | 0.78, 1.29 | 0.89, 1.29 | 2.14, 1.80 |
-| u* 0.3 m/s, w* 2 m/s, h 1.5 km | 0.59, 1.58 | 0.70, 1.41 | 0.76, 1.30 | 2.02, 1.61 |
+Church (1969) measured the tops of the clouds of 23 surface detonations of 118 to 2,800 lb (54 to
+1,270 kg) of TNT on dry lake beds in Nevada in 1963, by night and by day, from half a minute to
+five minutes after each, with the air's stability and wind
+([Samples/Church1969](../Samples/Church1969/README.md)). His fit, H = 76 W^¼ m with W in pounds
+(92.6 W^¼ with W in kilograms, as Liolios (2008) quotes it), is of the top **two minutes after the
+detonation**, by when, he found, "the buoyant motion of the puffs as a whole had ceased"; the
+top went on growing after that only as turbulence spread the cloud. Its geometric standard
+deviation over his 22 shots is 1.23, and he gives his heights as good to 15 or 20%. He compared
+them with Morton, Taylor and Turner's thermals in salt water too, whose coefficient, 71, is close
+to his 76.
 
-In metres, with u* 0.2 m/s, the centre stops at 143, 285 and 522 m and the top at 226, 408 and
-705 m; with u* 0.4 m/s at 104, 229 and 462 m and 208, 375 and 666 m. The turbulence draws more
-air into the cloud, which is then wider and, being weaker, stops lower: by a third at 10 kg with
-u* 0.2 m/s, by a tenth at 1,000 kg, the smaller cloud rising more slowly, so that the
-turbulence's share of the air it draws in is larger; the centre's height then grows faster with
-the charge than in still air. It stops at the same time,
-365 s, the stability alone still setting it. Neutral turbulence brings the top within 1.26 to 1.39 times
-Church's height, growing with the charge as his fit does, 1.77 to 1.79 a decade, and puts the
-centre either side of it, within 0.6 to 1.0 times. Which of the two the fit describes, and in
-what weather his shots were fired, would decide whether the model is now closer to it; without
-that the turbulence stays off by default, as the wind does, and a cloud on a particular day
-should be given that day's. The convective case is the standard atmosphere's stable 6.5 K/km
-with a mixed layer's turbulence, which a real afternoon does not have; the afternoon sounding
-below has both. The
-same source gives the cloud's radius as R = 4.7 W^0.375 m, 26 m for 100 kg, a quarter of this
-model's; a thermal spreading at a quarter of its height cannot be so narrow at that height, and
-without Church's report, which I have not seen, what R measures is left open. The 1,000 kg charge
-fills much of the street's domain, so some of its hot gas may have left it before the hand-over.
+Each shot is followed here (`Scripts/compare-church-cloud.py`) from the hand-over of an
+open-ground run of its charge, in dry air on the lake bed 1,636 m above sea level, at 300 K in
+the afternoon and 288 K at night, cooling with height at the lapse rate that gives the shot's
+stability S = 1 − γ/Γ up to 600 m and at 6.5 K/km above, in its mean wind at every height (2 m/s
+where none is given); Church's appendix plots the temperature profiles, which are not
+transcribed. The model's top against his, the geometric mean of the ratio and, in brackets, its
+geometric standard deviation, leaving out the shot P3, as he did:
+
+| After the detonation | ½ min | 1 min | 2 min | 3 min | 4 min | 5 min |
+|---|---|---|---|---|---|---|
+| Shots measured | 21 | 22 | 22 | 20 | 9 | 13 |
+| Afterburning, still air | 1.06 (1.21) | 1.05 (1.18) | 1.04 (1.21) | 0.98 (1.25) | 0.90 (1.49) | 0.79 (1.32) |
+| Afterburning, a guess at the turbulence | 1.01 (1.22) | 0.99 (1.19) | 0.97 (1.24) | 0.91 (1.26) | 0.80 (1.51) | 0.76 (1.31) |
+| Default gas, the 15 shots of 140, 560 and 1,600 lb | 0.72 (1.23) | 0.70 (1.19) | 0.68 (1.23) | 0.63 (1.25) | 0.61 (1.59) | 0.52 (1.25) |
+
+**For the first two minutes the model is as close as Church's own fit, and accounts for the
+air's stability.** Two minutes after, its tops are 4% above his on average, scattered by a factor
+of 1.21, against his fit's 1.24 on the same shots, within what he gives for his measurements. His
+fit leaves the stability out, and its errors follow it (a correlation of 0.47 with S); the
+model's barely do (0.20). In the stable night air of most of his shots, S from 0.9 to 2.5, the
+model's clouds stop rising 2¼ to 4 minutes after the detonation, where he saw them stop by 2 to
+3. The worst are Clean Slate 2, 1.28 times his (532 m against 415 m), and P7, 0.80 (450 m against
+565 m). P3, fired at dawn into an inversion about three times as stable as any other (S 7.07),
+which Church left out, the model puts at 168 m against 76 m, 2.2 times too high, his fit at 3.4
+times; a stability averaged over the lowest 600 m does not describe a shallow, strong inversion.
+
+**Later the measured tops go on growing and the model's do not**: by five minutes it is a fifth
+low. The model's cloud stops, overshoots and settles back, while Church's went on spreading as
+the wind carried them; shot 1, on a windy afternoon, reached 978 m at four minutes against the
+model's 487 m. A guess at the lake bed's turbulence does not mend this (u* a twenty-third of the
+mean wind, over ground about a millimetre rough, in a 2 km convective layer with w* 2 m/s in the
+afternoon and a 200 m layer at night): it widens the cloud but lowers it more, 0.97 at two
+minutes and 0.76 at five. One sphere centred on the cloud's mean cannot show a top that the
+largest eddies lift.
+
+**The hand-over needs afterburning.** Without it, only about two-fifths of the warm gas's
+buoyancy is at least 500 K, and the tops are a third too low. With it, the hand-over carries about
+250 N of buoyancy a kilogram of TNT, whatever the charge, the heat of some 7.5 MJ/kg left in the
+air, between TNT's heat of detonation, about 4.6 MJ/kg, and its heat of burning completely,
+about 15.
+
+**In the standard atmosphere**, the street's hand-overs' tops two minutes after are 182, 308
+and 516 m for 10, 100 and 1,000 kg, against Church's 165, 293 and 521 m: 1.10, 1.05 and 0.99
+times. Before his report was read, this page compared his height with the top when the cloud
+stops rising, six minutes after the detonation in the standard atmosphere, much less stable
+(S 0.34) than most of his nights, and found the model 1.4 to 1.6 times too high; that compared
+different things. The turbulence stays off by default: at two minutes the guess at it moves the
+model from 1.04 to 0.97 times Church's tops, both within his data's scatter, and it does not
+bring back their later growth. Liolios also quotes Church for the cloud's radius,
+R = 4.7 W^0.375 m; the report gives only tops, so where that comes from is left open.
 
 ## A measured sounding
 
@@ -435,8 +478,10 @@ and which ADMS describes otherwise.
 
 ## Limitations
 
-- Illustrative, as above: one empirical height to compare with, and nothing on the cloud's
-  growth over time.
+- Illustrative, as above: compared with one set of measured clouds, Church's, from charges of
+  54 to 1,270 kg on dry ground in Nevada, in air whose temperature profiles are taken as one
+  lapse rate to 600 m; their tops after the first two or three minutes, which go on growing as
+  turbulence spreads them, the model does not follow.
 - One sphere, well mixed: real clouds form a vortex ring with a hot core, carry dust and smoke,
   and spread into a cap; the integral model knows only their averages.
 - The entrainment coefficient is from laboratory thermals of small density difference; a
@@ -482,10 +527,12 @@ and which ADMS describes otherwise.
 
 ## Future work
 
-- Compare with measured clouds over time, not one empirical height: Church's report itself, and
-  its weather, would say whether his height is the centre's or the top's and how turbulent the
-  air was; Thompson, Snyder and Weil's (2000) tank experiments on thermals from open detonations
-  give their growth in stratified water and through inversions.
+- The cloud's later growth, which Church's tops show and the model does not: the largest
+  eddies' lifting and spreading of a cloud that has stopped rising. Church's appendix's
+  temperature and wind profiles, transcribed, would replace the one lapse rate here.
+- Thompson, Snyder and Weil's (2000) tank experiments on thermals from open detonations give
+  their growth in stratified water and through inversions, which P3's inversion needs; the paper
+  is not openly available, and has not been compared.
 - Stable boundary layers in the turbulence, ADMS's third form, and the length scale's other
   terms; or turbulence read from a sounding's own gradients, the bulk Richardson number giving
   the boundary layer's depth.
@@ -517,8 +564,10 @@ and which ADMS describes otherwise.
 - B. McKim, N. Jeevanjee and D. Lecoanet, "Buoyancy-driven entrainment in dry thermals", 2019
   ([arXiv:1906.07224](https://arxiv.org/abs/1906.07224)): a recent account of the models above.
 - H. W. Church, *Cloud Rise from High-Explosives Detonations*, Sandia Laboratories, SC-RR-68-903,
-  1969, as quoted in T. E. Liolios, "Broken Arrows: radiological hazards from nuclear warhead
-  accidents", 2008 ([arXiv:0902.3824](https://arxiv.org/abs/0902.3824)): the empirical height.
+  1969 ([OSTI 4798257](https://www.osti.gov/biblio/4798257)): the measured cloud tops, their
+  times, stabilities and winds, and the fit; quoted in kilograms in T. E. Liolios, "Broken Arrows:
+  radiological hazards from nuclear warhead accidents", 2008
+  ([arXiv:0902.3824](https://arxiv.org/abs/0902.3824)).
 - *U.S. Standard Atmosphere, 1976*, NOAA, NASA and USAF: the lapse rate and the tropopause.
 - S. P. Arya, *Introduction to Micrometeorology*, 2nd ed., Academic Press, 2001: the wind's
   power law near the ground.
@@ -533,7 +582,7 @@ and which ADMS describes otherwise.
   Lond. A* 110, 709–737, 1926: the growth of a cloud of particles in turbulence, b² ∝ ε t³.
 - R. S. Thompson, W. H. Snyder and J. C. Weil, "Laboratory simulation of the rise of buoyant
   thermals created by open detonation", *J. Fluid Mech.* 417, 127–156, 2000: thermals in
-  stratified water and through inversions, for comparison to come.
+  stratified water and through inversions, not yet compared.
 - University of Wyoming, Department of Atmospheric Science, upper-air soundings
   ([weather.uwyo.edu/upperair/sounding.shtml](https://weather.uwyo.edu/upperair/sounding.shtml)):
   the Las Vegas soundings, the US National Weather Service's observations.
