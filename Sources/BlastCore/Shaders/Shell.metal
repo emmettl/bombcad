@@ -74,6 +74,7 @@ struct ShellUniforms {
     float anchorCohesion;
     float anchorCohesionSlip;
     float anchorFriction;
+    uint couplingMapCount;
 };
 
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
@@ -1659,6 +1660,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        device float4 *anchorState [[buffer(22)]],
                        device float4 *anchorForces [[buffer(23)]],
                        const device AnchorLaw *anchorLaws [[buffer(24)]],
+                       device atomic_uint *couplingMap [[buffer(25)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1723,7 +1725,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     int exchangeCell = -1;
     if (!attached && u.coupled != 0 && u.debrisLoading != 0) {
         airForce = debrisAirForce(position, float3(node.velocity), reference[n].w, fluid, fluidMask, debrisArea,
-                                  control.dt, u, exchangeCell);
+                                  control.dt, u, couplingMap, exchangeCell);
         force += airForce;
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
@@ -1788,6 +1790,7 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
                        constant uint &elementCount [[buffer(6)]],
                        const device int *patchOfTile [[buffer(7)]],
                        device atomic_uint *fineOccupancy [[buffer(8)]],
+                       device atomic_uint *couplingMap [[buffer(9)]],
                        uint e [[thread_position_in_grid]]) {
     if (e >= elementCount || flags[e] != elementActive) {
         return;
@@ -1827,7 +1830,9 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
                 if (any(target < 0) || any(target >= dims)) {
                     continue;
                 }
-                uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+                int at = coarseCouplingSlot(target, u, couplingMap);
+                if (at < 0) { continue; }
+                uint slot = 4u * uint(at);
                 atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
                 atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
                 atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
@@ -1847,6 +1852,7 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
                       constant uint &beamCount [[buffer(6)]],
                       const device int *patchOfTile [[buffer(7)]],
                       device atomic_uint *fineOccupancy [[buffer(8)]],
+                      device atomic_uint *couplingMap [[buffer(9)]],
                       uint e [[thread_position_in_grid]]) {
     if (e >= beamCount || flags[e] != elementActive) {
         return;
@@ -1891,7 +1897,9 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
                 if (any(target < 0) || any(target >= dims)) {
                     continue;
                 }
-                uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+                int at = coarseCouplingSlot(target, u, couplingMap);
+                if (at < 0) { continue; }
+                uint slot = 4u * uint(at);
                 atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
                 atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
                 atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
@@ -1942,6 +1950,7 @@ kernel void shellDebrisAreas(const device ShellNode *nodes [[buffer(0)]],
                              constant ShellUniforms &u [[buffer(8)]],
                              const device StepControl &control [[buffer(9)]],
                              const device uint *failureGate [[buffer(10)]],
+                             device atomic_uint *couplingMap [[buffer(11)]],
                              uint n [[thread_position_in_grid]]) {
     if (n >= u.nodeCount || control.dt <= 0.0f || failureGate[0] == 0) {
         return;
@@ -1957,7 +1966,7 @@ kernel void shellDebrisAreas(const device ShellNode *nodes [[buffer(0)]],
             return;
         }
     }
-    int exchangeCell = debrisCell(reference[n].xyz + float3(node.displacement), fluidMask, u);
+    int exchangeCell = debrisCell(reference[n].xyz + float3(node.displacement), fluidMask, u, couplingMap);
     if (exchangeCell < 0) {
         return;
     }

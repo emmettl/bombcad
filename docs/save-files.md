@@ -63,7 +63,8 @@ Ownership may also retain a preferred solid element size for an object's formula
 Saved-run numerical fingerprints omit this ownership record, preserving compatibility with
 historical inputs and solver provenance.
 
-Multi-body saved-run records use encoding version 2 and `blast-solver-3` provenance. Their
+Multi-body saved-run records use encoding version 2 and `blast-solver-4` provenance for
+local coupling. Historical `blast-solver-3` records remain readable without relabelling. Their
 `bodyResponses` entries carry object IDs, names and individual histories alongside the
 overall structural history. Missing/duplicate response owners and incompatible record
 versions are rejected. Existing single-body records retain their encoding and provenance.

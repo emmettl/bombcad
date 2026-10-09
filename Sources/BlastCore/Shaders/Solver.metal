@@ -84,6 +84,7 @@ struct SolverUniforms {
     float boxCentreZ;
     float boxMinX; float boxMinY; float boxMinZ;
     float boxMaxX; float boxMaxY; float boxMaxZ;
+    uint couplingMapCount;
 };
 
 // Definition vectors: quaternion, half-size, local centre-of-mass offset, velocity, spin.
@@ -350,17 +351,47 @@ static inline Prim mirrored(Prim w, float wallSpeed) {
     return w;
 }
 
+// A compact coarse-boundary page is 4^3 cells. Wall storage starts with a tile count,
+// an overflow flag and one world-tile -> pool-slot entry (UINT_MAX when absent).
+constant int couplingSide = 4;
+constant uint couplingCells = 64u;
+static inline int sparseCouplingSlot(int3 cell, int3 dims, const device uint *map) {
+    if (any(cell < 0) || any(cell >= dims)) { return -1; }
+    int3 tiles = (dims + couplingSide - 1) / couplingSide;
+    int3 tile = cell / couplingSide;
+    uint slot = map[2 + tile.x + tiles.x * (tile.y + tiles.y * tile.z)];
+    if (slot == 0xffffffffu) { return -1; }
+    int3 local = cell % couplingSide;
+    return int(slot * couplingCells) + local.x + couplingSide * (local.y + couplingSide * local.z);
+}
+static inline int checkedCouplingSlot(int3 cell, int3 dims, device atomic_uint *map) {
+    int slot = sparseCouplingSlot(cell, dims, (const device uint *)map);
+    if (slot < 0 && all(cell >= 0) && all(cell < dims)) {
+        atomic_store_explicit(map + 1, 1u, memory_order_relaxed);
+    }
+    return slot;
+}
+static inline float3 movingWallVelocity(const device float *velocity, int3 cell, constant SolverUniforms &u) {
+    int3 local = cell - int3(u.regionX, u.regionY, u.regionZ);
+    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
+    if (any(local < 0) || any(local >= dims)) { return float3(0); }
+    int at = local.x + dims.x * (local.y + dims.y * local.z);
+    uint header = 0;
+    if (u.couplingMapCount != 0u) {
+        at = sparseCouplingSlot(cell, int3(u.nx, u.ny, u.nz), (const device uint *)velocity);
+        if (at < 0) { return float3(0); }
+        header = u.couplingMapCount + 2u;
+    }
+    uint offset = header + 3u * uint(at);
+    return float3(velocity[offset], velocity[offset + 1], velocity[offset + 2]);
+}
+
 // Speed along the sweep axis of the solid `offset` cells from `cell`; zero outside the region
 // where solids move.
 static inline float wallSpeed(const device float *wallVelocity, int3 cell, int offset,
                               constant SolverUniforms &u) {
     cell[u.axis] += offset;
-    int3 local = cell - int3(u.regionX, u.regionY, u.regionZ);
-    int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
-    if (any(local < 0) || any(local >= dims)) {
-        return 0.0f;
-    }
-    return wallVelocity[3 * (local.x + dims.x * (local.y + dims.y * local.z)) + int(u.axis)];
+    return movingWallVelocity(wallVelocity, cell, u)[u.axis];
 }
 
 static inline int classify(const device uchar *mask, int index, int offset, int stride, int i, int n,

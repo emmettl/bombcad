@@ -981,6 +981,7 @@ struct StructureUniforms {
     var bondYieldRange: Float = 0
     var bondYieldExponent: Float = 0
     var barRateAlongBars: UInt32 = 0
+    var couplingMapCount: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1071,6 +1072,8 @@ struct CouplingUniforms {
     var fineThreshold: UInt32 = 1
     var fineSamples: UInt32 = 1
     var coarseSamples: UInt32 = 1
+    var couplingMapCount: UInt32 = 0
+    var couplingTileCapacity: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.

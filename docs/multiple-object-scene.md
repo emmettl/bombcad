@@ -70,9 +70,10 @@ stable object ID/name tables.
 
 Multi-body scenes use project scene encoding version 4, with the additional models and their
 ownership stored in `additionalStructures`. Single-body scenes continue to use version 3;
-versions 1 and 2 remain readable. Multi-body saved-run records use version 2 and provenance
-`blast-solver-3`; existing single-body records and numerical fingerprints retain their
-previous semantics and provenance. No ContinuumKit package changes are required.
+versions 1 and 2 remain readable. Multi-body saved-run records use version 2. The first
+shared-air implementation used `blast-solver-3`; local coupling uses `blast-solver-4`.
+Historical records retain their provenance. Single-body records and numerical fingerprints
+retain their previous semantics. No ContinuumKit package changes are required.
 
 Inter-object contact and moving-component connections remain unsupported. Initial touching
 or intersecting body envelopes are rejected. During a run, GPU checks collect node envelopes
@@ -84,10 +85,21 @@ not a prediction that detailed surfaces have collided. Paths through the same sp
 different times can also trigger this conservative screen; it applies no contact force.
 Contact between parts of one existing mixed body remains supported.
 
-The coupling buffers currently cover one bounding region around all bodies. This establishes
-correct ownership and composition rather than a sparse city-scale implementation. Memory
-reporting includes all structural instances and coupling buffers; refinement budgets include
-the extra composition storage. More local allocation is a subsequent performance task.
+Coarse coupling can now use compact pages of four by four by four air cells. Occupancy,
+wall velocity, debris area and momentum/energy exchange share a world-tile mapping.
+Automatic selection retains dense storage where its buffers are smaller; a single body
+retains its dense path. The bounded pool reserves twice a conservative initial padded
+footprint. Programmatic callers can set a tile capacity in `SolverConfiguration`.
+
+Allocation follows current and swept node envelopes with four metres of horizontal and
+three metres of vertical padding. Pages remain available for reopening vacated outlines,
+including after restart; replacing the body set frees the pool. Storage exhaustion or
+motion outside allocated coverage stops the run and prevents completed-run capture.
+Frozen-air mechanics continue without allocating new coupling pages.
+
+The air grid and refinement pool remain separate allocations. Memory reporting includes
+the map, pool, all structures and refinement composition storage. See the
+[scaling benchmark and neighborhood example](multi-object-scaling.md).
 
 Verification includes differently meshed stationary bodies against equivalent fixed
 geometry, coarse and refined air, exact invariance under object reorder for solid and shell

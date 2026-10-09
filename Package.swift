@@ -10,6 +10,7 @@ let package = Package(
         .executable(name: "BombCAD", targets: ["BombCAD"]),
         .executable(name: "blastbench", targets: ["blastbench"]),
         .executable(name: "rigidboxdemo", targets: ["RigidBoxDemo"]),
+        .executable(name: "scenebench", targets: ["SceneBench"]),
     ],
     dependencies: [
         .package(
@@ -38,6 +39,7 @@ let package = Package(
                 .product(name: "SceneRender", package: "continuumkit"),
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
+        .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
         .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"]),

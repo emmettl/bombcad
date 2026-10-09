@@ -28,6 +28,8 @@ public final class StructureSolver {
         /// The parent collected every body's area before advancing any body.
         var debrisAreasPrepared = false
         public var exchangeRegion: (origin: SIMD3<Int>, dims: SIMD3<Int>)?
+        var couplingMap: MTLBuffer?
+        var couplingMapCount: UInt32 = 0
         /// Where the air is refined: which block each patch refines, the patches' fine cells,
         /// the ratio and the grid of blocks' size. Faces then read the fine cells beside them.
         var refinement:
@@ -979,6 +981,7 @@ public final class StructureSolver {
             encoder.setBuffer(fluid.mask, offset: 0, index: 5)
             encoder.setBuffer(area, offset: 0, index: 6)
             encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
+            encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 8)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
         }
@@ -1107,6 +1110,7 @@ public final class StructureSolver {
             encoder.setBuffer(slipSupportBuffer, offset: 0, index: 19)
             encoder.setBuffer(barForceBuffer, offset: 0, index: 20)
             encoder.setBuffer(anchorLawBuffer, offset: 0, index: 21)
+            encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 22)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             afterNodes?(substep)
@@ -1200,6 +1204,7 @@ public final class StructureSolver {
             // Debris is loaded only where the air can be given the reaction.
             if debrisDrag, fluid.exchange != nil, fluid.debrisArea != nil, let region = fluid.exchangeRegion {
                 uniforms.debrisLoading = 1
+                uniforms.couplingMapCount = fluid.couplingMapCount
                 uniforms.exchangeX = Int32(region.origin.x)
                 uniforms.exchangeY = Int32(region.origin.y)
                 uniforms.exchangeZ = Int32(region.origin.z)

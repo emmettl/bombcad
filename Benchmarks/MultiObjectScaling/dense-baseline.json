@@ -1,0 +1,313 @@
+{
+  "device": "Apple M4 Max",
+  "observations": [
+    {
+      "batchGPUS": 0.013594708289019763,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 917280,
+        "capacityCells": 11466,
+        "denseCells": 11466,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 2.817709173541516e-05,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 3987672,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.015657874988391995,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 917280,
+        "capacityCells": 11466,
+        "denseCells": 11466,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00011304167855996639,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 20704872,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.013377750059589744,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 1616160,
+        "capacityCells": 20202,
+        "denseCells": 20202,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 3.035417466890067e-05,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 8889048,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.014907249948009849,
+      "bodies": 2,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 1616160,
+        "capacityCells": 20202,
+        "denseCells": 20202,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00011783854279201478,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 25612008,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.018700125045143068,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2009280,
+        "capacityCells": 25116,
+        "denseCells": 25116,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 3.425520844757557e-05,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 5301192,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.020002749981358647,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2009280,
+        "capacityCells": 25116,
+        "denseCells": 25116,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00010044791270047426,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 22018392,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.018634999985806644,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6002880,
+        "capacityCells": 75036,
+        "denseCells": 75036,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 4.866145900450647e-05,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 13497288,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.02132383326534182,
+      "bodies": 4,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6002880,
+        "capacityCells": 75036,
+        "denseCells": 75036,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00011780207569245249,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 30220248,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.036302249995060265,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 4951440,
+        "capacityCells": 61893,
+        "denseCells": 61893,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 7.948958955239505e-05,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 11678800,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.03817562502808869,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 4951440,
+        "capacityCells": 61893,
+        "denseCells": 61893,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00021792188636027277,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 28400080,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.037469541653990746,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 18396560,
+        "capacityCells": 229957,
+        "denseCells": 229957,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0001740468869684264,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 38198352,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.03849287494085729,
+      "bodies": 8,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 18396560,
+        "capacityCells": 229957,
+        "denseCells": 229957,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0003198854246875271,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 54937552,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.07441574998665601,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 9091680,
+        "capacityCells": 113646,
+        "denseCells": 113646,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.00020061979012098163,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 20748152,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.07465641666203737,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 9091680,
+        "capacityCells": 113646,
+        "denseCells": 113646,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0004705416795331985,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 37474952,
+      "spacingM": 12,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.08055537496693432,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 37346400,
+        "capacityCells": 466830,
+        "denseCells": 466830,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0006175937451189384,
+      "layout": "dense",
+      "refinement": 1,
+      "solverBytes": 75618680,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    },
+    {
+      "batchGPUS": 0.0808919999981299,
+      "bodies": 16,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 37346400,
+        "capacityCells": 466830,
+        "denseCells": 466830,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "couplingGPUMedianS": 0.0008653698023408651,
+      "layout": "dense",
+      "refinement": 2,
+      "solverBytes": 92381960,
+      "spacingM": 28,
+      "stable": true,
+      "steps": 8
+    }
+  ],
+  "sourceRevision": "e3dec96334fa6a12afc4bf595d0951fde014eb77",
+  "system": "Version 27.0.1 (Build 26A434)",
+  "timingOrder": "sequential cases (initial dense baseline)",
+  "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0"
+}

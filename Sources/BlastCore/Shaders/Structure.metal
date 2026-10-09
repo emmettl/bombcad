@@ -101,6 +101,7 @@ struct StructureUniforms {
     // 1: bars take their strain rate as their own stretching rate averaged over their debonded
     // length, not the element's (see `StructureModel.barRateAlongBars`).
     uint barRateAlongBars;
+    uint couplingMapCount;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -1893,7 +1894,7 @@ static inline void recordExchange(device atomic_uint *exchange, int exchangeCell
 // or in a solid cell.
 // (Templated so that shells, with their own uniforms, share it.)
 template <typename Uniforms>
-static inline int debrisCell(float3 position, const device uchar *fluidMask, constant Uniforms &u) {
+static inline int debrisCell(float3 position, const device uchar *fluidMask, constant Uniforms &u, device atomic_uint *couplingMap) {
     int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
     int3 cell = int3(floor(position / u.fluidCell));
     int3 local = cell - int3(u.exchangeX, u.exchangeY, u.exchangeZ);
@@ -1904,7 +1905,8 @@ static inline int debrisCell(float3 position, const device uchar *fluidMask, con
     if (fluidMask[cell.x + dims.x * (cell.y + dims.y * cell.z)] != 0) {
         return -1;
     }
-    return local.x + region.x * (local.y + region.y * local.z);
+    return u.couplingMapCount != 0u ? checkedCouplingSlot(cell, dims, couplingMap)
+        : local.x + region.x * (local.y + region.y * local.z);
 }
 
 // A loose node stands for an eighth of each element the body started with around it, whatever
@@ -1922,6 +1924,7 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
                         const device uchar *fluidMask [[buffer(5)]],
                         device atomic_int *area [[buffer(6)]],
                         const device uint *failureGate [[buffer(7)]],
+                        device atomic_uint *couplingMap [[buffer(8)]],
                         uint threadIndex [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f || failureGate[0] == 0) {
         return;
@@ -1944,7 +1947,7 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
         }
         share += flag != elementEmpty ? 1u : 0u;
     }
-    int exchangeCell = debrisCell(nodePosition(threadIndex, nodeList, nodes, u), fluidMask, u);
+    int exchangeCell = debrisCell(nodePosition(threadIndex, nodeList, nodes, u), fluidMask, u, couplingMap);
     if (exchangeCell < 0) {
         return;
     }
@@ -1956,8 +1959,8 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
 template <typename Uniforms>
 static inline float3 debrisAirForce(float3 position, float3 velocity, float volume, const device Cell *fluid,
                                     const device uchar *fluidMask, const device int *area, float airStep,
-                                    constant Uniforms &u, thread int &exchangeCell) {
-    exchangeCell = debrisCell(position, fluidMask, u);
+                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell) {
+    exchangeCell = debrisCell(position, fluidMask, u, couplingMap);
     if (exchangeCell < 0) {
         return float3(0.0f);
     }
@@ -2412,6 +2415,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device float4 *slipSupport [[buffer(19)]],
                            const device float4 *barForces [[buffer(20)]],
                            const device AnchorLaw *anchorLaws [[buffer(21)]],
+                           device atomic_uint *couplingMap [[buffer(22)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2478,7 +2482,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (!attached && u.coupled != 0 && u.debrisLoading != 0) {
         airForce = debrisAirForce(nodePosition(threadIndex, nodeList, nodes, u), float3(node.velocity),
                                   debrisVolume(share, u),
-                                  fluid, fluidMask, debrisArea, control.dt, u, exchangeCell);
+                                  fluid, fluidMask, debrisArea, control.dt, u, couplingMap, exchangeCell);
         force += airForce;
     }
 
@@ -2574,7 +2578,32 @@ struct CouplingUniforms {
     // elements are larger than the cells (then each element would mark only the cell its centre
     // lies in, leaving the rest of a wall open to the air).
     uint coarseSamples;
+    uint couplingMapCount;
+    uint couplingTileCapacity;
 };
+
+// Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
+static inline int3 couplingWorldCell(uint3 tid, constant CouplingUniforms &u, const device uint *tiles) {
+    if (u.couplingMapCount == 0u) {
+        if (any(tid >= uint3(u.regionNx, u.regionNy, u.regionNz))) { return int3(-1); }
+        return int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
+    }
+    if (tid.x >= u.couplingTileCapacity * couplingCells) { return int3(-1); }
+    uint tile = tiles[tid.x / couplingCells];
+    if (tile == 0xffffffffu) { return int3(-1); }
+    uint nx = (u.fluidNx + 3u) / 4u, ny = (u.fluidNy + 3u) / 4u;
+    uint3 block = uint3(tile % nx, (tile / nx) % ny, tile / (nx * ny));
+    uint n = tid.x % couplingCells;
+    int3 cell = int3(block * 4u + uint3(n % 4u, (n / 4u) % 4u, n / 16u));
+    return any(cell >= int3(u.fluidNx, u.fluidNy, u.fluidNz)) ? int3(-1) : cell;
+}
+static inline int coarseCouplingSlot(int3 local, constant CouplingUniforms &u, device atomic_uint *map) {
+    if (u.couplingMapCount != 0u) {
+        return checkedCouplingSlot(local + int3(u.regionX, u.regionY, u.regionZ),
+            int3(u.fluidNx, u.fluidNy, u.fluidNz), map);
+    }
+    return local.x + int(u.regionNx) * (local.y + int(u.regionNy) * local.z);
+}
 
 // Where the air is refined, adds a point of the structure, moving with `fixed` (fixed point), to
 // the occupancy of the fine cell holding it: four counters per fine cell, as for the coarse ones.
@@ -2615,6 +2644,7 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
                            const device uint *nodeMap [[buffer(5)]],
                            const device int *patchOfTile [[buffer(6)]],
                            device atomic_uint *fineOccupancy [[buffer(7)]],
+                           device atomic_uint *couplingMap [[buffer(8)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     uint element = elementList[threadIndex];
     if (flags[element] != elementActive) {
@@ -2650,7 +2680,9 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
         }
         // Each cell has four counters: the number of elements, then the sum of their velocities
         // in fixed point (two's-complement addition makes the unsigned counters signed sums).
-        uint slot = 4 * uint(target.x + dims.x * (target.y + dims.y * target.z));
+        int at = coarseCouplingSlot(target, u, couplingMap);
+        if (at < 0) { continue; }
+        uint slot = 4u * uint(at);
         atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
         atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
         atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
@@ -2666,14 +2698,13 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                           device Cell *state [[buffer(3)]],
                           constant CouplingUniforms &u [[buffer(4)]],
                           device float *wallVelocity [[buffer(5)]],
+                          const device uint *couplingTiles [[buffer(6)]],
                           uint3 tid [[thread_position_in_grid]]) {
-    if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
-        return;
-    }
+    int3 cell = couplingWorldCell(tid, u, couplingTiles);
+    if (any(cell < 0)) { return; }
     int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
-    int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
     int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-    uint local = tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
+    uint local = u.couplingMapCount != 0u ? tid.x : tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
     uint count = occupancy[4 * local];
     bool wasSolid = (mask[index] & 1) != 0;
     bool solid = rigid[index] != 0 || count >= u.threshold;
@@ -2685,9 +2716,9 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                         int(occupancy[4 * local + 3]));
         velocity = float3(sum) / (wallSpeedScale * float(count));
     }
-    wallVelocity[3 * local] = velocity.x;
-    wallVelocity[3 * local + 1] = velocity.y;
-    wallVelocity[3 * local + 2] = velocity.z;
+    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local] = velocity.x;
+    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 1] = velocity.y;
+    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 2] = velocity.z;
 
     if (wasSolid && !solid) {
         const int3 offsets[6] = {
@@ -2733,11 +2764,11 @@ kernel void debrisExchange(device Cell *state [[buffer(0)]],
                            device uint *exchange [[buffer(1)]],
                            constant CouplingUniforms &u [[buffer(2)]],
                            device int *debrisArea [[buffer(3)]],
+                          const device uint *couplingTiles [[buffer(4)]],
                            uint3 tid [[thread_position_in_grid]]) {
-    if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
-        return;
-    }
-    uint local = tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
+    int3 cell = couplingWorldCell(tid, u, couplingTiles);
+    if (any(cell < 0)) { return; }
+    uint local = u.couplingMapCount != 0u ? tid.x : tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
     debrisArea[local] = 0;
     uint slot = exchangeStride * local;
     float4 sum;
@@ -2750,7 +2781,6 @@ kernel void debrisExchange(device Cell *state [[buffer(0)]],
     if (!touched) {
         return;
     }
-    int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
     int index = cell.x + int(u.fluidNx) * (cell.y + int(u.fluidNy) * cell.z);
     float3 momentum = sum.xyz / exchangeMomentumScale;
     float energy = sum.w / exchangeEnergyScale;
@@ -2788,14 +2818,13 @@ kernel void debrisExchange(device Cell *state [[buffer(0)]],
 kernel void remaskApply(device uchar *mask [[buffer(0)]],
                         device uint *occupancy [[buffer(1)]],
                         constant CouplingUniforms &u [[buffer(2)]],
+                          const device uint *couplingTiles [[buffer(3)]],
                         uint3 tid [[thread_position_in_grid]]) {
-    if (tid.x >= u.regionNx || tid.y >= u.regionNy || tid.z >= u.regionNz) {
-        return;
-    }
-    int3 cell = int3(tid) + int3(u.regionX, u.regionY, u.regionZ);
+    int3 cell = couplingWorldCell(tid, u, couplingTiles);
+    if (any(cell < 0)) { return; }
     int index = cell.x + int(u.fluidNx) * (cell.y + int(u.fluidNy) * cell.z);
     mask[index] = mask[index] >> 1;
-    uint slot = 4 * (tid.x + u.regionNx * (tid.y + u.regionNy * tid.z));
+    uint slot = 4 * (u.couplingMapCount != 0u ? tid.x : tid.x + u.regionNx * (tid.y + u.regionNy * tid.z));
     for (uint n = 0; n < 4; ++n) {
         occupancy[slot + n] = 0;
     }
@@ -2904,7 +2933,7 @@ static inline void composeBodyCell(device uint *scratch, device uint *combined, 
     uint count = scratch[slot];
     if (count >= threshold) {
         uint old = combined[slot];
-        if (old != 0u) { atomic_store_explicit(interaction, 1u, memory_order_relaxed); }
+        if (old != 0u) { atomic_fetch_or_explicit(interaction, 1u, memory_order_relaxed); }
         combined[slot] = old + 1u;
         for (uint n = 1; n < 4; ++n) {
             int mean = int(round(float(as_type<int>(scratch[slot + n])) / float(count)));
@@ -3008,6 +3037,73 @@ kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
             overlap = overlap && min(bodyFloatFromOrder(ahi), bodyFloatFromOrder(bhi))
                 >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f;
         }
-        if (overlap) { atomic_store_explicit(interaction, 1u, memory_order_relaxed); }
+        if (overlap) { atomic_fetch_or_explicit(interaction, 1u, memory_order_relaxed); }
+    }
+}
+
+// Allocate disjoint page slots once per world tile. Separate dispatches provide visibility
+// to all readers; no GPU spin locks are used. Page order cannot change fixed-point sums.
+kernel void allocateCouplingTiles(device atomic_uint *map [[buffer(0)]],
+                                   device uint *tiles [[buffer(1)]],
+                                   const device uint *bounds [[buffer(2)]],
+                                   constant uint &bodyCount [[buffer(3)]],
+                                   constant CouplingUniforms &u [[buffer(4)]],
+                                   uint at [[thread_position_in_grid]]) {
+    if (at >= u.couplingMapCount || atomic_load_explicit(map + 1, memory_order_relaxed) != 0u) { return; }
+    if (((const device uint *)map)[2u + at] != 0xffffffffu) { return; }
+    uint nx = (u.fluidNx + 3u) / 4u, ny = (u.fluidNy + 3u) / 4u;
+    uint3 block = uint3(at % nx, (at / nx) % ny, at / (nx * ny));
+    float3 low = float3(block * 4u) * u.fluidCell;
+    float3 high = low + 4.0f * u.fluidCell;
+    bool wanted = false;
+    for (uint body = 0; body < bodyCount && !wanted; ++body) {
+        float3 lo, hi;
+        bool valid = true;
+        for (uint axis = 0; axis < 3; ++axis) {
+            valid = valid && bounds[6u * body + axis] <= bounds[6u * body + 3u + axis];
+            lo[axis] = bodyFloatFromOrder(bounds[6u * body + axis]);
+            hi[axis] = bodyFloatFromOrder(bounds[6u * body + 3u + axis]);
+        }
+        float3 padding = float3(4, 4, 3);
+        wanted = valid && all(high > lo - padding) && all(low <= hi + padding);
+    }
+    if (!wanted) { return; }
+    uint slot = atomic_fetch_add_explicit(map, 1u, memory_order_relaxed);
+    if (slot >= u.couplingTileCapacity) {
+        atomic_store_explicit(map + 1, 1u, memory_order_relaxed);
+        return;
+    }
+    tiles[slot] = at;
+    ((device uint *)map)[2u + at] = slot;
+}
+kernel void haltCouplingCapacity(const device uint *map [[buffer(0)]],
+                                 device atomic_uint *interaction [[buffer(1)]],
+                                 device StepControl &control [[buffer(2)]],
+                                 uint tid [[thread_position_in_grid]]) {
+    if (tid == 0 && map[1] != 0u) {
+        atomic_fetch_or_explicit(interaction, 2u, memory_order_relaxed);
+        control.stopped = 3u;
+    }
+}
+kernel void wakeCouplingTiles(const device uint *map [[buffer(0)]],
+                              device uchar *flags [[buffer(1)]],
+                              constant SolverUniforms &u [[buffer(2)]],
+                              uint at [[thread_position_in_grid]]) {
+    uint count = u.tileNx * u.tileNy * u.tileNz;
+    if (at >= count) { return; }
+    int3 block = int3(at % u.tileNx, (at / u.tileNx) % u.tileNy, at / (u.tileNx * u.tileNy));
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    int3 lo = max(block * tileSize - tileReach, int3(0)) / couplingSide;
+    int3 hi = min((block + 1) * tileSize + tileReach - 1, dims - 1) / couplingSide;
+    int3 tiles = (dims + couplingSide - 1) / couplingSide;
+    for (int z = lo.z; z <= hi.z; ++z) {
+        for (int y = lo.y; y <= hi.y; ++y) {
+            for (int x = lo.x; x <= hi.x; ++x) {
+                if (map[2 + x + tiles.x * (y + tiles.y * z)] != 0xffffffffu) {
+                    flags[at] = tileActive;
+                    return;
+                }
+            }
+        }
     }
 }

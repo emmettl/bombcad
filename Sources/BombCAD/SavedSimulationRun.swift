@@ -5,7 +5,8 @@ import Foundation
 
 struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     static let solverVersion = "blast-solver-2"
-    static let multiBodySolverVersion = "blast-solver-3"
+    static let multiBodySolverVersion = "blast-solver-4"
+    static let previousMultiBodySolverVersion = "blast-solver-3"
     static let maximumRuns = 16
     static let maximumSamples = 500_000
 
@@ -134,7 +135,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         && entry.response.failedFraction.isFinite
                         && (0...1).contains(entry.response.failedFraction)
                         && entry.response.maximumDamage.isFinite && entry.response.maximumDamage >= 0
-                }), scenario.structuralObjects.count <= 1 || solverVersion == Self.multiBodySolverVersion
+                }),
+                scenario.structuralObjects.count <= 1
+                    || [Self.multiBodySolverVersion, Self.previousMultiBodySolverVersion].contains(
+                        solverVersion)
             else { throw ProjectFileError.invalid("Invalid per-object response ownership or history.") }
         }
         if let fragments {
