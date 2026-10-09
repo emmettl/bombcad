@@ -43,8 +43,10 @@ jobs:
             --jq "[.[] | select(.createdAt >= \"$since\" and .databaseId != $GITHUB_RUN_ID)] | length")
           echo "Nightly runs started since $since besides this one: $others"
           if [ "$others" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.guard.outputs.skip != 'true'
+        with:
+          persist-credentials: false
       - name: Run the suite
         if: steps.guard.outputs.skip != 'true'
         env:
@@ -55,7 +57,7 @@ jobs:
           --out nightly-results
           --summary "$GITHUB_STEP_SUMMARY"
           ${ONLY:+--only "$ONLY"}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.guard.outputs.skip != 'true'
         with:
           name: nightly-${{ github.run_number }}
