@@ -3,6 +3,15 @@ import simd
 
 @testable import BlastCore
 
+// The refinement studies below take seconds when optimized but from tens of minutes to hours
+// in a debug build. Debug runs check every budget on the coarsest grid; the refinement
+// comparisons run in optimized builds, as `Scripts/check-grouped-gas-reference.py --release` does.
+#if DEBUG
+    private let optimized = false
+#else
+    private let optimized = true
+#endif
+
 @Suite("Conserved quadratic moving gas")
 struct ConservedMovingGasTests {
     @Test("Both endpoint geometries preserve comoving uniform gas through sampled Euler and Heun updates")
@@ -71,38 +80,59 @@ struct ConservedMovingGasTests {
         }
     }
 
-    @Test(
-        "Strong normal-shock reflection closes stationary budgets and pressure history improves under refinement"
-    )
+    @Test("Strong normal-shock reflection closes stationary budgets on a coarse channel")
     func reflection() throws {
-        let rows = try ExperimentalWallReflectionStudy.run(
-            cellLengths: [0.1, 0.05], cfls: [0.2], machNumbers: [2], limited: true,
-            conservedQuadratic: true)
-        #expect(rows.count == 2)
+        _ = try reflectionRows(cellLengths: [0.2])
+    }
+
+    @Test(
+        "Strong normal-shock reflection closes stationary budgets and pressure history improves under refinement",
+        .enabled(if: optimized))
+    func reflectionRefinement() throws {
+        let rows = try reflectionRows(cellLengths: [0.1, 0.05])
         #expect(rows[1].relativePressureHistoryL1 < rows[0].relativePressureHistoryL1)
+    }
+
+    private func reflectionRows(cellLengths: [Double]) throws -> [ExperimentalWallReflectionStudy.Result] {
+        let rows = try ExperimentalWallReflectionStudy.run(
+            cellLengths: cellLengths, cfls: [0.2], machNumbers: [2], limited: true,
+            conservedQuadratic: true)
+        #expect(rows.count == cellLengths.count)
         for row in rows {
             #expect(row.transport == "conservedQuadraticSSPRK2")
             #expect(abs(row.relativeMassChange) < 1e-10 && abs(row.relativeEnergyChange) < 1e-10)
             #expect(simd_length(row.momentumBudgetResidual) < 1e-8)
             #expect(row.frames.last!.exactExcessImpulse > 0)
         }
+        return rows
+    }
+
+    @Test("Exact moving quadratic-density transport retains constant pressure/velocity on a coarse grid")
+    func entropy() throws {
+        _ = try entropyRows(cellSizes: [0.2], duration: 0.00002)
     }
 
     @Test(
-        "Exact moving quadratic-density transport retains constant pressure/velocity and improves under refinement"
-    )
-    func entropy() throws {
-        let velocity = SIMD3<Double>(300, 100, -40)
-        let reference = try AdvectedQuadraticGas(velocity: velocity)
-        let rows = try [0.2, 0.1].map { h in
-            try ExperimentalMovingTrajectoryStudy.solve(
-                h: h, angle: 0.23, start: 0, duration: 0.00008, velocityScale: 100,
-                cfl: 0.2, maximumStep: h * 0.00008, reference: reference, limited: true,
-                secondOrder: true, surfaceQuadrature: true, conservedQuadratic: true)
-        }
+        "Exact moving quadratic-density transport retains constant pressure/velocity and improves under refinement",
+        .enabled(if: optimized))
+    func entropyRefinement() throws {
+        let rows = try entropyRows(cellSizes: [0.2, 0.1], duration: 0.00008)
         #expect(
             rows[1].frames.last!.transport!.relativeDensityL1
                 < rows[0].frames.last!.transport!.relativeDensityL1)
+    }
+
+    private func entropyRows(cellSizes: [Double], duration: Double) throws
+        -> [ExperimentalMovingTrajectoryStudy.Result]
+    {
+        let velocity = SIMD3<Double>(300, 100, -40)
+        let reference = try AdvectedQuadraticGas(velocity: velocity)
+        let rows = try cellSizes.map { h in
+            try ExperimentalMovingTrajectoryStudy.solve(
+                h: h, angle: 0.23, start: 0, duration: duration, velocityScale: 100,
+                cfl: 0.2, maximumStep: h * 0.00008, reference: reference, limited: true,
+                secondOrder: true, surfaceQuadrature: true, conservedQuadratic: true)
+        }
         for row in rows {
             #expect(row.reconstruction == "conservedQuadratic")
             for frame in row.frames {
@@ -113,88 +143,99 @@ struct ConservedMovingGasTests {
                 #expect(simd_length(frame.momentumBudgetResidual) < 1e-8)
             }
         }
+        return rows
+    }
+
+    @Test("A moving 3D piston hit by a Mach-2 shock preserves work/budgets on a coarse grid")
+    func movingShock() throws {
+        _ = try movingShockHistoryError(h: 0.4)
     }
 
     @Test(
-        "A moving 3D piston hit by a Mach-2 shock preserves work/budgets and improves exact wall history with refinement"
-    )
-    func movingShock() throws {
+        "A moving 3D piston hit by a Mach-2 shock preserves work/budgets and improves exact wall history with refinement",
+        .enabled(if: optimized))
+    func movingShockRefinement() throws {
+        let errors = try [0.2, 0.1].map { try movingShockHistoryError(h: $0) }
+        #expect(errors[1] < errors[0])
+    }
+
+    /// Runs to 1.4 times the shock's arrival, checking budgets as it goes, and returns the
+    /// wall-impulse history error relative to the exact excess impulse.
+    private func movingShockHistoryError(h: Double) throws -> Double {
         let velocity = SIMD3<Double>(-20, 0, 0)
         let reference = try MovingShockReflection(mach: 2, velocity: velocity.x)
         let s = reference.stationary
         let inflow = FractionalGasTransport.Cell(
             volume: 1, density: s.incidentDensity,
             velocity: SIMD3(velocity.x - s.incidentVelocity, 0, 0), pressure: s.incidentPressure)
-        var errors: [Double] = []
-        for h in [0.2, 0.1] {
-            let n = Int((2 / h).rounded())
-            var body = try RigidBoxBody(mass: 1, size: SIMD3(repeating: 4), position: SIMD3(4, 1, 1))
-            var cells: [FractionalGasTransport.Cell] = []
-            for _ in 0..<(n * n) {
-                for x in 0..<n {
-                    cells.append(
-                        try reference.cell(
-                            lower: Double(x) * h, upper: Double(x + 1) * h, time: 0, area: h * h))
-                }
+        let n = Int((2 / h).rounded())
+        var body = try RigidBoxBody(mass: 1, size: SIMD3(repeating: 4), position: SIMD3(4, 1, 1))
+        var cells: [FractionalGasTransport.Cell] = []
+        for _ in 0..<(n * n) {
+            for x in 0..<n {
+                cells.append(
+                    try reference.cell(
+                        lower: Double(x) * h, upper: Double(x + 1) * h, time: 0, area: h * h))
             }
-            let before = cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
-            var elapsed = 0.0
-            var hint = h * 8e-5
-            var reservoir = SIMD8<Double>.zero
-            var bodyImpulse = SIMD3<Double>.zero
-            var work = 0.0
-            var historyError = 0.0
-            var steps = 0
-            for fraction in [0.8, 1.0, 1.2, 1.4] {
-                let target = fraction * s.arrivalTime
-                while elapsed < target {
-                    var dt = min(hint, target - elapsed)
-                    var accepted: MovingGroupedGasFlux.Result?
-                    for _ in 0..<24 {
-                        let plan = try ExperimentalMovingGroupsStudy.domain(
-                            h: h, angle: 0, start: 0, duration: dt, previous: cells,
-                            prescribedBody: body, prescribedVelocity: velocity,
-                            reconstruct: true, surfaceQuadrature: true, conservedQuadratic: true,
-                            slipSideWalls: true
-                        ).plan
-                        do {
-                            accepted = try MovingGroupedGasFlux.advance(
-                                plan, exterior: inflow, cfl: 0.2, limited: true,
-                                timeIntegration: .heun, conservedQuadratic: true)
-                            break
-                        } catch FractionalEulerFlux.Failure.unstableStep {
-                            dt /= 2
-                        } catch FractionalGasTransport.Failure.invalidState { dt /= 2 }
-                    }
-                    let result = try #require(accepted)
-                    let impulse = result.wallImpulses.reduce(SIMD3<Double>.zero, +)
-                    let intervalWork = result.wallWork.reduce(0, +)
-                    let exact =
-                        try reference.wallImpulse(time: elapsed + dt, area: 4)
-                        - reference.wallImpulse(time: elapsed, area: 4)
-                    historyError += abs(impulse.x - exact)
-                    bodyImpulse += impulse
-                    work += intervalWork
-                    reservoir += result.reservoirExchange
-                    cells = result.cells
-                    body = body.translated(by: dt * velocity)
-                    elapsed += dt
-                    hint = min(h * 8e-5, 0.9 * result.maximumStep)
-                    steps += 1
-                    #expect(steps < 10000)
-                    #expect(abs(intervalWork - velocity.x * impulse.x) < 1e-8)
-                }
-            }
-            let after = cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
-            let residual =
-                after - before - reservoir
-                + SIMD8(0, bodyImpulse.x, bodyImpulse.y, bodyImpulse.z, work, 0, 0, 0)
-            #expect(abs(residual[0]) < 1e-8 && abs(residual[4]) < 1e-5)
-            #expect(simd_length(SIMD3(residual[1], residual[2], residual[3])) < 1e-6)
-            #expect(cells.filter { $0.volume > 0 }.allSatisfy { $0.pressure() > 0 })
-            let exactExcess = try reference.wallImpulse(time: elapsed, area: 4) - 4 * s.pressure * elapsed
-            errors.append(historyError / exactExcess)
         }
-        #expect(errors[1] < errors[0])
+        let before = cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
+        var elapsed = 0.0
+        var hint = h * 8e-5
+        var reservoir = SIMD8<Double>.zero
+        var bodyImpulse = SIMD3<Double>.zero
+        var work = 0.0
+        var historyError = 0.0
+        var steps = 0
+        for fraction in [0.8, 1.0, 1.2, 1.4] {
+            let target = fraction * s.arrivalTime
+            while elapsed < target {
+                try #require(steps < 10000)
+                var dt = min(hint, target - elapsed)
+                var accepted: MovingGroupedGasFlux.Result?
+                for _ in 0..<24 {
+                    let plan = try ExperimentalMovingGroupsStudy.domain(
+                        h: h, angle: 0, start: 0, duration: dt, previous: cells,
+                        prescribedBody: body, prescribedVelocity: velocity,
+                        reconstruct: true, surfaceQuadrature: true, conservedQuadratic: true,
+                        slipSideWalls: true
+                    ).plan
+                    do {
+                        accepted = try MovingGroupedGasFlux.advance(
+                            plan, exterior: inflow, cfl: 0.2, limited: true,
+                            timeIntegration: .heun, conservedQuadratic: true)
+                        break
+                    } catch FractionalEulerFlux.Failure.unstableStep {
+                        dt /= 2
+                    } catch FractionalGasTransport.Failure.invalidState { dt /= 2 }
+                }
+                let result = try #require(accepted)
+                let impulse = result.wallImpulses.reduce(SIMD3<Double>.zero, +)
+                let intervalWork = result.wallWork.reduce(0, +)
+                let exact =
+                    try reference.wallImpulse(time: elapsed + dt, area: 4)
+                    - reference.wallImpulse(time: elapsed, area: 4)
+                historyError += abs(impulse.x - exact)
+                bodyImpulse += impulse
+                work += intervalWork
+                reservoir += result.reservoirExchange
+                cells = result.cells
+                body = body.translated(by: dt * velocity)
+                elapsed += dt
+                hint = min(h * 8e-5, 0.9 * result.maximumStep)
+                steps += 1
+                #expect(abs(intervalWork - velocity.x * impulse.x) < 1e-8)
+            }
+        }
+        let after = cells.reduce(SIMD8<Double>.zero) { $0 + $1.amount }
+        let residual =
+            after - before - reservoir
+            + SIMD8(0, bodyImpulse.x, bodyImpulse.y, bodyImpulse.z, work, 0, 0, 0)
+        #expect(abs(residual[0]) < 1e-8 && abs(residual[4]) < 1e-5)
+        #expect(simd_length(SIMD3(residual[1], residual[2], residual[3])) < 1e-6)
+        #expect(cells.filter { $0.volume > 0 }.allSatisfy { $0.pressure() > 0 })
+        // The reflected shock loads the piston beyond the incident-state pressure.
+        #expect(bodyImpulse.x > 4 * s.pressure * elapsed)
+        let exactExcess = try reference.wallImpulse(time: elapsed, area: 4) - 4 * s.pressure * elapsed
+        return historyError / exactExcess
     }
 }
