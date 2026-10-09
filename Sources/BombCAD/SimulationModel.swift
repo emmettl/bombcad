@@ -403,6 +403,28 @@ final class SimulationModel {
             }
         }
     }
+    /// The fireball's rise and cloud, if the project follows it: the hot gas left at the end of a
+    /// run handed over to the cloud model and followed for minutes after, and drawn over the
+    /// scene. Saved with the project; changes take effect from the next run, and settle into a
+    /// step to undo.
+    var cloudSpec: CloudSpec? {
+        didSet {
+            guard cloudSpec != oldValue, !isApplyingInputs else { return }
+            cloudEdit?.cancel()
+            cloudEdit = Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                recordEdit()
+            }
+        }
+    }
+    @ObservationIgnored private var cloudEdit: Task<Void, Never>?
+    /// Where the cloud of the run just finished went, once followed.
+    private(set) var cloud: CloudResult?
+    /// The cloud being followed, after the run has reached its end.
+    @ObservationIgnored private var cloudTask: Task<Void, Never>?
+    /// Whether the cloud is being followed now.
+    private(set) var followingCloud = false
     @ObservationIgnored private var groundShockEdit: Task<Void, Never>?
     /// How the ground has moved so far in the run, at each point, and a line saying so.
     private(set) var groundShockLive: GroundShockResult?
@@ -455,7 +477,7 @@ final class SimulationModel {
     /// Whether the run's companions, the fragments, the thermal radiation and the ground shock,
     /// have every frame sent, so that the run can be kept.
     var companionsCaughtUp: Bool {
-        [fragments, thermal, groundShock].allSatisfy { $0?.caughtUp ?? true }
+        [fragments, thermal, groundShock].allSatisfy { $0?.caughtUp ?? true } && !followingCloud
     }
     private static let undoLimit = 100
 
@@ -478,6 +500,7 @@ final class SimulationModel {
             fragmentSpec = document.fragments
             groundShockSpec = document.groundShock
             thermalSpec = document.thermal
+            cloudSpec = document.cloud
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -611,6 +634,7 @@ final class SimulationModel {
         fragmentSpec = document.fragments
         groundShockSpec = document.groundShock
         thermalSpec = document.thermal
+        cloudSpec = document.cloud
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -754,7 +778,7 @@ final class SimulationModel {
         SimulationInputs(
             scenario: settings.scenario, settings: ProjectRunSettings(model: self), fragments: fragmentSpec,
             groundShock: groundShockSpec,
-            thermal: thermalSpec)
+            thermal: thermalSpec, cloud: cloudSpec)
     }
 
     /// Inputs from the undo history, fragments and all.
@@ -762,10 +786,12 @@ final class SimulationModel {
         fragmentEdit?.cancel()
         groundShockEdit?.cancel()
         thermalEdit?.cancel()
+        cloudEdit?.cancel()
         isApplyingInputs = true
         fragmentSpec = inputs.fragments
         groundShockSpec = inputs.groundShock
         thermalSpec = inputs.thermal
+        cloudSpec = inputs.cloud
         isApplyingInputs = false
         applyExperimentInputs(inputs)
     }
@@ -788,7 +814,7 @@ final class SimulationModel {
         let inputs = SimulationInputs(
             scenario: run.scenario, settings: run.settings, fragments: run.fragments?.spec,
             groundShock: run.groundShock?.spec,
-            thermal: run.thermal?.spec)
+            thermal: run.thermal?.spec, cloud: run.cloud?.spec)
         try inputs.validate()
         recordEdit()
         if inputs != currentInputs {
@@ -1342,6 +1368,10 @@ final class SimulationModel {
             run.groundShock = SavedSimulationRun.GroundShock(spec: spec, result: result)
         }
         run.thermal = reckoned
+        if followingCloud {
+            throw ProjectFileError.invalid("The cloud is still being followed; keep the run in a moment.")
+        }
+        run.cloud = cloud
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1680,6 +1710,41 @@ final class SimulationModel {
         thermalStatus = text
     }
 
+    // MARK: - The cloud
+
+    /// Hands the hot gas left at the run's end over to the cloud model, if the project follows
+    /// it, and follows the cloud away from this thread; a few milliseconds for ten minutes.
+    private func followCloud(_ solver: BlastSolver) {
+        guard let spec = cloudSpec, (try? spec.validate()) != nil, cloud == nil, !followingCloud else {
+            return
+        }
+        let handOver = solver.cloudHandOver(hotterThan: spec.handOverTemperature)
+        followingCloud = true
+        cloudTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                CloudResult(spec: spec, handOver: handOver)
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            self.cloud = result
+            self.followingCloud = false
+            self.cloudTask = nil
+        }
+    }
+
+    private func stopCloud() {
+        cloudTask?.cancel()
+        cloudTask = nil
+        followingCloud = false
+        cloud = nil
+    }
+
+    /// Frames the view on the cloud: the whole of its path up to where it stopped rising, if that
+    /// is near enough to see whole, and otherwise the cloud where it stopped.
+    func frameCloud() {
+        guard let cloud, cloud.handOver.mass > 0 else { return }
+        camera = CloudOverlay.framing(cloud)
+    }
+
     // MARK: - Building
 
     private func requestRebuild() {
@@ -1710,6 +1775,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeExposureStatus = ""
         stopThermal()
+        stopCloud()
         completedRunSettings = nil
         loadedRunSettings = nil
         isRunning = false
@@ -1975,6 +2041,7 @@ final class SimulationModel {
             inputs.duration = duration
             completedRunSettings = inputs
         }
+        if errorMessage == nil, let solver, solver.time >= duration - 1e-9 { followCloud(solver) }
     }
 
     /// Records the structure's deflection, and hands the solver to `onSample`, if a sample falls

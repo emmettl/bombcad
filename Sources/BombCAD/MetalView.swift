@@ -64,6 +64,7 @@ struct MetalView: NSViewRepresentable {
             var settings: RenderSettings
             var dots: [SIMD4<Float>]
             var paint: SurfacePaint?
+            var lines: [SIMD4<Float>]
             var camera: OrbitCamera
         }
 
@@ -99,7 +100,11 @@ struct MetalView: NSViewRepresentable {
                 model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
                 + (settings.showGroundPoints ? model.groundShockDots() : [])
             let paint = settings.thermal.flatMap { model.thermalPaint($0) }
-            return Frame(settings: settings, dots: dots, paint: paint, camera: model.camera)
+            // The cloud's outlines are its silhouettes from the eye, so they follow the camera.
+            let lines =
+                settings.showCloud
+                ? model.cloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : []
+            return Frame(settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera)
         }
 
         func draw(in view: MTKView) {
@@ -123,6 +128,7 @@ struct MetalView: NSViewRepresentable {
             else { return }
             renderer.settings = frame.settings
             renderer.setDots(frame.dots)
+            renderer.setLines(frame.lines)
             if frame.paint != paint {
                 paint = frame.paint
                 renderer.setSurfacePaint(paint)

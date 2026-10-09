@@ -31,7 +31,7 @@ import simd
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
-//                       [--stationary-walls]
+//                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -816,6 +816,20 @@ func runSnapshot() throws {
     if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
     if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
     if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+    // The fireball's cloud, handed over at the end and followed, drawn as the app draws it, and
+    // with --frame-cloud seen as its button frames it.
+    if let path = option("cloud") {
+        let spec = try JSONDecoder().decode(
+            CloudSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        let cloud = CloudResult(
+            spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
+        for line in cloud.summary { print(line) }
+        if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
+        if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
+        if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
+        if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+        renderer.setLines(CloudOverlay.lines(cloud, eye: camera.eye))
+    }
 
     guard
         let frame = renderer.snapshot(

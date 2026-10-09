@@ -111,6 +111,8 @@ public struct RenderSettings: Sendable, Hashable {
     public var thermal: ThermalQuantity?
     /// Their dots' diameter on screen, in points, whatever their true size.
     public var dotSize: Float = 5
+    /// Where the fireball's cloud went, when a run follows it.
+    public var showCloud = true
     /// A box to outline in the view, such as the one being edited.
     public var highlight: Box?
 
@@ -156,7 +158,8 @@ public final class SceneRenderer {
     public static let pixelFormat = MTLPixelFormat.bgra8Unorm
     private static let depthFormat = MTLPixelFormat.depth32Float
     private static let nearPlane: Float = 0.5
-    private static let farPlane: Float = 4000
+    /// Far enough for a cloud carried kilometres downwind.
+    private static let farPlane: Float = 20_000
 
     public let device: MTLDevice
     public var settings = RenderSettings()
@@ -168,6 +171,9 @@ public final class SceneRenderer {
     private let glassPipeline: MTLRenderPipelineState
     private let dotPipeline: MTLRenderPipelineState
     private let paintPipeline: MTLRenderPipelineState
+    private let linePipeline: MTLRenderPipelineState
+    private var lineBuffer: MTLBuffer?
+    private var lineCount = 0
     private var paintPatches: MTLBuffer?
     private var paintValues: MTLBuffer?
     private var paintCount = 0
@@ -227,6 +233,7 @@ public final class SceneRenderer {
             vertex: "shellVertex", fragment: "glassFragment", depth: true, blended: true)
         dotPipeline = try pipeline(vertex: "dotVertex", fragment: "dotFragment", depth: true)
         paintPipeline = try pipeline(vertex: "paintVertex", fragment: "paintFragment", depth: true)
+        linePipeline = try pipeline(vertex: "lineVertex", fragment: "lineFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
@@ -296,6 +303,23 @@ public final class SceneRenderer {
             return
         }
         dots.withUnsafeBytes { dotBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
+    }
+
+    /// Lines to draw over the scene while `settings.showCloud` is set, of a width on screen
+    /// whatever their length: each two vectors, one end and a kind (0 to 3, as
+    /// `CloudOverlay.Kind`), and the other end and 0.
+    public func setLines(_ lines: [SIMD4<Float>]) {
+        lineCount = lines.count / 2
+        guard lineCount > 0 else { return }
+        let length = lineCount * 2 * MemoryLayout<SIMD4<Float>>.stride
+        if (lineBuffer?.length ?? 0) < length {
+            lineBuffer = device.makeBuffer(length: max(length, 4096) * 2, options: .storageModeShared)
+        }
+        guard let lineBuffer else {
+            lineCount = 0
+            return
+        }
+        lines.withUnsafeBytes { lineBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
     }
 
     /// Values to paint onto the surfaces while `settings.thermal` is set; nil for none.
@@ -475,6 +499,22 @@ public final class SceneRenderer {
             sceneEncoder.setVertexBytes(&viewport, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: dotCount)
+        }
+        if settings.showCloud, lineCount > 0, let lineBuffer {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            var viewport = SIMD4<Float>(
+                Float(destination.width), Float(destination.height), pixelsPerPoint, 0)
+            sceneEncoder.setRenderPipelineState(linePipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setVertexBuffer(lineBuffer, offset: 0, index: 0)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 1)
+            sceneEncoder.setVertexBytes(&viewport, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: lineCount)
         }
         for glass in transparentBodies {
             sceneEncoder.setRenderPipelineState(glassPipeline)

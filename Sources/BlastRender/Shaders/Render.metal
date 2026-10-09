@@ -619,6 +619,73 @@ fragment float4 paintFragment(PaintOut in [[stage_in]],
     return float4(mix(base * light, glow(t) * dataLight, smoothstep(0.0f, 0.12f, t) * 0.92f), 1.0f);
 }
 
+// Lines of a fixed width on screen, depth-tested along their length: where the fireball's cloud
+// went. Each is two vectors, one end and its kind (0 the centre's track, 1 an outline along it,
+// 2 the cloud where it stopped rising, 3 its track across the ground), and the other end.
+struct LineOut {
+    float4 position [[position]];
+    float across;
+    float3 colour [[flat]];
+    float edge [[flat]];
+};
+
+static inline float4 projectPoint(float3 p, constant MeshUniforms &u) {
+    float near = u.projection.z;
+    float far = u.projection.w;
+    float3 relative = p - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    return float4(view.x * u.projection.x, view.y * u.projection.y, far / (far - near) * (view.z - near), view.z);
+}
+
+vertex LineOut lineVertex(uint vertexID [[vertex_id]],
+                          uint instanceID [[instance_id]],
+                          const device float4 *lines [[buffer(0)]],
+                          constant MeshUniforms &u [[buffer(1)]],
+                          constant float4 &viewport [[buffer(2)]]) {
+    float4 a = lines[2 * instanceID];
+    float3 b = lines[2 * instanceID + 1].xyz;
+    int kind = int(a.w + 0.5f);
+    float near = u.projection.z;
+    float4 ca = projectPoint(a.xyz, u);
+    float4 cb = projectPoint(b, u);
+    LineOut out;
+    // Drawn only where both ends are in front of the eye.
+    if (ca.w < near || cb.w < near) {
+        out.position = float4(0.0f, 0.0f, 2.0f, 1.0f);
+        return out;
+    }
+    float2 pixels = viewport.xy * 0.5f;
+    float2 along = cb.xy / cb.w * pixels - ca.xy / ca.w * pixels;
+    float2 direction = length(along) > 1e-4f ? normalize(along) : float2(1.0f, 0.0f);
+    float2 normal = float2(-direction.y, direction.x);
+    // Each end of the quad, and which side of the line.
+    const float2 corners[6] = {float2(0, -1), float2(1, -1), float2(1, 1),
+                               float2(0, -1), float2(1, 1), float2(0, 1)};
+    float2 corner = corners[vertexID];
+    const float widths[4] = {3.0f, 1.6f, 3.0f, 1.6f};
+    // Half the width in pixels, and half a pixel more to smooth its edge.
+    float halfWidth = 0.5f * widths[kind] * viewport.z + 0.5f;
+    float4 clip = corner.x > 0.5f ? cb : ca;
+    clip.xy += corner.y * normal * halfWidth / pixels * clip.w;
+    out.position = clip;
+    out.across = corner.y * halfWidth;
+    out.edge = halfWidth;
+    const float3 colours[4] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
+                               float3(1.00f, 0.62f, 0.12f), float3(0.16f, 0.18f, 0.22f)};
+    out.colour = colours[kind];
+    return out;
+}
+
+fragment float4 lineFragment(LineOut in [[stage_in]]) {
+    // A dark rim a pixel wide, so that light lines stand out against the sky.
+    float distance = fabs(in.across);
+    if (distance > in.edge) {
+        discard_fragment();
+    }
+    float rim = smoothstep(in.edge - 1.5f, in.edge - 0.5f, distance);
+    return float4(mix(in.colour, float3(0.08f, 0.09f, 0.11f), rim * 0.7f), 1.0f);
+}
+
 fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
     float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(normal, u.eye.xyz - in.world) < 0.0f) {

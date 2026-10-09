@@ -120,6 +120,7 @@ struct SidebarView: View {
 
             FragmentSection(model: model)
             ThermalSection(model: model)
+            CloudSection(model: model)
 
             GroundShockSection(model: model)
             EnvelopeExposureSection(model: model)
@@ -220,6 +221,13 @@ struct SidebarView: View {
                 FragmentDisplaySettings(model: model)
                 if model.groundShockSpec != nil {
                     Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
+                }
+                if model.cloudSpec != nil {
+                    Toggle("Cloud's path", isOn: $model.renderSettings.showCloud)
+                        .help(
+                            "After a run, the track of the cloud's centre, its outline at intervals until it "
+                                + "stopped rising, where it stopped in orange, and its track across the ground."
+                        )
                 }
             }
 
