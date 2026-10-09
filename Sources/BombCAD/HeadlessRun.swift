@@ -15,7 +15,7 @@ enum HeadlessRun {
                            [--fragments <spec.json> [--consumer local|<ssh host>]
                            [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
-                           [--cloud <spec.json> [--cloud-results <file.json>]]
+                           [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
@@ -30,7 +30,9 @@ enum HeadlessRun {
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
         fireball's rise and cloud, followed for minutes after; the cloud goes into the USD scene,
-        after the run's frames, and, with --cloud-results, a JSON file. --ground-shock estimates
+        after the run's frames, and, with --cloud-results, a JSON file; --sounding reads a measured
+        atmosphere for it, in the University of Wyoming archive's comma-separated values, in place
+        of the standard one. --ground-shock estimates
         the ground's shaking under chosen points from the overpressure the run records on the
         ground, frame by frame; --ground-results writes it as JSON.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
@@ -79,7 +81,7 @@ enum HeadlessRun {
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
-                            "cloud-results", "ground-shock", "ground-results",
+                            "cloud-results", "sounding", "ground-shock", "ground-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -159,10 +161,16 @@ enum HeadlessRun {
                 throw ProjectFileError.invalid("--thermal-results needs --thermal.")
             }
             if let path = values["cloud"] {
-                let spec = try JSONDecoder().decode(
+                var spec = try JSONDecoder().decode(
                     CloudSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                if let sounding = values["sounding"] {
+                    spec.sounding = try CloudSounding(
+                        wyomingCSV: String(contentsOf: URL(filePath: sounding), encoding: .utf8))
+                }
                 try spec.validate()
                 options.cloud = spec
+            } else if values["sounding"] != nil {
+                throw ProjectFileError.invalid("--sounding needs --cloud.")
             }
             options.cloudResults = values["cloud-results"].map { URL(filePath: $0) }
             if options.cloudResults != nil, options.cloud == nil {
