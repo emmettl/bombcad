@@ -45,6 +45,10 @@ struct RigidCarBody {
         body.applyImpulse(impulse, at: point)
     }
 
+    mutating func applyAngularImpulse(_ impulse: SIMD3<Double>) {
+        body.applyAngularImpulse(impulse)
+    }
+
     /// Kinetic plus gravitational potential energy, with zero potential at the ground.
     func mechanicalEnergy(gravity: Double = 9.81) -> Double {
         body.kineticEnergy + body.mass * gravity * body.position.z
