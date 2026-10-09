@@ -13,8 +13,10 @@ enum ImportedSceneCodec {
         init(scenario: Scenario, imports: [Instance]?) {
             self.scenario = scenario
             self.imports = imports
-            // Older readers must not silently discard durable object/component ownership.
-            encodingVersion = scenario.structuralObjects.count > 1 ? 4 : 3
+            // Older readers must not silently discard durable object/component ownership, nor
+            // stand a base on the ground that stands on a footing, nor turn a joint face down.
+            encodingVersion =
+                scenario.hasFootingsOrTurnedJoints ? 5 : scenario.structuralObjects.count > 1 ? 4 : 3
         }
     }
 
@@ -159,7 +161,7 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", (1...4).contains(header.encodingVersion) else {
+        guard header.format == "dev.bombcad.scene", (1...5).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
@@ -169,8 +171,15 @@ enum ImportedSceneCodec {
                 throw ProjectFileError.invalid("This scene encoding requires object ownership.")
             }
         }
-        guard (payload.scenario.structuralObjects.count > 1) == (header.encodingVersion == 4) else {
-            throw ProjectFileError.invalid("Multiple structures require scene encoding version 4.")
+        guard
+            header.encodingVersion == 5
+                ? payload.scenario.hasFootingsOrTurnedJoints
+                : (payload.scenario.structuralObjects.count > 1) == (header.encodingVersion == 4)
+                    && !payload.scenario.hasFootingsOrTurnedJoints
+        else {
+            throw ProjectFileError.invalid(
+                "Multiple structures require scene encoding version 4, and footings or turned joints version 5."
+            )
         }
         guard payload.scenario.importedModels == nil else {
             throw ProjectFileError.invalid("The scene contains conflicting inline and referenced imports.")
@@ -256,5 +265,17 @@ enum ImportedSceneCodec {
             String(hex[0..<8]) + "-" + String(hex[8..<12]) + "-" + String(hex[12..<16])
             + "-" + String(hex[16..<20]) + "-" + String(hex[20..<32])
         return UUID(uuidString: value)!
+    }
+}
+
+extension Scenario {
+    /// Whether any structure's base or support region stands on a footing (`Footing`), or a
+    /// support's joint faces another way than down (`JointSide`).
+    var hasFootingsOrTurnedJoints: Bool {
+        structuralObjects.contains { object in
+            guard let body = object.structure else { return false }
+            return body.baseAnchorage?.footing != nil
+                || body.supportAnchorages.contains { $0?.footing != nil || ($0?.side ?? .below) != .below }
+        }
     }
 }

@@ -116,6 +116,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var fragments: FragmentSpec?
     /// Ground points whose shaking to estimate alongside each run, saved as `groundShock.json`.
     var groundShock: GroundShockSpec?
+    /// The fireball's thermal radiation to reckon alongside each run, saved as `thermal.json`.
+    var thermal: ThermalSpec?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -151,6 +153,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         savedRuns = model.savedRuns
         fragments = model.fragmentSpec
         groundShock = model.groundShockSpec
+        thermal = model.thermalSpec
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -206,6 +209,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try spec.validate()
             groundShock = spec
         }
+        if let data = archive.files["thermal.json"] {
+            let spec = try JSONDecoder().decode(ThermalSpec.self, from: data)
+            try spec.validate()
+            thermal = spec
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -250,6 +258,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["groundShock.json"] = try ProjectArchive.encodeJSON(groundShock)
         } else {
             files.removeValue(forKey: "groundShock.json")
+        }
+        if let thermal {
+            try thermal.validate()
+            files["thermal.json"] = try ProjectArchive.encodeJSON(thermal)
+        } else {
+            files.removeValue(forKey: "thermal.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

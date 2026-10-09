@@ -81,17 +81,20 @@ struct MetalView: NSViewRepresentable {
         /// read by the renderer outside Observation, so `sceneVersion` stands in for the scene,
         /// and `time` for the air and the structure, which change only as a run steps. The dots
         /// come from the fragments' consumer while it has them, so `fragmentLive` stands in for
-        /// those that land after a run finishes.
+        /// those that land after a run finishes, and `thermalReckoned` for the thermal radiation's
+        /// last frames.
         private func frame() -> Frame {
             _ = model.isRunning
             _ = model.sceneVersion
             _ = model.fragmentLive
+            _ = model.thermalReckoned
             var settings = model.renderSettings
             settings.showCharge = model.time == 0
             settings.highlight = model.highlightedBox
             // The ground points read the project's points and the run's estimate, both observed.
             let dots =
-                model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
+                (settings.showThermal ? model.thermalDots() : [])
+                + model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
                 + (settings.showGroundPoints ? model.groundShockDots() : [])
             return Frame(settings: settings, dots: dots, camera: model.camera)
         }
