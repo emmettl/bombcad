@@ -222,7 +222,16 @@ Supplied by hand during development, and now in use:
   slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
   Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
   were restrained, so their cracks carried compression, which the interlock cap leaves out;
-  where its laws give no stress across the crack, the model's cap is 3% to 24% above them.
+  where its laws give no stress across the crack, the model's cap is 3% to 24% above them. The
+  paths, shear and stress across the crack of its seven specimens of mix 1 with external
+  restraint (Fig. 16) were read off by hand for `blastbench pushoff` (`PushOffTest.swift`).
+- G. A. Shetye, *FE analysis and experimental validation of RC single-mat slabs subjected to
+  blast loads*, MS thesis, University of Missouri–Kansas City, 2013 (MOspace, open access): a
+  photograph of the contest slab's unloaded face after the test (Fig. 6-60b, its slab 2,
+  RSC-R1-4in), from which its cracks were counted (see
+  [Validation](validation.md#its-cracks)). It gives the panels' clear span as 58 in, where the
+  drawing Kewaisy et al. reproduce puts the supports 52 in apart; which is right is still
+  wanted.
 - J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
   effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
   (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,

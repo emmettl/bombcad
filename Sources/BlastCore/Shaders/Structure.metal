@@ -72,7 +72,8 @@ struct StructureUniforms {
     uint secondCracks;  // 1: concrete with fixed crack axes may open a second crack
     uint barAxes;       // bits 0 to 2: the body has bars along x, y, z somewhere
     uint bareBars;      // 1: concrete removed while its bars are intact leaves them (elementBare)
-    uint crackSlip;     // 1: shear past a crack's interlock slides it for good (stored in jointSlip)
+    uint crackSlip;     // 1: shear past a crack's interlock slides it for good (stored in jointSlip);
+                        // 2: and the slide is kept out of the strain that opens cracks
     // The base's connection to the ground (`Anchorage`), when it is not clamped.
     uint anchored;
     float anchorNormalStiffness;  // Pa/m
@@ -1052,7 +1053,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // strain itself would count the sideways swelling of squeezed concrete as cracking.)
         // It is shared between the planes it cuts across, in proportion to the squared direction
         // cosines.
-        float3x3 effective = strain * (1.0f / (1.0f + poisson));
+        // What a crack has slid by (`crackSlip`) is already the crack's: with `crackSlip` at 2
+        // it is taken out, as a second crack's opening is, so that sliding along a crack does not
+        // also open it and the plane across the slide. (Counted, a crack 1 mm open slid by 2 mm
+        // on 50 mm elements read as 1.9 mm open; see `StructureModel.slipWidensCracks`.)
+        float3x3 opens = strain;
+        if (u.crackSlip == 2u && framed && !turning && joints == 0u) {
+            float3 slid = 0.5f * float3(state.jointSlip);  // xy, yz, zx
+            opens[0][1] -= slid.x;
+            opens[1][0] -= slid.x;
+            opens[1][2] -= slid.y;
+            opens[2][1] -= slid.y;
+            opens[2][0] -= slid.z;
+            opens[0][2] -= slid.z;
+        }
+        float3x3 effective = opens * (1.0f / (1.0f + poisson));
         float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2])
             / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
         effective[0][0] += dilation;

@@ -859,6 +859,54 @@ extension ConcreteModelTests {
         }
     }
 
+    @Test("Along a restrained push-off crack's path the model carries an unpressed crack's interlock")
+    func pushOffPath() throws {
+        // Walraven and Reinhardt's two least restrained specimens of mix 1, driven along their
+        // measured opening and slip. Their restraint pressed the crack shut by 1 to 3 MPa, and
+        // with that pressure the modified compression field theory's full limit gives their
+        // shear; the model's cap is that limit's first term, with nothing across the crack, and
+        // its crack's faces, riding up, press on nothing.
+        for name in ["1/.2/.4", "1/.4/.3"] {
+            let specimen = try #require(PushOffTest.specimens.first { $0.name == name })
+            let kept = try PushOffTest.run(device: device, specimen: specimen, stepsPerMillimetre: 1000)
+            let apart = try PushOffTest.run(device: device, specimen: specimen, stepsPerMillimetre: 1000) {
+                $0.slipWidensCracks = false
+            }
+            let material = PushOffTest.material(for: specimen)
+            for slip in [0.0008, 0.0012, 0.0016, 0.002] as [Float] {
+                let width = specimen.width(at: slip)
+                let measured = try #require(specimen.measuredShear(at: slip))
+                let cap = PushOffTest.compressionFieldShear(
+                    width: width, pressure: 0, compressiveStrength: material.compressiveStrength)
+                // With the slide kept out of the strain that opens cracks, the cap at the
+                // measured width.
+                let modelled = apart.modelled(at: slip)
+                #expect(
+                    abs(modelled.shear - cap) < 0.05 * cap,
+                    "\(name) at \(slip * 1000) mm: \(modelled.shear / 1e6) against the cap \(cap / 1e6) MPa")
+                #expect(abs(modelled.normal) < 0.05e6, "\(name): \(modelled.normal / 1e6) MPa across")
+                // A fifth to a half of what the specimens carried (0.22-0.54, written).
+                #expect(
+                    modelled.shear < 0.6 * measured,
+                    "\(name): \(modelled.shear / 1e6) against \(measured / 1e6)")
+                // Counted in it, as by default, the slide opens the crack further, and the cap
+                // falls with it: to about 60% of the cap at 2 mm, written.
+                let widened = kept.modelled(at: slip).shear
+                #expect(
+                    widened < 0.95 * modelled.shear && widened > 0.4 * cap, "\(name): \(widened / 1e6) MPa")
+                if let pressed = specimen.measuredNormal(at: slip) {
+                    let limit = PushOffTest.compressionFieldShear(
+                        width: width, pressure: pressed, compressiveStrength: material.compressiveStrength)
+                    // 0.87-1.34 times what was measured.
+                    #expect(
+                        abs(limit - measured) < 0.4 * measured,
+                        "\(name): limit \(limit / 1e6) against \(measured / 1e6) MPa at \(pressed / 1e6) across"
+                    )
+                }
+            }
+        }
+    }
+
     @Test("A crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured")
     func crackShearStiffness() throws {
         // Open a crack across x, then shear the cube across it a little, short of the interlock
