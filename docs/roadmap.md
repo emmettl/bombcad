@@ -107,7 +107,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    the cap is 3% to 24% above what an unpressed crack carried, not five times. Bond lost where bars yield (now part of slip) spreads yield
    along them but leaves the slab at 88 mm; its stiffness with slip comes from cracks that keep
    to one element each, 90 mm apart over a shorter zone (98 mm if spread over the crack spacing).
-   A direct test of interlock across one crack, and the test slab's crack pattern, come next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   Driven along Walraven and Reinhardt's measured crack paths, a crack carries its cap alone, a
+   twentieth to a fifth of what theirs carried pressed shut by their restraint, which the model
+   cannot do; and with slip the slab cracks as a photograph of the test shows, ten cracks over
+   600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
@@ -175,6 +178,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    fine three to five times faster in the open. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
+   Stationary [building envelopes](building-envelopes.md) now retain walls, roofs and openings
+   in shared air without mechanics. Matched pinned-solid comparisons reproduce the exposure
+   and integrated surface loads exactly; short computational scaling runs reach 64 buildings.
+   Air resolution remains a separate cost and accuracy limit, and shell junction/opening
+   approximations are retained as diagnostics in that study.
 13. **Freestanding objects and supports.** Independent rigid bodies for parked cars and
    interior furniture, with gravity, friction, lift-off and collisions, coupled to the blast.
    Start with the staged checks below. Separately, make structural support assumptions visible
@@ -183,17 +191,19 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    computing](distributed-computing.md#the-long-term-visions-effects)). (Done, illustrative: a
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
-   hot gas, which needs afterburning and hot air to make a fireball of plausible size; the
-   fireball's [rise and cloud](fireball-rise.md), handed over from the air model's final state
-   to an integral model of a rising thermal in a standard atmosphere, a wind growing with height
-   and humid air, where it condenses, freezes and rains once saturated, within a factor of 1.6
-   of an empirical fit to high-explosive cloud heights; and [ground shock](ground-shock.md) away
-   from the charge, the manuals' one-dimensional estimate fed the overpressure on the rigid
-   ground each frame and drawn in the app. Next: radiation on the GPU's ray-tracing hardware, a
-   fireball that is not one sphere, the cloud in turbulent air and a measured sounding, a layered
-   soil column and a comparison with measured ground motion, and the app showing what the
-   surfaces received and where the cloud went. The crater and the ground shock near the charge
-   act back on the blast and remain outside these.)
+   hot gas, which needs afterburning and hot air to make a fireball of plausible size, shown in
+   the app as it goes and reckoned there or on another Mac; the fireball's [rise and
+   cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
+   a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
+   turbulent air and humid air, where it condenses, freezes and rains once saturated, within a
+   factor of 1.6 (1.4 in neutral turbulence) of an empirical fit to high-explosive cloud heights;
+   and [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional
+   estimate fed the overpressure on the rigid ground each frame and drawn in the app. Next:
+   radiation on the GPU's ray-tracing hardware, a fireball that is not one sphere, the cloud
+   against measured clouds over time, a layered soil column and a comparison with measured
+   ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
+   went. The crater and the ground shock near the charge act back on the blast and remain
+   outside these.)
 
 ### Freestanding objects and supports
 
@@ -1617,8 +1627,48 @@ actual Euler wall packets, negligible duration effects and reference/quadrature 
 The independent six-case summary passes, strict Swift formatting and diff checks are clean,
 and the full release build succeeds with main's existing AirSlice concurrency warnings.
 
-Next, separate initial averaging, gradient-fitting and limiter errors before changing wall
-reconstruction, then reassess the evolved load histories. Spatial load accuracy remains a
+The initial probe now offers `--decompose`, recording nine controlled comparisons at the
+same wall samples: supplied pressure, constant group averages, raw least-squares fits,
+actual bounded fits, and the corresponding three reconstructions from known centroid
+pressures. Two further modes use the analytic Gaussian gradient with either its centroid
+pressure or the actual group average. Raw gradients and limiter factors come from the
+same reconstruction used by numerical stages; optional recording leaves bounded traces
+identical. Centroid-pressure replacement is confined to temporary diagnostic states and
+does not modify accepted gas inventories or enter a numerical advance. The raw and
+analytic modes evaluate pressure algebraically without enabling unbounded transport.
+
+Removing the limiter worsens coarse-grid force errors from 70.9%/43.5% to 81.8%/52.1%
+for aligned/rotated boxes. Its effect on 0.1 m loads is small. On the finest rotated grid,
+the raw fit gives 1.45% force and 3.35% torque errors versus the bounded fit's 1.98%/3.83%,
+but violates neighbour bounds on 3.03% of surface area and drops below ambient on 1.58%.
+All diagnostic absolute pressures remain positive; signed excess pressure distinguishes
+these profile undershoots from an EOS positivity failure. Actual bounded traces retain
+their bounds. None of the sampled body groups has a deficient fit. Mean pressure limiter
+factors rise from about 0.25–0.29 on the coarse grid to 0.81–0.83 on the finest; these
+surface-area averages are not measures of each region's contribution to net force.
+
+Replacing conservative group averages with known centroid pressure worsens constant,
+raw and bounded load comparisons. Keeping the real averages but supplying the analytic
+gradient reduces force errors to 3.62%/7.68%, 0.536%/0.618% and 0.056%/0.110% across
+the three grids. Corresponding torque errors are 13.0%/18.9%, 1.25%/1.70% and
+0.215%/0.552%. This implicates gradient estimation from underresolved volume averages
+and wall stencils, but does not establish an implementable replacement. Even that mode
+has coarse local pressure L1 errors of 31.8%/21.7%, so cancellation can conceal local
+errors. Exact centroid pressure plus its analytic Taylor gradient still gives coarse
+force errors of 21.3%/19.8% and torque errors of 43.2%/39.0%, showing substantial
+curvature error within a local linear representation. These interventions interact;
+their differences are diagnostic comparisons, not an additive error budget.
+
+All 106 CPU-only tests in 21 suites pass, including raw-fit/factor checks, rank fallback,
+unchanged bounded traces and inventories, and an independent finite-difference check of
+the analytic-gradient loads. The six-case summary checks all nine modes at both probe
+durations against independent whole-face integrals, reported errors and pressure bounds;
+the largest duration-halving load change is `1.12e-7` of the reference norm.
+
+Next, investigate finite-volume-aware gradient estimation and pressure curvature or
+resolution in this isolated wall probe, then reassess the evolved load histories.
+The present evidence does not justify weakening the limiter or replacing conservative
+averages with point pressure. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
@@ -1676,9 +1726,13 @@ strength, opening, slip, friction, bearing capacity and stiffness. Independent r
 reactions, lift-off, clamp precedence, imported-source refinement, save/reopen and undo are
 checked. Finite support regions select initial lower-face/footprint points and use stationary
 horizontal bearing planes; they do not model a footing's finite contact extents. See
-[structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
-and moving-component connections; bounded footings, and soil with mass, radiation damping and
-layers; and a measured connection case. Loaded by the air instead of a pulse
+[structural editing](structural-editing.md#restraints). A base can now stand on a rigid footing
+of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
+for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
+impedance ([footings](structural-model.md#footings)); and support joints can face up or
+sideways for solid elements. Still open: joints at angles to the lattice, and on shells;
+connections between moving components other than a footing; embedment; and a measured case
+(FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
@@ -1730,6 +1784,9 @@ two collapsing over several seconds.
   switched off by default; the rest were removed. The lesson: trace a failing element before
   changing the model.
 
+- **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
+  read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
+  depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.
 - **Fixed design factors for strain rate** (UFC 3-340-02): deliberately conservative; they
   predict 121 mm for the slab test against 108 mm measured. The strain-rate laws are the
   default; the factors remain available as an option.

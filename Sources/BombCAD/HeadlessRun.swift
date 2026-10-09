@@ -15,8 +15,9 @@ enum HeadlessRun {
                            [--fragments <spec.json> [--consumer local|<ssh host>]
                            [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
-                           [--cloud <spec.json> [--cloud-results <file.json>]]
+                           [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
+                           [--envelope-results <file.json>]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
@@ -26,11 +27,15 @@ enum HeadlessRun {
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, on this Mac's CPU or on another Mac over SSH, frame
         by frame; they go into the USD scene and, with --fragment-results, a JSON file.
+        --envelope-results writes individual stationary-building surface records as JSON;
+        scenes with only envelopes collect compact surface summaries in kept runs and CSV too.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
         fireball's rise and cloud, followed for minutes after; the cloud goes into the USD scene,
-        after the run's frames, and, with --cloud-results, a JSON file. --ground-shock estimates
+        after the run's frames, and, with --cloud-results, a JSON file; --sounding reads a measured
+        atmosphere for it, in the University of Wyoming archive's comma-separated values, in place
+        of the standard one. --ground-shock estimates
         the ground's shaking under chosen points from the overpressure the run records on the
         ground, frame by frame; --ground-results writes it as JSON.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
@@ -62,6 +67,7 @@ enum HeadlessRun {
         /// Ground points whose shaking to estimate from the air on the ground, and where the
         /// estimates go.
         var groundShock: GroundShockSpec?
+        var envelopeResults: URL?
         var groundResults: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
@@ -79,7 +85,7 @@ enum HeadlessRun {
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
-                            "cloud-results", "ground-shock", "ground-results",
+                            "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -101,6 +107,7 @@ enum HeadlessRun {
             options.name = values["name"]
             options.out = values["out"].map { URL(filePath: $0) }
             options.csv = values["csv"].map { URL(filePath: $0) }
+            options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             if let text = values["resolution"] {
                 guard let resolution = Resolution(rawValue: text) else {
                     throw ProjectFileError.invalid("Resolution must be coarse, medium or fine.")
@@ -159,10 +166,16 @@ enum HeadlessRun {
                 throw ProjectFileError.invalid("--thermal-results needs --thermal.")
             }
             if let path = values["cloud"] {
-                let spec = try JSONDecoder().decode(
+                var spec = try JSONDecoder().decode(
                     CloudSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                if let sounding = values["sounding"] {
+                    spec.sounding = try CloudSounding(
+                        wyomingCSV: String(contentsOf: URL(filePath: sounding), encoding: .utf8))
+                }
                 try spec.validate()
                 options.cloud = spec
+            } else if values["sounding"] != nil {
+                throw ProjectFileError.invalid("--sounding needs --cloud.")
             }
             options.cloudResults = values["cloud-results"].map { URL(filePath: $0) }
             if options.cloudResults != nil, options.cloud == nil {
@@ -197,7 +210,7 @@ enum HeadlessRun {
             }
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
-                options.thermalResults, options.cloudResults, options.groundResults,
+                options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -244,7 +257,7 @@ enum HeadlessRun {
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, stream: String?, thermal: ThermalResult?,
-        cloud: CloudResult?, ground: GroundShockResult?
+        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -270,7 +283,13 @@ enum HeadlessRun {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(ground).write(to: url, options: .withoutOverwriting)
         }
-        return (result.run, result.fragments, result.stream, result.thermal, result.cloud, result.ground)
+        if let url = options.envelopeResults, let data = result.envelopes {
+            try data.write(to: url, options: .withoutOverwriting)
+        }
+        return (
+            result.run, result.fragments, result.stream, result.thermal, result.cloud, result.ground,
+            result.envelopes
+        )
     }
 
     /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
@@ -279,13 +298,19 @@ enum HeadlessRun {
     /// Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
-        consumer injected: (any LiveConsumer)? = nil
+        consumer injected: (any FrameConsumer)? = nil
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?,
-        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
+        if options.envelopeResults != nil {
+            guard !inputs.scenario.envelopeObjects.isEmpty, inputs.scenario.structuralObjects.isEmpty else {
+                throw ProjectFileError.invalid(
+                    "--envelope-results requires a scene containing only stationary envelopes.")
+            }
+        }
         try options.groundShock?.validate(domain: inputs.scenario.domainSize)
         guard document.savedRuns.count < SavedSimulationRun.maximumRuns else {
             throw ProjectFileError.invalid(
@@ -314,6 +339,9 @@ enum HeadlessRun {
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
+        if options.envelopeResults != nil, model.envelopeExposure.isEmpty {
+            throw ProjectFileError.invalid(model.envelopeExposureStatus)
+        }
         let scene = try options.usd.map { url in
             try USDSceneWriter(
                 url: url, scenario: inputs.scenario, frameInterval: interval,
@@ -353,6 +381,27 @@ enum HeadlessRun {
                     heldSince = nil
                 }
                 return hold
+            }
+        }
+        if framed, consumer != nil || options.thermal != nil {
+            // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
+            // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
+            model.prepareBatch = { solver, limit in
+                let index = (limit / interval).rounded()
+                guard abs(limit - index * interval) < 1e-6 else {
+                    solver.frameRequest = FrameRequest()
+                    return
+                }
+                var request = FrameRequest(fireball: options.thermal?.luminousTemperature)
+                if let consumer {
+                    let frame = Int(index)
+                    let basis = consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
+                    let region = basis.region(
+                        for: frame, interval: interval, domain: inputs.scenario.domainSize,
+                        cellSize: solver.grid.cellSize)
+                    request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
+                }
+                solver.frameRequest = request
             }
         }
         var handOver: CloudHandOver?
@@ -399,7 +448,7 @@ enum HeadlessRun {
                         let region = basis.region(
                             for: frame, interval: interval, domain: inputs.scenario.domainSize,
                             cellSize: solver.grid.cellSize)
-                        consumer.send(solver.airSlice(region: region.box, stride: region.stride))
+                        consumer.send(.air(solver.airSlice(region: region.box, stride: region.stride)))
                     }
                 } catch {
                     exportError = error
@@ -419,7 +468,7 @@ enum HeadlessRun {
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
         let running = streamStart.duration(to: .now)
-        let fragments = try await consumer?.finish(frameInterval: interval)
+        let fragments = try await consumer?.fragments(frameInterval: interval)
         let stream = consumer.map { consumer in
             String(
                 format:
@@ -470,7 +519,8 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (run, document, fragments, stream, thermalResult, cloud, groundResult)
+        let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
+        return (run, document, fragments, stream, thermalResult, cloud, groundResult, envelopeData)
     }
 
     /// The fireball's radiation, reckoned frame by frame on a queue of its own so that the run
@@ -492,12 +542,12 @@ enum HeadlessRun {
 
     /// The consumer to fly fragments: on this Mac's CPU, or on another Mac over SSH.
     static func makeConsumer(_ placement: String, spec: FragmentSpec, scenario: Scenario) async throws
-        -> any LiveConsumer
+        -> any FrameConsumer
     {
-        let scene = FragmentScene(scenario)
-        guard placement != "local" else { return LocalLiveConsumer(spec: spec, scene: scene) }
+        let kind = ConsumerKind.fragments(spec, FragmentScene(scenario), live: false)
+        guard placement != "local" else { return LocalFrameConsumer(kind) }
         let client = try await RemoteSweepWorker.connect(host: placement)
-        return RemoteLiveConsumer(client: client, spec: spec, scene: scene)
+        return RemoteFrameConsumer(client: client, kind: kind)
     }
 
     /// `file` as the USD file at `scene` should name it: relative where it lies beside or below it.

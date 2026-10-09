@@ -95,7 +95,7 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
 
 extension Scenario {
     public var rigidBoxes: [Box] {
-        boxes
+        boxes + envelopeObjects.flatMap { $0.envelope!.blocks }
             + (importedModels ?? []).filter { $0.isAttached && $0.behavior == .rigid }.flatMap {
                 $0.preview.boxes
             }

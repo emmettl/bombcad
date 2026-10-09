@@ -63,6 +63,7 @@ struct ShellUniforms {
     var anchorCohesionSlip: Float = 0
     var anchorFriction: Float = 0
     var couplingMapCount: UInt32 = 0
+    var footings: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -239,6 +240,9 @@ public final class ShellSolver {
     private let anchorStiffness: (normal: Float, shear: Float)?
     /// The largest square angular frequency, in 1/s², of a node on its connection alone.
     private var anchorFrequencySquared: Float = 0
+    /// Rigid footings under connections that have them (`Footing`), tied to points of the
+    /// footprint.
+    private(set) var footings: FootingSystem?
     /// Points through a wall's thickness, and along each side of a column, at which the base's
     /// connection is evaluated, from face to face.
     static let fibresAcross = 9
@@ -449,7 +453,10 @@ public final class ShellSolver {
         var fibreLaws: [AnchorageParameters] = []
         if let stiffness = model.connectionStiffness {
             anchorStiffness = stiffness
-            let lists = mesh.baseFibres(across: Self.fibresAcross) { model.connection(at: $0) != nil }
+            // Shells and columns are tied only under them.
+            let lists = mesh.baseFibres(across: Self.fibresAcross) {
+                model.connection(at: $0).map { ($0.side ?? .below) == .below } ?? false
+            }
             for (n, list) in lists.enumerated() {
                 let area = list.reduce(0) { $0 + $1.z }
                 fibreGeometry += list.map { SIMD4($0.x, $0.y, $0.z, area) }
@@ -503,6 +510,30 @@ public final class ShellSolver {
                     anchorFrequencySquared = max(anchorFrequencySquared, stiffest * frequency)
                 }
             }
+            // Footings, under the points of the footprint their connections tie.
+            var members: [FootingSystem.Member] = []
+            var bodyMass: Float = 0
+            mutateNodes { nodes in
+                for n in nodes.indices {
+                    bodyMass += nodes[n].mass
+                    guard starts[n + 1] > starts[n], !nodes[n].isClamped,
+                        let slot = model.connectionSlot(at: mesh.positions[n]),
+                        let law = model.connection(at: mesh.positions[n]), law.footing != nil
+                    else { continue }
+                    for f in Int(starts[n])..<Int(starts[n + 1]) {
+                        members.append(
+                            FootingSystem.Member(
+                                entity: f, rest: mesh.positions[n] + SIMD3(points[f].x, points[f].y, 0),
+                                area: points[f].z, slot: slot, law: law,
+                                stiffness: law.stiffness(
+                                    material: model.material, elementSize: model.elementSize)))
+                    }
+                }
+            }
+            footings = try FootingSystem(
+                device: device, library: library, members: members, entityCount: fibreCount,
+                bodyMass: bodyMass,
+                contactDamping: contactDamping)
         }
     }
 
@@ -511,6 +542,7 @@ public final class ShellSolver {
     /// Restores the undeformed, stress-free, stationary structure.
     public func reset() {
         time = 0
+        footings?.reset()
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         failedAtCheckpoint = nil
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
@@ -617,7 +649,11 @@ public final class ShellSolver {
                     summary.meanDamage += points[f].z * (1 - remaining)
                     summary.reaction += force
                     summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(states[f].x, states[f].y)))
-                    summary.maxOpening = max(summary.maxOpening, moved.z)
+                    // On a footing, the opening is from the footing's top as it has moved.
+                    let ground = footings?.footing(ofEntity: f).map {
+                        footings!.displacement(ofPointAt: position, footing: $0).z
+                    }
+                    summary.maxOpening = max(summary.maxOpening, moved.z - (ground ?? 0))
                     summary.maxSettlement = max(summary.maxSettlement, -forces[f].w)
                     area += points[f].z
                     centre += points[f].z * position
@@ -868,9 +904,12 @@ public final class ShellSolver {
         let shells = timeStepSafety * (step.isFinite ? step : 1e-4)
         // A node on a stiff connection to the ground, as for solid elements: its frequency on the
         // connection adds to the highest the elements alone can give it, about 2 / step.
-        guard anchorFrequencySquared > 0, step.isFinite else { return shells }
+        let footingFrequencySquared = footings?.frequencySquared ?? 0
+        guard anchorFrequencySquared > 0 || footingFrequencySquared > 0, step.isFinite else { return shells }
         let elementFrequency = 2 / step
-        let frequency = (elementFrequency * elementFrequency + anchorFrequencySquared).squareRoot()
+        let frequency =
+            (elementFrequency * elementFrequency + anchorFrequencySquared + footingFrequencySquared)
+            .squareRoot()
         let damping = (1 + contactDamping * contactDamping).squareRoot() - contactDamping
         return min(shells, 0.9 * 2 * damping / frequency)
     }
@@ -1042,6 +1081,10 @@ public final class ShellSolver {
             encoder.setBuffer(fibreForceBuffer, offset: 0, index: 23)
             encoder.setBuffer(fibreLawBuffer, offset: 0, index: 24)
             encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 25)
+            encoder.setBuffer(footings?.footingOfBuffer ?? placeholderBuffer, offset: 0, index: 26)
+            encoder.setBuffer(footings?.constantBuffer ?? placeholderBuffer, offset: 0, index: 27)
+            encoder.setBuffer(footings?.stateBuffer ?? placeholderBuffer, offset: 0, index: 28)
+            encoder.setBuffer(footings?.linkBuffer ?? placeholderBuffer, offset: 0, index: 29)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if !mesh.ties.isEmpty {
@@ -1056,9 +1099,19 @@ public final class ShellSolver {
                 encoder.dispatchThreads(
                     MTLSize(width: mesh.ties.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
+            footings?.encode(
+                encoder,
+                uniforms: FootingSystem.Uniforms(
+                    fixedStep: uniforms.fixedStep, criticalStep: criticalTimeStep, substep: UInt32(substep),
+                    gravity: gravity, damping: damping, footings: 0),
+                control: fluid?.control ?? placeholderBuffer)
             afterNodes?(substep)
         }
     }
+
+    /// The footings under the base after the last step, in the order of their connections (the
+    /// ground's, then the support regions'); empty without any.
+    public func footingSummaries() -> [FootingSummary] { footings?.summaries() ?? [] }
 
     /// Advances the structure on its own by `steps` steps of `criticalTimeStep`, blocking until done.
     public func advance(steps: Int) {
@@ -1110,6 +1163,7 @@ public final class ShellSolver {
         var uniforms = ShellUniforms()
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         if fibreCount > 0 { uniforms.anchored = 1 }
+        if footings != nil { uniforms.footings = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage, fibreCount > 0 {
             uniforms.anchorNormalStiffness = anchorStiffness.normal
             uniforms.anchorShearStiffness = anchorStiffness.shear

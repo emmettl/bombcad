@@ -41,6 +41,8 @@ public struct RenderSettings: Sendable, Hashable {
     public var showTracers = true
     /// Ground points where the ground's shaking is estimated, when the project has any.
     public var showGroundPoints = true
+    /// The thermal radiation's receivers, coloured by their fluence, when a run reckons it.
+    public var showThermal = true
     /// Their dots' diameter on screen, in points, whatever their true size.
     public var dotSize: Float = 5
     /// A box to outline in the view, such as the one being edited.
@@ -208,8 +210,9 @@ public final class SceneRenderer {
     public var pixelsPerPoint: Float = 1
 
     /// Dots to draw over the scene: each a position and a code, its kind (0 a fragment in flight,
-    /// 1 a tracer, 2 a fragment's landing, 3 a ground point) plus a value from 0 to 1 that colours it (a fragment's
-    /// speed, a landing's energy).
+    /// 1 a tracer, 2 a fragment's landing, 3 a ground point, 4 a thermal receiver) plus a value
+    /// from 0 to 1 that colours it (a fragment's speed, a landing's energy, how fast the ground
+    /// under a point has moved, a receiver's fluence).
     public func setDots(_ dots: [SIMD4<Float>]) {
         dotCount = dots.count
         guard !dots.isEmpty else { return }

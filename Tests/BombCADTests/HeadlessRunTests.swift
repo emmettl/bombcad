@@ -287,6 +287,24 @@ struct HeadlessRunTests {
         #expect((cloud.samples.last?.position.x ?? 0) > Double(cloud.handOver.centre.x) + 50)
         let saved = try JSONDecoder().decode(CloudResult.self, from: Data(contentsOf: results))
         #expect(saved.samples == cloud.samples && saved.handOver == cloud.handOver)
+        // Followed again over Las Vegas on a June afternoon, without running the blast again.
+        let afternoon = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Samples/Soundings/las-vegas-2024-06-16-00z.csv")
+        #expect(throws: ProjectFileError.self) {
+            try HeadlessRun.Options.parse([project.path, "--sounding", afternoon.path])
+        }
+        let still = folder.appending(path: "still.json")
+        try Data(#"{"duration": 30}"#.utf8).write(to: still)
+        let again = folder.appending(path: "again.json")
+        #expect(
+            HeadlessCloud.main([
+                results.path, "--cloud", still.path, "--sounding", afternoon.path, "--cloud-results",
+                again.path,
+            ]) == 0)
+        let followed = try JSONDecoder().decode(CloudResult.self, from: Data(contentsOf: again))
+        #expect(followed.handOver == cloud.handOver && followed.spec.sounding?.levels.count == 94)
+        // The run's own description has a wind, which a sounding brings for itself.
+        #expect(HeadlessCloud.main([results.path, "--sounding", afternoon.path]) == 1)
         // The cloud reads only the end of the run, which stops nowhere else on its account.
         let plain = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path])).run
         #expect(plain.stepCount == result.run.stepCount && plain.gauges == result.run.gauges)

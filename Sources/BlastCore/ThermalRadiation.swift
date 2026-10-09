@@ -69,9 +69,33 @@ public struct FireballFrame: Codable, Sendable, Equatable {
 }
 
 extension BlastSolver {
-    /// The fireball now: every cell of air at least `luminousTemperature` kelvin. Reads the state,
-    /// spread across the CPU's cores; call it only while no batch is in flight.
+    /// The fireball now: every cell of air at least `luminousTemperature` kelvin. Summed on the GPU
+    /// if the batch that ended now was asked for it (see `frameRequest`); otherwise read from the
+    /// state, spread across the CPU's cores, so call it only while no batch is in flight.
     public func fireball(luminousTemperature: Float) -> FireballFrame {
+        if let rows = frameExtractor?.fireballRows(
+            luminous: luminousTemperature, grid: grid, time: time, steps: stepCount)
+        {
+            // In a fixed order and in double precision, so the same from one run to the next.
+            var count = 0.0
+            var position = SIMD3<Double>.zero
+            var fourth = 0.0
+            var hottest: Float = 0
+            for k in 0..<grid.nz {
+                for j in 0..<grid.ny {
+                    let row = rows[j + grid.ny * k]
+                    let n = Double(row.x)
+                    guard n > 0 else { continue }
+                    count += n
+                    position += SIMD3(Double(row.y), n * (Double(j) + 0.5), n * (Double(k) + 0.5))
+                    fourth += Double(row.z)
+                    hottest = max(hottest, row.w)
+                }
+            }
+            return Self.fireball(
+                time: time, count: count, position: position, fourth: fourth, hottest: hottest,
+                cellSize: grid.cellSize)
+        }
         let (nx, ny, nz) = (grid.nx, grid.ny, grid.nz)
         let h = grid.cellSize
         let gamma = configuration.gamma
@@ -116,13 +140,23 @@ extension BlastSolver {
             total.fourth += plane.fourth
             total.hottest = max(total.hottest, plane.hottest)
         }
-        guard total.count > 0 else {
+        return Self.fireball(
+            time: time, count: Double(total.count), position: total.position, fourth: total.fourth,
+            hottest: total.hottest, cellSize: h)
+    }
+
+    /// The fireball from its luminous cells' count, the sum of their positions in cells, of their
+    /// temperatures to the fourth power, and the hottest.
+    private static func fireball(
+        time: Double, count: Double, position: SIMD3<Double>, fourth: Double, hottest: Float,
+        cellSize h: Float
+    ) -> FireballFrame {
+        guard count > 0 else {
             return FireballFrame(time: time, volume: 0, centre: .zero, temperature: 0, hottest: 0)
         }
-        let n = Double(total.count)
         return FireballFrame(
-            time: time, volume: n * pow(Double(h), 3), centre: SIMD3<Float>(total.position / n) * h,
-            temperature: Float(pow(total.fourth / n, 0.25)), hottest: total.hottest)
+            time: time, volume: count * pow(Double(h), 3), centre: SIMD3<Float>(position / count) * h,
+            temperature: Float(pow(fourth / count, 0.25)), hottest: hottest)
     }
 }
 
@@ -168,7 +202,7 @@ public struct ThermalExposure: Sendable {
         self.spec = spec
         receivers = Self.receivers(scene: scene, spec: spec)
         occluders = scene.blocks + scene.structure
-        chargeEnergy = Double(scene.charge.mass) * Double(Charge.energyPerKilogram)
+        chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
         fluence = [Double](repeating: 0, count: receivers.count)
@@ -326,6 +360,11 @@ public struct ThermalExposure: Sendable {
         return result
     }
 
+    /// The charge's energy, in joules, as the result reports it.
+    public static func chargeEnergy(_ scene: FragmentScene) -> Double {
+        Double(scene.charge.mass) * Double(Charge.energyPerKilogram)
+    }
+
     public var result: ThermalResult {
         ThermalResult(
             spec: spec, receivers: receivers, peakIrradiance: peakIrradiance,
@@ -345,6 +384,18 @@ public struct ThermalResult: Codable, Sendable, Equatable {
     public var fireball: [FireballFrame]
     /// The charge's energy, in joules.
     public var chargeEnergy: Double
+
+    public init(
+        spec: ThermalSpec, receivers: [ThermalReceiver], peakIrradiance: [Float], fluence: [Float],
+        fireball: [FireballFrame], chargeEnergy: Double
+    ) {
+        self.spec = spec
+        self.receivers = receivers
+        self.peakIrradiance = peakIrradiance
+        self.fluence = fluence
+        self.fireball = fireball
+        self.chargeEnergy = chargeEnergy
+    }
 
     /// What the fireball radiated through the run, in joules: its emissive power over the part of
     /// its sphere above the ground, by the trapezium rule. Nothing takes this energy out of the

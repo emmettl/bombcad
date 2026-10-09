@@ -5,6 +5,7 @@ No clipped geometry, gas averaging, grouped reconstruction or Swift Gauss rule i
 """
 import json
 import math
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -60,7 +61,9 @@ def relative(a, b):
 
 
 def main():
-    rows = json.loads((ROOT / '.build/initial-wall-traces.json').read_text())
+    decompose = '--decompose' in sys.argv
+    suffix = '-decomposition' if decompose else ''
+    rows = json.loads((ROOT / f'.build/initial-wall-traces{suffix}.json').read_text())
     expected = {(h,a) for h in (0.2,0.1,0.05) for a in (0,0.23)}
     keys = [(r['cellSize'],r['rotation']) for r in rows]
     assert len(keys) == len(expected) and set(keys) == expected
@@ -98,6 +101,43 @@ def main():
               + '; '.join(f"{n} {100*r[n]['relativeForceError']:.4f}%/{100*r[n]['relativeTorqueError']:.4f}%"
                           for n in ('supplied','constant','limited'))
               + f"; limited pressure L1 {100*r['limited']['relativePressureL1']:.3f}%")
+    if decompose:
+        kinds = {'supplied','constant','leastSquares','limited','centroidConstant','centroidLeastSquares',
+                 'centroidLimited','analyticTaylor','averageAnalyticGradient'}
+        for r in rows:
+            full, half = r['decomposition'], r['halfDurationDecomposition']
+            a, b = ({m['kind']: m for m in d['modes']} for d in (full,half))
+            assert len(full['modes']) == len(kinds) and set(a) == kinds and set(b) == kinds
+            for name in ('meanPressureLimiterFactor','limiterActiveAreaFraction',
+                         'rankDeficientAreaFraction','centroidDataLimiterFactor'):
+                assert 0 <= full[name] <= 1
+            print(f"Decomposition dx {r['cellSize']}, angle {r['rotation']}: "
+                  f"area-weighted limiter factor {full['meanPressureLimiterFactor']:.3f}, "
+                  f"rank-deficient area {100*full['rankDeficientAreaFraction']:.3f}%")
+            for kind in sorted(kinds):
+                x = a[kind]
+                loads = x['loads']
+                assert math.isfinite(x['minimumPressure']) and math.isfinite(x['maximumPressure'])
+                assert x['minimumPressure'] <= x['maximumPressure'] and x['nonpositivePressureSamples'] >= 0
+                assert 0 <= x['negativeExcessAreaFraction'] <= 1 and 0 <= x['outsideStencilAreaFraction'] <= 1
+                assert abs(loads['relativeForceError']-relative(loads['force'],r['referenceForce'])) < 1e-12
+                assert abs(loads['relativeTorqueError']-relative(loads['torque'],r['referenceTorque'])) < 1e-12
+                assert loads['relativePressureL1'] >= 0
+                assert abs(loads['power']-sum(v*y for v,y in zip(r['velocity'],loads['force']))) < 1e-8
+                change = max(math.dist(loads['force'],b[kind]['loads']['force'])/math.hypot(*r['referenceForce']),
+                             math.dist(loads['torque'],b[kind]['loads']['torque'])/math.hypot(*r['referenceTorque']))
+                assert change < 1e-5
+                duration_changes.append(change)
+                if kind in ('constant','limited','supplied'):
+                    assert math.dist(loads['force'],r[kind]['force']) < 1e-8
+                    assert math.dist(loads['torque'],r[kind]['torque']) < 1e-8
+                if kind in ('constant','limited','centroidConstant','centroidLimited'):
+                    assert x['outsideStencilAreaFraction'] < 1e-8
+                print(f"  {kind}: force/torque/L1 "
+                      f"{100*loads['relativeForceError']:.3f}%/{100*loads['relativeTorqueError']:.3f}%/"
+                      f"{100*loads['relativePressureL1']:.3f}%; below-ambient area "
+                      f"{100*x['negativeExcessAreaFraction']:.2f}%")
+        print('Diagnostic replacements are not an additive error budget or an enabled transport policy.')
     print(f'Maximum half-duration load change / reference norm: {max(duration_changes):.3g}')
     print('All six probes pass independent face integrals, reported errors and duration sensitivity checks.')
     print('These are initial traces; the evolved pressure-load study still needs separate spatial checks.')

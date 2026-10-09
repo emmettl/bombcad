@@ -75,6 +75,7 @@ struct ShellUniforms {
     float anchorCohesionSlip;
     float anchorFriction;
     uint couplingMapCount;
+    uint footings;  // as in `StructureUniforms`
 };
 
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
@@ -1661,6 +1662,10 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        device float4 *anchorForces [[buffer(23)]],
                        const device AnchorLaw *anchorLaws [[buffer(24)]],
                        device atomic_uint *couplingMap [[buffer(25)]],
+                       const device uint *footingOf [[buffer(26)]],
+                       const device FootingConstants *footingConstants [[buffer(27)]],
+                       const device FootingState *footingStates [[buffer(28)]],
+                       device float4 *footingLinks [[buffer(29)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1711,8 +1716,19 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / point.w);
             float4 state = anchorState[f];
             float settlement = anchorForces[f].w;  // the ground's, kept beside the force
-            float3 pointForce =
-                -point.z * anchorTraction(state, settlement, float3(node.displacement) + turn, rise, damper, law);
+            uint footing = u.footings != 0 ? footingOf[f] : 0u;
+            float3 pointForce;
+            if (footing == 0) {
+                pointForce =
+                    -point.z * anchorTraction(state, settlement, float3(node.displacement) + turn, rise, damper, law);
+            } else {
+                // On a footing: the point is tied to the footing's top, which moves and turns.
+                float3 rest = reference[n].xyz + arm;
+                float3 pointVelocity = float3(node.velocity) + cross(float3(node.spin), arm + turn);
+                pointForce = footingJoint(state, settlement, rest, rest + float3(node.displacement) + turn,
+                                          pointVelocity, point.z, damper, law, footingConstants[footing - 1],
+                                          footingStates[footing - 1], footingLinks + 2 * f);
+            }
             anchorState[f] = state;
             anchorForces[f] = float4(pointForce, settlement);
             force += pointForce;

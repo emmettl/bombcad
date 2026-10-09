@@ -102,6 +102,31 @@ struct EditorView: View {
                 Text("Blocks reflect the blast but never move or break.")
             }
 
+            if !model.settings.scenario.envelopeObjects.isEmpty {
+                Section {
+                    ForEach(model.settings.scenario.envelopeObjects) { object in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(object.name)
+                                Text(
+                                    "\(object.envelope!.solids.count) walls/roofs · \(object.envelope!.openings.count) openings"
+                                )
+                                .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
+                                .labelStyle(.iconOnly)
+                        }
+                    }
+                } header: {
+                    Text("Exposure-only buildings")
+                } footer: {
+                    Text(
+                        "Stationary envelopes reflect the shared blast. They have no deformation or failure model. Undo restores a converted structure."
+                    )
+                }
+            }
+
             Section {
                 if !model.settings.scenario.structuralObjects.isEmpty {
                     Picker(
@@ -113,6 +138,12 @@ struct EditorView: View {
                             Text(object.name).tag(Optional(object.id))
                         }
                     }
+                }
+                if let object = model.editedObject, object.sourceModelID == nil {
+                    Button("Use Exposure-only Envelope") { model.useEditedEnvelope() }
+                        .help(
+                            "Keep walls, roofs and openings as stationary obstacles. Removes structural response; Undo restores it."
+                        )
                 }
                 Button("Add Independent Structure", systemImage: "plus.square") {
                     model.addIndependentStructure()
@@ -234,7 +265,7 @@ struct EditorView: View {
                         if model.selection == .support(row.reference) {
                             AnchorageEditor(
                                 title: "Support connection",
-                                law: supportLawBinding(row.reference))
+                                law: supportLawBinding(row.reference), turns: true)
                             if model.editedStructure?.anchorage(ofSupport: index) != nil,
                                 let area = model.supportBearingArea(at: index)
                             {

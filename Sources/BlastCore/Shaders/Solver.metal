@@ -1113,6 +1113,35 @@ kernel void sampleExposurePlane(const device Cell *state [[buffer(0)]],
     exposure[point] = record;
 }
 
+// Read-only stationary voxel-face diagnostic; pressure at the adjacent fluid cell centre,
+// not a Riemann wall flux. Each face has one writer, so no floating-point atomics are needed.
+kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
+                                  const device uchar *mask [[buffer(1)]],
+                                  const device StepControl &control [[buffer(2)]],
+                                  const device uint4 *faces [[buffer(3)]],
+                                  device float4 *records [[buffer(4)]],
+                                  device float *signedImpulse [[buffer(5)]],
+                                  constant SolverUniforms &u [[buffer(6)]],
+                                  constant uint2 &parameters [[buffer(7)]],
+                                  uint index [[thread_position_in_grid]]) {
+    if (index >= parameters.x || (control.dt <= 0 && parameters.y == 0)) return;
+    uint4 face = faces[index];
+    float4 record = records[index];
+    if (mask[face.x] == 0 || mask[face.y] != 0) {
+        record.w = 1;
+    } else {
+        Cell c = state[face.y];
+        float rho = max(c.rho, u.densityFloor);
+        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+        float p = gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+        record.x = p;
+        record.y = max(record.y, max(p, 0.0f));
+        record.z += max(p, 0.0f) * control.dt;
+        signedImpulse[index] += p * control.dt;
+    }
+    records[index] = record;
+}
+
 // Seeds the wave-speed maximum from the initial condition.
 kernel void measureWaveSpeed(const device Cell *state [[buffer(0)]],
                              const device uchar *mask [[buffer(1)]],
