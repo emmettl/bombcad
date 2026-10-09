@@ -540,6 +540,58 @@ do {
         print("Wrote \(output.path)")
         exit(0)
     }
+    if arguments.contains("--car-convergence") {
+        // --mass=1,5,10 --duration=2 --cases=0.2x1,0.2x4 (cell size × refinement factor)
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        func option(_ name: String) -> [String]? {
+            arguments.first(where: { $0.hasPrefix("--\(name)=") })?.dropFirst(name.count + 3)
+                .split(separator: ",").map(String.init)
+        }
+        let masses = option("mass")?.compactMap(Double.init) ?? [10, 5, 1]
+        let duration = option("duration")?.first.flatMap(Double.init) ?? 2
+        let cases =
+            option("cases")?.compactMap { text -> ExperimentalRigidCarStudy.Case? in
+                let parts = text.split(separator: "x")
+                guard parts.count == 2, let cell = Float(parts[0]), let ratio = Int(parts[1]) else {
+                    return nil
+                }
+                return ExperimentalRigidCarStudy.Case(cellSize: cell, refinement: ratio)
+            } ?? ExperimentalRigidCarStudy.defaultCases
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-car-convergence.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalRigidCarStudy.Result] = []
+        for mass in masses {
+            for study in cases {
+                let r = try ExperimentalRigidCarStudy.run(
+                    device: device, study: study, chargeMass: mass, duration: duration
+                ) { time in
+                    print(String(format: "  %g kg, %@: %.1f s", mass, study.label, time))
+                    fflush(stdout)
+                }
+                completed.append(r)
+                try encoder.encode(completed).write(to: output, options: .atomic)
+                if let failure = r.failure {
+                    print("\(mass) kg, \(study.label): FAILED at \(r.time) s: \(failure)")
+                }
+                print(
+                    String(
+                        format:
+                            "%g kg, %@: air impulse %.0f N s sideways, %.0f N s up (%.0f, %.0f by 50 ms); peak tilt %.1f° at %.2f s, final %.1f° (%@); %d steps in %.0f s (air %.0f, coupling %.0f, contact %.1f), %d patches",
+                        mass, study.label, r.airImpulse.y, r.airImpulse.z, r.earlyAirImpulse.y,
+                        r.earlyAirImpulse.z, r.peakTilt, r.peakTiltTime, r.finalTilt, r.outcome.rawValue,
+                        r.steps,
+                        r.wallSeconds, r.timings.air, r.timings.coupling, r.timings.mechanics, r.patches))
+                fflush(stdout)
+            }
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--car-blast") {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration

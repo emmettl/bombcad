@@ -87,20 +87,20 @@ public enum RigidCarDemo {
 }
 
 extension RigidCarDemo {
-    /// The saloon side-on to a ground-level charge, coupled to uniform ideal-gas air. Timings
+    /// The saloon side-on to a ground-level charge, coupled to ideal-gas air: uniform, or with
+    /// patches `refinement` times finer over the car (see `ExperimentalRigidCarStudy`). Timings
     /// describe this synchronous reference, not a production forecast.
     public static func coupledRecordings(
         device: MTLDevice, charges: [(mass: Double, standoff: Double)] = [(1, 1.5), (5, 1.5), (10, 1.5)],
-        duration: Double = 2, cellSize: Float = 0.2
+        duration: Double = 2, cellSize: Float = 0.2, refinement: Int = 1
     ) throws -> [RigidObjectDemo.Recording] {
         try charges.map { charge in
-            var scene = Scenario(
-                name: "Car blast", domainSize: SIMD3(8, 10, 5), boxes: [],
-                charge: Charge(
-                    mass: Float(charge.mass), position: SIMD3(4, Float(3 - 0.775 - charge.standoff), 0.3)))
-            scene.rigidCars = [try .saloon(position: SIMD3(4, 3, 0))]
+            let study = ExperimentalRigidCarStudy.Case(cellSize: cellSize, refinement: refinement)
             let simulation = try ExperimentalRigidCarSimulation(
-                device: device, scenario: scene, cellSize: cellSize)
+                device: device,
+                scenario: ExperimentalRigidCarStudy.scenario(
+                    chargeMass: charge.mass, standoff: charge.standoff),
+                cellSize: cellSize, configuration: ExperimentalRigidCarStudy.configuration(for: study))
             var frames: [RigidObjectDemo.Frame] = []
             var impulse = SIMD3<Double>.zero
             var next = 0.0
@@ -127,8 +127,8 @@ extension RigidCarDemo {
             let elapsed = Date.timeIntervalSinceReferenceDate - before
             let description = String(
                 format:
-                    "%g kg TNT-equivalent %.1f m from the near side at 0.3 m height; air impulse %.0f N s sideways, %.0f N s up; peak roll %.1f°. %.1f m air cells, %d steps in %.0f s (synchronous reference).",
-                charge.mass, charge.standoff, impulse.y, impulse.z, peakRoll * 180 / .pi, cellSize,
+                    "%g kg TNT-equivalent %.1f m from the near side at 0.3 m height; air impulse %.0f N s sideways, %.0f N s up; peak roll %.1f°. %@ air, %d steps in %.0f s (synchronous reference).",
+                charge.mass, charge.standoff, impulse.y, impulse.z, peakRoll * 180 / .pi, study.label,
                 simulation.air.stepCount, elapsed)
             return RigidObjectDemo.Recording(
                 name: String(format: "Car beside %g kg", charge.mass), description: description,
