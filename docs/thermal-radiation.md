@@ -186,7 +186,8 @@ for where each ray meets it. The two tests agreed to the bit on every receiver.
   the M4 Max's GPU has been tried; on an M1 or M2, ray tracing runs in software and may be slower
   than the CPU.
 - Only the visibility test is on the GPU; laying out the rays and summing them take most of the
-  receivers' CPU time.
+  receivers' CPU time. Following each ray to where it meets a fireball that is not one sphere,
+  tens of milliseconds a frame on the CPU, is the next candidate for the GPU.
 - The receivers are drawn as dots, not painted onto the surfaces.
 - Receivers on the structure's starting outline do not follow it as it moves or fails.
 
