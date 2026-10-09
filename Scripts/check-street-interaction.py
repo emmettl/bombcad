@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate retained runs and report sensitivity without asserting convergence."""
 import argparse
+import copy
 import gzip
 import json
 import math
@@ -14,6 +15,31 @@ def require(condition, message):
 
 def read(path):
     return json.loads(gzip.decompress(path.read_bytes()) if path.suffix == ".gz" else path.read_text())
+
+
+def compact(directory):
+    """Losslessly split a v1 report's raw histories from its readable metadata."""
+    report = read(directory / "report.json")
+    if report["schemaVersion"] == 2:
+        return
+    require(report["schemaVersion"] == 1, "compact requires v1")
+    original = copy.deepcopy(report)
+    for run in report["observations"]:
+        histories = {"gaugeObservations": run["gaugeObservations"], "bodies": run["bodies"]}
+        name = f"{run['id']}-histories.json.gz"
+        encoded = json.dumps(histories, sort_keys=True, separators=(",", ":")).encode()
+        (directory / name).write_bytes(gzip.compress(encoded, mtime=0))
+        run["historiesFile"] = name
+        run["gaugeObservations"] = [dict(gauge, samples=[]) for gauge in run["gaugeObservations"]]
+        run["bodies"] = [dict(body, samples=[]) for body in run["bodies"]]
+    report["schemaVersion"] = 2
+    restored = copy.deepcopy(report)
+    restored["schemaVersion"] = 1
+    for run in restored["observations"]:
+        histories = read(directory / run.pop("historiesFile"))
+        run.update(histories)
+    require(restored == original, "history extraction changed values")
+    (directory / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
 
 def compare_maps(a, b, excluded=None):
@@ -58,11 +84,15 @@ def compare_maps(a, b, excluded=None):
 
 def check(directory):
     report = read(directory / "report.json")
-    require(report["schemaVersion"] == 1, "schema")
+    require(report["schemaVersion"] == 2, "schema")
     runs = {r["id"]: r for r in report["observations"]}
     require(len(runs) == len(report["observations"]), "duplicate run IDs")
     maps = {}
     for name, run in runs.items():
+        histories = read(directory / run["historiesFile"])
+        for key in ("gaugeObservations", "bodies"):
+            require([dict(entry, samples=[]) for entry in histories[key]] == run[key], f"{name}: history metadata")
+            run[key] = histories[key]
         require(run["stable"] and run["steps"] > 0, f"{name}: failed run")
         expected_time = 0.06 if run["purpose"] == "closed-conservation" else report["durationS"]
         require(abs(run["durationS"] - expected_time) < 1e-7, f"{name}: time cutoff")
@@ -141,7 +171,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--summary", type=Path)
+    parser.add_argument("--compact", action="store_true", help="losslessly convert an existing v1 report to v2 before checking")
     args = parser.parse_args()
+    if args.compact:
+        compact(args.directory)
     result = check(args.directory)
     if args.summary:
         args.summary.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

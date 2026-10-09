@@ -26,7 +26,11 @@ produce the complete sensitivity report or figures.
 The [retained M4 Max data](../Benchmarks/StreetInteraction/m4-max/report.json) identifies
 producer revision `f01e2523ee822a9e609c0901c791aa4acfd4a675`. Each case retains device/OS,
 solver allocation, coupling allocation, steps, timings, gas inventories, gauge samples,
-per-owner structural histories and a compressed spatial map. The
+per-owner structural histories and a compressed spatial map. Version 2 keeps readable
+case metadata in `report.json` and raw gauge/body samples in per-run `*-histories.json.gz`
+files. The retained producer originally wrote inline histories; the checker's `--compact`
+conversion verifies that rehydrating the new files reconstructs every original parsed value.
+The
 [derived sensitivity report](../Benchmarks/StreetInteraction/m4-max/sensitivity.json)
 can be regenerated with the checker. The driver rejects incomplete or unstable runs.
 

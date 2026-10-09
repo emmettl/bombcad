@@ -22,6 +22,8 @@ def render(directory, output):
     report = load(directory / "report.json")
     summary = load(directory / "sensitivity.json")
     runs = {r["id"]: r for r in report["observations"]}
+    for run in runs.values():
+        run.update(load(directory / run["historiesFile"]))
     layouts = ("open", "isolated", "pair", "street")
     plt.rcParams.update({"font.size": 10, "axes.titlesize": 12, "axes.labelsize": 10})
     fig, axes = plt.subplots(4, 3, figsize=(13, 14), layout="constrained")

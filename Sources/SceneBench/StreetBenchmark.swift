@@ -55,11 +55,12 @@ struct StreetRun: Codable {
     var gaugeObservations: [StreetGauge]
     var bodies: [StreetBodyHistory]
     var mapFile: String
+    var historiesFile: String
     var stable: Bool
 }
 
 struct StreetReport: Codable {
-    var schemaVersion = 1
+    var schemaVersion = 2
     var sourceRevision: String
     var device: String
     var system: String
@@ -260,18 +261,17 @@ enum StreetBenchmark {
         guard let map = solver.exposureSnapshot() else { throw BlastError.allocationFailed("exposure map") }
         let plain = directory.appending(path: "\(id)-map.json")
         try write(map, to: plain, pretty: false)
-        let compressed = directory.appending(path: mapFile)
-        FileManager.default.createFile(atPath: compressed.path, contents: nil)
-        let output = try FileHandle(forWritingTo: compressed)
-        defer { try? output.close() }
-        let gzip = Process()
-        gzip.executableURL = URL(filePath: "/usr/bin/gzip")
-        gzip.arguments = ["-n", "-c", plain.path]
-        gzip.standardOutput = output
-        try gzip.run()
-        gzip.waitUntilExit()
-        guard gzip.terminationStatus == 0 else { throw BlastError.allocationFailed("map compression") }
-        try FileManager.default.removeItem(at: plain)
+        try compress(plain, to: directory.appending(path: mapFile))
+        struct Histories: Codable {
+            var gaugeObservations: [StreetGauge]
+            var bodies: [StreetBodyHistory]
+        }
+        let historiesFile = "\(id)-histories.json.gz"
+        let historyPlain = directory.appending(path: "\(id)-histories.json")
+        try write(Histories(gaugeObservations: gauges, bodies: histories), to: historyPlain, pretty: false)
+        try compress(historyPlain, to: directory.appending(path: historiesFile))
+        for index in gauges.indices { gauges[index].samples = [] }
+        for index in histories.indices { histories[index].samples = [] }
         let result = StreetRun(
             id: id, layout: layout, purpose: purpose, cellSizeM: setting.dx, refinement: setting.refinement,
             cfl: setting.cfl, sourceRadiusM: solver.balloonRadius(for: scene.charge),
@@ -283,9 +283,23 @@ enum StreetBenchmark {
             maximumRefinedPatches: maxPatches, refinementPatchCapacity: solver.refinementPatchCapacity,
             massInitialKg: initial.mass, massFinalKg: final.mass,
             energyInitialJ: initial.energy, energyFinalJ: final.energy, gaugeObservations: gauges,
-            bodies: histories, mapFile: mapFile, stable: stable)
+            bodies: histories, mapFile: mapFile, historiesFile: historiesFile, stable: stable)
         print("\(id): \(solver.stepCount) steps to \(solver.time) s, \(wall) s wall, \(gpu) s GPU")
         return result
+    }
+
+    static func compress(_ plain: URL, to compressed: URL) throws {
+        FileManager.default.createFile(atPath: compressed.path, contents: nil)
+        let output = try FileHandle(forWritingTo: compressed)
+        defer { try? output.close() }
+        let gzip = Process()
+        gzip.executableURL = URL(filePath: "/usr/bin/gzip")
+        gzip.arguments = ["-n", "-c", plain.path]
+        gzip.standardOutput = output
+        try gzip.run()
+        gzip.waitUntilExit()
+        guard gzip.terminationStatus == 0 else { throw BlastError.allocationFailed("map compression") }
+        try FileManager.default.removeItem(at: plain)
     }
 
     static func write<T: Encodable>(_ value: T, to url: URL, pretty: Bool = true) throws {
