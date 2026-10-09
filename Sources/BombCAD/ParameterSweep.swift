@@ -91,15 +91,15 @@ final class ParameterSweep {
     private(set) var message = ""
     private(set) var completed = 0
     private(set) var total = 0
-    /// Cases another Mac ran, in this sweep or the last.
-    private(set) var remoteCompleted = 0
+    /// Cases other Macs ran, in this sweep or the last.
+    var remoteCompleted: Int { remoteCounts.values.reduce(0, +) }
     var isActive: Bool { baseline != nil }
-    /// Starts a worker on another Mac to share the next sweep, if set (see `RemoteSweepWorker`).
-    @ObservationIgnored var remoteWorker: (@MainActor () async throws -> SweepWorkerClient)?
-    /// How many times longer the other Mac is expected to take over a case, until measured.
+    /// Each starts a worker on another Mac to share the next sweep (see `RemoteSweepWorker`).
+    @ObservationIgnored var remoteWorkers: [@MainActor () async throws -> SweepWorkerClient] = []
+    /// How many times longer another Mac is expected to take over a case, until measured.
     @ObservationIgnored var remoteRatio = 3.5
     @ObservationIgnored private var localStatus = ""
-    @ObservationIgnored private var remoteStatus = ""
+    @ObservationIgnored private var remoteStatus: [Int: String] = [:]
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var token = UUID()
     @ObservationIgnored private var previousSpeed = PlaybackSpeed.x100
@@ -120,10 +120,11 @@ final class ParameterSweep {
         baseline = original
         previousSpeed = model.speed
         completed = 0
-        remoteCompleted = 0
+        names = [:]
+        remoteCounts = [:]
         total = plan.count
         localStatus = ""
-        remoteStatus = ""
+        remoteStatus = [:]
         message = "Checking sweep inputs…"
         let generation = UUID()
         token = generation
@@ -161,9 +162,7 @@ final class ParameterSweep {
                     }
                 }
                 try await self.run(cases, on: model)
-                if self.remoteCompleted > 0 {
-                    outcome += " (\(self.remoteCompleted) on \(self.remoteStatusName))"
-                }
+                if self.remoteCompleted > 0 { outcome += " (\(self.remoteSummary))" }
             } catch is CancellationError {
                 outcome = "Sweep cancelled"
             } catch {
@@ -178,26 +177,28 @@ final class ParameterSweep {
         }
     }
 
-    /// Runs the cases here and, when a worker is set, on another Mac at the same time, each where
+    /// Runs the cases here and, when workers are set, on other Macs at the same time, each where
     /// `SweepSchedule` sends it; keeps their results in the plan's order.
     private func run(_ cases: [ParameterSweepPlan.Case], on model: SimulationModel) async throws {
-        var schedule = SweepSchedule(costs: cases.map { SweepSchedule.cost($0.inputs) })
+        var schedule = SweepSchedule(
+            costs: cases.map { SweepSchedule.cost($0.inputs) }, workers: remoteWorkers.count)
         schedule.ratio = remoteRatio
         let shared = Shared(schedule)
         defer { model.orderRuns(cases.map(\.name)) }
-        let remote = remoteWorker.map { connect in
-            Task { await self.runRemote(cases, shared, connect, on: model) }
+        let remotes = remoteWorkers.enumerated().map { worker, connect in
+            Task { await self.runRemote(worker, cases, shared, connect, on: model) }
         }
         do {
             try await withTaskCancellationHandler {
                 try await runLocal(cases, shared, on: model)
             } onCancel: {
-                remote?.cancel()
+                for remote in remotes { remote.cancel() }
             }
-            await remote?.value
+            for remote in remotes { await remote.value }
         } catch {
-            remote?.cancel()
-            await remote?.value
+            shared.schedule.cancel()
+            for remote in remotes { remote.cancel() }
+            for remote in remotes { await remote.value }
             throw error
         }
     }
@@ -207,17 +208,15 @@ final class ParameterSweep {
     {
         while true {
             try Task.checkCancellation()
-            guard let index = shared.schedule.nextLocal() else {
-                // The other Mac may yet fail a case back to this one.
-                if shared.remoteBusy {
+            guard let index = shared.schedule.next(.local) else {
+                // A worker may yet fail a case back to the queue.
+                if shared.schedule.workersBusy {
                     try await Task.sleep(for: .milliseconds(50))
                     continue
                 }
                 break
             }
             let item = cases[index]
-            let cost = SweepSchedule.cost(item.inputs)
-            shared.local = (cost, 0)
             status(local: "Preparing \(item.name)")
             model.applyExperimentInputs(item.inputs)
             try await waitUntil { model.experimentIsReady }
@@ -226,76 +225,100 @@ final class ParameterSweep {
             model.speed = .unlimited
             model.run()
             try await waitUntil {
-                shared.local = (cost, model.duration > 0 ? min(model.time / model.duration, 1) : 0)
+                shared.schedule.progress(
+                    .local, model.duration > 0 ? min(model.time / model.duration, 1) : 0)
                 return !model.isRunning && !model.hasPendingGPUWork
             }
             try Task.checkCancellation()
             try model.keepRun(named: item.name)
-            shared.local = nil
-            shared.schedule.record(seconds: start.duration(to: .now).seconds, cost: cost, remote: false)
+            shared.schedule.finish(.local, seconds: start.duration(to: .now).seconds)
             completed += 1
         }
         status(local: "")
     }
 
     private func runRemote(
-        _ cases: [ParameterSweepPlan.Case], _ shared: Shared,
+        _ number: Int, _ cases: [ParameterSweepPlan.Case], _ shared: Shared,
         _ connect: @MainActor () async throws -> SweepWorkerClient, on model: SimulationModel
     ) async {
-        status(remote: "Connecting to another Mac…")
+        status(remote: number, "Connecting to another Mac…")
         let worker: SweepWorkerClient
         do {
             worker = try await connect()
         } catch {
-            status(remote: Task.isCancelled ? "" : "Running here only: \(error.localizedDescription)")
+            status(remote: number, Task.isCancelled ? "" : "Not using a Mac: \(error.localizedDescription)")
             return
         }
-        remoteStatusName = worker.name
+        names[number] = worker.name
         defer { worker.close() }
+        shared.schedule.join(number)
+        defer { shared.schedule.leave(number) }
         while !Task.isCancelled {
-            let remaining = shared.local.map { $0.cost * (1 - $0.fraction) } ?? 0
-            guard let index = shared.schedule.nextRemote(localRemaining: remaining) else { break }
+            guard let index = shared.schedule.next(.worker(number)) else {
+                // Another worker may yet fail a case back to the queue.
+                if shared.schedule.workersBusy {
+                    try? await Task.sleep(for: .milliseconds(50))
+                    continue
+                }
+                break
+            }
             let item = cases[index]
-            let cost = SweepSchedule.cost(item.inputs)
-            shared.remoteBusy = true
-            defer { shared.remoteBusy = false }
-            status(remote: "\(item.name) on \(worker.name)")
+            status(remote: number, "\(item.name) on \(worker.name)")
             let start = ContinuousClock.now
             do {
                 let run = try await worker.run(item) { [weak self] fraction in
-                    self?.status(remote: "\(item.name) on \(worker.name), \(Int(fraction * 100))%")
+                    shared.schedule.progress(.worker(number), fraction)
+                    self?.status(remote: number, "\(item.name) on \(worker.name), \(Int(fraction * 100))%")
                 }
                 try model.addRun(run)
-                shared.schedule.record(seconds: start.duration(to: .now).seconds, cost: cost, remote: true)
+                shared.schedule.finish(.worker(number), seconds: start.duration(to: .now).seconds)
                 completed += 1
-                remoteCompleted += 1
+                remoteCounts[number, default: 0] += 1
             } catch is CancellationError {
                 return
             } catch {
-                // This Mac runs it instead, and runs the rest.
-                shared.schedule.requeue(index, cost: cost)
-                status(remote: "\(worker.name) stopped: \(error.localizedDescription) Running the rest here.")
+                // The case goes back to the queue, for this Mac or another worker.
+                shared.schedule.fail(number)
+                status(remote: number, "\(worker.name) stopped: \(error.localizedDescription)")
                 return
             }
         }
-        status(remote: "")
+        status(remote: number, "")
     }
 
-    @ObservationIgnored private var remoteStatusName = "another Mac"
+    /// Each worker's name once connected, and how many cases each has run.
+    @ObservationIgnored private var names: [Int: String] = [:]
+    private var remoteCounts: [Int: Int] = [:]
 
-    private func status(local: String? = nil, remote: String? = nil) {
+    /// The cases each other Mac ran, such as "2 on mini, 1 on studio".
+    private var remoteSummary: String {
+        remoteCounts.keys.sorted().compactMap { number in
+            remoteCounts[number].map { "\($0) on \(names[number] ?? "another Mac")" }
+        }.joined(separator: ", ")
+    }
+
+    private func status(local: String? = nil) {
         if let local { localStatus = local }
-        if let remote { remoteStatus = remote }
-        let parts = [localStatus.isEmpty ? "" : "\(localStatus) here", remoteStatus].filter { !$0.isEmpty }
-        message = "\(completed)/\(total) done" + (parts.isEmpty ? "" : " · " + parts.joined(separator: " · "))
+        updateMessage()
     }
 
-    /// What the two sides of a sweep share: the queue, this Mac's case and how far it has got,
-    /// and whether the other Mac is busy.
+    private func status(remote number: Int, _ text: String) {
+        remoteStatus[number] = text
+        updateMessage()
+    }
+
+    private func updateMessage() {
+        let parts =
+            [localStatus.isEmpty ? "" : "\(localStatus) here"]
+            + remoteStatus.keys.sorted().compactMap { remoteStatus[$0] }
+        let shown = parts.filter { !$0.isEmpty }
+        message = "\(completed)/\(total) done" + (shown.isEmpty ? "" : " · " + shown.joined(separator: " · "))
+    }
+
+    /// What this Mac and the workers share: the queue, with what each is running and how far it
+    /// has got.
     @MainActor private final class Shared {
         var schedule: SweepSchedule
-        var local: (cost: Double, fraction: Double)?
-        var remoteBusy = false
 
         init(_ schedule: SweepSchedule) { self.schedule = schedule }
     }

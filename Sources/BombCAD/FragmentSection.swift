@@ -5,7 +5,7 @@ import SwiftUI
 /// run, one way, here or on the Mac set for sweeps, and drawn over the blast.
 struct FragmentSection: View {
     @Bindable var model: SimulationModel
-    @AppStorage(AppPreferences.Key.sweepHost) private var sweepHost = ""
+    @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
 
     private static let counts = [200, 500, 1000, 2000, 5000, 10_000, 20_000]
     private static let tracerCounts = [0, 100, 300, 1000, 3000]
@@ -38,7 +38,7 @@ struct FragmentSection: View {
                 if !host.isEmpty {
                     Toggle("Fly on \(host)", isOn: $model.fragmentsOnRemote)
                         .help(
-                            "Flies the fragments on the Mac set for sweeps in Settings, a frame behind the run."
+                            "Flies the fragments on the first Mac set for sweeps in Settings, a frame behind the run."
                         )
                 }
                 Text(
@@ -55,7 +55,8 @@ struct FragmentSection: View {
         }
     }
 
-    private var host: String { sweepHost.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// The first of the Macs set for sweeps.
+    private var host: String { AppPreferences.hosts(sweepHosts).first ?? "" }
 
     private var launchSpeed: Int {
         Int(model.fragmentSpec?.launchSpeed(chargeMass: model.settings.chargeMass) ?? 0)

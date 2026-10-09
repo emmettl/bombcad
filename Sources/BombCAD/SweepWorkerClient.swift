@@ -224,10 +224,28 @@ enum RemoteSweepWorker {
     static func connect(host: String) async throws -> SweepWorkerClient {
         try validate(host)
         let directory = try await Task.detached(priority: .userInitiated) { try install(on: host) }.value
+        return try await launch(
+            URL(filePath: ssh), options + [host, "exec \(directory)/BombCAD worker"], name: host)
+    }
 
+    /// Starts `BombCAD worker` on this Mac, as a separate process sharing its GPU: a stand-in for
+    /// another Mac when trying how a sweep is shared.
+    @MainActor
+    static func connectHere(name: String) async throws -> SweepWorkerClient {
+        guard let executable = Bundle.main.executableURL else {
+            throw ProjectFileError.invalid("Cannot find BombCAD's own executable.")
+        }
+        return try await launch(executable, ["worker"], name: name)
+    }
+
+    /// Runs a worker process and waits for its greeting.
+    @MainActor
+    private static func launch(_ executable: URL, _ arguments: [String], name: String) async throws
+        -> SweepWorkerClient
+    {
         let process = Process()
-        process.executableURL = URL(filePath: ssh)
-        process.arguments = options + [host, "exec \(directory)/BombCAD worker"]
+        process.executableURL = executable
+        process.arguments = arguments
         let input = Pipe()
         let output = Pipe()
         let errors = Pipe()
@@ -238,7 +256,7 @@ enum RemoteSweepWorker {
         errors.fileHandleForReading.readabilityHandler = { handle in log.append(handle.availableData) }
         try process.run()
         let client = SweepWorkerClient(
-            name: host, input: output.fileHandleForReading, output: input.fileHandleForWriting
+            name: name, input: output.fileHandleForReading, output: input.fileHandleForWriting
         ) {
             try? input.fileHandleForWriting.close()
             DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
