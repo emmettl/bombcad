@@ -305,6 +305,9 @@ final class SimulationModel {
     @ObservationIgnored let device: MTLDevice?
     @ObservationIgnored let commandQueue: MTLCommandQueue?
     @ObservationIgnored let renderer: SceneRenderer?
+    /// Counts the scenes handed to the renderer, which keeps them outside Observation, so a view
+    /// that draws only on change draws each new one.
+    private(set) var sceneVersion = 0
     @ObservationIgnored private var solver: BlastSolver?
     @ObservationIgnored private var scenario: Scenario
     @ObservationIgnored private var batchInFlight = false
@@ -1440,6 +1443,7 @@ final class SimulationModel {
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
             renderer.setScene(scenario, solver: solver)
+            sceneVersion += 1
         }
     }
 

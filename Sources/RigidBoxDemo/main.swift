@@ -7,6 +7,25 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--moving-loads") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-loads.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingLoadStudy.Result] = []
+        _ = try ExperimentalMovingLoadStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            let f = r.frames.last!
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation), CFL \(r.cfl): \(f.steps) steps, impulse \(f.bodyImpulse), torque impulse \(f.bodyAngularImpulse), \(r.computeSeconds) s"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--moving-pressure") {
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
@@ -28,13 +47,17 @@ do {
     if arguments.contains("--moving-entropy") {
         let limited = arguments.contains("--limited")
         let secondOrder = arguments.contains("--heun")
+        let surfaceQuadrature = arguments.contains("--surface-quadrature")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/moving-entropy\(limited ? "-limited" : "")\(secondOrder ? "-heun" : "").json")
+                ?? ".build/moving-entropy\(limited ? "-limited" : "")\(secondOrder ? "-heun" : "")\(surfaceQuadrature ? "-surface-quadrature" : "").json"
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalMovingTrajectoryStudy.Result] = []
-        _ = try ExperimentalMovingEntropyStudy.run(limited: limited, secondOrder: secondOrder) { r in
+        _ = try ExperimentalMovingEntropyStudy.run(
+            limited: limited, secondOrder: secondOrder, surfaceQuadrature: surfaceQuadrature
+        ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             let f = r.frames.last!
@@ -51,9 +74,11 @@ do {
         let halving = arguments.contains("--halving")
         let limited = arguments.contains("--limited")
         let secondOrder = arguments.contains("--heun")
+        let surfaceQuadrature = arguments.contains("--surface-quadrature")
         let stem =
             "moving-trajectory" + (window ? "-ambient-window" : "") + (halving ? "-halving" : "")
             + (limited ? "-limited" : "") + (secondOrder ? "-heun" : "")
+            + (surfaceQuadrature ? "-surface-quadrature" : "")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/\(stem).json")
         let encoder = JSONEncoder()
@@ -62,7 +87,7 @@ do {
         _ = try ExperimentalMovingTrajectoryStudy.run(
             cfls: halving ? [0.2, 0.1] : [0.2],
             duration: window ? 0.000064 : 0.0008, velocityScale: window ? 1 : 100, nearCrossing: window,
-            limited: limited, secondOrder: secondOrder
+            limited: limited, secondOrder: secondOrder, surfaceQuadrature: surfaceQuadrature
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)

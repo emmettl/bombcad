@@ -319,7 +319,8 @@ One frame takes 1 to 5 ms at 1400 × 875, depending on how much of the view the 
 fills, and frames share the GPU's queue with the solver's batches: at 60 frames a second that is
 up to a third of the GPU, and more in a larger window or on a GPU that other work is using. So
 while a run goes as fast as possible, the view times its frames and draws as often as a tenth of
-the GPU allows, from 10 to 60 frames a second; paced playback and editing draw at 60. On a GPU
+the GPU allows, from 10 to 60 frames a second; paced playback draws at 60, and between runs
+the view draws only on change (below). On a GPU
 shared with other runs and tests, a fragments-on street canyon run (medium grid, 170 ms) took
 53–55 s at 60 frames a second, 11–12 s with the limit, and 19–20 s headless, which also ends a
 step at each millisecond's frame (1,856 steps against 1,527). The app aims for about 10 ms of
@@ -342,6 +343,15 @@ fewer (a 10% or no margin over the last step, instead of 25%) saved 1% to 2%, wi
 noise between runs, and changed the collapse, since the air steps fall differently. Indirect
 dispatch, which would let the GPU skip them, needs bounds checks in every structural kernel
 and a kernel to write the dispatch sizes, for at most those 3%; it has not been done.
+
+**Between runs** the view draws only when something it shows changes: the camera, the display
+settings, the selection, a new scene, or a run's time. It used to draw 60 frames a second
+regardless, ray-marching the domain at every pixel each time, so an idle window took GPU time
+from runs, sweeps and tests elsewhere on the Mac. With a street canyon open and nothing running,
+on an M4 Max shared with other sessions' tests, the window took 16% of a GPU's time and 5% of a
+core at 1440 × 920; it now takes none (the process's GPU time from `ioreg`'s
+`accumulatedGPUTime`, over 30 s). During a run the view still draws on its timer, within the
+budget above.
 
 ## Other Macs
 

@@ -2,8 +2,9 @@ import Foundation
 import simd
 
 /// Repeated interval geometry, grouping, paired Euler flux and endpoint scatter. The
-/// trajectory is prescribed and gas moves with the box at constant pressure. Uniform and
-/// analytic density-advection probes share the driver; free-body/nonuniform loads are separate.
+/// trajectory is prescribed. Uniform and analytic density-advection probes use constant
+/// pressure; an internal initial-state override also supports evolving pressure-load studies.
+/// Free-body motion remains separate.
 public enum ExperimentalMovingTrajectoryStudy {
     public struct Transport: Codable, Sendable {
         /// Extensive L1 mass error divided by the exact excess mass above ambient density.
@@ -28,6 +29,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let maximumRelativePressureError: Double
         public let maximumVelocityError: Double
         public let minimumPressure: Double
+        public let minimumDensity: Double
         public let massBudgetResidual: Double
         public let momentumBudgetResidual: SIMD3<Double>
         public let energyBudgetResidual: Double
@@ -40,6 +42,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let scatterLimitedGroups: Int
         public let scatterPositivityReducedGroups: Int
         public let scatterRankDeficientGroups: Int
+        public let wallSampleFallbacks: Int
     }
     public struct Result: Codable, Sendable {
         public let cellSize: Double
@@ -52,6 +55,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let densityAmplitude: Double?
         public let reconstruction: String
         public let timeIntegration: String
+        public let wallIntegration: String
         public let displacement: SIMD3<Double>
         public let referenceDryToWetCells: Int
         public let referenceWetToDryCells: Int
@@ -87,7 +91,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2], duration: Double = 0.0008, velocityScale: Double = 100,
         nearCrossing: Bool = false, maximumStep: Double = 0.000008,
-        limited: Bool = false, secondOrder: Bool = false,
+        limited: Bool = false, secondOrder: Bool = false, surfaceQuadrature: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite, duration > 0, duration <= 0.1,
@@ -112,7 +116,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                     let result = try solve(
                         h: h, angle: angle, start: start, duration: duration,
                         velocityScale: velocityScale, cfl: cfl, maximumStep: maximumStep, limited: limited,
-                        secondOrder: secondOrder)
+                        secondOrder: secondOrder, surfaceQuadrature: surfaceQuadrature)
                     results.append(result)
                     try progress(result)
                 }
@@ -165,7 +169,8 @@ public enum ExperimentalMovingTrajectoryStudy {
     static func solve(
         h: Double, angle: Double, start: Double, duration: Double, velocityScale: Double,
         cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false,
-        secondOrder: Bool = false
+        secondOrder: Bool = false, surfaceQuadrature: Bool = false,
+        initialCells: [FractionalGasTransport.Cell]? = nil
     ) throws -> Result {
         let clock = Date()
         let velocity = velocityScale * ExperimentalMovingGroupsStudy.velocity
@@ -176,13 +181,22 @@ public enum ExperimentalMovingTrajectoryStudy {
         let transitions = expectedTransitions(body: body, velocity: velocity, cellSize: h, duration: duration)
         let geometry = FractionalBoxGeometry(body)
         let count = Int((2 / h).rounded())
+        guard initialCells == nil || (reference == nil && initialCells!.count == count * count * count) else {
+            throw Failure.invalidConfiguration
+        }
         var cells: [FractionalGasTransport.Cell] = []
         for z in 0..<count {
             for y in 0..<count {
                 for x in 0..<count {
                     let lower = h * SIMD3(Double(x), Double(y), Double(z))
                     let volume = geometry.gasVolume(lower: lower, cellSize: h)
-                    if let reference {
+                    if let initialCells {
+                        let cell = initialCells[x + count * (y + count * z)]
+                        guard abs(cell.volume - volume) <= 1e-10 * h * h * h,
+                            (cell.volume == 0) == (volume == 0)
+                        else { throw Failure.invalidConfiguration }
+                        cells.append(cell)
+                    } else if let reference {
                         cells.append(
                             try reference.cell(
                                 geometry: geometry, lower: lower, cellSize: h,
@@ -193,6 +207,9 @@ public enum ExperimentalMovingTrajectoryStudy {
                     }
                 }
             }
+        }
+        if initialCells != nil {
+            _ = try FractionalGasTransport.advance(cells, newVolumes: cells.map(\.volume), transfers: [])
         }
         let before = total(cells)
         var reservoir = Sum()
@@ -212,12 +229,14 @@ public enum ExperimentalMovingTrajectoryStudy {
         var pressureError = 0.0
         var velocityError = 0.0
         var minimumPressure = Double.infinity
+        var minimumDensity = Double.infinity
         var lastPartition: [Int]?
         var frames: [Frame] = []
         var newlyWetError = 0.0
         var scatterLimited = 0
         var scatterReduced = 0
         var scatterDeficient = 0
+        var wallSampleFallbacks = 0
         for target in [0.25, 0.5, 0.75, 1.0].map({ $0 * duration }) {
             while elapsed < target {
                 guard steps < 10000 else { throw Failure.stepLimit }
@@ -227,7 +246,8 @@ public enum ExperimentalMovingTrajectoryStudy {
                     let domain = try ExperimentalMovingGroupsStudy.domain(
                         h: h, angle: angle,
                         start: 0, duration: step, previous: cells, prescribedBody: body,
-                        prescribedVelocity: velocity, reconstruct: limited)
+                        prescribedVelocity: velocity, reconstruct: limited,
+                        surfaceQuadrature: surfaceQuadrature)
                     do {
                         let r: MovingGroupedGasFlux.Result
                         if let reference {
@@ -291,12 +311,11 @@ public enum ExperimentalMovingTrajectoryStudy {
                         scatterLimited += r.scatterLimitedGroups
                         scatterReduced += r.scatterPositivityReducedGroups
                         scatterDeficient += r.scatterRankDeficientGroups
+                        wallSampleFallbacks += r.wallSampleFallbacks
                         var packet = SIMD8<Double>.zero
-                        for (n, boundary) in plan.boundaries.filter({ $0.geometry.owner == 1 }).enumerated() {
+                        for n in r.wallImpulses.indices {
                             let impulse = r.wallImpulses[n]
-                            let angular = simd_cross(
-                                boundary.geometry.centroid - body.position
-                                    - boundary.meanTime * velocity, impulse)
+                            let angular = r.wallMomentImpulses[n] - simd_cross(body.position, impulse)
                             packet += SIMD8(
                                 0, impulse.x, impulse.y, impulse.z, r.wallWork[n],
                                 angular.x, angular.y, angular.z)
@@ -316,6 +335,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                             pressureError = max(pressureError, abs(cell.pressure() / 101325 - 1))
                             velocityError = max(velocityError, simd_distance(cell.velocity, velocity))
                             minimumPressure = min(minimumPressure, cell.pressure())
+                            minimumDensity = min(minimumDensity, cell.amount[0] / cell.volume)
                         }
                         accepted = true
                         break
@@ -348,6 +368,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                     dryToWetCells: opened, wetToDryCells: closed, partitionChangedSteps: changed,
                     maximumRelativeDensityError: densityError, maximumRelativePressureError: pressureError,
                     maximumVelocityError: velocityError, minimumPressure: minimumPressure,
+                    minimumDensity: minimumDensity,
                     massBudgetResidual: residual[0],
                     momentumBudgetResidual: SIMD3(residual[1], residual[2], residual[3]) + impulse,
                     energyBudgetResidual: residual[4] + loads.value[4], volumeResidual: after[5] - before[5],
@@ -356,13 +377,14 @@ public enum ExperimentalMovingTrajectoryStudy {
                     bodyWork: loads.value[4],
                     impulseWorkResidual: loads.value[4] - simd_dot(velocity, impulse), transport: transport,
                     scatterLimitedGroups: scatterLimited, scatterPositivityReducedGroups: scatterReduced,
-                    scatterRankDeficientGroups: scatterDeficient))
+                    scatterRankDeficientGroups: scatterDeficient, wallSampleFallbacks: wallSampleFallbacks))
         }
         return Result(
             cellSize: h, rotation: angle, cfl: cfl, startPathTime: start, duration: duration,
             velocity: velocity, densityProfile: reference == nil ? "uniform" : "quadratic-advection",
             densityAmplitude: reference?.amplitude, reconstruction: limited ? "limited" : "constant",
             timeIntegration: secondOrder ? "heun" : "euler",
+            wallIntegration: surfaceQuadrature ? "surfaceTimeQuadrature" : "centroid",
             displacement: body.position - initialPosition,
             referenceDryToWetCells: transitions.opening, referenceWetToDryCells: transitions.closing,
             maximumMembers: maximumMembers,

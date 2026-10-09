@@ -223,6 +223,22 @@ struct TranslatingBoxSpaceTimeGeometry {
                 }
             }
         }
+        if wallQuadrature {
+            // wallPatches discards instantaneous areas below h² * 1e-14. A very
+            // short corner contact can have a smaller interval-integrated measure,
+            // where independent Gauss rules resolve that cutoff differently. Keep
+            // the canonical geometry moments with one positive centroid sample.
+            // The load approximation is confined below that same measure resolution.
+            for side in walls.indices
+            where walls[side].areaTime > 0 && walls[side].areaTime <= h * h * duration * 1e-14 {
+                let patch = walls[side]
+                walls[side].samples = [
+                    .init(
+                        point: reference + patch.firstMomentTime / patch.areaTime,
+                        time: patch.timeWeightedArea / patch.areaTime, areaTime: patch.areaTime)
+                ]
+            }
+        }
         return Result(
             initialGasVolume: initial, finalGasVolume: final, gasVolumeTime: volumeTime,
             openFaces: faces, walls: walls, eventTimes: events,

@@ -44,7 +44,7 @@ def transition_counts(row):
     return opening, closing
 
 
-def check(path, window, mode='constant', integrator='euler'):
+def check(path, window, mode='constant', integrator='euler', wall_mode='centroid'):
     rows = json.loads(path.read_text())
     keys = [(r['cellSize'], r['rotation'], r['cfl']) for r in rows]
     assert len(keys) == len(EXPECTED) and set(keys) == EXPECTED, 'Incomplete or duplicate case matrix'
@@ -52,6 +52,7 @@ def check(path, window, mode='constant', integrator='euler'):
     for r in rows:
         assert r.get('reconstruction', 'constant') == mode
         assert r.get('timeIntegration', 'euler') == integrator
+        assert r.get('wallIntegration', 'centroid') == wall_mode
         assert r['duration'] == duration
         assert r['velocity'] == [scale*v for v in (3, 1, -0.4)]
         assert math.dist(r['displacement'], [duration*v for v in r['velocity']]) < 1e-11
@@ -59,9 +60,13 @@ def check(path, window, mode='constant', integrator='euler'):
         assert r['maximumMembers'] <= 64 and r['maximumRelativeGeometryResidual'] < 1e-10
         assert len(r['frames']) == 4
         previous_steps = 0
+        previous_fallbacks = 0
         for n, f in enumerate(r['frames'], 1):
             assert f['time'] == n*duration/4 and f['steps'] > previous_steps
             previous_steps = f['steps']
+            if wall_mode == 'surfaceTimeQuadrature':
+                assert isinstance(f['wallSampleFallbacks'], int) and f['wallSampleFallbacks'] >= previous_fallbacks
+                previous_fallbacks = f['wallSampleFallbacks']
             assert f['minimumPressure'] > 0
             assert f['maximumRelativeDensityError'] < 1e-9 and f['maximumRelativePressureError'] < 1e-9
             assert f['maximumVelocityError'] < 1e-7
@@ -76,15 +81,18 @@ def check(path, window, mode='constant', integrator='euler'):
         assert reference[0] > 0 and last['partitionChangedSteps'] > 0
         print(f"dx {r['cellSize']}, angle {r['rotation']}, CFL {r['cfl']}: "
               f"{last['steps']} steps, transitions {reference}, "
-              f"pressure error {last['maximumRelativePressureError']:.3g}")
+              f"pressure error {last['maximumRelativePressureError']:.3g}, fallbacks {last.get('wallSampleFallbacks', 0)}")
     print(f"{path.name}: all eight trajectories pass.")
 
 
 if __name__ == '__main__':
     limited = '--limited' in sys.argv
     second_order = '--heun' in sys.argv
-    suffix = ('-limited' if limited else '') + ('-heun' if second_order else '')
+    sampled = '--surface-quadrature' in sys.argv
+    suffix = (('-limited' if limited else '') + ('-heun' if second_order else '')
+              + ('-surface-quadrature' if sampled else ''))
+    wall_mode = 'surfaceTimeQuadrature' if sampled else 'centroid'
     integrator = 'heun' if second_order else 'euler'
     mode = 'limited' if limited else 'constant'
-    check(ROOT / f'.build/moving-trajectory-halving{suffix}.json', window=False, mode=mode, integrator=integrator)
-    check(ROOT / f'.build/moving-trajectory-ambient-window-halving{suffix}.json', window=True, mode=mode, integrator=integrator)
+    check(ROOT / f'.build/moving-trajectory-halving{suffix}.json', window=False, mode=mode, integrator=integrator, wall_mode=wall_mode)
+    check(ROOT / f'.build/moving-trajectory-ambient-window-halving{suffix}.json', window=True, mode=mode, integrator=integrator, wall_mode=wall_mode)

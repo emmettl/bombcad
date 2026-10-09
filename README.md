@@ -552,7 +552,23 @@ independent box integrals. Positive surface/time quadrature follows the moving w
 centre of mass through clipping events; it recovers impulse, torque and work to roundoff.
 Centroid evaluation loses pressure/lever-arm covariance and temporal variance. This probe
 prescribes affine pressure with a quadratic time envelope; it does not evolve gas or validate
-a blast. The sampled load kernel is available separately from the moving-group flux update.
+a blast. Add `--surface-quadrature` to the moving-entropy or moving-trajectory commands to use
+these wall samples in the numerical update. With `--heun`, each sample interpolates the
+two stage pressure packets at its actual time; the same correction reaches gas momentum
+and energy. Torque uses each sample's position relative to the translating centre of mass.
+The corresponding summary scripts accept `--surface-quadrature` (and the trajectory summary
+also needs `--limited --heun` for that report). A nonuniform-pressure interval test checks
+paired loads.
+
+`swift run -c release rigidboxdemo --moving-loads` writes `.build/moving-loads.json`;
+`python3 Scripts/summarize-moving-loads.py` audits it and reports load changes under grid/CFL
+refinement. A 6.4 kJ smooth pressure pulse evolves over 200 microseconds around a prescribed
+translating box. Positive gas-volume averages and per-grid amplitude normalization match
+the initial excess internal energy. Twelve cases cover 0.2/0.1/0.05 m cells, aligned/rotated
+boxes and CFL 0.2/0.1. The study reports impulse and angular impulse at four matched times,
+positive states and complete gas/reservoir/body budgets. Pressure and velocity departures
+are physical responses, not errors against an exact solution. The finest grid is a numerical
+comparison; this is not blast validation or free-body motion.
 
 ## Headline results
 
