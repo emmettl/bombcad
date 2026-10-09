@@ -6,6 +6,8 @@ import Observation
 struct SimulationInputs: Equatable, Sendable {
     var scenario: Scenario
     var settings: ProjectRunSettings
+    /// The fragments flown alongside, for undo; sweep cases leave the project's as they are.
+    var fragments: FragmentSpec?
 
     func validate() throws {
         try ProjectDocument.validate(scenario)

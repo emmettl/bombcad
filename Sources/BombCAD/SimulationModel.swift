@@ -296,8 +296,20 @@ final class SimulationModel {
     @ObservationIgnored lazy var sweep = ParameterSweep(model: self)
     /// The project's fragments, if it flies any: a cased charge's fragments and tracers, flown
     /// one way through the blast from the start of each run and drawn over it. Saved with the
-    /// project; changes take effect from the next run.
-    var fragmentSpec: FragmentSpec?
+    /// project; changes take effect from the next run, and settle into a step to undo.
+    var fragmentSpec: FragmentSpec? {
+        didSet {
+            guard fragmentSpec != oldValue, !isApplyingInputs else { return }
+            fragmentEdit?.cancel()
+            fragmentEdit = Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                recordEdit()
+            }
+        }
+    }
+    @ObservationIgnored private var fragmentEdit: Task<Void, Never>?
+    @ObservationIgnored private var isApplyingInputs = false
     /// Fly the fragments on the Mac set for sweeps in Settings, not this one.
     var fragmentsOnRemote = false
     /// Where the fragments of the run stand: how many are in flight and landed.
@@ -582,18 +594,28 @@ final class SimulationModel {
         guard let previous = undoStack.popLast() else { return }
         redoStack.append(currentInputs)
         settledInputs = previous
-        applyExperimentInputs(previous)
+        applyInputs(previous)
     }
 
     func redo() {
         guard !sweep.isActive, let next = redoStack.popLast() else { return }
         undoStack.append(currentInputs)
         settledInputs = next
-        applyExperimentInputs(next)
+        applyInputs(next)
     }
 
     var currentInputs: SimulationInputs {
-        SimulationInputs(scenario: settings.scenario, settings: ProjectRunSettings(model: self))
+        SimulationInputs(
+            scenario: settings.scenario, settings: ProjectRunSettings(model: self), fragments: fragmentSpec)
+    }
+
+    /// Inputs from the undo history, fragments and all.
+    private func applyInputs(_ inputs: SimulationInputs) {
+        fragmentEdit?.cancel()
+        isApplyingInputs = true
+        fragmentSpec = inputs.fragments
+        isApplyingInputs = false
+        applyExperimentInputs(inputs)
     }
 
     private var runtimeInputsMatch: Bool {
@@ -611,7 +633,7 @@ final class SimulationModel {
         guard !sweep.isActive, let run = savedRuns.first(where: { $0.id == id }) else {
             throw ProjectFileError.invalid("Finish the sweep before restoring a saved run's inputs.")
         }
-        let inputs = SimulationInputs(scenario: run.scenario, settings: run.settings)
+        let inputs = SimulationInputs(scenario: run.scenario, settings: run.settings, fragments: fragmentSpec)
         try inputs.validate()
         recordEdit()
         if inputs != currentInputs {

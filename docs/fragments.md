@@ -58,8 +58,8 @@ any field left out takes its default:
 Turn on **Cased charge** in the Run tab's Fragments section. It starts with a casing a tenth of
 the charge's mass, 2,000 fragments and 300 tracers across 16 m round the charge, and sets the
 casing's mass, the number of fragments and tracers, and the casing's shape; the launch speed it
-gives is shown. The description is saved with the project (as `fragments.json`) and takes effect
-from the next run. With a Mac set for sweeps in Settings, **Fly on** that Mac sends the fragments
+gives is shown. The description is saved with the project (as `fragments.json`), takes effect
+from the next run, and is undone and redone with the layout's edits (⌘Z). With a Mac set for sweeps in Settings, **Fly on** that Mac sends the fragments
 there, over a connection kept open between runs.
 
 During a run the view draws them over the blast as dots of a fixed size on screen, whatever their
