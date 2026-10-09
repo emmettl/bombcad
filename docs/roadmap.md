@@ -185,12 +185,13 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas, which needs afterburning and hot air to make a fireball of plausible size; the
    fireball's [rise and cloud](fireball-rise.md), handed over from the air model's final state
-   to an integral model of a rising thermal in a standard atmosphere, a wind growing with height
-   and humid air, where it condenses, freezes and rains once saturated, within a factor of 1.6
-   of an empirical fit to high-explosive cloud heights; and [ground shock](ground-shock.md) away
+   to an integral model of a rising thermal in a standard atmosphere or a measured sounding, a
+   wind growing with height, turbulent air and humid air, where it condenses, freezes and rains
+   once saturated, within a factor of 1.6 (1.4 in neutral turbulence) of an empirical fit to
+   high-explosive cloud heights; and [ground shock](ground-shock.md) away
    from the charge, the manuals' one-dimensional estimate fed the overpressure on the rigid
    ground each frame and drawn in the app. Next: radiation on the GPU's ray-tracing hardware, a
-   fireball that is not one sphere, the cloud in turbulent air and a measured sounding, a layered
+   fireball that is not one sphere, the cloud against measured clouds over time, a layered
    soil column and a comparison with measured ground motion, and the app showing what the
    surfaces received and where the cloud went. The crater and the ground shock near the charge
    act back on the blast and remain outside these.)
