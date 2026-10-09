@@ -429,7 +429,9 @@ struct SweepWorkerTests {
         #expect(model.savedRuns.map(\.name) == alone.savedRuns.map(\.name))
         #expect(model.savedRuns.map(\.gauges) == alone.savedRuns.map(\.gauges))
         #expect((1...2).contains(model.sweep.remoteCompleted))
-        #expect(!model.sweep.message.contains("flaky"))
+        // And the sweep says why the other stopped.
+        #expect(model.sweep.message.contains("flaky worker stopped:"))
+        #expect(model.sweep.workerProblems.count == 1)
         await server.value
 
         // Workers that fail, drop or cannot be reached leave the sweep to this Mac.
@@ -442,6 +444,8 @@ struct SweepWorkerTests {
             ])
         #expect(unlucky.savedRuns.map(\.gauges) == alone.savedRuns.map(\.gauges))
         #expect(unlucky.sweep.remoteCompleted == 0)
+        #expect(unlucky.sweep.workerProblems.count == 3)
+        #expect(unlucky.sweep.message.contains("Not shared: Cannot reach it."))
     }
 
     @Test("Cancelling a shared sweep stops every worker's case and lets each worker go")

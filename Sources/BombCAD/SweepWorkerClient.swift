@@ -217,6 +217,8 @@ enum RemoteSweepWorker {
         "ServerAliveCountMax=4",
     ]
     static let buildsKept = 3
+    /// Written in a build's folder once it has been copied whole and signed.
+    static let installed = ".installed"
 
     /// Connects to `host`, an SSH host name or alias, sending this build first if it is not
     /// there yet.
@@ -286,11 +288,14 @@ enum RemoteSweepWorker {
 
     /// This build's executable and resource bundles, and a short hash of them all.
     nonisolated static func payload() throws -> (hash: String, files: [URL]) {
-        guard let executable = Bundle.main.executableURL else {
+        guard let executable = Bundle.main.executableURL?.resolvingSymlinksInPath() else {
             throw ProjectFileError.invalid("Cannot find BombCAD's own executable.")
         }
+        // Resolved, since a build folder may be a link (SwiftPM's .build/release is).
         let folders = Set(
-            [Bundle.main.resourceURL, executable.deletingLastPathComponent()].compactMap { $0 })
+            [Bundle.main.resourceURL, executable.deletingLastPathComponent()].compactMap {
+                $0?.resolvingSymlinksInPath()
+            })
         var bundles: [URL] = []
         for folder in folders {
             let contents =
@@ -303,6 +308,10 @@ enum RemoteSweepWorker {
             }
         }
         bundles.sort { $0.lastPathComponent < $1.lastPathComponent }
+        // Without its shaders a worker would greet and then fail every case.
+        guard bundles.contains(where: { $0.lastPathComponent.hasPrefix("BombCAD_BlastCore") }) else {
+            throw ProjectFileError.invalid("Cannot find BombCAD's resource bundles to send.")
+        }
         var hash = SHA256()
         hash.update(data: try Data(contentsOf: executable))
         for bundle in bundles {
@@ -326,7 +335,7 @@ enum RemoteSweepWorker {
         let root = "Library/Caches/BombCAD/remote"
         let directory = "\(root)/\(hash)"
         let check = try command(
-            ssh, options + [host, "test -x \(directory)/BombCAD && echo present; uname -m"])
+            ssh, options + [host, "test -f \(directory)/\(installed) && echo present; uname -m"])
         guard check.status == 0 || check.status == 1 else {
             throw ProjectFileError.invalid("Cannot reach \(host) over SSH. \(check.errors)")
         }
@@ -341,13 +350,14 @@ enum RemoteSweepWorker {
                     "\(host):\(directory)/"
                 ],
                 require: true)
-            // The executable has left its app bundle, so it is signed afresh on its own; and only
-            // the newest builds are kept.
+            // The executable has left its app bundle, so it is signed afresh on its own; the
+            // copy is marked whole only then, so that one cut short is sent again; and only the
+            // newest builds are kept.
             _ = try command(
                 ssh,
                 options + [
                     host,
-                    "codesign --force --sign - \(directory)/BombCAD 2>/dev/null; cd \(root) && ls -t | tail -n +\(buildsKept + 1) | while read old; do rm -rf -- \"$old\"; done",
+                    "codesign --force --sign - \(directory)/BombCAD 2>/dev/null && touch \(directory)/\(installed); cd \(root) && ls -t | tail -n +\(buildsKept + 1) | while read old; do rm -rf -- \"$old\"; done",
                 ], require: true)
         }
         return directory

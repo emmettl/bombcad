@@ -91,6 +91,8 @@ final class ParameterSweep {
     private(set) var message = ""
     private(set) var completed = 0
     private(set) var total = 0
+    /// Why workers stopped or could not start, in this sweep or the last.
+    private(set) var workerProblems: [String] = []
     /// Cases other Macs ran, in this sweep or the last.
     var remoteCompleted: Int { remoteCounts.values.reduce(0, +) }
     var isActive: Bool { baseline != nil }
@@ -122,6 +124,7 @@ final class ParameterSweep {
         completed = 0
         names = [:]
         remoteCounts = [:]
+        workerProblems = []
         total = plan.count
         localStatus = ""
         remoteStatus = [:]
@@ -172,7 +175,10 @@ final class ParameterSweep {
             model.applyExperimentInputs(original)
             model.speed = self.previousSpeed
             self.baseline = nil
-            self.message = "\(outcome) · \(self.completed) results kept."
+            self.message =
+                ([
+                    "\(outcome) · \(self.completed) results kept."
+                ] + self.workerProblems).joined(separator: " ")
             self.task = nil
         }
     }
@@ -246,7 +252,9 @@ final class ParameterSweep {
         do {
             worker = try await connect()
         } catch {
-            status(remote: number, Task.isCancelled ? "" : "Not using a Mac: \(error.localizedDescription)")
+            guard !Task.isCancelled else { return }
+            workerProblems.append("Not shared: \(error.localizedDescription)")
+            status(remote: number, "")
             return
         }
         names[number] = worker.name
@@ -279,7 +287,8 @@ final class ParameterSweep {
             } catch {
                 // The case goes back to the queue, for this Mac or another worker.
                 shared.schedule.fail(number)
-                status(remote: number, "\(worker.name) stopped: \(error.localizedDescription)")
+                workerProblems.append("\(worker.name) stopped: \(error.localizedDescription)")
+                status(remote: number, "\(worker.name) stopped")
                 return
             }
         }
