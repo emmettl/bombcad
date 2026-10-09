@@ -60,7 +60,8 @@ The description is JSON; any field left out takes its default, so `{}` will do:
   ground at `lapseRate` (6.5 K/km, the standard atmosphere's) up to the `tropopause` and is
   constant above it, and the pressure is in hydrostatic balance. Air cooling more slowly with
   height than the 9.8 K/km of dry air rising is stable, so a cloud rises until it has mixed itself
-  down to the temperature of its surroundings, overshoots and settles back.
+  down to the temperature of its surroundings, overshoots and settles back. Lapse rates of
+  g / c_p or more, in which nothing would stop it, are refused.
 - **Stopped rising** is the first moment the rise speed falls to zero, a common definition of a
   cloud's stabilisation; the model goes on past it to `duration` seconds after the run.
 - **The domain and the ground are left behind**: the cloud rises freely from the hand-over, with
