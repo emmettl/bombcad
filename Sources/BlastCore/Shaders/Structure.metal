@@ -353,13 +353,18 @@ constant uint nodeBuried = 32u;
 // takes no air load and lets the air through, but holds its nodes along its intact bars.
 // An element turning bare is marked so in the pass that decides it, and read as still whole by
 // every other element in that pass; the node pass then commits it, as failing ones are.
+// A bare element whose bars fail has a mark of its own, read as still bare in that pass: marked
+// as failing, it would read as whole to a neighbour that saw the mark and as bare to one that ran
+// before it.
 enum ElementFlag {
-    elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3, elementBare = 4, elementBaring = 5
+    elementEmpty = 0, elementActive = 1, elementEroded = 2, elementFailing = 3, elementBare = 4, elementBaring = 5,
+    elementBareFailing = 6
 };
 
 // An element whose bars count: still whole, failing this step, or bare.
 static inline bool carriesBars(uchar flag) {
-    return flag == elementActive || flag == elementFailing || flag == elementBare || flag == elementBaring;
+    return flag == elementActive || flag == elementFailing || flag == elementBare || flag == elementBaring
+        || flag == elementBareFailing;
 }
 
 // Whole for this pass's readers: active, or failing or turning bare in this very pass.
@@ -1719,7 +1724,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
     ElementForces out;
     if (eroded) {
-        flags[element] = elementFailing;
+        flags[element] = bare ? elementBareFailing : elementFailing;
         failureGate[0] = 1;
         if (u.bondSlip != 0) {
             barForces[2 * compact] = float4(0.0f);
@@ -2430,7 +2435,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     // whether an element is active, which failing and eroded elements are not.
     if (all(int3(tid) < dims)) {
         int own = int(tid.x) + dims.x * (int(tid.y) + dims.y * int(tid.z));
-        if (flags[own] == elementFailing) {
+        if (flags[own] == elementFailing || flags[own] == elementBareFailing) {
             flags[own] = elementEroded;
         } else if (flags[own] == elementBaring) {
             flags[own] = elementBare;

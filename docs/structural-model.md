@@ -463,9 +463,13 @@ shock, and the drag and pressure-gradient push on loose debris.
    and lost only its two lowest floors in the next (see the
    [shell model](shell-model.md#validation)). No outcome has been compared with anything.
 
-   Repeatability took three fixes for races between GPU threads. An element failing in a pass
+   Repeatability took four fixes for races between GPU threads. An element failing in a pass
    was seen by some of its neighbours in that pass and not others; a failing element is now
-   marked first and committed in the node pass that follows. The nodes in a contact grid cell
+   marked first and committed in the node pass that follows. An element left as bars alone
+   whose bars then failed took the same mark, which its neighbours read as whole concrete when
+   they ran after it and as bare bars when they ran before (on a heavily loaded GPU, a breach
+   run twice sometimes eroded a different number of elements); it now has a mark of its
+   own, read as bare bars for the rest of the pass. The nodes in a contact grid cell
    were stored, and their forces summed, in the order threads arrived; each cell is now
    emptied in one pass and filled in the next with an atomic-minimum chain that keeps its four
    lowest-numbered nodes in ascending order, whatever the timing. That also decides which
