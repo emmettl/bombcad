@@ -11,10 +11,11 @@ struct ThermalSection: View {
         Section("Thermal radiation") {
             Toggle("Fireball's radiant heat", isOn: enabled)
                 .help(
-                    "Finds the fireball as the air's luminous gas at each moment, in its own shape, and "
-                        + "reckons its grey-body radiation on the ground and the faces of the scene, with what "
-                        + "lies in the way. Illustrative: no comparison with measurements, and the air between "
-                        + "is taken as transparent.")
+                    "Finds the fireball as the air's luminous gas at each moment, cell by cell, and "
+                        + "reckons what it emits and absorbs on the ground and the faces of the scene, with what "
+                        + "lies in the way. Illustrative: it radiates three to five times what a TNT fireball "
+                        + "was measured to, as the gas never loses the heat, and the air between is taken as "
+                        + "transparent.")
             if let spec = model.thermalSpec {
                 if spec.fireball == .volume {
                     // On a log scale, a tenth of a decade at a time.
