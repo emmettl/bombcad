@@ -2,9 +2,9 @@
 
 The ground's shaking under chosen points, estimated from the overpressure the run records on the
 ground. It works one way: the air presses on the soil, and the soil does not press back. The air
-model's ground stays a rigid reflecting boundary. A headless run streams the bottom layer of
-cells to the estimate a frame at a time, a one-way consumer like the [fragments](fragments.md)
-and the [thermal radiation](thermal-radiation.md). It belongs among the separable models in
+model's ground stays a rigid reflecting boundary. A run in the app or a headless one streams
+the bottom layer of cells to the estimate a frame at a time, a one-way consumer like the
+[fragments](fragments.md) and the [thermal radiation](thermal-radiation.md). It belongs among the separable models in
 [Distributed computing](distributed-computing.md#separate-models-on-separate-machines).
 
 **Standing: illustrative.** The model is the textbook one-dimensional estimate of air-induced
@@ -89,6 +89,38 @@ The file also gives the frames, the bytes of air streamed and the time the run s
 The summary printed gives the fastest surface motion and where it was, the points without a
 horizontal estimate, and the covered points.
 
+## In the app
+
+Turn on **Ground points** in the Run tab's Ground shock section. It starts with 16 points along
+the ground from a metre beside the charge to a metre short of the domain's edge, the way the
+ground runs furthest, in dry soil of 1,600 kg/m³ at 300 m/s. Sliders set the soil's density and
+wave speed, the number of points (8 to 64) and the line's two ends, to the half metre. The
+points are saved with the project (as `groundShock.json`), take effect from the next run, and
+are undone and redone with the layout's edits (⌘Z). Other points, and other depths than 0, 1
+and 3 m, need the JSON description and `BombCAD run`.
+
+The view draws the points as dots just above the ground: grey until the blast reaches them, then
+from blue at 1 mm/s of downward surface velocity, through violet, to near white at 10 m/s, on a
+log scale. Points under a block or the structure are not drawn. Under Display they can be
+hidden, and they share the fragments' dot size. A line under the section counts the points the
+blast has reached and names the one where the ground moves fastest.
+
+**Keep Run** keeps the points and their estimates, without the overpressure histories. Compare
+gives a line for each run that had them, the run's CSV gives each reached point's peak
+overpressure and its vertical velocity at each depth (at the arrival there), and **Use this
+run's inputs** brings its points back. Like the fragments, they do not act on the air, so they
+are no part of the run's input fingerprint, and the tests check that a run's gauges are the
+same to the last bit with them on or off.
+
+The app takes a frame at the start, at the first batch's end past each millisecond, and at the
+end, as it does for the fragments, but the points do not shorten the batches as the fragments
+do. The peak and impulse come from the solver's own fields, so they are unaffected. The arrival,
+though, is the end of that batch, which at unlimited speed can be several milliseconds late. For arrivals, use
+`BombCAD run`, which frames every millisecond. `blastbench snapshot --ground-shock
+ground.json` draws the points offscreen as the view does (the figure below).
+
+![Ground points down the street canyon at 40 ms, without the wave: grey ahead of the blast, violet behind it, near white beside the charge](ground-points-street.png)
+
 ## Running alongside the blast
 
 At each frame (`--frame-interval`, 1 ms by default) the run cuts out the bottom layer of cells
@@ -162,14 +194,15 @@ the run's cost is the frames' extra steps, not the estimate.
   load, and a single triangle describes it poorly.
 - Points under a block or the structure get nothing. The building's own load on its foundations
   is not passed to the soil.
-- Headless only: not in the app, not on a worker over SSH, and not in the USD scene.
+- Not on a worker over SSH and not in the USD scene. In the app, arrivals are only as fine as
+  the batches (above), and the points lie on one straight line.
 
 ## Future work
 
 - A layered soil column solved numerically, with different loading and unloading moduli. The
   elastic column the tests already integrate is the start of one. It would replace the
   attenuation factor and handle layers and the water table.
-- The ground points in the app, coloured by their peak velocity, and in the USD export.
+- The ground points in the USD export, and in the app as a grid over an area as well as a line.
 - A worker session for the slices, if a costlier ground model needs one.
 - A comparison with measured air-induced ground motion
   ([Data wanted](data-wanted.md#3a-air-induced-ground-shock)).
