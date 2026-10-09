@@ -1,0 +1,258 @@
+{
+  "atmosphere" : {
+    "density" : 1.225,
+    "pressure" : 101325
+  },
+  "boxes" : [
+
+  ],
+  "charge" : {
+    "mass" : 2,
+    "position" : [
+      8,
+      16,
+      1
+    ]
+  },
+  "domainSize" : [
+    40,
+    32,
+    8
+  ],
+  "gauges" : [
+    {
+      "name" : "Front",
+      "position" : [
+        14,
+        9,
+        1.5
+      ]
+    },
+    {
+      "name" : "Behind",
+      "position" : [
+        24,
+        9,
+        1.5
+      ]
+    },
+    {
+      "name" : "Street",
+      "position" : [
+        24,
+        16,
+        1.5
+      ]
+    },
+    {
+      "name" : "Far street",
+      "position" : [
+        34,
+        16,
+        1.5
+      ]
+    }
+  ],
+  "name" : "Street interaction: isolated",
+  "objectOwnership" : {
+    "blocks" : [
+
+    ],
+    "order" : [
+      "00000000-0000-4000-8000-000000000001"
+    ],
+    "structure" : {
+      "id" : "00000000-0000-4000-8000-000000000001",
+      "name" : "Building 1",
+      "openingIDs" : [
+        "ED4BAC3B-11B2-4F1F-AC59-151B4D10BEA4",
+        "7CE90E17-EA00-4601-A7B6-BB1F2C6BB421"
+      ],
+      "solidIDs" : [
+        "9144060F-B82F-4A06-969C-E5BD1ACF8DE9",
+        "951BEB67-D634-4104-9C31-8320ACC51AB4",
+        "DE54B489-493B-4F1D-9CC2-67062E1FBC5E",
+        "FA0BB1C0-3837-4328-94CA-9C66D5628E92",
+        "4C5E499A-5D2E-4316-90D6-E58C4E0F0AA2"
+      ],
+      "supportIDs" : [
+        "25DDF121-594E-417A-A896-6068661AD4C6"
+      ]
+    },
+    "version" : 1
+  },
+  "reflectiveFaces" : 16,
+  "structure" : {
+    "barRateAlongBars" : true,
+    "bareBars" : true,
+    "crackAxes" : "turningUntilOpen",
+    "crackShearStiffness" : false,
+    "crackSlip" : true,
+    "elementKind" : "solid",
+    "elementSize" : 0.5,
+    "fixedBase" : true,
+    "inclinedBars" : [
+
+    ],
+    "material" : {
+      "aggregateSize" : 0.016,
+      "bondSpreading" : true,
+      "compressiveStrength" : 3e+07,
+      "concreteRateFactor" : 1,
+      "confinementCoefficient" : 4.1,
+      "crackDilatancy" : 0.5,
+      "crackResidual" : 0.1,
+      "crackSpacing" : 0.1,
+      "crushBand" : 0,
+      "crushLength" : 0,
+      "crushingEnergy" : 33662.37,
+      "density" : 2400,
+      "dowelFactor" : 1,
+      "erosionOpening" : 0.005,
+      "failureStrain" : 1e+30,
+      "fractureEnergy" : 134.64949,
+      "fractureRateExponent" : 0.5,
+      "hardeningModulus" : 0,
+      "isTransparent" : false,
+      "model" : 1,
+      "name" : "Reinforced concrete",
+      "poissonRatio" : 0.2,
+      "rateDependent" : true,
+      "steel" : {
+        "ruptureStrain" : 0.12,
+        "ultimateStrain" : 0.075,
+        "ultimateStress" : 5.75e+08,
+        "yieldStress" : 5e+08,
+        "youngsModulus" : 2e+11
+      },
+      "steelRateDependent" : true,
+      "steelRateFactor" : 1,
+      "steelRateLaw" : "ceb",
+      "tensileStrength" : 2896468.5,
+      "tensionRateLaw" : "modelCode2010",
+      "yieldStress" : 1e+30,
+      "youngsModulus" : 2.5742963e+10
+    },
+    "openings" : [
+      {
+        "max" : [
+          17,
+          10,
+          2.5
+        ],
+        "min" : [
+          15.5,
+          8,
+          0
+        ]
+      },
+      {
+        "max" : [
+          20,
+          10,
+          5
+        ],
+        "min" : [
+          18,
+          8,
+          3.5
+        ]
+      }
+    ],
+    "reinforcement" : [
+
+    ],
+    "secondCracks" : true,
+    "shellLayers" : 8,
+    "shellSectionShear" : false,
+    "solidElementKind" : [
+
+    ],
+    "solidMaterial" : [
+
+    ],
+    "solidReinforcement" : [
+
+    ],
+    "solidSourceParts" : [
+
+    ],
+    "solids" : [
+      {
+        "max" : [
+          22,
+          6.5,
+          4
+        ],
+        "min" : [
+          16,
+          6,
+          0
+        ]
+      },
+      {
+        "max" : [
+          22,
+          12,
+          4
+        ],
+        "min" : [
+          16,
+          11.5,
+          0
+        ]
+      },
+      {
+        "max" : [
+          16.5,
+          11.5,
+          4
+        ],
+        "min" : [
+          16,
+          6.5,
+          0
+        ]
+      },
+      {
+        "max" : [
+          22,
+          11.5,
+          4
+        ],
+        "min" : [
+          21.5,
+          6.5,
+          0
+        ]
+      },
+      {
+        "max" : [
+          22,
+          12,
+          4.5
+        ],
+        "min" : [
+          16,
+          6,
+          4
+        ]
+      }
+    ],
+    "supports" : [
+      {
+        "max" : [
+          22.01,
+          12.01,
+          4.51
+        ],
+        "min" : [
+          15.99,
+          5.99,
+          -0.01
+        ]
+      }
+    ],
+    "unitJoints" : true
+  }
+}

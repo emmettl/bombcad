@@ -115,6 +115,21 @@ layouts with matched sources, physical observation points and structural meshes.
 recording and diagnostic stage profiling remain in BlastCore; this introduces no new
 ContinuumKit contracts or release.
 
+## Implemented stationary envelopes
+
+Local authored structures can be converted into stationary `BuildingEnvelope` objects with
+their name, object ID, wall/roof solids and openings retained. They use the fixed-obstacle
+air path and allocate no mechanics or moving-boundary state. Projects containing envelopes
+use scene encoding version 5; versions 3 and 4 remain unchanged for earlier representations.
+Undo restores the original structure. Source-owned imports retain their import workflow.
+
+The [building-envelope study](building-envelopes.md) checks surface pressure, signed and
+positive impulse, and shared-flow maps against fully pinned solid-element references.
+Its fourteen representation comparisons agree exactly and its computational scaling runs
+reach sixty-four envelopes. Shell-reference diagnostics retain differences at junctions
+and openings instead of treating their changed boundaries as equivalent geometry.
+Approximation rules, loading diagnostics and these fixtures remain in BombCAD.
+
 ## Implemented shared query extraction
 
 [ContinuumKit PR #7](https://github.com/emmettl/ContinuumKit/pull/7) adds a bounded

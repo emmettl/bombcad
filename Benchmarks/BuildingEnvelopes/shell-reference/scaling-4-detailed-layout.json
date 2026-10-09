@@ -1,0 +1,722 @@
+{
+  "additionalStructures" : [
+    {
+      "model" : {
+        "barRateAlongBars" : true,
+        "bareBars" : true,
+        "crackAxes" : "turningUntilOpen",
+        "crackShearStiffness" : false,
+        "crackSlip" : true,
+        "elementKind" : "shell",
+        "elementSize" : 0.5,
+        "fixedBase" : true,
+        "inclinedBars" : [
+
+        ],
+        "material" : {
+          "aggregateSize" : 0.016,
+          "bondSpreading" : true,
+          "compressiveStrength" : 3e+07,
+          "concreteRateFactor" : 1,
+          "confinementCoefficient" : 4.1,
+          "crackDilatancy" : 0.5,
+          "crackResidual" : 0.1,
+          "crackSpacing" : 0.1,
+          "crushBand" : 0,
+          "crushLength" : 0,
+          "crushingEnergy" : 33662.37,
+          "density" : 2400,
+          "dowelFactor" : 1,
+          "erosionOpening" : 0.005,
+          "failureStrain" : 1e+30,
+          "fractureEnergy" : 134.64949,
+          "fractureRateExponent" : 0.5,
+          "hardeningModulus" : 0,
+          "isTransparent" : false,
+          "model" : 1,
+          "name" : "Reinforced concrete",
+          "poissonRatio" : 0.2,
+          "rateDependent" : true,
+          "steel" : {
+            "ruptureStrain" : 0.12,
+            "ultimateStrain" : 0.075,
+            "ultimateStress" : 5.75e+08,
+            "yieldStress" : 5e+08,
+            "youngsModulus" : 2e+11
+          },
+          "steelRateDependent" : true,
+          "steelRateFactor" : 1,
+          "steelRateLaw" : "ceb",
+          "tensileStrength" : 2896468.5,
+          "tensionRateLaw" : "modelCode2010",
+          "yieldStress" : 1e+30,
+          "youngsModulus" : 2.5742963e+10
+        },
+        "openings" : [
+
+        ],
+        "reinforcement" : [
+
+        ],
+        "secondCracks" : true,
+        "shellLayers" : 8,
+        "shellSectionShear" : false,
+        "solidElementKind" : [
+
+        ],
+        "solidMaterial" : [
+
+        ],
+        "solidReinforcement" : [
+
+        ],
+        "solidSourceParts" : [
+
+        ],
+        "solids" : [
+          {
+            "max" : [
+              26,
+              10.5,
+              4
+            ],
+            "min" : [
+              20,
+              10,
+              0
+            ]
+          },
+          {
+            "max" : [
+              26,
+              16,
+              4
+            ],
+            "min" : [
+              20,
+              15.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              20.5,
+              15.5,
+              4
+            ],
+            "min" : [
+              20,
+              10.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              26,
+              15.5,
+              4
+            ],
+            "min" : [
+              25.5,
+              10.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              26,
+              16,
+              4.5
+            ],
+            "min" : [
+              20,
+              10,
+              4
+            ]
+          }
+        ],
+        "supports" : [
+          {
+            "max" : [
+              26.01,
+              16.01,
+              4.51
+            ],
+            "min" : [
+              19.99,
+              9.99,
+              -0.01
+            ]
+          }
+        ],
+        "unitJoints" : true
+      },
+      "ownership" : {
+        "id" : "00000000-0000-4000-8100-000000000002",
+        "name" : "Building 2",
+        "openingIDs" : [
+
+        ],
+        "solidIDs" : [
+          "1193B50F-FA31-4B6B-BDE4-688379F7C308",
+          "76261FAF-FE2A-4CD0-9994-013D93C71026",
+          "8656DAAE-4764-4C63-A63D-325A5BDD5D9F",
+          "97BA544A-0BEF-491D-A71F-447DB8551F38",
+          "8CC911B6-8F79-4F7F-9511-19D470CDF15C"
+        ],
+        "supportIDs" : [
+          "38C05057-3C50-4123-8C3E-4014607B0405"
+        ]
+      }
+    },
+    {
+      "model" : {
+        "barRateAlongBars" : true,
+        "bareBars" : true,
+        "crackAxes" : "turningUntilOpen",
+        "crackShearStiffness" : false,
+        "crackSlip" : true,
+        "elementKind" : "shell",
+        "elementSize" : 0.5,
+        "fixedBase" : true,
+        "inclinedBars" : [
+
+        ],
+        "material" : {
+          "aggregateSize" : 0.016,
+          "bondSpreading" : true,
+          "compressiveStrength" : 3e+07,
+          "concreteRateFactor" : 1,
+          "confinementCoefficient" : 4.1,
+          "crackDilatancy" : 0.5,
+          "crackResidual" : 0.1,
+          "crackSpacing" : 0.1,
+          "crushBand" : 0,
+          "crushLength" : 0,
+          "crushingEnergy" : 33662.37,
+          "density" : 2400,
+          "dowelFactor" : 1,
+          "erosionOpening" : 0.005,
+          "failureStrain" : 1e+30,
+          "fractureEnergy" : 134.64949,
+          "fractureRateExponent" : 0.5,
+          "hardeningModulus" : 0,
+          "isTransparent" : false,
+          "model" : 1,
+          "name" : "Reinforced concrete",
+          "poissonRatio" : 0.2,
+          "rateDependent" : true,
+          "steel" : {
+            "ruptureStrain" : 0.12,
+            "ultimateStrain" : 0.075,
+            "ultimateStress" : 5.75e+08,
+            "yieldStress" : 5e+08,
+            "youngsModulus" : 2e+11
+          },
+          "steelRateDependent" : true,
+          "steelRateFactor" : 1,
+          "steelRateLaw" : "ceb",
+          "tensileStrength" : 2896468.5,
+          "tensionRateLaw" : "modelCode2010",
+          "yieldStress" : 1e+30,
+          "youngsModulus" : 2.5742963e+10
+        },
+        "openings" : [
+
+        ],
+        "reinforcement" : [
+
+        ],
+        "secondCracks" : true,
+        "shellLayers" : 8,
+        "shellSectionShear" : false,
+        "solidElementKind" : [
+
+        ],
+        "solidMaterial" : [
+
+        ],
+        "solidReinforcement" : [
+
+        ],
+        "solidSourceParts" : [
+
+        ],
+        "solids" : [
+          {
+            "max" : [
+              16,
+              20.5,
+              4
+            ],
+            "min" : [
+              10,
+              20,
+              0
+            ]
+          },
+          {
+            "max" : [
+              16,
+              26,
+              4
+            ],
+            "min" : [
+              10,
+              25.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              10.5,
+              25.5,
+              4
+            ],
+            "min" : [
+              10,
+              20.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              16,
+              25.5,
+              4
+            ],
+            "min" : [
+              15.5,
+              20.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              16,
+              26,
+              4.5
+            ],
+            "min" : [
+              10,
+              20,
+              4
+            ]
+          }
+        ],
+        "supports" : [
+          {
+            "max" : [
+              16.01,
+              26.01,
+              4.51
+            ],
+            "min" : [
+              9.99,
+              19.99,
+              -0.01
+            ]
+          }
+        ],
+        "unitJoints" : true
+      },
+      "ownership" : {
+        "id" : "00000000-0000-4000-8100-000000000003",
+        "name" : "Building 3",
+        "openingIDs" : [
+
+        ],
+        "solidIDs" : [
+          "A5A9E244-BD47-4FBE-90E1-4E9AF93F29BB",
+          "387097DD-88D2-42E3-8073-A72C686E4604",
+          "2AE0E033-F98D-4C5D-9438-65659734116E",
+          "7A685371-D7D3-4B97-909C-9E79DE9E0283",
+          "EBE56CAA-0384-4A15-86A6-0F8C1064C394"
+        ],
+        "supportIDs" : [
+          "8B30E99F-949D-47A8-9F98-923ECC66AED9"
+        ]
+      }
+    },
+    {
+      "model" : {
+        "barRateAlongBars" : true,
+        "bareBars" : true,
+        "crackAxes" : "turningUntilOpen",
+        "crackShearStiffness" : false,
+        "crackSlip" : true,
+        "elementKind" : "shell",
+        "elementSize" : 0.5,
+        "fixedBase" : true,
+        "inclinedBars" : [
+
+        ],
+        "material" : {
+          "aggregateSize" : 0.016,
+          "bondSpreading" : true,
+          "compressiveStrength" : 3e+07,
+          "concreteRateFactor" : 1,
+          "confinementCoefficient" : 4.1,
+          "crackDilatancy" : 0.5,
+          "crackResidual" : 0.1,
+          "crackSpacing" : 0.1,
+          "crushBand" : 0,
+          "crushLength" : 0,
+          "crushingEnergy" : 33662.37,
+          "density" : 2400,
+          "dowelFactor" : 1,
+          "erosionOpening" : 0.005,
+          "failureStrain" : 1e+30,
+          "fractureEnergy" : 134.64949,
+          "fractureRateExponent" : 0.5,
+          "hardeningModulus" : 0,
+          "isTransparent" : false,
+          "model" : 1,
+          "name" : "Reinforced concrete",
+          "poissonRatio" : 0.2,
+          "rateDependent" : true,
+          "steel" : {
+            "ruptureStrain" : 0.12,
+            "ultimateStrain" : 0.075,
+            "ultimateStress" : 5.75e+08,
+            "yieldStress" : 5e+08,
+            "youngsModulus" : 2e+11
+          },
+          "steelRateDependent" : true,
+          "steelRateFactor" : 1,
+          "steelRateLaw" : "ceb",
+          "tensileStrength" : 2896468.5,
+          "tensionRateLaw" : "modelCode2010",
+          "yieldStress" : 1e+30,
+          "youngsModulus" : 2.5742963e+10
+        },
+        "openings" : [
+
+        ],
+        "reinforcement" : [
+
+        ],
+        "secondCracks" : true,
+        "shellLayers" : 8,
+        "shellSectionShear" : false,
+        "solidElementKind" : [
+
+        ],
+        "solidMaterial" : [
+
+        ],
+        "solidReinforcement" : [
+
+        ],
+        "solidSourceParts" : [
+
+        ],
+        "solids" : [
+          {
+            "max" : [
+              26,
+              20.5,
+              4
+            ],
+            "min" : [
+              20,
+              20,
+              0
+            ]
+          },
+          {
+            "max" : [
+              26,
+              26,
+              4
+            ],
+            "min" : [
+              20,
+              25.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              20.5,
+              25.5,
+              4
+            ],
+            "min" : [
+              20,
+              20.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              26,
+              25.5,
+              4
+            ],
+            "min" : [
+              25.5,
+              20.5,
+              0
+            ]
+          },
+          {
+            "max" : [
+              26,
+              26,
+              4.5
+            ],
+            "min" : [
+              20,
+              20,
+              4
+            ]
+          }
+        ],
+        "supports" : [
+          {
+            "max" : [
+              26.01,
+              26.01,
+              4.51
+            ],
+            "min" : [
+              19.99,
+              19.99,
+              -0.01
+            ]
+          }
+        ],
+        "unitJoints" : true
+      },
+      "ownership" : {
+        "id" : "00000000-0000-4000-8100-000000000004",
+        "name" : "Building 4",
+        "openingIDs" : [
+
+        ],
+        "solidIDs" : [
+          "010250B2-D264-44E8-929C-40F2019E6E1A",
+          "539FF458-F76F-4659-824E-8E7DB019DA3B",
+          "9B8AD185-B2C8-4CE5-B64D-772519BDAD1D",
+          "88426633-F886-44F2-A0F5-D66FC7D639E2",
+          "26E0D0BB-01F1-4170-BAB9-67D0F554867F"
+        ],
+        "supportIDs" : [
+          "BA5BBC08-1BAA-4522-8FA5-29A3A671E73C"
+        ]
+      }
+    }
+  ],
+  "atmosphere" : {
+    "density" : 1.225,
+    "pressure" : 101325
+  },
+  "boxes" : [
+
+  ],
+  "charge" : {
+    "mass" : 2,
+    "position" : [
+      4,
+      4,
+      1
+    ]
+  },
+  "domainSize" : [
+    36,
+    36,
+    8
+  ],
+  "gauges" : [
+    {
+      "name" : "Near",
+      "position" : [
+        7,
+        4,
+        1.5
+      ]
+    }
+  ],
+  "name" : "Scaling 4 buildings",
+  "objectOwnership" : {
+    "blocks" : [
+
+    ],
+    "order" : [
+      "00000000-0000-4000-8100-000000000001",
+      "00000000-0000-4000-8100-000000000002",
+      "00000000-0000-4000-8100-000000000003",
+      "00000000-0000-4000-8100-000000000004"
+    ],
+    "structure" : {
+      "id" : "00000000-0000-4000-8100-000000000001",
+      "name" : "Building 1",
+      "openingIDs" : [
+
+      ],
+      "solidIDs" : [
+        "9EC7CF60-0DC5-41FB-A985-E8E37C59A012",
+        "5EA65431-5361-4F67-A51C-BDA77C37031B",
+        "0B83EE58-AA3E-4CCC-BD23-D99AA8AAEDFF",
+        "0AC7C71B-AD0C-420D-AE15-FFFEEE0EA025",
+        "43DD6675-FC0C-4CA9-A3A4-ED60ED22F7FB"
+      ],
+      "supportIDs" : [
+        "A65D80E4-CAFC-43B0-91CB-3339A39D3E90"
+      ]
+    },
+    "version" : 1
+  },
+  "reflectiveFaces" : 16,
+  "structure" : {
+    "barRateAlongBars" : true,
+    "bareBars" : true,
+    "crackAxes" : "turningUntilOpen",
+    "crackShearStiffness" : false,
+    "crackSlip" : true,
+    "elementKind" : "shell",
+    "elementSize" : 0.5,
+    "fixedBase" : true,
+    "inclinedBars" : [
+
+    ],
+    "material" : {
+      "aggregateSize" : 0.016,
+      "bondSpreading" : true,
+      "compressiveStrength" : 3e+07,
+      "concreteRateFactor" : 1,
+      "confinementCoefficient" : 4.1,
+      "crackDilatancy" : 0.5,
+      "crackResidual" : 0.1,
+      "crackSpacing" : 0.1,
+      "crushBand" : 0,
+      "crushLength" : 0,
+      "crushingEnergy" : 33662.37,
+      "density" : 2400,
+      "dowelFactor" : 1,
+      "erosionOpening" : 0.005,
+      "failureStrain" : 1e+30,
+      "fractureEnergy" : 134.64949,
+      "fractureRateExponent" : 0.5,
+      "hardeningModulus" : 0,
+      "isTransparent" : false,
+      "model" : 1,
+      "name" : "Reinforced concrete",
+      "poissonRatio" : 0.2,
+      "rateDependent" : true,
+      "steel" : {
+        "ruptureStrain" : 0.12,
+        "ultimateStrain" : 0.075,
+        "ultimateStress" : 5.75e+08,
+        "yieldStress" : 5e+08,
+        "youngsModulus" : 2e+11
+      },
+      "steelRateDependent" : true,
+      "steelRateFactor" : 1,
+      "steelRateLaw" : "ceb",
+      "tensileStrength" : 2896468.5,
+      "tensionRateLaw" : "modelCode2010",
+      "yieldStress" : 1e+30,
+      "youngsModulus" : 2.5742963e+10
+    },
+    "openings" : [
+
+    ],
+    "reinforcement" : [
+
+    ],
+    "secondCracks" : true,
+    "shellLayers" : 8,
+    "shellSectionShear" : false,
+    "solidElementKind" : [
+
+    ],
+    "solidMaterial" : [
+
+    ],
+    "solidReinforcement" : [
+
+    ],
+    "solidSourceParts" : [
+
+    ],
+    "solids" : [
+      {
+        "max" : [
+          16,
+          10.5,
+          4
+        ],
+        "min" : [
+          10,
+          10,
+          0
+        ]
+      },
+      {
+        "max" : [
+          16,
+          16,
+          4
+        ],
+        "min" : [
+          10,
+          15.5,
+          0
+        ]
+      },
+      {
+        "max" : [
+          10.5,
+          15.5,
+          4
+        ],
+        "min" : [
+          10,
+          10.5,
+          0
+        ]
+      },
+      {
+        "max" : [
+          16,
+          15.5,
+          4
+        ],
+        "min" : [
+          15.5,
+          10.5,
+          0
+        ]
+      },
+      {
+        "max" : [
+          16,
+          16,
+          4.5
+        ],
+        "min" : [
+          10,
+          10,
+          4
+        ]
+      }
+    ],
+    "supports" : [
+      {
+        "max" : [
+          16.01,
+          16.01,
+          4.51
+        ],
+        "min" : [
+          9.99,
+          9.99,
+          -0.01
+        ]
+      }
+    ],
+    "unitJoints" : true
+  }
+}

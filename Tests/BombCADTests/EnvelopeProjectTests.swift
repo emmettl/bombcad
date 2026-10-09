@@ -7,6 +7,24 @@ import Testing
 
 @Suite("Envelope project ownership", .serialized)
 struct EnvelopeProjectTests {
+    @Test("USD exports keep envelope identity and representation on a separate mesh")
+    func export() throws {
+        var scene = try StreetInteractionStudy.make(.isolated)
+        let owner = try #require(scene.structuralObject)
+        try scene.useEnvelope(id: owner.id)
+        let folder = FileManager.default.temporaryDirectory.appending(path: "envelope-export-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let path = folder.appending(path: "scene.usda")
+        let writer = try USDSceneWriter(url: path, scenario: scene, frameInterval: 0.001)
+        try writer.append(nil)
+        try writer.finish()
+        let text = try String(contentsOf: path, encoding: .utf8)
+        #expect(text.contains("def Mesh \"Envelope_0\""))
+        #expect(text.contains(owner.id.uuidString) && text.contains(owner.name))
+        #expect(text.contains("stationary-envelope") && !text.contains("def Mesh \"Structure\""))
+    }
+
     @Test("Mixed envelopes and structures require version five and round trip")
     func package() throws {
         var scene = try StreetInteractionStudy.make(.pair)
