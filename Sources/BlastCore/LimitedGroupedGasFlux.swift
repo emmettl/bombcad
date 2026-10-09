@@ -1,6 +1,8 @@
 import simd
 
-/// Stationary, positive-volume CPU reference. Weighted least squares reconstructs primitive
+/// Positive-volume reconstruction and stationary time stepping. Moving drivers reuse traces
+/// with their own volume bookkeeping; the SSPRK2 advance below remains stationary.
+/// Weighted least squares reconstructs primitive
 /// variables; one-ring extrema limit every supplied face and wall trace. Rank-deficient
 /// stencils retain constant states. This does not claim angular-momentum conservation.
 enum LimitedGroupedGasFlux {

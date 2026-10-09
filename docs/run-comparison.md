@@ -165,9 +165,12 @@ device, each gauge's peak and the structure's largest deflection.
 | `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
 | `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
 | `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
+| `--thermal <spec.json>` | Reckons the fireball's thermal radiation on the ground and the scene's faces, a frame at a time; `--thermal-results` writes it as JSON; see [Thermal radiation](thermal-radiation.md) |
+| `--cloud <spec.json>` | Hands the hot gas left at the end over to a model of the fireball's rise and cloud, followed for minutes; `--cloud-results` writes it as JSON; see [The fireball's rise and cloud](fireball-rise.md) |
 | `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
 | `--fragment-results <file>` | Writes the fragments' impacts as JSON |
-| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb` and `--fragments`, 1 by default |
+| `--ground-shock <spec.json>` | Estimates the ground's shaking under chosen points from the overpressure on the ground, a frame at a time; `--ground-results` writes it as JSON; see [Ground shock](ground-shock.md) |
+| `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb`, `--fragments`, `--thermal` and `--ground-shock`, 1 by default |
 
 The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
 file. With `--out`, the project must have room for another run (16 at most). A legacy layout

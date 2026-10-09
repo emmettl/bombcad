@@ -28,8 +28,12 @@ public final class USDSceneWriter {
     private let camera: Camera?
     private let volumeFields: [String]
     private var volumes: [(frame: Int, path: String)] = []
-    private var pointSets: [(name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>)] =
-        []
+    private var pointSets:
+        [(
+            name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>,
+            values: [(name: String, values: [Float])]
+        )] = []
+    private var cloud: (samples: [CloudSample], centre: SIMD2<Float>, secondsPerFrame: Double)?
     public let frameInterval: Double
     private let scenario: Scenario
     private let playbackRate: Double
@@ -176,8 +180,20 @@ public final class USDSceneWriter {
 
     /// Adds a set of points, such as fragments, with their positions at each frame from the first
     /// and their sizes; written with the rest by `finish()`.
-    public func addPoints(_ name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>) {
-        pointSets.append((name, frames, widths, colour))
+    /// `values` are per-point numbers that do not change, as float primvars.
+    public func addPoints(
+        _ name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>,
+        values: [(name: String, values: [Float])] = []
+    ) {
+        pointSets.append((name, frames, widths, colour, values))
+    }
+
+    /// Adds the cloud after the run, a sphere rising above `centre` with one frame every
+    /// `secondsPerFrame` of simulated time from the first sample. Its frames follow the run's on
+    /// the timeline, at that slower rate, and it is hidden until then.
+    public func addCloud(_ samples: [CloudSample], centre: SIMD2<Float>, secondsPerFrame: Double) {
+        guard !samples.isEmpty else { return }
+        cloud = (samples, centre, secondsPerFrame)
     }
 
     /// Joins the parts into `url`, which must not exist yet.
@@ -217,7 +233,11 @@ public final class USDSceneWriter {
             text.append("        }\n")
         }
 
-        let last = max(frames - 1, 0)
+        let last = max(frames - 1, 0, cloud.map { frames + $0.samples.count - 1 } ?? 0)
+        let cloudTiming =
+            cloud.map {
+                "\n        double cloudStartTimeCode = \(frames)\n        double simulatedSecondsPerCloudFrame = \($0.secondsPerFrame)"
+            } ?? ""
         text.append(
             """
             #usda 1.0
@@ -225,7 +245,7 @@ public final class USDSceneWriter {
                 customLayerData = {
                     string creator = "BombCAD"
                     string scenario = \(quoted(scenario.name))
-                    double simulatedSecondsPerFrame = \(frameInterval)
+                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)
                 }
                 defaultPrim = "Scene"
                 startTimeCode = 0
@@ -265,7 +285,10 @@ public final class USDSceneWriter {
         }
         if let camera { appendCamera(camera, to: &text) }
         if !volumes.isEmpty, !volumeFields.isEmpty { appendVolume(to: &text) }
-        for set in pointSets { appendPoints(set.name, set.frames, set.widths, set.colour, to: &text) }
+        for set in pointSets {
+            appendPoints(set.name, set.frames, set.widths, set.colour, set.values, to: &text)
+        }
+        if let cloud { appendCloud(cloud.samples, centre: cloud.centre, to: &text) }
         try flush()
 
         if hasBody {
@@ -367,9 +390,51 @@ public final class USDSceneWriter {
         text.append("]\n        custom uniform string bombcad:label = \(quoted(label))\n    }\n\n")
     }
 
+    /// The cloud: a sphere whose centre, radius and temperature (the `temperature` primvar, in
+    /// kelvin) are sampled from the frame after the run's last.
+    private func appendCloud(_ samples: [CloudSample], centre: SIMD2<Float>, to text: inout Text) {
+        let first = frames
+        text.append("    def Sphere \"Cloud\"\n    {\n")
+        if first > 0 {
+            text.append("        token visibility.timeSamples = {\n            0: \"invisible\",\n")
+            text.append("            \(first): \"inherited\",\n        }\n")
+        }
+        text.append("        double radius.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            text.append("            \(first + n): ")
+            text.append(Float(sample.radius), decimals: 3)
+            text.append(",\n")
+        }
+        text.append("        }\n        float3[] extent.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            let radius = Float(sample.radius)
+            text.append("            \(first + n): [")
+            text.append(SIMD3(repeating: -radius))
+            text.append(", ")
+            text.append(SIMD3(repeating: radius))
+            text.append("],\n")
+        }
+        text.append("        }\n        double3 xformOp:translate.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            text.append("            \(first + n): ")
+            text.append(SIMD3(centre.x, centre.y, Float(sample.height)))
+            text.append(",\n")
+        }
+        text.append("        }\n        uniform token[] xformOpOrder = [\"xformOp:translate\"]\n")
+        text.append("        color3f[] primvars:displayColor = [")
+        text.append(SIMD3<Float>(0.55, 0.52, 0.5))
+        text.append("]\n        float primvars:temperature.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            text.append("            \(first + n): ")
+            text.append(Float(sample.temperature), decimals: 1)
+            text.append(",\n")
+        }
+        text.append("        }\n    }\n\n")
+    }
+
     private func appendPoints(
         _ name: String, _ frames: [[SIMD3<Float>]], _ widths: [Float], _ colour: SIMD3<Float>,
-        to text: inout Text
+        _ values: [(name: String, values: [Float])], to text: inout Text
     ) {
         let all = frames.joined()
         let low = all.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1) }
@@ -387,7 +452,16 @@ public final class USDSceneWriter {
             "] (\n            interpolation = \"vertex\"\n        )\n        color3f[] primvars:displayColor = ["
         )
         text.append(colour)
-        text.append("]\n        point3f[] points.timeSamples = {\n")
+        text.append("]\n")
+        for (primvar, numbers) in values {
+            text.append("        float[] primvars:\(primvar) = [")
+            for (n, number) in numbers.enumerated() {
+                if n > 0 { text.append(", ") }
+                text.append(number, decimals: 3)
+            }
+            text.append("] (\n            interpolation = \"vertex\"\n        )\n")
+        }
+        text.append("        point3f[] points.timeSamples = {\n")
         for (frame, points) in frames.enumerated() {
             text.append("            \(frame): [")
             for (n, point) in points.enumerated() {

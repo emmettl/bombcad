@@ -33,6 +33,8 @@ USD in its text form (`.usda`), Z up, in metres, written without any USD library
 | `/Scene/Camera` | The project's saved view, in a 16:9 frame |
 | `/Scene/Structure` | The body's surface, frame by frame |
 | `/Scene/Fragments`, `/Scene/Tracers` | With `--fragments`, Points that follow the frames ([Fragments](fragments.md)) |
+| `/Scene/Thermal` | With `--thermal`, Points at the receivers, with their fluence and peak irradiance ([Thermal radiation](thermal-radiation.md)) |
+| `/Scene/Cloud` | With `--cloud`, a sphere rising after the run, on frames of its own that follow the run's ([The fireball's rise and cloud](fireball-rise.md)) |
 
 The structure's surface is what the app draws: the outer faces of intact solid elements, each
 shell and beam as a box its thickness or section across, and a small cube of rubble for each

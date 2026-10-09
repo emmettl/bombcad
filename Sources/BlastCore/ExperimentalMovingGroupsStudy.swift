@@ -112,7 +112,7 @@ public enum ExperimentalMovingGroupsStudy {
     static func domain(
         h: Double, angle: Double, start: Double, duration: Double,
         previous: [FractionalGasTransport.Cell]? = nil, prescribedBody: RigidBoxBody? = nil,
-        prescribedVelocity: SIMD3<Double> = velocity
+        prescribedVelocity: SIMD3<Double> = velocity, reconstruct: Bool = false
     ) throws -> Domain {
         let count = Int((2 / h).rounded())
         guard previous == nil || previous!.count == count * count * count else {
@@ -120,6 +120,22 @@ public enum ExperimentalMovingGroupsStudy {
         }
         let body = try prescribedBody ?? self.body(angle: angle, time: start)
         let sweep = try TranslatingBoxSpaceTimeGeometry(body: body, velocity: prescribedVelocity)
+        let startGeometry = FractionalBoxGeometry(body)
+        let endGeometry = FractionalBoxGeometry(body.translated(by: duration * prescribedVelocity))
+        let nominalVolume = h * h * h
+        var oldCentres: [SIMD3<Double>] = []
+        var finalCentres: [SIMD3<Double>] = []
+        var endPatches = [[FractionalBoxGeometry.SurfacePatch]?](repeating: nil, count: count * count * count)
+        func gasCentre(_ g: FractionalBoxGeometry, lower: SIMD3<Double>, volume: Double) throws -> SIMD3<
+            Double
+        > {
+            let origin = lower + SIMD3<Double>(repeating: h / 2)
+            if volume == 0 || volume == nominalVolume { return origin }
+            let nodes = g.gasQuadrature(lower: lower, cellSize: h)
+            let weight = nodes.reduce(0) { $0 + $1.weight }
+            guard weight > 0 else { throw Failure.inconsistentInventory }
+            return origin + nodes.reduce(SIMD3<Double>.zero) { $0 + $1.weight * ($1.point - origin) } / weight
+        }
         var geometry: [TranslatingBoxSpaceTimeGeometry.Result] = []
         var old: [FractionalGasTransport.Cell] = []
         var centres: [SIMD3<Double>] = []
@@ -143,6 +159,15 @@ public enum ExperimentalMovingGroupsStudy {
                                 velocity: prescribedVelocity, pressure: 101325))
                     }
                     centres.append(centre)
+                    if reconstruct {
+                        oldCentres.append(
+                            try gasCentre(startGeometry, lower: lower, volume: r.initialGasVolume))
+                        finalCentres.append(
+                            try gasCentre(endGeometry, lower: lower, volume: r.finalGasVolume))
+                        if r.finalGasVolume > 0 && r.finalGasVolume < nominalVolume {
+                            endPatches[index] = endGeometry.openFacePatches(lower: lower, cellSize: h)
+                        }
+                    }
                     geometry.append(r)
                     for wall in r.walls where wall.areaTime > 0 {
                         boundaries.append(
@@ -171,6 +196,7 @@ public enum ExperimentalMovingGroupsStudy {
             }
         }
         var faces: [ConnectedGasGroups.Face] = []
+        var finalFaces: [ConnectedGasGroups.Face] = []
         for z in 0..<count {
             for y in 0..<count {
                 for x in 0..<count {
@@ -179,6 +205,23 @@ public enum ExperimentalMovingGroupsStudy {
                         let neighbor = index + [1, count, count * count][axis]
                         let a = geometry[index].openFaces[2 * axis + 1]
                         let b = geometry[neighbor].openFaces[2 * axis]
+                        if reconstruct && geometry[index].finalGasVolume > 0
+                            && geometry[neighbor].finalGasVolume > 0
+                        {
+                            let pa = endPatches[index]?[2 * axis + 1]
+                            let pb = endPatches[neighbor]?[2 * axis]
+                            if let pa, let pb, abs(pa.area - pb.area) > h * h * 1e-10 {
+                                throw Failure.inconsistentFace
+                            }
+                            let area = pa?.area ?? pb?.area ?? (h * h)
+                            if area > h * h * 1e-12 {
+                                let point =
+                                    pa?.centroid ?? pb?.centroid ?? (centres[index] + centres[neighbor]) / 2
+                                finalFaces.append(
+                                    .init(
+                                        a: index, b: neighbor, area: area, normal: a.normal, centroid: point))
+                            }
+                        }
                         guard abs(a.areaTime - b.areaTime) < h * h * duration * 1e-10 else {
                             throw Failure.inconsistentFace
                         }
@@ -201,7 +244,9 @@ public enum ExperimentalMovingGroupsStudy {
             finalVolumes: geometry.map(\.finalGasVolume),
             meanVolumes: geometry.map { $0.gasVolumeTime / duration },
             centres: centres, nominalVolume: h * h * h, faces: faces, boundaries: boundaries,
-            duration: duration, velocity: prescribedVelocity)
+            duration: duration, velocity: prescribedVelocity,
+            oldGasCentres: reconstruct ? oldCentres : nil, finalGasCentres: reconstruct ? finalCentres : nil,
+            finalFaces: reconstruct ? finalFaces : nil)
         return Domain(plan: plan, old: old, body: body)
     }
     private static func measure(

@@ -7,10 +7,33 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--moving-entropy") {
+        let limited = arguments.contains("--limited")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-entropy\(limited ? "-limited" : "").json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingTrajectoryStudy.Result] = []
+        _ = try ExperimentalMovingEntropyStudy.run(limited: limited) { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            let f = r.frames.last!
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation), CFL \(r.cfl): \(f.steps) steps, density L1 \(f.transport!.relativeDensityL1), pressure error \(f.maximumRelativePressureError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--moving-trajectory") {
         let window = arguments.contains("--ambient-window")
         let halving = arguments.contains("--halving")
-        let stem = "moving-trajectory" + (window ? "-ambient-window" : "") + (halving ? "-halving" : "")
+        let limited = arguments.contains("--limited")
+        let stem =
+            "moving-trajectory" + (window ? "-ambient-window" : "") + (halving ? "-halving" : "")
+            + (limited ? "-limited" : "")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/\(stem).json")
         let encoder = JSONEncoder()
@@ -18,7 +41,8 @@ do {
         var completed: [ExperimentalMovingTrajectoryStudy.Result] = []
         _ = try ExperimentalMovingTrajectoryStudy.run(
             cfls: halving ? [0.2, 0.1] : [0.2],
-            duration: window ? 0.000064 : 0.0008, velocityScale: window ? 1 : 100, nearCrossing: window
+            duration: window ? 0.000064 : 0.0008, velocityScale: window ? 1 : 100, nearCrossing: window,
+            limited: limited
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)

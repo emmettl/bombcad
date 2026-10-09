@@ -21,6 +21,10 @@ enum MovingConnectedGasGroups {
         let boundaries: [Boundary]
         let duration: Double
         let velocity: SIMD3<Double>
+        let oldCentres: [SIMD3<Double>]?
+        let finalCentres: [SIMD3<Double>]?
+        let memberFinalCentres: [SIMD3<Double>]?
+        let finalFaces: [ConnectedGasGroups.Face]?
         let maximumAreaResidual: Double
         let maximumMomentResidual: Double
         let maximumVolumeResidual: Double
@@ -60,6 +64,8 @@ enum MovingConnectedGasGroups {
         old: [FractionalGasTransport.Cell], finalVolumes: [Double], meanVolumes: [Double],
         centres: [SIMD3<Double>], nominalVolume: Double, faces: [ConnectedGasGroups.Face],
         boundaries: [Boundary], duration: Double, velocity: SIMD3<Double>,
+        oldGasCentres: [SIMD3<Double>]? = nil, finalGasCentres: [SIMD3<Double>]? = nil,
+        finalFaces: [ConnectedGasGroups.Face]? = nil,
         minimumFraction: Double = 0.25, maximumMembers: Int = 64, tolerance: Double = 1e-8
     ) throws -> Plan {
         guard old.count == finalVolumes.count, old.count == meanVolumes.count,
@@ -68,6 +74,22 @@ enum MovingConnectedGasGroups {
             meanVolumes.allSatisfy({ $0.isFinite && $0 >= 0 })
         else { throw Failure.invalidGeometry }
         _ = try FractionalGasTransport.advance(old, newVolumes: old.map(\.volume), transfers: [])
+        guard
+            [oldGasCentres != nil, finalGasCentres != nil, finalFaces != nil].allSatisfy({ $0 })
+                || (oldGasCentres == nil && finalGasCentres == nil && finalFaces == nil)
+        else { throw Failure.invalidGeometry }
+        for points in [oldGasCentres, finalGasCentres].compactMap({ $0 }) {
+            guard points.count == old.count,
+                points.allSatisfy({ p in (0..<3).allSatisfy { p[$0].isFinite } })
+            else { throw Failure.invalidGeometry }
+        }
+        for face in finalFaces ?? [] {
+            guard old.indices.contains(face.a), old.indices.contains(face.b), face.a != face.b,
+                finalVolumes[face.a] > 0 && finalVolumes[face.b] > 0, face.area.isFinite && face.area > 0,
+                (0..<3).allSatisfy({ face.normal[$0].isFinite && face.centroid[$0].isFinite }),
+                abs(simd_length_squared(face.normal) - 1) < 1e-12
+            else { throw Failure.invalidGeometry }
+        }
         for n in old.indices {
             guard meanVolumes[n] > 0 || (old[n].volume == 0 && finalVolumes[n] == 0) else {
                 throw Failure.invalidGeometry
@@ -162,10 +184,30 @@ enum MovingConnectedGasGroups {
                     cell: mapping[b.cell], area: b.area, normal: b.normal,
                     centroid: b.centroid, owner: b.owner), meanTime: boundary.meanTime)
         }
+        func groupCentres(_ points: [SIMD3<Double>], _ volumes: [Double]) -> [SIMD3<Double>] {
+            roots.map { n in
+                let total = members[n].reduce(0) { $0 + volumes[$1] }
+                let origin = points[members[n].max(by: { volumes[$0] < volumes[$1] })!]
+                return origin + members[n].reduce(SIMD3<Double>.zero) {
+                    $0 + volumes[$1] * (points[$1] - origin)
+                } / total
+            }
+        }
+        let endFaces = finalFaces.map { raw in
+            raw.compactMap { face -> ConnectedGasGroups.Face? in
+                guard mapping[face.a] != mapping[face.b] else { return nil }
+                return .init(
+                    a: mapping[face.a], b: mapping[face.b], area: face.area,
+                    normal: face.normal, centroid: face.centroid)
+            }
+        }
         return Plan(
             members: roots.map { members[$0] }, cellToGroup: mapping, cells: groups,
             finalVolumes: roots.map { final[$0] }, memberFinalVolumes: finalVolumes,
             faces: external, boundaries: outer, duration: duration, velocity: velocity,
+            oldCentres: oldGasCentres.map { groupCentres($0, old.map(\.volume)) },
+            finalCentres: finalGasCentres.map { groupCentres($0, finalVolumes) },
+            memberFinalCentres: finalGasCentres, finalFaces: endFaces,
             maximumAreaResidual: support.maximumAreaResidual,
             maximumMomentResidual: support.maximumMomentResidual, maximumVolumeResidual: volumeResidual)
     }
@@ -183,14 +225,37 @@ enum MovingGroupedGasFlux {
         /// Extensive gas gain from prescribed outer reservoirs, in packet lane order.
         let reservoirExchange: SIMD8<Double>
         let maximumStep: Double
+        let scatterLimitedGroups: Int
+        let scatterPositivityReducedGroups: Int
+        let scatterRankDeficientGroups: Int
     }
     static func advance(
         _ plan: MovingConnectedGasGroups.Plan, exterior: FractionalGasTransport.Cell,
-        cfl: Double = 0.2
+        cfl: Double = 0.2, limited: Bool = false
     ) throws -> Result {
         guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
         _ = try FractionalGasTransport.advance([exterior], newVolumes: [exterior.volume], transfers: [])
+        return try advance(
+            plan, exteriorAt: { _ in exterior }, cfl: cfl, limited: limited,
+            reconstructionExteriorAt: limited ? { _, _ in exterior } : nil)
+    }
+    /// Boundary-specific supplied states permit spatial/time-dependent reservoirs. The
+    /// caller owns trace quadrature; numerical transfers remain paired and audited.
+    static func advance(
+        _ plan: MovingConnectedGasGroups.Plan,
+        exteriorAt: (MovingConnectedGasGroups.Boundary) throws -> FractionalGasTransport.Cell,
+        cfl: Double = 0.2, limited: Bool = false,
+        reconstructionExteriorAt: (
+            (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
+        )? = nil
+    ) throws -> Result {
         var cells = plan.cells
+        if limited && (plan.oldCentres == nil || reconstructionExteriorAt == nil) {
+            throw MovingConnectedGasGroups.Failure.invalidGeometry
+        }
+        var centres = plan.oldCentres ?? []
+        var reconstructionStates = plan.cells
+        var reconstructionFaces = plan.faces
         var faces = plan.faces.map {
             FractionalEulerFlux.Face(a: $0.a, b: $0.b, normal: $0.normal, area: $0.area)
         }
@@ -200,13 +265,44 @@ enum MovingGroupedGasFlux {
             if b.owner == 1 {
                 walls.append(.init(cell: b.cell, normal: b.normal, area: b.area, velocity: plan.velocity))
             } else {
+                let exterior = try exteriorAt(boundary)
+                guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
+                _ = try FractionalGasTransport.advance(
+                    [exterior], newVolumes: [exterior.volume], transfers: [])
                 // A separate finite buffer per patch makes the existing paired flux usable
                 // for a prescribed reservoir. Its inventory change is returned explicitly.
                 faces.append(.init(a: b.cell, b: cells.count, normal: b.normal, area: b.area))
+                if limited {
+                    let point =
+                        centres[b.cell] - 2 * simd_dot(centres[b.cell] - b.centroid, b.normal) * b.normal
+                    let state = try reconstructionExteriorAt!(boundary, point)
+                    guard state.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
+                    _ = try FractionalGasTransport.advance([state], newVolumes: [state.volume], transfers: [])
+                    reconstructionFaces.append(
+                        .init(
+                            a: b.cell, b: cells.count, area: b.area,
+                            normal: b.normal, centroid: b.centroid))
+                    centres.append(point)
+                    reconstructionStates.append(state)
+                }
                 cells.append(
                     .init(
                         volume: 1, density: exterior.amount[0] / exterior.volume,
                         velocity: exterior.velocity, pressure: exterior.pressure()))
+            }
+        }
+        if limited {
+            let geometry = try LimitedGroupedGasFlux.Geometry(
+                centres: centres, faces: reconstructionFaces,
+                boundaries: plan.boundaries.filter { $0.geometry.owner == 1 }.map(\.geometry))
+            let traces = try geometry.traces(reconstructionStates)
+            faces = traces.faces.map { f in
+                .init(
+                    a: f.a, b: f.b, normal: f.normal, area: f.area,
+                    leftState: f.leftState, rightState: f.b < plan.cells.count ? f.rightState : cells[f.b])
+            }
+            walls = traces.walls.map { w in
+                .init(cell: w.cell, normal: w.normal, area: w.area, velocity: plan.velocity, state: w.state)
             }
         }
         let limit = try FractionalEulerFlux.maximumStep(cells, faces: faces, walls: walls, cfl: cfl)
@@ -221,8 +317,12 @@ enum MovingGroupedGasFlux {
         }
         var reservoir = SIMD8<Double>.zero
         for n in plan.cells.count..<cells.count { reservoir += cells[n].amount - advanced.cells[n].amount }
+        let scattered = limited ? try LimitedMovingGroupScatter.scatter(plan, updated: updated) : nil
         return Result(
-            cells: try plan.scatter(updated), wallImpulses: advanced.wallImpulses,
-            wallWork: advanced.wallWork, reservoirExchange: reservoir, maximumStep: limit)
+            cells: try scattered?.cells ?? plan.scatter(updated), wallImpulses: advanced.wallImpulses,
+            wallWork: advanced.wallWork, reservoirExchange: reservoir, maximumStep: limit,
+            scatterLimitedGroups: scattered?.limitedGroups ?? 0,
+            scatterPositivityReducedGroups: scattered?.positivityReducedGroups ?? 0,
+            scatterRankDeficientGroups: scattered?.rankDeficientGroups ?? 0)
     }
 }

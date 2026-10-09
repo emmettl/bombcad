@@ -512,6 +512,28 @@ independent corner-containment oracle. Rejected trials retain the accepted pose 
 roundoff contacts use consistent geometric volume/face predicates. Nonuniform moving-load
 accuracy, free-body feedback, rotation and gas angular momentum remain subsequent work.
 
+`swift run -c release rigidboxdemo --moving-entropy` writes `.build/moving-entropy.json`.
+A quadratic density profile is advected with the prescribed box while pressure and velocity
+remain constant. Degree-two gas quadrature gives exact clipped-cell reference averages,
+and an independent whole-domain integral checks their mass. Spatial/time-averaged outer
+states drive the numerical reservoirs. Twelve cases cover 0.4/0.2/0.1 m grids, aligned/rotated
+boxes and CFL 0.2/0.1. `python3 Scripts/summarize-moving-entropy.py` checks the complete
+matrix, budgets, reference integrals and spatial/CFL sensitivity. Density L1 error falls
+from about 30% to 18% to 10%, normalized by the imposed excess density mass; CFL halving
+changes it by less than 0.27% relative. This exposes first-order spatial diffusion and
+group mixing. It tests nonuniform density transport; pressure-load accuracy remains a
+separate benchmark.
+
+Add `--limited` to the moving-entropy command for `.build/moving-entropy-limited.json`,
+then run `python3 Scripts/summarize-moving-entropy.py --limited` to compare both methods.
+Primitive face/wall reconstruction uses old gas-volume centroids and supplied exterior
+stencil points. Conservative member reconstruction uses final gas centroids, bounds slopes
+and checks Euler positivity while preserving group packets. Density L1 errors fall to
+about 2.9%, 1.0–1.1% and 0.3–0.4% on the three grids, with fine-grid newly exposed-cell
+density errors around 1%. Time integration remains first-order. The same `--limited`
+flag applies to moving trajectories; `python3 Scripts/summarize-moving-trajectory.py --limited`
+checks their fast and original-speed reports.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
@@ -579,8 +601,12 @@ Collapse and debris have not been compared with anything.
 | [Shell model](docs/shell-model.md)          | Shells for walls and slabs, beams for columns                   |
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
+| [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
+| [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas |
+| [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud for minutes after |
+| [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, fed the overpressure on the ground |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |

@@ -1,0 +1,180 @@
+{
+  "comparisonMask": "Per layout, exclude every probe whose stencil touched solid in any setting; also exclude source radius 3 m and edge margin 1 m.",
+  "comparisons": [
+    {
+      "arrivalCommonReachedSamples": 3271,
+      "arrivalMeanAbsoluteErrorS": 0.002344280477713241,
+      "arrivalReachClassificationDifferences": 981,
+      "commonFluidSamples": 4288,
+      "impulseRelativeL1": 0.3234347256860401,
+      "peakRelativeL1": 0.725074704796352,
+      "reference": "isolated-finest",
+      "run": "isolated-coarse"
+    },
+    {
+      "arrivalCommonReachedSamples": 4248,
+      "arrivalMeanAbsoluteErrorS": 0.000934267320338985,
+      "arrivalReachClassificationDifferences": 4,
+      "commonFluidSamples": 4288,
+      "impulseRelativeL1": 0.09090752671297689,
+      "peakRelativeL1": 0.4739897150225036,
+      "reference": "isolated-finest",
+      "run": "isolated-medium"
+    },
+    {
+      "arrivalCommonReachedSamples": 4252,
+      "arrivalMeanAbsoluteErrorS": 0.00040306083513640714,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4288,
+      "impulseRelativeL1": 0.01930330496168981,
+      "peakRelativeL1": 0.2019597061559463,
+      "reference": "isolated-finest",
+      "run": "isolated-fine"
+    },
+    {
+      "arrivalCommonReachedSamples": 4252,
+      "arrivalMeanAbsoluteErrorS": 0.0005958486371119457,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4288,
+      "impulseRelativeL1": 0.061083131964755795,
+      "peakRelativeL1": 0.242040357890812,
+      "reference": "isolated-finest",
+      "run": "isolated-adaptive"
+    },
+    {
+      "arrivalCommonReachedSamples": 4252,
+      "arrivalMeanAbsoluteErrorS": 0.00010127584934148638,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4288,
+      "impulseRelativeL1": 0.01111029326871512,
+      "peakRelativeL1": 0.026696581128436033,
+      "reference": "isolated-fine",
+      "run": "isolated-half-cfl"
+    },
+    {
+      "arrivalCommonReachedSamples": 3004,
+      "arrivalMeanAbsoluteErrorS": 0.002545654346737695,
+      "arrivalReachClassificationDifferences": 1052,
+      "commonFluidSamples": 4128,
+      "impulseRelativeL1": 0.36146283176401967,
+      "peakRelativeL1": 0.7189805387346446,
+      "reference": "pair-finest",
+      "run": "pair-coarse"
+    },
+    {
+      "arrivalCommonReachedSamples": 4056,
+      "arrivalMeanAbsoluteErrorS": 0.0009465066301282068,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4128,
+      "impulseRelativeL1": 0.11159903231301789,
+      "peakRelativeL1": 0.46932550034120496,
+      "reference": "pair-finest",
+      "run": "pair-medium"
+    },
+    {
+      "arrivalCommonReachedSamples": 4056,
+      "arrivalMeanAbsoluteErrorS": 0.0003663511033037482,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4128,
+      "impulseRelativeL1": 0.018641103986763875,
+      "peakRelativeL1": 0.20091517931130204,
+      "reference": "pair-finest",
+      "run": "pair-fine"
+    },
+    {
+      "arrivalCommonReachedSamples": 4056,
+      "arrivalMeanAbsoluteErrorS": 0.0004896337766272168,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4128,
+      "impulseRelativeL1": 0.08237738297113965,
+      "peakRelativeL1": 0.23338633173533482,
+      "reference": "pair-finest",
+      "run": "pair-adaptive"
+    },
+    {
+      "arrivalCommonReachedSamples": 4056,
+      "arrivalMeanAbsoluteErrorS": 9.88384897435898e-05,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 4128,
+      "impulseRelativeL1": 0.012260182335526556,
+      "peakRelativeL1": 0.0264763168422812,
+      "reference": "pair-fine",
+      "run": "pair-half-cfl"
+    },
+    {
+      "arrivalCommonReachedSamples": 3164,
+      "arrivalMeanAbsoluteErrorS": 0.0024650845987989967,
+      "arrivalReachClassificationDifferences": 500,
+      "commonFluidSamples": 3808,
+      "impulseRelativeL1": 0.3656437499592676,
+      "peakRelativeL1": 0.7166484966346297,
+      "reference": "street-finest",
+      "run": "street-coarse"
+    },
+    {
+      "arrivalCommonReachedSamples": 3634,
+      "arrivalMeanAbsoluteErrorS": 0.0010254607297193164,
+      "arrivalReachClassificationDifferences": 30,
+      "commonFluidSamples": 3808,
+      "impulseRelativeL1": 0.11738640094245835,
+      "peakRelativeL1": 0.4647961008226778,
+      "reference": "street-finest",
+      "run": "street-medium"
+    },
+    {
+      "arrivalCommonReachedSamples": 3664,
+      "arrivalMeanAbsoluteErrorS": 0.000389448034661572,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 3808,
+      "impulseRelativeL1": 0.01983504232523737,
+      "peakRelativeL1": 0.1985971255820868,
+      "reference": "street-finest",
+      "run": "street-fine"
+    },
+    {
+      "arrivalCommonReachedSamples": 3664,
+      "arrivalMeanAbsoluteErrorS": 0.0005337251211790376,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 3808,
+      "impulseRelativeL1": 0.09037026245427893,
+      "peakRelativeL1": 0.2281725989555563,
+      "reference": "street-finest",
+      "run": "street-adaptive"
+    },
+    {
+      "arrivalCommonReachedSamples": 3664,
+      "arrivalMeanAbsoluteErrorS": 9.718757680131005e-05,
+      "arrivalReachClassificationDifferences": 0,
+      "commonFluidSamples": 3808,
+      "impulseRelativeL1": 0.013042983555646783,
+      "peakRelativeL1": 0.026162955833071426,
+      "reference": "street-fine",
+      "run": "street-half-cfl"
+    }
+  ],
+  "conservation": [
+    {
+      "energyErrorPerSourceEnergy": 5.330948255258126e-06,
+      "energyRelativeResidual": 1.7953256548075558e-08,
+      "massErrorPerSourceMass": 0.00018428266048431396,
+      "massRelativeResidual": 3.0771215797642526e-08,
+      "run": "closed-coarse"
+    },
+    {
+      "energyErrorPerSourceEnergy": 8.887792408580306e-06,
+      "energyRelativeResidual": 2.9286876701561937e-08,
+      "massErrorPerSourceMass": 0.0002611037343740463,
+      "massRelativeResidual": 4.265634101496829e-08,
+      "run": "closed-medium"
+    },
+    {
+      "energyErrorPerSourceEnergy": 9.274251146480641e-06,
+      "energyRelativeResidual": 3.0556898789058096e-08,
+      "massErrorPerSourceMass": 0.0002804053947329521,
+      "massRelativeResidual": 4.5804483983502564e-08,
+      "run": "closed-fine"
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceRevision": "f01e2523ee822a9e609c0901c791aa4acfd4a675"
+}

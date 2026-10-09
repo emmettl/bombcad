@@ -177,8 +177,8 @@ must pass. Most separate, because they happen on different time scales: prompt r
 microseconds, the thermal flash over milliseconds to seconds, the blast in milliseconds, collapse
 over seconds, the fireball's rise over seconds to minutes, fire over minutes to hours, fallout
 over hours to days. Effects that overlap in time and act on each other must run together; those
-that only follow from the blast can trail it, or come after it, elsewhere. None of these models
-exists yet except the blast and the structures.
+that only follow from the blast can trail it, or come after it, elsewhere. Of these models only
+the blast, the structures, the thermal radiation and the fireball's rise exist.
 
 | Effect | Coupling to the blast | Separable? |
 |---|---|---|
@@ -187,10 +187,10 @@ exists yet except the blast and the structures.
 | Simplified buildings across a wide area, as obstacles | Both ways: they shield and redirect the blast | No: they belong in the air's solve. Deriving them from detailed studies is independent runs, which scale perfectly. |
 | Damage to those buildings | In effect one way, if most collapse comes after the main blast has passed (an assumption to state) | Yes: each driven by its recorded loads, as independent jobs |
 | The early fireball (expansion, afterburning) | It is the hot gas in the air model | No: the same solver |
-| The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state |
-| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)) |
+| The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state. Now a hand-over of a few numbers at the end of a run, followed for minutes in milliseconds: [The fireball's rise and cloud](fireball-rise.md) |
+| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on this Mac's CPU, a few numbers a frame: [Thermal radiation](thermal-radiation.md) |
 | Material heating and fire | Driven by the radiation; the blast's wind disturbs it only weakly | Yes: after the event |
-| Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures |
+| Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures. Built as an illustrative estimate, fed the ground's air each frame: see [Ground shock](ground-shock.md) |
 | The crater and ground shock near the charge | Both ways, in the first milliseconds: the ground loads and vents the blast, and throws soil into it | No near the charge; yes for thrown soil once airborne, ballistic like fragments, unless its dust loading of the air matters |
 | Prompt radiation | None with the flow; depends on the geometry and the air's density | Yes, entirely: before, alongside or independently |
 | Fallout and plumes | One way, from the risen cloud and the weather | Yes, in sequence, after the rise |
