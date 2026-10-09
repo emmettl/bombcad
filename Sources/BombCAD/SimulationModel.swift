@@ -248,6 +248,8 @@ final class SimulationModel {
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
+    /// Shows the sheet for exporting the project's run for rendering.
+    var showsRenderExport = false
 
     private(set) var isRunning = false
     private(set) var time: Double = 0

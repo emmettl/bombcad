@@ -1337,6 +1337,8 @@ two collapsing over several seconds.
      (Done: `BombCAD run --vdb`, with a writer of our own, checked against OpenVDB through
      macOS's USD; overpressure and the pressure gradient, about 14 MB a frame on the medium
      street grid. See [Exporting a run for rendering](usd-export.md#the-air).)
+  3. **In the app**: File ▸ Export for Rendering… runs a copy of the project in the background
+     and writes both, with peak overpressure and impulse as further grids. (Done.)
 
 ## Things tried and set aside
 

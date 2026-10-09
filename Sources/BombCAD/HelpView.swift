@@ -129,6 +129,10 @@ private enum HelpTopic: String, CaseIterable, Identifiable {
                     "Export Layout JSON writes only the scene for interchange; it leaves out run and view preferences. Import Layout JSON… in the toolbar’s extra-actions menu opens a layout as a new project. Use the CSV export beside the chart to keep results separately from the project."
                 ),
                 (
+                    "Export for rendering",
+                    "File ▸ Export for Rendering… (⇧⌘E) runs the project again in the background and writes a USD scene, with the air as OpenVDB volumes in a folder beside it, for rendering in Blender. Choose the frame interval, which volumes to write, and whether to fly the project's fragments into the scene. The window carries on meanwhile; Cancel stops the export and removes its volumes."
+                ),
+                (
                     "If something goes wrong",
                     "If a run cannot start, check the message in the viewport and any warning in the sidebar. For GPU memory issues, try a coarser grid or a simpler layout. If opening a file fails, keep the original and check that it is a BombCAD project or a supported layout JSON file."
                 ),

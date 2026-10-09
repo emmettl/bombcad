@@ -9,6 +9,11 @@ planned in the [roadmap](roadmap.md#usability-in-parallel) are done.
 swift run -c release BombCAD run Example.bombcad --usd Example.usda --vdb Example.volumes --frame-interval 10
 ```
 
+In the app, **File ▸ Export for Rendering…** (⇧⌘E, or the toolbar's extra-actions menu) does the
+same from the open project: it runs a copy of it in the background, with a frame interval, the
+volumes' grids and the project's fragments chosen in a sheet, and writes the scene where the
+save panel says and the volumes in a folder beside it (`Example.volumes` for `Example.usda`).
+
 `--usd` and `--vdb` are options of the [headless run](run-comparison.md#headless-runs), and
 either can be used alone; `--frame-interval` sets the milliseconds of simulated time between
 frames (1 by default). Frames are taken where the run loop samples the structure, every
@@ -194,8 +199,8 @@ blender -b --python Scripts/check-export-in-blender.py -- Example.usda 0,10,25 r
   early (above).
 - **No reference reader in the tests.** The files are checked against OpenVDB and Blender by
   hand, through `usdrecord` and the script above, not in `make check`.
-- **Headless only.** The app keeps no frames of its runs, so there is no Export command in the
-  app; a project saved from the app is exported with `BombCAD run`.
+- **A second run.** The app keeps no frames of its runs, so exporting from the app runs the
+  project again rather than writing out the run on screen.
 - **Large files at fine intervals**, in text form above all; see above.
 - **No materials.** Faces carry the material's name and transparency, not a shader; colours and
   glass are set up in the renderer.
