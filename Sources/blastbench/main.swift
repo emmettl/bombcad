@@ -32,6 +32,7 @@ import simd
 //                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
 //                       [--stationary-walls]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -1959,8 +1960,55 @@ func runRocking() throws {
     }
 }
 
+/// Short runs of a few scenes, each summed up as a hash of the air's state, peaks and impulses
+/// and of the structure's summary: two builds that print the same hashes ran the same to the bit.
+func runDigest() throws {
+    func fnv(_ hash: inout UInt64, _ value: Float) {
+        hash = (hash ^ UInt64(value.bitPattern)) &* 0x100_0000_01b3
+    }
+    let steps = option("steps").flatMap { Int($0) } ?? 80
+    let cases: [(String, ScenarioPreset, Float, Bool)] = [
+        ("open", .openGround, 0.5, false), ("street", .streetCanyon, 0.5, false),
+        ("street, afterburning", .streetCanyon, 0.5, true), ("wall", .blastWall, 0.25, false),
+    ]
+    for (name, preset, cellSize, afterburning) in cases {
+        var configuration = SolverConfiguration()
+        configureRefinement(&configuration)
+        configuration.afterburning = afterburning
+        let solver = try BlastSolver(
+            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+        let result = solver.advance(steps: steps)
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        solver.withState { cells in
+            for cell in cells {
+                for value in [cell.density, cell.momentumX, cell.momentumY, cell.momentumZ, cell.energy] {
+                    fnv(&hash, value)
+                }
+            }
+        }
+        let grid = solver.grid
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    fnv(&hash, solver.peakOverpressure(i, j, k))
+                    fnv(&hash, solver.impulse(i, j, k))
+                }
+            }
+        }
+        if let summary = solver.bodySummary() {
+            fnv(&hash, summary.maxDisplacement)
+            fnv(&hash, summary.maxDamage)
+            fnv(&hash, Float(summary.erodedElements))
+        }
+        print(
+            "\(name), \(cellSize) m: \(String(hash, radix: 16)) after \(result.steps) steps, "
+                + "\(result.refinedTiles) refined blocks")
+    }
+}
+
 do {
     switch command {
+    case "digest": try runDigest()
     case "slab": try runSlab()
     case "beam": try runBeam()
     case "shear": try runShearBeam()
