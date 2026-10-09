@@ -354,6 +354,28 @@ final class SimulationModel {
     @ObservationIgnored private var flownSpec: FragmentSpec?
     @ObservationIgnored private var fragmentWorker: SweepWorkerClient?
     @ObservationIgnored private var fragmentWorkerHost: String?
+    /// The project's ground points, if it has any: where to estimate the ground's shaking from
+    /// the overpressure on the ground, one way, through each run. Saved with the project, like
+    /// the fragments; changes take effect from the next run and settle into a step to undo.
+    var groundShockSpec: GroundShockSpec? {
+        didSet {
+            guard groundShockSpec != oldValue, !isApplyingInputs else { return }
+            groundShockEdit?.cancel()
+            groundShockEdit = Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                recordEdit()
+            }
+        }
+    }
+    @ObservationIgnored private var groundShockEdit: Task<Void, Never>?
+    /// How the ground has moved so far in the run, at each point, and a line saying so.
+    private(set) var groundShockLive: GroundShockResult?
+    private(set) var groundShockStatus = ""
+    @ObservationIgnored private(set) var groundShock: GroundShockConsumer?
+    @ObservationIgnored private var groundShockTime = -1.0
+    /// The ground points the current run estimates, as they were when it started.
+    @ObservationIgnored private var estimatedGroundSpec: GroundShockSpec?
     private static let undoLimit = 100
 
     init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {
@@ -373,6 +395,7 @@ final class SimulationModel {
             settings.scenario = scenario
             savedRuns = document.savedRuns
             fragmentSpec = document.fragments
+            groundShockSpec = document.groundShock
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -446,7 +469,10 @@ final class SimulationModel {
             }
             structureHistory = structureRecord
             bodyHistories = bodyRecords
-            if let solver { startFragments(solver) }
+            if let solver {
+                startFragments(solver)
+                startGroundShock(solver)
+            }
         }
         isRunning = true
         restartPacing()
@@ -500,6 +526,7 @@ final class SimulationModel {
         adopt(document.scenario)
         savedRuns = document.savedRuns
         fragmentSpec = document.fragments
+        groundShockSpec = document.groundShock
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -641,14 +668,17 @@ final class SimulationModel {
 
     var currentInputs: SimulationInputs {
         SimulationInputs(
-            scenario: settings.scenario, settings: ProjectRunSettings(model: self), fragments: fragmentSpec)
+            scenario: settings.scenario, settings: ProjectRunSettings(model: self), fragments: fragmentSpec,
+            groundShock: groundShockSpec)
     }
 
     /// Inputs from the undo history, fragments and all.
     private func applyInputs(_ inputs: SimulationInputs) {
         fragmentEdit?.cancel()
+        groundShockEdit?.cancel()
         isApplyingInputs = true
         fragmentSpec = inputs.fragments
+        groundShockSpec = inputs.groundShock
         isApplyingInputs = false
         applyExperimentInputs(inputs)
     }
@@ -669,7 +699,8 @@ final class SimulationModel {
             throw ProjectFileError.invalid("Finish the sweep before restoring a saved run's inputs.")
         }
         let inputs = SimulationInputs(
-            scenario: run.scenario, settings: run.settings, fragments: run.fragments?.spec)
+            scenario: run.scenario, settings: run.settings, fragments: run.fragments?.spec,
+            groundShock: run.groundShock?.spec)
         try inputs.validate()
         recordEdit()
         if inputs != currentInputs {
@@ -1200,6 +1231,11 @@ final class SimulationModel {
                             maximumDamage: Double(summary.maxDamage)))
                 } : nil)
         run.fragments = flown
+        if let groundShock, let spec = estimatedGroundSpec {
+            var result = groundShock.result(frameInterval: 0)
+            for n in result.points.indices { result.points[n].history = [] }
+            run.groundShock = SavedSimulationRun.GroundShock(spec: spec, result: result)
+        }
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1258,6 +1294,67 @@ final class SimulationModel {
             })
         else { return }
         savedRuns.append(run)
+    }
+
+    // MARK: - Ground shock
+
+    /// Starts estimating the ground's shaking for a run beginning now, if the project has
+    /// ground points within its domain.
+    private func startGroundShock(_ solver: BlastSolver) {
+        stopGroundShock()
+        guard let spec = groundShockSpec else { return }
+        guard (try? spec.validate(domain: scenario.domainSize)) != nil else {
+            groundShockStatus =
+                "Some ground points lie outside the domain; move them to estimate the shaking."
+            return
+        }
+        groundShock = GroundShockConsumer(spec: spec)
+        estimatedGroundSpec = spec
+        sendGroundShockFrame(solver)
+        updateGroundShockStatus()
+    }
+
+    private func stopGroundShock() {
+        groundShock = nil
+        estimatedGroundSpec = nil
+        groundShockTime = -1
+        groundShockLive = nil
+        groundShockStatus = ""
+    }
+
+    /// The air on the ground now: at the start, then once a run passes each millisecond, and at
+    /// the end (`last`), as the fragments get theirs. A sample a point, taken in line: the peaks
+    /// are the solver's own, kept every step, so the frames miss none of them, and the batches
+    /// are not shortened for them, so the air is untouched.
+    private func sendGroundShockFrame(_ solver: BlastSolver, last: Bool = false) {
+        guard groundShock != nil, solver.time > groundShockTime + 1e-9 else { return }
+        let interval = Self.fragmentFrameInterval
+        let next = groundShockTime < 0 ? 0 : (floor(groundShockTime / interval + 1e-6) + 1) * interval
+        guard last || solver.time >= next - 1e-9 else { return }
+        groundShockTime = solver.time
+        guard let region = groundShock?.region(cellSize: solver.grid.cellSize) else { return }
+        groundShock?.consume(solver.groundSlice(low: region.low, high: region.high))
+    }
+
+    private func updateGroundShockStatus() {
+        guard let groundShock else { return }
+        let result = groundShock.result(frameInterval: 0)
+        groundShockLive = result
+        let open = result.points.filter { !$0.covered }
+        let reached = open.filter { $0.arrival != nil }
+        var text = "The blast has reached \(reached.count) of \(result.points.count) points"
+        if let top = reached.max(by: {
+            $0.surfaceVelocity(in: result.soil) < $1.surfaceVelocity(in: result.soil)
+        }) {
+            text += String(
+                format: "; the ground moves fastest under (%.1f, %.1f), %.0f mm/s down",
+                top.position.x, top.position.y, top.surfaceVelocity(in: result.soil) * 1000)
+        }
+        let covered = result.points.count - open.count
+        if covered > 0 { text += "; \(covered) under a block or the structure" }
+        let outrun = reached.filter { $0.regime == .outrunning }.count
+        if outrun > 0 { text += "; outrun by the ground's wave at \(outrun)" }
+        groundShockStatus = text
     }
 
     // MARK: - Fragments
@@ -1376,6 +1473,7 @@ final class SimulationModel {
         isLoadingInputs = true
         defer { isLoadingInputs = false }
         stopFragments()
+        stopGroundShock()
         completedRunSettings = nil
         loadedRunSettings = nil
         isRunning = false
@@ -1527,6 +1625,7 @@ final class SimulationModel {
         let result = solver.completeBatch()
         let finished = solver.time >= duration - 1e-9
         sendFragmentFrame(solver, last: finished)
+        sendGroundShockFrame(solver, last: finished)
 
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
@@ -1667,6 +1766,7 @@ final class SimulationModel {
         structureHistory = structureRecord
         bodyHistories = bodyRecords
         updateFragmentStatus()
+        updateGroundShockStatus()
         let ambient = scenario.atmosphere.pressure
         // Enough for the chart's width: each point is the extreme of its bucket, so peaks show, and
         // Charts takes tens of milliseconds a redraw at a thousand points a gauge.
@@ -1723,6 +1823,11 @@ extension SimulationModel {
     }
 
     private var fragmentScale: Float { max(fragmentLaunchSpeed, 1) }
+
+    /// Draws the ground points as the run has left them, or before a run where they will be.
+    func groundShockDots() -> [SIMD4<Float>] {
+        groundShockLive?.dots ?? groundShockSpec?.dots ?? []
+    }
 }
 
 extension Duration {

@@ -8,6 +8,8 @@ struct SimulationInputs: Equatable, Sendable {
     var settings: ProjectRunSettings
     /// The fragments flown alongside, for undo; sweep cases leave the project's as they are.
     var fragments: FragmentSpec?
+    /// The ground points estimated alongside, likewise.
+    var groundShock: GroundShockSpec? = nil
 
     func validate() throws {
         try ProjectDocument.validate(scenario)

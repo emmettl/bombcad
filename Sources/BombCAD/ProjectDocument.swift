@@ -114,6 +114,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var savedRuns: [SavedSimulationRun] = []
     /// A cased charge's fragments to fly alongside each run, saved as `fragments.json`.
     var fragments: FragmentSpec?
+    /// Ground points whose shaking to estimate alongside each run, saved as `groundShock.json`.
+    var groundShock: GroundShockSpec?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -148,6 +150,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     init(model: SimulationModel) {
         savedRuns = model.savedRuns
         fragments = model.fragmentSpec
+        groundShock = model.groundShockSpec
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -198,6 +201,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try spec.validate()
             fragments = spec
         }
+        if let data = archive.files["groundShock.json"] {
+            let spec = try JSONDecoder().decode(GroundShockSpec.self, from: data)
+            try spec.validate()
+            groundShock = spec
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -236,6 +244,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["fragments.json"] = try ProjectArchive.encodeJSON(fragments)
         } else {
             files.removeValue(forKey: "fragments.json")
+        }
+        if let groundShock {
+            try groundShock.validate()
+            files["groundShock.json"] = try ProjectArchive.encodeJSON(groundShock)
+        } else {
+            files.removeValue(forKey: "groundShock.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.
