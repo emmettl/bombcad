@@ -212,6 +212,140 @@ struct FireballRiseTests {
         #expect(wind(5000) == wind(1000) && wind(0) == .zero && wind(-1) == .zero)
     }
 
+    @Test("Bolton's saturation vapour pressure, and gas split into vapour and liquid at saturation")
+    func saturation() {
+        #expect(abs(CloudRise.saturationPressure(temperature: 273.15) - 611.2) < 1e-9)
+        // 4.246 kPa at 30 °C, from the steam tables.
+        #expect(abs(CloudRise.saturationPressure(temperature: 303.15) / 4246 - 1) < 0.002)
+        #expect(CloudRise.saturationHumidity(temperature: 400, pressure: 101_325) == .infinity)
+        let cp = 1005.0
+        let pressure = 90_000.0
+        for (temperature, water) in [(280.0, 0.02), (300.0, 0.05), (250.0, 0.001)] {
+            // Saturated air at `temperature` with the rest of `water` liquid.
+            let saturated = CloudRise.saturationHumidity(temperature: temperature, pressure: pressure)
+            let enthalpy = cp * temperature + CloudRise.latentHeat * saturated
+            let split = CloudRise.split(
+                enthalpy: enthalpy, water: water, pressure: pressure, specificHeat: cp)
+            #expect(abs(split.temperature - temperature) < 1e-7 && abs(split.vapour / saturated - 1) < 1e-9)
+        }
+        // Too little water to saturate: all vapour.
+        let dry = CloudRise.split(
+            enthalpy: cp * 290 + CloudRise.latentHeat * 0.001, water: 0.001, pressure: pressure,
+            specificHeat: cp)
+        #expect(abs(dry.temperature - 290) < 1e-9 && dry.vapour == 0.001)
+    }
+
+    @Test(
+        "In uniform humid air, mixing conserves the cloud's excess water and moist enthalpy, through condensing"
+    )
+    func moistMixing() {
+        var spec = CloudSpec()
+        spec.productWater = 0.6
+        let humidity =
+            0.9 * CloudRise.saturationHumidity(temperature: ambientTemperature, pressure: ambientPressure)
+        // Warm, wet gas, like breath on a cold day: its water rises faster with its heat along
+        // the line of its mixtures with the air than saturation does.
+        var start = handOver(radius: 3, height: 7, excess: 0.3)
+        start.chargeMass = start.mass / 4
+        let times = [0.0, 0.1, 0.3, 1, 3, 10, 30, 100, 300]
+        let (samples, _) = CloudRise.follow(
+            start, spec: spec, atmosphere: uniform, humidity: { _ in humidity }, at: times)
+        func enthalpy(_ sample: CloudSample) -> Double {
+            spec.specificHeat * sample.temperature + CloudRise.latentHeat
+                * (sample.water - sample.liquidWater)
+        }
+        let air = spec.specificHeat * ambientTemperature + CloudRise.latentHeat * humidity
+        let first = samples[0]
+        #expect(abs(first.water - (0.6 / 4 + humidity * 3 / 4)) < 1e-12 && first.liquidWater == 0)
+        for sample in samples {
+            #expect(
+                abs(sample.mass * (sample.water - humidity) / (first.mass * (first.water - humidity)) - 1)
+                    < 1e-6)
+            #expect(
+                abs(sample.mass * (enthalpy(sample) - air) / (first.mass * (enthalpy(first) - air)) - 1)
+                    < 1e-5)
+        }
+        // Mixed into air near saturation it condenses on the way, and evaporates again as it
+        // thins: a mixing cloud.
+        #expect(
+            samples.contains { $0.liquidWater > 0 } && samples.last?.liquidWater == 0,
+            "\(samples.map(\.liquidWater))")
+    }
+
+    @Test(
+        "Air rising without mixing cools at the dry adiabatic lapse rate, and once saturated at the moist one"
+    )
+    func adiabats() throws {
+        var spec = CloudSpec()
+        spec.entrainment = 1e-9
+        let atmosphere = CloudAtmosphere(
+            groundTemperature: ambientTemperature, groundPressure: ambientPressure, lapseRate: 0.0065,
+            tropopause: 11_000)
+        for saturated in [false, true] {
+            let humidity = CloudHumidity(relativeHumidity: saturated ? 1 : 0, atmosphere: atmosphere)
+            // Air of the surroundings, 10 m up, sent upwards.
+            let q = humidity(10)
+            let air = atmosphere(10)
+            var start = handOver(radius: 5, height: 10, excess: 0, riseSpeed: 3)
+            start.temperature = air.temperature * (1 + q / CloudRise.molarRatio - q)
+            start.ambientPressure = air.pressure
+            let (samples, _) = CloudRise.follow(
+                start, spec: spec, atmosphere: atmosphere.callAsFunction, humidity: humidity.callAsFunction,
+                at: [0, 15])
+            let lapse =
+                (samples[0].temperature - samples[1].temperature) / (samples[1].height - samples[0].height)
+            #expect(abs(samples[0].temperature - air.temperature) < 1e-9)
+            let middle = atmosphere((samples[0].height + samples[1].height) / 2)
+            let expected: Double
+            if saturated {
+                // The saturated adiabatic lapse rate, g (1 + L r / (R T)) / (c_p + L² r ε / (R T²)).
+                let r = CloudRise.saturationHumidity(
+                    temperature: middle.temperature, pressure: middle.pressure)
+                let l = CloudRise.latentHeat
+                let rt = CloudRise.gasConstant * middle.temperature
+                expected =
+                    CloudRise.gravity * (1 + l * r / rt)
+                    / (spec.specificHeat + l * l * r * CloudRise.molarRatio / (rt * middle.temperature))
+                #expect(samples[1].liquidWater > 0)
+            } else {
+                expected = CloudRise.gravity / spec.specificHeat
+                #expect(samples[1].liquidWater == 0)
+            }
+            #expect(
+                abs(lapse / expected - 1) < (saturated ? 0.02 : 0.002),
+                "\(lapse * 1000) against \(expected * 1000) K/km")
+        }
+    }
+
+    @Test(
+        "Humid air lifts the cloud a little by its vapour, and saturated air lets it condense and go on rising"
+    )
+    func humidRise() throws {
+        let atmosphere = CloudAtmosphere(
+            groundTemperature: ambientTemperature, groundPressure: ambientPressure, lapseRate: 0.0065,
+            tropopause: 11_000)
+        var start = handOver(radius: 7, height: 7, excess: 4)
+        start.chargeMass = 50
+        func follow(_ relativeHumidity: Double) -> (samples: [CloudSample], stabilised: CloudSample?) {
+            var spec = CloudSpec()
+            spec.relativeHumidity = relativeHumidity
+            return CloudRise.follow(
+                start, spec: spec, atmosphere: atmosphere.callAsFunction,
+                humidity: spec.humidity(start).callAsFunction, at: [0, 600, 1200])
+        }
+        let dry = follow(0)
+        let humid = follow(0.8)
+        let saturated = follow(1)
+        let dryStop = try #require(dry.stabilised)
+        let humidStop = try #require(humid.stabilised)
+        #expect(humidStop.height > dryStop.height && humidStop.height < 1.1 * dryStop.height)
+        #expect(humid.samples.allSatisfy { $0.liquidWater == 0 })
+        // Saturated air at 6.5 K/km is unstable for a cloud that condenses as it rises, cooling at
+        // the moist adiabatic rate of about 5 K/km.
+        #expect(saturated.stabilised == nil && saturated.samples[2].riseSpeed > 0)
+        #expect(saturated.samples[2].height > 2 * dryStop.height && saturated.samples[2].liquidWater > 0)
+    }
+
     @Test("The standard atmosphere's pressure at the tropopause and above")
     func standardAtmosphere() {
         let atmosphere = CloudAtmosphere(
@@ -284,6 +418,9 @@ struct FireballRiseTests {
         #expect(windy.windSpeed == 5 && windy.wind.direction == .pi / 6 && windy.windExponent == 1.0 / 7)
         let backwards = try JSONDecoder().decode(CloudSpec.self, from: Data(#"{"windSpeed": -1}"#.utf8))
         #expect(throws: CocoaError.self) { try backwards.validate() }
+        let soaked = try JSONDecoder().decode(CloudSpec.self, from: Data(#"{"relativeHumidity": 1.2}"#.utf8))
+        #expect(throws: CocoaError.self) { try soaked.validate() }
+        #expect(spec.relativeHumidity == 0 && spec.productWater == 0.2)
     }
 
     @Test(
@@ -317,6 +454,7 @@ struct FireballRiseTests {
         #expect(text.contains("double simulatedSecondsPerCloudFrame = 2.0\n"))
         #expect(text.contains("def Sphere \"Cloud\"") && text.contains("            3: \"inherited\""))
         #expect(text.contains("float primvars:temperature.timeSamples"))
+        #expect(text.contains("float primvars:liquidWater.timeSamples"))
 
         let checker = URL(filePath: "/usr/bin/usdchecker")
         if FileManager.default.isExecutableFile(atPath: checker.path) {

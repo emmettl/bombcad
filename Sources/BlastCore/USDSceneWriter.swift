@@ -390,8 +390,9 @@ public final class USDSceneWriter {
         text.append("]\n        custom uniform string bombcad:label = \(quoted(label))\n    }\n\n")
     }
 
-    /// The cloud: a sphere whose centre, radius and temperature (the `temperature` primvar, in
-    /// kelvin) are sampled from the frame after the run's last.
+    /// The cloud: a sphere whose centre, radius, temperature (the `temperature` primvar, in
+    /// kelvin) and liquid water (`liquidWater`, in grams a kilogram) are sampled from the frame
+    /// after the run's last.
     private func appendCloud(_ samples: [CloudSample], to text: inout Text) {
         let first = frames
         text.append("    def Sphere \"Cloud\"\n    {\n")
@@ -427,6 +428,12 @@ public final class USDSceneWriter {
         for (n, sample) in samples.enumerated() {
             text.append("            \(first + n): ")
             text.append(Float(sample.temperature), decimals: 1)
+            text.append(",\n")
+        }
+        text.append("        }\n        float primvars:liquidWater.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            text.append("            \(first + n): ")
+            text.append(Float(1000 * sample.liquidWater), decimals: 3)
             text.append(",\n")
         }
         text.append("        }\n    }\n\n")

@@ -361,6 +361,10 @@ enum HeadlessRun {
             model.onSample = { solver in
                 if let spec = options.cloud, solver.time >= end - 1e-9 {
                     handOver = solver.cloudHandOver(hotterThan: spec.handOverTemperature)
+                    handOver?.chargeMass = Double(
+                        ([inputs.scenario.charge] + (inputs.scenario.additionalCharges ?? [])).reduce(0) {
+                            $0 + $1.mass
+                        })
                 }
                 guard framed else { return }
                 // The last sample, at the end of the run, can fall between frames.

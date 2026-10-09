@@ -280,6 +280,7 @@ struct HeadlessRunTests {
             ]))
         let cloud = try #require(result.cloud)
         #expect(abs(cloud.handOver.time - 0.004) < 1e-9 && cloud.handOver.mass > 0, "\(cloud.handOver)")
+        #expect(cloud.handOver.chargeMass == 0.5 && (cloud.samples.first?.water ?? 0) > 0)
         #expect(abs((cloud.samples.last?.time ?? 0) - 30.004) < 1e-9)
         #expect((cloud.samples.last?.height ?? 0) > Double(cloud.handOver.centre.z))
         // Blown along x, the wind's default direction.
