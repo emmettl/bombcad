@@ -29,6 +29,14 @@ public enum ExperimentalInitialWallTraceStudy {
         public let rankDeficientAreaFraction: Double
         public let centroidDataLimiterFactor: Double
     }
+    public struct VolumeFitDiagnostics: Codable, Sendable {
+        public let modes: [DiagnosticMode]
+        public let quadraticFallbackAreaFraction: Double
+        public let pointQuadraticFallbackAreaFraction: Double
+        public let linearFallbackAreaFraction: Double
+        public let meanStencilSize: Double
+        public let maximumMomentResidual: Double
+    }
     public struct Result: Codable, Sendable {
         public let cellSize: Double
         public let rotation: Double
@@ -55,6 +63,8 @@ public enum ExperimentalInitialWallTraceStudy {
         public let computeSeconds: Double
         public var decomposition: ReconstructionDiagnostics? = nil
         public var halfDurationDecomposition: ReconstructionDiagnostics? = nil
+        public var volumeFits: VolumeFitDiagnostics? = nil
+        public var halfDurationVolumeFits: VolumeFitDiagnostics? = nil
     }
     enum Failure: Error { case invalidConfiguration, invalidReference }
     private struct Probe {
@@ -65,10 +75,11 @@ public enum ExperimentalInitialWallTraceStudy {
         let groups: Int
         let maximumMembers: Int
         var decomposition: ReconstructionDiagnostics? = nil
+        var volumeFits: VolumeFitDiagnostics? = nil
     }
     public static func run(
         cellSizes: [Double] = [0.2, 0.1, 0.05], rotations: [Double] = [0, 0.23],
-        targetPulseEnergy: Double = 6400, decompose: Bool = false,
+        targetPulseEnergy: Double = 6400, decompose: Bool = false, volumeFits: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard !cellSizes.isEmpty && !rotations.isEmpty, targetPulseEnergy.isFinite && targetPulseEnergy > 0
@@ -104,10 +115,12 @@ public enum ExperimentalInitialWallTraceStudy {
                 let velocity = 100 * ExperimentalMovingGroupsStudy.velocity
                 let full = try probe(
                     h: h, angle: angle, body: body, velocity: velocity, duration: dt,
-                    initial: initial.cells, reference: reference, pressure: pressure, decompose: decompose)
+                    initial: initial.cells, reference: reference, pressure: pressure, decompose: decompose,
+                    volumeFits: volumeFits)
                 let half = try probe(
                     h: h, angle: angle, body: body, velocity: velocity, duration: dt / 2,
-                    initial: initial.cells, reference: reference, pressure: pressure, decompose: decompose)
+                    initial: initial.cells, reference: reference, pressure: pressure, decompose: decompose,
+                    volumeFits: volumeFits)
                 let row = Result(
                     cellSize: h, rotation: angle, duration: dt, velocity: velocity,
                     targetPulseEnergy: targetPulseEnergy, pulseAmplitude: initial.amplitude,
@@ -122,7 +135,8 @@ public enum ExperimentalInitialWallTraceStudy {
                     halfDurationSupplied: half.supplied, halfDurationConstant: half.constant,
                     halfDurationLimited: half.limited,
                     computeSeconds: Date().timeIntervalSince(clock),
-                    decomposition: full.decomposition, halfDurationDecomposition: half.decomposition)
+                    decomposition: full.decomposition, halfDurationDecomposition: half.decomposition,
+                    volumeFits: full.volumeFits, halfDurationVolumeFits: half.volumeFits)
                 rows.append(row)
                 try progress(row)
             }
@@ -132,7 +146,7 @@ public enum ExperimentalInitialWallTraceStudy {
     private static func probe(
         h: Double, angle: Double, body: RigidBoxBody, velocity: SIMD3<Double>, duration: Double,
         initial: [FractionalGasTransport.Cell], reference: BoxSurfacePressureReference.Load,
-        pressure: @escaping (SIMD3<Double>) -> Double, decompose: Bool
+        pressure: @escaping (SIMD3<Double>) -> Double, decompose: Bool, volumeFits: Bool
     ) throws -> Probe {
         let domain = try ExperimentalMovingGroupsStudy.domain(
             h: h, angle: angle, start: 0, duration: duration, previous: initial, prescribedBody: body,
@@ -275,9 +289,15 @@ public enum ExperimentalInitialWallTraceStudy {
                 rankDeficientAreaFraction: deficientArea / totalArea,
                 centroidDataLimiterFactor: pointFactor / totalArea)
         }
+        let fits =
+            volumeFits
+            ? try ExperimentalVolumePressureFitStudy.evaluate(
+                plan: domain.plan, body: body, h: h, traces: limited, reference: reference,
+                pressure: pressure) : nil
         return try .init(
             supplied: loads(constant, known: true), constant: loads(constant, known: false),
             limited: loads(limited, known: false), samples: limited.count, groups: domain.plan.cells.count,
-            maximumMembers: domain.plan.members.map(\.count).max()!, decomposition: decomposition)
+            maximumMembers: domain.plan.members.map(\.count).max()!, decomposition: decomposition,
+            volumeFits: fits)
     }
 }

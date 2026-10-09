@@ -1667,10 +1667,58 @@ the analytic-gradient loads. The six-case summary checks all nine modes at both 
 durations against independent whole-face integrals, reported errors and pressure bounds;
 the largest duration-halving load change is `1.12e-7` of the reference norm.
 
-Next, investigate finite-volume-aware gradient estimation and pressure curvature or
-resolution in this isolated wall probe, then reassess the evolved load histories.
-The present evidence does not justify weakening the limiter or replacing conservative
-averages with point pressure. Spatial load accuracy remains a
+The `--volume-fit` probe now compares three reconstructions on the same two-ring internal
+group stencil with the same inverse-distance least-squares weights: linear, quadratic
+treating group averages as centroid values, and quadratic using gas-volume second moments.
+The point-quadratic comparison still uses actual group averages; it does not receive the
+known pressure field. The volume-aware basis subtracts each group's mean quadratic terms,
+retaining its supplied pressure average while fitting gradients and curvature together.
+This initial state has uniform density and velocity, so pressure averages correspond to
+the conservative energy initialization. That relationship cannot be assumed for arbitrary
+evolved states. Only the load/error audit receives the known Gaussian; none of the fits
+receives an analytic gradient. No numerical gas stage uses these fits.
+
+Positive degree-two gas quadrature supplies moments over the old clipped/merged volumes.
+Volume and first-moment residuals stay below `5.6e-15` in nominal cell units. Coordinates
+scaled by h and a column-pivoted, reorthogonalized least-squares solve avoid mixed-unit
+normal equations. Deficient quadratic fits fall back to linear, then constant; no such
+fallback occurs on the sampled body groups in these six cases. Area-weighted stencil
+sizes range from about 19 to 24 neighbours. This controls the polynomial/moment comparison,
+but the wider linear fit also changes neighbours and weights relative to the existing
+one-ring bounded transport, so its difference is not an isolated measure of stencil size.
+
+Force/torque errors against the independent whole-face integral are:
+
+| Cell size / orientation | Existing bounded | Two-ring linear | Point quadratic | Volume quadratic |
+|---|---|---|---|---|
+| 0.2 m / aligned | 70.9% / 98.8% | 79.0% / 73.0% | 75.8% / 47.6% | 80.3% / 58.6% |
+| 0.2 m / rotated | 43.5% / 35.8% | 44.9% / 31.2% | 33.9% / 16.1% | 38.3% / 24.4% |
+| 0.1 m / aligned | 19.0% / 23.0% | 28.6% / 31.6% | 3.17% / 0.682% | 1.64% / 6.25% |
+| 0.1 m / rotated | 10.1% / 13.7% | 14.3% / 18.3% | 1.96% / 2.97% | 1.40% / 1.39% |
+| 0.05 m / aligned | 0.105% / 0.195% | 0.250% / 0.373% | 0.399% / 1.16% | 0.281% / 0.504% |
+| 0.05 m / rotated | 1.98% / 3.83% | 2.32% / 4.38% | 0.951% / 1.51% | 0.656% / 0.584% |
+
+The volume-aware quadratic improves the fine rotated load and local pressure L1 error
+(1.15% versus the bounded fit's 2.49%), but the existing aligned fine fit remains better.
+At 0.1 m, its L1 errors are 10.1%/5.93% versus 19.2%/10.9% bounded. Accounting for volume
+moments does not uniformly improve torque relative to the point-quadratic comparison,
+and coarse curvature remains unresolved: volume-quadratic L1 errors reach 92.0%/46.1%.
+All three raw fits produce below-ambient profile values. Volume-quadratic undershoots
+cover about 18–20% of coarse/medium body area and 3.55%/3.97% on the finest grid, despite
+positive absolute pressure in every diagnostic sample. Fine stencil-bound violations
+cover 3.73%/4.07%. These results do not justify adopting an unbounded quadratic scheme.
+
+All 111 CPU-only tests in 22 suites pass. New independent polynomial tests check quadratic
+reproduction and retained averages on unequal rotated volumes, affine fields, coordinate
+scaling/order independence and both rank fallbacks. The wall probe verifies unchanged
+baseline loads. The six-case independent summary audits all three modes at full/half
+duration; the largest load change is `8.1e-8` of the reference norm. Release generation
+succeeds with main's existing concurrency warnings, and formatting/diff checks are clean.
+
+Next, test a bound that retains the volume-aware polynomial's group average and compare
+both local pressure and net loads, including sensitivity to stencil extent and resolution.
+Only after that isolated gate should an experimental numerical update be considered and
+the evolved load histories reassessed. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
