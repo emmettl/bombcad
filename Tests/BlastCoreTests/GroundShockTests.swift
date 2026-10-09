@@ -71,8 +71,8 @@ struct GroundShockTests {
         #expect(abs(deep.stress - 50e3) < 0.5 && abs(deep.verticalVelocity - 0.104167) < 1e-6)
         #expect(deep.verticalDisplacement == surface.verticalDisplacement)
         #expect(abs(deep.arrival! - 0.014) < 1e-9)
-        // A weak front runs at the speed of sound; one slower than stiff soil leaves no
-        // horizontal estimate.
+        // A weak front runs at the speed of sound. One slower than stiff soil is outrun, and one
+        // only a little faster stands too steeply: neither has a horizontal estimate.
         let weak = AirInducedGroundShock.frontSpeed(
             overpressure: 0, ambientPressure: 101_325, ambientDensity: 1.225, gamma: 1.4)
         #expect(abs(weak - 340.294) < 0.01)
@@ -81,6 +81,18 @@ struct GroundShockTests {
             soil: GroundSoil(density: 2600, waveSpeed: 3000),
             frontSpeed: speed)
         #expect(rock.horizontalVelocity == nil && abs(rock.verticalVelocity - 100e3 / 7.8e6) < 1e-9)
+        #expect(GroundShockRegime(frontSpeed: speed, soil: GroundSoil(waveSpeed: 3000)) == .outrunning)
+        let steep = GroundSoil(waveSpeed: 400)
+        #expect(GroundShockRegime(frontSpeed: speed, soil: steep) == .transseismic)
+        #expect(
+            AirInducedGroundShock.response(
+                peak: 100e3, impulse: 200, arrival: 0.01, depth: 0, soil: steep, frontSpeed: speed
+            ).horizontalVelocity == nil)
+        // At √2 c, 45°: as fast outwards as down.
+        let edge = AirInducedGroundShock.response(
+            peak: 100e3, impulse: 200, arrival: 0.01, depth: 0, soil: soil,
+            frontSpeed: 300 * Float(2).squareRoot())
+        #expect(abs(edge.horizontalVelocity! / edge.verticalVelocity - 1) < 1e-5)
         // No blast, no response.
         let none = AirInducedGroundShock.response(
             peak: 0, impulse: 0, arrival: nil, depth: 1, soil: soil, frontSpeed: weak)
@@ -184,10 +196,12 @@ struct GroundShockTests {
         let first = result.points[0]
         #expect(first.history == [0, 400, 30e3, -2e3] && first.arrival == 0.002)
         #expect(first.peakOverpressure == 50e3 && first.impulse == 40 && abs(first.duration - 0.0016) < 1e-9)
-        #expect(!first.covered && !first.outrunning && first.responses.map(\.depth) == [0, 2])
+        #expect(!first.covered && first.regime == .transseismic && first.responses.map(\.depth) == [0, 2])
         let expected = AirInducedGroundShock.response(
             peak: 50e3, impulse: 40, arrival: 0.002, depth: 2, soil: spec.soil, frontSpeed: first.frontSpeed)
         #expect(first.responses[1] == expected)
+        // 50 kPa runs at 405 m/s, short of √2 × 300: no horizontal estimate.
+        #expect(first.responses.allSatisfy { $0.horizontalVelocity == nil })
         // The blocked point keeps what it saw while open; one never open is covered.
         let last = result.points[4]
         #expect(!last.covered && last.peakOverpressure == 600 && last.arrival == nil)

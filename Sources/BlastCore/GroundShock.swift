@@ -95,6 +95,31 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
     }
 }
 
+/// How the air's front sweeps over the ground against the soil's wave speed c.
+public enum GroundShockRegime: String, Codable, Sendable {
+    /// Faster than √2 c: the soil's wave trails the front at under 45° to the ground, the
+    /// one-dimensional estimate holds and gives a horizontal motion no larger than the vertical.
+    case superseismic
+    /// Between c and √2 c: the soil's wave front stands steeply, and the plane-front estimate of
+    /// horizontal motion grows without bound as the front slows to c; the vertical estimate is
+    /// given, the horizontal left out.
+    case transseismic
+    /// Slower than c: the soil's wave runs ahead of the air's and shakes the ground before the
+    /// blast arrives, which the model does not cover; the vertical estimate is given only as the
+    /// air's share.
+    case outrunning
+
+    public init(frontSpeed: Float, soil: GroundSoil) {
+        if frontSpeed >= soil.waveSpeed * Float(2).squareRoot() {
+            self = .superseismic
+        } else if frontSpeed > soil.waveSpeed {
+            self = .transseismic
+        } else {
+            self = .outrunning
+        }
+    }
+}
+
 /// The ground's peak response at one depth below a point.
 public struct GroundResponse: Codable, Sendable, Equatable {
     public var depth: Float
@@ -104,8 +129,8 @@ public struct GroundResponse: Codable, Sendable, Equatable {
     public var verticalVelocity: Float
     /// Peak vertical displacement, m, downwards.
     public var verticalDisplacement: Float
-    /// Peak horizontal particle velocity, m/s, away from the blast; nil where the ground's wave
-    /// outruns the air's, which the model does not cover.
+    /// Peak horizontal particle velocity, m/s, away from the blast; nil unless the front is
+    /// superseismic (see `GroundShockRegime`).
     public var horizontalVelocity: Float?
     /// When the stress wave reaches this depth, s; nil if the blast never reached the point.
     public var arrival: Double?
@@ -129,7 +154,7 @@ public struct GroundResponse: Codable, Sendable, Equatable {
 /// surface stress, so the particles move at σ/(ρc), and the column's top sinks by the impulse
 /// over ρc. Real soil gives way more on unloading than on loading, which shaves the peak as the
 /// wave goes down; the manuals' factor 1/(1 + z/(c t_d)) stands in for that. Where the air's
-/// front sweeps over the ground faster than c, the soil's wave trails behind it at an angle and
+/// front sweeps over the ground well over c, the soil's wave trails behind it at an angle and
 /// the particles also move outwards.
 public enum AirInducedGroundShock {
     /// The duration, s, of the triangular pulse with the same peak and impulse: 2I/P.
@@ -170,7 +195,7 @@ public enum AirInducedGroundShock {
         // Superseismic: the soil's wave front trails at θ to the ground, sin θ = c/U, and its
         // particles move square to the front.
         var horizontal: Float?
-        if frontSpeed > soil.waveSpeed {
+        if GroundShockRegime(frontSpeed: frontSpeed, soil: soil) == .superseismic {
             let sine = soil.waveSpeed / frontSpeed
             horizontal = vertical * sine / sqrt(1 - sine * sine)
         }

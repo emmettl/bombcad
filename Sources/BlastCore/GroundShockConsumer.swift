@@ -16,8 +16,8 @@ public struct GroundPointResult: Codable, Sendable, Equatable {
     public var arrival: Double?
     /// The air front's speed over the ground, m/s, by Rankine–Hugoniot from the peak.
     public var frontSpeed: Float
-    /// Whether the soil's wave outruns the air's front there, which the model does not cover.
-    public var outrunning: Bool
+    /// How that front compares with the soil's wave speed; nil where no blast arrived.
+    public var regime: GroundShockRegime?
     /// The response at each depth asked for.
     public var responses: [GroundResponse]
     /// The overpressure on the ground at every frame, Pa.
@@ -25,7 +25,8 @@ public struct GroundPointResult: Codable, Sendable, Equatable {
 
     public init(
         position: SIMD2<Float>, covered: Bool, peakOverpressure: Float, impulse: Float, duration: Float,
-        arrival: Double?, frontSpeed: Float, outrunning: Bool, responses: [GroundResponse], history: [Float]
+        arrival: Double?, frontSpeed: Float, regime: GroundShockRegime?, responses: [GroundResponse],
+        history: [Float]
     ) {
         self.position = position
         self.covered = covered
@@ -34,7 +35,7 @@ public struct GroundPointResult: Codable, Sendable, Equatable {
         self.duration = duration
         self.arrival = arrival
         self.frontSpeed = frontSpeed
-        self.outrunning = outrunning
+        self.regime = regime
         self.responses = responses
         self.history = history
     }
@@ -47,21 +48,29 @@ public struct GroundShockResult: Codable, Sendable, Equatable {
     public var frameInterval: Double
     public var frames: Int
     public var points: [GroundPointResult]
+    /// The ground's air sent, bytes, and the wall-clock time the run spent cutting it out and
+    /// consuming it, s.
+    public var airBytes: Int
+    public var seconds: Double
 
     public init(
-        soil: GroundSoil, depths: [Float], frameInterval: Double, frames: Int, points: [GroundPointResult]
+        soil: GroundSoil, depths: [Float], frameInterval: Double, frames: Int, points: [GroundPointResult],
+        airBytes: Int = 0, seconds: Double = 0
     ) {
         self.soil = soil
         self.depths = depths
         self.frameInterval = frameInterval
         self.frames = frames
         self.points = points
+        self.airBytes = airBytes
+        self.seconds = seconds
     }
 
     public var summary: String {
         let open = points.filter { !$0.covered }
         let covered = points.count - open.count
-        let outrunning = open.filter(\.outrunning).count
+        let transseismic = open.filter { $0.regime == .transseismic }.count
+        let outrunning = open.filter { $0.regime == .outrunning }.count
         var text = String(
             format: "Ground shock at %d points, soil %.0f kg/m³ at %.0f m/s", points.count, soil.density,
             soil.waveSpeed)
@@ -73,8 +82,11 @@ public struct GroundShockResult: Codable, Sendable, Equatable {
                 response.verticalVelocity * 1000, response.depth, top.position.x, top.position.y,
                 top.peakOverpressure / 1000)
         }
+        if transseismic > 0 { text += "; no horizontal estimate at \(transseismic) where the front nears c" }
         if outrunning > 0 { text += "; outrun by the ground's wave at \(outrunning)" }
         if covered > 0 { text += "; \(covered) under a block or the structure" }
+        text += String(
+            format: "; %.1f MB of ground air in %d frames, %.3f s", Double(airBytes) / 1e6, frames, seconds)
         return text
     }
 }
@@ -137,7 +149,8 @@ public struct GroundShockConsumer: Sendable {
             return GroundPointResult(
                 position: self.points[n], covered: sample == nil, peakOverpressure: peak, impulse: impulse,
                 duration: AirInducedGroundShock.duration(peak: peak, impulse: impulse), arrival: arrivals[n],
-                frontSpeed: speed, outrunning: peak > 0 && speed <= spec.soil.waveSpeed,
+                frontSpeed: speed,
+                regime: peak > 0 ? GroundShockRegime(frontSpeed: speed, soil: spec.soil) : nil,
                 responses: spec.depths.map { depth in
                     AirInducedGroundShock.response(
                         peak: peak, impulse: impulse, arrival: arrivals[n], depth: depth, soil: spec.soil,
@@ -146,6 +159,6 @@ public struct GroundShockConsumer: Sendable {
         }
         return GroundShockResult(
             soil: spec.soil, depths: spec.depths, frameInterval: frameInterval, frames: frame + 1,
-            points: points)
+            points: points, airBytes: bytes)
     }
 }

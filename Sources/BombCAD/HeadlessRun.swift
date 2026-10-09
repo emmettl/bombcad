@@ -338,6 +338,7 @@ enum HeadlessRun {
         let thermal = options.thermal.map { ThermalStudy(spec: $0, scene: FragmentScene(inputs.scenario)) }
         // The ground's points take a sample each a frame, cheap enough to take in line.
         var ground = options.groundShock.map(GroundShockConsumer.init)
+        var groundTime = Duration.zero
         var heldSince: ContinuousClock.Instant?
         var held = Duration.zero
         let streamStart = ContinuousClock.now
@@ -381,7 +382,9 @@ enum HeadlessRun {
                         thermal.add(solver.fireball(luminousTemperature: spec.luminousTemperature))
                     }
                     if let region = ground?.region(cellSize: solver.grid.cellSize) {
+                        let start = ContinuousClock.now
                         ground?.consume(solver.groundSlice(low: region.low, high: region.high))
+                        groundTime += start.duration(to: .now)
                     }
                     if let consumer {
                         // From the report `lag` frames back, always in by now, so that the air
@@ -459,9 +462,9 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (
-            run, document, fragments, stream, thermalResult, cloud, ground?.result(frameInterval: interval)
-        )
+        var groundResult = ground?.result(frameInterval: interval)
+        groundResult?.seconds = groundTime.seconds
+        return (run, document, fragments, stream, thermalResult, cloud, groundResult)
     }
 
     /// The fireball's radiation, reckoned frame by frame on a queue of its own so that the run
