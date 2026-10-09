@@ -44,8 +44,9 @@ struct FragmentSection: View {
                 FragmentStatus(model: model)
             }
         }
-        .task(id: model.fragmentsOnRemote ? host : "") {
-            await model.connectFragmentWorker(model.fragmentsOnRemote && !host.isEmpty ? host : nil)
+        // One connection for the fragments and the thermal radiation alike.
+        .task(id: model.wantsWorker ? host : "") {
+            await model.connectFragmentWorker(model.wantsWorker && !host.isEmpty ? host : nil)
         }
     }
 

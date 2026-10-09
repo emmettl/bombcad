@@ -208,6 +208,7 @@ struct RunComparisonView: View {
                         if let groundShock = run.groundShock { Text(groundShock.summary) }
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
+                    if let thermal = run.thermal { Text(thermal.comparison).font(.callout) }
                     if plotsStructure {
                         if let response = run.structure {
                             metric("Peak recorded deflection", response.peak, baseline?.structure?.peak, "mm")
