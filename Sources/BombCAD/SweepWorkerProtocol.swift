@@ -7,7 +7,8 @@ import Foundation
 /// way and the payload, empty for most messages. The app starts a worker over SSH and talks to it
 /// through the connection's standard input and output; tests talk to one in the same process
 /// through pipes. A worker runs one sweep case at a time, and can fly fragments for a run
-/// elsewhere (a consumer session), frame by frame.
+/// elsewhere (a consumer session), or reckon its fireball's thermal radiation (a thermal
+/// session), frame by frame.
 enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Worker to app, once on starting.
     case hello(SweepWorkerHello)
@@ -36,12 +37,23 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Worker to app, for a live session after each frame: the particles' positions and speeds
     /// in the payload (see `FragmentLive.payload`), and the impacts new since the last.
     case live(UUID, LiveFrameHeader)
+    /// App to worker: start reckoning a run's thermal radiation.
+    case thermal(ThermalSession)
+    /// App to worker: the fireball at the next frame of a thermal session.
+    case fireball(UUID, FireballFrame)
+    /// Worker to app, after each frame of a thermal session: every receiver's fluence and peak
+    /// irradiance so far in the payload (see `ThermalLive.payload`).
+    case thermalLive(UUID, ThermalLiveHeader)
+    /// App to worker: no more frames; send the thermal session's result.
+    case finishThermal(UUID)
+    /// Worker to app: the thermal session's result, as JSON in the payload.
+    case thermalResult(UUID)
 
     static let cancelled = "cancelled"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 2
+    static let protocolVersion = 3
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
@@ -60,6 +72,18 @@ struct ConsumerSession: Codable, Equatable, Sendable {
     var scene: FragmentScene
     /// Send the particles back after each frame, to draw them.
     var live = false
+}
+
+struct ThermalSession: Codable, Equatable, Sendable {
+    var id: UUID
+    var spec: ThermalSpec
+    var scene: FragmentScene
+}
+
+struct ThermalLiveHeader: Codable, Equatable, Sendable {
+    /// Frames consumed, this one included.
+    var frames: Int
+    var time: Double
 }
 
 struct LiveFrameHeader: Codable, Equatable, Sendable {

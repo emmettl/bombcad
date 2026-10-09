@@ -202,7 +202,7 @@ public struct ThermalExposure: Sendable {
         self.spec = spec
         receivers = Self.receivers(scene: scene, spec: spec)
         occluders = scene.blocks + scene.structure
-        chargeEnergy = Double(scene.charge.mass) * Double(Charge.energyPerKilogram)
+        chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
         fluence = [Double](repeating: 0, count: receivers.count)
@@ -360,6 +360,11 @@ public struct ThermalExposure: Sendable {
         return result
     }
 
+    /// The charge's energy, in joules, as the result reports it.
+    public static func chargeEnergy(_ scene: FragmentScene) -> Double {
+        Double(scene.charge.mass) * Double(Charge.energyPerKilogram)
+    }
+
     public var result: ThermalResult {
         ThermalResult(
             spec: spec, receivers: receivers, peakIrradiance: peakIrradiance,
@@ -379,6 +384,18 @@ public struct ThermalResult: Codable, Sendable, Equatable {
     public var fireball: [FireballFrame]
     /// The charge's energy, in joules.
     public var chargeEnergy: Double
+
+    public init(
+        spec: ThermalSpec, receivers: [ThermalReceiver], peakIrradiance: [Float], fluence: [Float],
+        fireball: [FireballFrame], chargeEnergy: Double
+    ) {
+        self.spec = spec
+        self.receivers = receivers
+        self.peakIrradiance = peakIrradiance
+        self.fluence = fluence
+        self.fireball = fireball
+        self.chargeEnergy = chargeEnergy
+    }
 
     /// What the fireball radiated through the run, in joules: its emissive power over the part of
     /// its sphere above the ground, by the trapezium rule. Nothing takes this energy out of the
