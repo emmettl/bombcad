@@ -264,7 +264,7 @@ or friction alone (see [base connections](docs/structural-model.md#base-connecti
 keeps the result as a saved run, for scripts and other Macs; see
 [headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` and `--vdb Example.volumes` to
 write the scene, the structure and the blast over time for rendering elsewhere
-([USD export](docs/usd-export.md)). Sweeps can share their cases with another Mac over SSH,
+([USD export](docs/usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
 [sharing a sweep](docs/run-comparison.md#sharing-a-sweep-with-another-mac).
 
@@ -546,6 +546,14 @@ independently of clipping and regrouping. Maximum relative L1 change under CFL h
 falls from 5.81% to 0.087% in the twelve density-advection cases. Moving pressure-load
 accuracy remains a separate gate.
 
+`swift run -c release rigidboxdemo --moving-pressure` writes `.build/moving-pressure.json`.
+`python3 Scripts/summarize-moving-pressure.py` checks twelve known-pressure load cases against
+independent box integrals. Positive surface/time quadrature follows the moving wall and
+centre of mass through clipping events; it recovers impulse, torque and work to roundoff.
+Centroid evaluation loses pressure/lever-arm covariance and temporal variance. This probe
+prescribes affine pressure with a quadratic time envelope; it does not evolve gas or validate
+a blast. The sampled load kernel is available separately from the moving-group flux update.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
@@ -617,7 +625,7 @@ Collapse and debris have not been compared with anything.
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas |
-| [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud for minutes after |
+| [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud, carried by the wind, for minutes after |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, fed the overpressure on the ground |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |

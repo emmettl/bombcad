@@ -2,17 +2,19 @@ import DocumentKit
 import Foundation
 
 /// `BombCAD sweep`: runs a parameter sweep on a saved project without a window, as the app's
-/// Sweep… does, optionally sharing cases with another Mac.
+/// Sweep… does, optionally sharing cases with other Macs.
 @MainActor
 enum HeadlessSweep {
     static let usage = """
         Usage: BombCAD sweep <project.bombcad> (--masses <kg,kg,…> | --grids <coarse,medium,fine>)
-                             [--prefix <name>] [--remote <ssh host>] [--ratio <times slower>]
-                             [--out <new.bombcad>]
+                             [--prefix <name>] [--worker <ssh host>]… [--ratio <times slower>]
+                             [--local-workers <n>] [--out <new.bombcad>]
 
-        Runs each case to the project's duration, here and, with --remote, on another Mac reached
-        over SSH (see docs/run-comparison.md), and prints each result and where it ran. --out
-        writes a copy of the project with the results added to its saved runs.
+        Runs each case to the project's duration, here and, with --worker (once per host), on other
+        Macs reached over SSH (see docs/run-comparison.md), and prints each result and where it ran.
+        --remote is the same as --worker. --local-workers adds workers on this Mac, sharing its GPU,
+        to try the scheduling without another Mac. --out writes a copy of the project with the
+        results added to its saved runs.
         """
 
     static func main(_ arguments: [String]) async -> Int32 {
@@ -22,11 +24,19 @@ enum HeadlessSweep {
         }
         var positional: [String] = []
         var values: [String: String] = [:]
+        var hosts: [String] = []
+        var repeated = false
         var index = 0
         while index < arguments.count {
             let argument = arguments[index]
             if argument.hasPrefix("--"), index + 1 < arguments.count {
-                values[String(argument.dropFirst(2))] = arguments[index + 1]
+                let key = String(argument.dropFirst(2))
+                if key == "worker" || key == "remote" {
+                    hosts.append(arguments[index + 1])
+                } else {
+                    repeated = repeated || values[key] != nil
+                    values[key] = arguments[index + 1]
+                }
                 index += 2
             } else {
                 positional.append(argument)
@@ -34,10 +44,21 @@ enum HeadlessSweep {
             }
         }
         do {
-            guard positional.count == 1,
-                Set(values.keys).isSubset(of: ["masses", "grids", "prefix", "remote", "ratio", "out"]),
+            guard positional.count == 1, !repeated,
+                Set(values.keys).isSubset(of: ["masses", "grids", "prefix", "ratio", "local-workers", "out"]),
                 (values["masses"] == nil) != (values["grids"] == nil)
             else { throw ProjectFileError.invalid("Name one project, and either --masses or --grids.") }
+            guard Set(hosts).count == hosts.count else {
+                throw ProjectFileError.invalid("Name each --worker host once.")
+            }
+            for host in hosts { try RemoteSweepWorker.validate(host) }
+            let localWorkers =
+                try values["local-workers"].map { text in
+                    guard let count = Int(text), (0...8).contains(count) else {
+                        throw ProjectFileError.invalid("--local-workers takes a count from 0 to 8.")
+                    }
+                    return count
+                } ?? 0
             let parameter: ParameterSweepPlan.Parameter
             if let masses = values["masses"] {
                 let list = masses.split(separator: ",").compactMap {
@@ -59,9 +80,13 @@ enum HeadlessSweep {
             let model = SimulationModel(document: document, playbackSpeed: .unlimited)
             model.applyExperimentInputs(model.currentInputs)
             try await waitUntil(model) { model.experimentIsReady }
-            if let host = values["remote"] {
-                try RemoteSweepWorker.validate(host)
-                model.sweep.remoteWorker = { try await RemoteSweepWorker.connect(host: host) }
+            for host in hosts {
+                model.sweep.remoteWorkers.append { try await RemoteSweepWorker.connect(host: host) }
+            }
+            for number in 0..<localWorkers {
+                model.sweep.remoteWorkers.append {
+                    try await RemoteSweepWorker.connectHere(name: "local worker \(number + 1)")
+                }
             }
             if let ratio = values["ratio"].flatMap(Double.init) { model.sweep.remoteRatio = ratio }
             let before = Set(model.savedRuns.map(\.id))

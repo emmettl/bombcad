@@ -5,10 +5,13 @@ struct AppSettingsView: View {
     @AppStorage(AppPreferences.Key.detailedCharge) private var detailedCharge = false
     @AppStorage(AppPreferences.Key.sharpShocks) private var sharpShocks = false
     @AppStorage(AppPreferences.Key.playbackSpeed) private var playbackSpeed = PlaybackSpeed.x100.rawValue
-    @AppStorage(AppPreferences.Key.sweepHost) private var sweepHost = ""
+    @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
     @AppStorage(AppPreferences.Key.sweepUsesRemote) private var sweepUsesRemote = false
-    @State private var connection = ""
-    @State private var testing = false
+    @State private var newHost = ""
+    @State private var addError: String?
+    /// Each host's last test result, and the hosts being tested.
+    @State private var connections: [String: String] = [:]
+    @State private var testing: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,20 +55,46 @@ struct AppSettingsView: View {
                 }
 
                 Section {
-                    TextField("SSH host", text: $sweepHost, prompt: Text("my-mac.local"))
-                        .autocorrectionDisabled()
-                    Toggle("Share sweeps with this Mac", isOn: $sweepUsesRemote)
+                    ForEach(hosts, id: \.self) { host in
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(host)
+                                if let result = connections[host] {
+                                    Text(result).font(.caption).foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            Spacer()
+                            Button(testing.contains(host) ? "Testing…" : "Test") { test(host) }
+                                .disabled(testing.contains(host))
+                            Button {
+                                remove(host)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Remove \(host)")
+                            .accessibilityLabel("Remove \(host)")
+                        }
+                    }
                     HStack {
-                        Button(testing ? "Testing…" : "Test Connection") { test() }
-                            .disabled(testing || sweepHost.trimmingCharacters(in: .whitespaces).isEmpty)
-                        Text(connection).font(.caption).foregroundStyle(.secondary)
+                        TextField("Add SSH host", text: $newHost, prompt: Text("my-mac.local"))
+                            .autocorrectionDisabled()
+                            .onSubmit(add)
+                        Button("Add", action: add)
+                            .disabled(newHost.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    if let addError {
+                        Text(addError).font(.caption).foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    Toggle("Share sweeps with these Macs", isOn: $sweepUsesRemote)
+                        .disabled(hosts.isEmpty)
                 } header: {
-                    Text("Sweeps on another Mac")
+                    Text("Sweeps on other Macs")
                 } footer: {
                     Text(
-                        "Sweep cases are shared with an Apple silicon Mac reached over SSH without a password. BombCAD sends it a copy of itself the first time. A slower Mac is given only the cases it will finish before this one."
+                        "Sweep cases are shared with Apple silicon Macs reached over SSH without a password. BombCAD sends each a copy of itself the first time. A slower Mac is given only the cases it will finish before the rest of the sweep. Fragments fly on the first."
                     )
                 }
             }
@@ -87,20 +116,43 @@ struct AppSettingsView: View {
         .frame(width: 480, height: 640)
     }
 
-    private func test() {
-        let host = sweepHost.trimmingCharacters(in: .whitespacesAndNewlines)
-        testing = true
-        connection = "Connecting to \(host)…"
+    private var hosts: [String] { AppPreferences.hosts(sweepHosts) }
+
+    private func add() {
+        let host = newHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try RemoteSweepWorker.validate(host)
+            guard !hosts.contains(host) else {
+                addError = "\(host) is already in the list."
+                return
+            }
+            sweepHosts = AppPreferences.text(hosts + [host])
+            newHost = ""
+            addError = nil
+        } catch {
+            addError = error.localizedDescription
+        }
+    }
+
+    private func remove(_ host: String) {
+        sweepHosts = AppPreferences.text(hosts.filter { $0 != host })
+        connections[host] = nil
+    }
+
+    private func test(_ host: String) {
+        testing.insert(host)
+        connections[host] = "Connecting…"
         Task {
             do {
                 let worker = try await RemoteSweepWorker.connect(host: host)
                 let hello = worker.hello
                 worker.close()
-                connection = "Ready: \(hello?.device ?? "a Metal device"), \(hello?.operatingSystem ?? "")"
+                connections[host] =
+                    "Ready: \(hello?.device ?? "a Metal device"), \(hello?.operatingSystem ?? "")"
             } catch {
-                connection = error.localizedDescription
+                connections[host] = error.localizedDescription
             }
-            testing = false
+            testing.remove(host)
         }
     }
 }

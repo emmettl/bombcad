@@ -6,12 +6,18 @@ import simd
 /// Gauss nodes suffice. This supplies geometry, not wet-cell states or a gas integrator.
 struct TranslatingBoxSpaceTimeGeometry {
     enum Failure: Error { case illConditionedOrientation }
+    struct WallSample {
+        let point: SIMD3<Double>
+        let time: Double  // Relative to this interval's initial pose.
+        let areaTime: Double  // Positive dA dt weight, not a mean area.
+    }
     struct PatchIntegral {
         let normal: SIMD3<Double>  // Outward from gas, for both open and wall patches.
         var areaTime = 0.0
         /// Integral of (x - fixed cell centre) dA dt, in m³ s.
         var firstMomentTime = SIMD3<Double>.zero
         var timeWeightedArea = 0.0  // Integral of t dA dt, in m² s².
+        var samples: [WallSample]? = nil
     }
     struct Result {
         let initialGasVolume: Double
@@ -82,13 +88,17 @@ struct TranslatingBoxSpaceTimeGeometry {
         self.bases = bases
     }
 
-    func integrate(lower: SIMD3<Double>, cellSize h: Double, duration: Double) throws -> Result {
+    func integrate(
+        lower: SIMD3<Double>, cellSize h: Double, duration: Double, wallQuadrature: Bool = false
+    ) throws -> Result {
         precondition(h.isFinite && h > 0 && duration.isFinite && duration > 0)
         precondition((0..<3).allSatisfy { lower[$0].isFinite })
         let volume = h * h * h
         let reference = lower + SIMD3(repeating: h / 2)
         var faces = normals.prefix(6).map { PatchIntegral(normal: $0) }
-        var walls = normals.suffix(6).map { PatchIntegral(normal: -$0) }
+        var walls = normals.suffix(6).map {
+            PatchIntegral(normal: -$0, samples: wallQuadrature ? [] : nil)
+        }
         let low = body.corners.reduce(SIMD3<Double>(repeating: .infinity), simd_min)
         let high = body.corners.reduce(SIMD3<Double>(repeating: -.infinity), simd_max)
         let sweptLow = simd_min(low, low + duration * velocity)
@@ -185,9 +195,37 @@ struct TranslatingBoxSpaceTimeGeometry {
                     walls[side].timeWeightedArea += time * area
                 }
             }
+            if wallQuadrature {
+                // Degree-two positive triangle quadrature integrates affine pressure
+                // torque at each time. Four positive Gauss nodes integrate degree-seven
+                // time polynomials: enough for quadratic-in-time affine pressure times
+                // moving lever arms and clipped areas between topology events.
+                let inner = sqrt((3 - 2 * sqrt(6.0 / 5)) / 7)
+                let outer = sqrt((3 + 2 * sqrt(6.0 / 5)) / 7)
+                let innerWeight = (18 + sqrt(30.0)) / 36
+                let outerWeight = (18 - sqrt(30.0)) / 36
+                for (node, gaussWeight) in [
+                    (-outer, outerWeight), (-inner, innerWeight),
+                    (inner, innerWeight), (outer, outerWeight),
+                ] {
+                    let time = midpoint + weight * node
+                    for wall in geometry(time).wallPatches(lower: lower, cellSize: h) {
+                        let side = (0..<6).max {
+                            simd_dot(normals[$0 + 6], wall.normal) < simd_dot(normals[$1 + 6], wall.normal)
+                        }!
+                        for sample in wall.quadrature where sample.weight > 0 {
+                            walls[side].samples!.append(
+                                .init(
+                                    point: sample.point, time: time,
+                                    areaTime: weight * gaussWeight * sample.weight))
+                        }
+                    }
+                }
+            }
         }
         return Result(
             initialGasVolume: initial, finalGasVolume: final, gasVolumeTime: volumeTime,
-            openFaces: faces, walls: walls, eventTimes: events, evaluations: 2 * (events.count - 1))
+            openFaces: faces, walls: walls, eventTimes: events,
+            evaluations: (wallQuadrature ? 6 : 2) * (events.count - 1))
     }
 }

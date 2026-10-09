@@ -137,6 +137,81 @@ struct FireballRiseTests {
         #expect((low?.height ?? 1) < (high?.height ?? 0))
     }
 
+    @Test(
+        "In a steady, uniform wind a cloud already moving with it rises as in still air and drifts at the wind's speed"
+    )
+    func galilean() {
+        let spec = CloudSpec()
+        let wind = SIMD2<Double>(6, -3)
+        var start = handOver(radius: 7, height: 7, excess: 4, riseSpeed: 2)
+        let times = [0.0, 1, 10, 100, 600]
+        let still = CloudRise.follow(start, spec: spec, atmosphere: uniform, at: times)
+        start.horizontalVelocity = wind
+        let carried = CloudRise.follow(start, spec: spec, atmosphere: uniform, wind: { _ in wind }, at: times)
+        for (a, b) in zip(still.samples, carried.samples) {
+            #expect(abs(b.height / a.height - 1) < 1e-9 && abs(b.radius / a.radius - 1) < 1e-9)
+            #expect(simd_length(b.position - wind * b.time) < 1e-6 * simd_length(wind) * b.time + 1e-9)
+            #expect(simd_length(b.velocity - wind) < 1e-9)
+        }
+    }
+
+    @Test(
+        "A cloud starting at rest in a uniform wind takes it up as its impulse relative to the wind is conserved"
+    )
+    func takingUpTheWind() {
+        let spec = CloudSpec()
+        let wind = SIMD2<Double>(0, 8)
+        let start = handOver(radius: 7, height: 7, excess: 4)
+        let (samples, _) = CloudRise.follow(
+            start, spec: spec, atmosphere: uniform, wind: { _ in wind }, at: [0, 0.5, 2, 10, 60, 300])
+        // (m + kρV)(u − U) is conserved, the air drawn in bringing the wind's momentum with it,
+        // so u = U (1 − M₀ / M).
+        func inertia(_ sample: CloudSample) -> Double {
+            sample.mass + spec.addedMass * ambientDensity * 4 / 3 * .pi * pow(sample.radius, 3)
+        }
+        let first = inertia(samples[0])
+        for sample in samples {
+            let expected = wind * (1 - first / inertia(sample))
+            #expect(simd_length(sample.velocity - expected) < 1e-6 * simd_length(wind), "\(sample.velocity)")
+        }
+        #expect(samples[5].velocity.y > 0.99 * wind.y && samples[5].position.y > 0)
+        // Blown through, it draws in more air than in still air and rises less.
+        let still = CloudRise.follow(start, spec: spec, atmosphere: uniform, at: [0, 300]).samples
+        #expect(samples[5].height < still[1].height && samples[5].mass > still[1].mass)
+    }
+
+    @Test("In a wind growing with height the cloud keeps up with the wind around it and stops lower")
+    func shear() throws {
+        var spec = CloudSpec()
+        spec.windSpeed = 10
+        spec.windDirection = 90
+        let start = handOver(radius: 7, height: 7, excess: 4)
+        let atmosphere = CloudAtmosphere(
+            groundTemperature: ambientTemperature, groundPressure: ambientPressure, lapseRate: 0.0065,
+            tropopause: 11_000)
+        let blown = CloudRise.follow(
+            start, spec: spec, atmosphere: atmosphere.callAsFunction, wind: spec.wind.callAsFunction,
+            at: [0, 600])
+        let still = CloudRise.follow(start, spec: spec, atmosphere: atmosphere.callAsFunction, at: [0, 600])
+        let end = try #require(blown.samples.last)
+        let around = spec.wind(end.height)
+        #expect(
+            abs(end.velocity.y / around.y - 1) < 0.02 && abs(end.velocity.x) < 1e-9,
+            "\(end.velocity) \(around)")
+        #expect(end.position.y > 5_000)
+        let windy = try #require(blown.stabilised)
+        let calm = try #require(still.stabilised)
+        #expect(windy.height < calm.height, "\(windy.height) against \(calm.height)")
+    }
+
+    @Test("The wind grows as a power of height up to its ceiling, and blows where it is pointed")
+    func windProfile() {
+        let wind = CloudWind(speed: 5, direction: .pi / 2, height: 10, exponent: 1.0 / 7, ceiling: 1000)
+        #expect(simd_length(wind(10) - SIMD2(0, 5)) < 1e-12)
+        #expect(abs(wind(80).y / 5 - pow(8, 1.0 / 7)) < 1e-12)
+        #expect(wind(5000) == wind(1000) && wind(0) == .zero && wind(-1) == .zero)
+    }
+
     @Test("The standard atmosphere's pressure at the tropopause and above")
     func standardAtmosphere() {
         let atmosphere = CloudAtmosphere(
@@ -203,6 +278,12 @@ struct FireballRiseTests {
         #expect(throws: CocoaError.self) { try adiabatic.validate() }
         let wide = try JSONDecoder().decode(CloudSpec.self, from: Data(#"{"entrainment": 0}"#.utf8))
         #expect(throws: CocoaError.self) { try wide.validate() }
+        let windy = try JSONDecoder().decode(
+            CloudSpec.self, from: Data(#"{"windSpeed": 5, "windDirection": 30}"#.utf8))
+        try windy.validate()
+        #expect(windy.windSpeed == 5 && windy.wind.direction == .pi / 6 && windy.windExponent == 1.0 / 7)
+        let backwards = try JSONDecoder().decode(CloudSpec.self, from: Data(#"{"windSpeed": -1}"#.utf8))
+        #expect(throws: CocoaError.self) { try backwards.validate() }
     }
 
     @Test(
@@ -229,7 +310,7 @@ struct FireballRiseTests {
         scenario.gauges = []
         let writer = try USDSceneWriter(url: url, scenario: scenario, frameInterval: 0.001)
         for _ in 0..<3 { try writer.append(nil) }
-        writer.addCloud(frames, centre: SIMD2(5, 5), secondsPerFrame: spec.frameInterval)
+        writer.addCloud(frames, secondsPerFrame: spec.frameInterval)
         try writer.finish()
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(text.contains("endTimeCode = 33\n") && text.contains("double cloudStartTimeCode = 3\n"))

@@ -33,7 +33,7 @@ public final class USDSceneWriter {
             name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>,
             values: [(name: String, values: [Float])]
         )] = []
-    private var cloud: (samples: [CloudSample], centre: SIMD2<Float>, secondsPerFrame: Double)?
+    private var cloud: (samples: [CloudSample], secondsPerFrame: Double)?
     public let frameInterval: Double
     private let scenario: Scenario
     private let playbackRate: Double
@@ -188,12 +188,12 @@ public final class USDSceneWriter {
         pointSets.append((name, frames, widths, colour, values))
     }
 
-    /// Adds the cloud after the run, a sphere rising above `centre` with one frame every
+    /// Adds the cloud after the run, a sphere rising and drifting with one frame every
     /// `secondsPerFrame` of simulated time from the first sample. Its frames follow the run's on
     /// the timeline, at that slower rate, and it is hidden until then.
-    public func addCloud(_ samples: [CloudSample], centre: SIMD2<Float>, secondsPerFrame: Double) {
+    public func addCloud(_ samples: [CloudSample], secondsPerFrame: Double) {
         guard !samples.isEmpty else { return }
-        cloud = (samples, centre, secondsPerFrame)
+        cloud = (samples, secondsPerFrame)
     }
 
     /// Joins the parts into `url`, which must not exist yet.
@@ -288,7 +288,7 @@ public final class USDSceneWriter {
         for set in pointSets {
             appendPoints(set.name, set.frames, set.widths, set.colour, set.values, to: &text)
         }
-        if let cloud { appendCloud(cloud.samples, centre: cloud.centre, to: &text) }
+        if let cloud { appendCloud(cloud.samples, to: &text) }
         try flush()
 
         if hasBody {
@@ -392,7 +392,7 @@ public final class USDSceneWriter {
 
     /// The cloud: a sphere whose centre, radius and temperature (the `temperature` primvar, in
     /// kelvin) are sampled from the frame after the run's last.
-    private func appendCloud(_ samples: [CloudSample], centre: SIMD2<Float>, to text: inout Text) {
+    private func appendCloud(_ samples: [CloudSample], to text: inout Text) {
         let first = frames
         text.append("    def Sphere \"Cloud\"\n    {\n")
         if first > 0 {
@@ -417,7 +417,7 @@ public final class USDSceneWriter {
         text.append("        }\n        double3 xformOp:translate.timeSamples = {\n")
         for (n, sample) in samples.enumerated() {
             text.append("            \(first + n): ")
-            text.append(SIMD3(centre.x, centre.y, Float(sample.height)))
+            text.append(SIMD3(Float(sample.position.x), Float(sample.position.y), Float(sample.height)))
             text.append(",\n")
         }
         text.append("        }\n        uniform token[] xformOpOrder = [\"xformOp:translate\"]\n")

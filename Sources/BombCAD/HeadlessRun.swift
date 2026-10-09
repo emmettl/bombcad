@@ -453,9 +453,7 @@ enum HeadlessRun {
                 throw ProjectFileError.invalid("The run ended before the cloud's hand-over.")
             }
             let result = CloudResult(spec: spec, handOver: handOver)
-            scene?.addCloud(
-                result.frames(), centre: SIMD2(handOver.centre.x, handOver.centre.y),
-                secondsPerFrame: spec.frameInterval)
+            scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
         try scene?.finish()

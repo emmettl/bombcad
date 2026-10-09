@@ -21,6 +21,15 @@ public struct CloudSpec: Codable, Sendable, Equatable {
     public var tropopause = 11_000.0
     /// The specific heat of the cloud's gas and of the air it draws in, in J/(kg K).
     public var specificHeat = 1005.0
+    /// The wind `windHeight` up, in metres a second, and the direction it blows towards, in
+    /// degrees anticlockwise from the scene's x axis towards its y axis.
+    public var windSpeed = 0.0
+    public var windDirection = 0.0
+    public var windHeight = 10.0
+    /// The wind grows with height as (z / windHeight)^windExponent, a seventh for open country in
+    /// neutral air, up to `windCeiling`, and is steady above it.
+    public var windExponent = 1.0 / 7
+    public var windCeiling = 1000.0
     /// Seconds of the cloud's rise followed after the run.
     public var duration = 600.0
     /// Seconds of the cloud's rise between frames of the USD scene.
@@ -40,6 +49,12 @@ public struct CloudSpec: Codable, Sendable, Equatable {
         lapseRate = try values.decodeIfPresent(Double.self, forKey: .lapseRate) ?? defaults.lapseRate
         tropopause = try values.decodeIfPresent(Double.self, forKey: .tropopause) ?? defaults.tropopause
         specificHeat = try values.decodeIfPresent(Double.self, forKey: .specificHeat) ?? defaults.specificHeat
+        windSpeed = try values.decodeIfPresent(Double.self, forKey: .windSpeed) ?? defaults.windSpeed
+        windDirection =
+            try values.decodeIfPresent(Double.self, forKey: .windDirection) ?? defaults.windDirection
+        windHeight = try values.decodeIfPresent(Double.self, forKey: .windHeight) ?? defaults.windHeight
+        windExponent = try values.decodeIfPresent(Double.self, forKey: .windExponent) ?? defaults.windExponent
+        windCeiling = try values.decodeIfPresent(Double.self, forKey: .windCeiling) ?? defaults.windCeiling
         duration = try values.decodeIfPresent(Double.self, forKey: .duration) ?? defaults.duration
         frameInterval =
             try values.decodeIfPresent(Double.self, forKey: .frameInterval) ?? defaults.frameInterval
@@ -49,13 +64,15 @@ public struct CloudSpec: Codable, Sendable, Equatable {
         let finite = [
             Double(handOverTemperature), entrainment, addedMass, emissivity, lapseRate, tropopause,
             specificHeat,
-            duration, frameInterval,
+            duration, frameInterval, windSpeed, windDirection, windHeight, windExponent, windCeiling,
         ]
         guard finite.allSatisfy(\.isFinite), handOverTemperature > 300, entrainment > 0, entrainment <= 1,
             addedMass >= 0, addedMass <= 2, emissivity >= 0, emissivity <= 1, lapseRate >= 0,
             lapseRate < CloudRise.gravity / specificHeat, tropopause > 0, specificHeat >= 500,
             specificHeat <= 3000,
-            duration > 0, duration <= 7200, frameInterval >= 0.01, duration / frameInterval <= 100_000
+            duration > 0, duration <= 7200, frameInterval >= 0.01, duration / frameInterval <= 100_000,
+            windSpeed >= 0, windSpeed <= 100, windHeight > 0, windExponent >= 0, windExponent <= 1,
+            windCeiling >= windHeight
         else {
             throw CocoaError(
                 .coderInvalidValue,
@@ -79,6 +96,8 @@ public struct CloudHandOver: Codable, Sendable, Equatable {
     public var temperature: Double
     /// The mean vertical velocity of its mass, in metres a second.
     public var riseSpeed: Double
+    /// The mean horizontal velocity of its mass.
+    public var horizontalVelocity: SIMD2<Double>
     /// The hottest of it, in kelvin.
     public var hottest: Double
     /// Its buoyancy, its weight less that of the air it displaces, in newtons.
@@ -93,9 +112,10 @@ public struct CloudHandOver: Codable, Sendable, Equatable {
         time: Double, mass: Double, volume: Double, centre: SIMD3<Float>, temperature: Double,
         riseSpeed: Double,
         hottest: Double, buoyancy: Double, warmBuoyancy: Double, ambientTemperature: Double,
-        ambientPressure: Double
+        ambientPressure: Double, horizontalVelocity: SIMD2<Double> = .zero
     ) {
         self.time = time
+        self.horizontalVelocity = horizontalVelocity
         self.mass = mass
         self.volume = volume
         self.centre = centre
@@ -132,7 +152,7 @@ extension BlastSolver {
             var mass = 0.0
             var heat = 0.0
             var position = SIMD3<Double>.zero
-            var momentum = 0.0
+            var momentum = SIMD3<Double>.zero
             var hottest = 0.0
             var warm = 0.0
         }
@@ -161,7 +181,7 @@ extension BlastSolver {
                             sums.heat += mass * t
                             sums.position +=
                                 mass * SIMD3<Double>(Double(i) + 0.5, Double(j) + 0.5, Double(k) + 0.5)
-                            sums.momentum += mass * Double(air.velocity.z)
+                            sums.momentum += mass * SIMD3<Double>(air.velocity)
                             sums.hottest = max(sums.hottest, t)
                         }
                     }
@@ -188,9 +208,10 @@ extension BlastSolver {
         return CloudHandOver(
             time: time, mass: total.mass, volume: total.mass * gasConstant * temperature / ambientPressure,
             centre: SIMD3<Float>(total.position / total.mass * h), temperature: temperature,
-            riseSpeed: total.momentum / total.mass, hottest: total.hottest,
+            riseSpeed: total.momentum.z / total.mass, hottest: total.hottest,
             buoyancy: g * total.mass * (temperature / ambientTemperature - 1), warmBuoyancy: g * total.warm,
-            ambientTemperature: ambientTemperature, ambientPressure: ambientPressure)
+            ambientTemperature: ambientTemperature, ambientPressure: ambientPressure,
+            horizontalVelocity: SIMD2(total.momentum.x, total.momentum.y) / total.mass)
     }
 }
 
@@ -226,6 +247,34 @@ public struct CloudAtmosphere: Sendable, Equatable {
     }
 }
 
+/// The wind the cloud drifts in: steady, from one direction, and growing with height as a power
+/// law, the usual description of the wind near the ground in neutral air, up to a ceiling.
+public struct CloudWind: Sendable, Equatable {
+    /// At `height`, in metres a second.
+    public var speed: Double
+    /// The direction it blows towards, in radians anticlockwise from the x axis.
+    public var direction: Double
+    public var height: Double
+    public var exponent: Double
+    public var ceiling: Double
+
+    public init(
+        speed: Double, direction: Double, height: Double = 10, exponent: Double = 1.0 / 7, ceiling: Double
+    ) {
+        self.speed = speed
+        self.direction = direction
+        self.height = height
+        self.exponent = exponent
+        self.ceiling = ceiling
+    }
+
+    /// The wind's velocity at `height` metres above the ground; none below it.
+    public func callAsFunction(_ z: Double) -> SIMD2<Double> {
+        guard speed > 0, z > 0 else { return .zero }
+        return speed * pow(min(z, ceiling) / height, exponent) * SIMD2(cos(direction), sin(direction))
+    }
+}
+
 /// The cloud at one moment: a sphere of well-mixed gas at the ambient pressure.
 public struct CloudSample: Codable, Sendable, Equatable {
     /// Since the detonation, in seconds.
@@ -240,11 +289,17 @@ public struct CloudSample: Codable, Sendable, Equatable {
     public var riseSpeed: Double
     /// In kilograms: what was handed over and all the air drawn in since.
     public var mass: Double
+    /// Of its centre across the ground, in the scene's x and y.
+    public var position: SIMD2<Double>
+    /// Across the ground, in metres a second.
+    public var velocity: SIMD2<Double>
 
     public init(
         time: Double, height: Double, radius: Double, temperature: Double, ambientTemperature: Double,
-        riseSpeed: Double, mass: Double
+        riseSpeed: Double, mass: Double, position: SIMD2<Double> = .zero, velocity: SIMD2<Double> = .zero
     ) {
+        self.position = position
+        self.velocity = velocity
         self.time = time
         self.height = height
         self.radius = radius
@@ -260,45 +315,51 @@ public struct CloudSample: Codable, Sendable, Equatable {
 
 /// The rise of a buoyant cloud as an integral model of a turbulent thermal: Morton, Taylor and
 /// Turner's (1956) entrainment assumption, the air drawn in across the cloud's surface at a
-/// fixed share of its rise speed, in the form Escudier and Maxworthy (1973) gave for any density
-/// difference and with the added mass of the air pushed aside. The cloud is a sphere of
-/// well-mixed gas at the ambient pressure, rising through still air whose temperature and
-/// pressure fall with height; it cools by mixing with that air, by expanding as it rises, and,
-/// if it is given an emissivity, by radiating.
+/// fixed share of its speed through that air, in the form Escudier and Maxworthy (1973) gave for
+/// any density difference and with the added mass of the air pushed aside. The cloud is a sphere
+/// of well-mixed gas at the ambient pressure, rising through air whose temperature and pressure
+/// fall with height and which may blow; it cools by mixing with that air, by expanding as it
+/// rises, and, if it is given an emissivity, by radiating, and it is carried along by the wind's
+/// momentum in the air it draws in.
 public enum CloudRise {
     public static let gravity = 9.806_65
     public static let gasConstant = Double(AirModel.gasConstant)
 
-    /// The cloud's state for integration: height, mass, upward impulse (its own momentum and its
-    /// added mass's) and temperature.
+    /// The cloud's state for integration: height and place across the ground, mass, upward
+    /// impulse (its own momentum and its added mass's), horizontal impulse (its own momentum and
+    /// its added mass's relative to the wind) and temperature.
     struct State {
         var height: Double
+        var position: SIMD2<Double>
         var mass: Double
         var impulse: Double
+        var drift: SIMD2<Double>
         var temperature: Double
 
         static func + (a: State, b: State) -> State {
             State(
-                height: a.height + b.height, mass: a.mass + b.mass, impulse: a.impulse + b.impulse,
+                height: a.height + b.height, position: a.position + b.position, mass: a.mass + b.mass,
+                impulse: a.impulse + b.impulse, drift: a.drift + b.drift,
                 temperature: a.temperature + b.temperature)
         }
 
         static func * (a: State, s: Double) -> State {
             State(
-                height: a.height * s, mass: a.mass * s, impulse: a.impulse * s, temperature: a.temperature * s
-            )
+                height: a.height * s, position: a.position * s, mass: a.mass * s, impulse: a.impulse * s,
+                drift: a.drift * s, temperature: a.temperature * s)
         }
     }
 
-    /// The cloud from `handOver`, followed through `atmosphere` and sampled at `times`, which
-    /// must be ascending and no earlier than the hand-over; also the first moment it stopped
-    /// rising, if it did by the last of them.
+    /// The cloud from `handOver`, followed through `atmosphere` and `wind` and sampled at
+    /// `times`, which must be ascending and no earlier than the hand-over; also the first moment
+    /// it stopped rising, if it did by the last of them.
     public static func follow(
         _ handOver: CloudHandOver, spec: CloudSpec,
-        atmosphere: @escaping (Double) -> (temperature: Double, pressure: Double), at times: [Double]
+        atmosphere: @escaping (Double) -> (temperature: Double, pressure: Double),
+        wind: @escaping (Double) -> SIMD2<Double> = { _ in .zero }, at times: [Double]
     ) -> (samples: [CloudSample], stabilised: CloudSample?) {
         guard handOver.mass > 0, let end = times.last else { return ([], nil) }
-        let model = Model(spec: spec, atmosphere: atmosphere)
+        let model = Model(spec: spec, atmosphere: atmosphere, wind: wind)
         let start = Double(handOver.centre.z)
         let air = atmosphere(start)
         let ambientDensity = air.pressure / (gasConstant * air.temperature)
@@ -307,10 +368,12 @@ public enum CloudRise {
             handOver.temperature
             * pow(air.pressure / handOver.ambientPressure, gasConstant / spec.specificHeat)
         let volume = handOver.mass * gasConstant * temperature / air.pressure
+        let added = spec.addedMass * ambientDensity * volume
+        let velocity = handOver.horizontalVelocity
         var state = State(
-            height: start, mass: handOver.mass,
-            impulse: (handOver.mass + spec.addedMass * ambientDensity * volume) * handOver.riseSpeed,
-            temperature: temperature)
+            height: start, position: SIMD2(Double(handOver.centre.x), Double(handOver.centre.y)),
+            mass: handOver.mass, impulse: (handOver.mass + added) * handOver.riseSpeed,
+            drift: handOver.mass * velocity + added * (velocity - wind(start)), temperature: temperature)
         var time = handOver.time
         var samples: [CloudSample] = []
         var stabilised: CloudSample?
@@ -343,6 +406,7 @@ public enum CloudRise {
     struct Model {
         let spec: CloudSpec
         let atmosphere: (Double) -> (temperature: Double, pressure: Double)
+        let wind: (Double) -> SIMD2<Double>
         static let stefanBoltzmann = 5.670_374e-8
 
         struct Derived {
@@ -352,29 +416,37 @@ public enum CloudRise {
             var volume: Double
             var radius: Double
             var riseSpeed: Double
+            var velocity: SIMD2<Double>
+            var wind: SIMD2<Double>
+            /// Through the air around it.
+            var relativeSpeed: Double
         }
 
         func derived(_ state: State) -> Derived {
             let air = atmosphere(state.height)
             let ambientDensity = air.pressure / (gasConstant * air.temperature)
             let volume = state.mass * gasConstant * state.temperature / air.pressure
+            let added = spec.addedMass * ambientDensity * volume
+            let wind = wind(state.height)
+            let velocity = (state.drift + added * wind) / (state.mass + added)
+            let riseSpeed = state.impulse / (state.mass + added)
             return Derived(
                 ambientTemperature: air.temperature, ambientPressure: air.pressure,
                 ambientDensity: ambientDensity,
-                volume: volume,
-                radius: cbrt(3 * volume / (4 * .pi)),
-                riseSpeed: state.impulse / (state.mass + spec.addedMass * ambientDensity * volume))
+                volume: volume, radius: cbrt(3 * volume / (4 * .pi)), riseSpeed: riseSpeed,
+                velocity: velocity,
+                wind: wind, relativeSpeed: simd_length(SIMD3(velocity - wind, riseSpeed)))
         }
 
         /// The time derivative of `state`: the air drawn in across the surface at the
-        /// entrainment coefficient times the rise speed; the impulse changed by the buoyancy;
-        /// and the temperature by mixing with the air drawn in, by expanding as the pressure
-        /// falls (cp dT = dp / ρ, which in hydrostatic air is −(T / T_air) g dz), and by
-        /// radiating.
+        /// entrainment coefficient times the cloud's speed through it; the upward impulse changed
+        /// by the buoyancy and the horizontal by the wind's momentum in the air drawn in; and the
+        /// temperature by mixing with that air, by expanding as the pressure falls
+        /// (cp dT = dp / ρ, which in hydrostatic air is −(T / T_air) g dz), and by radiating.
         func rate(_ state: State) -> State {
             let d = derived(state)
             let area = 4 * Double.pi * d.radius * d.radius
-            let entrained = area * spec.entrainment * d.ambientDensity * abs(d.riseSpeed)
+            let entrained = area * spec.entrainment * d.ambientDensity * d.relativeSpeed
             let buoyancy = (d.ambientDensity * d.volume - state.mass) * gravity
             let radiated =
                 spec.emissivity * Self.stefanBoltzmann
@@ -385,21 +457,20 @@ public enum CloudRise {
                 + state.mass * gasConstant * state.temperature / d.ambientPressure * gradient * d.riseSpeed
                 - radiated
             return State(
-                height: d.riseSpeed, mass: entrained, impulse: buoyancy,
-                temperature: heating / (state.mass * spec.specificHeat))
+                height: d.riseSpeed, position: d.velocity, mass: entrained, impulse: buoyancy,
+                drift: d.wind * entrained, temperature: heating / (state.mass * spec.specificHeat))
         }
 
-        /// A step short against the time the cloud takes to rise its own radius, from rest or at
-        /// its speed, to draw in its own mass, and to cool by radiation.
+        /// A step short against the time the cloud takes to move its own radius through the air,
+        /// from rest or at its speed, to draw in its own mass, and to cool by radiation.
         func step(_ state: State) -> Double {
             let d = derived(state)
             let inertia = state.mass + spec.addedMass * d.ambientDensity * d.volume
             let acceleration = abs(d.ambientDensity * d.volume - state.mass) * gravity / inertia
             let entrained =
-                4 * Double.pi * d.radius * d.radius * spec.entrainment * d.ambientDensity * abs(d.riseSpeed)
+                4 * Double.pi * d.radius * d.radius * spec.entrainment * d.ambientDensity * d.relativeSpeed
             var step = min(
-                0.02 * d.radius / max(abs(d.riseSpeed), 1e-6),
-                0.02 * sqrt(d.radius / max(acceleration, 1e-9)),
+                0.02 * d.radius / max(d.relativeSpeed, 1e-6), 0.02 * sqrt(d.radius / max(acceleration, 1e-9)),
                 0.02 * state.mass / max(entrained, 1e-30), 0.5)
             if spec.emissivity > 0 {
                 let radiated =
@@ -414,7 +485,8 @@ public enum CloudRise {
             let d = derived(state)
             return CloudSample(
                 time: time, height: state.height, radius: d.radius, temperature: state.temperature,
-                ambientTemperature: d.ambientTemperature, riseSpeed: d.riseSpeed, mass: state.mass)
+                ambientTemperature: d.ambientTemperature, riseSpeed: d.riseSpeed, mass: state.mass,
+                position: state.position, velocity: d.velocity)
         }
     }
 }
@@ -428,8 +500,8 @@ public struct CloudResult: Codable, Sendable {
     /// The first moment the cloud stopped rising, if it did.
     public var stabilised: CloudSample?
 
-    /// Follows `handOver` through the standard atmosphere `spec` describes, from the hand-over's
-    /// own air at the ground.
+    /// Follows `handOver` through the standard atmosphere and the wind `spec` describes, from the
+    /// hand-over's own air at the ground.
     public init(spec: CloudSpec, handOver: CloudHandOver) {
         self.spec = spec
         self.handOver = handOver
@@ -441,17 +513,23 @@ public struct CloudResult: Codable, Sendable {
             offset *= 1.05
         }
         times.append(start + spec.duration)
-        (samples, stabilised) = CloudRise.follow(
-            handOver, spec: spec, atmosphere: spec.atmosphere(handOver).callAsFunction, at: times)
+        (samples, stabilised) = Self.follow(handOver, spec: spec, at: times)
     }
 
     /// The cloud every `frameInterval` from the hand-over, for the USD scene.
     public func frames() -> [CloudSample] {
         let count = Int((spec.duration / spec.frameInterval).rounded(.down))
-        let times = (0...count).map { handOver.time + Double($0) * spec.frameInterval }
-        return CloudRise.follow(
-            handOver, spec: spec, atmosphere: spec.atmosphere(handOver).callAsFunction, at: times
+        return Self.follow(
+            handOver, spec: spec, at: (0...count).map { handOver.time + Double($0) * spec.frameInterval }
         ).samples
+    }
+
+    private static func follow(_ handOver: CloudHandOver, spec: CloudSpec, at times: [Double]) -> (
+        samples: [CloudSample], stabilised: CloudSample?
+    ) {
+        CloudRise.follow(
+            handOver, spec: spec, atmosphere: spec.atmosphere(handOver).callAsFunction,
+            wind: spec.wind.callAsFunction, at: times)
     }
 
     public var summary: [String] {
@@ -461,6 +539,11 @@ public struct CloudResult: Codable, Sendable {
                     format: "Cloud: no gas at least %.0f K left at %.0f ms to hand over.",
                     Double(spec.handOverTemperature), handOver.time * 1000)
             ]
+        }
+        let start = SIMD2(Double(handOver.centre.x), Double(handOver.centre.y))
+        let drift = { (sample: CloudSample) in
+            self.spec.windSpeed > 0
+                ? String(format: ", %.0f m downwind", simd_length(sample.position - start)) : ""
         }
         var lines = [
             String(
@@ -476,13 +559,13 @@ public struct CloudResult: Codable, Sendable {
                     format:
                         "  stopped rising at %.0f s: centre %.0f m up, top %.0f m, %.0f m across, %.1f K above the air",
                     stabilised.time, stabilised.height, stabilised.top, 2 * stabilised.radius,
-                    stabilised.temperature - stabilised.ambientTemperature))
+                    stabilised.temperature - stabilised.ambientTemperature) + drift(stabilised))
         }
         if let last = samples.last {
             lines.append(
                 String(
                     format: "  at %.0f s: centre %.0f m up, top %.0f m, %.0f m across, rising at %.1f m/s",
-                    last.time, last.height, last.top, 2 * last.radius, last.riseSpeed))
+                    last.time, last.height, last.top, 2 * last.radius, last.riseSpeed) + drift(last))
         }
         return lines
     }
@@ -494,5 +577,13 @@ extension CloudSpec {
         CloudAtmosphere(
             groundTemperature: handOver.ambientTemperature, groundPressure: handOver.ambientPressure,
             lapseRate: lapseRate, tropopause: tropopause)
+    }
+
+    /// The wind this describes.
+    public var wind: CloudWind {
+        CloudWind(
+            speed: windSpeed, direction: windDirection * .pi / 180, height: windHeight,
+            exponent: windExponent,
+            ceiling: windCeiling)
     }
 }
