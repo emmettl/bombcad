@@ -24,7 +24,7 @@ import simd
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
-//                       [--fragments spec.json [--dot 5]]
+//                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--stationary-walls]
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -653,11 +653,23 @@ func runSnapshot() throws {
         consumer.consume(solver.airSlice(region: region.box, stride: region.stride))
         fragments = consumer
     }
+    // Ground points, a sample each at every batch's end, as in the app.
+    var ground = try option("ground-shock").map { path in
+        GroundShockConsumer(
+            spec: try JSONDecoder().decode(
+                GroundShockSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path))))
+    }
+    func feedGround() {
+        guard let region = ground?.region(cellSize: solver.grid.cellSize) else { return }
+        ground?.consume(solver.groundSlice(low: region.low, high: region.high))
+    }
     feedFragments()
+    feedGround()
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64, timeLimit: fragments == nil ? time : min(time, solver.time + 0.001))
         feedFragments()
+        feedGround()
         if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
         if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
         if result.steps == 0 || !result.isStable { break }
@@ -679,9 +691,14 @@ func runSnapshot() throws {
     if let opacity = option("opacity").flatMap({ Float($0) }) { renderer.settings.waveOpacity = opacity }
     if let scale = option("scale").flatMap({ Float($0) }) { renderer.settings.pressureScale = scale }
     renderer.settings.showCharge = time == 0
+    var dots: [SIMD4<Float>] = []
+    if let ground {
+        let result = ground.result(frameInterval: 0)
+        dots += result.dots
+        print("  " + result.summary)
+    }
     if let fragments {
         let launch = max(fragments.cloud.launchSpeed, 1)
-        var dots: [SIMD4<Float>] = []
         for (n, particle) in fragments.cloud.particles.enumerated() where !particle.landed {
             let value =
                 n < fragments.cloud.fragmentCount ? min(simd_length(particle.velocity) / launch, 0.999) : 1
@@ -690,10 +707,10 @@ func runSnapshot() throws {
         for impact in fragments.cloud.impacts {
             dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
         }
-        renderer.setDots(dots)
-        if let size = option("dot").flatMap({ Float($0) }) { renderer.settings.dotSize = size }
         print("Fragments: \(fragments.cloud.airborne) in flight, \(fragments.cloud.impacts.count) landed")
     }
+    renderer.setDots(dots)
+    if let size = option("dot").flatMap({ Float($0) }) { renderer.settings.dotSize = size }
     var camera = OrbitCamera.framing(scenario)
     if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
     if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }

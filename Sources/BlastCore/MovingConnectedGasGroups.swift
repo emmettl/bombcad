@@ -119,7 +119,8 @@ enum MovingConnectedGasGroups {
         let support = try ConnectedGasGroups.build(
             cells: meanVolumes.map { .init(volume: $0, density: 1, pressure: 1) }, centres: centres,
             nominalVolume: nominalVolume, faces: faces, boundaries: boundaries.map(\.geometry),
-            minimumFraction: minimumFraction, maximumMembers: maximumMembers, tolerance: tolerance)
+            minimumFraction: minimumFraction, maximumMembers: maximumMembers, tolerance: tolerance,
+            areaScale: pow(nominalVolume, 2.0 / 3))
         // Validate geometric volume change per original cell, BEFORE internal faces cancel.
         var swept = [Double](repeating: 0, count: old.count)
         for boundary in boundaries where boundary.geometry.owner == 1 {

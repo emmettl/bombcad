@@ -130,7 +130,7 @@ private enum HelpTopic: String, CaseIterable, Identifiable {
                 ),
                 (
                     "Export for rendering",
-                    "File ▸ Export for Rendering… (⇧⌘E) runs the project again in the background and writes a USD scene, with the air as OpenVDB volumes in a folder beside it, for rendering in Blender. Choose the frame interval, which volumes to write, and whether to fly the project's fragments into the scene. The window carries on meanwhile; Cancel stops the export and removes its volumes."
+                    "File ▸ Export for Rendering… (⇧⌘E) runs the project again in the background and writes a USD scene, with the air as OpenVDB volumes in a folder beside it, for rendering in Blender. Choose the frame interval, which volumes to write, and whether to fly the project's fragments into the scene and put its ground points there. The window carries on meanwhile; Cancel stops the export and removes its volumes."
                 ),
                 (
                     "If something goes wrong",

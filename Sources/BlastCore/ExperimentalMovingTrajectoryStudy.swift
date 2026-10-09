@@ -2,8 +2,9 @@ import Foundation
 import simd
 
 /// Repeated interval geometry, grouping, paired Euler flux and endpoint scatter. The
-/// trajectory is prescribed and gas moves with the box at constant pressure. Uniform and
-/// analytic density-advection probes share the driver; free-body/nonuniform loads are separate.
+/// trajectory is prescribed. Uniform and analytic density-advection probes use constant
+/// pressure; an internal initial-state override also supports evolving pressure-load studies.
+/// Free-body motion remains separate.
 public enum ExperimentalMovingTrajectoryStudy {
     public struct Transport: Codable, Sendable {
         /// Extensive L1 mass error divided by the exact excess mass above ambient density.
@@ -28,6 +29,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let maximumRelativePressureError: Double
         public let maximumVelocityError: Double
         public let minimumPressure: Double
+        public let minimumDensity: Double
         public let massBudgetResidual: Double
         public let momentumBudgetResidual: SIMD3<Double>
         public let energyBudgetResidual: Double
@@ -167,7 +169,8 @@ public enum ExperimentalMovingTrajectoryStudy {
     static func solve(
         h: Double, angle: Double, start: Double, duration: Double, velocityScale: Double,
         cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false,
-        secondOrder: Bool = false, surfaceQuadrature: Bool = false
+        secondOrder: Bool = false, surfaceQuadrature: Bool = false,
+        initialCells: [FractionalGasTransport.Cell]? = nil
     ) throws -> Result {
         let clock = Date()
         let velocity = velocityScale * ExperimentalMovingGroupsStudy.velocity
@@ -178,13 +181,22 @@ public enum ExperimentalMovingTrajectoryStudy {
         let transitions = expectedTransitions(body: body, velocity: velocity, cellSize: h, duration: duration)
         let geometry = FractionalBoxGeometry(body)
         let count = Int((2 / h).rounded())
+        guard initialCells == nil || (reference == nil && initialCells!.count == count * count * count) else {
+            throw Failure.invalidConfiguration
+        }
         var cells: [FractionalGasTransport.Cell] = []
         for z in 0..<count {
             for y in 0..<count {
                 for x in 0..<count {
                     let lower = h * SIMD3(Double(x), Double(y), Double(z))
                     let volume = geometry.gasVolume(lower: lower, cellSize: h)
-                    if let reference {
+                    if let initialCells {
+                        let cell = initialCells[x + count * (y + count * z)]
+                        guard abs(cell.volume - volume) <= 1e-10 * h * h * h,
+                            (cell.volume == 0) == (volume == 0)
+                        else { throw Failure.invalidConfiguration }
+                        cells.append(cell)
+                    } else if let reference {
                         cells.append(
                             try reference.cell(
                                 geometry: geometry, lower: lower, cellSize: h,
@@ -195,6 +207,9 @@ public enum ExperimentalMovingTrajectoryStudy {
                     }
                 }
             }
+        }
+        if initialCells != nil {
+            _ = try FractionalGasTransport.advance(cells, newVolumes: cells.map(\.volume), transfers: [])
         }
         let before = total(cells)
         var reservoir = Sum()
@@ -214,6 +229,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         var pressureError = 0.0
         var velocityError = 0.0
         var minimumPressure = Double.infinity
+        var minimumDensity = Double.infinity
         var lastPartition: [Int]?
         var frames: [Frame] = []
         var newlyWetError = 0.0
@@ -319,6 +335,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                             pressureError = max(pressureError, abs(cell.pressure() / 101325 - 1))
                             velocityError = max(velocityError, simd_distance(cell.velocity, velocity))
                             minimumPressure = min(minimumPressure, cell.pressure())
+                            minimumDensity = min(minimumDensity, cell.amount[0] / cell.volume)
                         }
                         accepted = true
                         break
@@ -351,6 +368,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                     dryToWetCells: opened, wetToDryCells: closed, partitionChangedSteps: changed,
                     maximumRelativeDensityError: densityError, maximumRelativePressureError: pressureError,
                     maximumVelocityError: velocityError, minimumPressure: minimumPressure,
+                    minimumDensity: minimumDensity,
                     massBudgetResidual: residual[0],
                     momentumBudgetResidual: SIMD3(residual[1], residual[2], residual[3]) + impulse,
                     energyBudgetResidual: residual[4] + loads.value[4], volumeResidual: after[5] - before[5],

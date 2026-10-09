@@ -193,12 +193,12 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    to an integral model of a rising thermal in a standard atmosphere, a wind growing with height
    and humid air, where it condenses once saturated, within a factor of 1.6 of an empirical fit
    to high-explosive cloud heights; and [ground shock](ground-shock.md) away from the charge,
-   the manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame.
-   Next: radiation on the GPU's ray-tracing hardware, a fireball that is not one sphere, the
-   cloud in turbulent air and a measured sounding, with ice and rain, a layered soil column and
-   a comparison with measured ground motion, and the app showing what the surfaces received,
-   where the cloud went and how the ground shook. The crater and the ground shock near the
-   charge act back on the blast and remain outside these.)
+   the manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
+   drawn in the app. Next: radiation on the GPU's ray-tracing hardware, a fireball that is not
+   one sphere, the cloud in turbulent air and a measured sounding, with ice and rain, a layered
+   soil column and a comparison with measured ground motion, and the app showing what the
+   surfaces received and where the cloud went. The crater and the ground shock near the charge
+   act back on the blast and remain outside these.)
 
 ### Freestanding objects and supports
 
@@ -1521,8 +1521,66 @@ all advection cases use none. The full known-pressure twelve-case probe also sti
 its independent exact loads. Strict Swift formatting and diff checks pass, and the release
 build succeeds with main's existing AirSlice concurrency warnings.
 
-Next, measure sustained evolving nonuniform-pressure loads under spatial/time refinement,
-using sampled numerical walls and matched initial pulse energy. Local second-order time
+A sustained nonuniform-pressure study now reuses the moving transport loop. An internal
+initial-state override checks cell count, clipped capacities, dry status and Euler positivity;
+existing uniform/analytic drivers keep their initialization. The pressure-load wrapper
+renames uniform-reference diagnostics as ambient departures, since the evolving pulse has
+no exact solution. Minimum density joins minimum pressure in the shared accepted-step audit.
+
+`--moving-loads` seeds p = p0 + a exp(−|q|²/2), with q = (x − (0.45,1.18,1.10)) /
+(0.14,0.18,0.18), uniform density 1.225 kg/m³ and velocity (300,100,−40) m/s. Positive
+clipped-gas quadrature supplies cell pressure averages. Amplitude a normalizes realized
+excess internal energy to 6400 J independently for each grid/orientation, avoiding different
+input energy in the load comparison. Initial mass and total energy are checked against
+whole-domain gas volume and independently realized pulse energy. Each CFL pair shares the
+same immutable initial packets. Outer reservoirs remain prescribed ambient gas; the box
+translates at the initial gas velocity, with no free-body response or ground contact.
+
+The default twelve cases cover 0.2/0.1/0.05 m grids, aligned/rotated boxes and CFL 0.2/0.1.
+Over 200 µs the body moves (0.06,0.02,−0.008) m. Four matched cumulative snapshots report
+impulse, angular impulse, body work, pressure/density departures, perturbation speed,
+positivity, geometry transitions and complete gas/reservoir/body budgets. The Python summary
+independently checks initial energy/mass and geometric transitions, then compares CFL pairs
+and load histories against the 0.05 m/CFL 0.1 numerical case. That finest case is a
+comparison, not exact truth; neither observed refinement nor conservative budgets validate
+blast loads by themselves.
+
+All 96 CPU-only tests in 19 suites pass. New tests independently audit pulse energy and
+inventory across grids/orientations, recover the existing uniform trajectory at zero pulse
+energy, check repeated evolving pressure with positive gas and paired loads, and reject
+invalid pulse/grid/CFL parameters or incompatible initial inventories. Strict formatting
+and diff checks pass. The full release study is also checked independently.
+
+All twelve release cases complete and pass the independent energy, positivity, transition
+and exchange audits. Initial excess energy matches within `1.2e-11` J. Across the run,
+minimum density/pressure remain above 1.15 kg/m³/101 kPa and maximum perturbation speed
+is about 23.1 m/s. Cumulative budget residuals stay below `3e-12` kg, `6e-10` N s and
+`6e-7` J; moving-volume residuals stay below `9e-16` m³ and paired work below `2e-13` J.
+No member positivity backoff or deficient-neighbour fallback occurs. Tiny wall-sample
+fallbacks are recorded rather than hidden.
+
+CFL-halving differences in final impulse/angular impulse stay below 0.064%/0.095%.
+Grid dependence is much larger. At CFL 0.1, final aligned impulse differs from the 0.05 m
+case by 20.9% on 0.2 m cells and 10.8% on 0.1 m cells; angular impulse differs by
+13.8% and 9.18%. The rotated differences are 5.56%/5.79% for impulse and 22.0%/1.95%
+for angular impulse. Rotated final impulse does not improve monotonically at these grids.
+Matched cumulative-history differences decrease under refinement, but still reach
+14.6%/13.7% aligned and 7.16%/4.51% rotated on the 0.1 m grid. Temporal consistency
+and conservation therefore do not establish spatial load accuracy; these loads are not
+settled across grids. The summary reports this without imposing a convergence assertion
+or calling the finest solution exact.
+
+The finer rotated case exposed an ill-conditioned raw-cell area check. The captured cell
+had mean gas capacity `9.86e-26` m³ and total surface area `4.81e-17` m²; dividing its
+roundoff-scale imbalance by that vanishing surface gave a relative residual just above
+`1e-8`. Moving grouping now supplies nominal cell-face area for raw-cell closure scaling,
+consistent with the geometry reference's nominal volume/moment scales. After merging,
+closure still uses the original actual group-surface scale. Static callers retain their
+original raw-cell check. The captured interval is tested with positive old/final group
+capacities and uniform pressure/velocity preservation through the sampled update.
+
+Next, isolate initial wall-trace error against independently integrated Gaussian surface
+loads, then assess the remaining spatial load error before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
 and velocity vary, especially near shocks and geometric contacts.

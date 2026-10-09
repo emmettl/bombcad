@@ -100,7 +100,9 @@ full structural model, including supports, openings and reinforcement, remain au
 opening a document never silently regenerates them from the source.
 
 `fragments.json`, when present, holds the Run tab's fragment description (see
-[Fragments](fragments.md#in-the-app)); fields left out take their defaults.
+[Fragments](fragments.md#in-the-app)); fields left out take their defaults. `groundShock.json`,
+when present, holds the Run tab's ground points and soil (see
+[Ground shock](ground-shock.md#in-the-app)), likewise.
 
 `settings.json` stores resolution (`coarse`, `medium`, `fine`), `detailedCharge`, `sharpShocks`,
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`

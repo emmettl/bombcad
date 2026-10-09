@@ -115,6 +115,8 @@ struct SidebarView: View {
 
             FragmentSection(model: model)
 
+            GroundShockSection(model: model)
+
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
                 {
@@ -200,6 +202,9 @@ struct SidebarView: View {
                         text: String(format: "%.2f", model.renderSettings.waveOpacity))
                 }
                 FragmentDisplaySettings(model: model)
+                if model.groundShockSpec != nil {
+                    Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
+                }
             }
 
             Section("Solver") { SolverStats(model: model) }

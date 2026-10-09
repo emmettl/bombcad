@@ -91,12 +91,15 @@ enum ConnectedGasGroups {
     static func build(
         cells: [FractionalGasTransport.Cell], centres: [SIMD3<Double>], nominalVolume: Double,
         faces: [Face], boundaries: [Boundary], minimumFraction: Double = 0.25,
-        maximumMembers: Int = 64, tolerance: Double = 1e-8
+        maximumMembers: Int = 64, tolerance: Double = 1e-8, areaScale: Double? = nil
     ) throws -> Plan {
         guard !cells.isEmpty, centres.count == cells.count, nominalVolume.isFinite && nominalVolume > 0,
             minimumFraction.isFinite && minimumFraction > 0 && minimumFraction <= 1,
             maximumMembers > 0, tolerance.isFinite && tolerance > 0
         else { throw Failure.invalidGeometry }
+        if let areaScale {
+            guard areaScale.isFinite && areaScale > 0 else { throw Failure.invalidGeometry }
+        }
         guard centres.allSatisfy({ point in (0..<3).allSatisfy { point[$0].isFinite } }) else {
             throw Failure.invalidGeometry
         }
@@ -150,7 +153,9 @@ enum ConnectedGasGroups {
         var areaResidual = 0.0
         var momentResidual = 0.0
         for n in cells.indices {
-            let a = simd_length(areaVectors[n]) / max(areas[n], 1e-300)
+            // Moving references can supply nominal cell-face area for raw slivers.
+            // Closure AFTER merging remains relative to the actual group surface.
+            let a = simd_length(areaVectors[n]) / max(areas[n], areaScale ?? 0, 1e-300)
             let difference = moments[n] - matrix_identity_double3x3 * cells[n].volume
             let m =
                 sqrt((0..<3).reduce(0.0) { $0 + simd_length_squared(difference[$1]) })

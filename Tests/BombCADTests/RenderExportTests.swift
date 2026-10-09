@@ -21,6 +21,9 @@ struct RenderExportTests {
         spec.count = 50
         spec.tracers = 0
         document.fragments = spec
+        var ground = GroundShockSpec()
+        ground.line = .init(from: SIMD2(2.5, 2), to: SIMD2(2.5, 3.5), count: 4)
+        document.groundShock = ground
         return document
     }
 
@@ -59,6 +62,7 @@ struct RenderExportTests {
         let text = try String(contentsOf: scene, encoding: .utf8)
         #expect(text.contains("rel field:peak") && text.contains("rel field:overpressure"))
         #expect(!text.contains("field:shock") && text.contains("def Points \"Fragments\""))
+        #expect(text.contains("def Points \"GroundShock\"") && text.contains("primvars:verticalVelocity"))
     }
 
     @Test("Without volumes or fragments, only the scene; a volumes folder in the way is refused")
@@ -69,11 +73,12 @@ struct RenderExportTests {
         let export = RenderExport()
         export.fields = []
         export.includesFragments = false
+        export.includesGroundShock = false
         export.start(document(), to: scene)
         try await wait(export)
         #expect(export.state == .finished(scene, frames: 1))
         let text = try String(contentsOf: scene, encoding: .utf8)
-        #expect(!text.contains("def Volume") && !text.contains("Fragments"))
+        #expect(!text.contains("def Volume") && !text.contains("Fragments") && !text.contains("GroundShock"))
 
         try FileManager.default.createDirectory(
             at: RenderExport.volumes(for: scene), withIntermediateDirectories: false)

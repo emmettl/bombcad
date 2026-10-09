@@ -26,6 +26,7 @@ final class RenderExport {
     var fields: Set<String> = Set(BlastSolver.defaultVolumeFields)
     /// Fly the project's fragments into the scene, if it has any.
     var includesFragments = true
+    var includesGroundShock = true
     @ObservationIgnored private var task: Task<Void, Never>?
 
     var isRunning: Bool {
@@ -54,6 +55,7 @@ final class RenderExport {
             options.vdbFields = grids
         }
         if includesFragments { options.fragments = document.fragments }
+        if includesGroundShock { options.groundShock = document.groundShock }
         state = .running(0)
         task = Task {
             do {
@@ -109,6 +111,11 @@ struct RenderExportView: View {
                 if model.fragmentSpec != nil {
                     LabeledContent("Fragments") {
                         Toggle("Fly them into the scene", isOn: $export.includesFragments)
+                    }
+                }
+                if model.groundShockSpec != nil {
+                    LabeledContent("Ground points") {
+                        Toggle("Put them in the scene", isOn: $export.includesGroundShock)
                     }
                 }
             }

@@ -77,6 +77,26 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         }
     }
 
+    /// Ground points estimated alongside the run: where, in what soil, and how the ground moved.
+    /// Like the fragments, they do not act on the air and are no part of the fingerprint.
+    struct GroundShock: Codable, Equatable, Sendable {
+        var spec: GroundShockSpec
+        /// Without the overpressure histories, which a kept run does not need.
+        var result: GroundShockResult
+
+        var summary: String {
+            let open = result.points.filter { !$0.covered && $0.peakOverpressure > 0 }
+            var text = "Ground shock: \(result.points.count) points"
+            let soil = result.soil
+            if let top = open.max(by: { $0.surfaceVelocity(in: soil) < $1.surfaceVelocity(in: soil) }) {
+                text += String(
+                    format: ", fastest %.0f mm/s under (%.1f, %.1f)", top.surfaceVelocity(in: soil) * 1000,
+                    top.position.x, top.position.y)
+            }
+            return text
+        }
+    }
+
     var id = UUID()
     var name: String
     var capturedAt = Date()
@@ -93,6 +113,7 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     var structure: Structure?
     var bodyResponses: [BodyResponse]? = nil
     var fragments: Fragments? = nil
+    var groundShock: GroundShock? = nil
 
     static func fingerprint(_ scenario: Scenario, settings: ProjectRunSettings) throws -> String {
         struct Inputs: Encodable {
@@ -155,6 +176,27 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 })
             else { throw ProjectFileError.invalid("Invalid saved fragments.") }
         }
+        if let groundShock {
+            let result = groundShock.result
+            func finite(_ value: Float, from low: Float = 0) -> Bool { value.isFinite && value >= low }
+            guard (try? groundShock.spec.validate(domain: scenario.domainSize)) != nil,
+                result.points.count == groundShock.spec.allPoints.count,
+                result.depths == groundShock.spec.depths,
+                result.soil == groundShock.spec.soil,
+                result.points.allSatisfy({ point in
+                    finite(point.peakOverpressure) && finite(point.impulse) && finite(point.duration)
+                        && finite(point.frontSpeed) && point.history.isEmpty
+                        && (point.arrival.map { $0.isFinite && $0 >= 0 && $0 <= elapsedTime + 1e-6 } ?? true)
+                        && point.responses.map(\.depth) == result.depths
+                        && point.responses.allSatisfy { response in
+                            finite(response.stress) && finite(response.verticalVelocity)
+                                && finite(response.verticalDisplacement)
+                                && (response.horizontalVelocity.map { finite($0) } ?? true)
+                                && (response.arrival.map(\.isFinite) ?? true)
+                        }
+                })
+            else { throw ProjectFileError.invalid("Invalid saved ground shock.") }
+        }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,
                 valid(structure.points), structure.points.allSatisfy({ $0.value >= 0 }),
@@ -210,6 +252,19 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         for impact in fragments?.impacts.sorted(by: { $0.time < $1.time }) ?? [] {
             let label = field("Fragment \(impact.fragment) on \(impact.surface)")
             lines.append("\(field(name)),\(label),\(impact.time * 1000),\(impact.energy),J")
+        }
+        for point in groundShock?.result.points ?? [] {
+            guard let arrival = point.arrival else { continue }
+            let place = String(format: "Ground (%.2f, %.2f)", point.position.x, point.position.y)
+            lines.append(
+                "\(field(name)),\(field(place + " peak overpressure")),\(arrival * 1000),"
+                    + "\(point.peakOverpressure / 1000),kPa")
+            for response in point.responses {
+                let label = field(place + String(format: " vertical velocity at %g m", response.depth))
+                lines.append(
+                    "\(field(name)),\(label),\((response.arrival ?? arrival) * 1000),"
+                        + "\(response.verticalVelocity * 1000),mm/s")
+            }
         }
         return lines.joined(separator: "\n") + "\n"
     }

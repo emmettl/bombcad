@@ -39,6 +39,8 @@ public struct RenderSettings: Sendable, Hashable {
     /// Fragments in flight and where they landed, and tracers, when a run flies them.
     public var showFragments = true
     public var showTracers = true
+    /// Ground points where the ground's shaking is estimated, when the project has any.
+    public var showGroundPoints = true
     /// Their dots' diameter on screen, in points, whatever their true size.
     public var dotSize: Float = 5
     /// A box to outline in the view, such as the one being edited.
@@ -206,7 +208,7 @@ public final class SceneRenderer {
     public var pixelsPerPoint: Float = 1
 
     /// Dots to draw over the scene: each a position and a code, its kind (0 a fragment in flight,
-    /// 1 a tracer, 2 a fragment's landing) plus a value from 0 to 1 that colours it (a fragment's
+    /// 1 a tracer, 2 a fragment's landing, 3 a ground point) plus a value from 0 to 1 that colours it (a fragment's
     /// speed, a landing's energy).
     public func setDots(_ dots: [SIMD4<Float>]) {
         dotCount = dots.count

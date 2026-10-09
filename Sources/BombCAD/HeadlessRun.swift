@@ -300,6 +300,7 @@ enum HeadlessRun {
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
         // A run here flies fragments as `options` says, not as the project's live view does.
         model.fragmentSpec = nil
+        model.groundShockSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
         // so exporting does not change the run. Without a structure, only volumes, fragments, the
@@ -451,6 +452,11 @@ enum HeadlessRun {
                     ("peakIrradiance", thermalResult.peakIrradiance.map { $0 / 1000 }),
                 ])
         }
+        var groundResult = ground?.result(frameInterval: interval)
+        groundResult?.seconds = groundTime.seconds
+        if let groundResult, let spec = options.groundShock {
+            scene?.addGroundShock(groundResult, spec: spec)
+        }
         var cloud: CloudResult?
         if let spec = options.cloud {
             guard let handOver else {
@@ -464,8 +470,6 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        var groundResult = ground?.result(frameInterval: interval)
-        groundResult?.seconds = groundTime.seconds
         return (run, document, fragments, stream, thermalResult, cloud, groundResult)
     }
 

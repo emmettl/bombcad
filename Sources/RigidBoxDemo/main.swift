@@ -7,6 +7,25 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--moving-loads") {
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-loads.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalMovingLoadStudy.Result] = []
+        _ = try ExperimentalMovingLoadStudy.run { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            let f = r.frames.last!
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation), CFL \(r.cfl): \(f.steps) steps, impulse \(f.bodyImpulse), torque impulse \(f.bodyAngularImpulse), \(r.computeSeconds) s"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--moving-pressure") {
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })

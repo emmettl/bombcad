@@ -41,6 +41,33 @@ public struct GroundPointResult: Codable, Sendable, Equatable {
     }
 }
 
+extension GroundPointResult {
+    /// The peak downward velocity of the ground's surface, m/s, whatever depths were asked for.
+    public func surfaceVelocity(in soil: GroundSoil) -> Float {
+        covered ? 0 : peakOverpressure / soil.impedance
+    }
+}
+
+extension GroundShockResult {
+    /// The points as dots to draw just above the ground: grey until the blast reaches them, then
+    /// coloured by how fast the ground's surface moved, from 1 mm/s to 10 m/s on a log scale.
+    /// Points under a block or the structure are left out. Each is a position and a code: kind 3
+    /// (see `SceneRenderer.setDots`) plus that value, 0 before the blast arrives.
+    public var dots: [SIMD4<Float>] {
+        points.compactMap { point in
+            guard !point.covered else { return nil }
+            let speed = point.surfaceVelocity(in: soil)
+            let value = point.arrival == nil ? 0 : min(max(log10(max(speed, 1e-3) / 1e-3) / 4, 0.001), 0.999)
+            return SIMD4(point.position.x, point.position.y, 0.05, 3 + value)
+        }
+    }
+}
+
+extension GroundShockSpec {
+    /// The points as grey dots, before a run reaches them.
+    public var dots: [SIMD4<Float>] { allPoints.map { SIMD4($0.x, $0.y, 0.05, 3) } }
+}
+
 /// What a ground shock consumer found.
 public struct GroundShockResult: Codable, Sendable, Equatable {
     public var soil: GroundSoil
