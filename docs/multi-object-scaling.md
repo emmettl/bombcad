@@ -118,7 +118,7 @@ inspecting resources; finer or longer studies need their own resolution checks.
 An optimized headless smoke run at 0.5 m air-cell size completed 189 steps to 60 ms
 in 1.9 seconds on M4 Max. It retained all sixteen response histories with
 `blast-solver-4` provenance and all owner IDs in CSV. The courtyard gauge recorded
-25.4 kPa peak overpressure; the more distant gauges had not recorded a wave at that
+25.4 kPa peak overpressure; the more distant gauge peaks stayed below 0.01 kPa at that
 cutoff. Overall structural deflection reached 1.3 mm, including the model's gravity
 response, with no element failure. This is an operational example, not measured validation.
 
