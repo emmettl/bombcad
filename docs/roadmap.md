@@ -42,9 +42,11 @@ it should be used to judge the safety of a real structure.
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
 and its rendering is checked through offscreen snapshots. An initial static panel review now
-covers the Run sidebar, saved-run comparison and Export for Rendering sheet in light and dark
-appearances. Native file dialogs, keyboard focus, scrolling and the other panels still need
-interactive review.
+covers the Run sidebar, saved-run comparison, Export for Rendering sheet, linked-part layout
+editor, import loading state, Settings and Help content in light and dark appearances. The
+offscreen Help sidebar has unresolved selected-label rendering and dark contrast that need
+checking in a native window.
+Native file dialogs, keyboard focus, scrolling and the other panels still need interactive review.
 
 ## Planned work
 
@@ -1816,11 +1818,17 @@ two collapsing over several seconds.
 - Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
   a misleading layout selector, which displayed the last preset choice after opening another
   project. The menu now shows the actual scene name and offers built-in layouts as replacement
-  actions. The Run sidebar, comparison and export panels have been inspected in both appearances.
+  actions. The review also covers linked-part editing, import loading, Settings and Help content
+  in both appearances. During loading, the import sheet no longer reports that its preview is
+  unavailable while also saying it is updating. The completed import preview and Help sidebar's
+  selected labels and dark contrast still need native checks; no styling change is inferred from the offscreen
+  sidebar capture alone.
   Reproduce these static captures with
   `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
   The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
-  `dark`, and checks that capture leaves saved inputs unchanged. It expands the requested size
+  `dark`, and checks that capture leaves saved inputs unchanged. Settings captures use and remove
+  a temporary defaults suite. The import capture records the initial loading state rather than
+  waiting for asynchronous preview completion. The helper expands the requested size
   to the view's fitting size, so these captures do not verify scrolling at the minimum window
   size. The Metal viewport and native interaction remain separate checks; the helper is skipped
   during ordinary test runs.

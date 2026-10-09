@@ -36,6 +36,40 @@ struct InterfaceSnapshotTests {
         #expect(ProjectDocument(model: model) == original)
     }
 
+    @Test("Render editing and import panels without changing the project", arguments: ["light", "dark"])
+    func editingPanels(style: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var document = ProjectDocument(scenario: try StructureEditingTests().layout())
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        let first = try #require(model.structuralParts.first)
+        model.selection = .part(first.id)
+        let original = ProjectDocument(model: model)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        try snapshot(
+            EditorView(model: model).frame(width: 310), size: CGSize(width: 310, height: 800),
+            appearance: appearance, to: folder.appending(path: "layout-editing.png"))
+        let imported = try #require(model.settings.scenario.importedModels?.first)
+        try snapshot(
+            ModelImportView(
+                mesh: imported.source, filename: "named-parts.obj", existing: imported, model: model),
+            size: CGSize(width: 1100, height: 760), appearance: appearance,
+            to: folder.appending(path: "import-editing.png"))
+        try snapshot(
+            HelpView(), size: CGSize(width: 900, height: 640), appearance: appearance,
+            to: folder.appending(path: "help.png"))
+        #expect(ProjectDocument(model: model) == original)
+
+        let suite = "dev.bombcad.interface-review.\(UUID())"
+        let store = try #require(UserDefaults(suiteName: suite))
+        defer { store.removePersistentDomain(forName: suite) }
+        try snapshot(
+            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 640),
+            appearance: appearance, to: folder.appending(path: "settings.png"))
+    }
+
     private func snapshot<V: View>(
         _ view: V, size: CGSize, appearance: NSAppearance.Name, to file: URL
     ) throws {
