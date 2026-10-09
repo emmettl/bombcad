@@ -1285,13 +1285,53 @@ reject inconsistent inventories, and preserve mechanical state during prescribed
 All 67 CPU-only tests in 13 suites pass. The sixteen final release reports pass the independent
 summary checks; strict formatting and diff checks are clean.
 
-Next, establish nonuniform gas transport accuracy during prescribed motion, then nonuniform
-moving-load convergence under grid and timestep refinement. The uniform comoving trajectories
-check conservation and active-set handling; they do not measure blast-wave or pressure-load
-accuracy. Group homogenization does not preserve gas angular momentum. Coupled free-body
-velocity, rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary
-simulations are unchanged, and stable kernels remain candidates for separately reviewed shared
-extraction.
+Nonuniform moving transport now has an exact quadratic-density advection reference:
+`rho = rho0 [1 + a ((x - u_x t - c)/L)^2]`, with rho0 = 1.225 kg/m³, a = 0.2, c = 1 m,
+L = 1 m, pressure 101325 Pa and velocity (300,100,-40) m/s. Continuity reduces to scalar
+advection; constant pressure/velocity make momentum and energy consistent with it. A box
+moving at the same velocity has exact wall pressure p despite the density variation.
+This isolates transport from pressure-wave or free-body errors.
+
+Positive degree-two gas quadrature initializes conservative cell averages and evaluates
+matched-time references, normalizing only the roundoff difference between volume formulas.
+An independent whole-domain integral subtracts the translating box's invariant density
+moment from the 2 m cube. Reference mass changes by 0.112896 kg over the trajectory,
+consistent with the prescribed exterior flow. Boundary-specific reservoir callbacks now
+accept spatial/time-dependent states. The reference integrates quadratic density on full
+fixed outer faces using spatial and temporal variances; each numerical reservoir packet
+remains paired and its inventory change audited. The engine carries accepted gas through
+every interval and never substitutes the exact interior reference for evolved inventories.
+
+`--moving-entropy` completes twelve 0.4/0.2/0.1 m grid, aligned/0.23-radian box and CFL
+0.2/0.1 cases over the same 0.8 ms prescribed trajectory. At matched output times,
+extensive density L1 error is divided by the exact excess density mass above rho0.
+Final errors are about 30.1%, 17.9% and 10.1%; observed refinement rates are 0.75 then
+0.82. Errors decrease at both orientations and CFL values. Halving CFL changes final L1
+error by at most 0.265% relative, exposing dominant spatial diffusion/group homogenization
+rather than timestep error. The maximum density error in newly exposed cells over the
+fine-grid trajectory is about 3.4% aligned and 4.0% rotated relative to their exact density.
+These errors are material transport errors, distinct from conservative budget residuals.
+
+Pressure stays within `5e-14` relative and velocity within `3e-12` m/s of their exact constants.
+Cumulative budget residuals are below `3e-13` kg, `7e-11` N s and `7e-8` J;
+reference clipped-cell quadrature matches independent whole-domain mass within `4e-15` kg.
+All wet/dry transition counts agree with the geometric oracle. The independent Python
+summary checks the complete matrix, closed-form mass/energy, positivity, paired work,
+conservation, transition counts and spatial refinement. Density diagnostics are sampled
+at matched times; newly exposed-cell errors and pressure/velocity preservation are monitored
+throughout accepted steps. Tests check full/half-cell quadratic averages, independent
+spatial/time Gauss boundary samples, rotated whole-domain mass, exact mass gain, coarse-grid
+transport refinement and rejected mismatched frame velocities/invalid exterior traces.
+All 72 CPU-only tests in 14 suites pass; formatting and diff checks are clean. The full
+release build succeeds with the incoming main's existing AirSlice concurrency warnings.
+
+Next, reduce the observed spatial diffusion and newly exposed-cell mixing with reconstruction
+and consistent time integration, preserving the geometric and budget checks. Then establish
+nonuniform moving-pressure-load convergence under grid and timestep refinement. Constant-pressure
+advection does not measure blast-wave or pressure-load accuracy. Group homogenization does
+not preserve gas angular momentum. Coupled free-body velocity, rotation, ground contact and
+gas angular momentum remain subsequent gates. Ordinary simulations are unchanged, and stable
+kernels remain candidates for separately reviewed shared extraction.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.

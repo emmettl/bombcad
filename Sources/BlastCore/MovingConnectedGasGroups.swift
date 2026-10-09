@@ -190,6 +190,15 @@ enum MovingGroupedGasFlux {
     ) throws -> Result {
         guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
         _ = try FractionalGasTransport.advance([exterior], newVolumes: [exterior.volume], transfers: [])
+        return try advance(plan, exteriorAt: { _ in exterior }, cfl: cfl)
+    }
+    /// Boundary-specific supplied states permit spatial/time-dependent reservoirs. The
+    /// caller owns trace quadrature; numerical transfers remain paired and audited.
+    static func advance(
+        _ plan: MovingConnectedGasGroups.Plan,
+        exteriorAt: (MovingConnectedGasGroups.Boundary) throws -> FractionalGasTransport.Cell,
+        cfl: Double = 0.2
+    ) throws -> Result {
         var cells = plan.cells
         var faces = plan.faces.map {
             FractionalEulerFlux.Face(a: $0.a, b: $0.b, normal: $0.normal, area: $0.area)
@@ -200,6 +209,10 @@ enum MovingGroupedGasFlux {
             if b.owner == 1 {
                 walls.append(.init(cell: b.cell, normal: b.normal, area: b.area, velocity: plan.velocity))
             } else {
+                let exterior = try exteriorAt(boundary)
+                guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
+                _ = try FractionalGasTransport.advance(
+                    [exterior], newVolumes: [exterior.volume], transfers: [])
                 // A separate finite buffer per patch makes the existing paired flux usable
                 // for a prescribed reservoir. Its inventory change is returned explicitly.
                 faces.append(.init(a: b.cell, b: cells.count, normal: b.normal, area: b.area))

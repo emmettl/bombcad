@@ -512,6 +512,18 @@ independent corner-containment oracle. Rejected trials retain the accepted pose 
 roundoff contacts use consistent geometric volume/face predicates. Nonuniform moving-load
 accuracy, free-body feedback, rotation and gas angular momentum remain subsequent work.
 
+`swift run -c release rigidboxdemo --moving-entropy` writes `.build/moving-entropy.json`.
+A quadratic density profile is advected with the prescribed box while pressure and velocity
+remain constant. Degree-two gas quadrature gives exact clipped-cell reference averages,
+and an independent whole-domain integral checks their mass. Spatial/time-averaged outer
+states drive the numerical reservoirs. Twelve cases cover 0.4/0.2/0.1 m grids, aligned/rotated
+boxes and CFL 0.2/0.1. `python3 Scripts/summarize-moving-entropy.py` checks the complete
+matrix, budgets, reference integrals and spatial/CFL sensitivity. Density L1 error falls
+from about 30% to 18% to 10%, normalized by the imposed excess density mass; CFL halving
+changes it by less than 0.27% relative. This exposes first-order spatial diffusion and
+group mixing. It tests nonuniform density transport; pressure-load accuracy remains a
+separate benchmark.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
