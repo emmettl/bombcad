@@ -452,6 +452,11 @@ enum HeadlessRun {
                     ("peakIrradiance", thermalResult.peakIrradiance.map { $0 / 1000 }),
                 ])
         }
+        var groundResult = ground?.result(frameInterval: interval)
+        groundResult?.seconds = groundTime.seconds
+        if let groundResult, let spec = options.groundShock {
+            scene?.addGroundShock(groundResult, spec: spec)
+        }
         var cloud: CloudResult?
         if let spec = options.cloud {
             guard let handOver else {
@@ -465,8 +470,6 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        var groundResult = ground?.result(frameInterval: interval)
-        groundResult?.seconds = groundTime.seconds
         return (run, document, fragments, stream, thermalResult, cloud, groundResult)
     }
 

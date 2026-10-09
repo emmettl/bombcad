@@ -188,6 +188,31 @@ public final class USDSceneWriter {
         pointSets.append((name, frames, widths, colour, values))
     }
 
+    /// Adds the ground points with open ground, as `/Scene/GroundShock`: Points just above the
+    /// ground, half their spacing along a line across, carrying what the ground did there as
+    /// primvars: `peakOverpressure` (kPa), `impulse` (Pa·s), the surface's `verticalVelocity`
+    /// (mm/s) and `verticalDisplacement` (mm), and `arrival` (ms, −1 where the blast never came).
+    public func addGroundShock(_ result: GroundShockResult, spec: GroundShockSpec) {
+        let open = result.points.filter { !$0.covered }
+        guard !open.isEmpty else { return }
+        var width: Float = 0.5
+        if let line = spec.line, spec.points.isEmpty {
+            width = simd_distance(line.from, line.to) / Float(max(line.count - 1, 1)) / 2
+        }
+        width = min(max(width, 0.1), 2)
+        let soil = result.soil
+        addPoints(
+            "GroundShock", frames: [open.map { SIMD3($0.position.x, $0.position.y, 0.05) }],
+            widths: [Float](repeating: width, count: open.count), colour: SIMD3(0.6, 0.35, 0.9),
+            values: [
+                ("peakOverpressure", open.map { $0.peakOverpressure / 1000 }),
+                ("impulse", open.map(\.impulse)),
+                ("verticalVelocity", open.map { $0.surfaceVelocity(in: soil) * 1000 }),
+                ("verticalDisplacement", open.map { $0.impulse / soil.impedance * 1000 }),
+                ("arrival", open.map { $0.arrival.map { Float($0 * 1000) } ?? -1 }),
+            ])
+    }
+
     /// Adds the cloud after the run, a sphere rising and drifting with one frame every
     /// `secondsPerFrame` of simulated time from the first sample. Its frames follow the run's on
     /// the timeline, at that slower rate, and it is hidden until then.

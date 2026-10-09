@@ -89,6 +89,13 @@ The file also gives the frames, the bytes of air streamed and the time the run s
 The summary printed gives the fastest surface motion and where it was, the points without a
 horizontal estimate, and the covered points.
 
+With `--usd` as well, the scene gains `/Scene/GroundShock`, Points just above the ground at the
+points with open ground, as wide as half their spacing along a line (half a metre otherwise).
+Each carries what the ground did there as primvars, for colouring in Blender: `peakOverpressure`
+(kPa), `impulse` (Pa·s), the surface's `verticalVelocity` (mm/s) and `verticalDisplacement` (mm),
+and `arrival` (ms, −1 where the blast never came). File ▸ Export for Rendering… puts the
+project's ground points in the scene unless told not to.
+
 ## In the app
 
 Turn on **Ground points** in the Run tab's Ground shock section. It starts with 16 points along
@@ -194,15 +201,16 @@ the run's cost is the frames' extra steps, not the estimate.
   load, and a single triangle describes it poorly.
 - Points under a block or the structure get nothing. The building's own load on its foundations
   is not passed to the soil.
-- Not on a worker over SSH and not in the USD scene. In the app, arrivals are only as fine as
-  the batches (above), and the points lie on one straight line.
+- Not on a worker over SSH. The USD scene holds each point's final values, not how they grew.
+  In the app, arrivals are only as fine as the batches (above), and the points lie on one
+  straight line.
 
 ## Future work
 
 - A layered soil column solved numerically, with different loading and unloading moduli. The
   elastic column the tests already integrate is the start of one. It would replace the
   attenuation factor and handle layers and the water table.
-- The ground points in the USD export, and in the app as a grid over an area as well as a line.
+- The ground points in the app as a grid over an area as well as a line.
 - A worker session for the slices, if a costlier ground model needs one.
 - A comparison with measured air-induced ground motion
   ([Data wanted](data-wanted.md#3a-air-induced-ground-shock)).

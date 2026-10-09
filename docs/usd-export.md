@@ -11,7 +11,7 @@ swift run -c release BombCAD run Example.bombcad --usd Example.usda --vdb Exampl
 
 In the app, **File ▸ Export for Rendering…** (⇧⌘E, or the toolbar's extra-actions menu) does the
 same from the open project: it runs a copy of it in the background, with a frame interval, the
-volumes' grids and the project's fragments chosen in a sheet, and writes the scene where the
+volumes' grids, the project's fragments and its ground points chosen in a sheet, and writes the scene where the
 save panel says and the volumes in a folder beside it (`Example.volumes` for `Example.usda`).
 
 `--usd` and `--vdb` are options of the [headless run](run-comparison.md#headless-runs), and
@@ -34,6 +34,7 @@ USD in its text form (`.usda`), Z up, in metres, written without any USD library
 | `/Scene/Structure` | The body's surface, frame by frame |
 | `/Scene/Fragments`, `/Scene/Tracers` | With `--fragments`, Points that follow the frames ([Fragments](fragments.md)) |
 | `/Scene/Thermal` | With `--thermal`, Points at the receivers, with their fluence and peak irradiance ([Thermal radiation](thermal-radiation.md)) |
+| `/Scene/GroundShock` | With `--ground-shock`, Points at the ground points, with their peak overpressure, impulse, surface velocity, settlement and arrival ([Ground shock](ground-shock.md#output)) |
 | `/Scene/Cloud` | With `--cloud`, a sphere rising and drifting after the run, on frames of its own that follow the run's ([The fireball's rise and cloud](fireball-rise.md)) |
 
 The structure's surface is what the app draws: the outer faces of intact solid elements, each
