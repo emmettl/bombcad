@@ -206,6 +206,14 @@ struct RunComparisonView: View {
                         }
                         if let fragments = run.fragments { Text(fragments.summary) }
                         if let groundShock = run.groundShock { Text(groundShock.summary) }
+                        ForEach(run.envelopeExposure ?? []) { building in
+                            Text(
+                                String(
+                                    format:
+                                        "%@: %.2f kPa peak surface pressure · %.2f Pa s mean positive impulse",
+                                    building.name, building.peakPositivePa / 1000,
+                                    building.meanPositiveImpulsePaS ?? 0))
+                        }
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
                     if let thermal = run.thermal { Text(thermal.comparison).font(.callout) }

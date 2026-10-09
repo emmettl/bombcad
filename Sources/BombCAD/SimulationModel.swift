@@ -248,6 +248,23 @@ final class SimulationModel {
         selection = nil
     }
 
+    func useEditedEnvelope() {
+        guard !isPreparingImports, let object = editedObject else { return }
+        do {
+            var scene = settings.scenario
+            try scene.useEnvelope(id: object.id)
+            try scene.validateObjectOwnership()
+            settings.scenario = scene
+            selectedStructureID = nil
+            selection = nil
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func removeEnvelope(id: UUID) {
+        guard !isPreparingImports, settings.scenario.object(id: id)?.envelope != nil else { return }
+        do { try settings.scenario.removeObject(id: id) } catch { errorMessage = error.localizedDescription }
+    }
+
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
@@ -389,6 +406,23 @@ final class SimulationModel {
     @ObservationIgnored private var groundShockEdit: Task<Void, Never>?
     /// How the ground has moved so far in the run, at each point, and a line saying so.
     private(set) var groundShockLive: GroundShockResult?
+    private(set) var envelopeExposure: [EnvelopeExposureSummary] = []
+    private(set) var envelopeExposureStatus = ""
+
+    var canExportEnvelopeExposure: Bool {
+        !isRunning && !batchInFlight && !isLoadingInputs && !rebuildPending
+            && settings.scenario == scenario && stepCount > 0 && !envelopeExposure.isEmpty
+    }
+
+    func envelopeResultsData() throws -> Data {
+        guard canExportEnvelopeExposure, let snapshots = solver?.envelopeExposureSnapshot() else {
+            throw ProjectFileError.invalid(
+                "Pause a run with available building surface results before exporting.")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(snapshots)
+    }
     private(set) var groundShockStatus = ""
     @ObservationIgnored private(set) var groundShock: GroundShockConsumer?
     @ObservationIgnored private var groundShockTime = -1.0
@@ -1291,6 +1325,7 @@ final class SimulationModel {
                             maximumDamage: Double(summary.maxDamage)))
                 } : nil)
         run.fragments = flown
+        run.envelopeExposure = solver.envelopeExposureSummaries()
         if let groundShock, let spec = estimatedGroundSpec {
             var result = groundShock.result(frameInterval: 0)
             for n in result.points.indices { result.points[n].history = [] }
@@ -1587,6 +1622,8 @@ final class SimulationModel {
     // MARK: - Building
 
     private func requestRebuild() {
+        envelopeExposure = []
+        envelopeExposureStatus = ""
         if batchInFlight {
             isLoadingInputs = true
             // The GPU still owns the solver's buffers; rebuild when the batch lands.
@@ -1609,6 +1646,8 @@ final class SimulationModel {
         defer { isLoadingInputs = false }
         stopFragments()
         stopGroundShock()
+        envelopeExposure = []
+        envelopeExposureStatus = ""
         stopThermal()
         completedRunSettings = nil
         loadedRunSettings = nil
@@ -1644,6 +1683,19 @@ final class SimulationModel {
                     try created.load(scenario)
                 }
                 solver = created
+            }
+            if let solver, !scenario.envelopeObjects.isEmpty {
+                if scenario.structuralObjects.isEmpty {
+                    do {
+                        try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                        envelopeExposure = solver.envelopeExposureSummaries() ?? []
+                    } catch {
+                        envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
+                    }
+                } else {
+                    envelopeExposureStatus =
+                        "Surface results require a scene containing only stationary envelopes. This scene also has deformable structures."
+                }
             }
             errorMessage = nil
         } catch {
@@ -1910,6 +1962,7 @@ final class SimulationModel {
     private func publishTraces() {
         guard let solver else { return }
         lastTracePublication = .now
+        envelopeExposure = solver.envelopeExposureSummaries() ?? []
         recordSampleIfDue(solver)
         structureSummary = solver.bodySummary()
         bodySummaries = Dictionary(

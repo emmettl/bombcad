@@ -117,6 +117,7 @@ struct SidebarView: View {
             ThermalSection(model: model)
 
             GroundShockSection(model: model)
+            EnvelopeExposureSection(model: model)
 
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
