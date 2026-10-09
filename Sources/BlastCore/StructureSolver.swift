@@ -161,6 +161,8 @@ public final class StructureSolver {
     private let anchorStiffness: (normal: Float, shear: Float)?
     /// The largest square angular frequency, in 1/s², of a node on its connection alone.
     private var anchorFrequencySquared: Float = 0
+    /// Rigid footings under connections that have them (`Footing`).
+    private(set) var footings: FootingSystem?
     private var stamp: UInt32 = 0
 
     public init(
@@ -460,8 +462,40 @@ public final class StructureSolver {
                         anchorFrequencySquared, stiffest * anchors[3 * n].x / nodes[n].mass)
                 }
             }
+            try setUpFootings(library: library)
         }
     }
+
+    /// Makes the footings of connections that have one, under the nodes they tie.
+    private func setUpFootings(library: MTLLibrary) throws {
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
+        let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
+        var members: [FootingSystem.Member] = []
+        var bodyMass: Float = 0
+        mutateNodes { nodes in
+            for n in 0..<nodeCount {
+                bodyMass += nodes[n].mass
+                guard anchors[3 * n].x > 0, !nodes[n].isFixed else { continue }
+                let index = Int(lattice[n])
+                let rest = referencePosition(
+                    index % (ex + 1), (index / (ex + 1)) % (ey + 1), index / ((ex + 1) * (ey + 1)))
+                guard let slot = model.connectionSlot(at: rest), let law = model.connection(at: rest),
+                    law.footing != nil
+                else { continue }
+                members.append(
+                    FootingSystem.Member(
+                        entity: n, rest: rest, area: anchors[3 * n].x, slot: slot, law: law,
+                        stiffness: law.stiffness(material: model.material, elementSize: model.elementSize)))
+            }
+        }
+        footings = try FootingSystem(
+            device: device, library: library, members: members, entityCount: nodeCount, bodyMass: bodyMass,
+            contactDamping: contactDamping)
+    }
+
+    /// The footings under the base after the last step, in the order of their connections (the
+    /// ground's, then the support regions'); empty without any.
+    public func footingSummaries() -> [FootingSummary] { footings?.summaries() ?? [] }
 
     /// With bars that slip, makes their buffers: the slip state, each element's bar forces, and
     /// the bond's area at each node along each axis, a share of the bars' surface in the elements
@@ -534,6 +568,7 @@ public final class StructureSolver {
             memset(crushBuffer.contents(), 0, crushBuffer.length)
         }
 
+        footings?.reset()
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -775,7 +810,11 @@ public final class StructureSolver {
                 summary.meanDamage += state.x * (1 - remaining)
                 summary.reaction += force
                 summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(state.y, state.z)))
-                summary.maxOpening = max(summary.maxOpening, nodes[n].uz)
+                // On a footing, the opening is from the footing's top as it has moved.
+                let ground = footings?.footing(ofEntity: n).map {
+                    footings!.displacement(ofPointAt: position, footing: $0).z
+                }
+                summary.maxOpening = max(summary.maxOpening, nodes[n].uz - (ground ?? 0))
                 area += state.x
                 centre += state.x * position
                 points.append((position, force))
@@ -965,9 +1004,12 @@ public final class StructureSolver {
         // A node on a stiff connection to the ground: its frequency on the connection adds to
         // the highest the elements alone can give it, 2 c / h; the bearing's damping shortens the
         // stable step by √(1 + ζ²) − ζ, and the step keeps a tenth in hand.
-        guard anchorFrequencySquared > 0 else { return step }
+        let footingFrequencySquared = footings?.frequencySquared ?? 0
+        guard anchorFrequencySquared > 0 || footingFrequencySquared > 0 else { return step }
         let elementFrequency = 2 * (speeds.max() ?? 1) / model.elementSize
-        let frequency = (elementFrequency * elementFrequency + anchorFrequencySquared).squareRoot()
+        let frequency =
+            (elementFrequency * elementFrequency + anchorFrequencySquared + footingFrequencySquared)
+            .squareRoot()
         let damping = (1 + contactDamping * contactDamping).squareRoot() - contactDamping
         return min(step, 0.9 * 2 * damping / frequency)
     }
@@ -1127,8 +1169,18 @@ public final class StructureSolver {
             encoder.setBuffer(barForceBuffer, offset: 0, index: 20)
             encoder.setBuffer(anchorLawBuffer, offset: 0, index: 21)
             encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 22)
+            encoder.setBuffer(footings?.footingOfBuffer ?? placeholderBuffer, offset: 0, index: 23)
+            encoder.setBuffer(footings?.constantBuffer ?? placeholderBuffer, offset: 0, index: 24)
+            encoder.setBuffer(footings?.stateBuffer ?? placeholderBuffer, offset: 0, index: 25)
+            encoder.setBuffer(footings?.linkBuffer ?? placeholderBuffer, offset: 0, index: 26)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            footings?.encode(
+                encoder,
+                uniforms: FootingSystem.Uniforms(
+                    fixedStep: uniforms.fixedStep, criticalStep: criticalTimeStep, substep: UInt32(substep),
+                    gravity: gravity, damping: damping, footings: 0),
+                control: fluid?.control ?? placeholderBuffer)
             afterNodes?(substep)
         }
     }
@@ -1201,6 +1253,7 @@ public final class StructureSolver {
         if anchorStiffness != nil {
             uniforms.anchored = 1
         }
+        if footings != nil { uniforms.footings = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage {
             uniforms.anchorNormalStiffness = anchorStiffness.normal
             uniforms.anchorShearStiffness = anchorStiffness.shear

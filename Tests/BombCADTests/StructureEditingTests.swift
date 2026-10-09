@@ -216,6 +216,45 @@ struct StructuralEditorWorkflowTests {
         #expect(model.settings.scenario == beforeInvalid)
     }
 
+    @Test(
+        "A base on a footing saves as scene version 5, which older apps refuse, reopens and undoes; an invalid one is refused"
+    )
+    func footingEditing() throws {
+        let model = try model()
+        model.setFixedBase(true)
+        model.recordEdit()
+        let clamped = model.settings.scenario
+        var law = try #require(BaseConnection.footing.anchorage)
+        law.footing?.overhang = SIMD2(0.75, 0.25)
+        law.footing?.soil.layerDepth = 4
+        law.footing?.soil.beneath = .softRock
+        law.footing?.soil.radiationDamping = false
+        model.setBaseAnchorage(law)
+        let footed = model.settings.scenario
+        #expect(footed.structure?.baseAnchorage == law)
+        #expect(BaseConnection(law) == .footing)
+        let archive = try ProjectDocument(model: model).makeArchive()
+        let payload = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self, from: #require(archive.files["scene.json"]))
+        #expect(payload.encodingVersion == 5)
+        #expect(try ProjectDocument(archive: archive).scenario == footed)
+        model.undo()
+        #expect(model.settings.scenario == clamped)
+        model.redo()
+        #expect(model.settings.scenario == footed)
+        // A footing with no thickness, or soil that cannot be, is refused and changes nothing.
+        for broken in [
+            { (law: inout Anchorage) in law.footing?.thickness = 0 },
+            { (law: inout Anchorage) in law.footing?.soil.material.poissonRatio = 0.5 },
+            { (law: inout Anchorage) in law.footing?.soil.layerDepth = -1 },
+        ] {
+            var invalid = law
+            broken(&invalid)
+            model.setBaseAnchorage(invalid)
+            #expect(model.settings.scenario == footed)
+        }
+    }
+
     @Test("Ground restraint can stay source-managed; custom support and part reinforcement detach")
     func supportAndReinforcement() throws {
         let model = try model()

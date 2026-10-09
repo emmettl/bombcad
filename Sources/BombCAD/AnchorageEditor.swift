@@ -44,6 +44,147 @@ struct AnchorageEditor: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
+            footing()
+        }
+    }
+
+    /// A rigid footing between the base and the soil, and the soil under it. Its rows read and
+    /// write through `law?.footing`, so that a row still drawn as the footing is removed (or
+    /// undone) reads a default instead of a footing that has gone.
+    @ViewBuilder private func footing() -> some View {
+        Toggle(
+            "On a footing",
+            isOn: Binding(
+                get: { law?.footing != nil },
+                set: { on in
+                    guard var candidate = law else { return }
+                    candidate.footing = on ? Footing() : nil
+                    law = candidate
+                }))
+        if law?.footing != nil {
+            DisclosureGroup("Footing and soil") {
+                footingNumber("Overhang across x", "m", \.overhang.x, scale: 1)
+                footingNumber("Overhang across y", "m", \.overhang.y, scale: 1)
+                footingNumber("Footing thickness", "m", \.thickness, scale: 1)
+                footingNumber("Footing density", "kg/m³", \.density, scale: 1)
+                footingNumber("Soil shear modulus", "MPa", \.soil.material.shearModulus, scale: 1e6)
+                footingNumber("Soil Poisson’s ratio", "", \.soil.material.poissonRatio, scale: 1)
+                footingNumber("Soil density", "kg/m³", \.soil.material.density, scale: 1)
+                footingNumber("Soil friction", "", \.soil.friction, scale: 1)
+                footingOptional(
+                    "Unlimited soil bearing", "Soil bearing capacity", "kPa", \.soil.bearingCapacity,
+                    initial: 600e3,
+                    scale: 1e3)
+                Toggle(
+                    "Soil mass and radiation damping",
+                    isOn: Binding(
+                        get: { law?.footing?.soil.radiationDamping ?? false },
+                        set: { value in
+                            guard var candidate = law, candidate.footing != nil else { return }
+                            candidate.footing?.soil.radiationDamping = value
+                            law = candidate
+                        }))
+                footingOptional(
+                    "Soil all the way down", "Layer depth", "m", \.soil.layerDepth, initial: 3, scale: 1)
+                if law?.footing?.soil.layerDepth != nil {
+                    Picker(
+                        "Beneath the layer",
+                        selection: Binding(
+                            get: { law?.footing?.soil.beneath == nil },
+                            set: { rock in
+                                guard var candidate = law, candidate.footing != nil else { return }
+                                candidate.footing?.soil.beneath = rock ? nil : .softRock
+                                law = candidate
+                            })
+                    ) {
+                        Text("Rock").tag(true)
+                        Text("Other ground").tag(false)
+                    }
+                    if law?.footing?.soil.beneath != nil {
+                        beneathNumber("Shear modulus beneath", "MPa", \.shearModulus, scale: 1e6)
+                        beneathNumber("Poisson’s ratio beneath", "", \.poissonRatio, scale: 1)
+                        beneathNumber("Density beneath", "kg/m³", \.density, scale: 1)
+                    }
+                }
+                Text(
+                    "The footing is rigid and spans the base it carries, widened by the overhang on each side. The soil defaults to a medium dense sand; with its mass it radiates energy as Wolf’s cones do, and a layer sends echoes back from its base."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func field(
+        _ title: String, _ unit: String, get: @escaping () -> Float?, set: @escaping (Float) -> Void,
+        scale: Float, positive: Bool = false
+    ) -> some View {
+        LabeledContent(title) {
+            HStack {
+                TextField(
+                    title,
+                    value: Binding(
+                        get: { Double((get() ?? 0) / scale) },
+                        set: { value in
+                            guard value.isFinite, positive ? value > 0 : value >= 0,
+                                Float(value * Double(scale)).isFinite
+                            else { return }
+                            set(Float(value * Double(scale)))
+                        }), format: .number.precision(.fractionLength(0...4))
+                )
+                .labelsHidden().textFieldStyle(.roundedBorder).frame(width: 85)
+                Text(unit).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func footingNumber(
+        _ title: String, _ unit: String, _ key: WritableKeyPath<Footing, Float>, scale: Float
+    ) -> some View {
+        field(
+            title, unit, get: { law?.footing?[keyPath: key] },
+            set: { value in
+                guard var candidate = law, candidate.footing != nil else { return }
+                candidate.footing?[keyPath: key] = value
+                law = candidate
+            }, scale: scale)
+    }
+
+    private func beneathNumber(
+        _ title: String, _ unit: String, _ key: WritableKeyPath<SoilMaterial, Float>, scale: Float
+    ) -> some View {
+        field(
+            title, unit, get: { law?.footing?.soil.beneath?[keyPath: key] },
+            set: { value in
+                guard var candidate = law, candidate.footing?.soil.beneath != nil else { return }
+                candidate.footing?.soil.beneath?[keyPath: key] = value
+                law = candidate
+            }, scale: scale)
+    }
+
+    /// A value that may be absent: a toggle for its absence, and a field for it when present.
+    private func footingOptional(
+        _ absent: String, _ title: String, _ unit: String, _ key: WritableKeyPath<Footing, Float?>,
+        initial: Float, scale: Float
+    ) -> some View {
+        VStack(alignment: .leading) {
+            Toggle(
+                absent,
+                isOn: Binding(
+                    get: { law?.footing?[keyPath: key] == nil },
+                    set: { none in
+                        guard var candidate = law, candidate.footing != nil else { return }
+                        candidate.footing?[keyPath: key] = none ? nil : initial
+                        law = candidate
+                    }))
+            if law?.footing?[keyPath: key] != nil {
+                field(
+                    title, unit, get: { law?.footing?[keyPath: key] ?? initial },
+                    set: { value in
+                        guard var candidate = law, candidate.footing != nil else { return }
+                        candidate.footing?[keyPath: key] = value
+                        law = candidate
+                    }, scale: scale, positive: true)
+            }
         }
     }
 

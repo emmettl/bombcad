@@ -21,9 +21,9 @@ what has since been built, and measured, is said where it comes up.
   the better second worker. See [Separate models](#separate-models-on-separate-machines).
   Most of the effects in the [long-term vision](long-term-vision.md) separate this way; three
   pairings do not. See [The long-term vision's effects](#the-long-term-visions-effects).
-- **Feeding several models alongside the blast, on several machines,** is limited first by
-  this Mac, not the network: cutting out each model's share of the air takes the CPU a few
-  milliseconds a frame while the GPU waits. See
+- **Feeding several models alongside the blast, on several machines,** was limited first by
+  this Mac, not the network: cutting out each model's share of the air took the CPU about 5 ms
+  a frame while the GPU waited. Cut out on the GPU, it now takes under a millisecond. See
   [Several consumers on several machines](#several-consumers-on-several-machines).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
@@ -192,7 +192,7 @@ the blast, the structures, the thermal radiation and the fireball's rise exist.
 | Damage to those buildings | In effect one way, if most collapse comes after the main blast has passed (an assumption to state) | Yes: each driven by its recorded loads, as independent jobs |
 | The early fireball (expansion, afterburning) | It is the hot gas in the air model | No: the same solver |
 | The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state. Now a hand-over of a few numbers at the end of a run, followed for minutes in milliseconds: [The fireball's rise and cloud](fireball-rise.md) |
-| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on this Mac's CPU, a few numbers a frame: [Thermal radiation](thermal-radiation.md) |
+| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on a CPU, this Mac's or, from the app, another's, a few numbers a frame: [Thermal radiation](thermal-radiation.md) |
 | Material heating and fire | Driven by the radiation; the blast's wind disturbs it only weakly | Yes: after the event |
 | Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures. Built as an illustrative estimate, fed the ground's air each frame: see [Ground shock](ground-shock.md) |
 | The crater and ground shock near the charge | Both ways, in the first milliseconds: the ground loads and vents the blast, and throws soil into it | No near the charge; yes for thrown soil once airborne, ballistic like fragments, unless its dust loading of the air matters |
@@ -235,7 +235,8 @@ the run slowing, rather than making any one model faster.
 
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
-a plan, measured where it starts; only its first piece, one consumer on one other Mac, is built.
+a plan, measured where it starts; built so far are one consumer on one other Mac, and the first
+step below.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
@@ -272,11 +273,28 @@ this side.
 
 **The plan, in order.**
 
-1. **Cut the air out on the GPU.** A kernel at the end of a frame's batch writes each
-   consumer's share (the block of air, the ground's layer, the fireball's sums by reduction) to
-   shared buffers, read once the batch is done, instead of passes over the state on the CPU
-   while the GPU waits. The aim is under a millisecond a frame for all three; the measurement
-   above, repeated, says whether it was met.
+1. **Cut the air out on the GPU.** (Done.) Kernels at the end of each batch, in
+   `Extract.metal`, cut out the fragments' block of air and the fireball's sums row by row
+   (added up on the CPU in double precision in a fixed order, so the same from run to run), but
+   write only in the batch whose last step lands on its time limit, as a frame's does. A
+   headless run says before each batch what the coming frame will want
+   (`BlastSolver.frameRequest`, set from `SimulationModel.prepareBatch`), and `airSlice` and
+   `fireball` return the GPU's result when it is for that moment, region and temperature, and
+   read the state as before otherwise (the frame at time zero, the app, blastbench). The slice
+   matches the CPU's to a unit in the last place of its half floats, nearly all of it exactly,
+   and asking changes nothing in the blast. Measured as above, three rounds of each, the old
+   build and the new alternating:
+
+   | Each frame, all three consumers on this Mac | Before | After |
+   |---|---|---|
+   | The fireball | 2.8 to 3.0 ms | 0.03 to 0.05 ms |
+   | The fragments' block of air (now a copy out of a shared buffer) | 1.7 to 2.5 ms | 0.4 to 0.8 ms |
+   | All the run's work between batches | 4.7 to 5.6 ms | 0.5 to 1.0 ms |
+
+   About an eighth of what it was, within the aim. With the fragments on the mini, sending them
+   still takes 0.5 to 1.0 ms a frame on the thread that drives the GPU, which step 3 moves off
+   it. The ground's layer (about 0.1 ms) is still cut out on the CPU. The Studio was busy with
+   other work again (load averages of 7 to 62), so whole runs are not compared.
 2. **One kind of consumer session** (protocol version 3). Sessions, inputs, reports and results
    say which model they are for, and the worker gives each session a queue of its own, so that
    two consumers on one Mac run side by side. The worker is always a copy of the same build, so

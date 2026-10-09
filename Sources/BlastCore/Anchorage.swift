@@ -20,6 +20,10 @@ import Foundation
 /// (`soil(...)`) the connection is a Winkler bed: a subgrade modulus for its stiffness, a bearing
 /// capacity, friction and no tension.
 ///
+/// With a `footing`, the connection ties the base to a rigid footing of finite plan, with its own
+/// mass, instead of the ground: the joint moves and turns with the footing, which stands on soil
+/// that bears over its plan alone (`Footing`).
+///
 /// The law has no rate dependence, no dilatancy and no rotational stiffness of its own: a solid
 /// body's base rocks through the opening of its nodes on one side, and a shell's or a column's
 /// through points of its footprint that turn with its node (`ShellMesh.baseFibres`).
@@ -44,13 +48,16 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var friction: Float
     /// Pressure in Pa the ground bears before it yields and the base settles; nil bears any.
     public var bearingCapacity: Float?
+    /// A rigid footing between the base and the soil; nil ties the base to the ground itself.
+    public var footing: Footing?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,
         tensionPlateau: Float = 0, tensionOpening: Float, cohesion: Float, cohesionSlip: Float,
-        friction: Float, bearingCapacity: Float? = nil
+        friction: Float, bearingCapacity: Float? = nil, footing: Footing? = nil
     ) {
         self.bearingCapacity = bearingCapacity
+        self.footing = footing
         self.normalStiffness = normalStiffness
         self.shearStiffness = shearStiffness
         self.tensileStrength = tensileStrength
@@ -151,6 +158,10 @@ public enum BaseConnection: String, CaseIterable, Sendable {
     case resting
     /// On a footing over soil that can settle and yield (`Anchorage.soil()`).
     case soil
+    /// Cast on starter bars onto a rigid footing, 0.4 m thick and reaching 0.5 m beyond the base
+    /// on each side, on a half-space of medium dense sand with its mass and radiation damping
+    /// (`Footing`).
+    case footing
 
     /// The starter bars' ratio of `dowelled`.
     public static let dowelRatio: Float = 2 * 565e-6 / 0.25
@@ -162,6 +173,12 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .joint: .constructionJoint
         case .resting: .resting()
         case .soil: .soil()
+        case .footing:
+            {
+                var joint = Anchorage.dowelled(ratio: Self.dowelRatio)
+                joint.footing = Footing()
+                return joint
+            }()
         }
     }
 
@@ -172,18 +189,21 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .joint: "Construction joint"
         case .resting: "Resting on the ground"
         case .soil: "On soil"
+        case .footing: "On a footing over soil"
         }
     }
 
-    /// The connection `anchorage` is, or the nearest: any with a bearing capacity counts as soil,
-    /// any other with a plateau as starter bars, any other with strength as a joint, and any
-    /// without as resting.
+    /// The connection `anchorage` is, or the nearest: any with a footing counts as one, any with
+    /// a bearing capacity as soil, any other with a plateau as starter bars, any other with
+    /// strength as a joint, and any without as resting.
     public init(_ anchorage: Anchorage?) {
         guard let anchorage else {
             self = .clamped
             return
         }
-        if anchorage.bearingCapacity != nil {
+        if anchorage.footing != nil {
+            self = .footing
+        } else if anchorage.bearingCapacity != nil {
             self = .soil
         } else if anchorage.tensileStrength <= 0 && anchorage.cohesion <= 0 {
             self = .resting
@@ -225,6 +245,7 @@ extension Anchorage {
                 "Connection values must be finite and nonnegative, stiffness must be positive, and final opening cannot precede the strength plateau."
             )
         }
+        try footing?.validate()
     }
 }
 
@@ -254,6 +275,14 @@ extension StructureModel {
 
     func isClampedBySupport(at point: SIMD3<Float>) -> Bool {
         supports.indices.contains { anchorage(ofSupport: $0) == nil && containsSupport($0, at: point) }
+    }
+
+    /// Which connection holds the point: 0 the ground's, 1 + n support region n's; nil clamped
+    /// or free. As `connection(at:)`.
+    func connectionSlot(at point: SIMD3<Float>) -> Int? {
+        guard !isClampedBySupport(at: point) else { return nil }
+        if let index = finiteSupportIndex(at: point) { return 1 + index }
+        return fixedBase && abs(point.z) < 1e-4 && baseAnchorage != nil ? 0 : nil
     }
 
     /// An ideal clamp takes precedence, followed by the last finite support, then the ground.

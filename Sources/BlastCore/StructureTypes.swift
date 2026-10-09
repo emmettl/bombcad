@@ -987,6 +987,7 @@ struct StructureUniforms {
     var bondYieldExponent: Float = 0
     var barRateAlongBars: UInt32 = 0
     var couplingMapCount: UInt32 = 0
+    var footings: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1093,7 +1094,7 @@ public enum ContactMode: UInt32, Sendable {
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
-        let source = try ["Solver", "Refine", "Structure", "Shell"].map { name in
+        let source = try ["Solver", "Refine", "Structure", "Shell", "Footing", "Extract"].map { name in
             guard
                 let url = Bundle.module.url(
                     forResource: name, withExtension: "metal", subdirectory: "Shaders")

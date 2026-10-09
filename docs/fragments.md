@@ -103,7 +103,7 @@ time: the consumer on another Mac gives the same result as on this one, to the l
 
 On another Mac, the consumer is a session of `BombCAD worker` (see
 [Sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac)), over the same SSH
-connection: the worker protocol's version 2 carries each block as a raw binary payload, and the
+connection: the worker protocol (since version 2) carries each block as a raw binary payload, and the
 trajectories come back the same way.
 
 Frames are the export's (`--frame-interval`, 1 ms by default). Without a structure the run stops

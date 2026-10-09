@@ -257,8 +257,9 @@ swift run -c release blastbench slab --sensitivity
 
 `blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
 [Performance](docs/performance.md) and [Validation](docs/validation.md). `blastbench anchorage`
-compares a freestanding wall on a clamped base with one on starter bars, a construction joint
-or friction alone (see [base connections](docs/structural-model.md#base-connections)).
+compares a freestanding wall on a clamped base with one on starter bars, a construction joint,
+friction alone, soil or a footing on soil (see [base connections](docs/structural-model.md#base-connections)
+and [footings](docs/structural-model.md#footings)).
 
 `BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
 keeps the result as a saved run, for scripts and other Macs; see
@@ -570,6 +571,13 @@ positive states and complete gas/reservoir/body budgets. Pressure and velocity d
 are physical responses, not errors against an exact solution. The finest grid is a numerical
 comparison; this is not blast validation or free-body motion.
 
+`swift run -c release rigidboxdemo --initial-wall-traces` writes `.build/initial-wall-traces.json`.
+`python3 Scripts/summarize-initial-wall-traces.py` compares known supplied pressure, constant
+traces and the actual limited traces against independent integrals over the uncut box faces.
+The initial Gaussian load exposes substantial coarse-grid reconstruction error before any
+gas update; supplied-pressure quadrature errors are much smaller. Tiny-duration halving
+checks the instantaneous limit. This diagnoses initial traces, not the evolved load history.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
@@ -640,7 +648,7 @@ Collapse and debris have not been compared with anything.
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
-| [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas |
+| [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas, drawn over the blast, here or on another Mac |
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud, carried by the wind, for minutes after |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, fed the overpressure on the ground |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
