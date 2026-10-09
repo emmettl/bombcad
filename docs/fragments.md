@@ -75,12 +75,12 @@ They do not act on the air, so they are no part of the run's input fingerprint.
 
 ![Fragments, tracers and landings over the street canyon's blast at 24 ms, as the app draws them](street-fragments-app-24ms.png)
 
-**The air is untouched.** The app takes a frame at the end of each batch rather than stopping the
-run at fixed times, and with fragments on holds a batch to about a millisecond of simulated time by
-taking fewer steps, never shorter ones; the tests check that the air's gauges and the structure's
-response are the same to the last bit with fragments on or off. The cost is that the frames fall
-where batches end, which follows the playback's timing, so the fragments in the app differ a
-little from one run to the next. For a fragment study that repeats exactly, use `BombCAD run
+**The air is untouched.** The app takes a frame at the end of the first batch past each
+millisecond, and one at the end, rather than stopping the run at fixed times, and with fragments
+on holds a batch to about a millisecond of simulated time by taking fewer steps, never shorter
+ones; the tests check that the air's gauges and the structure's response are the same to the last
+bit with fragments on or off. The cost is that the frames fall where batches end, which follows
+the playback's timing, so the fragments in the app differ a little from one run to the next. For a fragment study that repeats exactly, use `BombCAD run
 --fragments`, which stops at fixed frames.
 
 `blastbench snapshot --fragments casing.json` flies them alongside an offscreen snapshot, as the
@@ -155,7 +155,8 @@ to centimetres across.
 - The casing's own energy is not taken from the air's: the blast is the bare charge's.
 - No break-up, no ricochet, no penetration; a fragment stops where it first hits.
 - Only the coarse grid's air, also where refinement sharpens the shock.
-- In the app, frames fall at batch ends, so its fragments vary a little from run to run (above).
+- In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
+  a little from run to run (above).
 - A kept run keeps the fragments' impacts, not their paths.
 
 ## Sources
