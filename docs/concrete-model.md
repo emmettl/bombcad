@@ -229,11 +229,19 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
 
 **Confinement.** Concrete squeezed from the sides is stronger. Each axis's strength is
 multiplied by K = 1 + 4.1 σ_lat / f_c, where σ_lat is the smaller of the compressive stresses
-the other two axes can supply, estimated elastically and capped at the unconfined strength
-(so K ≤ 5.1). The strain at peak and the softening range grow by 1 + 5(K − 1), so confined
-concrete is far more ductile. K follows its target through a running average over 50 time
-steps: applied instantly, the coupling between axes is several times stiffer than the elastic
-solid and breaks the explicit time-step limit.
+the other two axes carry, capped at the unconfined strength (so K ≤ 5.1). The strain at peak
+and the softening range grow by 1 + 5(K − 1), so confined concrete is far more ductile. K
+follows its target through a running average over 50 time steps: applied instantly, the
+coupling between axes is several times stiffer than the elastic solid and breaks the explicit
+time-step limit. Every axis's K follows its target, including one in tension, so that an axis
+coming back into compression does not start from a stale one.
+
+The lateral stress used to be estimated from the other axes' strain, as if elastic. That is
+the same while they are, but an axis crushed and unloaded carries nothing over its permanent
+shortening, and was still counted as full support: under a close-in charge the element at
+the slab's face, shortened 1.3% by the shock, well past its peak, then held 55–80 MPa across
+the face for 5 ms with nothing pressing on it, its K at 4–5 on every axis. Taken from the stresses the
+other axes carry, as of this step, it falls back as they unload (step 29 below).
 
 ## Compaction
 
@@ -913,6 +921,16 @@ matter.
    converges under the CEB's law (121, 127 and 131 mm on 8, 16 and 32 elements), and that law,
    which tension tests of bars support, became the default.
 
+29. **Confinement from the stress the other axes carry** (see Compression and confinement).
+   Tracing elements under a close-in charge found the crushed face held three times its static
+   strength across the face by confinement from its own permanent shortening. With the
+   confinement taken from the stresses the other axes carry, the close-in slabs move by under
+   1%, the contest slab and the chamber by under 1 mm, and Janney's beam's plateau by under 1 kN m
+   (on 12 elements it fails at 53 mm, from 57). The
+   beams whose failure is brittle move a few per cent either way: OA1 on 36 elements fails at
+   383 kN where it had at 347–372 kN, Saatci's heavy drops peak within −5% to +3% (−6% to 0%),
+   and Ando's beams come within 15% on average beyond 3 m/s (13%).
+
 Step 3's agreement was therefore an artefact, and step 5's rests on the shear mechanism that
 step 4 showed to be missing. The rate-law error of step 14 was present from step 3 onwards, so
 every result before step 14 that involved concrete crushed faster than 30 per second, in the
@@ -1015,7 +1033,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 6. **Confined strength is capped** at about five times the unconfined strength; above it only
    the compaction curve raises the pressure, so the strength does not grow with pressure as
    in real concrete under triaxial load. The compaction curve's constants are for a 48 MPa
-   concrete and are used unscaled. Nothing close-in has been checked against a test.
+   concrete and are used unscaled. Under the close-in slabs' charges this is not what matters:
+   the shock squeezes the concrete under the charge nearly equally every way (117 MPa down and
+   99 MPa across at the face, a mean of about four times f_c, compacting it by 1.3%), so the
+   difference between its stresses stays under 40 MPa, far below its strength by this law or
+   by Holmquist, Johnson and Cook's (about 4.6 f_c, 115 MPa, at that pressure, with their
+   constants as recalled). A charge in contact, or denser shocks, would test it.
 7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, bar buckling or
    lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
    the shear stress, mobilised as soon as a crack forms rather than over the first millimetre
@@ -1028,7 +1051,17 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    measured monotonic curve, which can understate its stress by up to about 10% there; and
    the cyclic law ignores strain rate except in the yield stress used to place each branch.
 8. **No spalling model as such.** Tensile failure under a reflected stress wave is captured
-   only as far as the tension law and removal rule happen to capture it.
+   only as far as the tension law and removal rule happen to capture it. Under the close-in
+   slabs that takes air fine enough to keep the shock a shock (cells of about 0.005 of the
+   charge's cube root; on cells twice that the load rises over three times as long as the wave
+   takes to cross the slab, which then moves as a block) and elements thin enough to hold the
+   layer that comes off (12 through the 0.15 m slab; on 6 the crack falls inside the face's
+   element and the slab behind catches the layer up). With both, the layer under the charge
+   flies off, over 0.4% of the face. Each element's tensile rate factor is frozen when it
+   first cracks, from a running average over 50 steps (about 0.2 ms there) that has caught only
+   part of a wave rising in 30 µs: the face cracks at 1.3 times its static strength, where
+   spalling tests find several times. See
+   [Validation](validation.md#what-stops-the-spall-and-the-breach).
 9. **Crack spacing and aggregate size are inputs**, not predictions; so is the crushing length.
 10. **Masonry's joints are meshed only where solid elements are fine enough**, in running
     bond with units running through the wall; elsewhere, and in shells, it is a weak
@@ -1066,8 +1099,15 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   [Validation](validation.md#its-cracks)). What does is still wanted; and inclined bars,
   shells and beams that slip too.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
-  Holmquist–Johnson–Cook and Karagozian & Case models) for concrete close to a charge, and a
-  close-in test to check it.
+  Holmquist–Johnson–Cook and Karagozian & Case models) for concrete in contact with a charge;
+  the close-in slabs do not need it (limitation 6).
+- **Close-in damage.** Under the close-in slabs' charges the concrete beneath is left broken,
+  cracked open across all three planes in the lower half and crushed in the upper, but nothing
+  removes it, so no hole forms; removing concrete cracked open every way took half the slab's
+  depth over a circle 1.8 m across (see the roadmap's things set aside). A rule for rubble that
+  the slab drives out, and a strain rate for the tensile strength that follows a stress wave
+  (an average over a fixed time rather than 50 steps), are wanted; and how the slab's own
+  bending, which the tests' damage follows, comes out a third to a half of the tests'.
 - **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
 - **Masonry on coarse elements and shells**: strengths that differ across and along the bed
   joints, standing for joints the mesh cannot show; and a test of a masonry wall under blast

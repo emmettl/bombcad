@@ -74,7 +74,7 @@ public enum CloseInSlabTest {
 
     // Coordinates: x along the span, y across it, z up from the ground.
     public static let slab = Box(min: SIMD3(1.2, 2.5, 0.9), max: SIMD3(5.6, 3.96, 1.05))
-    static let boltLines: [Float] = [1.4, 5.4]
+    public static let boltLines: [Float] = [1.4, 5.4]
     public static var centre: SIMD3<Float> {
         SIMD3((slab.min.x + slab.max.x) / 2, (slab.min.y + slab.max.y) / 2, slab.max.z)
     }
@@ -145,6 +145,8 @@ public enum CloseInSlabTest {
         public var gaugePeaks: [(name: String, pressure: Float)]
         /// Impulse of each gauge's overpressure, positive phase only (Pa s).
         public var gaugeImpulses: [Float]
+        /// Each gauge's record of absolute pressure.
+        public var gaugeHistories: [[GaugeSample]]
         /// The slab's largest downward momentum in the first 5 ms (N s): about the impulse the
         /// blast gave it, before the supports have taken much.
         public var impulse: Float
@@ -156,7 +158,7 @@ public enum CloseInSlabTest {
         device: MTLDevice, test: Test, cellSize: Float = 0.05, elementSize: Float = 0.025,
         duration: Double = 0.3,
         refinement: Int = 1, mappedCharge: Bool = true, afterburning: Bool = false,
-        heldLengthwise: Bool = true,
+        heldLengthwise: Bool = true, stepsPerSample: Int = 16,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
@@ -203,7 +205,7 @@ public enum CloseInSlabTest {
         var nextReport = 0.01
         var impulse: Float = 0
         while solver.time < duration {
-            let result = solver.advance(steps: 16, timeLimit: duration)
+            let result = solver.advance(steps: stepsPerSample, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
             var across = (0...structure.ey).compactMap { j in
                 structure.storedNode(ci, j, mid) != nil ? -structure.displacement(ci, j, mid).z : nil
@@ -255,7 +257,7 @@ public enum CloseInSlabTest {
                 }
                 return total
             },
-            impulse: impulse, summary: structure.summary(),
+            gaugeHistories: solver.gaugeHistories, impulse: impulse, summary: structure.summary(),
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
     }
 }

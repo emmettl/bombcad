@@ -632,18 +632,18 @@ Seven comparisons with the outside world, all in the [validation notes](docs/val
   bending, carries 98–99% of its measured peak moment on two meshes, with nothing fitted; it
   fails at 57 mm on one, and holds to 60 mm on the other, against 42 mm measured.
 - **Beam failing in shear.** A beam without stirrups fails suddenly in diagonal tension, as
-  the test beam did, at 11–12% above the measured load on fine meshes; on coarse ones (twelve
+  the test beam did, at 11–15% above the measured load on fine meshes; on coarse ones (twelve
   elements through the depth) it is a third too strong.
 - **Beams struck by a falling weight.** Seven drop-weight impacts on beams that differ only in
-  their stirrups: with stirrups, the peaks are within 11–26% under the light drops and within
-  6% under the heavy ones, which leave them nearly as far down as the tests' did; the beam without
+  their stirrups: with stirrups, the peaks are within 12–24% under the light drops and within
+  5% under the heavy ones, which leave them nearly as far down as the tests' did; the beam without
   stirrups is broken by the heavy drop, as in the test, and damaged by the light one, which it
   survived. Ando et al.'s beams without stirrups, struck at rising speeds, peak within 15% up
-  to 3 m/s and 13% on average beyond on one mesh, but go too far on a finer one.
+  to 3 m/s and 15% on average beyond on one mesh, but go too far on a finer one.
 - **Slabs under close-in charges.** Full-scale slabs under 2–15 kg hung 0.5 and 1 m above
   them: the impulse under the charge is 86–95% of the empirical curves' on fine cells (and
   within 8% from 0.3 m/kg^(1/3) on a rigid surface), and light charges
-  leave the slab undamaged as in the tests, but the heavy ones leave it a third as far down,
+  leave the slab undamaged as in the tests, but the heavy ones leave it a third to a half as far down,
   barely spalled and not punched through, where the tests' slabs spalled and were holed.
 - **Internal explosion.** In a full-scale reinforced concrete chamber loaded by 200 kg of TNT,
   the peak pressures on the walls are 0.9 to 1.6 times those measured. With the structure as

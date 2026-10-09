@@ -55,8 +55,8 @@ swift run -c release blastbench chamber
 | Gas in a closed room | UFC 3-340-02: 48% to 114% of the design curve by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Good with afterburning and hot air, nothing fitted |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 13% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
-| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
+| Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: 11–15% strong on fine meshes, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 15% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
+| Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -453,7 +453,7 @@ and cracks the same way, for fine meshes.
 | **Measured**                  | **332 kN**      | 9.2 mm  | Falls to 250 kN within 0.2 mm         |
 | 12 elements through           | 456 kN (137%)   | 10.4 mm | Falls to 120 kN by 11 mm             |
 | 24 elements through           | 368 kN (111%)   | 8.8 mm  | Falls to 39 kN by 10 mm              |
-| 36 elements through           | 372 kN (112%)   | 8.4 mm  | Falls                                |
+| 36 elements through           | 383 kN (115%)   | 8.5 mm  | Falls                                |
 | 92 mm slice, 24 / 36 through  | 383 / 354 kN    | 8.9 / 8.2 mm |                                 |
 
 Load against mid-span deflection, in kN:
@@ -468,8 +468,9 @@ Load against mid-span deflection, in kN:
 | 9 mm       | 330      | 417        | 319        |
 
 On 24 and 36 elements the beam fails as the test did: suddenly, in shear, with the bars well
-below yield (about 350 MPa at the peak), at a load converged about 11–12% above the
-measurement and a little earlier. It is 10–15% stiffer than the test after cracking. On 12
+below yield (about 350 MPa at the peak), at a load 11–15% above the measurement and a little
+earlier. Where on 36 elements the brittle failure comes moves with small changes to the model:
+347–372 kN in recent versions, 383 kN since confinement was taken from the stresses carried. It is 10–15% stiffer than the test after cracking. On 12
 elements (46 mm) the diagonal crack cannot form in a narrow enough band, and the beam carries
 37% more, nearly to the bars' yield. Neither the crack model nor dowel action explains the
 excess: cracks on the lattice planes give 526 kN on 12 elements and cracks fixed at first
@@ -487,7 +488,7 @@ do not, since under the contest slab's blast the check broke the slab where it h
 ### What this does and does not show
 
 It shows that the model can predict a brittle shear failure of a beam without stirrups, at a
-load 11–12% high on fine enough meshes, without anything fitted; and that on coarse meshes
+load 11–15% high on fine enough meshes, without anything fitted; and that on coarse meshes
 (about a twelfth of the depth) it overestimates such a member's shear strength by a third or
 more. Solid elements need about 24 through a member's depth to fail it in shear where 8 are
 enough for bending. Beams, checked by sections, get within 3% at both sizes tried.
@@ -665,32 +666,35 @@ comparison, Malvar and Ross's for the concrete in tension:
 
 | Test   | Measured     | 16 through        | 24 through          | 16, Malvar–Ross    | 24, Malvar–Ross    |
 |--------|--------------|-------------------|---------------------|--------------------|--------------------|
-| SS0a-1 | 9.3 / 1.6    | 16.8 / 2.2 (279)  | 19.7 / 6.4, split along its bars (1,935) | 10.2 / 0.7 | 9.3 / 0.5   |
-| SS1a-1 | 12.1 / 0.9   | 13.4 / 1.0        | 14.0 / 2.2          | 9.7 / 0.4          | 9.5 / 0.4          |
+| SS0a-1 | 9.3 / 1.6    | 17.0 / 2.4 (246)  | 19.7 / 6.4, split along its bars (1,935) | 10.2 / 0.7 | 9.3 / 0.5   |
+| SS1a-1 | 12.1 / 0.9   | 13.6 / 1.7        | 14.0 / 2.2          | 9.7 / 0.4          | 9.5 / 0.4          |
 | SS2a-1 | 10.0 / 0.5   | 12.4 / 1.3        | 12.7 / 1.6          | 9.5 / 0.4          | 9.4 / 0.4          |
-| SS0b-1 | Failed       | Broken (2,152)    | Broken (4,676)      | Broken (1,215)     | Broken (3,231)     |
-| SS1b-1 | 39.5 / 17.7  | 39.4 / 16.5       | 46.8 / 31.0         | 28.7 / 2.9         | 29.2 / 6.2         |
-| SS2b-1 | 37.9 / 18.5  | 37.4 / 18.2       | 42.0 / 27.5         | 27.9 / 5.6         | 28.5 / 6.1         |
-| SS3b-1 | 35.3 / 17.7  | 33.2 / 13.9       | 35.9 / 17.9         | 26.8 / 7.2         | 27.1 / 5.6         |
+| SS0b-1 | Failed       | Broken (2,359)    | Broken (4,676)      | Broken (1,215)     | Broken (3,231)     |
+| SS1b-1 | 39.5 / 17.7  | 40.5 / 20.9       | 46.8 / 31.0         | 28.7 / 2.9         | 29.2 / 6.2         |
+| SS2b-1 | 37.9 / 18.5  | 37.1 / 17.5       | 42.0 / 27.5         | 27.9 / 5.6         | 28.5 / 6.1         |
+| SS3b-1 | 35.3 / 17.7  | 33.6 / 14.8       | 35.9 / 17.9         | 26.8 / 7.2         | 27.1 / 5.6         |
 
 (Elements removed or left as bare bars in brackets. The Malvar–Ross columns predate cracks that
 slide for good, the weight's bounce, crack widths read over each crack's own band and the
 CEB's law for the bars, which leave the peaks within a few per cent and raise the residuals.
+The 24-element columns here and below predate confinement taken from the stresses carried
+(step 29 of the [concrete model](concrete-model.md#how-the-model-got-here)), which moved the
+16-element ones by up to a fifth, mostly a few per cent.
 Under Malvar and Crawford's law for the bars, the heavy drops on 16 elements peaked at
 31.5–37.5 mm and were left 11.6–14.6 mm down.)
 
-With the default laws the beams with stirrups come within 11–26% of the measured peaks under
-the light drops, and under the heavy ones within −6% to 0% on 16 elements and +2% to +18% on
+With the default laws the beams with stirrups come within 12–24% of the measured peaks under
+the light drops, and under the heavy ones within −5% to +3% on 16 elements and +2% to +18% on
 24, and survive both; the
 beam without stirrups is broken by the heavy drop along diagonal cracks running from the plate
-towards the supports, as the test beam was. Their residuals are 14–18 mm on 16 elements and 18–31 mm on 24 against 18 mm measured (6–7 mm before cracks slid
+towards the supports, as the test beam was. Their residuals are 15–21 mm on 16 elements and 18–31 mm on 24 against 18 mm measured (6–7 mm before cracks slid
 for good and rode up on their aggregate; see the
 [concrete model](concrete-model.md#shear-across-cracks)). The largest reactions at a support are 350–650 kN under the heavy drops the
 beams survive, against 592–682 kN measured, and 400–450 kN under the light ones, against
 305–356 kN.
 
-Under the light drop the beam without stirrups comes through on 16 elements, 16.8 mm down at
-its peak against 9.3 mm and left 2.2 mm down against 1.6, but with 279 elements removed under
+Under the light drop the beam without stirrups comes through on 16 elements, 17.0 mm down at
+its peak against 9.3 mm and left 2.4 mm down against 1.6, but with 246 elements removed under
 the plate and where its diagonal cracks cross the bottom bars; on 24 it splits along its length
 just above the bottom bars, though it is left only 6.4 mm down. The test beam survived with
 diagonal cracks up to 0.5 mm. The peak comes within 5 ms, before any element goes; they go as
@@ -750,31 +754,31 @@ rebound.
 
 | Test | Speed | Measured (peak / residual) | 16 through | 24 through |
 |------|-------|----------------------------|------------|------------|
-| A24 | 1 m/s | 2 / 0 | 1.4 / −0.6 | 1.5 / −1.2 |
-| A24 | 3 m/s | 11 / 8 | 11.8 / 7.4 (133) | 13.8 / 9.3 (536) |
-| A24 | 4 m/s | 16 / 11 | 22.6 / 14.3 (437) | 21.9 / 18.4 (1,474) |
-| A24 | 5 m/s | 29 / 25, broken | 27.8 / 17.6 (429) | 63.0 / 40.1 (3,184) |
-| A24 | 6 m/s | 54 / 48, broken | 67.5 / 46.5 (1,219) | 125 / 95.7 (3,875) |
-| A36 | 1 m/s | 1.5 / 0, flexural cracks only | 2.2 / −0.8 | 2.5 / −1.9 |
-| A36 | 3 m/s | 13.5 / 9.5, a severe diagonal crack | 12.5 / 8.1 (72) | 13.7 / 8.1 (432) |
-| A36 | 4 m/s | 28 / 24 | 24.0 / 12.5 (403) | 56.8 / 29.2 (2,454) |
-| A36 | 5 m/s | 66 / 53, split into three | 49.6 / 33.1, broken (585) | 76.4 / 41.6, broken (2,605) |
-| A48 | 4 m/s | – / 10.7, bent | 27.6 / 17.0 (681) | 49.9 / 26.6 (2,160) |
-| B36 | 1 m/s | 2.7 / 0, flexural cracks only | 2.6 / −0.6 | 3.1 / −2.3 |
-| B36 | 3 m/s | 16 / 11.4 | 16.0 / 5.6 | 17.1 / 3.0 |
-| B36 | 4 m/s | 26 / 22.6, bent | 27.0 / 11.6 (6) | 30.2 / 12.5 (100) |
-| B36 | 5 m/s | 105 / 88, broken by a diagonal crack | 52.9 / 32.2 (111) | 55.3 / 36.1 (404) |
-| B48 | 1 m/s | 4 / 0 | 3.8 / −0.5 | 4.4 / −1.5 |
-| B48 | 3 m/s | 21 / 19, bent | 20.7 / 5.4 | 22.8 / 10.8 (423) |
-| B48 | 4 m/s | 36 / 30 | 36.2 / 18.1 (77) | 41.5 / 15.3 (435) |
-| B48 | 5 m/s | 55 / 47 | 54.6 / 39.1 (44) | 64.8 / 41.2 (1,008) |
-| B48 | 6 m/s | 73 / 70 | 71.8 / 36.7 (179) | 219 / 214 (2,177) |
+| A24 | 1 m/s | 2 / 0 | 1.4 / −0.5 | 1.5 / −1.2 |
+| A24 | 3 m/s | 11 / 8 | 11.2 / 6.5 (106) | 13.8 / 9.3 (536) |
+| A24 | 4 m/s | 16 / 11 | 22.9 / 14.5 (440) | 21.9 / 18.4 (1,474) |
+| A24 | 5 m/s | 29 / 25, broken | 30.6 / 19.8 (604) | 63.0 / 40.1 (3,184) |
+| A24 | 6 m/s | 54 / 48, broken | 78.8 / 52.0 (1,655) | 125 / 95.7 (3,875) |
+| A36 | 1 m/s | 1.5 / 0, flexural cracks only | 2.2 / −0.9 | 2.5 / −1.9 |
+| A36 | 3 m/s | 13.5 / 9.5, a severe diagonal crack | 11.7 / 6.7 (11) | 13.7 / 8.1 (432) |
+| A36 | 4 m/s | 28 / 24 | 25.8 / 15.2 (441) | 56.8 / 29.2 (2,454) |
+| A36 | 5 m/s | 66 / 53, split into three | 55.9 / 46.1, broken (493) | 76.4 / 41.6, broken (2,605) |
+| A48 | 4 m/s | – / 10.7, bent | 36.7 / 20.1 (213) | 49.9 / 26.6 (2,160) |
+| B36 | 1 m/s | 2.7 / 0, flexural cracks only | 2.6 / −0.5 | 3.1 / −2.3 |
+| B36 | 3 m/s | 16 / 11.4 | 15.6 / 5.7 | 17.1 / 3.0 |
+| B36 | 4 m/s | 26 / 22.6, bent | 27.2 / 12.5 (12) | 30.2 / 12.5 (100) |
+| B36 | 5 m/s | 105 / 88, broken by a diagonal crack | 41.8 / 27.4 (91) | 55.3 / 36.1 (404) |
+| B48 | 1 m/s | 4 / 0 | 3.9 / −0.9 | 4.4 / −1.5 |
+| B48 | 3 m/s | 21 / 19, bent | 20.6 / 2.9 | 22.8 / 10.8 (423) |
+| B48 | 4 m/s | 36 / 30 | 36.0 / 18.2 (104) | 41.5 / 15.3 (435) |
+| B48 | 5 m/s | 55 / 47 | 54.0 / 35.6 (59) | 64.8 / 41.2 (1,008) |
+| B48 | 6 m/s | 73 / 70 | 72.7 / 43.4 (143) | 219 / 214 (2,177) |
 
 (Peak / residual mid-span displacement in mm; elements removed or left as bare bars in
 brackets.) Up to 3 m/s the peaks are within 15% on 16 elements, with the diagonal cracking the
-tests show. Faster, on 16 elements the peaks are within 13% of the tests' on average over the
-fourteen from 3 m/s up (a median of 7%), from 44% too far (A24 at 4 m/s) to half as far (B36
-at 5 m/s, which broke in the test). They were 18% off with Malvar and Crawford's strain-rate
+tests show. Faster, on 16 elements the peaks are within 15% of the tests' on average over the
+fourteen from 3 m/s up (a median of 5%), from 46% too far (A24 at 6 m/s) to two fifths as far
+(B36 at 5 m/s, which broke in the test). They were 18% off with Malvar and Crawford's strain-rate
 law for the bars, and 44% too far before each crack's width was read over its own band (see
 the [concrete model](concrete-model.md#cracking)), the 2.0 m beams two to three times. But the
 beams spring back further than the tests', keeping about three quarters of the residual
@@ -906,7 +910,9 @@ ground reflecting), the blocks rigid, the charge started from the one-dimensiona
 (see the [air-blast model](air-blast-model.md)), and the slab of solid elements 6, 8 or 12
 through its thickness, its two mats smeared through bands, run for 300 ms with gravity. The
 spalled area is the fraction of each face whose surface element has been removed or cracked
-open past the width at which an unreinforced one would be. `blastbench closein` runs it.
+open past the width at which an unreinforced one would be. `blastbench closein` runs it;
+`--dx 0.025 --refine 2` gives the fine air, `--h 0.0125` 12 elements through the slab, and
+`--trace`, `--faces`, `--energy` and `--under` the probes used below.
 
 ### Results
 
@@ -935,12 +941,12 @@ leaves out:
 |-------|------------|----------------------|----------------------|-----------------------------------|
 | P1    | 0          | 3 (12)               |                      |                                   |
 | S1–S3 | cracks     | 3 (14)               |                      |                                   |
-| P7    | 340        | 111 (161)            | 79 (206)             | 128 (164)                         |
-| S5    | punched through | 207 (261), whole | broken at mid-span, 789 (819) | 236 (283), spalled 3.5% under the charge, no hole |
-| P2    | 510, punched through, hanging | 211 (261), whole | broken at mid-span, fell | 195 (278), spalled 1.9% under the charge, no hole |
+| P7    | 340        | 113 (161)            | 79 (206)             | 124 (170)                         |
+| S5    | punched through | 206 (262), whole | broken at mid-span, 789 (819) | 229 (286), 109 elements removed under the charge, no hole |
+| P2    | 510, punched through, hanging | 210 (262), whole | broken at mid-span, fell | 228 (283), 28 elements removed under the charge, no hole |
 
-(The 8-element and fine-air columns predate cracks that slide for good, which moved the 6-element
-column by 7–17 mm, and the CEB's strain-rate law for the bars, which moved it by 5–14 mm.)
+(The 8-element column predates cracks that slide for good, which moved the 6-element column by
+7–17 mm, and the CEB's strain-rate law for the bars, which moved it by 5–14 mm.)
 
 With Malvar and Ross's tensile law instead, P7 was left 51, 103 and 91 mm down on the three
 grids, and P2 and S5 156–173 mm, spalling 1% of the far face on the fine air.
@@ -950,9 +956,8 @@ test's did, but goes a third as far, and neither face spalls (the test's spalled
 10.3%). At 0.5 m the model punches no hole under the charge on any mesh. On 8 elements through
 the slab its mid-span hinge breaks, the bars ruptured, and it falls or nearly; on 6 it holds.
 Only on air fine enough for the peak (110–119 MPa under the charge, against 124 MPa from the
-curves) does a spall form: the reflected wave breaks a layer off the far face under the charge,
-which flies off at about 28 m/s while the slab's middle slows to 9; but over 2–4% of the far
-face, against 19%, and without a hole through. Under Malvar and Ross's tensile law the spall
+curves) does the reflected wave crack the far face, and only on 12 elements through does the
+layer come away, under the charge alone (below). Under Malvar and Ross's tensile law the spall
 had to overcome 17–21 MPa (its factor of 6.5–8 at 50–100 per second, frozen as each element
 cracks), against the 10–15 MPa that spalling tests of such concrete find, from memory; and
 until the fracture energy was made to grow more slowly than the strength (see the
@@ -972,22 +977,84 @@ so that a slab holed through would have fallen apart in any case.
 | Both                                    | 128 (228)  |
 | The charge 1.5 times heavier            | 147 (214)  |
 
-A rigid-plastic estimate (two halves turning about the supports, a hinge of 54 kN m) with the
-model's own impulse reaches about 260 mm, near the 228 mm the model gives without rate laws or
-end restraint. With the load within about a tenth, the shortfall is the slab's: stiffened by
-the rate laws and by arching against held ends, and springing back from its peak too far, here
-as in the other slab and the chamber.
+Not all of the impulse stays in the slab. The wave runs round the slab's long edges, reflects
+from the ground 0.9 m below and pushes up on its underside: gauges 0.1 m under it (`--under`)
+read 300–400 Pa s by 5 ms, about 2.3 kN s over the slab, which is what its downward momentum
+loses meanwhile (P7, 50 mm air: 8.1 kN s at 1 ms, 5.8 at 5 ms, with the supports' push about
+nothing on average), and its kinetic energy halves, 22.7 to 11.0 kJ (`--energy`). A
+rigid-plastic estimate (two halves turning about the supports, a hinge of 54 kN m) from that
+point reaches about 250 mm, near the 228 mm the model gives without rate laws or end
+restraint; from the full impulse it would be about 400 mm. Closing the space under the slab
+with walls along its edges (`--skirts`) traps the air there, which cushions the slab (a 126 mm
+peak, springing back), so how much of the push the test slab had is not known. With the load
+within about a tenth, the rest of the shortfall is the slab's: stiffened by the rate laws and
+by arching against held ends, and springing back from its peak too far, here as in the other
+slab and the chamber.
+
+#### What stops the spall and the breach
+
+Elements were followed through P2 and P7 (`--trace` writes, every step, each element through
+the thickness under the charge and 0.1–1 m along the span) to find what holds the damage back.
+
+**The air's cells.** On 50 mm cells the pressure under the charge does not arrive as a shock:
+it rises over 130 µs to 49 MPa, where the wave takes 45 µs to cross the slab. The column under
+the charge is pushed as a block, its vertical stress falling evenly from the loaded face to
+the free one, and no tension ever reaches the far face. On 25 mm cells refined by 2 (about
+0.005 of the charge's cube root) it rises in 30 µs to 110 MPa (Kingery and Bulmash give 124),
+and a compressive wave of about 115 MPa runs through the slab and reflects from the far face
+as tension.
+
+**The elements.** On 6 elements through (25 mm), the reflected tension cracks the bottom
+element across its depth, 0.5–2 mm open out to 0.2 m from under the charge, but the plane the
+layer would part on lies inside it. The face leaves at about 28 m/s; the slab behind, still
+pushed (the pressure stays near 70 MPa for another 0.1 ms), reaches 30–35 m/s and catches it,
+and the layer stays on. On 12 elements through (12.5 mm) a crack forms 12–25 mm above the
+face, and by 2.3 ms the layer below it moves at 25 m/s while the slab has slowed to 14: it
+spalls, as it should. But only under the charge: over 0.4% of P2's bottom face at 40 ms,
+against 18.6% measured. (On that mesh the slab tears after 20 ms along the single row of nodes
+that holds it lengthwise at each bolt, a limit of the supports as modelled.)
+
+**The concrete under the charge.** The shock squeezes it nearly equally every way, 117 MPa
+down and 99 MPa across at the face, a mean of four times its strength, compacting it 1.3%; the
+difference between its stresses stays under 40 MPa, far below its strength. So the strength's
+growth with pressure (limitation 8 in the [roadmap](roadmap.md)) is not what decides it. Its
+confinement, though, was wrong: estimated from strain, it counted the face's own permanent
+shortening as support, and the face held 55–80 MPa across the slab for 5 ms with nothing
+pressing on it. It now comes from the stresses carried (see the
+[concrete model](concrete-model.md#compression-and-confinement)), which moves these slabs by
+under 1%.
+
+**The breach.** While the shock compresses the concrete, it carries shear of up to 17 MPa and
+the momentum under the charge spreads outward: the column peaks at 30 m/s, 0.3 m away 20 m/s,
+0.5 m away 13. Afterwards the lower half under the charge is cracked open across all three
+planes, 0.5–2.5 mm (rubble), and the upper half is crushed by about 1%, neither of which any
+removal rule touches, so nothing leaves and no hole opens. The test authors' own model
+(LS-DYNA, its continuous surface cap model on 18 mm elements, loads from Kingery and Bulmash)
+removed elements once fully damaged and stretched 5%, and holed the slab (S. Martínez-Almajano
+et al., 2021). Removing concrete here once cracked open every way, until no plane carried 1%
+of its strength, took the lower half of the slab over a circle 1.8 m across within 12 ms, made
+no hole, and did not move the slab; it was set aside.
+
+**The tests' damage.** The damaged areas are the eroded areas of each face, and the papers'
+photographs show where: at 1 m (P7) a band right across the slab along its mid-span hinge, on
+both faces; at 0.5 m (P2) the hole and the concrete broken out around it, again along the
+hinge. They follow the slab's bending, which the model gets a third to a half of, more than
+the stress wave. Each element's tensile rate factor is frozen when it first cracks, from a
+running average over 50 steps (about 0.2 ms here): the face under the charge cracks at 1.3
+times its static strength, before the average has caught the wave's rate, where spalling
+tests find several times. That errs towards damage, so it does not explain the shortfall.
 
 ### What this does and does not show
 
 It shows that the coupled model loads a slab close to a charge within about a tenth of the
 empirical impulse and leaves it undamaged where the tests did. It does not reproduce close-in
-damage: the slab is left a third as far down as the test's, spalls a fraction as much, is not
-punched through under the charge, and, broken, falls where the test's hung on its bars. These
-point at the breach under the charge, which needs the spall and the crushing above it to meet,
-and at the slab's stiffness in bending; and they need the air fine enough to resolve the peak
-under the charge. The supports' lengthwise restraint and the charges' shapes
-are assumptions that matter.
+damage: the slab is left a third to a half as far down as the test's, spalls a fraction as
+much, is not punched through under the charge, and, broken, falls where the test's hung on its
+bars. A spall needs the air fine enough to keep the shock a shock and 12 elements through the
+slab, and then comes off under the charge only; the concrete beneath is broken but never
+removed; and the tests' damage follows bending the model falls short of, after a quarter of
+the impulse is taken back by the wave wrapping under the slab. The supports' lengthwise
+restraint, the space under the slab and the charges' shapes are assumptions that matter.
 
 ## Blast loads against empirical references
 

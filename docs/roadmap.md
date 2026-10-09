@@ -29,14 +29,14 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 13% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
-| 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
+| 4 | Peak pressure is under-resolved near the charge                         | Close-in spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
-| 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
+| 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected app panels have had a static visual review               | Other layouts and native interactions may still have problems | Below |
 
@@ -144,14 +144,20 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    the concrete around them, as bare elements, so that a holed member hangs on its bars; see
    [Removal](concrete-model.md#removal). And a fracture energy that grows more slowly with
    strain rate than the strength, after which the reflected wave spalls the far face under a
-   close-in charge, over a tenth of the area the tests show.)
+   close-in charge, over a tenth of the area the tests show. Traced through the slabs: the spall
+   needs the air fine enough to keep the shock a shock and 12 elements through the slab, and
+   then comes off under the charge only; the concrete there is left broken but never removed,
+   so there is no hole; and the tests' damage lies mostly along the mid-span hinge, following
+   bending the model gets a third to a half of, after the wave wrapping under the slab takes
+   back a quarter of its impulse. Confinement now comes from the stresses carried, not strains.
+   See [Validation](validation.md#what-stops-the-spall-and-the-breach).)
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done for beams: cracks that slide for good and ride up on their aggregate,
    after which beams struck by a falling weight keep their deflection as the tests did; the
    slab, whose hinge bends rather than slides, is unchanged. Since crack widths were read over
    each crack's own band, beams without stirrups keep about three quarters of the deflection
    the tests kept.) (Done: compaction of the pores under very high confined pressure, after
-   Holmquist, Johnson and Cook; unchecked against a close-in test.)
+   Holmquist, Johnson and Cook; under the close-in slabs it is not what limits them.)
 8. **Cut cells** between moving solids and the air. Moving walls already push the air (a
    piston test matches theory within 2%) and conserve the gas within 0.3%, so cut cells would
    now buy geometric precision only. Deferred.
@@ -1909,6 +1915,12 @@ two collapsing over several seconds.
 - **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
   read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
   depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.
+- **Removing concrete cracked open every way, as rubble**, to let a close-in charge hole the
+  slab, as the test authors' own model eroded fully damaged elements: it took the lower half of
+  the slab over a circle 1.8 m across within 12 ms, made no hole and did not move the slab.
+- **Closing the space under the close-in slab**, to keep the wave from wrapping under it: the
+  trapped air cushions the slab (126 mm peak against 161, and it springs back), so it says
+  nothing about the open test.
 - **Fixed design factors for strain rate** (UFC 3-340-02): deliberately conservative; they
   predict 121 mm for the slab test against 108 mm measured. The strain-rate laws are the
   default; the factors remain available as an option.

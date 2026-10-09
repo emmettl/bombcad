@@ -739,6 +739,33 @@ public final class StructureSolver {
         (0..<3).map { stateValue(i, j, k, offset: 80 + $0 * 4) }.max() ?? 0
     }
 
+    /// Concrete: the running confinement gain of element (i, j, k) along each crack axis (the
+    /// strength factor less one).
+    public func confinement(_ i: Int, _ j: Int, _ k: Int) -> [Float] {
+        (0..<3).map { stateValue(i, j, k, offset: 112 + 4 * $0) }
+    }
+
+    /// Concrete: the largest tensile strain element (i, j, k) has seen across each of its three
+    /// crack planes, with the planes' normals in the lattice axes (the lattice's own until it
+    /// first cracks), and the largest compressive strain along each.
+    public func crackPlanes(_ i: Int, _ j: Int, _ k: Int) -> (
+        history: SIMD3<Float>, normals: [SIMD3<Float>], crush: SIMD3<Float>
+    ) {
+        let history = SIMD3((0..<3).map { stateValue(i, j, k, offset: 80 + 4 * $0) })
+        let crush = SIMD3((0..<3).map { stateValue(i, j, k, offset: 124 + 4 * $0) })
+        guard let n = compactIndex(i, j, k) else { return (history, [], crush) }
+        let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+        let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
+        let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
+        let turned = simd_length(rotation.vector) > 0.5
+        let normals = (0..<3).map { axis -> SIMD3<Float> in
+            var unit = SIMD3<Float>.zero
+            unit[axis] = 1
+            return turned ? simd_normalize(rotation).act(unit) : unit
+        }
+        return (history, normals, crush)
+    }
+
     /// The largest volumetric compression, V0 / V - 1, that element (i, j, k)'s pores have been
     /// crushed to; zero until it passes the crushing pressure while confined.
     public func compaction(_ i: Int, _ j: Int, _ k: Int) -> Float {

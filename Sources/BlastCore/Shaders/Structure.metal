@@ -1238,13 +1238,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // strain, after which its faces bear on each other and compression is recovered.
         //
         // Concrete squeezed from the sides is stronger: each axis gains 4.1 times the smaller of
-        // the compressive stresses the other two axes can supply (Richart, Brandtzaeg and Brown,
-        // 1928). The lateral stress is estimated as elastic, capped at the unconfined strength.
+        // the compressive stresses the other two axes supply (Richart, Brandtzaeg and Brown,
+        // 1928), capped at the unconfined strength.
         float unconfined = m.compressiveStrength * compressionFactor;
         // The factor follows its target through the same running average as the strain rate:
         // applied instantly, the coupling between axes would be several times stiffer than the
         // elastic solid and would outrun the explicit time step.
-        float3 lateral = clamp(squeeze * m.youngsModulus, 0.0f, unconfined);
         float3 gain = float3(state.confinementGain);
         float blend = clamp(dt * u.rateFilter, 0.0f, 1.0f);
         float3 confinement = float3(1.0f);
@@ -1257,8 +1256,6 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                                       planeSoftening[j], m);
                 continue;
             }
-            float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
-            gain[j] += blend * (m.confinement * support / unconfined - gain[j]);
             confinement[j] = 1.0f + gain[j];
             normalStress[j] = concreteCompression(squeeze[j], crush[j], softening[j], compressionFactor,
                                                   confinement[j], m);
@@ -1266,6 +1263,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float driving = m.crushRadius > 0 ? min(squeeze[j], softening[j]) : squeeze[j];
             crushed = max(crushed, clamp((driving - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
             pulverised = pulverised || driving >= limits.y + m.crushErosion * (limits.y - limits.x);
+        }
+        // The support is the compression the other axes carry, as of this step. Estimated from
+        // their strain as if elastic, it counted an axis crushed and unloaded, carrying nothing
+        // over its permanent shortening, as full support: the face under a close-in charge,
+        // crushed through its depth by the shock, then held 60-80 MPa across the face for
+        // milliseconds with nothing pressing on it, three times its static strength. Every axis's
+        // factor follows its target, so that one in tension does not keep a stale one.
+        float3 lateral = clamp(-normalStress, 0.0f, unconfined);
+        for (int j = 0; j < 3; ++j) {
+            float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
+            gain[j] += blend * (m.confinement * support / unconfined - gain[j]);
         }
         state.confinementGain = gain;
 

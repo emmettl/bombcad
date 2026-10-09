@@ -20,6 +20,7 @@ import simd
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
+//                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
@@ -1018,6 +1019,193 @@ func spallProbe() -> (StructureSolver, Double) -> Void {
     }
 }
 
+/// Writes, at every sample until `until` seconds, the state of each element through the slab's
+/// thickness at a few distances from under the charge along the span, as CSV: stresses, node
+/// velocities, crack and crush histories with the crack planes' tilt, compaction, rate factors.
+func closeInTrace(path: String, until: Double) -> (StructureSolver, Double) -> Void {
+    FileManager.default.createFile(atPath: path, contents: nil)
+    let handle = FileHandle(forWritingAtPath: path)!
+    handle.write(
+        ("t,dx,k,flag,sxx,syy,szz,vzLow,vzHigh,h0,h1,h2,n0z,n1z,n2z,c0,c1,c2,compaction,factor,rate,"
+            + "display,barX,barY,uz,g0,g1,g2,syz,szx\n").data(using: .utf8)!)
+    var next = until
+    return { structure, time in
+        // Every sample until `until`, then every quarter of a millisecond.
+        if time > until {
+            guard time >= next else { return }
+            next += 0.00025
+        }
+        let h = structure.model.elementSize
+        let c = CloseInSlabTest.centre
+        let i0 = Int(((c.x - structure.origin.x) / h).rounded())
+        let j = Int(((c.y - structure.origin.y) / h).rounded())
+        let top = (0...structure.ez).last { structure.storedNode(i0, j, $0) != nil } ?? 0
+        var text = ""
+        for dx: Float in [0, 0.1, 0.2, 0.3, 0.5, 1.0] {
+            let i = i0 + Int((dx / h).rounded())
+            for k in 0..<top {
+                let s = structure.stress(i, j, k)
+                let planes = structure.crackPlanes(i, j, k)
+                let nz = planes.normals.map { abs($0.z) } + [0, 0, 0]
+                let bars = structure.barPlasticStrain(i, j, k)
+                let values: [Float] =
+                    [
+                        s[0] / 1e6, s[1] / 1e6, s[2] / 1e6, structure.node(i, j, k).velocity.z,
+                        structure.node(i, j, k + 1).velocity.z, planes.history.x, planes.history.y,
+                        planes.history.z, nz[0], nz[1], nz[2], planes.crush.x, planes.crush.y, planes.crush.z,
+                        structure.compaction(i, j, k), structure.crackingFactor(i, j, k),
+                        structure.strainRate(i, j, k), structure.damage(i, j, k), bars.x, bars.y,
+                        structure.displacement(i, j, k).z,
+                    ] + structure.confinement(i, j, k) + [s[4] / 1e6, s[5] / 1e6]
+                text +=
+                    "\(time),\(dx),\(k),\(structure.flag(i, j, k)),"
+                    + values.map { String(format: "%.5g", $0) }.joined(separator: ",") + "\n"
+            }
+        }
+        handle.write(text.data(using: .utf8)!)
+    }
+}
+
+/// Prints, once at `time`, how far the slab's faces are cracked loose, by distance from under the
+/// charge: on the bottom and top layers of elements, the share whose crack most nearly parallel
+/// to the face has opened past 0.5, 1, 2 and 5 mm, and the share removed or left bare.
+func faceProbe(at time: Double) -> (StructureSolver, Double) -> Void {
+    var done = false
+    return { structure, now in
+        guard !done, now >= time else { return }
+        done = true
+        let h = structure.model.elementSize
+        let c = CloseInSlabTest.centre
+        let i0 = Int(((c.x - structure.origin.x) / h).rounded())
+        let j0 = Int(((c.y - structure.origin.y) / h).rounded())
+        let top = (0...structure.ez).last { structure.storedNode(i0, j0, $0) != nil } ?? 0
+        for (name, k) in [("bottom", 0), ("top", top - 1)] {
+            print("  \(name) layer at \(format(now * 1000, 1)) ms: r (m)  n  >0.5  >1  >2  >5 mm  gone")
+            var bins: [Int: [Int]] = [:]
+            for j in 0..<structure.ey {
+                for i in 0..<structure.ex where structure.flag(i, j, k) != .empty {
+                    let x = (Float(i) + 0.5) * h + structure.origin.x - c.x
+                    let y = (Float(j) + 0.5) * h + structure.origin.y - c.y
+                    let bin = Int((x * x + y * y).squareRoot() / 0.1)
+                    var counts = bins[bin] ?? [0, 0, 0, 0, 0, 0]
+                    counts[0] += 1
+                    let flag = structure.flag(i, j, k)
+                    if flag == .eroded || flag == .bare {
+                        counts[5] += 1
+                    } else {
+                        let planes = structure.crackPlanes(i, j, k)
+                        var opening: Float = 0
+                        for p in 0..<3 where abs(planes.normals[p].z) > 0.7 {
+                            opening = max(opening, planes.history[p] * h)
+                        }
+                        for (n, limit) in [Float(0.5e-3), 1e-3, 2e-3, 5e-3].enumerated() where opening > limit
+                        {
+                            counts[n + 1] += 1
+                        }
+                    }
+                    bins[bin] = counts
+                }
+            }
+            for bin in bins.keys.sorted() where bin < 12 {
+                let n = bins[bin]!
+                let share = n.dropFirst().map { pad(format(Double($0) / Double(n[0]) * 100, 0), 5) }
+                print("    " + pad(format(Double(bin) * 0.1, 1), 5) + pad("\(n[0])", 5) + share.joined())
+            }
+        }
+        // Rubble: elements cracked open across all three planes, by distance from under the charge
+        // and layer.
+        print("  cracked open across all three planes (> 0.25 mm / > 0.5 mm), by r (m) and layer k:")
+        var rubble: [Int: [Int]] = [:]
+        for k in 0..<top {
+            for j in 0..<structure.ey {
+                for i in 0..<structure.ex where structure.flag(i, j, k) == .active {
+                    let planes = structure.crackPlanes(i, j, k)
+                    let least = planes.history.min() * h
+                    guard least > 0.25e-3 else { continue }
+                    let x = (Float(i) + 0.5) * h + structure.origin.x - c.x
+                    let y = (Float(j) + 0.5) * h + structure.origin.y - c.y
+                    let bin = min(Int((x * x + y * y).squareRoot() / 0.1), 20)
+                    var counts = rubble[bin] ?? Array(repeating: 0, count: 2 * top)
+                    counts[k] += 1
+                    if least > 0.5e-3 { counts[top + k] += 1 }
+                    rubble[bin] = counts
+                }
+            }
+        }
+        for bin in rubble.keys.sorted() {
+            let n = rubble[bin]!
+            print(
+                "    " + pad(format(Double(bin) * 0.1, 1), 5) + n.prefix(top).map { pad("\($0)", 5) }.joined()
+                    + "  /" + n.suffix(top).map { pad("\($0)", 5) }.joined())
+        }
+        print("  removed / left bare, by r (m) and layer k:")
+        var gone: [Int: [Int]] = [:]
+        for k in 0..<top {
+            for j in 0..<structure.ey {
+                for i in 0..<structure.ex {
+                    let flag = structure.flag(i, j, k)
+                    guard flag == .eroded || flag == .bare else { continue }
+                    let x = (Float(i) + 0.5) * h + structure.origin.x - c.x
+                    let y = (Float(j) + 0.5) * h + structure.origin.y - c.y
+                    let bin = min(Int((x * x + y * y).squareRoot() / 0.1), 20)
+                    var counts = gone[bin] ?? Array(repeating: 0, count: 2 * top)
+                    counts[flag == .eroded ? k : top + k] += 1
+                    gone[bin] = counts
+                }
+            }
+        }
+        for bin in gone.keys.sorted() {
+            let n = gone[bin]!
+            print(
+                "    " + pad(format(Double(bin) * 0.1, 1), 5) + n.prefix(top).map { pad("\($0)", 5) }.joined()
+                    + "  /" + n.suffix(top).map { pad("\($0)", 5) }.joined())
+        }
+    }
+}
+
+/// Prints, at a few times, the slab's kinetic energy, its downward momentum and how fast that is
+/// changing, and the energy of a rigid-plastic mechanism with the same angular momentum: the two
+/// halves turning about their bolt lines.
+func energyProbe() -> (StructureSolver, Double) -> Void {
+    var times = [0.0005, 0.001, 0.0015, 0.002, 0.003, 0.004, 0.005, 0.0075, 0.01, 0.02, 0.03, 0.05, 0.08]
+    var last: (time: Double, momentum: Double)?
+    return { structure, time in
+        guard let next = times.first, time >= next else { return }
+        times.removeFirst()
+        let h = structure.model.elementSize
+        let mid = CloseInSlabTest.centre.x
+        var kinetic = 0.0
+        var momentum = 0.0
+        var angular = [0.0, 0.0]
+        var inertia = [0.0, 0.0]
+        for k in 0...structure.ez {
+            for j in 0...structure.ey {
+                for i in 0...structure.ex where structure.storedNode(i, j, k) != nil {
+                    let n = structure.node(i, j, k)
+                    let v = SIMD3<Double>(n.velocity)
+                    kinetic += 0.5 * Double(n.mass) * simd_length_squared(v)
+                    momentum += Double(n.mass) * v.z
+                    let x = Double(structure.origin.x + Float(i) * h)
+                    let side = x < Double(mid) ? 0 : 1
+                    let bolts = CloseInSlabTest.boltLines
+                    let arm = Double(side == 0 ? Float(x) - bolts[0] : bolts[1] - Float(x))
+                    if arm > 0 {
+                        angular[side] += Double(n.mass) * v.z * arm
+                        inertia[side] += Double(n.mass) * arm * arm
+                    }
+                }
+            }
+        }
+        let mechanism = zip(angular, inertia).reduce(0.0) { $0 + 0.5 * $1.0 * $1.0 / $1.1 }
+        let rate = last.map { (momentum - $0.momentum) / (time - $0.time) } ?? 0
+        last = (time, momentum)
+        print(
+            "  \(format(time * 1000, 1)) ms: kinetic \(format(kinetic / 1000, 1)) kJ, momentum \(format(-momentum, 0)) N s "
+                + "(changing at \(format(-rate / 1000, 0)) kN), halves turning about the bolts \(format(mechanism / 1000, 1)) kJ"
+        )
+    }
+}
+
 /// Chiquito et al.'s full-scale slabs under charges hung 0.5 and 1 m above them.
 func runCloseIn() throws {
     let names = option("tests").map { $0.split(separator: ",").map(String.init) }
@@ -1032,10 +1220,18 @@ func runCloseIn() throws {
     func percent(_ value: Float?) -> String { value.map { "\(format(Double($0) * 100, 1))%" } ?? "-" }
     func mm(_ value: Float?) -> String { value.map { "\(format(Double($0) * 1000, 0))" } ?? "-" }
     for test in CloseInSlabTest.tests where names?.contains(test.name) ?? true {
+        var inspect: ((StructureSolver, Double) -> Void)? =
+            flag("spall") ? spallProbe() : flag("where") ? failureProbe(at: duration * 0.99) : nil
+        if flag("faces") { inspect = faceProbe(at: duration * 0.99) }
+        if flag("energy") { inspect = energyProbe() }
+        if let path = option("trace") {
+            let until = option("trace-until").flatMap { Double($0) } ?? 0.001
+            inspect = closeInTrace(path: path.replacingOccurrences(of: "%", with: test.name), until: until)
+        }
         let result = try CloseInSlabTest.run(
             device: device, test: test, cellSize: cellSize, elementSize: elementSize, duration: duration,
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: flag("afterburn"),
-            heldLengthwise: !flag("sliding"),
+            heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
@@ -1046,6 +1242,26 @@ func runCloseIn() throws {
                     scenario.structure?.material.steel?.ruptureStrain = rupture
                 }
                 if flag("no-bare") { scenario.structure?.bareBars = false }
+                if flag("skirts") {
+                    // Walls along the slab's long edges, from the ground to just below it, which
+                    // close the space under it to the wave.
+                    let slab = CloseInSlabTest.slab
+                    for (low, high) in [(slab.min.y - 0.1, slab.min.y), (slab.max.y, slab.max.y + 0.1)] {
+                        scenario.boxes.append(
+                            Box(min: SIMD3(1.4, low, 0), max: SIMD3(5.4, high, slab.min.z - 0.02)))
+                    }
+                }
+                if flag("under") {
+                    // Under the slab, 0.1 m below its bottom face, at its centre and 1 m along the
+                    // span; and on the ground below its centre.
+                    let c = CloseInSlabTest.centre
+                    let bottom = CloseInSlabTest.slab.min.z - 0.1
+                    scenario.gauges += [
+                        Gauge("Under, centre", at: SIMD3(c.x, c.y, bottom)),
+                        Gauge("Under, 1 m along", at: SIMD3(c.x + 1, c.y, bottom)),
+                        Gauge("Ground, centre", at: SIMD3(c.x, c.y, 0.01)),
+                    ]
+                }
                 if var structure = scenario.structure {
                     applyRateOptions(&structure)
                     scenario.structure = structure
@@ -1056,7 +1272,14 @@ func runCloseIn() throws {
                     print("  " + line)
                     fflush(stdout)
                 } : nil,
-            inspect: flag("spall") ? spallProbe() : flag("where") ? failureProbe(at: duration * 0.99) : nil)
+            inspect: inspect)
+        if let path = option("trace") {
+            let centre = result.gaugeHistories[5]
+            let text = centre.map { "\($0.time),\($0.pressure)" }.joined(separator: "\n")
+            try text.write(
+                toFile: path.replacingOccurrences(of: "%", with: test.name + "-gauge"), atomically: true,
+                encoding: .utf8)
+        }
         print(
             "\(test.name): \(format(Double(test.charge), 2)) kg TNT at \(format(Double(test.standoff), 1)) m; \(test.remark)"
         )
@@ -1072,7 +1295,9 @@ func runCloseIn() throws {
         print(
             "  perforated          " + pad(test.perforated ? "yes" : "no", 15)
                 + "  \(result.perforated ? "yes" : "no")")
-        let measured = [test.nearGauge, test.nearGauge, test.farGauge, test.farGauge, nil, nil]
+        let measured = [
+            test.nearGauge, test.nearGauge, test.farGauge, test.farGauge, nil, nil, nil, nil, nil,
+        ]
         for ((name, pressure), range) in zip(result.gaugePeaks, measured) {
             let text =
                 range.map {
@@ -1083,7 +1308,11 @@ func runCloseIn() throws {
             print(
                 "  \(pad(name + " (MPa)", 18))  " + pad(text, 15) + "  \(format(Double(pressure) / 1e6, 2))")
         }
-        print("  impulse at the slab's centre: \(format(Double(result.gaugeImpulses.last ?? 0), 0)) Pa s")
+        print("  impulse at the slab's centre: \(format(Double(result.gaugeImpulses[5]), 0)) Pa s")
+        for n in result.gaugeImpulses.indices.dropFirst(6) {
+            print(
+                "  impulse, \(result.gaugePeaks[n].name): \(format(Double(result.gaugeImpulses[n]), 0)) Pa s")
+        }
         print("  slab's momentum at 5 ms: \(format(Double(result.impulse), 0)) N s")
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
     }
