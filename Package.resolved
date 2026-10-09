@@ -1,13 +1,13 @@
 {
-  "originHash" : "949e670c4aaef131b9e28a9c43253902a4d9b7c48a50d034354c84ba3fc0c5bc",
+  "originHash" : "449e4ac3e645dfcc84e92adfb040599ac0adb600065ca132b4d91c4ec0b4a6b6",
   "pins" : [
     {
       "identity" : "continuumkit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/emmettl/ContinuumKit.git",
       "state" : {
-        "revision" : "d3c7367ba43940155f7e33da738e6f5058723fd5",
-        "version" : "0.1.0-alpha.4"
+        "revision" : "7d5ef9d0ca7b415d3fef86b5400017bb43111a3c",
+        "version" : "0.1.0-alpha.5"
       }
     }
   ],
