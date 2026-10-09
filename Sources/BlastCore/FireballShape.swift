@@ -331,7 +331,8 @@ public struct FireballShape: Sendable, Equatable {
 }
 
 extension ThermalExposure {
-    /// One receiver's view of the fireball's shape, adding the rays it needs tested to `rays`.
+    /// One receiver's view of the fireball's shape, adding the rays it needs tested to `rays` and
+    /// what each gives, in W/m², if nothing is in the way, to `weights`.
     /// The flame radiates evenly from its surface, a radiance of εσT⁴ / π at the temperature of
     /// the block it meets there, so the irradiance is the integral of that radiance times cos θ
     /// over the directions in which the receiver sees the flame. Those directions are sampled tile
@@ -343,7 +344,10 @@ extension ThermalExposure {
     /// heuristic): every ray that meets the flame counts, and nothing is counted twice. The flame
     /// in front hides what is behind. For one compact tile this is the sphere's sampling, over
     /// the flame's own outline.
-    func view(from receiver: ThermalReceiver, _ shape: FireballShape, rays: inout [ThermalRay]) -> View {
+    func view(
+        from receiver: ThermalReceiver, _ shape: FireballShape, rays: inout [ThermalRay],
+        weights: inout [Float]
+    ) -> View {
         let scale = Float(Double(spec.emissivity) * Self.stefanBoltzmann)
         func exitance(_ temperature: UInt16) -> Float {
             let square = Float(temperature) * Float(temperature)
@@ -352,7 +356,7 @@ extension ThermalExposure {
         let x = receiver.position
         // Within the flame, surrounded by it: the hemisphere above radiates in full.
         if shape.isInside(x) {
-            return .settled(shape.radiatingBlock(at: x).map { exitance(shape.temperatures[$0]) } ?? 0)
+            return View(settled: shape.radiatingBlock(at: x).map { exitance(shape.temperatures[$0]) } ?? 0)
         }
         struct Cone {
             var axis: SIMD3<Float>
@@ -380,11 +384,11 @@ extension ThermalExposure {
             cones.append(cone)
         }
         let total = cones.reduce(0) { $0 + $1.share }
-        guard total > 0 else { return .settled(0) }
+        guard total > 0 else { return View(settled: 0) }
         // Each cone's samples, and their density in solid angle.
         let counts = cones.map { max(4, Int((Float(spec.samples) * $0.share / total).rounded())) }
         let densities = zip(cones, counts).map { Float($1) / $0.solidAngle }
-        var weights: [Float] = []
+        let first = rays.count
         for (c, cone) in cones.enumerated() {
             let count = counts[c]
             let axis = cone.axis
@@ -410,7 +414,7 @@ extension ThermalExposure {
                 weights.append(cosReceiver * exitance(shape.temperatures[hit.radiating]) / .pi / density)
             }
         }
-        return .weighted(weights: weights, cap: exitance(shape.hottest))
+        return View(rays: rays.count - first, scale: 1, cap: exitance(shape.hottest))
     }
 }
 

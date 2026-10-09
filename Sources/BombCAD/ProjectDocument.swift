@@ -177,8 +177,42 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         guard legacyJSON.count <= ProjectArchive.maximumFileBytes else {
             throw ProjectFileError.invalid("Layout file is too large.")
         }
-        self.init(scenario: try JSONDecoder().decode(Scenario.self, from: legacyJSON))
+        let scenario: Scenario
+        do {
+            scenario = try JSONDecoder().decode(Scenario.self, from: legacyJSON)
+        } catch let error as DecodingError {
+            throw ProjectFileError.invalid(Self.layoutDecodingMessage(error))
+        }
+        self.init(scenario: scenario)
         try Self.validate(scenario)
+    }
+
+    private static func layoutDecodingMessage(_ error: DecodingError) -> String {
+        func path(_ keys: [any CodingKey]) -> String {
+            var result = ""
+            for key in keys {
+                if let index = key.intValue {
+                    result += "[\(index)]"
+                } else {
+                    result += (result.isEmpty ? "" : ".") + key.stringValue
+                }
+            }
+            return result.isEmpty ? "layout" : result
+        }
+        switch error {
+        case .keyNotFound(let key, let context):
+            return "Layout JSON is missing the required field \"\(path(context.codingPath + [key]))\"."
+        case .typeMismatch(_, let context):
+            return "Layout JSON has the wrong value type at \"\(path(context.codingPath))\"."
+        case .valueNotFound(_, let context):
+            return "Layout JSON requires a non-null value at \"\(path(context.codingPath))\"."
+        case .dataCorrupted(let context):
+            return context.codingPath.isEmpty
+                ? "The layout file is not valid JSON."
+                : "Layout JSON contains an invalid value at \"\(path(context.codingPath))\"."
+        @unknown default:
+            return "The layout JSON could not be decoded. Check its format."
+        }
     }
 
     init(archive: ProjectArchive) throws {
