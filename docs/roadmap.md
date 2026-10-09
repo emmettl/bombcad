@@ -1713,10 +1713,51 @@ baseline loads. The six-case independent summary audits all three modes at full/
 duration; the largest load change is `8.1e-8` of the reference norm. Release generation
 succeeds with main's existing concurrency warnings, and formatting/diff checks are clean.
 
-Next, test a bound that retains the volume-aware polynomial's group average and compare
-both local pressure and net loads, including sensitivity to stencil extent and resolution.
-Only after that isolated gate should an experimental numerical update be considered and
-the evolved load histories reassessed. Spatial load accuracy remains a
+The volume-fit probe now also compares two bounds on that same moment-aware quadratic.
+One uses every wall sample as a control point; the other additionally uses internal and
+outer face centres, wall-patch centres and positive gas-volume quadrature nodes. Each
+group receives a single factor in [0, 1], scaling all mean-free linear/quadratic terms
+about its supplied average. There is no pointwise pressure clamp. Bounds hold at the
+audited control points, not everywhere between them. Neither policy changes gas stages.
+
+Both remove below-ambient profile undershoots and stencil violations within diagnostic
+tolerance at all wall samples in the six cases. The stronger policy also passes the
+face/volume control-point audit. Direct
+weighted-volume evaluation at both probe durations retains group pressure averages with
+a maximum residual of `1.8e-13`, normalized by max(1 Pa, absolute excess average).
+The largest normalized control-point bound violation is `7.2e-18`. Independent polynomial
+tests check retained averages on unequal rotated volumes with an active limiter, as well
+as inactive and zero-width bounds. Existing baseline loads remain identical.
+
+Force/torque errors for the bounded moment-aware fits are:
+
+| Cell size / orientation | Wall controls | Wall, face and volume controls |
+|---|---|---|
+| 0.2 m / aligned | 73.9% / 56.8% | 64.1% / 71.1% |
+| 0.2 m / rotated | 36.2% / 22.6% | 34.4% / 22.6% |
+| 0.1 m / aligned | 1.62% / 6.27% | 1.53% / 6.61% |
+| 0.1 m / rotated | 1.38% / 1.38% | 1.29% / 1.64% |
+| 0.05 m / aligned | 0.281% / 0.504% | 0.281% / 0.504% |
+| 0.05 m / rotated | 0.656% / 0.584% | 0.656% / 0.584% |
+
+On the fine grid, bounds remove undershoots while preserving nearly all of the raw
+quadratic load result. The stronger policy's area-weighted factors are about 0.80 there,
+with 44–45% of sampled body area limited; substantial limiting of quiet regions therefore
+has little effect on net loads. At 0.1 m, its factors are 0.46/0.43 and pressure L1 errors
+9.75%/5.33%. At 0.2 m, factors fall to 0.17/0.21; pressure L1 errors remain 68.1%/38.2%.
+Coarse curvature is still unresolved, and the existing fine aligned reconstruction still
+has smaller force/torque errors. Average retention and sampled bounds do not establish
+universal accuracy, continuous positivity, evolved-state consistency or shock stability.
+
+All 113 CPU-only tests in 22 suites pass. The independent six-case summary audits all five
+volume-fit modes and both bound policies at full/half duration; load changes stay below
+`8.1e-8` of the reference norm. Release generation succeeds with main's existing warnings,
+and strict formatting/diff checks are clean.
+
+Next, measure sensitivity to stencil extent and additional box/grid alignments before
+choosing a reconstruction for an experimental numerical update. That update must handle
+conserved states, positivity and paired gas/body budgets, then reassess evolved load
+histories and shock response. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
