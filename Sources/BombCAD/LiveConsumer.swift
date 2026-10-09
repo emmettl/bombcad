@@ -71,6 +71,8 @@ protocol FrameConsumer: AnyObject, Sendable {
     var bytes: Int { get }
     /// The consumer's latest report.
     var report: ConsumerReport { get }
+    /// The seconds its model has spent on frames so far, on the Mac that runs it.
+    var seconds: Double { get }
     /// Its report after `frame`, or before the first frame for a negative one; nil if not yet in.
     func report(after frame: Int) -> ConsumerReport?
     /// The model's state as of the last frame consumed, for a live kind.
@@ -112,6 +114,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
     private var history: [ConsumerReport]
     private var count = 0
     private var total = 0
+    private var spent = 0.0
     private var current: ConsumerLive?
     private var failure: Error?
 
@@ -132,6 +135,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
 
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
+    var seconds: Double { lock.withLock { spent } }
     var report: ConsumerReport { lock.withLock { latest } }
     var live: ConsumerLive? { lock.withLock { current } }
 
@@ -142,6 +146,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
         }
         queue.async { [self] in
             guard failure == nil else { return }
+            let start = ContinuousClock.now
             do {
                 try engine.consume(input)
             } catch {
@@ -150,7 +155,9 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
             }
             let report = engine.report
             let live = engine.live(time: input.time)
+            let took = start.duration(to: .now)
             lock.withLock {
+                spent += Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
                 latest = report
                 history.append(report)
                 if let live { current = live }
@@ -179,6 +186,8 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
 final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     let id = UUID()
     let kind: ConsumerKind
+    /// The other Mac's host, as the connection names it.
+    let host: String
     private let client: SweepWorkerClient
     private let writer: SweepWorkerWriter
     private let lock = NSLock()
@@ -186,14 +195,20 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     private var history: [ConsumerReport]
     private var count = 0
     private var total = 0
+    private var spent = 0.0
     private var current: ConsumerLive?
     /// Whether the connection is this consumer's to close when done, or shared, as by the app.
     private let ownsClient: Bool
 
+    /// `failed` is told why, if the session or its connection fails before the result.
     @MainActor
-    init(client: SweepWorkerClient, kind: ConsumerKind, ownsClient: Bool = true) {
+    init(
+        client: SweepWorkerClient, kind: ConsumerKind, ownsClient: Bool = true,
+        failed: @escaping @Sendable (Error) -> Void = { _ in }
+    ) {
         self.client = client
         self.kind = kind
+        host = client.name
         self.ownsClient = ownsClient
         writer = client.writer
         // Where it starts, worked out here as the worker will.
@@ -203,11 +218,12 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
         current = start.live(time: 0)
         client.startConsumer(
             ConsumerSession(id: id, kind: kind),
-            report: { [weak self] report in
+            report: { [weak self] report, seconds in
                 guard let self else { return }
                 self.lock.withLock {
                     self.latest = report
                     self.history.append(report)
+                    self.spent = seconds
                 }
             },
             live: { [weak self] header, payload in
@@ -215,7 +231,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
                     let next = try? live.updated(by: header, payload: payload)
                 else { return }
                 self.lock.withLock { self.current = next }
-            })
+            }, failed: failed)
     }
 
     func report(after frame: Int) -> ConsumerReport? {
@@ -224,6 +240,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
 
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
+    var seconds: Double { lock.withLock { spent } }
     var report: ConsumerReport { lock.withLock { latest } }
     var live: ConsumerLive? { lock.withLock { current } }
 

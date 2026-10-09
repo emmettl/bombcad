@@ -2,11 +2,10 @@ import BlastCore
 import SwiftUI
 
 /// The Run tab's Thermal radiation section: the fireball's radiant heat on the ground and the
-/// scene's faces, reckoned alongside each run, here or on the Mac set for sweeps, and drawn over
+/// scene's faces, reckoned alongside each run, here or on a Mac set for sweeps, and drawn over
 /// the blast.
 struct ThermalSection: View {
     @Bindable var model: SimulationModel
-    @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
 
     var body: some View {
         Section("Thermal radiation") {
@@ -33,12 +32,10 @@ struct ThermalSection: View {
                     range: 800...3000, text: "\(Int(spec.luminousTemperature)) K"
                 )
                 .help("Gas at least this hot is part of the fireball.")
-                if !host.isEmpty {
-                    Toggle("Run on \(host)", isOn: $model.thermalOnRemote)
-                        .help(
-                            "Reckons the radiation on the first Mac set for sweeps in Settings, frame by frame."
-                        )
-                }
+                PlacementPicker(
+                    title: "Run on", host: $model.thermalHost,
+                    help: "Reckons the radiation here or on a Mac set for sweeps in Settings, frame by frame."
+                )
                 Text(
                     model.thermalStatus.isEmpty
                         ? "Changes take effect from the next run. Afterburning makes a larger, longer fireball."
@@ -50,9 +47,6 @@ struct ThermalSection: View {
             }
         }
     }
-
-    /// The first Mac set for sweeps, as the fragments use.
-    private var host: String { AppPreferences.hosts(sweepHosts).first ?? "" }
 
     private var enabled: Binding<Bool> {
         Binding(

@@ -53,7 +53,8 @@ Settings, under Sweeps on other Macs, add each by its SSH host name or alias, us
 and turn on Share sweeps with these Macs. The sweep dialog then offers to share each sweep with
 them. SSH must log in without a password, with a key, as for any batch connection. A host saved
 by an earlier version, when there could be only one, moves into the list the first time this
-version opens. [Fragments](fragments.md) fly on the first Mac in the list.
+version opens. The models alongside a run, [fragments](fragments.md), [thermal radiation](thermal-radiation.md)
+and [ground shock](ground-shock.md), can each run on any Mac in the list.
 
 **What happens.** At a sweep's start, BombCAD connects to every Mac in the list at once, over
 SSH. The first time for each build it copies its own executable and resource bundles to

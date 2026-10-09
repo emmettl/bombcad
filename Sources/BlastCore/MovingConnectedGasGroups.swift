@@ -29,6 +29,8 @@ enum MovingConnectedGasGroups {
         let maximumAreaResidual: Double
         let maximumMomentResidual: Double
         let maximumVolumeResidual: Double
+        var oldConservedGeometry: ConservedGroupedGasGeometry? = nil
+        var finalConservedGeometry: ConservedGroupedGasGeometry? = nil
 
         /// Split only the accepted group inventory, in proportion to FINAL gas volume.
         /// Dry members receive zero; a largest member takes the floating-point remainder.
@@ -254,7 +256,8 @@ enum MovingGroupedGasFlux {
     }
     static func advance(
         _ plan: MovingConnectedGasGroups.Plan, exterior: FractionalGasTransport.Cell,
-        cfl: Double = 0.2, limited: Bool = false, timeIntegration: TimeIntegration = .euler
+        cfl: Double = 0.2, limited: Bool = false, timeIntegration: TimeIntegration = .euler,
+        conservedQuadratic: Bool = false
     ) throws -> Result {
         guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
         _ = try FractionalGasTransport.advance([exterior], newVolumes: [exterior.volume], transfers: [])
@@ -262,7 +265,7 @@ enum MovingGroupedGasFlux {
             plan, exteriorAt: { _ in exterior }, cfl: cfl, limited: limited,
             reconstructionExteriorAt: limited ? { _, _ in exterior } : nil,
             reconstructionExteriorAtEnd: limited ? { _, _ in exterior } : nil,
-            timeIntegration: timeIntegration)
+            timeIntegration: timeIntegration, conservedQuadratic: conservedQuadratic)
     }
     /// Boundary-specific supplied states permit spatial/time-dependent reservoirs. The
     /// caller owns trace quadrature; numerical transfers remain paired and audited.
@@ -275,8 +278,13 @@ enum MovingGroupedGasFlux {
         )? = nil,
         reconstructionExteriorAtEnd: (
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
-        )? = nil, timeIntegration: TimeIntegration = .euler
+        )? = nil, timeIntegration: TimeIntegration = .euler, conservedQuadratic: Bool = false
     ) throws -> Result {
+        guard
+            !conservedQuadratic
+                || (limited && plan.oldConservedGeometry != nil
+                    && (timeIntegration != .heun || plan.finalConservedGeometry != nil))
+        else { throw MovingConnectedGasGroups.Failure.invalidGeometry }
         let locations = wallLocations(plan)
         // Reservoir states are interval averages, sampled once and reused in both stages.
         // Endpoint point states below are ONLY for the reconstruction stencil.
@@ -286,7 +294,8 @@ enum MovingGroupedGasFlux {
         let first = try stage(
             plan, inventories: plan.cells, centres: plan.oldCentres, supplied: supplied,
             cfl: cfl, limited: limited, locations: locations,
-            reconstructionExteriorAt: reconstructionExteriorAt)
+            reconstructionExteriorAt: reconstructionExteriorAt,
+            conservedGeometry: conservedQuadratic ? plan.oldConservedGeometry : nil)
         var updated = first.cells
         var impulses = first.wallImpulses
         var work = first.wallWork
@@ -305,7 +314,8 @@ enum MovingGroupedGasFlux {
             let second = try stage(
                 plan, inventories: updated, centres: plan.finalCentres, supplied: supplied,
                 cfl: cfl, limited: limited, locations: locations,
-                reconstructionExteriorAt: reconstructionExteriorAtEnd)
+                reconstructionExteriorAt: reconstructionExteriorAtEnd,
+                conservedGeometry: conservedQuadratic ? plan.finalConservedGeometry : nil)
             updated = updated.indices.map {
                 .init(
                     volume: plan.finalVolumes[$0],
@@ -448,7 +458,7 @@ enum MovingGroupedGasFlux {
         limited: Bool, locations: [WallLocation],
         reconstructionExteriorAt: (
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
-        )?, recordPressureDiagnostics: Bool = false
+        )?, recordPressureDiagnostics: Bool = false, conservedGeometry: ConservedGroupedGasGeometry? = nil
     ) throws -> Prepared {
         var cells = inventories
         if limited && (suppliedCentres == nil || reconstructionExteriorAt == nil) {
@@ -498,11 +508,18 @@ enum MovingGroupedGasFlux {
         }
         var pressureDiagnostics: [LimitedGroupedGasFlux.PressureReconstruction]?
         if limited {
-            let geometry = try LimitedGroupedGasFlux.Geometry(
-                centres: centres, faces: reconstructionFaces,
-                boundaries: locations.map { $0.boundary.geometry })
-            let traces = try geometry.traces(
-                reconstructionStates, recordPressureDiagnostics: recordPressureDiagnostics)
+            let traces: LimitedGroupedGasFlux.Traces
+            if let conservedGeometry {
+                traces = try conservedGeometry.traces(
+                    reconstructionStates, centres: centres,
+                    faces: reconstructionFaces, walls: locations.map { $0.boundary.geometry })
+            } else {
+                let geometry = try LimitedGroupedGasFlux.Geometry(
+                    centres: centres, faces: reconstructionFaces,
+                    boundaries: locations.map { $0.boundary.geometry })
+                traces = try geometry.traces(
+                    reconstructionStates, recordPressureDiagnostics: recordPressureDiagnostics)
+            }
             pressureDiagnostics = traces.pressureDiagnostics
             faces = traces.faces.map { f in
                 .init(
@@ -522,11 +539,12 @@ enum MovingGroupedGasFlux {
         cfl: Double, limited: Bool, locations: [WallLocation],
         reconstructionExteriorAt: (
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
-        )?
+        )?, conservedGeometry: ConservedGroupedGasGeometry? = nil
     ) throws -> Stage {
         let prepared = try prepare(
             plan, inventories: inventories, centres: suppliedCentres, supplied: supplied,
-            limited: limited, locations: locations, reconstructionExteriorAt: reconstructionExteriorAt)
+            limited: limited, locations: locations, reconstructionExteriorAt: reconstructionExteriorAt,
+            conservedGeometry: conservedGeometry)
         let cells = prepared.cells
         let faces = prepared.faces
         let walls = prepared.walls

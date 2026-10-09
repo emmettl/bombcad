@@ -360,8 +360,8 @@ final class SimulationModel {
     }
     @ObservationIgnored private var fragmentEdit: Task<Void, Never>?
     @ObservationIgnored private var isApplyingInputs = false
-    /// Fly the fragments on the Mac set for sweeps in Settings, not this one.
-    var fragmentsOnRemote = false
+    /// The Mac, of those set for sweeps in Settings, to fly the fragments on; nil for this one.
+    var fragmentsHost: String?
     /// Where the fragments of the run stand: how many are in flight and landed.
     private(set) var fragmentStatus = ""
     /// The run's fragments, in flight and landed, to draw.
@@ -372,8 +372,8 @@ final class SimulationModel {
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
     /// The fragments the current run flies, as they were when it started.
     @ObservationIgnored private var flownSpec: FragmentSpec?
-    @ObservationIgnored private var fragmentWorker: SweepWorkerClient?
-    @ObservationIgnored private var fragmentWorkerHost: String?
+    /// Connections to the Macs the companions run on, by host, shared by those on the same one.
+    @ObservationIgnored private var workers: [String: SweepWorkerClient] = [:]
     /// The project's ground points, if it has any: where to estimate the ground's shaking from
     /// the overpressure on the ground, one way, through each run. Saved with the project, like
     /// the fragments; changes take effect from the next run and settle into a step to undo.
@@ -429,10 +429,10 @@ final class SimulationModel {
     /// The ground points the current run estimates, as they were when it started.
     @ObservationIgnored private var estimatedGroundSpec: GroundShockSpec?
     @ObservationIgnored private var thermalEdit: Task<Void, Never>?
-    /// Reckon the thermal radiation on the Mac set for sweeps, not this one.
-    var thermalOnRemote = false
-    /// Estimate the ground's shaking on the Mac set for sweeps, not this one.
-    var groundShockOnRemote = false
+    /// The Mac, of those set for sweeps, to reckon the thermal radiation on; nil for this one.
+    var thermalHost: String?
+    /// The Mac, of those set for sweeps, to estimate the ground's shaking on; nil for this one.
+    var groundShockHost: String?
     /// Where the run's thermal radiation stands: the largest fireball and the highest fluence.
     private(set) var thermalStatus = ""
     /// Frames of the run's thermal radiation reckoned so far, as last published: the receivers
@@ -447,8 +447,8 @@ final class SimulationModel {
     @ObservationIgnored private var fireballFrames: [FireballFrame] = []
     @ObservationIgnored private var nextFireballTime = 0.0
     @ObservationIgnored private var thermalDotCache: (frames: Int, dots: [SIMD4<Float>])?
-    /// Whether any of the run's companions wants the Mac set for sweeps.
-    var wantsWorker: Bool { fragmentsOnRemote || thermalOnRemote || groundShockOnRemote }
+    /// The Macs the run's companions are set to run on.
+    var wantedHosts: Set<String> { Set([fragmentsHost, thermalHost, groundShockHost].compactMap { $0 }) }
     /// Whether the run's companions, the fragments, the thermal radiation and the ground shock,
     /// have every frame sent, so that the run can be kept.
     var companionsCaughtUp: Bool {
@@ -1333,6 +1333,8 @@ final class SimulationModel {
                 throw ProjectFileError.invalid(
                     "The ground's shaking is still being estimated; keep the run in a moment.")
             }
+            // What is drawn, as what is kept.
+            updateGroundShockStatus()
             for n in result.points.indices { result.points[n].history = [] }
             run.groundShock = SavedSimulationRun.GroundShock(spec: spec, result: result)
         }
@@ -1419,9 +1421,8 @@ final class SimulationModel {
                 "Some ground points lie outside the domain; move them to estimate the shaking."
             return
         }
-        if groundShockOnRemote, let worker = fragmentWorker {
-            groundShock = RemoteFrameConsumer(
-                client: worker, kind: .groundShock(spec, live: true), ownsClient: false)
+        if let host = groundShockHost, let worker = workers[host] {
+            groundShock = remoteConsumer(worker, kind: .groundShock(spec, live: true))
         } else {
             groundShock = LocalFrameConsumer(.groundShock(spec, live: true))
         }
@@ -1474,7 +1475,8 @@ final class SimulationModel {
         if !groundShock.caughtUp {
             text += " · \(groundShock.sent - 1 - groundShock.report.frame) frames to estimate"
         }
-        if groundShock is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        let place = groundShock.placement
+        if !place.isEmpty { text += " ·" + place }
         groundShockStatus = text
     }
 
@@ -1488,9 +1490,8 @@ final class SimulationModel {
         stopFragments()
         let scene = FragmentScene(scenario)
         let consumer: any FrameConsumer
-        if fragmentsOnRemote, let worker = fragmentWorker {
-            consumer = RemoteFrameConsumer(
-                client: worker, kind: .fragments(spec, scene, live: true), ownsClient: false)
+        if let host = fragmentsHost, let worker = workers[host] {
+            consumer = remoteConsumer(worker, kind: .fragments(spec, scene, live: true))
         } else {
             consumer = LocalFrameConsumer(.fragments(spec, scene, live: true))
         }
@@ -1543,41 +1544,61 @@ final class SimulationModel {
                 ? String(format: ", hardest %.1f MJ", energy / 1e6)
                 : String(format: ", hardest %.0f kJ", energy / 1e3)
         }
-        if fragments is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        let place = fragments?.placement ?? ""
+        if !place.isEmpty { text += " ·" + place }
         fragmentStatus = text
     }
 
-    /// Flies fragments through `worker` from the next run, as if connected to `host`; for tests.
-    func useFragmentWorker(_ worker: SweepWorkerClient, host: String) {
-        fragmentWorker = worker
-        fragmentWorkerHost = host
+    /// A companion on the Mac set for sweeps that carries on here if that Mac fails it, or on its
+    /// own there if its frames cannot be kept.
+    private func remoteConsumer(_ worker: SweepWorkerClient, kind: ConsumerKind) -> any FrameConsumer {
+        (try? ResilientFrameConsumer(client: worker, kind: kind, ownsClient: false))
+            ?? RemoteFrameConsumer(client: worker, kind: kind, ownsClient: false)
     }
 
-    /// Connects to the Mac set for sweeps, to fly fragments there; nil `host` disconnects.
-    func connectFragmentWorker(_ host: String?) async {
-        guard host != fragmentWorkerHost || fragmentWorker == nil else { return }
-        fragmentWorker?.close()
-        fragmentWorker = nil
-        fragmentWorkerHost = nil
-        guard let host else { return }
-        if fragmentsOnRemote { fragmentStatus = "Connecting to \(host)…" }
-        if thermalOnRemote { thermalStatus = "Connecting to \(host)…" }
-        if groundShockOnRemote { groundShockStatus = "Connecting to \(host)…" }
-        do {
-            fragmentWorker = try await RemoteSweepWorker.connect(host: host)
-            fragmentWorkerHost = host
-            if fragmentsOnRemote { fragmentStatus = "Fragments will fly on \(host) from the next run." }
-            if thermalOnRemote {
-                thermalStatus = "The thermal radiation will be reckoned on \(host) from the next run."
-            }
-            if groundShockOnRemote {
-                groundShockStatus = "The ground's shaking will be estimated on \(host) from the next run."
-            }
-        } catch {
-            if fragmentsOnRemote { fragmentStatus = "Fragments fly here: \(error.localizedDescription)" }
-            if thermalOnRemote { thermalStatus = "Reckoned here: \(error.localizedDescription)" }
-            if groundShockOnRemote { groundShockStatus = "Estimated here: \(error.localizedDescription)" }
+    /// Runs the companions set for `host` through `worker` from the next run, as if connected to
+    /// it; for tests.
+    func useWorker(_ worker: SweepWorkerClient, host: String) {
+        workers[host] = worker
+    }
+
+    /// Connects to each of `hosts`, of those the companions are set to run on, sharing one
+    /// connection between those on the same Mac, and lets the others go.
+    func connectWorkers(_ hosts: Set<String>) async {
+        for (host, worker) in workers where !hosts.contains(host) {
+            worker.close()
+            workers[host] = nil
         }
+        for host in hosts.sorted() where workers[host] == nil {
+            setPlacementStatus(
+                on: host, fragments: "Connecting to \(host)…", thermal: "Connecting to \(host)…",
+                ground: "Connecting to \(host)…")
+            do {
+                let worker = try await RemoteSweepWorker.connect(host: host)
+                guard wantedHosts.contains(host) else {
+                    worker.close()
+                    continue
+                }
+                workers[host]?.close()
+                workers[host] = worker
+                setPlacementStatus(
+                    on: host, fragments: "Fragments will fly on \(host) from the next run.",
+                    thermal: "The thermal radiation will be reckoned on \(host) from the next run.",
+                    ground: "The ground's shaking will be estimated on \(host) from the next run.")
+            } catch {
+                let reason = error.localizedDescription
+                setPlacementStatus(
+                    on: host, fragments: "Fragments fly here: \(reason)", thermal: "Reckoned here: \(reason)",
+                    ground: "Estimated here: \(reason)")
+            }
+        }
+    }
+
+    /// Says how the connection to `host` stands, in the status of each companion set to run there.
+    private func setPlacementStatus(on host: String, fragments: String, thermal: String, ground: String) {
+        if fragmentsHost == host { fragmentStatus = fragments }
+        if thermalHost == host { thermalStatus = thermal }
+        if groundShockHost == host { groundShockStatus = ground }
     }
 
     // MARK: - Thermal radiation
@@ -1587,9 +1608,8 @@ final class SimulationModel {
         stopThermal()
         guard let spec = thermalSpec, (try? spec.validate()) != nil else { return }
         let scene = FragmentScene(scenario)
-        if thermalOnRemote, let worker = fragmentWorker {
-            thermal = RemoteFrameConsumer(
-                client: worker, kind: .thermal(spec, scene, live: true), ownsClient: false)
+        if let host = thermalHost, let worker = workers[host] {
+            thermal = remoteConsumer(worker, kind: .thermal(spec, scene, live: true))
         } else {
             thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
         }
@@ -1619,7 +1639,7 @@ final class SimulationModel {
             solver.time > (fireballFrames.last?.time ?? -1) + 1e-9
         else { return }
         let frame = solver.fireball(luminousTemperature: spec.luminousTemperature)
-        fireballFrames.append(frame)
+        fireballFrames.append(frame.withoutShape)
         thermal.send(.fireball(frame))
         nextFireballTime = (floor(solver.time / 0.001 + 1e-6) + 1) * 0.001
     }
@@ -1650,7 +1670,8 @@ final class SimulationModel {
         text += "\(thermalReceivers.count.formatted()) receivers"
 
         if live.frames < thermal.sent { text += " · \(thermal.sent - live.frames) frames to reckon" }
-        if thermal is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        let place = thermal.placement
+        if !place.isEmpty { text += " ·" + place }
         thermalStatus = text
     }
 

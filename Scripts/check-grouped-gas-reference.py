@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Verify bounded gas references in a temporary CPU-only package, without app imports."""
 from pathlib import Path
+import argparse
 import shutil
 import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCES = [
+    "ConservedGroupedGasGeometry",
+    "ConservedGasReconstruction",
     "FiniteVolumePressureFit", "ExperimentalVolumePressureFitStudy",
     "BoxSurfacePressureReference", "ExperimentalInitialWallTraceStudy",
     "ExperimentalMovingLoadStudy",
@@ -22,6 +25,9 @@ SOURCES = [
     "ExperimentalPistonWaveStudy", "PlanarPistonWave", "PrescribedPistonTube",
 ]
 TESTS = [
+    "ConservedMovingGasTests",
+    "ConservedGasReconstructionTests",
+    "WallStencilSensitivityTests",
     "FiniteVolumePressureFitTests",
     "WallTraceDecompositionTests",
     "InitialWallTraceTests",
@@ -40,6 +46,9 @@ TESTS = [
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--release', action='store_true', help='Use optimized CPU reference tests')
+    args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="bombcad-gas-reference-") as directory:
         package = Path(directory)
         for folder in ["Sources/BlastCore", "Tests/BlastCoreTests"]:
@@ -54,7 +63,10 @@ let package = Package(name: "GroupedReference", platforms: [.macOS(.v15)], targe
         for names, folder in [(SOURCES, "Sources/BlastCore"), (TESTS, "Tests/BlastCoreTests")]:
             for name in names:
                 shutil.copyfile(ROOT / folder / f"{name}.swift", package / folder / f"{name}.swift")
-        subprocess.run(["swift", "test", "--package-path", str(package)], check=True)
+        command = ["swift", "test", "--package-path", str(package)]
+        if args.release:
+            command += ["-c", "release"]
+        subprocess.run(command, check=True)
 
 
 if __name__ == "__main__":

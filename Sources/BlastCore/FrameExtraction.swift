@@ -37,7 +37,8 @@ final class FrameExtractor {
     private let airPipeline: MTLComputePipelineState
     private let fireballPipeline: MTLComputePipelineState
     private var airBuffer: MTLBuffer?
-    private var rowsBuffer: MTLBuffer?
+    private var blocksBuffer: MTLBuffer?
+    private var blockCountBuffer: MTLBuffer?
     /// What the batch in flight was asked for.
     private var encoded: (air: AirSlice.Layout?, luminous: Float?)?
     /// What the last completed batch cut out, and the moment and step it ended at; nil when
@@ -47,7 +48,7 @@ final class FrameExtractor {
     init(library: MTLLibrary) throws {
         device = library.device
         airPipeline = try ShaderLibrary.pipeline("extractAirSlice", in: library)
-        fireballPipeline = try ShaderLibrary.pipeline("extractFireballRows", in: library)
+        fireballPipeline = try ShaderLibrary.pipeline("extractFireballBlocks", in: library)
     }
 
     /// Encodes the request's kernels at the end of a batch, after its last step.
@@ -84,21 +85,30 @@ final class FrameExtractor {
         }
         var luminous: Float?
         if var temperature = request.fireball {
-            let bytes = MemoryLayout<SIMD4<Float>>.stride * grid.ny * grid.nz
-            if (rowsBuffer?.length ?? 0) < bytes {
-                rowsBuffer = device.makeBuffer(length: bytes, options: .storageModeShared)
+            let dims = LuminousBlock.dimensions(grid)
+            let bytes = 2 * MemoryLayout<SIMD4<UInt32>>.stride * dims.x * dims.y * dims.z
+            if (blocksBuffer?.length ?? 0) < bytes {
+                blocksBuffer = device.makeBuffer(length: bytes, options: .storageModeShared)
             }
-            if let rowsBuffer {
+            if blockCountBuffer == nil {
+                blockCountBuffer = device.makeBuffer(
+                    length: MemoryLayout<UInt32>.stride, options: .storageModeShared)
+            }
+            if let blocksBuffer, let blockCountBuffer {
+                // No batch is in flight while this one is encoded, so nothing else reads or
+                // writes the count.
+                blockCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
                 encoder.setComputePipelineState(fireballPipeline)
                 encoder.setBuffer(control, offset: 0, index: 0)
                 encoder.setBuffer(state, offset: 0, index: 1)
                 encoder.setBuffer(mask, offset: 0, index: 2)
-                encoder.setBuffer(rowsBuffer, offset: 0, index: 3)
-                encoder.setBytes(&temperature, length: MemoryLayout<Float>.stride, index: 4)
-                encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+                encoder.setBuffer(blocksBuffer, offset: 0, index: 3)
+                encoder.setBuffer(blockCountBuffer, offset: 0, index: 4)
+                encoder.setBytes(&temperature, length: MemoryLayout<Float>.stride, index: 5)
+                encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 6)
                 encoder.dispatchThreads(
-                    MTLSize(width: grid.ny, height: grid.nz, depth: 1),
-                    threadsPerThreadgroup: Self.threadgroup(fireballPipeline, depth: false))
+                    MTLSize(width: dims.x, height: dims.y, depth: dims.z),
+                    threadsPerThreadgroup: Self.threadgroup(fireballPipeline, depth: true))
                 luminous = temperature
             }
         }
@@ -128,17 +138,24 @@ final class FrameExtractor {
         return Array(UnsafeBufferPointer(start: pointer, count: count))
     }
 
-    /// The luminous gas's sums along each row cut out at `luminous` kelvin, at `time` and
-    /// `steps`, if they are ready: count, sum of i + 1/2, sum of T⁴ and the hottest, row (j, k)
-    /// at j + ny k.
-    func fireballRows(luminous: Float, grid: Grid, time: Double, steps: Int) -> UnsafeBufferPointer<
-        SIMD4<Float>
-    >? {
-        guard let ready, ready.time == time, ready.steps == steps, ready.luminous == luminous, let rowsBuffer
+    /// The blocks of luminous gas cut out at `luminous` kelvin, at `time` and `steps`, if they are
+    /// ready, in order of their index (see `LuminousBlock`).
+    func fireballBlocks(luminous: Float, time: Double, steps: Int) -> [LuminousBlock]? {
+        guard let ready, ready.time == time, ready.steps == steps, ready.luminous == luminous,
+            let blocksBuffer, let blockCountBuffer
         else { return nil }
-        let count = grid.ny * grid.nz
-        return UnsafeBufferPointer(
-            start: rowsBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: count), count: count)
+        let count = Int(blockCountBuffer.contents().load(as: UInt32.self))
+        let words = blocksBuffer.contents().bindMemory(to: SIMD4<UInt32>.self, capacity: 2 * count)
+        var blocks = (0..<count).map { n in
+            let (a, b) = (words[2 * n], words[2 * n + 1])
+            return LuminousBlock(
+                index: Int(a.x), cells: Float(bitPattern: a.y), fourth: Float(bitPattern: a.z),
+                hottest: Float(bitPattern: a.w),
+                position: SIMD3(Float(bitPattern: b.x), Float(bitPattern: b.y), Float(bitPattern: b.z)),
+                air: Float(bitPattern: b.w))
+        }
+        blocks.sort { $0.index < $1.index }
+        return blocks
     }
 
     private static func threadgroup(_ pipeline: MTLComputePipelineState, depth: Bool) -> MTLSize {
