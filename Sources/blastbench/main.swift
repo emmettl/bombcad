@@ -29,7 +29,7 @@ import simd
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
-//                       [--thermal spec.json] [--air thermal] [--afterburn]
+//                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
 //                       [--stationary-walls]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
 
@@ -675,14 +675,40 @@ func runSnapshot() throws {
         try spec.validate()
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
+    // With --thermal-compare, the same frames reckoned with the other fireball model too, and
+    // each timed.
+    var other = thermal.map { exposure in
+        var spec = exposure.spec
+        spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+    }
+    if !flag("thermal-compare") { other = nil }
+    var thermalSeconds = (0.0, 0.0)
+    var fireballSeconds = 0.0
+    var largestShape: FireballShape?
     func feedThermal() {
         guard var exposure = thermal else { return }
-        exposure.add(solver.fireball(luminousTemperature: exposure.spec.luminousTemperature))
+        let extracting = ContinuousClock.now
+        let frame = solver.fireball(luminousTemperature: exposure.spec.luminousTemperature)
+        fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
+        if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
+        var started = ContinuousClock.now
+        exposure.add(frame)
+        thermalSeconds.0 += (ContinuousClock.now - started) / .seconds(1)
         thermal = exposure
+        if var compared = other {
+            started = ContinuousClock.now
+            compared.add(frame)
+            thermalSeconds.1 += (ContinuousClock.now - started) / .seconds(1)
+            other = compared
+        }
     }
     feedFragments()
     feedGround()
     feedThermal()
+    // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
+    // headless run does.
+    if let thermal { solver.frameRequest.fireball = thermal.spec.luminousTemperature }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -726,7 +752,48 @@ func runSnapshot() throws {
                     receiver.position + 0.05 * receiver.normal,
                     4 + min(max(log10(max(Float(fluence), 1)) / 6, 0), 0.999)))
         }
+        print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
+        if let other {
+            print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
+            for line in other.result.summary { print(line) }
+            print(
+                String(
+                    format:
+                        "Reckoned in %.2f s as its %@ and %.2f s as its %@, over %d frames; found in %.2f ms a frame",
+                    thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
+                    other.spec.fireball.rawValue,
+                    thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
+            // Each receiver's fluence by the shape against the sphere's, by surface.
+            let (shape, sphere) = thermal.spec.fireball == .shape ? (thermal, other) : (other, thermal)
+            var surfaces: [String] = []
+            for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
+                surfaces.append(receiver.surface)
+            }
+            for surface in surfaces {
+                let indices = shape.receivers.indices.filter { shape.receivers[$0].surface == surface }
+                let a = indices.reduce(0.0) { $0 + shape.fluence[$1] }
+                let b = indices.reduce(0.0) { $0 + sphere.fluence[$1] }
+                let lit = indices.filter { shape.fluence[$0] > 0 || sphere.fluence[$0] > 0 }
+                let ratios = lit.map { (shape.fluence[$0] + 1) / (sphere.fluence[$0] + 1) }.sorted()
+                let median = ratios.isEmpty ? 0 : ratios[ratios.count / 2]
+                let shapeOnly = indices.filter { shape.fluence[$0] > 1000 && sphere.fluence[$0] < 1 }.count
+                let sphereOnly = indices.filter { sphere.fluence[$0] > 1000 && shape.fluence[$0] < 1 }.count
+                print(
+                    String(
+                        format:
+                            "  %@: mean fluence %.1f kJ/m² as the shape, %.1f as the sphere (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d shape, %d sphere",
+                        surface, a / Double(indices.count) / 1000, b / Double(indices.count) / 1000,
+                        100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
+            }
+        }
+        if let largestShape {
+            print(
+                String(
+                    format: "Largest shape: %.1f m³ in blocks %.2f m a side, %d by %d by %d, %d tiles",
+                    largestShape.volume, largestShape.blockSize, largestShape.counts.x, largestShape.counts.y,
+                    largestShape.counts.z, largestShape.tileCount))
+        }
     }
     if let fragments {
         let launch = max(fragments.cloud.launchSpeed, 1)

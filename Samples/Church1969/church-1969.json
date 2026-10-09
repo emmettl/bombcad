@@ -1,0 +1,699 @@
+{
+ "source": "H. W. Church, Cloud Rise from High-Explosives Detonations, Sandia Laboratories SC-RR-68-903, May 1969, Tables I and II (https://www.osti.gov/biblio/4798257)",
+ "times": [
+  30,
+  60,
+  120,
+  180,
+  240,
+  300
+ ],
+ "lateTimes": {
+  "Double Tracks": 150,
+  "Clean Slate 1": 160
+ },
+ "shots": [
+  {
+   "name": "1",
+   "date": "1963-06-04",
+   "localTime": "17:20",
+   "yieldPounds": 140,
+   "stability": -0.49,
+   "meanWind": 10,
+   "camera": [
+    127,
+    225,
+    null,
+    null,
+    null,
+    null
+   ],
+   "theodolite": [
+    126,
+    263,
+    397,
+    553,
+    978,
+    null
+   ]
+  },
+  {
+   "name": "2",
+   "date": "1963-06-04",
+   "localTime": "17:53",
+   "yieldPounds": 140,
+   "stability": -0.4,
+   "meanWind": 10,
+   "camera": [
+    111,
+    152,
+    232,
+    null,
+    null,
+    null
+   ],
+   "theodolite": [
+    87,
+    143,
+    208,
+    270,
+    266,
+    null
+   ]
+  },
+  {
+   "name": "3",
+   "date": "1963-06-04",
+   "localTime": "18:18",
+   "yieldPounds": 140,
+   "stability": -0.47,
+   "meanWind": 11,
+   "camera": [
+    123,
+    193,
+    345,
+    null,
+    null,
+    null
+   ],
+   "theodolite": [
+    111,
+    204,
+    333,
+    343,
+    488,
+    592
+   ]
+  },
+  {
+   "name": "4",
+   "date": "1963-06-04",
+   "localTime": "21:50",
+   "yieldPounds": 1600,
+   "stability": 0.86,
+   "meanWind": 5,
+   "camera": [
+    293,
+    385,
+    498,
+    584,
+    null,
+    598
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "5",
+   "date": "1963-06-04",
+   "localTime": "22:48",
+   "yieldPounds": 140,
+   "stability": 1.55,
+   "meanWind": 3,
+   "camera": [
+    120,
+    175,
+    257,
+    320,
+    null,
+    419
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "6",
+   "date": "1963-06-04",
+   "localTime": "23:18",
+   "yieldPounds": 560,
+   "stability": 1.03,
+   "meanWind": 2,
+   "camera": [
+    147,
+    225,
+    377,
+    458,
+    null,
+    667
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "7",
+   "date": "1963-06-04",
+   "localTime": "23:40",
+   "yieldPounds": 140,
+   "stability": 1.36,
+   "meanWind": 1.5,
+   "camera": [
+    null,
+    197,
+    271,
+    327,
+    null,
+    369
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "8",
+   "date": "1963-06-05",
+   "localTime": "03:04",
+   "yieldPounds": 1600,
+   "stability": 1.36,
+   "meanWind": 2,
+   "camera": [
+    212,
+    316,
+    450,
+    552,
+    null,
+    680
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "9",
+   "date": "1963-06-05",
+   "localTime": "03:35",
+   "yieldPounds": 140,
+   "stability": 2.49,
+   "meanWind": 3,
+   "camera": [
+    122,
+    189,
+    193,
+    189,
+    null,
+    205
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "10",
+   "date": "1963-06-05",
+   "localTime": "04:04",
+   "yieldPounds": 420,
+   "stability": 1.96,
+   "meanWind": 2,
+   "camera": [
+    152,
+    219,
+    286,
+    319,
+    null,
+    324
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "11",
+   "date": "1963-06-05",
+   "localTime": "04:28",
+   "yieldPounds": 140,
+   "stability": 1.73,
+   "meanWind": 5,
+   "camera": [
+    135,
+    176,
+    283,
+    374,
+    null,
+    null
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "12",
+   "date": "1963-06-05",
+   "localTime": "05:17",
+   "yieldPounds": 140,
+   "stability": 0.26,
+   "meanWind": 7,
+   "camera": [],
+   "theodolite": [
+    155,
+    237,
+    392,
+    478,
+    524,
+    583
+   ]
+  },
+  {
+   "name": "13",
+   "date": "1963-06-05",
+   "localTime": "05:49",
+   "yieldPounds": 560,
+   "stability": 0.27,
+   "meanWind": 6.5,
+   "camera": [],
+   "theodolite": [
+    196,
+    291,
+    382,
+    461,
+    557,
+    615
+   ]
+  },
+  {
+   "name": "Double Tracks",
+   "date": "1963-05-15",
+   "localTime": "02:55",
+   "yieldPounds": 118,
+   "stability": 1.07,
+   "meanWind": 8,
+   "camera": [
+    118,
+    164,
+    210,
+    216,
+    null,
+    null
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "Clean Slate 1",
+   "date": "1963-05-25",
+   "localTime": "04:16",
+   "yieldPounds": 1062,
+   "stability": 0.97,
+   "meanWind": 7,
+   "camera": [
+    249,
+    378,
+    558,
+    643,
+    null,
+    null
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "Clean Slate 2",
+   "date": "1963-05-31",
+   "localTime": "03:47",
+   "yieldPounds": 2242,
+   "stability": 1.28,
+   "meanWind": 4,
+   "camera": [
+    242,
+    298,
+    415,
+    440,
+    428,
+    412
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "Clean Slate 3",
+   "date": "1963-06-09",
+   "localTime": "03:30",
+   "yieldPounds": 2242,
+   "stability": 1.53,
+   "meanWind": 2.5,
+   "camera": [
+    262,
+    377,
+    494,
+    520,
+    510,
+    null
+   ],
+   "theodolite": []
+  },
+  {
+   "name": "P3",
+   "date": "1963-04-10",
+   "localTime": "05:35",
+   "yieldPounds": 140,
+   "stability": 7.07,
+   "meanWind": null,
+   "camera": [],
+   "theodolite": [
+    47,
+    84,
+    76,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "name": "P4",
+   "date": "1963-04-10",
+   "localTime": "06:13",
+   "yieldPounds": 140,
+   "stability": 1.59,
+   "meanWind": null,
+   "camera": [],
+   "theodolite": [
+    84,
+    142,
+    180,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "name": "P5",
+   "date": "1963-04-10",
+   "localTime": "06:48",
+   "yieldPounds": 140,
+   "stability": 0.49,
+   "meanWind": null,
+   "camera": [],
+   "theodolite": [
+    88,
+    142,
+    207,
+    271,
+    null,
+    null
+   ]
+  },
+  {
+   "name": "P6",
+   "date": "1963-04-10",
+   "localTime": "07:30",
+   "yieldPounds": 140,
+   "stability": -0.29,
+   "meanWind": null,
+   "camera": [],
+   "theodolite": [
+    105,
+    168,
+    280,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "name": "P7",
+   "date": "1963-04-16",
+   "localTime": "06:02",
+   "yieldPounds": 1400,
+   "stability": 1.9,
+   "meanWind": null,
+   "camera": [],
+   "theodolite": [
+    251,
+    389,
+    565,
+    668,
+    759,
+    832
+   ]
+  },
+  {
+   "name": "P8",
+   "date": "1963-04-18",
+   "localTime": "05:14",
+   "yieldPounds": 2800,
+   "stability": 1.56,
+   "meanWind": null,
+   "camera": [],
+   "theodolite": [
+    358,
+    432,
+    536,
+    645,
+    695,
+    740
+   ]
+  }
+ ],
+ "handOvers": {
+  "afterburning": {
+   "118": {
+    "riseSpeed": 0.09955473493204468,
+    "time": 0.13799999999901047,
+    "horizontalVelocity": [
+     -1.2603697948403134e-06,
+     4.1639337056400514e-08
+    ],
+    "warmBuoyancy": 16739.431500117647,
+    "hottest": 2867.258449714809,
+    "centre": [
+     32,
+     32,
+     3.433328
+    ],
+    "ambientTemperature": 288.15289190709063,
+    "buoyancy": 12820.311365191876,
+    "mass": 432.77959187945817,
+    "volume": 1420.4795865009964,
+    "chargeMass": 53.52389907836914,
+    "temperature": 1158.583404994353,
+    "ambientPressure": 101325
+   },
+   "140": {
+    "volume": 1666.0252161762646,
+    "hottest": 2870.3983356541576,
+    "time": 0.1459999999970023,
+    "centre": [
+     32,
+     32,
+     3.5999656
+    ],
+    "riseSpeed": 0.16326904912936085,
+    "horizontalVelocity": [
+     -1.6868237700358397e-07,
+     -2.728336263186749e-06
+    ],
+    "ambientTemperature": 288.15289190709063,
+    "chargeMass": 63.502933502197266,
+    "warmBuoyancy": 19642.678932308434,
+    "ambientPressure": 101325,
+    "temperature": 1166.2169179437537,
+    "mass": 504.26788776228204,
+    "buoyancy": 15069.026286120632
+   },
+   "420": {
+    "chargeMass": 190.5087890625,
+    "centre": [
+     32,
+     32,
+     5.345789
+    ],
+    "mass": 1382.2124458019389,
+    "ambientTemperature": 288.15289190709063,
+    "warmBuoyancy": 57442.11983306639,
+    "buoyancy": 45077.01732201479,
+    "riseSpeed": 1.3818451520077613,
+    "temperature": 1246.4113902871927,
+    "ambientPressure": 101325,
+    "volume": 4880.6439747207005,
+    "time": 0.21099999999660213,
+    "horizontalVelocity": [
+     8.606873538996079e-06,
+     4.318207551570065e-06
+    ],
+    "hottest": 3043.08964255362
+   },
+   "560": {
+    "mass": 1799.907696948154,
+    "temperature": 1282.4458514374587,
+    "hottest": 3141.053213971968,
+    "volume": 6539.283884935829,
+    "time": 0.2320000000008804,
+    "ambientTemperature": 288.15289190709063,
+    "buoyancy": 60906.31039266748,
+    "warmBuoyancy": 76927.01426142734,
+    "ambientPressure": 101325,
+    "riseSpeed": 1.9365441123291236,
+    "centre": [
+     31.999979,
+     32,
+     5.922527
+    ],
+    "chargeMass": 254.01173400878906,
+    "horizontalVelocity": [
+     1.941551246809684e-05,
+     7.298398416883018e-06
+    ]
+   },
+   "1062": {
+    "horizontalVelocity": [
+     5.6820964107052576e-05,
+     1.3603816268711406e-05
+    ],
+    "ambientPressure": 101325,
+    "hottest": 3067.857868872143,
+    "mass": 3362.7696216414915,
+    "time": 0.28699999999935244,
+    "ambientTemperature": 288.15289190709063,
+    "warmBuoyancy": 150376.94239225288,
+    "buoyancy": 119906.25772673005,
+    "riseSpeed": 0.5097705212652448,
+    "chargeMass": 481.715087890625,
+    "temperature": 1335.8772490250824,
+    "volume": 12726.371283564748,
+    "centre": [
+     48.000076,
+     47.999996,
+     6.8691525
+    ]
+   },
+   "1400": {
+    "mass": 4449.68991720723,
+    "hottest": 3025.479325787781,
+    "time": 0.3150000000023283,
+    "warmBuoyancy": 201309.26242411297,
+    "temperature": 1357.4848416816048,
+    "centre": [
+     48.000046,
+     48.00002,
+     7.2261906
+    ],
+    "buoyancy": 161934.72334587082,
+    "riseSpeed": 0.4215223875953233,
+    "ambientPressure": 101325,
+    "volume": 17112.19248425205,
+    "ambientTemperature": 288.15289190709063,
+    "horizontalVelocity": [
+     -6.735039813559613e-05,
+     2.715156365895149e-06
+    ],
+    "chargeMass": 635.029296875
+   },
+   "1600": {
+    "warmBuoyancy": 232394.14315426018,
+    "mass": 5130.706795167411,
+    "time": 0.328999999998814,
+    "ambientPressure": 101325,
+    "centre": [
+     48.00009,
+     48.00012,
+     7.4070516
+    ],
+    "chargeMass": 725.747802734375,
+    "horizontalVelocity": [
+     -2.101010879393244e-05,
+     6.855520940759216e-05
+    ],
+    "ambientTemperature": 288.15289190709063,
+    "riseSpeed": 0.9313451768353355,
+    "volume": 19828.513215586678,
+    "hottest": 3088.56394853187,
+    "temperature": 1364.1811180470795,
+    "buoyancy": 187887.7880221521
+   },
+   "2242": {
+    "horizontalVelocity": [
+     7.877524164319255e-05,
+     0.00022594996078297195
+    ],
+    "buoyancy": 266534.2053613784,
+    "time": 0.3679999999985739,
+    "centre": [
+     48.00014,
+     47.999966,
+     8.115303
+    ],
+    "riseSpeed": 1.6592903157366148,
+    "mass": 7319.105982590001,
+    "ambientTemperature": 288.15289190709063,
+    "chargeMass": 1016.9541015625,
+    "hottest": 3005.7874697023253,
+    "ambientPressure": 101325,
+    "warmBuoyancy": 328174.45844132913,
+    "volume": 28161.65743933256,
+    "temperature": 1358.1860177143292
+   },
+   "2800": {
+    "mass": 9156.713493243209,
+    "ambientPressure": 101325,
+    "buoyancy": 332291.5559458496,
+    "riseSpeed": 1.8625546318981772,
+    "chargeMass": 1270.05859375,
+    "horizontalVelocity": [
+     -0.00018958994523434947,
+     -0.00011172505370392613
+    ],
+    "volume": 35135.52763992773,
+    "temperature": 1354.4592200838863,
+    "hottest": 3016.877589267062,
+    "ambientTemperature": 288.15289190709063,
+    "centre": [
+     48.000088,
+     48.00033,
+     8.718802
+    ],
+    "warmBuoyancy": 408124.1016702107,
+    "time": 0.3970000000017535
+   }
+  },
+  "default": {
+   "140": {
+    "time": 0.14600000000336877,
+    "mass": 221.73781914403662,
+    "volume": 437.2362832134381,
+    "horizontalVelocity": [
+     -1.522926764198829e-06,
+     2.06464717984106e-06
+    ],
+    "ambientPressure": 101325,
+    "chargeMass": 63.502933502197266,
+    "buoyancy": 3078.0783341702568,
+    "riseSpeed": -1.7921952981479767,
+    "hottest": 1207.1929835473122,
+    "ambientTemperature": 288.15289190709063,
+    "centre": [
+     32,
+     32,
+     1.6710857
+    ],
+    "temperature": 696.0420889481193,
+    "warmBuoyancy": 7371.955215706061
+   },
+   "560": {
+    "centre": [
+     31.999933,
+     31.999985,
+     2.5994818
+    ],
+    "ambientPressure": 101325,
+    "mass": 960.0151637932286,
+    "temperature": 644.5985393362511,
+    "time": 0.2319999999981519,
+    "volume": 1753.1066224619271,
+    "warmBuoyancy": 28386.28941605417,
+    "horizontalVelocity": [
+     -9.523135921277037e-05,
+     -6.385360997409467e-05
+    ],
+    "riseSpeed": 2.602943740783534,
+    "hottest": 1083.287801657539,
+    "chargeMass": 254.01173400878906,
+    "buoyancy": 11645.793951357477,
+    "ambientTemperature": 288.15289190709063
+   },
+   "1600": {
+    "time": 0.329000000004271,
+    "mass": 2585.694323496893,
+    "horizontalVelocity": [
+     -0.0006335711667135333,
+     -0.0003941390062391216
+    ],
+    "riseSpeed": 1.108386846017726,
+    "chargeMass": 725.747802734375,
+    "centre": [
+     48.000378,
+     47.999916,
+     4.301104
+    ],
+    "buoyancy": 29929.84078158918,
+    "temperature": 628.2708252141281,
+    "ambientPressure": 101325,
+    "ambientTemperature": 288.15289190709063,
+    "warmBuoyancy": 81118.26382280112,
+    "volume": 4602.194778330993,
+    "hottest": 913.5238889323454
+   }
+  }
+ }
+}

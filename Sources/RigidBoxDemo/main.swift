@@ -37,13 +37,14 @@ do {
         exit(0)
     }
     if arguments.contains("--moving-loads") {
+        let conserved = arguments.contains("--conserved-quadratic")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/moving-loads.json")
+                ?? ".build/moving-loads\(conserved ? "-conserved" : "").json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalMovingLoadStudy.Result] = []
-        _ = try ExperimentalMovingLoadStudy.run { r in
+        _ = try ExperimentalMovingLoadStudy.run(conservedQuadratic: conserved) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             let f = r.frames.last!
@@ -185,17 +186,19 @@ do {
         exit(0)
     }
     if arguments.contains("--wall-reflection") {
-        let limited = arguments.contains("--limited")
+        let conserved = arguments.contains("--conserved-quadratic")
+        let limited = arguments.contains("--limited") || conserved
         let refined = arguments.contains("--refined")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/wall-reflection\(limited ? "-limited" : "")\(refined ? "-refined" : "").json")
+                ?? ".build/wall-reflection\(conserved ? "-conserved" : (limited ? "-limited" : ""))\(refined ? "-refined" : "").json"
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalWallReflectionStudy.Result] = []
         _ = try ExperimentalWallReflectionStudy.run(
             cellLengths: refined ? [0.00625, 0.003125] : [0.1, 0.05, 0.025, 0.0125],
-            cfls: refined ? [0.2] : [0.2, 0.1], limited: limited
+            cfls: refined ? [0.2] : [0.2, 0.1], limited: limited, conservedQuadratic: conserved
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)

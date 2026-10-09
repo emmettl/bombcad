@@ -61,71 +61,107 @@ enum FiniteVolumePressureFit {
     static func fit(
         cell: Sample, neighbours: [Sample], scale: Double, quadratic: Bool, volumeAware: Bool
     ) -> Fit {
-        precondition(scale.isFinite && scale > 0)
-        let rows = neighbours.map { neighbour -> [Double] in
-            let d = (neighbour.centre - cell.centre) / scale
-            let difference = simd_double3x3(
-                columns: (
-                    neighbour.covariance[0] - cell.covariance[0],
-                    neighbour.covariance[1] - cell.covariance[1],
-                    neighbour.covariance[2] - cell.covariance[2]
-                ))
-            let covariance = volumeAware ? (1 / (scale * scale)) * difference : zero
-            return basis(d, covariance: covariance)
+        Stencil(cell: cell, neighbours: neighbours, scale: scale, volumeAware: volumeAware).fit(
+            average: cell.average, neighbourAverages: neighbours.map(\.average), quadratic: quadratic)
+    }
+
+    /// Geometry is factored once and reused for all conserved components of a gas group.
+    struct Stencil {
+        private let cell: Sample
+        private let scale: Double
+        private let volumeAware: Bool
+        private let weights: [Double]
+        private let quadraticQR: QR?
+        private let linearQR: QR?
+
+        init(cell: Sample, neighbours: [Sample], scale: Double, volumeAware: Bool) {
+            precondition(scale.isFinite && scale > 0)
+            let rows = neighbours.map { neighbour -> [Double] in
+                let d = (neighbour.centre - cell.centre) / scale
+                let difference = simd_double3x3(
+                    columns: (
+                        neighbour.covariance[0] - cell.covariance[0],
+                        neighbour.covariance[1] - cell.covariance[1],
+                        neighbour.covariance[2] - cell.covariance[2]
+                    ))
+                let covariance = volumeAware ? (1 / (scale * scale)) * difference : zero
+                return basis(d, covariance: covariance)
+            }
+            // Identical distance weights and neighbour sets for all diagnostic modes.
+            self.cell = cell
+            self.scale = scale
+            self.volumeAware = volumeAware
+            let distanceWeights = neighbours.map { scale / simd_distance($0.centre, cell.centre) }
+            weights = distanceWeights
+            let weighted = rows.enumerated().map { n, row in row.map { $0 * distanceWeights[n] } }
+            quadraticQR = QR(rows: weighted)
+            linearQR = QR(rows: weighted.map { Array($0.prefix(3)) })
         }
-        // Identical distance weights and neighbour sets for all diagnostic modes.
-        let weights = neighbours.map { scale / simd_distance($0.centre, cell.centre) }
-        let rhs = neighbours.map { $0.average - cell.average }
-        func solve(_ count: Int) -> [Double]? {
-            leastSquares(
-                rows: rows.enumerated().map { n, row in row.prefix(count).map { $0 * weights[n] } },
-                rhs: zip(rhs, weights).map { $0.0 * $0.1 })
+
+        func fit(average: Double, neighbourAverages: [Double], quadratic: Bool) -> Fit {
+            precondition(neighbourAverages.count == weights.count)
+            let rhs = zip(neighbourAverages, weights).map { ($0.0 - average) * $0.1 }
+            let coefficients =
+                (quadratic ? quadraticQR?.solve(rhs: rhs) : nil) ?? linearQR?.solve(rhs: rhs) ?? []
+            return .init(
+                cell: .init(centre: cell.centre, covariance: cell.covariance, average: average),
+                scale: scale, coefficients: coefficients, volumeAware: volumeAware,
+                lower: neighbourAverages.reduce(average, min), upper: neighbourAverages.reduce(average, max),
+                stencilSize: neighbourAverages.count)
         }
-        let coefficients = (quadratic ? solve(9) : nil) ?? solve(3) ?? []
-        return .init(
-            cell: cell, scale: scale, coefficients: coefficients, volumeAware: volumeAware,
-            lower: neighbours.reduce(cell.average) { min($0, $1.average) },
-            upper: neighbours.reduce(cell.average) { max($0, $1.average) },
-            stencilSize: neighbours.count)
     }
 
     /// Column-pivoted modified Gram-Schmidt with reorthogonalization. Scaling coordinates
     /// by h avoids mixed physical units; rank failure falls back to linear/constant fits.
-    private static func leastSquares(rows: [[Double]], rhs: [Double]) -> [Double]? {
-        guard let width = rows.first?.count, rows.count >= width else { return nil }
-        var columns = (0..<width).map { j in rows.map { $0[j] } }
-        func dot(_ a: [Double], _ b: [Double]) -> Double { zip(a, b).reduce(0) { $0 + $1.0 * $1.1 } }
-        let initialNorm = columns.map { sqrt(dot($0, $0)) }.max()!
-        guard initialNorm.isFinite && initialNorm > 0 else { return nil }
-        var permutation = Array(0..<width)
-        var upper = [[Double]](repeating: [Double](repeating: 0, count: width), count: width)
-        var projected = [Double](repeating: 0, count: width)
-        for k in 0..<width {
-            let pivot = (k..<width).max { dot(columns[$0], columns[$0]) < dot(columns[$1], columns[$1]) }!
-            columns.swapAt(k, pivot)
-            permutation.swapAt(k, pivot)
-            for j in 0..<k { upper[j].swapAt(k, pivot) }
-            let norm = sqrt(dot(columns[k], columns[k]))
-            guard norm.isFinite && norm > 1e-10 * initialNorm else { return nil }
-            upper[k][k] = norm
-            let q = columns[k].map { $0 / norm }
-            projected[k] = dot(q, rhs)
-            for j in (k + 1)..<width {
-                for _ in 0..<2 {
-                    let projection = dot(q, columns[j])
-                    upper[k][j] += projection
-                    columns[j] = zip(columns[j], q).map { $0.0 - projection * $0.1 }
+    private struct QR {
+        let upper: [[Double]]
+        let vectors: [[Double]]
+        let permutation: [Int]
+
+        init?(rows: [[Double]]) {
+            guard let width = rows.first?.count, rows.count >= width else { return nil }
+            var columns = (0..<width).map { j in rows.map { $0[j] } }
+            func dot(_ a: [Double], _ b: [Double]) -> Double { zip(a, b).reduce(0) { $0 + $1.0 * $1.1 } }
+            let initialNorm = columns.map { sqrt(dot($0, $0)) }.max()!
+            guard initialNorm.isFinite && initialNorm > 0 else { return nil }
+            var permutation = Array(0..<width)
+            var upper = [[Double]](repeating: [Double](repeating: 0, count: width), count: width)
+            var vectors = [[Double]]()
+            for k in 0..<width {
+                let pivot = (k..<width).max { dot(columns[$0], columns[$0]) < dot(columns[$1], columns[$1]) }!
+                columns.swapAt(k, pivot)
+                permutation.swapAt(k, pivot)
+                for j in 0..<k { upper[j].swapAt(k, pivot) }
+                let norm = sqrt(dot(columns[k], columns[k]))
+                guard norm.isFinite && norm > 1e-10 * initialNorm else { return nil }
+                upper[k][k] = norm
+                let q = columns[k].map { $0 / norm }
+                vectors.append(q)
+                for j in (k + 1)..<width {
+                    for _ in 0..<2 {
+                        let projection = dot(q, columns[j])
+                        upper[k][j] += projection
+                        columns[j] = zip(columns[j], q).map { $0.0 - projection * $0.1 }
+                    }
                 }
             }
+            self.upper = upper
+            self.vectors = vectors
+            self.permutation = permutation
         }
-        var solution = [Double](repeating: 0, count: width)
-        for k in (0..<width).reversed() {
-            let known = ((k + 1)..<width).reduce(0) { $0 + upper[k][$1] * solution[$1] }
-            solution[k] = (projected[k] - known) / upper[k][k]
+
+        func solve(rhs: [Double]) -> [Double]? {
+            let width = upper.count
+            let projected = vectors.map { q in zip(q, rhs).reduce(0) { $0 + $1.0 * $1.1 } }
+            var solution = [Double](repeating: 0, count: width)
+            for k in (0..<width).reversed() {
+                let known = ((k + 1)..<width).reduce(0) { $0 + upper[k][$1] * solution[$1] }
+                solution[k] = (projected[k] - known) / upper[k][k]
+            }
+            guard solution.allSatisfy(\.isFinite) else { return nil }
+            var ordered = solution
+            for k in 0..<width { ordered[permutation[k]] = solution[k] }
+            return ordered
         }
-        guard solution.allSatisfy(\.isFinite) else { return nil }
-        var ordered = solution
-        for k in 0..<width { ordered[permutation[k]] = solution[k] }
-        return ordered
     }
 }

@@ -34,8 +34,8 @@ struct FrameExtractionTests {
         let cut = solver.frameExtractor?.airValues(layout, time: solver.time, steps: solver.stepCount)
         #expect(cut != nil)
         #expect(
-            solver.frameExtractor?.fireballRows(
-                luminous: 1500, grid: solver.grid, time: solver.time, steps: solver.stepCount) != nil)
+            solver.frameExtractor?.fireballBlocks(luminous: 1500, time: solver.time, steps: solver.stepCount)
+                != nil)
         let gpu = solver.airSlice(region: region, stride: 2)
         #expect(gpu.values == cut)
         let cpu = solver.cpuAirValues(layout)
@@ -56,6 +56,15 @@ struct FrameExtractionTests {
         #expect(simd_distance(fireball.centre, reference.centre) < 0.01)
         #expect(abs(fireball.temperature - reference.temperature) < 1)
         #expect(abs(fireball.hottest - reference.hottest) < 1)
+        // The same blocks of it, near enough.
+        let shape = try #require(fireball.shape)
+        let cpuShape = try #require(reference.shape)
+        #expect(shape.blockSize == cpuShape.blockSize && shape.counts == cpuShape.counts)
+        let differing = shape.fills.indices.filter {
+            abs(Int(shape.fills[$0]) - Int(cpuShape.fills[$0])) > 32
+                || abs(Int(shape.temperatures[$0]) - Int(cpuShape.temperatures[$0])) > 1
+        }.count
+        #expect(differing <= shape.fills.count / 100, "\(differing) of \(shape.fills.count)")
     }
 
     @Test("The same run cuts out the same air, and asking makes no difference to the blast")
@@ -77,8 +86,8 @@ struct FrameExtractionTests {
         let layout = AirSlice.layout(region: other, stride: 1, grid: solver.grid)
         #expect(solver.airSlice(region: other, stride: 1).values == solver.cpuAirValues(layout))
         #expect(
-            solver.frameExtractor?.fireballRows(
-                luminous: 2000, grid: solver.grid, time: solver.time, steps: solver.stepCount) == nil)
+            solver.frameExtractor?.fireballBlocks(luminous: 2000, time: solver.time, steps: solver.stepCount)
+                == nil)
         // A batch without a time limit does not reach one.
         solver.advance(steps: 3)
         #expect(solver.frameExtractor?.ready == nil)

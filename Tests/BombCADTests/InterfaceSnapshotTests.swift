@@ -70,8 +70,35 @@ struct InterfaceSnapshotTests {
             appearance: appearance, to: folder.appending(path: "settings.png"))
     }
 
+    @Test("Review the editor at fixed viewport sizes", arguments: ["light", "dark"])
+    func constrainedPanels(style: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var document = ProjectDocument(
+            scenario: Scenario(
+                name: "Minimum window review", domainSize: SIMD3(repeating: 6), boxes: [],
+                charge: Charge(mass: 0, position: SIMD3(3, 3, 1))))
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        let original = ProjectDocument(model: model)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        let minimum = CGSize(width: 1000, height: 640)
+        try snapshot(
+            ContentView(model: model).frame(width: minimum.width, height: minimum.height).clipped(),
+            size: minimum, appearance: appearance, to: folder.appending(path: "editor-minimum.png"),
+            expandToFit: false)
+        let sidebar = CGSize(width: 310, height: 580)
+        try snapshot(
+            EditorView(model: model).frame(width: sidebar.width, height: sidebar.height).clipped(),
+            size: sidebar, appearance: appearance, to: folder.appending(path: "layout-editing-short.png"),
+            expandToFit: false)
+        #expect(ProjectDocument(model: model) == original)
+    }
+
     private func snapshot<V: View>(
-        _ view: V, size: CGSize, appearance: NSAppearance.Name, to file: URL
+        _ view: V, size: CGSize, appearance: NSAppearance.Name, to file: URL,
+        expandToFit: Bool = true
     ) throws {
         let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
         host.appearance = NSAppearance(named: appearance)
@@ -84,9 +111,13 @@ struct InterfaceSnapshotTests {
         defer { window.close() }
         window.layoutIfNeeded()
         host.layoutSubtreeIfNeeded()
-        let fitting = host.fittingSize
-        window.setContentSize(
-            CGSize(width: max(size.width, fitting.width), height: max(size.height, fitting.height)))
+        if expandToFit {
+            let fitting = host.fittingSize
+            window.setContentSize(
+                CGSize(width: max(size.width, fitting.width), height: max(size.height, fitting.height)))
+        } else {
+            #expect(host.bounds.size == size)
+        }
         host.layoutSubtreeIfNeeded()
         #expect(!window.isVisible)
         let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))

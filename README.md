@@ -604,6 +604,21 @@ one-, two- and three-ring connected group stencils, rotations 0/0.1/0.23/0.4 rad
 the same three grids. Reported rank fallbacks, local pressure errors and load errors
 show sensitivity to stencil extent; matched initial packets and baseline loads stay fixed.
 
+`swift run -c release rigidboxdemo --moving-loads --conserved-quadratic` runs the experimental
+transport with quadratic fits of all five conserved densities and writes
+`.build/moving-loads-conserved.json`. Audit the complete matrix with
+`python3 Scripts/summarize-moving-loads.py --conserved-quadratic`. The fit retains group
+averages, uses distinct old/final gas-volume moments, and applies a common component/EOS
+bound at volume, face and wall samples. Accepted gas inventories are never floored.
+
+The same fit is available in the independent stationary shock benchmark through
+`swift run -c release rigidboxdemo --wall-reflection --conserved-quadratic`, producing
+`.build/wall-reflection-conserved.json`.
+`python3 Scripts/summarize-wall-reflection.py --conserved` compares it with the existing
+constant and limited reports. These options
+leave the existing transport defaults in place; the full load/shock audits determine
+accuracy and cost before broader use.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

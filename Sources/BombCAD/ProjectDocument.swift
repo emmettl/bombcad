@@ -181,13 +181,13 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         do {
             scenario = try JSONDecoder().decode(Scenario.self, from: legacyJSON)
         } catch let error as DecodingError {
-            throw ProjectFileError.invalid(Self.layoutDecodingMessage(error))
+            throw ProjectFileError.invalid(Self.jsonDecodingMessage(error))
         }
         self.init(scenario: scenario)
         try Self.validate(scenario)
     }
 
-    private static func layoutDecodingMessage(_ error: DecodingError) -> String {
+    private static func jsonDecodingMessage(_ error: DecodingError, file: String? = nil) -> String {
         func path(_ keys: [any CodingKey]) -> String {
             var result = ""
             for key in keys {
@@ -199,19 +199,32 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             }
             return result.isEmpty ? "layout" : result
         }
+        let label = file.map { "Project file \"\($0)\"" } ?? "Layout JSON"
         switch error {
         case .keyNotFound(let key, let context):
-            return "Layout JSON is missing the required field \"\(path(context.codingPath + [key]))\"."
+            return "\(label) is missing the required field \"\(path(context.codingPath + [key]))\"."
         case .typeMismatch(_, let context):
-            return "Layout JSON has the wrong value type at \"\(path(context.codingPath))\"."
+            return "\(label) has the wrong value type at \"\(path(context.codingPath))\"."
         case .valueNotFound(_, let context):
-            return "Layout JSON requires a non-null value at \"\(path(context.codingPath))\"."
+            return "\(label) requires a non-null value at \"\(path(context.codingPath))\"."
         case .dataCorrupted(let context):
             return context.codingPath.isEmpty
-                ? "The layout file is not valid JSON."
-                : "Layout JSON contains an invalid value at \"\(path(context.codingPath))\"."
+                ? file.map { "Project file \"\($0)\" is not valid JSON." }
+                    ?? "The layout file is not valid JSON."
+                : "\(label) contains an invalid value at \"\(path(context.codingPath))\"."
         @unknown default:
-            return "The layout JSON could not be decoded. Check its format."
+            return file.map { "Project file \"\($0)\" could not be decoded. Check its format." }
+                ?? "The layout JSON could not be decoded. Check its format."
+        }
+    }
+
+    private static func decodeProjectJSON<T: Decodable>(_ type: T.Type, from data: Data, file: String) throws
+        -> T
+    {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch let error as DecodingError {
+            throw ProjectFileError.invalid(jsonDecodingMessage(error, file: file))
         }
     }
 
@@ -222,13 +235,14 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
                 "This project belongs to \(archive.manifest.documentType), not BombCAD.")
         }
         scenario = try ImportedSceneCodec.decode(archive)
-        let run = try JSONDecoder().decode(ProjectRunSettings.self, from: archive.files["settings.json"]!)
+        let run = try Self.decodeProjectJSON(
+            ProjectRunSettings.self, from: archive.files["settings.json"]!, file: "settings.json")
         try Self.validate(scenario)
         try run.validate()
         try Self.validateGrid(scenario, resolution: Resolution(rawValue: run.resolution)!)
         runSettings = run
         if let data = archive.files["view.json"] {
-            let view = try JSONDecoder().decode(ProjectViewSettings.self, from: data)
+            let view = try Self.decodeProjectJSON(ProjectViewSettings.self, from: data, file: "view.json")
             try view.validate()
             viewSettings = view
         }

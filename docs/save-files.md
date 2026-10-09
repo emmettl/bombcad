@@ -131,6 +131,9 @@ fresh run and clears undo across documents.
   Missing required layout JSON fields, incorrect value types and null values are reported with
   their field paths; malformed JSON is reported as a syntax error. These diagnostics do not
   change which layouts are accepted.
+  Missing required fields, incorrect types and null values in native `settings.json` and
+  `view.json` also identify the package filename and field path. Settings and camera value
+  validation still applies after decoding.
 - Save Project and Command-S save to the document's current location, asking for a name and
   location on the first save. Save As is in the More menu. Native File-menu commands provide
   New, Open, recent documents, Duplicate and Revert where supported by macOS.
