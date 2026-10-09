@@ -1,9 +1,27 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.4`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.4)
+BombCAD pins [ContinuumKit `0.1.0-alpha.5`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.5)
 and commits the resolved Git revision. Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
+
+## Document diagnostics adoption — 9 October 2026
+
+The exact `0.1.0-alpha.5` pin resolves to
+`7d5ef9d0ca7b415d3fef86b5400017bb43111a3c`. Shared project errors now identify malformed
+payload filenames and missing, mistyped or invalid manifest fields, including asset array
+paths. Unsupported package versions still fail before other metadata is decoded.
+
+The [exact-tag release workflow](https://github.com/emmettl/ContinuumKit/actions/runs/37974874568)
+passed on the physical Mac mini before publication, including 141 independent tests,
+verified Metal compute and the clean optimized Git consumer. BombCAD's 15 selected
+document-integration tests cover the shared errors, application settings/view diagnostics
+and project round trips. Its optimized app build and packaged CLI checks also pass;
+malformed settings and missing manifest metadata fail before starting a simulation.
+
+App-linked CAD module source is identical to alpha.4 except DocumentKit. The prerelease
+also contains acoustic reference/conformance additions in BenchmarkSupport and a bounded
+linear-wave extraction design checkpoint; these do not extract a shared wave-update solver.
 
 ## CAD foundations transition — 8 October 2026
 
