@@ -22,9 +22,11 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
 
     public let occluders: [Box]
     private let cpu: CPUThermalVisibility
-    private let shared: Shared
-    private let structure: MTLAccelerationStructure
-    private let boxes: MTLBuffer
+    let shared: Shared
+    /// The boxes in an acceleration structure and as the exact test reads them, shared with the
+    /// fireball's march (`MetalThermalMarch`).
+    let structure: MTLAccelerationStructure
+    let boxes: MTLBuffer
     private let lock = NSLock()
     private var buffers: Buffers?
     /// From committing a frame's rays to having them back, smoothed over the GPU's frames.
@@ -40,12 +42,21 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
 
     /// Nil where there is no GPU with ray tracing, or nothing to block the view but the ground,
     /// which the CPU tests as quickly.
-    public init?(occluders: [Box]) {
-        guard !occluders.isEmpty, let shared = Shared.system else { return nil }
+    public convenience init?(occluders: [Box]) {
+        guard !occluders.isEmpty else { return nil }
+        self.init(occluders: occluders, allowingNone: true)
+    }
+
+    /// With `allowingNone`, made even with no occluders, for the march, which needs a structure
+    /// to bind: one box far below the ground stands in, which no ray above it can reach.
+    init?(occluders: [Box], allowingNone: Bool) {
+        guard allowingNone || !occluders.isEmpty, let shared = Shared.system else { return nil }
         let device = shared.device
+        let built =
+            occluders.isEmpty ? [Box(min: SIMD3(0, 0, -2e6), max: SIMD3(1, 1, -1e6))] : occluders
         // Each box a little enlarged, so that the hardware's candidates include every box the
         // exact test could find across a ray.
-        let bounds = occluders.map { box -> MTLAxisAlignedBoundingBox in
+        let bounds = built.map { box -> MTLAxisAlignedBoundingBox in
             let low = simd_min(box.min, box.max)
             let high = simd_max(box.min, box.max)
             let margin = 0.001 + 1e-5 * max(simd_reduce_max(abs(low)), simd_reduce_max(abs(high)))
@@ -56,7 +67,7 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
         let stride = MemoryLayout<MTLAxisAlignedBoundingBox>.stride
         guard
             let boxes = device.makeBuffer(
-                bytes: occluders, length: MemoryLayout<Box>.stride * occluders.count,
+                bytes: built, length: MemoryLayout<Box>.stride * built.count,
                 options: .storageModeShared),
             let boundsBuffer = device.makeBuffer(
                 bytes: bounds, length: stride * bounds.count, options: .storageModeShared)
@@ -199,11 +210,12 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
         }
     }
 
-    /// The device, queue and kernel, made once for every exposure.
-    private final class Shared: @unchecked Sendable {
+    /// The device, queue and kernels, made once for every exposure.
+    final class Shared: @unchecked Sendable {
         let device: MTLDevice
         let queue: MTLCommandQueue
         let pipeline: MTLComputePipelineState
+        let marchPipeline: MTLComputePipelineState
 
         static let system: Shared? = try? Shared()
 
@@ -224,9 +236,13 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
             guard let function = library.makeFunction(name: "thermalVisibility") else {
                 throw BlastError.missingFunction("thermalVisibility")
             }
+            guard let march = library.makeFunction(name: "thermalMarch") else {
+                throw BlastError.missingFunction("thermalMarch")
+            }
             self.device = device
             self.queue = queue
             pipeline = try device.makeComputePipelineState(function: function)
+            marchPipeline = try device.makeComputePipelineState(function: march)
         }
     }
 }
