@@ -251,7 +251,23 @@ final class SimulationModel {
     /// Shows the sheet for exporting the project's run for rendering.
     var showsRenderExport = false
 
-    private(set) var isRunning = false
+    private(set) var isRunning = false {
+        didSet {
+            guard isRunning != (runActivity != nil) else { return }
+            if isRunning {
+                // A run is work the user is waiting for, even with the window behind another app:
+                // without this, macOS moves a background app's main thread to the efficiency cores
+                // on a busy Mac, and each batch's round trip, and each redraw of the chart, takes
+                // several times as long.
+                runActivity = ProcessInfo.processInfo.beginActivity(
+                    options: .userInitiated, reason: "Running a blast simulation")
+            } else if let runActivity {
+                ProcessInfo.processInfo.endActivity(runActivity)
+                self.runActivity = nil
+            }
+        }
+    }
+    @ObservationIgnored private var runActivity: NSObjectProtocol?
     private(set) var time: Double = 0
     private(set) var stepCount = 0
     private(set) var traces: [GaugeTrace] = []
