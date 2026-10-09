@@ -141,8 +141,10 @@ struct ParameterSweepExecutionTests {
         #expect(model.sweep.message.contains("complete"))
     }
 
-    @Test("Cancellation restores persisted inputs immediately and leaves completed cases available")
-    func cancellation() async throws {
+    @Test(
+        "Cancellation restores persisted inputs immediately and leaves completed cases available",
+        arguments: [false, true])
+    func cancellation(editorDisappears: Bool) async throws {
         let session = ProjectSession(document: document())
         let model = session.model
         let baseline = model.currentInputs
@@ -151,7 +153,12 @@ struct ParameterSweepExecutionTests {
         try await waitUntil { model.sweep.completed >= 1 || !model.sweep.isActive }
         let kept = model.savedRuns
         #expect(kept.count < 8)
-        model.sweep.cancel()
+        if editorDisappears {
+            session.suspend()
+        } else {
+            model.sweep.cancel()
+        }
+        #expect(!model.isRunning)
         #expect(session.snapshot.scenario == baseline.scenario)
         #expect(session.snapshot.runSettings == baseline.settings)
         try await waitUntil { !model.sweep.isActive && model.experimentIsReady }

@@ -18,6 +18,12 @@ final class ProjectSession {
         guard document != snapshot else { return }
         model.open(document)
     }
+
+    /// Stop work when the document editor disappears, including when its window closes.
+    func suspend() {
+        model.sweep.cancel()
+        if model.isRunning { model.toggleRun() }
+    }
 }
 
 struct ProjectEditor: View {
@@ -41,7 +47,7 @@ struct ProjectEditor: View {
         .onChange(of: session?.snapshot) { _, snapshot in
             if let snapshot, snapshot != document { document = snapshot }
         }
-        .onDisappear { session?.model.sweep.cancel() }
+        .onDisappear { session?.suspend() }
         .onChange(of: document) { _, incoming in session?.receive(incoming) }
     }
 }
