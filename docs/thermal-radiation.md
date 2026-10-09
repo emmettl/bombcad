@@ -39,8 +39,9 @@ Turn on **Fireball's radiant heat** in the Run tab's Thermal radiation section, 
 **emissivity** and the temperature the gas is **luminous above**; the receivers' spacing, the
 directions sampled and the fireball's shape (rather than its sphere) keep their defaults. The description is saved with the project (as
 `thermal.json`), takes effect from the next run, and is undone and redone with the layout's edits
-(⌘Z). With Macs set for sweeps in Settings, **Run on** the first of them reckons the radiation there,
-over the same connection as the [fragments](fragments.md#in-the-app), kept open between runs.
+(⌘Z). With Macs set for sweeps in Settings, **Run on** reckons the radiation on the one chosen, over
+a connection kept open between runs and shared with any other model run there, such as the
+[fragments](fragments.md#in-the-app); should that Mac drop, it carries on here.
 
 During a run the view draws every receiver as a dot, coloured by its fluence so far on a log
 scale: slate grey with none, through dark red and orange, to pale yellow at 1 MJ/m² (1 J/m² at

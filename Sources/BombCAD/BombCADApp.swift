@@ -6,6 +6,9 @@ import SwiftUI
 @main
 enum BombCADMain {
     static func main() {
+        // A worker's connection that drops must fail a write, not end the process: the models it
+        // ran carry on here (see `ResilientFrameConsumer`).
+        signal(SIGPIPE, SIG_IGN)
         let arguments = Array(CommandLine.arguments.dropFirst())
         switch arguments.first {
         case "run":

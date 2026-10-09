@@ -47,7 +47,11 @@ editor, import loading state, Settings and Help content in light and dark appear
 Help sidebar's selected labels and dark contrast have also been checked in a native window;
 the earlier offscreen rendering problem was a capture artifact. An isolated release app has
 passed a zero-charge layout JSON import, native package save, close and reopen at time zero.
-Keyboard focus, scrolling and the other panels still need broader interactive review.
+A completed OBJ import preview has also been reviewed in a native window, including display
+toggles, part search, scrolling and cancellation of a staged domain expansion. See the
+[native interface review](native-interface-review.md) for the procedure and its limits.
+Keyboard focus, scrolling at minimum window sizes and the other panels still need broader
+interactive review.
 
 ## Planned work
 
@@ -201,12 +205,13 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    ray-tracing hardware; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
-   turbulent air and humid air, where it condenses, freezes and rains once saturated, within a
-   factor of 1.6 (1.4 in neutral turbulence) of an empirical fit to high-explosive cloud heights;
-   and [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional
-   estimate fed the overpressure on the rigid ground each frame and drawn in the app. Next:
-   following the fireball's shape on the GPU too, the cloud against measured clouds over time, a
-   layered soil column and a comparison with measured ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
+   turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
+   within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
+   their first two minutes; and [ground shock](ground-shock.md) away from the charge, the
+   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
+   drawn in the app. Next: following the fireball's shape on the GPU too, the cloud's growth once
+   it stops rising, a layered soil column and a comparison with measured
+   ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
    went. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 
@@ -1917,8 +1922,10 @@ two collapsing over several seconds.
   a temporary defaults suite. The import capture records the initial loading state rather than
   waiting for asynchronous preview completion. The helper expands the requested size
   to the view's fitting size, so these captures do not verify scrolling at the minimum window
-  size. Animated Metal rendering, completed import previews and broader native interaction
-  remain separate checks; the helper is skipped during ordinary test runs.
+  size. A separate [native import review](native-interface-review.md#completed-obj-preview)
+  covers a completed small OBJ preview, its display controls, part search and cancellation;
+  this is not a check of every importer or window size. Animated run rendering and broader
+  native interaction remain separate checks; the helper is skipped during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,

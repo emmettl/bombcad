@@ -217,6 +217,74 @@ struct CloudAtmosphereTests {
         #expect(dawn.position.x > 0 && dawn.position.y > 0)
     }
 
+    /// Church's (1969) shots, their measured stability and cloud tops, and the air model's
+    /// hand-overs for their charges, in Samples/Church1969.
+    private struct Church: Decodable {
+        struct Shot: Decodable {
+            var name: String
+            var localTime: String
+            var yieldPounds: Int
+            var stability: Double
+            var meanWind: Double?
+            var camera: [Double?]
+            var theodolite: [Double?]
+        }
+        var shots: [Shot]
+        var handOvers: [String: [String: CloudHandOver]]
+    }
+
+    /// The cloud's top two minutes after each of Church's shots, against his measured top, the
+    /// height his fit H = 76 W^¼ (W in pounds) describes; P3, in an inversion he left out, apart.
+    private func churchRatios(gas: String) throws -> [Double] {
+        let url = Self.soundings.deletingLastPathComponent().appending(path: "Church1969/church-1969.json")
+        let church = try JSONDecoder().decode(Church.self, from: Data(contentsOf: url))
+        let handOvers = try #require(church.handOvers[gas])
+        return try church.shots.compactMap { shot in
+            guard shot.name != "P3", let handOver = handOvers[String(shot.yieldPounds)] else { return nil }
+            let seen = [shot.camera, shot.theodolite].compactMap { $0.count > 2 ? $0[2] : nil }
+            guard !seen.isEmpty else { return nil }
+            // Dry air on the lake bed at the shot's stability, S = 1 − lapse / adiabatic, up to
+            // 600 m and the standard atmosphere's lapse rate above, in its mean wind.
+            let hour = Int(shot.localTime.prefix(2)) ?? 0
+            let ground = (12..<20).contains(hour) ? 300.0 : 288.0
+            let lapse = CloudRise.gravity / 1005 * (1 - shot.stability)
+            func temperature(_ z: Double) -> Double {
+                z <= 600 ? ground - lapse * z : ground - lapse * 600 - 0.0065 * (z - 600)
+            }
+            var pressure = 83_200.0
+            let levels = stride(from: 0.0, through: 4000, by: 10).map { z in
+                if z > 0 {
+                    pressure *= exp(-CloudRise.gravity * 10 / (CloudRise.gasConstant * temperature(z - 5)))
+                }
+                return CloudSounding.Level(
+                    height: 1636 + z, pressure: pressure, temperature: temperature(z),
+                    dewPoint: temperature(z) - 40, windSpeed: shot.meanWind ?? 2, windDirection: 270)
+            }
+            var spec = CloudSpec()
+            spec.sounding = CloudSounding(levels: levels)
+            spec.duration = 120
+            spec.frameInterval = 120
+            let top = try #require(CloudResult(spec: spec, handOver: handOver).frames().last?.top)
+            return top / (seen.reduce(0, +) / Double(seen.count))
+        }
+    }
+
+    @Test(
+        "Two minutes after Church's 22 detonations, the cloud's top is his measured top's, as closely as his fit"
+    )
+    func churchShots() throws {
+        let ratios = try churchRatios(gas: "afterburning")
+        #expect(ratios.count == 22)
+        let logs = ratios.map(log)
+        let mean = logs.reduce(0, +) / Double(logs.count)
+        let spread = sqrt(logs.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(logs.count - 1))
+        // 1.04 times his, scattered by a factor of 1.21; his own fit, by 1.24.
+        #expect(abs(exp(mean) - 1.04) < 0.02 && exp(spread) < 1.24, "\(exp(mean)), \(exp(spread))")
+        // Without afterburning the gas handed over is too cool: a third too low.
+        let cold = try churchRatios(gas: "default").map(log)
+        #expect(cold.count == 15 && exp(cold.reduce(0, +) / Double(cold.count)) < 0.75)
+    }
+
     @Test("A sounding is refused without its columns, with wind or humidity of its own, or out of order")
     func refusals() throws {
         #expect(throws: CocoaError.self) {

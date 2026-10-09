@@ -65,7 +65,7 @@ struct ViewportDrawingTests {
         // Nothing it draws changed: no frame.
         coordinator.draw(in: view)
         let requests = view.requests
-        model.fragmentsOnRemote.toggle()
+        model.fragmentsHost = model.fragmentsHost == nil ? "another Mac" : nil
         try await Task.sleep(for: .milliseconds(50))
         #expect(view.requests == requests)
 

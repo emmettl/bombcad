@@ -216,11 +216,11 @@ struct ThermalOverlayTests {
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
-        model.useFragmentWorker(worker, host: "the mini")
-        model.thermalOnRemote = true
+        model.useWorker(worker, host: "the mini")
+        model.thermalHost = "the mini"
         for name in ["First", "Second"] {
             let there = try await runAndKeep(model, named: name)
-            #expect(model.thermal is RemoteFrameConsumer)
+            #expect(model.thermal is ResilientFrameConsumer)
             #expect(model.thermalStatus.hasSuffix("on the mini"))
             // The frames fall where batches end, which follows the GPU's timing; the same frames
             // reckoned here give the same result, to the last bit.
