@@ -1,12 +1,28 @@
 import simd
 
-/// Read-only wider-stencil comparisons. Only the error audit receives the known field;
+/// Read-only connected-stencil comparisons. Only the error audit receives the known field;
 /// the fits use actual group averages and geometric moments without analytic gradients.
 enum ExperimentalVolumePressureFitStudy {
+    /// Connected graph distance, with deterministic ordering and no repeated/self samples.
+    static func stencil(group: Int, adjacency: [Set<Int>], rings: Int) -> [Int] {
+        precondition((1...3).contains(rings))
+        var visited: Set<Int> = [group]
+        var frontier = visited
+        for _ in 0..<rings {
+            var next = Set<Int>()
+            for member in frontier { next.formUnion(adjacency[member]) }
+            next.subtract(visited)
+            visited.formUnion(next)
+            frontier = next
+        }
+        visited.remove(group)
+        return visited.sorted()
+    }
+
     static func evaluate(
         plan: MovingConnectedGasGroups.Plan, body: RigidBoxBody, h: Double,
         traces: [MovingGroupedGasFlux.InitialWallTrace], reference: BoxSurfacePressureReference.Load,
-        pressure: (SIMD3<Double>) -> Double
+        pressure: (SIMD3<Double>) -> Double, stencilRings: Int = 2
     ) throws -> ExperimentalInitialWallTraceStudy.VolumeFitDiagnostics {
         let centres = plan.oldCentres!
         var adjacency = [Set<Int>](repeating: [], count: plan.cells.count)
@@ -18,11 +34,9 @@ enum ExperimentalVolumePressureFitStudy {
         var stencils: [Int: [Int]] = [:]
         var needed = Set(wallGroups)
         for group in wallGroups {
-            var stencil = adjacency[group]
-            for neighbour in adjacency[group] { stencil.formUnion(adjacency[neighbour]) }
-            stencil.remove(group)
-            stencils[group] = stencil.sorted()
-            needed.formUnion(stencil)
+            let neighbours = stencil(group: group, adjacency: adjacency, rings: stencilRings)
+            stencils[group] = neighbours
+            needed.formUnion(neighbours)
         }
         let geometry = FractionalBoxGeometry(body)
         let count = Int((2 / h).rounded())
@@ -62,7 +76,8 @@ enum ExperimentalVolumePressureFitStudy {
                 centre: centres[group], covariance: (1 / volume) * second,
                 average: plan.cells[group].pressure() - 101325)
         }
-        let rawKinds = ["twoRingLinear", "pointQuadratic", "volumeQuadratic"]
+        let linearKind = ["oneRingLinear", "twoRingLinear", "threeRingLinear"][stencilRings - 1]
+        let rawKinds = [linearKind, "pointQuadratic", "volumeQuadratic"]
         var fits: [String: [Int: FiniteVolumePressureFit.Fit]] = [:]
         for kind in rawKinds {
             fits[kind] = Dictionary(
@@ -72,7 +87,7 @@ enum ExperimentalVolumePressureFitStudy {
                         FiniteVolumePressureFit.fit(
                             cell: samples[group]!, neighbours: stencils[group]!.map { samples[$0]! },
                             scale: h,
-                            quadratic: kind != "twoRingLinear", volumeAware: kind == "volumeQuadratic")
+                            quadratic: kind != linearKind, volumeAware: kind == "volumeQuadratic")
                     )
                 })
         }
@@ -182,11 +197,11 @@ enum ExperimentalVolumePressureFitStudy {
                 $0 + (fits["pointQuadratic"]![$1.cell]!.degree < 2 ? $1.area : 0)
             } / area,
             linearFallbackAreaFraction: traces.reduce(0) {
-                $0 + (fits["twoRingLinear"]![$1.cell]!.degree < 1 ? $1.area : 0)
+                $0 + (fits[linearKind]![$1.cell]!.degree < 1 ? $1.area : 0)
             } / area,
             meanStencilSize: traces.reduce(0) {
                 $0 + $1.area * Double(fits["volumeQuadratic"]![$1.cell]!.stencilSize)
             } / area,
-            maximumMomentResidual: maximumResidual, bounds: bounds)
+            maximumMomentResidual: maximumResidual, bounds: bounds, stencilRings: stencilRings)
     }
 }

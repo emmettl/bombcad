@@ -26,6 +26,7 @@ import simd
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
+//   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json] [--air thermal] [--afterburn]
@@ -1852,6 +1853,45 @@ func runThermal() throws {
     }
 }
 
+/// A footing rocked slowly on dry sand against Gajan and Kutter's centrifuge test SSG02_03
+/// (`FootingRockingTest`). `--shear` is the sand's shear modulus in MPa, `--bearing` its bearing
+/// capacity in kPa; `--history` writes rotation, moment and settlement every 10 ms.
+func runRocking() throws {
+    let shear = (option("shear").flatMap { Float($0) } ?? 40) * 1e6
+    let bearing = (option("bearing").flatMap { Float($0) } ?? 814) * 1e3
+    let names = option("packets").map { $0.split(separator: ",").map(String.init) }
+    let packets = FootingRockingTest.packets.filter { names?.contains($0.name) ?? true }
+    print(
+        "Gajan and Kutter's SSG02_03: a 29 Mg shear wall on a 2.8 × 0.65 m surface footing on dry dense sand, "
+            + "rocked slowly; sand of \(format(Double(shear) / 1e6, 0)) MPa, bearing \(format(Double(bearing) / 1e3, 0)) kPa"
+    )
+    let result = try FootingRockingTest.run(
+        device: device, shearModulus: shear, bearingCapacity: bearing, packets: packets,
+        speed: option("speed").flatMap { Float($0) } ?? 0.2, progress: { print("  " + $0) })
+    print("")
+    print(
+        pad("packet", 8) + pad("rotation", 18) + pad("moment forward", 18) + pad("moment back", 18)
+            + pad("settlement / L", 18))
+    print(pad("", 8) + String(repeating: pad("measured  model", 18), count: 4))
+    for (measured, model) in zip(packets, result.packets) {
+        func pair(_ a: Float, _ b: Float, _ digits: Int) -> String {
+            pad(format(Double(a), digits) + "  " + format(Double(b), digits), 18)
+        }
+        print(
+            pad(measured.name, 8) + pair(measured.peakRotation, model.peakRotation, 4)
+                + pair(measured.moment.x, model.moment.x, 3) + pair(measured.moment.y, model.moment.y, 3)
+                + pair(measured.settlement, model.settlement, 4))
+    }
+    print(
+        String(
+            format: "Largest actuator lag %.1f mm; %.0f s", (result.packets.map(\.lag).max() ?? 0) * 1000,
+            result.wallSeconds))
+    if let path = option("history") {
+        let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
+        try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 do {
     switch command {
     case "slab": try runSlab()
@@ -1868,6 +1908,7 @@ do {
     case "validate": try runValidation()
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
+    case "rocking": try runRocking()
     case "thermal": try runThermal()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")

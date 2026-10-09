@@ -454,10 +454,46 @@ weight, at 0.09 rad, against 0.103 found on the yielding sand. Each run takes ab
 on the other bases. Meshed with shells (`--shells`, 10 s a run) the wall and footing do the
 same within 1% at 10, 15 and 25 m and 2% at 6 m.
 
+**A measured footing** (`FootingRockingTest`, `blastbench rocking`, data in
+[Samples/FoRCy](../Samples/FoRCy/README.md)). S. Gajan and B. L. Kutter's centrifuge test
+SSG02_03 (2008), from the FoRCy database: an essentially rigid shear wall of 29 Mg, its centre
+of mass 4.5 m up, on a surface footing 2.8 m long and 0.65 m wide on dry Nevada sand at a
+relative density of 80% (ultimate bearing pressure 814 kPa against the 157 kPa it carried),
+pushed slowly to and fro by an actuator 4.9 m up in five packets of three cycles, prototype
+units. The model is the wall as a stiff block on a footing 0.65 m thick, their masses set to
+the test's, driven at the actuator's height by the measured amplitudes through a spring and
+dashpot to the displacement asked for (it lags by at most 2.3 mm), with bearings against its
+faces near the top for the test's Teflon guides (without them the 8.6 m wall on its 0.65 m
+footing fell over sideways). The sand's shear modulus is the one input not taken from the
+test; 80 MPa is roughly its small-strain value under the footing by the usual correlations for a dense sand, an estimate, and 40 MPa is the default sand's.
+
+| Packet | Rotation | Moment 2 M / (L P), measured | 80 MPa | 40 MPa | Settlement / L, measured | 80 MPa | 40 MPa |
+|---|---|---|---|---|---|---|---|
+| a | 3 mrad | 0.53 / 0.37 | 0.52 | 0.34 | 0.0027 | 0.0005 | 0.0008 |
+| b | 7 mrad | 0.69 / 0.62 | 0.67 | 0.55 | 0.0065 | 0.0007 | 0.0010 |
+| c | 14 mrad | 0.78 / 0.78 | 0.74 | 0.68 | 0.0108 | 0.0009 | 0.0014 |
+| d | 30 mrad | 0.84 / 0.91 | 0.78 | 0.74 | 0.0173 | 0.0012 | 0.0019 |
+| e | 62 mrad | 0.87 / 0.96 | 0.80 | 0.78 | 0.0295 | 0.0016 | 0.0024 |
+
+(The measured moment is the largest each way; the model's is the same both ways.) On 80 MPa
+sand the moment the footing mobilizes follows the test within 6% to 14 mrad of rotation. It then
+levels off at 0.80, the capacity of a rigid footing whose toe bears 814 kPa,
+(1 − A_c / A) with A / A_c = 5.2, where the test went on rising to 0.87–0.96: the sand under the
+toe bore more than its bearing capacity as it was rounded and confined, which points that yield
+at a fixed pressure cannot. The settlement is the model's failing: a tenth or less of the
+sand's, 4.5 mm against 83 mm by the end. The bed's points settle only while each is pressed
+past its share of the bearing capacity, and as the footing rocks its toe soon bears on few
+points; the sand settled at every cycle as it was pushed aside and rounded under the footing.
+Settlement under cyclic rocking needs a soil that yields gradually below its capacity and
+flows from under the toe. `FootingTests` checks the moment of the first two packets within 10%
+and that the model still settles less than a third as much. A run of all five packets takes
+about 90 s.
+
 **Not modelled.** The footing is rigid, rectangular, flat-bottomed and sits on the surface:
 there is no embedment and no soil against its sides. It is drawn nowhere in the app. The bed's
 springs do not interact, and its points yield one by one with no rounding of the soil under
-the toe. One footing spans every point its connection ties, however far apart.
+the toe. One footing spans every point its connection ties, however far apart. Settlement under cyclic
+rocking is a tenth of a measured footing's (above).
 
 ## Failure and removal
 
