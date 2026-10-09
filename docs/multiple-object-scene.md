@@ -110,6 +110,11 @@ switching back to the first structure and saving both in a version-4 project.
 These checks establish numerical behaviour; no measured multi-building experiment has been
 reproduced.
 
+The [street-interaction study](street-interaction.md) compares isolated, paired and street
+layouts with matched sources, physical observation points and structural meshes. Spatial
+recording and diagnostic stage profiling remain in BlastCore; this introduces no new
+ContinuumKit contracts or release.
+
 ## Implemented shared query extraction
 
 [ContinuumKit PR #7](https://github.com/emmettl/ContinuumKit/pull/7) adds a bounded
