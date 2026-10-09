@@ -10,6 +10,7 @@ enum MovingConnectedGasGroups {
     struct Boundary {
         let geometry: ConnectedGasGroups.Boundary  // Time-averaged area and area-weighted centroid.
         let meanTime: Double  // Area-weighted time; used for torque about a translating COM.
+        var samples: [TranslatingBoxSpaceTimeGeometry.WallSample]? = nil
     }
     struct Plan {
         let members: [[Int]]
@@ -100,6 +101,20 @@ enum MovingConnectedGasGroups {
                 boundary.geometry.owner == 0 || boundary.geometry.owner == 1,
                 boundary.geometry.samples == nil
             else { throw Failure.invalidGeometry }
+            if let samples = boundary.samples {
+                let b = boundary.geometry
+                guard b.owner == 1, old.indices.contains(b.cell), centres.count == old.count else {
+                    throw Failure.invalidGeometry
+                }
+                let areaTime = duration * b.area
+                let patch = TranslatingBoxSpaceTimeGeometry.PatchIntegral(
+                    normal: b.normal, areaTime: areaTime,
+                    firstMomentTime: areaTime * (b.centroid - centres[b.cell]),
+                    timeWeightedArea: areaTime * boundary.meanTime, samples: samples)
+                _ = try MovingWallPressureQuadrature.integrate(
+                    patch, cellCentre: centres[b.cell], initialCentreOfMass: .zero, velocity: velocity,
+                    duration: duration, lengthScale: pow(nominalVolume, 1.0 / 3), pressure: { _, _ in 1 })
+            }
         }
         let support = try ConnectedGasGroups.build(
             cells: meanVolumes.map { .init(volume: $0, density: 1, pressure: 1) }, centres: centres,
@@ -182,7 +197,8 @@ enum MovingConnectedGasGroups {
             return Boundary(
                 geometry: .init(
                     cell: mapping[b.cell], area: b.area, normal: b.normal,
-                    centroid: b.centroid, owner: b.owner), meanTime: boundary.meanTime)
+                    centroid: b.centroid, owner: b.owner), meanTime: boundary.meanTime,
+                samples: boundary.samples)
         }
         func groupCentres(_ points: [SIMD3<Double>], _ volumes: [Double]) -> [SIMD3<Double>] {
             roots.map { n in
@@ -213,16 +229,21 @@ enum MovingConnectedGasGroups {
     }
 }
 
-/// One frozen-state Rusanov/wall update using time-averaged areas. No extra remap flux is
+/// Paired moving Rusanov/wall updates using interval geometry. No extra remap flux is
 /// applied: wall displacement enters endpoint volumes exactly once. Positivity and the
 /// acoustic/contraction CFL are checked by the existing Euler reference, then final member
-/// volumes receive conservative group packets. Nonuniform temporal accuracy is not validated.
+/// volumes receive conservative group packets. Sampled Heun walls interpolate endpoint
+/// pressure packets at their actual times; gas and body receive the same corrected loads.
 enum MovingGroupedGasFlux {
     enum TimeIntegration: String { case euler, heun }
     struct Result {
         let cells: [FractionalGasTransport.Cell]
         let wallImpulses: [SIMD3<Double>]
         let wallWork: [Double]
+        /// Moments about an origin translating at plan.velocity. Subtract COM0 × impulse
+        /// to obtain the corresponding angular impulse about the body's translating COM.
+        let wallMomentImpulses: [SIMD3<Double>]
+        let wallSampleFallbacks: Int
         /// Extensive gas gain from prescribed outer reservoirs, in packet lane order.
         let reservoirExchange: SIMD8<Double>
         let maximumStep: Double
@@ -255,6 +276,7 @@ enum MovingGroupedGasFlux {
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
         )? = nil, timeIntegration: TimeIntegration = .euler
     ) throws -> Result {
+        let locations = wallLocations(plan)
         // Reservoir states are interval averages, sampled once and reused in both stages.
         // Endpoint point states below are ONLY for the reconstruction stencil.
         let supplied = try plan.boundaries.map { boundary -> FractionalGasTransport.Cell? in
@@ -262,7 +284,8 @@ enum MovingGroupedGasFlux {
         }
         let first = try stage(
             plan, inventories: plan.cells, centres: plan.oldCentres, supplied: supplied,
-            cfl: cfl, limited: limited, reconstructionExteriorAt: reconstructionExteriorAt)
+            cfl: cfl, limited: limited, locations: locations,
+            reconstructionExteriorAt: reconstructionExteriorAt)
         var updated = first.cells
         var impulses = first.wallImpulses
         var work = first.wallWork
@@ -280,25 +303,78 @@ enum MovingGroupedGasFlux {
             // states and the geometric conservation law. Never scatter between stages.
             let second = try stage(
                 plan, inventories: updated, centres: plan.finalCentres, supplied: supplied,
-                cfl: cfl, limited: limited, reconstructionExteriorAt: reconstructionExteriorAtEnd)
+                cfl: cfl, limited: limited, locations: locations,
+                reconstructionExteriorAt: reconstructionExteriorAtEnd)
             updated = updated.indices.map {
                 .init(
                     volume: plan.finalVolumes[$0],
                     amount: 0.5 * (plan.cells[$0].amount + second.cells[$0].amount))
             }
-            _ = try FractionalGasTransport.advance(updated, newVolumes: plan.finalVolumes, transfers: [])
             impulses = zip(first.wallImpulses, second.wallImpulses).map { 0.5 * ($0 + $1) }
             work = zip(first.wallWork, second.wallWork).map { 0.5 * ($0 + $1) }
+            var corrections = [SIMD8<Double>](repeating: .zero, count: updated.count)
+            for n in locations.indices where locations[n].sampled {
+                let alpha = locations[n].boundary.meanTime / plan.duration
+                let impulse = (1 - alpha) * first.wallImpulses[n] + alpha * second.wallImpulses[n]
+                let energy = (1 - alpha) * first.wallWork[n] + alpha * second.wallWork[n]
+                let delta = impulse - impulses[n]
+                // The standard half-stage update is corrected with the SAME packet
+                // returned to the body. This uses temporal pressure/area covariance.
+                corrections[locations[n].boundary.geometry.cell] += SIMD8(
+                    0, delta.x, delta.y, delta.z, energy - work[n], 0, 0, 0)
+                impulses[n] = impulse
+                work[n] = energy
+            }
+            updated = updated.indices.map {
+                .init(volume: plan.finalVolumes[$0], amount: updated[$0].amount - corrections[$0])
+            }
+            _ = try FractionalGasTransport.advance(updated, newVolumes: plan.finalVolumes, transfers: [])
             reservoir = 0.5 * (first.reservoirExchange + second.reservoirExchange)
             limit = min(first.maximumStep, second.maximumStep)
         }
+        let count = plan.boundaries.filter { $0.geometry.owner == 1 }.count
+        var patchImpulses = [SIMD3<Double>](repeating: .zero, count: count)
+        var patchMoments = patchImpulses
+        var patchWork = [Double](repeating: 0, count: count)
+        for n in locations.indices {
+            let location = locations[n]
+            patchImpulses[location.patch] += impulses[n]
+            patchWork[location.patch] += work[n]
+            patchMoments[location.patch] += simd_cross(
+                location.boundary.geometry.centroid - location.boundary.meanTime * plan.velocity,
+                impulses[n])
+        }
         let scattered = limited ? try LimitedMovingGroupScatter.scatter(plan, updated: updated) : nil
         return Result(
-            cells: try scattered?.cells ?? plan.scatter(updated), wallImpulses: impulses,
-            wallWork: work, reservoirExchange: reservoir, maximumStep: limit,
+            cells: try scattered?.cells ?? plan.scatter(updated), wallImpulses: patchImpulses,
+            wallWork: patchWork, wallMomentImpulses: patchMoments,
+            wallSampleFallbacks: plan.boundaries.filter { $0.samples?.count == 1 }.count,
+            reservoirExchange: reservoir, maximumStep: limit,
             scatterLimitedGroups: scattered?.limitedGroups ?? 0,
             scatterPositivityReducedGroups: scattered?.positivityReducedGroups ?? 0,
             scatterRankDeficientGroups: scattered?.rankDeficientGroups ?? 0)
+    }
+    private struct WallLocation {
+        let patch: Int
+        let boundary: MovingConnectedGasGroups.Boundary
+        let sampled: Bool
+    }
+    private static func wallLocations(_ plan: MovingConnectedGasGroups.Plan) -> [WallLocation] {
+        plan.boundaries.filter { $0.geometry.owner == 1 }.enumerated().flatMap { index, boundary in
+            guard let samples = boundary.samples else {
+                return [WallLocation(patch: index, boundary: boundary, sampled: false)]
+            }
+            let b = boundary.geometry
+            return samples.map { sample in
+                WallLocation(
+                    patch: index,
+                    boundary: .init(
+                        geometry: .init(
+                            cell: b.cell, area: sample.areaTime / plan.duration,
+                            normal: b.normal, centroid: sample.point, owner: 1),
+                        meanTime: sample.time), sampled: true)
+            }
+        }
     }
     private struct Stage {
         let cells: [FractionalGasTransport.Cell]
@@ -312,7 +388,7 @@ enum MovingGroupedGasFlux {
     private static func stage(
         _ plan: MovingConnectedGasGroups.Plan, inventories: [FractionalGasTransport.Cell],
         centres suppliedCentres: [SIMD3<Double>]?, supplied: [FractionalGasTransport.Cell?],
-        cfl: Double, limited: Bool,
+        cfl: Double, limited: Bool, locations: [WallLocation],
         reconstructionExteriorAt: (
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
         )?
@@ -327,11 +403,15 @@ enum MovingGroupedGasFlux {
         var faces = plan.faces.map {
             FractionalEulerFlux.Face(a: $0.a, b: $0.b, normal: $0.normal, area: $0.area)
         }
-        var walls: [FractionalEulerFlux.Wall] = []
+        var walls = locations.map {
+            let b = $0.boundary.geometry
+            return FractionalEulerFlux.Wall(
+                cell: b.cell, normal: b.normal, area: b.area, velocity: plan.velocity)
+        }
         for (index, boundary) in plan.boundaries.enumerated() {
             let b = boundary.geometry
             if b.owner == 1 {
-                walls.append(.init(cell: b.cell, normal: b.normal, area: b.area, velocity: plan.velocity))
+                continue
             } else {
                 let exterior = supplied[index]!
                 guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
@@ -362,7 +442,7 @@ enum MovingGroupedGasFlux {
         if limited {
             let geometry = try LimitedGroupedGasFlux.Geometry(
                 centres: centres, faces: reconstructionFaces,
-                boundaries: plan.boundaries.filter { $0.geometry.owner == 1 }.map(\.geometry))
+                boundaries: locations.map { $0.boundary.geometry })
             let traces = try geometry.traces(reconstructionStates)
             faces = traces.faces.map { f in
                 .init(

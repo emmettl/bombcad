@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 transition_counts = run_path(str(ROOT / 'Scripts/summarize-moving-trajectory.py'))['transition_counts']
 
 
-def check(path, mode, integrator='euler'):
+def check(path, mode, integrator='euler', wall_mode='centroid'):
     rows = json.loads(path.read_text())
     expected = {(h, a, c) for h in (0.4, 0.2, 0.1) for a in (0, 0.23) for c in (0.2, 0.1)}
     keys = [(r['cellSize'], r['rotation'], r['cfl']) for r in rows]
@@ -20,12 +20,17 @@ def check(path, mode, integrator='euler'):
         key = (r['cellSize'], r['rotation'], r['cfl'])
         assert r.get('reconstruction', 'constant') == mode
         assert r.get('timeIntegration', 'euler') == integrator
+        assert r.get('wallIntegration', 'centroid') == wall_mode
         assert r['densityProfile'] == 'quadratic-advection' and r['densityAmplitude'] == 0.2
         assert r['velocity'] == [300, 100, -40] and r['duration'] == 0.0008 and r['startPathTime'] == 0
         assert math.dist(r['displacement'], [0.24, 0.08, -0.032]) < 1e-11
         assert r['minimumOldGroupFraction'] >= 0.25 and r['minimumFinalGroupFraction'] >= 0.25
         assert r['maximumMembers'] <= 64 and len(r['frames']) == 4
+        previous_fallbacks = 0
         for n, f in enumerate(r['frames'], 1):
+            if wall_mode == 'surfaceTimeQuadrature':
+                assert isinstance(f['wallSampleFallbacks'], int) and f['wallSampleFallbacks'] >= previous_fallbacks
+                previous_fallbacks = f['wallSampleFallbacks']
             assert f['time'] == n * r['duration'] / 4
             t = f['transport']
             s = 1 + 300 * f['time']
@@ -65,7 +70,7 @@ def check(path, mode, integrator='euler'):
 
 def main():
     baseline, base_rows = check(ROOT / '.build/moving-entropy.json', 'constant')
-    if '--limited' in sys.argv or '--heun' in sys.argv:
+    if '--limited' in sys.argv or '--heun' in sys.argv or '--surface-quadrature' in sys.argv:
         limited, limited_rows = check(ROOT / '.build/moving-entropy-limited.json', 'limited')
         for key in baseline:
             assert limited[key] < baseline[key], 'Limited reconstruction did not improve density transport'
@@ -77,7 +82,7 @@ def main():
             print(f'Fine angle {angle}: L1 improvement {baseline[key]/limited[key]:.2f}×; '
                   f'newly wet error {100*b:.3f}% → {100*l:.3f}%')
 
-    if '--heun' in sys.argv:
+    if '--heun' in sys.argv or '--surface-quadrature' in sys.argv:
         heun, _ = check(ROOT / '.build/moving-entropy-limited-heun.json', 'limited', 'heun')
         for angle in (0, 0.23):
             for h in (0.4, 0.2, 0.1):
@@ -88,6 +93,14 @@ def main():
                       f'{100*old_change:.3f}% Euler → {100*new_change:.3f}% Heun')
         # Full moving runs include changing partitions and bounded member scatter;
         # report their CFL sensitivity without assuming overall second-order convergence.
+
+    if '--surface-quadrature' in sys.argv:
+        sampled, _ = check(ROOT / '.build/moving-entropy-limited-heun-surface-quadrature.json',
+                           'limited', 'heun', 'surfaceTimeQuadrature')
+        change = max(abs(sampled[k]/heun[k]-1) for k in sampled)
+        print(f'Maximum relative density L1 change from sampled walls: {100*change:.3f}%')
+        # This mode changes limiter evaluation locations as well as wall integration;
+        # constant pressure advection does not measure nonuniform pressure-load accuracy.
 
 
 if __name__ == '__main__':

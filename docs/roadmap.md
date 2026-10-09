@@ -1454,12 +1454,69 @@ intersections with clear endpoints, malformed samples/pressures and full-box exa
 The independent Python summary uses Simpson integration of the quadratic gradient and
 Rodrigues rotation for the offset COM; it checks all twelve reports and their errors.
 All 86 CPU-only tests in 17 suites pass. Strict formatting and diff checks pass; the release
-build succeeds with the existing AirSlice warnings. Samples are opt-in and have not yet
-been connected to the numerical moving-group wall traces.
+build succeeds with the existing AirSlice warnings. These initial sample probes remained
+separate from the numerical moving-group wall traces.
 
-Next, carry positive surface/time samples through numerical moving-group wall states,
-paired gas/body packets and torque about the translating COM. Then measure evolving
-nonuniform-pressure loads under spatial/time refinement. Local second-order time
+Optional positive wall samples now pass through numerical moving-group updates. The builder
+validates their area/space/time moments and translating-plane positions before grouping,
+restricts them to body walls, and preserves their world positions and times when cell
+ownership is remapped. Euler stages expand each wall into its positive samples; limited
+primitive traces include all sample positions in their bounds. Local moving-wall Riemann
+pressures, acoustic/contraction limits and the geometric conservation law use these same
+sample weights. Returned loads retain one entry per original wall patch.
+
+For sampled Heun walls, alpha = sample time / interval duration interpolates the two
+endpoint pressure packets: (1−alpha) I0 + alpha I1. The ordinary half-stage update receives
+the difference as a gas momentum/energy correction, paired with exactly the same body
+impulse/work. Reservoir and internal-face updates retain their half-stage weights. The
+corrected final state must pass Euler positivity before member scattering; this correction
+has no separate SSP positivity guarantee. Euler mode uses frozen old traces. The numerical
+Heun pressure history is linear between stage traces, unlike the preceding known-pressure
+probe which supplies its full quadratic time dependence at every node.
+
+Angular impulse now sums each sample lever arm at its actual time, rather than applying an
+aggregate force at the joint centroid. A moment about a translating origin is returned;
+subtracting COM0 × impulse gives torque impulse about the translating centre of mass.
+This changes body load evaluation and does not add conserved gas angular momentum.
+`--surface-quadrature` selects separate numerical entropy/trajectory reports; centroid
+updates remain the default.
+
+All 91 CPU-only tests in 18 suites pass. New checks independently compare uneven-time
+pressure packets with constant-area Euler stage pressures, including their gas correction
+and a torque missed by centroid evaluation; compare constant Euler sampled/centroid loads
+through a rotated wet/dry crossing; audit nonuniform reconstructed pressure momentum/energy
+and wall work; and carry uniform/advected-density states through repeated sampled updates.
+The nonuniform-pressure interval has real evolving gas states but does not establish
+pressure-load convergence or shock accuracy.
+
+The fast rotated trajectory exposed a tolerance-scale corner contact: its integrated wall
+measure was about `4e-17` of a full cell-face interval. The instantaneous wall polygon rule
+already discards areas below `h² × 1e-14`; two and four Gauss rules can sample that cutoff
+differently during an extremely short contact. For integrated wall measures at or below
+`h² dt × 1e-14`, one positive joint-centroid sample now preserves the canonical area and
+space/time moments. The validation tolerances stay unchanged. This geometric quadrature
+fallback introduces no gas inventory or pressure floor. Accepted fallback counts are
+reported cumulatively, and a dedicated short-corner-contact regression checks positivity
+and exact preservation of the canonical measures.
+
+All twelve sampled advection cases and sixteen uniform fast/original-speed trajectories
+pass the independent summaries, including every wet/dry transition and the new cumulative
+fallback counters. Fine-grid density L1 is 0.309–0.362% of the imposed excess mass, with
+observed spatial rates from 1.47 to 1.67. CFL halving changes L1 by at most 0.070% relative.
+The additional limiter evaluation locations increase L1 by at most 3.16% relative to
+centroid Heun walls; no density improvement is claimed from changing wall integration
+in this constant-pressure probe. Across these 28 cases, pressure remains within `6e-14`
+relative and velocity within `1.1e-11` m/s. Budget residuals stay below `8e-14` kg,
+`3e-11` N s and `3e-8` J, and paired work below `7e-13` J.
+
+One fast rotated case uses one accepted sub-resolution wall fallback. Three original-speed
+aligned cases use 14, 14 and 28 accepted fallback instances; the other trajectories and
+all advection cases use none. The full known-pressure twelve-case probe also still matches
+its independent exact loads. Strict Swift formatting and diff checks pass, and the release
+build succeeds with main's existing AirSlice concurrency warnings.
+
+Next, measure sustained evolving nonuniform-pressure loads under spatial/time refinement,
+using sampled numerical walls and matched initial pulse energy. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
 and velocity vary, especially near shocks and geometric contacts.

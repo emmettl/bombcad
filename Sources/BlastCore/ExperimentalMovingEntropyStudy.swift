@@ -8,7 +8,7 @@ public enum ExperimentalMovingEntropyStudy {
     public static func run(
         cellSizes: [Double] = [0.4, 0.2, 0.1], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2, 0.1], amplitude: Double = 0.2, limited: Bool = false,
-        secondOrder: Bool = false,
+        secondOrder: Bool = false, surfaceQuadrature: Bool = false,
         progress: (ExperimentalMovingTrajectoryStudy.Result) throws -> Void = { _ in }
     ) throws -> [ExperimentalMovingTrajectoryStudy.Result] {
         guard cfls.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 0.5 }) else {
@@ -28,7 +28,8 @@ public enum ExperimentalMovingEntropyStudy {
                     let r = try ExperimentalMovingTrajectoryStudy.solve(
                         h: h, angle: angle, start: 0,
                         duration: 0.0008, velocityScale: 100, cfl: cfl, maximumStep: h * 0.00008,
-                        reference: reference, limited: limited, secondOrder: secondOrder)
+                        reference: reference, limited: limited, secondOrder: secondOrder,
+                        surfaceQuadrature: surfaceQuadrature)
                     results.append(r)
                     try progress(r)
                 }

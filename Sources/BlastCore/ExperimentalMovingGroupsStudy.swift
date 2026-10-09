@@ -112,7 +112,8 @@ public enum ExperimentalMovingGroupsStudy {
     static func domain(
         h: Double, angle: Double, start: Double, duration: Double,
         previous: [FractionalGasTransport.Cell]? = nil, prescribedBody: RigidBoxBody? = nil,
-        prescribedVelocity: SIMD3<Double> = velocity, reconstruct: Bool = false
+        prescribedVelocity: SIMD3<Double> = velocity, reconstruct: Bool = false,
+        surfaceQuadrature: Bool = false
     ) throws -> Domain {
         let count = Int((2 / h).rounded())
         guard previous == nil || previous!.count == count * count * count else {
@@ -145,7 +146,8 @@ public enum ExperimentalMovingGroupsStudy {
                 for x in 0..<count {
                     let lower = h * SIMD3(Double(x), Double(y), Double(z))
                     let centre = lower + SIMD3(repeating: h / 2)
-                    let r = try sweep.integrate(lower: lower, cellSize: h, duration: duration)
+                    let r = try sweep.integrate(
+                        lower: lower, cellSize: h, duration: duration, wallQuadrature: surfaceQuadrature)
                     let index = old.count
                     if let previous {
                         guard abs(previous[index].volume - r.initialGasVolume) <= 1e-10 * h * h * h,
@@ -176,7 +178,7 @@ public enum ExperimentalMovingGroupsStudy {
                                     cell: index, area: wall.areaTime / duration,
                                     normal: wall.normal,
                                     centroid: centre + wall.firstMomentTime / wall.areaTime, owner: 1),
-                                meanTime: wall.timeWeightedArea / wall.areaTime))
+                                meanTime: wall.timeWeightedArea / wall.areaTime, samples: wall.samples))
                     }
                     for side in 0..<6 {
                         let coordinate = [x, y, z][side / 2]
@@ -264,9 +266,8 @@ public enum ExperimentalMovingGroupsStudy {
         let impulse = r.wallImpulses.reduce(SIMD3<Double>.zero, +)
         let work = r.wallWork.reduce(0, +)
         var angular = SIMD3<Double>.zero
-        for (n, b) in plan.boundaries.filter({ $0.geometry.owner == 1 }).enumerated() {
-            angular += simd_cross(
-                b.geometry.centroid - domain.body.position - b.meanTime * velocity, r.wallImpulses[n])
+        for n in r.wallImpulses.indices {
+            angular += r.wallMomentImpulses[n] - simd_cross(domain.body.position, r.wallImpulses[n])
         }
         let wet = r.cells.filter { $0.volume > 0 }
         return Result(
