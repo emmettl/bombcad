@@ -38,15 +38,20 @@ it should be used to judge the safety of a real structure.
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
-| 10 | Only selected app panels have had a static visual review               | Other layouts and native interactions may still have problems | Below |
+| 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
 and its rendering is checked through offscreen snapshots. An initial static panel review now
 covers the Run sidebar, saved-run comparison, Export for Rendering sheet, linked-part layout
 editor, import loading state, Settings and Help content in light and dark appearances. The
-offscreen Help sidebar has unresolved selected-label rendering and dark contrast that need
-checking in a native window.
-Native file dialogs, keyboard focus, scrolling and the other panels still need interactive review.
+Help sidebar's selected labels and dark contrast have also been checked in a native window;
+the earlier offscreen rendering problem was a capture artifact. An isolated release app has
+passed a zero-charge layout JSON import, native package save, close and reopen at time zero.
+A completed OBJ import preview has also been reviewed in a native window, including display
+toggles, part search, scrolling and cancellation of a staged domain expansion. See the
+[native interface review](native-interface-review.md) for the procedure and its limits.
+Keyboard focus, scrolling at minimum window sizes and the other panels still need broader
+interactive review.
 
 ## Planned work
 
@@ -195,16 +200,17 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    computing](distributed-computing.md#the-long-term-visions-effects)). (Done, illustrative: a
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
-   hot gas, which needs afterburning and hot air to make a fireball of plausible size, shown in
-   the app as it goes and reckoned there or on another Mac; the fireball's [rise and
+   hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
+   size, shown in the app as it goes and reckoned there or on another Mac, on the GPU's
+   ray-tracing hardware; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
-   turbulent air and humid air, where it condenses, freezes and rains once saturated, within a
-   factor of 1.6 (1.4 in neutral turbulence) of an empirical fit to high-explosive cloud heights;
-   and [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional
-   estimate fed the overpressure on the rigid ground each frame and drawn in the app. Next:
-   radiation on the GPU's ray-tracing hardware, a fireball that is not one sphere, the cloud
-   against measured clouds over time, a layered soil column and a comparison with measured
+   turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
+   within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
+   their first two minutes; and [ground shock](ground-shock.md) away from the charge, the
+   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
+   drawn in the app. Next: following the fireball's shape on the GPU too, the cloud's growth once
+   it stops rising, a layered soil column and a comparison with measured
    ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
    went. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
@@ -1943,9 +1949,10 @@ horizontal bearing planes; they do not model a footing's finite contact extents.
 of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
 for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
-sideways for solid elements. Still open: joints at angles to the lattice, and on shells;
-connections between moving components other than a footing; embedment; and a measured case
-(FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
+sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
+the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
+tenth as much. Still open: settlement under cyclic rocking; joints at angles to the lattice, and
+on shells; connections between moving components other than a footing; embedment. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
@@ -1968,9 +1975,11 @@ two collapsing over several seconds.
   project. The menu now shows the actual scene name and offers built-in layouts as replacement
   actions. The review also covers linked-part editing, import loading, Settings and Help content
   in both appearances. During loading, the import sheet no longer reports that its preview is
-  unavailable while also saying it is updating. The completed import preview and Help sidebar's
-  selected labels and dark contrast still need native checks; no styling change is inferred from the offscreen
-  sidebar capture alone.
+  unavailable while also saying it is updating. Native dark-appearance checks now confirm Help
+  topic selection and readable sidebar labels without a styling change. A temporary zero-charge
+  layout imported as a separate document, saved through the native panel and reopened with its
+  inputs intact at time zero. Import errors now identify missing JSON fields, wrong value types
+  and null values by path; malformed JSON has a separate syntax message.
   Reproduce these static captures with
   `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
   The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
@@ -1978,8 +1987,15 @@ two collapsing over several seconds.
   a temporary defaults suite. The import capture records the initial loading state rather than
   waiting for asynchronous preview completion. The helper expands the requested size
   to the view's fitting size, so these captures do not verify scrolling at the minimum window
-  size. The Metal viewport and native interaction remain separate checks; the helper is skipped
-  during ordinary test runs.
+  size. A separate [native import review](native-interface-review.md#completed-obj-preview)
+  covers a completed small OBJ preview, its display controls, part search and cancellation;
+  this is not a check of every importer or window size. The helper also writes fixed viewport
+  captures of the main content at its 1000 × 640 point minimum and a short editing form;
+  these show clipping without fitting-size expansion, and have been reviewed in both
+  appearances. They exclude native chrome and toolbar, and do not check scrolling or focus.
+  See the [capture procedure and limits](native-interface-review.md#constrained-offscreen-captures).
+  Animated run rendering and broader
+  native interaction remain separate checks; the helper is skipped during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,

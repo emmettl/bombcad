@@ -151,8 +151,8 @@ struct FragmentOverlayTests {
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
-        model.useFragmentWorker(worker, host: "the mini")
-        model.fragmentsOnRemote = true
+        model.useWorker(worker, host: "the mini")
+        model.fragmentsHost = "the mini"
         for _ in 0..<2 {
             let deadline = ContinuousClock.now + .seconds(60)
             while !model.experimentIsReady {
@@ -164,7 +164,7 @@ struct FragmentOverlayTests {
                 try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
                 try await Task.sleep(for: .milliseconds(5))
             }
-            let consumer = try #require(model.fragments as? RemoteFrameConsumer)
+            let consumer = try #require(model.fragments as? ResilientFrameConsumer)
             while consumer.fragmentLive.map({ abs($0.time - 0.01) > 1e-6 }) ?? true {
                 try #require(ContinuousClock.now < deadline)
                 try await Task.sleep(for: .milliseconds(5))

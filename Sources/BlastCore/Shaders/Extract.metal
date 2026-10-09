@@ -42,49 +42,75 @@ kernel void extractAirSlice(
     values[n + 4] = half(pressure / 1.0e6f);
 }
 
-// The luminous gas along one row of cells, (j, k) = id: how many cells are at least `luminous`
-// kelvin, the sum of their i + 1/2, of their temperatures to the fourth power, and the hottest.
-// The host adds the rows up in double precision in a fixed order, so the fireball is the same
-// from one run to the next.
-kernel void extractFireballRows(
+// A cell's temperature if it is air at least `luminous` kelvin hot, and otherwise zero, as the
+// CPU's `BlastSolver.fireball` works it out.
+static inline float luminousTemperatureOf(Cell c, float luminous, constant SolverUniforms &u) {
+    float3 velocity = float3(c.mx, c.my, c.mz) / c.rho;
+    float kinetic = 0.5f * c.rho * dot(velocity, velocity);
+    float pressure = gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma);
+    // Dissociating air is never hotter than this, so it bounds the search.
+    float bound = pressure / (c.rho * airGasConstant);
+    if (!finiteBits(bound) || !(bound >= luminous)) {
+        return 0.0f;
+    }
+    float t = airModelOf(u.airModel) == airDissociating ? dissociatingTemperatureAt(c.rho, pressure) : bound;
+    if (!finiteBits(t) || !(t >= luminous)) {
+        return 0.0f;
+    }
+    return t;
+}
+
+// The luminous gas in one block of two cells a side, block `id`: for a block with any cell at
+// least `luminous` kelvin, its index, how many of its cells are luminous, the sum of their
+// temperatures to the fourth power and the hottest; the sums of their i, j and k + 1/2; and how
+// many of its cells are air. Appended in whatever order the threads reach them, after `count`
+// others; the host sorts them by index, so the fireball is the same from one run to the next.
+kernel void extractFireballBlocks(
     device const StepControl &control [[buffer(0)]],
     device const Cell *state [[buffer(1)]],
     device const uchar *mask [[buffer(2)]],
-    device float4 *rows [[buffer(3)]],
-    constant float &luminous [[buffer(4)]],
-    constant SolverUniforms &u [[buffer(5)]],
-    uint2 id [[thread_position_in_grid]])
+    device uint4 *blocks [[buffer(3)]],
+    device atomic_uint *count [[buffer(4)]],
+    constant float &luminous [[buffer(5)]],
+    constant SolverUniforms &u [[buffer(6)]],
+    uint3 id [[thread_position_in_grid]])
 {
-    if (control.stopped != 2 || id.x >= u.ny || id.y >= u.nz) {
+    uint3 dims = (uint3(u.nx, u.ny, u.nz) + 1u) / 2u;
+    if (control.stopped != 2 || id.x >= dims.x || id.y >= dims.y || id.z >= dims.z) {
         return;
     }
-    uint base = u.nx * (id.x + u.ny * id.y);
-    float count = 0.0f;
-    float position = 0.0f;
+    uint3 low = 2u * id;
+    uint3 high = min(low + 2u, uint3(u.nx, u.ny, u.nz));
+    float cells = 0.0f;
+    float air = 0.0f;
+    float3 position = float3(0.0f);
     float fourth = 0.0f;
     float hottest = 0.0f;
-    for (uint i = 0; i < u.nx; ++i) {
-        if (mask[base + i] != 0) {
-            continue;
+    for (uint k = low.z; k < high.z; ++k) {
+        for (uint j = low.y; j < high.y; ++j) {
+            for (uint i = low.x; i < high.x; ++i) {
+                uint index = i + u.nx * (j + u.ny * k);
+                if (mask[index] != 0) {
+                    continue;
+                }
+                air += 1.0f;
+                float t = luminousTemperatureOf(state[index], luminous, u);
+                if (t == 0.0f) {
+                    continue;
+                }
+                cells += 1.0f;
+                position += float3(i, j, k) + 0.5f;
+                float square = t * t;
+                fourth += square * square;
+                hottest = max(hottest, t);
+            }
         }
-        Cell c = state[base + i];
-        float3 velocity = float3(c.mx, c.my, c.mz) / c.rho;
-        float kinetic = 0.5f * c.rho * dot(velocity, velocity);
-        float pressure = gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma);
-        // Dissociating air is never hotter than this, so it bounds the search.
-        float bound = pressure / (c.rho * airGasConstant);
-        if (!finiteBits(bound) || !(bound >= luminous)) {
-            continue;
-        }
-        float t = airModelOf(u.airModel) == airDissociating ? dissociatingTemperatureAt(c.rho, pressure) : bound;
-        if (!finiteBits(t) || !(t >= luminous)) {
-            continue;
-        }
-        count += 1.0f;
-        position += float(i) + 0.5f;
-        float square = t * t;
-        fourth += square * square;
-        hottest = max(hottest, t);
     }
-    rows[id.x + u.ny * id.y] = float4(count, position, fourth, hottest);
+    if (cells == 0.0f) {
+        return;
+    }
+    uint slot = atomic_fetch_add_explicit(count, 1u, memory_order_relaxed);
+    uint index = id.x + dims.x * (id.y + dims.y * id.z);
+    blocks[2 * slot] = uint4(index, as_type<uint>(cells), as_type<uint>(fourth), as_type<uint>(hottest));
+    blocks[2 * slot + 1] = as_type<uint4>(float4(position, air));
 }

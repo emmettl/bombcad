@@ -26,10 +26,12 @@ import simd
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
+//   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
-//                       [--thermal spec.json] [--air thermal] [--afterburn]
+//                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
 //                       [--stationary-walls]
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -673,14 +675,40 @@ func runSnapshot() throws {
         try spec.validate()
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
+    // With --thermal-compare, the same frames reckoned with the other fireball model too, and
+    // each timed.
+    var other = thermal.map { exposure in
+        var spec = exposure.spec
+        spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+    }
+    if !flag("thermal-compare") { other = nil }
+    var thermalSeconds = (0.0, 0.0)
+    var fireballSeconds = 0.0
+    var largestShape: FireballShape?
     func feedThermal() {
         guard var exposure = thermal else { return }
-        exposure.add(solver.fireball(luminousTemperature: exposure.spec.luminousTemperature))
+        let extracting = ContinuousClock.now
+        let frame = solver.fireball(luminousTemperature: exposure.spec.luminousTemperature)
+        fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
+        if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
+        var started = ContinuousClock.now
+        exposure.add(frame)
+        thermalSeconds.0 += (ContinuousClock.now - started) / .seconds(1)
         thermal = exposure
+        if var compared = other {
+            started = ContinuousClock.now
+            compared.add(frame)
+            thermalSeconds.1 += (ContinuousClock.now - started) / .seconds(1)
+            other = compared
+        }
     }
     feedFragments()
     feedGround()
     feedThermal()
+    // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
+    // headless run does.
+    if let thermal { solver.frameRequest.fireball = thermal.spec.luminousTemperature }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -724,7 +752,48 @@ func runSnapshot() throws {
                     receiver.position + 0.05 * receiver.normal,
                     4 + min(max(log10(max(Float(fluence), 1)) / 6, 0), 0.999)))
         }
+        print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
+        if let other {
+            print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
+            for line in other.result.summary { print(line) }
+            print(
+                String(
+                    format:
+                        "Reckoned in %.2f s as its %@ and %.2f s as its %@, over %d frames; found in %.2f ms a frame",
+                    thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
+                    other.spec.fireball.rawValue,
+                    thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
+            // Each receiver's fluence by the shape against the sphere's, by surface.
+            let (shape, sphere) = thermal.spec.fireball == .shape ? (thermal, other) : (other, thermal)
+            var surfaces: [String] = []
+            for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
+                surfaces.append(receiver.surface)
+            }
+            for surface in surfaces {
+                let indices = shape.receivers.indices.filter { shape.receivers[$0].surface == surface }
+                let a = indices.reduce(0.0) { $0 + shape.fluence[$1] }
+                let b = indices.reduce(0.0) { $0 + sphere.fluence[$1] }
+                let lit = indices.filter { shape.fluence[$0] > 0 || sphere.fluence[$0] > 0 }
+                let ratios = lit.map { (shape.fluence[$0] + 1) / (sphere.fluence[$0] + 1) }.sorted()
+                let median = ratios.isEmpty ? 0 : ratios[ratios.count / 2]
+                let shapeOnly = indices.filter { shape.fluence[$0] > 1000 && sphere.fluence[$0] < 1 }.count
+                let sphereOnly = indices.filter { sphere.fluence[$0] > 1000 && shape.fluence[$0] < 1 }.count
+                print(
+                    String(
+                        format:
+                            "  %@: mean fluence %.1f kJ/m² as the shape, %.1f as the sphere (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d shape, %d sphere",
+                        surface, a / Double(indices.count) / 1000, b / Double(indices.count) / 1000,
+                        100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
+            }
+        }
+        if let largestShape {
+            print(
+                String(
+                    format: "Largest shape: %.1f m³ in blocks %.2f m a side, %d by %d by %d, %d tiles",
+                    largestShape.volume, largestShape.blockSize, largestShape.counts.x, largestShape.counts.y,
+                    largestShape.counts.z, largestShape.tileCount))
+        }
     }
     if let fragments {
         let launch = max(fragments.cloud.launchSpeed, 1)
@@ -1779,6 +1848,117 @@ func runAnchorage() throws {
     }
 }
 
+/// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
+/// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
+/// does with afterburning; and whether the two agree.
+func runThermal() throws {
+    let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    let scene = FragmentScene(scenario)
+    var spec = ThermalSpec()
+    if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
+    try spec.validate()
+    let count = option("frames").flatMap { Int($0) } ?? 60
+    let frames = (0..<count).map { n -> FireballFrame in
+        let s = Float(n) / Float(max(count - 1, 1))
+        let radius = 0.5 + 7 * s
+        return FireballFrame(
+            time: Double(n) * 0.001, volume: 4 / 3 * Double.pi * pow(Double(radius), 3),
+            centre: scenario.charge.position + SIMD3(0, 0, radius * 0.5), temperature: 2200 - 400 * s,
+            hottest: 2500)
+    }
+    /// Times the visibility test within each frame.
+    final class Timed: ThermalVisibility, @unchecked Sendable {
+        let inner: any ThermalVisibility
+        var seconds = 0.0
+        var rays = 0
+        init(_ inner: any ThermalVisibility) { self.inner = inner }
+        func visible(_ rays: [ThermalRay]) -> [Bool] {
+            let started = ContinuousClock.now
+            defer {
+                seconds += (ContinuousClock.now - started) / .seconds(1)
+                self.rays += rays.count
+            }
+            return inner.visible(rays)
+        }
+    }
+    let occluders = ThermalExposure.occluders(scene)
+    let metal = MetalThermalVisibility(occluders: occluders)
+    print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
+    var answers: [[Float]] = []
+    for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
+        + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
+    {
+        let timed = Timed(visibility)
+        let exposure = ThermalExposure(spec: spec, scene: scene, visibility: timed)
+        func processorSeconds() -> Double {
+            var usage = rusage()
+            getrusage(RUSAGE_SELF, &usage)
+            return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+                + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1e6
+        }
+        let started = ContinuousClock.now
+        let processor = processorSeconds()
+        var irradiance: [Float] = []
+        for frame in frames { irradiance += exposure.irradiance(frame) }
+        let total = (ContinuousClock.now - started) / .seconds(1)
+        let busy = processorSeconds() - processor
+        answers.append(irradiance)
+        print(
+            "\(name): \(exposure.receivers.count) receivers, \(timed.rays / count) rays a frame; "
+                + "\(format(total / Double(count) * 1000, 1)) ms a frame, "
+                + "\(format(timed.seconds / Double(count) * 1000, 1)) ms of it the visibility test; "
+                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame")
+    }
+    if let metal {
+        let usage = metal.usage
+        print(
+            "GPU: \(usage.gpuFrames) frames there, \(usage.cpuFrames) answered first on the CPU, "
+                + "\(format(usage.gpuSeconds / Double(max(usage.gpuFrames, 1)) * 1000, 2)) ms of GPU time a frame"
+        )
+        let differing = zip(answers[0], answers[1]).filter { $0 != $1 }.count
+        print("Receivers' irradiance differing between CPU and GPU: \(differing) of \(answers[0].count)")
+    }
+}
+
+/// A footing rocked slowly on dry sand against Gajan and Kutter's centrifuge test SSG02_03
+/// (`FootingRockingTest`). `--shear` is the sand's shear modulus in MPa, `--bearing` its bearing
+/// capacity in kPa; `--history` writes rotation, moment and settlement every 10 ms.
+func runRocking() throws {
+    let shear = (option("shear").flatMap { Float($0) } ?? 40) * 1e6
+    let bearing = (option("bearing").flatMap { Float($0) } ?? 814) * 1e3
+    let names = option("packets").map { $0.split(separator: ",").map(String.init) }
+    let packets = FootingRockingTest.packets.filter { names?.contains($0.name) ?? true }
+    print(
+        "Gajan and Kutter's SSG02_03: a 29 Mg shear wall on a 2.8 × 0.65 m surface footing on dry dense sand, "
+            + "rocked slowly; sand of \(format(Double(shear) / 1e6, 0)) MPa, bearing \(format(Double(bearing) / 1e3, 0)) kPa"
+    )
+    let result = try FootingRockingTest.run(
+        device: device, shearModulus: shear, bearingCapacity: bearing, packets: packets,
+        speed: option("speed").flatMap { Float($0) } ?? 0.2, progress: { print("  " + $0) })
+    print("")
+    print(
+        pad("packet", 8) + pad("rotation", 18) + pad("moment forward", 18) + pad("moment back", 18)
+            + pad("settlement / L", 18))
+    print(pad("", 8) + String(repeating: pad("measured  model", 18), count: 4))
+    for (measured, model) in zip(packets, result.packets) {
+        func pair(_ a: Float, _ b: Float, _ digits: Int) -> String {
+            pad(format(Double(a), digits) + "  " + format(Double(b), digits), 18)
+        }
+        print(
+            pad(measured.name, 8) + pair(measured.peakRotation, model.peakRotation, 4)
+                + pair(measured.moment.x, model.moment.x, 3) + pair(measured.moment.y, model.moment.y, 3)
+                + pair(measured.settlement, model.settlement, 4))
+    }
+    print(
+        String(
+            format: "Largest actuator lag %.1f mm; %.0f s", (result.packets.map(\.lag).max() ?? 0) * 1000,
+            result.wallSeconds))
+    if let path = option("history") {
+        let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
+        try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 do {
     switch command {
     case "slab": try runSlab()
@@ -1795,6 +1975,8 @@ do {
     case "validate": try runValidation()
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
+    case "rocking": try runRocking()
+    case "thermal": try runThermal()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

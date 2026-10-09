@@ -62,6 +62,40 @@ private struct Frames {
     }
 }
 
+/// A worker that reports the first frames it is sent, as if it had taken them, then drops its
+/// connection: after `dropAfter` frames in all, or when asked for a result.
+@MainActor
+func flakyWorker(dropAfter limit: Int = .max) -> SweepWorkerClient {
+    let toWorker = Pipe()
+    let fromWorker = Pipe()
+    let writer = SweepWorkerWriter(fromWorker.fileHandleForWriting)
+    try? writer.send(.hello(SweepWorkerHello(device: "Flaky GPU")))
+    _ = Task.detached {
+        var frames: [UUID: Int] = [:]
+        var total = 0
+        do {
+            loop: for try await message in SweepWorkerFrame.messages(from: toWorker.fileHandleForReading) {
+                switch message {
+                case .input(let id, _):
+                    total += 1
+                    guard total <= limit else { break loop }
+                    let frame = frames[id, default: -1] + 1
+                    frames[id] = frame
+                    try? writer.send(
+                        .report(
+                            id, ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0), 0))
+                case .finishConsumer: break loop
+                default: continue
+                }
+            }
+        } catch {}
+        try? fromWorker.fileHandleForWriting.close()
+    }
+    return SweepWorkerClient(
+        name: "flaky", input: fromWorker.fileHandleForReading, output: toWorker.fileHandleForWriting
+    ) { try? toWorker.fileHandleForWriting.close() }
+}
+
 @MainActor @Suite("Models fed by the blast, here or on workers", .serialized)
 struct FrameConsumerTests {
     @Test("Each kind gives the same result here, all on one worker, or spread over two")
@@ -175,6 +209,36 @@ struct FrameConsumerTests {
         local.send(frames.inputs[0][0])
         await #expect(throws: ProjectFileError.self) { try await local.finish(frameInterval: 0.001) }
         worker.close()
+        await server.value
+    }
+
+    @Test("A model whose Mac drops carries on here, from the frames kept, to the same result")
+    func recovery() async throws {
+        let frames = try Frames()
+        let here = try await frames.run(frames.kinds.map { LocalFrameConsumer($0) })
+        // Dropped after three frames of each, after the second model's first frame, and at the end.
+        for limit in [9, 4, Int.max] {
+            let worker = flakyWorker(dropAfter: limit)
+            _ = try await worker.start()
+            let consumers = try frames.kinds.map {
+                try ResilientFrameConsumer(client: worker, kind: $0, ownsClient: false)
+            }
+            let outcomes = try await frames.run(consumers)
+            #expect(outcomes == here, "dropped after \(limit)")
+            #expect(consumers.allSatisfy { $0.fallback != nil }, "dropped after \(limit)")
+            if limit == 9 { #expect(consumers.map { $0.fallback?.frame } == [2, 2, 2]) }
+            #expect(consumers.allSatisfy { $0.sent == 8 && $0.report.frame == 7 })
+            worker.close()
+        }
+        // A worker that does not fail leaves nothing to take over.
+        let (good, server) = localWorker()
+        _ = try await good.start()
+        let consumers = try frames.kinds.map {
+            try ResilientFrameConsumer(client: good, kind: $0, ownsClient: false)
+        }
+        #expect(try await frames.run(consumers) == here)
+        #expect(consumers.allSatisfy { $0.fallback == nil })
+        good.close()
         await server.value
     }
 

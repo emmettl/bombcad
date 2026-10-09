@@ -661,7 +661,7 @@ private struct GaugeRow: View {
 
     private func field(axis: Int) -> some View {
         TextField(
-            "",
+            "Position \(["X", "Y", "Z"][axis]) (m)",
             value: Binding(
                 get: { Double(gauge.position[axis]) },
                 set: { gauge.position[axis] = max((Float($0) / 0.05).rounded() * 0.05, 0) }),
@@ -713,15 +713,15 @@ private struct BoxRow: View {
                     }
                     GridRow {
                         Text("Corner")
-                        field(position(0))
-                        field(position(1))
-                        field(position(2))
+                        field("Corner X (m)", position(0))
+                        field("Corner Y (m)", position(1))
+                        field("Corner Z (m)", position(2))
                     }
                     GridRow {
                         Text("Size")
-                        field(size(0))
-                        field(size(1))
-                        field(size(2))
+                        field("Size X (m)", size(0))
+                        field("Size Y (m)", size(1))
+                        field("Size Z (m)", size(2))
                     }
                 }
                 .font(.callout)
@@ -734,8 +734,8 @@ private struct BoxRow: View {
         return String(format: "%.3g × %.3g × %.3g m", size.x, size.y, size.z)
     }
 
-    private func field(_ value: Binding<Double>) -> some View {
-        TextField("", value: value, format: .number.precision(.fractionLength(0...3)))
+    private func field(_ title: String, _ value: Binding<Double>) -> some View {
+        TextField(title, value: value, format: .number.precision(.fractionLength(0...3)))
             .textFieldStyle(.roundedBorder)
             .multilineTextAlignment(.trailing)
             .frame(width: 62)

@@ -135,10 +135,12 @@ struct ThermalOverlayTests {
     func sweep() async throws {
         var document = airOnly()
         document.runSettings?.duration = 0.006
-        // Slow enough to fall behind the run.
+        // Slow enough to fall behind the run, with the sphere, whose cost this is tuned to: the
+        // shape's would take minutes in a debug build.
         var slow = spec
         slow.samples = 2048
         slow.groundSpacing = 0.2
+        slow.fireball = .sphere
         document.thermal = slow
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         try await ready(model, by: ContinuousClock.now + .seconds(60))
@@ -204,17 +206,21 @@ struct ThermalOverlayTests {
         "Run on a worker, the thermal radiation comes out exactly as here, over a connection kept between runs"
     )
     func remote() async throws {
+        // A run keeps its frames without the fireball's shape, so this checks them reckoned from
+        // its sphere; ThermalSessionTests checks the shape sent to a worker.
+        var spec = spec
+        spec.fireball = .sphere
         let (_, here) = try await run(airOnly(), thermal: spec)
         var document = airOnly()
         document.thermal = spec
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
-        model.useFragmentWorker(worker, host: "the mini")
-        model.thermalOnRemote = true
+        model.useWorker(worker, host: "the mini")
+        model.thermalHost = "the mini"
         for name in ["First", "Second"] {
             let there = try await runAndKeep(model, named: name)
-            #expect(model.thermal is RemoteFrameConsumer)
+            #expect(model.thermal is ResilientFrameConsumer)
             #expect(model.thermalStatus.hasSuffix("on the mini"))
             // The frames fall where batches end, which follows the GPU's timing; the same frames
             // reckoned here give the same result, to the last bit.
