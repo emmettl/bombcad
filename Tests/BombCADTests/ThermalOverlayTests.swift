@@ -178,7 +178,12 @@ struct ThermalOverlayTests {
             let there = try await runAndKeep(model, named: name)
             #expect(model.thermal is RemoteThermalConsumer)
             #expect(model.thermalStatus.hasSuffix("on the mini"))
-            #expect(there.thermal == here.thermal)
+            // The frames fall where batches end, which follows the GPU's timing; the same frames
+            // reckoned here give the same result, to the last bit.
+            let thermal = try #require(there.thermal)
+            var local = ThermalExposure(spec: spec, scene: FragmentScene(there.scenario))
+            for frame in thermal.fireball { local.add(frame) }
+            #expect(local.result == thermal && thermal.fluence.contains { $0 > 0 })
             #expect(there.gauges == here.gauges)
             model.reset()
         }

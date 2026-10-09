@@ -28,6 +28,46 @@ The description is JSON; any field left out takes its default, so `{}` will do:
 }
 ```
 
+## In the app
+
+Turn on **Fireball's radiant heat** in the Run tab's Thermal radiation section, and set the
+**emissivity** and the temperature the gas is **luminous above**; the receivers' spacing and the
+directions sampled keep their defaults. The description is saved with the project (as
+`thermal.json`), takes effect from the next run, and is undone and redone with the layout's edits
+(⌘Z). With a Mac set for sweeps in Settings, **Run on** that Mac reckons the radiation there,
+over the same connection as the [fragments](fragments.md#in-the-app), kept open between runs.
+
+During a run the view draws every receiver as a dot, coloured by its fluence so far on a log
+scale: slate grey with none, through dark red and orange, to pale yellow at 1 MJ/m² (1 J/m² at
+the bottom of the scale). Under Display, **Thermal fluence** hides them. A line under the section
+gives the largest fireball so far, its temperature now, the highest fluence and the number of
+receivers, and any frames still to reckon; Reset clears it all.
+
+**Keep Run** keeps the result with the run: the description, every receiver with its peak
+irradiance and fluence, and the fireball at each frame, as `--thermal-results` writes them.
+Compare gives a line for each run that reckoned it (the largest fireball, how long it was
+luminous, the highest fluence), the run's CSV adds the fireball's diameter and temperature
+through the run, and **Use this run's inputs** brings the description back. Like the fragments,
+it does not act on the air, so it is no part of the run's input fingerprint.
+
+**The air is untouched.** The app finds the fireball at the end of the first batch in each
+millisecond of simulated time, and at the run's end, rather than stopping the run there: batches
+take fewer steps, never shorter ones, to end just past each millisecond. The tests check that the
+gauges and the structure's response are the same to the last bit with it on or off. The frames
+therefore fall a little after each millisecond, where a step ends, and differ slightly from those
+of `BombCAD run --thermal`, which stops at each; for a study that repeats exactly, use that.
+
+The receivers are reckoned on a queue of their own, here or on the other Mac; the run may get up
+to four frames ahead of them, and then waits, as for the fragments. On the street's 10,500
+receivers that is about a tenth of a second a frame on the Mac Studio, so at the default playback
+speed of 100 times slower, about the same pace as the run.
+
+On another Mac it is a session of `BombCAD worker`: version 3 of the worker protocol sends the
+fireball, a few numbers a frame, and each receiver's fluence and peak irradiance so far come back
+after each frame, as raw floats, to draw. The receivers are laid out on both sides from the same
+scene and description, and the worker's result is the same as this Mac's for the same frames, to
+the last bit.
+
 ## The model
 
 - **The fireball** at each frame is every cell of air at least `luminousTemperature` kelvin hot
@@ -105,8 +145,8 @@ until the end. Ray tracing on the GPU ([Ray tracing](ray-tracing.md)) would take
 - On coarse grids the charge's gas is spread over large cells and comes out cooler: on 0.5 m
   cells, 0.5 kg of TNT starts at under 800 K, below the default luminous temperature.
 - Only the coarse grid's cells, also where refinement sharpens the blast.
-- Headless only, on this Mac; the app does not show it yet, and the exchange is small enough to
-  run on another Mac like the fragments, which is not yet wired up.
+- `BombCAD run --thermal` reckons it on this Mac only; the app can send it to another Mac.
+- The receivers are drawn as dots, not painted onto the surfaces.
 - Receivers on the structure's starting outline do not follow it as it moves or fails.
 
 ## Sources
