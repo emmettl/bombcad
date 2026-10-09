@@ -27,8 +27,57 @@ public final class BlastSolver {
     public private(set) var stepCount = 0
     private var exposurePlane: ExposurePlane?
     private var exposureNeedsInitialSample = false
+    private var envelopeExposure: EnvelopeExposure?
+    private var envelopeNeedsInitialSample = false
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
+
+    /// Records stationary voxel-face exposure. Deformable reference bodies must be fully pinned.
+    /// Must be configured at time zero after loading. Ordinary runs allocate no recorder.
+    public func configureEnvelopeExposure(objects: [SceneObject]) throws {
+        precondition(!batchInFlight, "Cannot configure observers during a batch")
+        guard time == 0, experimentalBoxCentre == nil,
+            bodies.allSatisfy({ body in
+                var fixed = true
+                if let solid = body.solids {
+                    let nodes = UnsafeBufferPointer(
+                        start: solid.nodeBuffer.contents().bindMemory(
+                            to: StructureNode.self, capacity: solid.nodeCount), count: solid.nodeCount)
+                    fixed = fixed && nodes.allSatisfy { $0.mass == 0 || $0.isFixed }
+                }
+                if let shell = body.shells {
+                    let nodes = UnsafeBufferPointer(
+                        start: shell.nodeBuffer.contents().bindMemory(
+                            to: ShellNode.self, capacity: shell.nodeCount), count: shell.nodeCount)
+                    fixed = fixed && nodes.allSatisfy { $0.mass == 0 || $0.isClamped }
+                }
+                return fixed
+            })
+        else { throw BlastError.allocationFailed("stationary envelope observation at time zero") }
+        let mask = UnsafeBufferPointer(
+            start: maskBuffer.contents().bindMemory(
+                to: UInt8.self,
+                capacity: grid.cellCount), count: grid.cellCount)
+        envelopeExposure = try EnvelopeExposure(
+            device: device, library: library, grid: grid,
+            mask: mask, objects: objects)
+        envelopeNeedsInitialSample = true
+    }
+
+    public func envelopeExposureSnapshot() -> [EnvelopeExposureSnapshot]? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeExposure?.snapshot(grid: grid, elapsed: time)
+    }
+
+    public func envelopeExposureSummaries() -> [EnvelopeExposureSummary]? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeExposure?.summaries(grid: grid, elapsed: time)
+    }
+
+    func clearEnvelopeExposure() {
+        envelopeExposure = nil
+        envelopeNeedsInitialSample = false
+    }
 
     /// Enables fixed spatial probes before stepping. Does not change the air solution.
     /// Snapshot arrays are x-fast; stencils touching solids and unreached arrivals are null.
@@ -222,6 +271,13 @@ public final class BlastSolver {
     private let gaugeChildBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
+    /// What to cut out of the air on the GPU at the end of each batch that reaches its time limit,
+    /// as one landing on a frame does, for `airSlice(region:stride:)` and
+    /// `fireball(luminousTemperature:)` to return then instead of reading the state on the CPU
+    /// while the GPU waits. Set it before encoding a batch that may end on a frame.
+    public var frameRequest = FrameRequest()
+    /// Built the first time a request is made.
+    private(set) var frameExtractor: FrameExtractor?
     /// nil once the mask has been edited by hand.
     var rigidBoxes: [Box]?
     /// Charges laid down in fine cells for refined air (see `deposit`): what each fine cell gained,
@@ -427,6 +483,7 @@ public final class BlastSolver {
     /// The same, keeping any charge laid down in fine cells.
     func editState(_ body: (UnsafeMutableBufferPointer<CellState>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit state while a batch is in flight")
+        frameExtractor?.invalidate()
         let pointer = stateBuffers[current].contents().bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
@@ -435,6 +492,7 @@ public final class BlastSolver {
     /// Direct access to the solid mask (non-zero marks a rigid cell). Call `restart()` after editing.
     public func mutateMask(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
+        frameExtractor?.invalidate()
         rigidBoxes = nil
         needsRigidMaskCapture = true
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
@@ -489,6 +547,7 @@ public final class BlastSolver {
         let compiled = try ordered.map {
             try StructuralBody(object: $0, device: device, queue: commandQueue, library: library)
         }
+        clearEnvelopeExposure()
         bodies = compiled
         couplingRegion = nil
         tiledCoupling = nil
@@ -917,10 +976,13 @@ public final class BlastSolver {
     /// The structure, if any, returns to its undeformed state.
     public func restart() {
         precondition(!batchInFlight, "Cannot restart while a batch is in flight")
+        frameExtractor?.invalidate()
         time = 0
         stepCount = 0
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
+        envelopeExposure?.reset()
+        envelopeNeedsInitialSample = envelopeExposure != nil
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
@@ -1118,6 +1180,10 @@ public final class BlastSolver {
             encodeExposure(encoder, initial: true)
             exposureNeedsInitialSample = false
         }
+        if envelopeNeedsInitialSample {
+            encodeEnvelopeExposure(encoder, initial: true)
+            envelopeNeedsInitialSample = false
+        }
 
         let extents = [grid.nx, grid.ny, grid.nz]
         let tileThreads = Self.tileThreads(for: kernels.sweepTiles)
@@ -1302,6 +1368,7 @@ public final class BlastSolver {
             }
             phase("observation")
             encodeExposure(encoder, initial: false)
+            encodeEnvelopeExposure(encoder, initial: false)
         }
         if gaugeCount > 0 {
             var uniforms = makeUniforms()
@@ -1319,6 +1386,12 @@ public final class BlastSolver {
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
         }
+        if !frameRequest.isEmpty, frameExtractor == nil {
+            frameExtractor = try? FrameExtractor(library: library)
+        }
+        frameExtractor?.encode(
+            encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
+            control: controlBuffer, uniforms: makeUniforms())
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -1383,6 +1456,7 @@ public final class BlastSolver {
                 control.activeSteps > 0
                 ? Double(control.tileSweeps) / (Double(control.activeSteps) * tiles) : 0
         }
+        frameExtractor?.complete(reachedLimit: control.stopped == 2, time: time, steps: stepCount)
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
@@ -1466,6 +1540,25 @@ public final class BlastSolver {
     }
 
     // MARK: - Reading results
+
+    private func encodeEnvelopeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
+        guard let observer = envelopeExposure else { return }
+        var uniforms = makeUniforms()
+        var parameters = SIMD2<UInt32>(UInt32(observer.faces.count), initial ? 1 : 0)
+        encoder.setComputePipelineState(observer.pipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+        encoder.setBuffer(observer.faceBuffer, offset: 0, index: 3)
+        encoder.setBuffer(observer.values, offset: 0, index: 4)
+        encoder.setBuffer(observer.signed, offset: 0, index: 5)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 6)
+        encoder.setBytes(&parameters, length: 8, index: 7)
+        encoder.dispatchThreads(
+            MTLSize(width: observer.faces.count, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: observer.pipeline.threadExecutionWidth, height: 1, depth: 1)
+        )
+    }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
         guard let plane = exposurePlane else { return }
@@ -1567,6 +1660,7 @@ public final class BlastSolver {
         let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
             + (exposurePlane?.buffer.length ?? 0)
+            + (envelopeExposure?.memoryFootprint ?? 0)
             + bodies.reduce(0) { $0 + $1.memoryFootprint } + (refinement?.memoryFootprint ?? 0)
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
             + (experimentalBoxImpulse?.length ?? 0)

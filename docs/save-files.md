@@ -41,7 +41,9 @@ as versioned JSON assets at `assets/<id>.mesh.json`. Identical sources share one
 content-derived IDs stay stable across repeated saves, and existing asset IDs are retained.
 
 `scene.json` has format `dev.bombcad.scene`. Single-body saves use encoding version 3, which requires
-durable object/component ownership; multiple-body saves use version 4. Versions 1 and 2 remain readable; version 2 originally
+durable object/component ownership; multiple-body saves use version 4 and scenes containing
+stationary building envelopes use version 6. Version 5 supports footings and turned support
+joints; prototype envelope version-5 packages migrate on save. Versions 1 and 2 remain readable; version 2 originally
 introduced finite support-region laws. Older readers reject version 3 rather than discard
 ownership; readers predating multi-body support reject version 4. Its `scenario` contains
 structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`
@@ -68,6 +70,13 @@ local coupling. Historical `blast-solver-3` records remain readable without rela
 `bodyResponses` entries carry object IDs, names and individual histories alongside the
 overall structural history. Missing/duplicate response owners and incompatible record
 versions are rejected. Existing single-body records retain their encoding and provenance.
+
+Saved runs containing compact `envelopeExposure` summaries use record encoding version 3,
+with owner IDs/names, window, air spacing, resolved surface area, peak pressure, positive
+loading and signed vector loads. Validation checks ownership, units/grid, finite values,
+consistent surface counts/areas and the absence of invalid faces. Earlier records remain readable; records without these summaries
+retain version 1 or 2. Full per-face arrays are separate JSON exports. Surface diagnostics
+are excluded from input fingerprints and retain the existing blast solver provenance.
 
 Mesh assets have format `dev.simulationkit.source-mesh`, `encodingVersion: 1` and
 `coordinateSpace: source`. They retain original coordinates and face labels, plus a part identity
@@ -119,6 +128,12 @@ fresh run and clears undo across documents.
   Open Project accepts `.bombcad`; Import Layout JSON in the More menu opens a separate new,
   untitled project. Legacy JSON geometry gains object ownership when decoded.
   JSON originals are never the target of autosave.
+  Missing required layout JSON fields, incorrect value types and null values are reported with
+  their field paths; malformed JSON is reported as a syntax error. These diagnostics do not
+  change which layouts are accepted.
+  Missing required fields, incorrect types and null values in native `settings.json` and
+  `view.json` also identify the package filename and field path. Settings and camera value
+  validation still applies after decoding.
 - Save Project and Command-S save to the document's current location, asking for a name and
   location on the first save. Save As is in the More menu. Native File-menu commands provide
   New, Open, recent documents, Duplicate and Revert where supported by macOS.
@@ -129,6 +144,9 @@ fresh run and clears undo across documents.
   projects normally save automatically instead of prompting after each edit; errors are handled
   by the native document controller. This follows macOS document conventions rather than
   maintaining a second timer or custom close/quit alert.
+- When a document editor disappears, its live run pauses and any sweep is cancelled. Other
+  document windows continue independently. A paused editor can resume with Run if it returns;
+  pausing does not change the saved project inputs. An already submitted GPU batch may finish.
 - The document retains its ID and embedded assets across scene replacement and resaving. Retained
   assets remain available for undo. New documents/windows receive independent identities.
 - Export Layout JSON remains available for scene interchange. It omits run/view settings.

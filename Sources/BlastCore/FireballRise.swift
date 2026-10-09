@@ -36,6 +36,22 @@ public struct CloudSpec: Codable, Sendable, Equatable {
     /// The water in the charge's products, in kilograms a kilogram of charge: TNT's hydrogen
     /// makes a fifth of its mass in water whether it burns or not.
     public var productWater = 0.2
+    /// The share of the cloud's condensed water beyond `rainThreshold` (kilograms a kilogram)
+    /// that falls out as rain or snow each second, as in Kessler's (1969) scheme; 0 keeps it all.
+    public var rainRate = 0.001
+    public var rainThreshold = 0.0005
+    /// The atmospheric boundary layer's turbulence, which draws air into the cloud as well as its
+    /// own motion does: its friction velocity u* and convective velocity w*, in metres a second,
+    /// and its depth, above which the air is still. None by default.
+    public var frictionVelocity = 0.0
+    public var convectiveVelocity = 0.0
+    public var boundaryLayerHeight = 1000.0
+    /// The entrainment coefficient of the ambient turbulence, ADMS's α₃.
+    public var turbulentEntrainment = 0.655
+    /// A measured atmosphere in place of the standard one, with its own wind and humidity, and
+    /// the direction of north in it, in degrees anticlockwise from the scene's x axis.
+    public var sounding: CloudSounding?
+    public var northDirection = 90.0
     /// Seconds of the cloud's rise followed after the run.
     public var duration = 600.0
     /// Seconds of the cloud's rise between frames of the USD scene.
@@ -64,6 +80,23 @@ public struct CloudSpec: Codable, Sendable, Equatable {
         relativeHumidity =
             try values.decodeIfPresent(Double.self, forKey: .relativeHumidity) ?? defaults.relativeHumidity
         productWater = try values.decodeIfPresent(Double.self, forKey: .productWater) ?? defaults.productWater
+        rainRate = try values.decodeIfPresent(Double.self, forKey: .rainRate) ?? defaults.rainRate
+        rainThreshold =
+            try values.decodeIfPresent(Double.self, forKey: .rainThreshold) ?? defaults.rainThreshold
+        frictionVelocity =
+            try values.decodeIfPresent(Double.self, forKey: .frictionVelocity) ?? defaults.frictionVelocity
+        convectiveVelocity =
+            try values.decodeIfPresent(Double.self, forKey: .convectiveVelocity)
+            ?? defaults.convectiveVelocity
+        boundaryLayerHeight =
+            try values.decodeIfPresent(Double.self, forKey: .boundaryLayerHeight)
+            ?? defaults.boundaryLayerHeight
+        turbulentEntrainment =
+            try values.decodeIfPresent(Double.self, forKey: .turbulentEntrainment)
+            ?? defaults.turbulentEntrainment
+        sounding = try values.decodeIfPresent(CloudSounding.self, forKey: .sounding)
+        northDirection =
+            try values.decodeIfPresent(Double.self, forKey: .northDirection) ?? defaults.northDirection
         duration = try values.decodeIfPresent(Double.self, forKey: .duration) ?? defaults.duration
         frameInterval =
             try values.decodeIfPresent(Double.self, forKey: .frameInterval) ?? defaults.frameInterval
@@ -74,7 +107,8 @@ public struct CloudSpec: Codable, Sendable, Equatable {
             Double(handOverTemperature), entrainment, addedMass, emissivity, lapseRate, tropopause,
             specificHeat,
             duration, frameInterval, windSpeed, windDirection, windHeight, windExponent, windCeiling,
-            relativeHumidity, productWater,
+            relativeHumidity, productWater, rainRate, rainThreshold, frictionVelocity, convectiveVelocity,
+            boundaryLayerHeight, turbulentEntrainment, northDirection,
         ]
         guard finite.allSatisfy(\.isFinite), handOverTemperature > 300, entrainment > 0, entrainment <= 1,
             addedMass >= 0, addedMass <= 2, emissivity >= 0, emissivity <= 1, lapseRate >= 0,
@@ -83,11 +117,25 @@ public struct CloudSpec: Codable, Sendable, Equatable {
             duration > 0, duration <= 7200, frameInterval >= 0.01, duration / frameInterval <= 100_000,
             windSpeed >= 0, windSpeed <= 100, windHeight > 0, windExponent >= 0, windExponent <= 1,
             windCeiling >= windHeight, relativeHumidity >= 0, relativeHumidity <= 1, productWater >= 0,
-            productWater <= 1
+            productWater <= 1, rainRate >= 0, rainRate <= 1, rainThreshold >= 0, rainThreshold <= 0.01,
+            frictionVelocity >= 0, frictionVelocity <= 3, convectiveVelocity >= 0, convectiveVelocity <= 5,
+            boundaryLayerHeight >= 10, boundaryLayerHeight <= 5000, turbulentEntrainment >= 0,
+            turbulentEntrainment <= 2
         else {
             throw CocoaError(
                 .coderInvalidValue,
                 userInfo: [NSLocalizedDescriptionKey: "The cloud description is out of range."])
+        }
+        if let sounding {
+            guard windSpeed == 0, relativeHumidity == 0 else {
+                throw CocoaError(
+                    .coderInvalidValue,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "A sounding brings its own wind and humidity: leave windSpeed and relativeHumidity at 0."
+                    ])
+            }
+            try sounding.validate()
         }
     }
 }
@@ -145,6 +193,19 @@ public struct CloudHandOver: Codable, Sendable, Equatable {
 
     /// The radius of a sphere of its volume.
     public var radius: Double { cbrt(3 * volume / (4 * .pi)) }
+
+    /// The same gas in other air at the ground, as in a sounding: as many times as hot as that
+    /// air as it was in the run's, so of the same buoyancy, at its pressure.
+    public func inAir(_ air: (temperature: Double, pressure: Double)) -> CloudHandOver {
+        var moved = self
+        guard ambientTemperature > 0 else { return moved }
+        moved.temperature *= air.temperature / ambientTemperature
+        moved.hottest *= air.temperature / ambientTemperature
+        moved.volume *= (air.temperature / ambientTemperature) * (ambientPressure / air.pressure)
+        moved.ambientTemperature = air.temperature
+        moved.ambientPressure = air.pressure
+        return moved
+    }
 }
 
 extension BlastSolver {
@@ -310,6 +371,63 @@ public struct CloudHumidity: Sendable, Equatable {
     }
 }
 
+/// The turbulence of the atmospheric boundary layer, which draws air into the cloud however it
+/// moves: its profiles as ADMS gives them (CERC's boundary layer structure specification, after
+/// Hunt, Holroyd and Carruthers, 1988), from a friction velocity u*, a convective velocity w*
+/// and the layer's depth h, with still air above it, and the entrainment speed they add, as in
+/// ADMS's plume rise model.
+public struct CloudTurbulence: Sendable, Equatable {
+    public var frictionVelocity: Double
+    public var convectiveVelocity: Double
+    public var height: Double
+    /// ADMS's α₃.
+    public var coefficient: Double
+    static let karman = 0.4
+
+    public init(
+        frictionVelocity: Double, convectiveVelocity: Double, height: Double, coefficient: Double = 0.655
+    ) {
+        self.frictionVelocity = frictionVelocity
+        self.convectiveVelocity = convectiveVelocity
+        self.height = height
+        self.coefficient = coefficient
+    }
+
+    /// The root mean square vertical velocity σ_w, in metres a second, the rate of dissipation
+    /// of turbulent kinetic energy ε, in m²/s³, and the Lagrangian time scale T_L, in seconds,
+    /// `z` metres above the ground; nil where there is none. Taken from 1 m up nearer the
+    /// ground.
+    public func callAsFunction(_ z: Double) -> (velocity: Double, dissipation: Double, timescale: Double)? {
+        let (ustar, wstar, h) = (frictionVelocity, convectiveVelocity, height)
+        guard ustar > 0 || wstar > 0, z < h else { return nil }
+        let z = max(z, 1)
+        let mechanical = 1 - 0.8 * z / h
+        let convective = 2.1 * cbrt(z / h) * mechanical
+        let velocity = sqrt(pow(1.3 * ustar * mechanical, 2) + 0.4 * pow(wstar * convective, 2))
+        // The vertical length scale, without its terms for the shear, the stratification and
+        // the capping inversion; near the ground it is κz, so that ε is u*³ / κz there.
+        let length = wstar > 0 ? 1 / (0.6 / z + 2 / h) : 1 / (2.5 / z + 4 / h)
+        let dissipation = pow(ustar * mechanical, 3) / length + 0.4 * pow(wstar, 3) / h
+        // |h / L|, the Monin–Obukhov length L from w*³ = h u*³ / κ|L|.
+        let instability = ustar > 0 ? Self.karman * pow(wstar / ustar, 3) : .infinity
+        let timescale =
+            wstar > 0
+            ? (instability.isFinite ? (instability + 1 / 1.3) / (instability + 1) : 1) * length / velocity
+            : length / (1.3 * velocity)
+        return (velocity, dissipation, timescale)
+    }
+
+    /// The speed at which the turbulence draws air in across the surface of a cloud of `radius`
+    /// `height` up, `time` seconds after the detonation: α₃ min((εb)^⅓, σ_w (1 + t / 2T_L)^−½),
+    /// eddies smaller than the cloud mixing into it and the larger ones' share falling as they
+    /// come to carry it about rather than mix it.
+    public func entrainmentSpeed(height: Double, radius: Double, time: Double) -> Double {
+        guard coefficient > 0, let air = self(height) else { return 0 }
+        return coefficient
+            * min(cbrt(air.dissipation * radius), air.velocity / sqrt(1 + max(time, 0) / (2 * air.timescale)))
+    }
+}
+
 /// The cloud at one moment: a sphere of well-mixed gas at the ambient pressure.
 public struct CloudSample: Codable, Sendable, Equatable {
     /// Since the detonation, in seconds.
@@ -328,17 +446,25 @@ public struct CloudSample: Codable, Sendable, Equatable {
     public var position: SIMD2<Double>
     /// Across the ground, in metres a second.
     public var velocity: SIMD2<Double>
-    /// All its water, and the liquid part of it, in kilograms a kilogram of cloud.
+    /// All its water, and the liquid and frozen parts of it, in kilograms a kilogram of cloud.
     public var water: Double
     public var liquidWater: Double
+    public var ice: Double
+    /// The water that has fallen out of it so far, in kilograms, and how much of that as snow.
+    public var precipitation: Double
+    public var snow: Double
 
     public init(
         time: Double, height: Double, radius: Double, temperature: Double, ambientTemperature: Double,
         riseSpeed: Double, mass: Double, position: SIMD2<Double> = .zero, velocity: SIMD2<Double> = .zero,
-        water: Double = 0, liquidWater: Double = 0
+        water: Double = 0, liquidWater: Double = 0, ice: Double = 0, precipitation: Double = 0,
+        snow: Double = 0
     ) {
         self.water = water
         self.liquidWater = liquidWater
+        self.ice = ice
+        self.precipitation = precipitation
+        self.snow = snow
         self.position = position
         self.velocity = velocity
         self.time = time
@@ -367,10 +493,14 @@ public struct CloudSample: Codable, Sendable, Equatable {
 public enum CloudRise {
     public static let gravity = 9.806_65
     public static let gasConstant = Double(AirModel.gasConstant)
-    /// Water's latent heat of vaporisation, in J/kg, and the ratio of its gas constant to dry
-    /// air's.
+    /// Water's latent heats of vaporisation and of fusion, in J/kg, and the ratio of its gas
+    /// constant to dry air's.
     public static let latentHeat = 2.501e6
+    public static let fusionHeat = 3.34e5
     public static let molarRatio = 0.622
+    /// Condensed water is all liquid above the first and all ice below the second, in kelvin.
+    public static let freezingPoint = 273.16
+    public static let iceTemperature = 250.16
 
     /// The saturation vapour pressure over water at `temperature` kelvin, in pascals: Bolton's
     /// (1980) fit, within 0.1% from −30 °C to 35 °C.
@@ -378,55 +508,87 @@ public enum CloudRise {
         611.2 * exp(17.67 * (temperature - 273.15) / (temperature - 29.65))
     }
 
-    /// The specific humidity of saturated air, in kilograms of vapour a kilogram of moist air;
-    /// infinite where water would boil.
+    /// The saturation vapour pressure over ice, in pascals: Tetens' form with the constants of
+    /// ECMWF's IFS.
+    public static func saturationPressureOverIce(temperature: Double) -> Double {
+        611.21 * exp(22.587 * (temperature - freezingPoint) / (temperature + 0.7))
+    }
+
+    /// The share of condensed water that is liquid at `temperature`: all of it at the freezing
+    /// point and above, none at `iceTemperature` and below, and the square of the way between in
+    /// between, as in ECMWF's IFS.
+    public static func liquidFraction(temperature: Double) -> Double {
+        let x = (temperature - iceTemperature) / (freezingPoint - iceTemperature)
+        return min(max(x, 0), 1) * min(max(x, 0), 1)
+    }
+
+    /// The specific humidity of air saturated over water, in kilograms of vapour a kilogram of
+    /// moist air; infinite where water would boil.
     public static func saturationHumidity(temperature: Double, pressure: Double) -> Double {
-        let vapour = saturationPressure(temperature: temperature)
+        humidity(vapourPressure: saturationPressure(temperature: temperature), pressure: pressure)
+    }
+
+    /// The same over the cloud's condensed water, liquid and ice in the shares
+    /// `liquidFraction` gives, its saturation vapour pressure blended in those shares.
+    public static func cloudSaturationHumidity(temperature: Double, pressure: Double) -> Double {
+        let liquid = liquidFraction(temperature: temperature)
+        let vapour =
+            liquid == 1
+            ? saturationPressure(temperature: temperature)
+            : liquid * saturationPressure(temperature: temperature) + (1 - liquid)
+                * saturationPressureOverIce(temperature: temperature)
+        return humidity(vapourPressure: vapour, pressure: pressure)
+    }
+
+    static func humidity(vapourPressure vapour: Double, pressure: Double) -> Double {
         guard vapour < pressure else { return .infinity }
         return molarRatio * vapour / (pressure - (1 - molarRatio) * vapour)
     }
 
-    /// The temperature and the vapour of gas with moist enthalpy `enthalpy` (c_p T + L q_v, in
-    /// J/kg) and `water` kilograms of water a kilogram at `pressure`: all vapour if that leaves it
-    /// unsaturated, and otherwise saturated, with the rest liquid.
+    /// The temperature, vapour and ice of gas with frozen moist enthalpy `enthalpy`
+    /// (c_p T + L_v q_v − L_f q_i, in J/kg) and `water` kilograms of water a kilogram at
+    /// `pressure`: all vapour if that leaves it unsaturated, and otherwise saturated, the rest
+    /// condensed, liquid and ice in the shares `liquidFraction` gives.
     public static func split(enthalpy: Double, water: Double, pressure: Double, specificHeat: Double) -> (
-        temperature: Double, vapour: Double
+        temperature: Double, vapour: Double, ice: Double
     ) {
         let dry = (enthalpy - latentHeat * water) / specificHeat
-        guard water > 0, water > saturationHumidity(temperature: dry, pressure: pressure) else {
-            return (dry, water)
+        guard water > 0, water > cloudSaturationHumidity(temperature: dry, pressure: pressure) else {
+            return (dry, water, 0)
         }
-        // c_p T + L q_s(T) = h rises with T, between all vapour and none: Newton's method, kept
-        // within that bracket.
+        func state(_ t: Double) -> (residual: Double, vapour: Double, ice: Double) {
+            let vapour = min(water, cloudSaturationHumidity(temperature: t, pressure: pressure))
+            let ice = (1 - liquidFraction(temperature: t)) * (water - vapour)
+            return (specificHeat * t + latentHeat * vapour - fusionHeat * ice - enthalpy, vapour, ice)
+        }
+        // The residual rises with T, between all vapour and all condensed and frozen: Newton's
+        // method on a numerical slope, kept within that bracket.
         var low = dry
-        var high = enthalpy / specificHeat
+        var high = (enthalpy + fusionHeat * water) / specificHeat
         var t = dry
-        for _ in 0..<60 {
-            let saturated = saturationHumidity(temperature: t, pressure: pressure)
-            let residual = specificHeat * t + latentHeat * saturated - enthalpy
+        for _ in 0..<80 {
+            let residual = state(t).residual
             if residual > 0 { high = t } else { low = t }
-            let vapour = saturationPressure(temperature: t)
-            let slope =
-                specificHeat + latentHeat * saturated * pressure / (pressure - (1 - molarRatio) * vapour)
-                * 17.67
-                * 243.5 / pow(t - 29.65, 2)
-            var next = t - residual / slope
+            let slope = (state(t + 1e-4).residual - residual) / 1e-4
+            var next = t - residual / max(slope, specificHeat)
             if !(next > low && next < high) { next = (low + high) / 2 }
-            if abs(next - t) < 1e-10 { break }
+            if abs(next - t) < 1e-10 || high - low < 1e-10 { break }
             t = next
         }
-        return (t, min(water, saturationHumidity(temperature: t, pressure: pressure)))
+        let final = state(t)
+        return (t, final.vapour, final.ice)
     }
 
     /// The temperature that gives dry air the density of moist air with `vapour` and `water`
-    /// kilograms a kilogram at `temperature`, the liquid's volume neglected.
+    /// kilograms a kilogram at `temperature`, the condensate's volume neglected.
     static func densityTemperature(_ temperature: Double, vapour: Double, water: Double) -> Double {
         temperature * (1 + vapour / molarRatio - water)
     }
 
     /// The cloud's state for integration: height and place across the ground, mass, upward
     /// impulse (its own momentum and its added mass's), horizontal impulse (its own momentum and
-    /// its added mass's relative to the wind), moist enthalpy and water, each a kilogram.
+    /// its added mass's relative to the wind), frozen moist enthalpy and water, each a kilogram,
+    /// and the water fallen out of it, in all and as snow.
     struct State {
         var height: Double
         var position: SIMD2<Double>
@@ -435,32 +597,40 @@ public enum CloudRise {
         var drift: SIMD2<Double>
         var enthalpy: Double
         var water: Double
+        var fallen = 0.0
+        var fallenIce = 0.0
 
         static func + (a: State, b: State) -> State {
             State(
                 height: a.height + b.height, position: a.position + b.position, mass: a.mass + b.mass,
                 impulse: a.impulse + b.impulse, drift: a.drift + b.drift, enthalpy: a.enthalpy + b.enthalpy,
-                water: a.water + b.water)
+                water: a.water + b.water, fallen: a.fallen + b.fallen, fallenIce: a.fallenIce + b.fallenIce)
         }
 
         static func * (a: State, s: Double) -> State {
             State(
                 height: a.height * s, position: a.position * s, mass: a.mass * s, impulse: a.impulse * s,
-                drift: a.drift * s, enthalpy: a.enthalpy * s, water: a.water * s)
+                drift: a.drift * s, enthalpy: a.enthalpy * s, water: a.water * s, fallen: a.fallen * s,
+                fallenIce: a.fallenIce * s)
         }
     }
 
-    /// The cloud from `handOver`, followed through `atmosphere`, `wind` and `humidity` (the air's
-    /// specific humidity) and sampled at `times`, which must be ascending and no earlier than the
+    /// The cloud from `handOver`, followed through `atmosphere`, `wind`, `humidity` (the air's
+    /// specific humidity) and `turbulence` (the speed at which it draws air in across a cloud's
+    /// surface, at a height and of a radius, a time after the detonation) and sampled at `times`, which must be ascending and no earlier than the
     /// hand-over; also the first moment it stopped rising, if it did by the last of them.
     public static func follow(
         _ handOver: CloudHandOver, spec: CloudSpec,
         atmosphere: @escaping (Double) -> (temperature: Double, pressure: Double),
         wind: @escaping (Double) -> SIMD2<Double> = { _ in .zero },
-        humidity: @escaping (Double) -> Double = { _ in 0 }, at times: [Double]
+        humidity: @escaping (Double) -> Double = { _ in 0 },
+        turbulence: @escaping (_ height: Double, _ radius: Double, _ time: Double) -> Double = { _, _, _ in 0
+        },
+        at times: [Double]
     ) -> (samples: [CloudSample], stabilised: CloudSample?) {
         guard handOver.mass > 0, let end = times.last else { return ([], nil) }
-        let model = Model(spec: spec, atmosphere: atmosphere, wind: wind, humidity: humidity)
+        let model = Model(
+            spec: spec, atmosphere: atmosphere, wind: wind, humidity: humidity, turbulence: turbulence)
         let start = Double(handOver.centre.z)
         let air = atmosphere(start)
         // The products' water, and the air's in the rest of the gas.
@@ -473,11 +643,12 @@ public enum CloudRise {
         let temperature =
             handOver.temperature / (1 + water / molarRatio - water)
             * pow(air.pressure / handOver.ambientPressure, gasConstant / spec.specificHeat)
-        let vapour = min(water, saturationHumidity(temperature: temperature, pressure: air.pressure))
+        let vapour = min(water, cloudSaturationHumidity(temperature: temperature, pressure: air.pressure))
+        let ice = (1 - liquidFraction(temperature: temperature)) * (water - vapour)
         var state = State(
             height: start, position: SIMD2(Double(handOver.centre.x), Double(handOver.centre.y)),
             mass: handOver.mass, impulse: 0, drift: .zero,
-            enthalpy: spec.specificHeat * temperature + latentHeat * vapour, water: water)
+            enthalpy: spec.specificHeat * temperature + latentHeat * vapour - fusionHeat * ice, water: water)
         let d = model.derived(state)
         let added = spec.addedMass * d.ambientDensity * d.volume
         let velocity = handOver.horizontalVelocity
@@ -493,11 +664,11 @@ public enum CloudRise {
         }
         var rising = model.sample(state, time: time).riseSpeed > 0
         while time < end - 1e-12 {
-            let step = min(model.step(state), times[next] - time)
-            let k1 = model.rate(state)
-            let k2 = model.rate(state + k1 * (step / 2))
-            let k3 = model.rate(state + k2 * (step / 2))
-            let k4 = model.rate(state + k3 * step)
+            let step = min(model.step(state, time: time), times[next] - time)
+            let k1 = model.rate(state, time: time)
+            let k2 = model.rate(state + k1 * (step / 2), time: time + step / 2)
+            let k3 = model.rate(state + k2 * (step / 2), time: time + step / 2)
+            let k4 = model.rate(state + k3 * step, time: time + step)
             state = state + (k1 + k2 * 2 + k3 * 2 + k4) * (step / 6)
             time += step
             let now = model.sample(state, time: time)
@@ -517,11 +688,13 @@ public enum CloudRise {
         let atmosphere: (Double) -> (temperature: Double, pressure: Double)
         let wind: (Double) -> SIMD2<Double>
         let humidity: (Double) -> Double
+        let turbulence: (Double, Double, Double) -> Double
         static let stefanBoltzmann = 5.670_374e-8
 
         struct Derived {
             var temperature: Double
             var vapour: Double
+            var ice: Double
             var ambientTemperature: Double
             var ambientPressure: Double
             var ambientDensity: Double
@@ -537,7 +710,7 @@ public enum CloudRise {
 
         func derived(_ state: State) -> Derived {
             let air = atmosphere(state.height)
-            let (temperature, vapour) = CloudRise.split(
+            let (temperature, vapour, ice) = CloudRise.split(
                 enthalpy: state.enthalpy, water: state.water, pressure: air.pressure,
                 specificHeat: spec.specificHeat)
             let ambientHumidity = humidity(state.height)
@@ -553,7 +726,7 @@ public enum CloudRise {
             let velocity = (state.drift + added * wind) / (state.mass + added)
             let riseSpeed = state.impulse / (state.mass + added)
             return Derived(
-                temperature: temperature, vapour: vapour, ambientTemperature: air.temperature,
+                temperature: temperature, vapour: vapour, ice: ice, ambientTemperature: air.temperature,
                 ambientPressure: air.pressure, ambientDensity: ambientDensity,
                 ambientHumidity: ambientHumidity,
                 volume: volume, radius: cbrt(3 * volume / (4 * .pi)), riseSpeed: riseSpeed,
@@ -561,17 +734,19 @@ public enum CloudRise {
                 wind: wind, relativeSpeed: simd_length(SIMD3(velocity - wind, riseSpeed)))
         }
 
-        /// The time derivative of `state`: the air drawn in across the surface at the
-        /// entrainment coefficient times the cloud's speed through it; the upward impulse changed
+        /// The time derivative of `state` at `time`: the air drawn in across the surface at the
+        /// entrainment coefficient times the cloud's speed through it, and by the turbulence; the upward impulse changed
         /// by the buoyancy and the horizontal by the wind's momentum in the air drawn in; the
-        /// water by the air's vapour drawn in; and the moist enthalpy by the air's drawn in, by
-        /// expanding as the pressure falls (dh = dp / ρ, which in hydrostatic air is about
-        /// −(T / T_air) g dz), and by radiating. Condensing and evaporating move heat between
-        /// c_p T and L q_v within the enthalpy, so they need no term of their own.
-        func rate(_ state: State) -> State {
+        /// water by the air's vapour drawn in; and the frozen moist enthalpy by the air's drawn
+        /// in, by expanding as the pressure falls (dh = dp / ρ, which in hydrostatic air is about
+        /// −(T / T_air) g dz), and by radiating. Condensing, evaporating, freezing and melting move
+        /// heat between c_p T, L_v q_v and L_f q_i within the enthalpy, so they need no term of
+        /// their own. Condensed water beyond the threshold falls out at the rain rate, taking its
+        /// mass, its share of the enthalpy and its momentum with it.
+        func rate(_ state: State, time: Double) -> State {
             let d = derived(state)
             let area = 4 * Double.pi * d.radius * d.radius
-            let entrained = area * spec.entrainment * d.ambientDensity * d.relativeSpeed
+            let entrained = area * d.ambientDensity * entrainmentSpeed(d, height: state.height, time: time)
             let buoyancy = (d.ambientDensity * d.volume - state.mass) * gravity
             let radiated =
                 spec.emissivity * Self.stefanBoltzmann
@@ -579,22 +754,37 @@ public enum CloudRise {
                 * area
             let gradient = (atmosphere(state.height + 1).pressure - atmosphere(state.height - 1).pressure) / 2
             let ambientEnthalpy = spec.specificHeat * d.ambientTemperature + latentHeat * d.ambientHumidity
+            let condensed = state.water - d.vapour
+            let falling = state.mass * spec.rainRate * max(condensed - spec.rainThreshold, 0)
+            let frozen = condensed > 0 ? d.ice / condensed : 0
+            let fallingEnthalpy = spec.specificHeat * d.temperature - fusionHeat * frozen
             let heating =
                 (ambientEnthalpy - state.enthalpy) * entrained + d.volume * gradient * d.riseSpeed - radiated
+                - falling * (fallingEnthalpy - state.enthalpy)
             return State(
-                height: d.riseSpeed, position: d.velocity, mass: entrained, impulse: buoyancy,
-                drift: d.wind * entrained, enthalpy: heating / state.mass,
-                water: (d.ambientHumidity - state.water) * entrained / state.mass)
+                height: d.riseSpeed, position: d.velocity, mass: entrained - falling,
+                impulse: buoyancy - falling * d.riseSpeed, drift: d.wind * entrained - falling * d.velocity,
+                enthalpy: heating / state.mass,
+                water: ((d.ambientHumidity - state.water) * entrained - falling * (1 - state.water))
+                    / state.mass,
+                fallen: falling, fallenIce: falling * frozen)
+        }
+
+        /// The speed at which air is drawn in across the surface: the entrainment coefficient
+        /// times the cloud's speed through the air, and the turbulence's.
+        func entrainmentSpeed(_ d: Derived, height: Double, time: Double) -> Double {
+            spec.entrainment * d.relativeSpeed + turbulence(height, d.radius, time)
         }
 
         /// A step short against the time the cloud takes to move its own radius through the air,
         /// from rest or at its speed, to draw in its own mass, and to cool by radiation.
-        func step(_ state: State) -> Double {
+        func step(_ state: State, time: Double) -> Double {
             let d = derived(state)
             let inertia = state.mass + spec.addedMass * d.ambientDensity * d.volume
             let acceleration = abs(d.ambientDensity * d.volume - state.mass) * gravity / inertia
             let entrained =
-                4 * Double.pi * d.radius * d.radius * spec.entrainment * d.ambientDensity * d.relativeSpeed
+                4 * Double.pi * d.radius * d.radius * d.ambientDensity
+                * entrainmentSpeed(d, height: state.height, time: time)
             var step = min(
                 0.02 * d.radius / max(d.relativeSpeed, 1e-6), 0.02 * sqrt(d.radius / max(acceleration, 1e-9)),
                 0.02 * state.mass / max(entrained, 1e-30), 0.5)
@@ -613,7 +803,8 @@ public enum CloudRise {
                 time: time, height: state.height, radius: d.radius, temperature: d.temperature,
                 ambientTemperature: d.ambientTemperature, riseSpeed: d.riseSpeed, mass: state.mass,
                 position: state.position, velocity: d.velocity, water: state.water,
-                liquidWater: state.water - d.vapour)
+                liquidWater: state.water - d.vapour - d.ice, ice: d.ice, precipitation: state.fallen,
+                snow: state.fallenIce)
         }
     }
 }
@@ -627,8 +818,9 @@ public struct CloudResult: Codable, Sendable {
     /// The first moment the cloud stopped rising, if it did.
     public var stabilised: CloudSample?
 
-    /// Follows `handOver` through the standard atmosphere, the wind and the humidity `spec`
-    /// describes, from the hand-over's own air at the ground.
+    /// Follows `handOver` through the standard atmosphere, the wind, the humidity and the
+    /// turbulence `spec` describes, from the hand-over's own air at the ground, or through its
+    /// sounding.
     public init(spec: CloudSpec, handOver: CloudHandOver) {
         self.spec = spec
         self.handOver = handOver
@@ -654,9 +846,18 @@ public struct CloudResult: Codable, Sendable {
     private static func follow(_ handOver: CloudHandOver, spec: CloudSpec, at times: [Double]) -> (
         samples: [CloudSample], stabilised: CloudSample?
     ) {
-        CloudRise.follow(
+        let turbulence = spec.turbulence
+        if let sounding = spec.sounding {
+            let north = spec.northDirection * .pi / 180
+            return CloudRise.follow(
+                handOver.inAir(sounding(0)), spec: spec, atmosphere: sounding.callAsFunction,
+                wind: { sounding.wind($0, north: north) }, humidity: sounding.humidity,
+                turbulence: turbulence.entrainmentSpeed, at: times)
+        }
+        return CloudRise.follow(
             handOver, spec: spec, atmosphere: spec.atmosphere(handOver).callAsFunction,
-            wind: spec.wind.callAsFunction, humidity: spec.humidity(handOver).callAsFunction, at: times)
+            wind: spec.wind.callAsFunction, humidity: spec.humidity(handOver).callAsFunction,
+            turbulence: turbulence.entrainmentSpeed, at: times)
     }
 
     public var summary: [String] {
@@ -669,7 +870,7 @@ public struct CloudResult: Codable, Sendable {
         }
         let start = SIMD2(Double(handOver.centre.x), Double(handOver.centre.y))
         let drift = { (sample: CloudSample) in
-            self.spec.windSpeed > 0
+            self.spec.windSpeed > 0 || self.spec.sounding != nil
                 ? String(format: ", %.0f m downwind", simd_length(sample.position - start)) : ""
         }
         var lines = [
@@ -688,14 +889,23 @@ public struct CloudResult: Codable, Sendable {
                     stabilised.time, stabilised.height, stabilised.top, 2 * stabilised.radius,
                     stabilised.temperature - stabilised.ambientTemperature) + drift(stabilised))
         }
-        if let wettest = samples.max(by: { $0.liquidWater < $1.liquidWater }), wettest.liquidWater > 0 {
-            let condensed = samples.filter { $0.liquidWater > 0 }
+        let condensate = { (sample: CloudSample) in sample.liquidWater + sample.ice }
+        if let wettest = samples.max(by: { condensate($0) < condensate($1) }), condensate(wettest) > 0 {
+            let condensed = samples.filter { condensate($0) > 0 }
             lines.append(
                 String(
                     format:
-                        "  condensed from %.0f s to %.0f s, most %.2f g of liquid water a kilogram at %.0f s, %.0f m up",
-                    condensed.first?.time ?? 0, condensed.last?.time ?? 0, 1000 * wettest.liquidWater,
-                    wettest.time, wettest.height))
+                        "  condensed from %.0f s to %.0f s, most %.2f g of water a kilogram (%.0f%% ice) at %.0f s, %.0f m up",
+                    condensed.first?.time ?? 0, condensed.last?.time ?? 0, 1000 * condensate(wettest),
+                    100 * wettest.ice / condensate(wettest), wettest.time, wettest.height))
+        }
+        if let last = samples.last, last.precipitation > 0 {
+            let start = samples.first { $0.precipitation > 0 }?.time ?? last.time
+            lines.append(
+                String(
+                    format: "  %.0f kg of water fell out from %.0f s, %.0f kg of it as snow",
+                    last.precipitation,
+                    start, last.snow))
         }
         if let last = samples.last {
             lines.append(
@@ -718,6 +928,13 @@ extension CloudSpec {
     /// The humidity this describes, in the standard atmosphere from `handOver`'s air.
     public func humidity(_ handOver: CloudHandOver) -> CloudHumidity {
         CloudHumidity(relativeHumidity: relativeHumidity, atmosphere: atmosphere(handOver))
+    }
+
+    /// The boundary layer's turbulence this describes.
+    public var turbulence: CloudTurbulence {
+        CloudTurbulence(
+            frictionVelocity: frictionVelocity, convectiveVelocity: convectiveVelocity,
+            height: boundaryLayerHeight, coefficient: turbulentEntrainment)
     }
 
     /// The wind this describes.

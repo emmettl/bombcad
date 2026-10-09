@@ -40,7 +40,7 @@ struct RunComparisonView: View {
                                 SavedRunRow(
                                     run: run, selected: selection(run), editable: !model.sweep.isActive,
                                     differs: run.inputSHA256 != currentInputHash,
-                                    rename: { model.renameRun(id: run.id, name: $0) },
+                                    rename: { try model.renameRun(id: run.id, name: $0) },
                                     remove: {
                                         removed.append(run)
                                         model.removeRun(id: run.id)
@@ -206,8 +206,17 @@ struct RunComparisonView: View {
                         }
                         if let fragments = run.fragments { Text(fragments.summary) }
                         if let groundShock = run.groundShock { Text(groundShock.summary) }
+                        ForEach(run.envelopeExposure ?? []) { building in
+                            Text(
+                                String(
+                                    format:
+                                        "%@: %.2f kPa peak surface pressure · %.2f Pa s mean positive impulse",
+                                    building.name, building.peakPositivePa / 1000,
+                                    building.meanPositiveImpulsePaS ?? 0))
+                        }
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
+                    if let thermal = run.thermal { Text(thermal.comparison).font(.callout) }
                     if plotsStructure {
                         if let response = run.structure {
                             metric("Peak recorded deflection", response.peak, baseline?.structure?.peak, "mm")
@@ -353,21 +362,31 @@ private struct SavedRunRow: View {
     @Binding var selected: Bool
     let editable: Bool
     let differs: Bool
-    let rename: (String) -> Void
+    let rename: (String) throws -> Void
     let remove: () -> Void
     let export: () -> Void
     let useInputs: () -> Void
     @State private var draft = ""
+    @State private var renameError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(run.name, isOn: $selected).toggleStyle(.checkbox)
             TextField("Name", text: $draft).textFieldStyle(.roundedBorder).disabled(!editable)
                 .onSubmit {
-                    rename(draft)
-                    draft = run.name
+                    do {
+                        try rename(draft)
+                        draft = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                        renameError = nil
+                    } catch {
+                        renameError = error.localizedDescription
+                    }
                 }
-                .help("Press Return to rename this run; names must be unique.")
+                .help("Press Return to rename this run; names must be unique and at most 120 characters.")
+            if let renameError {
+                Text(renameError).font(.caption).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Text(run.capturedAt, format: .dateTime.month().day().hour().minute()).font(.caption)
             Text(
                 "\(run.scenario.name) · \(run.elapsedTime * 1000, format: .number.precision(.fractionLength(1))) ms"
@@ -382,6 +401,10 @@ private struct SavedRunRow: View {
             }.controlSize(.small)
         }
         .onAppear { draft = run.name }
-        .onChange(of: run.name) { draft = run.name }
+        .onChange(of: run.name) {
+            draft = run.name
+            renameError = nil
+        }
+        .onChange(of: draft) { renameError = nil }
     }
 }

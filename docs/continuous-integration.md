@@ -10,15 +10,32 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml) | Every push to `main`, or by hand | `make check`: lint, tests, release-script tests, build |
+| [Check](../.github/workflows/check.yml) | Every push to `main`, or by hand | Lint, release/nightly script tests, build, then application and core tests |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
-ones are dropped, so every run finishes and at most one waits. Both run only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
+ones are dropped, so at most one waits. A failed check or timeout still stops a run. Both run
+only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
 for hellomini-builds, so a BombCAD job can share the GPU with theirs; the nightly run is timed
 to miss Scrimply's, which takes the mini from about 01:30 to 04:30 UTC. A time flagged slower
 may be another job on the machine: check the Actions tabs of those repositories before looking
 for a regression.
+
+Check exposes lint, script tests, build and `make test` as separate steps. The test step has a
+45-minute limit inside the job's 60-minute limit so a stalled test process fails before the
+job runs out of time to retain its diagnostics. Its combined output is streamed to Actions
+and uploaded as `check-<run ID>-<attempt>/tests.log`, retained for 14 days even if the test step
+fails or times out. The pipeline preserves `make test`'s failure status. Build and script
+checks run before the tests, so their results remain visible if tests stall. `make check`
+remains the equivalent local set of required checks.
+
+On 9 October, Check runs [37965308304](https://github.com/emmettl/bombcad/actions/runs/37965308304)
+and [37975918140](https://github.com/emmettl/bombcad/actions/runs/37975918140) hit the job limit
+in the core test target.
+In the latter, all 220 application tests passed in 123 seconds; output from the core target
+stopped well before cancellation with several tests still unfinished. The core-test stall is
+unresolved. The passing nightly on the same commit covers a different suite and does not
+replace Check.
 
 ### The nightly comparison
 

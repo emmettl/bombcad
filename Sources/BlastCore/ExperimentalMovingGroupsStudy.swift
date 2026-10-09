@@ -113,8 +113,12 @@ public enum ExperimentalMovingGroupsStudy {
         h: Double, angle: Double, start: Double, duration: Double,
         previous: [FractionalGasTransport.Cell]? = nil, prescribedBody: RigidBoxBody? = nil,
         prescribedVelocity: SIMD3<Double> = velocity, reconstruct: Bool = false,
-        surfaceQuadrature: Bool = false
+        surfaceQuadrature: Bool = false, conservedQuadratic: Bool = false, slipSideWalls: Bool = false
     ) throws -> Domain {
+        guard !conservedQuadratic || reconstruct else { throw Failure.inconsistentInventory }
+        guard !slipSideWalls || (prescribedVelocity.y == 0 && prescribedVelocity.z == 0) else {
+            throw Failure.inconsistentInventory
+        }
         let count = Int((2 / h).rounded())
         guard previous == nil || previous!.count == count * count * count else {
             throw Failure.inconsistentInventory
@@ -241,7 +245,20 @@ public enum ExperimentalMovingGroupsStudy {
                 }
             }
         }
-        let plan = try MovingConnectedGasGroups.build(
+        if slipSideWalls {
+            for index in boundaries.indices
+            where boundaries[index].geometry.owner == 0
+                && abs(boundaries[index].geometry.normal.x) < 0.5
+            {
+                let original = boundaries[index]
+                let b = original.geometry
+                boundaries[index] = .init(
+                    geometry: .init(
+                        cell: b.cell, area: b.area, normal: b.normal, centroid: b.centroid, owner: 1),
+                    meanTime: original.meanTime, samples: original.samples)
+            }
+        }
+        var plan = try MovingConnectedGasGroups.build(
             old: old,
             finalVolumes: geometry.map(\.finalGasVolume),
             meanVolumes: geometry.map { $0.gasVolumeTime / duration },
@@ -249,6 +266,11 @@ public enum ExperimentalMovingGroupsStudy {
             duration: duration, velocity: prescribedVelocity,
             oldGasCentres: reconstruct ? oldCentres : nil, finalGasCentres: reconstruct ? finalCentres : nil,
             finalFaces: reconstruct ? finalFaces : nil)
+        if conservedQuadratic {
+            plan.oldConservedGeometry = try .build(
+                plan: plan, shape: startGeometry, cellSize: h, final: false)
+            plan.finalConservedGeometry = try .build(plan: plan, shape: endGeometry, cellSize: h, final: true)
+        }
         return Domain(plan: plan, old: old, body: body)
     }
     private static func measure(

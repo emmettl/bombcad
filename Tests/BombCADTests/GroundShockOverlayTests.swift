@@ -47,7 +47,9 @@ struct GroundShockOverlayTests {
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         try await waitUntil(model) { model.experimentIsReady }
         model.run()
-        try await waitUntil(model) { !model.isRunning && !model.hasPendingGPUWork }
+        try await waitUntil(model) {
+            !model.isRunning && !model.hasPendingGPUWork && model.companionsCaughtUp
+        }
         try model.keepRun(named: "Run")
         return (model, model.savedRuns.last!)
     }
@@ -158,5 +160,35 @@ struct GroundShockOverlayTests {
         #expect(try ProjectDocument(archive: document.makeArchive()).groundShock == spec())
         document.groundShock = nil
         #expect(try ProjectDocument(archive: document.makeArchive()).groundShock == nil)
+    }
+
+    @Test("On the Mac set for sweeps, the ground points come to the same estimate as here")
+    func remote() async throws {
+        let (_, here) = try await run(airOnly(), groundShock: spec())
+        var document = airOnly()
+        document.groundShock = spec()
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        let (worker, server) = localWorker(name: "the mini")
+        _ = try await worker.start()
+        model.useWorker(worker, host: "the mini")
+        model.groundShockHost = "the mini"
+        try await waitUntil(model) { model.experimentIsReady }
+        model.run()
+        try await waitUntil(model) {
+            !model.isRunning && !model.hasPendingGPUWork && model.companionsCaughtUp
+        }
+        #expect(model.groundShock is ResilientFrameConsumer)
+        try model.keepRun(named: "There")
+        let there = try #require(model.savedRuns.last)
+        #expect(there.gauges == here.gauges && there.stepCount == here.stepCount)
+        // The frames fall where batches end, which follows the GPU's timing; compare the peaks and
+        // impulses, which the solver keeps every step.
+        #expect(
+            there.groundShock?.result.points.map(\.peakOverpressure)
+                == here.groundShock?.result.points.map(\.peakOverpressure))
+        #expect(
+            there.groundShock?.result.points.map(\.impulse) == here.groundShock?.result.points.map(\.impulse))
+        worker.close()
+        await server.value
     }
 }

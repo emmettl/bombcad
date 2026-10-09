@@ -15,17 +15,23 @@ import simd
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
-//               [--bond pullout|splitting|confined] [--crack-shear]   (also on beam and slab)
+//               [--bond pullout|splitting|confined] [--crack-shear] [--slide-apart]   (also on beam and slab)
+//   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
-//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map]
+//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
+//                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
+//   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
+//                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
 //                       [--stationary-walls]
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -163,6 +169,8 @@ func applyRateOptions(_ model: inout StructureModel) {
     if flag("element-bar-rate") { model.barRateAlongBars = false }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
+    // `--slide-apart`: what a crack has slid by no longer counts as opening it.
+    if flag("slide-apart") { model.slipWidensCracks = false }
     applyRateOptions(&model.material)
     model.solidMaterial = model.solidMaterial.map {
         $0.map {
@@ -630,10 +638,7 @@ func runSnapshot() throws {
     let width = option("width").flatMap { Int($0) } ?? 1600
     let height = option("height").flatMap { Int($0) } ?? 1000
 
-    var configuration = SolverConfiguration()
-    configureRefinement(&configuration)
-    let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+    let solver = try makeAirSolver(scenario, cellSize: cellSize)
     solver.configuration.movingWalls = !flag("stationary-walls")
     let started = ContinuousClock.now
     var sleptAt: Double?
@@ -663,13 +668,54 @@ func runSnapshot() throws {
         guard let region = ground?.region(cellSize: solver.grid.cellSize) else { return }
         ground?.consume(solver.groundSlice(low: region.low, high: region.high))
     }
+    // The fireball's thermal radiation, reckoned a frame a millisecond, as the app does.
+    var thermal = try option("thermal").map { path in
+        let spec = try JSONDecoder().decode(
+            ThermalSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        try spec.validate()
+        return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+    }
+    // With --thermal-compare, the same frames reckoned with the other fireball model too, and
+    // each timed.
+    var other = thermal.map { exposure in
+        var spec = exposure.spec
+        spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+    }
+    if !flag("thermal-compare") { other = nil }
+    var thermalSeconds = (0.0, 0.0)
+    var fireballSeconds = 0.0
+    var largestShape: FireballShape?
+    func feedThermal() {
+        guard var exposure = thermal else { return }
+        let extracting = ContinuousClock.now
+        let frame = solver.fireball(luminousTemperature: exposure.spec.luminousTemperature)
+        fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
+        if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
+        var started = ContinuousClock.now
+        exposure.add(frame)
+        thermalSeconds.0 += (ContinuousClock.now - started) / .seconds(1)
+        thermal = exposure
+        if var compared = other {
+            started = ContinuousClock.now
+            compared.add(frame)
+            thermalSeconds.1 += (ContinuousClock.now - started) / .seconds(1)
+            other = compared
+        }
+    }
     feedFragments()
     feedGround()
+    feedThermal()
+    // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
+    // headless run does.
+    if let thermal { solver.frameRequest.fireball = thermal.spec.luminousTemperature }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
-            steps: 64, timeLimit: fragments == nil ? time : min(time, solver.time + 0.001))
+            steps: 64,
+            timeLimit: fragments == nil && thermal == nil ? time : min(time, solver.time + 0.001))
         feedFragments()
         feedGround()
+        feedThermal()
         if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
         if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
         if result.steps == 0 || !result.isStable { break }
@@ -696,6 +742,58 @@ func runSnapshot() throws {
         let result = ground.result(frameInterval: 0)
         dots += result.dots
         print("  " + result.summary)
+    }
+    if let thermal {
+        // Coloured by fluence over six decades from 1 J/m², lifted off their surface, as the app
+        // draws them.
+        for (receiver, fluence) in zip(thermal.receivers, thermal.fluence) {
+            dots.append(
+                SIMD4(
+                    receiver.position + 0.05 * receiver.normal,
+                    4 + min(max(log10(max(Float(fluence), 1)) / 6, 0), 0.999)))
+        }
+        print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
+        for line in thermal.result.summary { print(line) }
+        if let other {
+            print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
+            for line in other.result.summary { print(line) }
+            print(
+                String(
+                    format:
+                        "Reckoned in %.2f s as its %@ and %.2f s as its %@, over %d frames; found in %.2f ms a frame",
+                    thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
+                    other.spec.fireball.rawValue,
+                    thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
+            // Each receiver's fluence by the shape against the sphere's, by surface.
+            let (shape, sphere) = thermal.spec.fireball == .shape ? (thermal, other) : (other, thermal)
+            var surfaces: [String] = []
+            for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
+                surfaces.append(receiver.surface)
+            }
+            for surface in surfaces {
+                let indices = shape.receivers.indices.filter { shape.receivers[$0].surface == surface }
+                let a = indices.reduce(0.0) { $0 + shape.fluence[$1] }
+                let b = indices.reduce(0.0) { $0 + sphere.fluence[$1] }
+                let lit = indices.filter { shape.fluence[$0] > 0 || sphere.fluence[$0] > 0 }
+                let ratios = lit.map { (shape.fluence[$0] + 1) / (sphere.fluence[$0] + 1) }.sorted()
+                let median = ratios.isEmpty ? 0 : ratios[ratios.count / 2]
+                let shapeOnly = indices.filter { shape.fluence[$0] > 1000 && sphere.fluence[$0] < 1 }.count
+                let sphereOnly = indices.filter { sphere.fluence[$0] > 1000 && shape.fluence[$0] < 1 }.count
+                print(
+                    String(
+                        format:
+                            "  %@: mean fluence %.1f kJ/m² as the shape, %.1f as the sphere (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d shape, %d sphere",
+                        surface, a / Double(indices.count) / 1000, b / Double(indices.count) / 1000,
+                        100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
+            }
+        }
+        if let largestShape {
+            print(
+                String(
+                    format: "Largest shape: %.1f m³ in blocks %.2f m a side, %d by %d by %d, %d tiles",
+                    largestShape.volume, largestShape.blockSize, largestShape.counts.x, largestShape.counts.y,
+                    largestShape.counts.z, largestShape.tileCount))
+        }
     }
     if let fragments {
         let launch = max(fragments.cloud.launchSpeed, 1)
@@ -832,7 +930,8 @@ func runBeam() throws {
             device: device, elementsThroughDepth: layers,
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
             unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
-            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear")
+            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear"),
+            slipWidensCracks: !flag("slide-apart")
         ) { material in
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
@@ -1256,7 +1355,8 @@ func runShearBeam() throws {
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
             crackShearStiffness: flag("crack-shear"),
-            mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 }
+            mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 },
+            slipWidensCracks: !flag("slide-apart")
         ) { material in
             if let dowel { material.dowelFactor = dowel }
             // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
@@ -1293,6 +1393,137 @@ func runShearBeam() throws {
             pad("\(format(Double(tenths) / 10)) mm", 12) + pad(measured, 10)
                 + results.map { pad(format(Double($0.result.load(at: deflection)) / 1000, 0), 12) }.joined())
     }
+}
+
+func runPushOff() throws {
+    print(
+        "Walraven and Reinhardt's push-off tests (HERON 26(1A), 1981), mix 1, with external restraint bars:")
+    print("one crack driven along each specimen's measured opening and slip. Stresses in MPa; across")
+    print("the crack compressive positive. 'fit' is the paper's eqs. 1a/1b at the same opening and slip;")
+    print("'MCFT' the modified compression field theory's shear limit with the measured stress across.\n")
+    let names = option("specimens").map { $0.split(separator: ",").map(String.init) }
+    let size = option("size").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.05
+    func mpa(_ value: Float?) -> String { value.map { format(Double($0) / 1e6, 2) } ?? "-" }
+    for specimen in PushOffTest.specimens where names?.contains(specimen.name) ?? true {
+        // `--close`: then pushed back to 0.05 mm open, the slip held, and slid 0.5 mm further.
+        let end = SIMD2(specimen.finalSlip, 0.00005)
+        let beyond = flag("close") ? [end, end + SIMD2(0.0005, 0)] : []
+        let result = try PushOffTest.run(
+            device: device, specimen: specimen, size: size, crackShearStiffness: flag("crack-shear"),
+            beyond: beyond
+        ) { model in applyRateOptions(&model) }
+        if flag("close") {
+            let closing = result.samples.filter { $0.slip >= specimen.finalSlip - 1e-6 }
+            for sample in [closing.first, closing.dropFirst(closing.count / 2).first, closing.last]
+                .compactMap({ $0 })
+            {
+                print(
+                    "  closed: slip \(format(Double(sample.slip) * 1000, 2)) mm, open \(format(Double(sample.width) * 1000, 2)) mm: "
+                        + "shear \(format(Double(sample.shear) / 1e6, 2)), across \(format(Double(sample.normal) / 1e6, 2)) MPa"
+                )
+            }
+        }
+        let material = PushOffTest.material(for: specimen)
+        print(
+            "\(specimen.name): cube strength \(format(Double(specimen.cubeStrength) / 1e6)) MPa, "
+                + "initial width \(format(Double(specimen.initialWidth) * 1000, 2)) mm")
+        print(
+            pad("slip", 8) + pad("width", 8) + pad("shear", 8) + pad("model", 8) + pad("fit", 8)
+                + pad("MCFT", 8)
+                + pad("across", 9) + pad("model", 8) + pad("fit", 8))
+        var slips: [Float] = [0.1, 0.2, 0.4, 0.8, 1.2, 1.6, 2.0].map { $0 / 1000 }.filter {
+            $0 <= specimen.finalSlip
+        }
+        slips.append(specimen.finalSlip)
+        for slip in slips {
+            let width = specimen.width(at: slip)
+            let modelled = result.modelled(at: slip)
+            let pressed = specimen.measuredNormal(at: slip)
+            let limit = pressed.map {
+                PushOffTest.compressionFieldShear(
+                    width: width, pressure: $0, compressiveStrength: material.compressiveStrength,
+                    aggregate: material.aggregateSize)
+            }
+            print(
+                pad("\(format(Double(slip) * 1000, 2))", 8) + pad("\(format(Double(width) * 1000, 2))", 8)
+                    + pad(mpa(specimen.measuredShear(at: slip)), 8) + pad(mpa(modelled.shear), 8)
+                    + pad(
+                        mpa(
+                            PushOffTest.fittedShear(
+                                width: width, slip: slip, cubeStrength: specimen.cubeStrength)), 8)
+                    + pad(mpa(limit), 8) + pad(mpa(pressed), 9) + pad(mpa(modelled.normal), 8)
+                    + pad(
+                        mpa(
+                            PushOffTest.fittedNormal(
+                                width: width, slip: slip, cubeStrength: specimen.cubeStrength)), 8))
+        }
+        print("")
+    }
+}
+
+/// The cracks on the slab's unloaded face at 80 ms, in plan, wider than `--plan` millimetres (0.1
+/// by default; a crack's width is its strain over its band: the element with bars that slip, the
+/// crack spacing without), and where the cracking lies along the span: columns of elements cracked
+/// that wide across most of the width, whose opening, averaged across it, is the largest within
+/// an element either side, and the length of span holding nine tenths of the face's opening.
+func printSlabCrackPlan(_ solver: StructureSolver) {
+    let h = solver.model.elementSize
+    let band = solver.model.bondSlip != nil ? h : max(h, solver.model.material.crackSpacing)
+    let visible = (option("plan").flatMap { Float($0) } ?? 0.1) / 1000
+    let threshold = visible / band
+    print(
+        "  cracks wider than \(format(Double(visible) * 1000, 2)) mm on the unloaded face at 80 ms, in plan "
+            + "(supports at the ^):")
+    let supports = [6, 58].map { Int((Float($0) * 0.0254 / h).rounded()) }
+    print("    " + String((0..<solver.ex).map { supports.contains($0) ? "^" : " " }))
+    for row in solver.crackPlan(layer: 0, threshold: threshold) { print("    " + row) }
+    var mean = [Float](repeating: 0, count: solver.ex)
+    var share = [Float](repeating: 0, count: solver.ex)
+    for i in 0..<solver.ex {
+        for j in 0..<solver.ey {
+            let opening = solver.crackOpening(i, j, 0)
+            mean[i] += opening / Float(solver.ey)
+            if opening > threshold { share[i] += 1 / Float(solver.ey) }
+        }
+    }
+    let middle = Float(solver.ex) / 2
+    var lines: [(at: Float, width: Float)] = []
+    for i in 0..<solver.ex where share[i] > 0.5 {
+        let left = i > 0 ? mean[i - 1] : 0
+        let right = i + 1 < solver.ex ? mean[i + 1] : 0
+        if mean[i] >= left && mean[i] > right {
+            lines.append(((Float(i) + 0.5 - middle) * h, mean[i] * band))
+        }
+    }
+    print("  lines of cracking across the width (mm from mid-span: mean width across it, mm):")
+    print(
+        "    "
+            + lines.map { "\(format(Double($0.at) * 1000, 0)): \(format(Double($0.width) * 1000, 2))" }
+            .joined(separator: ", "))
+    let gaps = zip(lines, lines.dropFirst()).map { $1.at - $0.at }
+    if let first = lines.first, let last = lines.last, !gaps.isEmpty {
+        print(
+            "  \(lines.count) lines over \(format(Double(last.at - first.at) * 1000, 0)) mm, "
+                + "\(format(Double(gaps.reduce(0, +) / Float(gaps.count)) * 1000, 0)) mm apart on average")
+    }
+    // The shortest run of columns holding nine tenths of the opening along the face.
+    let total = mean.reduce(0, +)
+    var shortest = (from: 0, to: solver.ex - 1)
+    for from in 0..<solver.ex {
+        var sum: Float = 0
+        for to in from..<solver.ex {
+            sum += mean[to]
+            if sum >= 0.9 * total {
+                if to - from < shortest.to - shortest.from { shortest = (from, to) }
+                break
+            }
+        }
+    }
+    print(
+        "  nine tenths of the opening along the face within \(format(Double(shortest.to - shortest.from + 1) * Double(h) * 1000, 0)) mm, "
+            + "from \(format(Double((Float(shortest.from) - middle) * h) * 1000, 0)) to "
+            + "\(format(Double((Float(shortest.to + 1) - middle) * h) * 1000, 0)) mm; the face opened "
+            + "\(format(Double(total * h) * 1000, 1)) mm in all")
 }
 
 func runSlab() throws {
@@ -1391,7 +1622,10 @@ func runSlab() throws {
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
             crackShearStiffness: flag("crack-shear"),
             adjust: { applyRateOptions(&$0) },
-            adjustModel: { if flag("element-bar-rate") { $0.barRateAlongBars = false } },
+            adjustModel: {
+                if flag("element-bar-rate") { $0.barRateAlongBars = false }
+                if flag("slide-apart") { $0.slipWidensCracks = false }
+            },
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
@@ -1399,11 +1633,15 @@ func runSlab() throws {
                         for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
                     }
                 }
-                // `--map`: the cracks through the middle of the width at 80 ms.
-                : flag("map")
+                // `--map`: the cracks through the middle of the width at 80 ms; `--plan`, on the
+                // unloaded face, and where the cracks across the span lie.
+                : flag("map") || flag("plan")
                     ? { solver in
-                        print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
-                        for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                        if flag("map") {
+                            print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
+                            for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                        }
+                        if flag("plan") { printSlabCrackPlan(solver) }
                     } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
@@ -1510,10 +1748,34 @@ func runAnchorage() throws {
             + (flag("air") ? "12 m long, loaded by the air" : "Kingery–Bulmash reflected pulse, no air")
             + "; \(format(Double(duration), 1)) s"
     )
+    if flag("panel") {
+        print(
+            "As a panel 3 m long resting on the ground between two columns, its vertical edges tied to them\n"
+                + "by each connection in turn; sway at the top's middle; ties, slip and moment are of all its joints."
+        )
+    }
     if !flag("air") {
         print(
             "The pulse loads the face alone. A freestanding wall's back face is loaded too, as the wave wraps\n"
                 + "over and round it, and it sways about a third as far at 10 m: see --air.")
+    }
+    // The footing's soil: `--massless` without its mass and radiation damping; `--layer d` a layer
+    // d metres deep over rock (or `--beneath sand`, a looser sand, or `--beneath clay`, a soft
+    // clay, as a half-space).
+    var soil = Soil()
+    soil.radiationDamping = !flag("massless")
+    soil.layerDepth = option("layer").flatMap { Float($0) }
+    switch option("beneath") {
+    case "sand": soil.beneath = SoilMaterial(shearModulus: 20e6, poissonRatio: 0.3, density: 1800)
+    case "clay": soil.beneath = SoilMaterial(shearModulus: 10e6, poissonRatio: 0.45, density: 1700)
+    default: soil.beneath = nil
+    }
+    if soil != Soil() {
+        print(
+            "Footing on medium dense sand" + (soil.radiationDamping ? "" : " without its mass")
+                + (soil.layerDepth.map {
+                    " as a layer \(format(Double($0), 1)) m deep over " + (option("beneath") ?? "rock")
+                } ?? ""))
     }
     for standoff in standoffs {
         print("")
@@ -1533,19 +1795,24 @@ func runAnchorage() throws {
                     device: device, base: base, mass: mass, standoff: standoff, duration: Double(duration),
                     cellSize: option("cell").flatMap { Float($0) } ?? 0.25, elementSize: h,
                     margin: option("margin").flatMap { Float($0) } ?? 12,
-                    domainHeight: option("height").flatMap { Float($0) } ?? 18,
+                    domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
                     progress: flag("progress") ? { print("    " + $0) } : nil)
-                : try AnchorageStudy.run(
-                    device: device, base: base, mass: mass, standoff: standoff, duration: duration,
-                    elementSize: h,
-                    shells: shells)
+                : flag("panel")
+                    ? try AnchorageStudy.run(
+                        device: device, base: .resting, mass: mass, standoff: standoff, duration: duration,
+                        elementSize: h, edges: base)
+                    : try AnchorageStudy.run(
+                        device: device, base: base, mass: mass, standoff: standoff, duration: duration,
+                        elementSize: h,
+                        shells: shells, soil: soil)
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
                         + "\(format(Double(r.duration) * 1000, 1)) ms, "
                         + "\(format(Double(r.pressure * r.duration) / 2, 0)) Pa s")
                 print(
-                    pad("base", 22) + pad("peak sway", 11) + pad("final", 10) + pad("uplift", 10)
+                    pad(flag("panel") ? "edges" : "base", 22) + pad("peak sway", 11) + pad("final", 10)
+                        + pad("uplift", 10)
                         + pad("slip", 10) + pad("tie failed", 12) + pad("base M", 12) + pad("eroded", 8)
                         + pad("run time", 9))
                 header = true
@@ -1562,6 +1829,14 @@ func runAnchorage() throws {
                     + pad(failed, 12)
                     + pad(anchored ? "\(format(Double(r.peakBaseMoment) / 1000, 0)) kN m/m" : "-", 12)
                     + pad("\(r.summary.erodedElements)", 8) + pad("\(format(r.wallSeconds)) s", 9))
+            if base == .footing {
+                print(
+                    pad("", 22)
+                        + "footing: turned \(format(Double(r.footingRotation) * 1000, 2)) mrad, heel lifted "
+                        + "\(format(Double(r.footingUplift) * 1000, 2)) mm; at the end slid "
+                        + "\(format(Double(r.footingSlide) * 1000, 2)) mm, settled \(format(Double(r.footingSettlement) * 1000, 2)) mm"
+                )
+            }
             if flag("air") {
                 print(
                     pad("", 22)
@@ -1573,11 +1848,123 @@ func runAnchorage() throws {
     }
 }
 
+/// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
+/// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
+/// does with afterburning; and whether the two agree.
+func runThermal() throws {
+    let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    let scene = FragmentScene(scenario)
+    var spec = ThermalSpec()
+    if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
+    try spec.validate()
+    let count = option("frames").flatMap { Int($0) } ?? 60
+    let frames = (0..<count).map { n -> FireballFrame in
+        let s = Float(n) / Float(max(count - 1, 1))
+        let radius = 0.5 + 7 * s
+        return FireballFrame(
+            time: Double(n) * 0.001, volume: 4 / 3 * Double.pi * pow(Double(radius), 3),
+            centre: scenario.charge.position + SIMD3(0, 0, radius * 0.5), temperature: 2200 - 400 * s,
+            hottest: 2500)
+    }
+    /// Times the visibility test within each frame.
+    final class Timed: ThermalVisibility, @unchecked Sendable {
+        let inner: any ThermalVisibility
+        var seconds = 0.0
+        var rays = 0
+        init(_ inner: any ThermalVisibility) { self.inner = inner }
+        func visible(_ rays: [ThermalRay]) -> [Bool] {
+            let started = ContinuousClock.now
+            defer {
+                seconds += (ContinuousClock.now - started) / .seconds(1)
+                self.rays += rays.count
+            }
+            return inner.visible(rays)
+        }
+    }
+    let occluders = ThermalExposure.occluders(scene)
+    let metal = MetalThermalVisibility(occluders: occluders)
+    print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
+    var answers: [[Float]] = []
+    for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
+        + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
+    {
+        let timed = Timed(visibility)
+        let exposure = ThermalExposure(spec: spec, scene: scene, visibility: timed)
+        func processorSeconds() -> Double {
+            var usage = rusage()
+            getrusage(RUSAGE_SELF, &usage)
+            return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+                + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1e6
+        }
+        let started = ContinuousClock.now
+        let processor = processorSeconds()
+        var irradiance: [Float] = []
+        for frame in frames { irradiance += exposure.irradiance(frame) }
+        let total = (ContinuousClock.now - started) / .seconds(1)
+        let busy = processorSeconds() - processor
+        answers.append(irradiance)
+        print(
+            "\(name): \(exposure.receivers.count) receivers, \(timed.rays / count) rays a frame; "
+                + "\(format(total / Double(count) * 1000, 1)) ms a frame, "
+                + "\(format(timed.seconds / Double(count) * 1000, 1)) ms of it the visibility test; "
+                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame")
+    }
+    if let metal {
+        let usage = metal.usage
+        print(
+            "GPU: \(usage.gpuFrames) frames there, \(usage.cpuFrames) answered first on the CPU, "
+                + "\(format(usage.gpuSeconds / Double(max(usage.gpuFrames, 1)) * 1000, 2)) ms of GPU time a frame"
+        )
+        let differing = zip(answers[0], answers[1]).filter { $0 != $1 }.count
+        print("Receivers' irradiance differing between CPU and GPU: \(differing) of \(answers[0].count)")
+    }
+}
+
+/// A footing rocked slowly on dry sand against Gajan and Kutter's centrifuge test SSG02_03
+/// (`FootingRockingTest`). `--shear` is the sand's shear modulus in MPa, `--bearing` its bearing
+/// capacity in kPa; `--history` writes rotation, moment and settlement every 10 ms.
+func runRocking() throws {
+    let shear = (option("shear").flatMap { Float($0) } ?? 40) * 1e6
+    let bearing = (option("bearing").flatMap { Float($0) } ?? 814) * 1e3
+    let names = option("packets").map { $0.split(separator: ",").map(String.init) }
+    let packets = FootingRockingTest.packets.filter { names?.contains($0.name) ?? true }
+    print(
+        "Gajan and Kutter's SSG02_03: a 29 Mg shear wall on a 2.8 × 0.65 m surface footing on dry dense sand, "
+            + "rocked slowly; sand of \(format(Double(shear) / 1e6, 0)) MPa, bearing \(format(Double(bearing) / 1e3, 0)) kPa"
+    )
+    let result = try FootingRockingTest.run(
+        device: device, shearModulus: shear, bearingCapacity: bearing, packets: packets,
+        speed: option("speed").flatMap { Float($0) } ?? 0.2, progress: { print("  " + $0) })
+    print("")
+    print(
+        pad("packet", 8) + pad("rotation", 18) + pad("moment forward", 18) + pad("moment back", 18)
+            + pad("settlement / L", 18))
+    print(pad("", 8) + String(repeating: pad("measured  model", 18), count: 4))
+    for (measured, model) in zip(packets, result.packets) {
+        func pair(_ a: Float, _ b: Float, _ digits: Int) -> String {
+            pad(format(Double(a), digits) + "  " + format(Double(b), digits), 18)
+        }
+        print(
+            pad(measured.name, 8) + pair(measured.peakRotation, model.peakRotation, 4)
+                + pair(measured.moment.x, model.moment.x, 3) + pair(measured.moment.y, model.moment.y, 3)
+                + pair(measured.settlement, model.settlement, 4))
+    }
+    print(
+        String(
+            format: "Largest actuator lag %.1f mm; %.0f s", (result.packets.map(\.lag).max() ?? 0) * 1000,
+            result.wallSeconds))
+    if let path = option("history") {
+        let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
+        try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 do {
     switch command {
     case "slab": try runSlab()
     case "beam": try runBeam()
     case "shear": try runShearBeam()
+    case "pushoff": try runPushOff()
     case "impact": try runImpact()
     case "closein": try runCloseIn()
     case "closeair": try runCloseAir()
@@ -1588,6 +1975,8 @@ do {
     case "validate": try runValidation()
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
+    case "rocking": try runRocking()
+    case "thermal": try runThermal()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

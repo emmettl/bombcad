@@ -7,6 +7,7 @@ public struct SceneObject: Sendable, Hashable, Identifiable {
     public enum Representation: Sendable, Hashable {
         case fixed(Box)
         case deformable(StructureModel)
+        case envelope(BuildingEnvelope)
     }
 
     public enum ComponentKind: String, Codable, Sendable { case solid, opening, support }
@@ -45,6 +46,11 @@ public struct SceneObject: Sendable, Hashable, Identifiable {
     }
     public var structure: StructureModel? {
         if case .deformable(let body) = representation { return body }
+        return nil
+    }
+
+    public var envelope: BuildingEnvelope? {
+        if case .envelope(let value) = representation { return value }
         return nil
     }
 
@@ -217,12 +223,14 @@ extension Scenario {
     }
 
     @discardableResult
-    public mutating func addStructureObject(_ body: StructureModel, name: String = "Structure") throws -> UUID
-    {
+    public mutating func addStructureObject(
+        _ body: StructureModel, name: String = "Structure", id: UUID = UUID()
+    ) throws -> UUID {
         guard structuralObjects.count < Self.maximumStructures else {
             throw SceneObjectError.unsupportedRepresentation
         }
-        let object = SceneObject(name: name, representation: .deformable(body))
+        guard object(id: id) == nil else { throw SceneObjectError.invalidOwnership }
+        let object = SceneObject(id: id, name: name, representation: .deformable(body))
         objects.append(object)
         return object.id
     }
@@ -344,6 +352,8 @@ extension Scenario {
             Set(structuralObjects.compactMap(\.sourceModelID)).count
                 == structuralObjects.compactMap(\.sourceModelID).count,
             objects.filter({ $0.fixedBox != nil }).allSatisfy({ $0.sourceModelID == nil }),
+            envelopeObjects.allSatisfy({ $0.sourceModelID == nil }),
+            envelopeObjects.isEmpty || rigidBoxes.count <= 2048,
             objects.allSatisfy({ $0.preferredSolidElementSize.map { $0.isFinite && $0 > 0 } ?? true }),
             objects.allSatisfy({ !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
         else { throw SceneObjectError.invalidOwnership }

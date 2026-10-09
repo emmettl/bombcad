@@ -144,6 +144,7 @@ public enum ExperimentalMovingLoadStudy {
     public static func run(
         cellSizes: [Double] = [0.2, 0.1, 0.05], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2, 0.1], duration: Double = 0.0002, targetPulseEnergy: Double = 6400,
+        conservedQuadratic: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite && duration > 0 && duration <= 0.0008,
@@ -159,7 +160,9 @@ public enum ExperimentalMovingLoadStudy {
                     let run = try ExperimentalMovingTrajectoryStudy.solve(
                         h: h, angle: angle, start: 0, duration: duration, velocityScale: 100,
                         cfl: cfl, maximumStep: h * 0.00008,
-                        limited: true, secondOrder: true, surfaceQuadrature: true, initialCells: initial.cells
+                        limited: true, secondOrder: true, surfaceQuadrature: true,
+                        initialCells: initial.cells,
+                        conservedQuadratic: conservedQuadratic
                     )
                     let frames = run.frames.map { f in
                         Frame(
@@ -196,7 +199,8 @@ public enum ExperimentalMovingLoadStudy {
                         minimumFinalGroupFraction: run.minimumFinalGroupFraction,
                         referenceDryToWetCells: run.referenceDryToWetCells,
                         referenceWetToDryCells: run.referenceWetToDryCells,
-                        transport: "limitedHeun", wallIntegration: run.wallIntegration,
+                        transport: conservedQuadratic ? "conservedQuadraticHeun" : "limitedHeun",
+                        wallIntegration: run.wallIntegration,
                         computeSeconds: run.computeSeconds, frames: frames)
                     rows.append(row)
                     try progress(row)

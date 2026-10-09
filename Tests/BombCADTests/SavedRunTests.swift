@@ -178,7 +178,7 @@ struct CompletedRunCaptureTests {
         model.settingsChanged()
         try await waitUntil { model.time == 0 }
         #expect(model.savedRuns[0] == run)
-        model.renameRun(id: run.id, name: "First run")
+        try model.renameRun(id: run.id, name: "First run")
         #expect(model.savedRuns[0].name == "First run")
         let restored = try ProjectDocument(archive: session.snapshot.makeArchive())
         let other = ProjectSession(document: restored)

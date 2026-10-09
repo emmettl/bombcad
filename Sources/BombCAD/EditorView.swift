@@ -102,6 +102,31 @@ struct EditorView: View {
                 Text("Blocks reflect the blast but never move or break.")
             }
 
+            if !model.settings.scenario.envelopeObjects.isEmpty {
+                Section {
+                    ForEach(model.settings.scenario.envelopeObjects) { object in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(object.name)
+                                Text(
+                                    "\(object.envelope!.solids.count) walls/roofs · \(object.envelope!.openings.count) openings"
+                                )
+                                .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
+                                .labelStyle(.iconOnly)
+                        }
+                    }
+                } header: {
+                    Text("Exposure-only buildings")
+                } footer: {
+                    Text(
+                        "Stationary envelopes reflect the shared blast. They have no deformation or failure model. Undo restores a converted structure."
+                    )
+                }
+            }
+
             Section {
                 if !model.settings.scenario.structuralObjects.isEmpty {
                     Picker(
@@ -113,6 +138,12 @@ struct EditorView: View {
                             Text(object.name).tag(Optional(object.id))
                         }
                     }
+                }
+                if let object = model.editedObject, object.sourceModelID == nil {
+                    Button("Use Exposure-only Envelope") { model.useEditedEnvelope() }
+                        .help(
+                            "Keep walls, roofs and openings as stationary obstacles. Removes structural response; Undo restores it."
+                        )
                 }
                 Button("Add Independent Structure", systemImage: "plus.square") {
                     model.addIndependentStructure()
@@ -234,7 +265,7 @@ struct EditorView: View {
                         if model.selection == .support(row.reference) {
                             AnchorageEditor(
                                 title: "Support connection",
-                                law: supportLawBinding(row.reference))
+                                law: supportLawBinding(row.reference), turns: true)
                             if model.editedStructure?.anchorage(ofSupport: index) != nil,
                                 let area = model.supportBearingArea(at: index)
                             {
@@ -630,7 +661,7 @@ private struct GaugeRow: View {
 
     private func field(axis: Int) -> some View {
         TextField(
-            "",
+            "Position \(["X", "Y", "Z"][axis]) (m)",
             value: Binding(
                 get: { Double(gauge.position[axis]) },
                 set: { gauge.position[axis] = max((Float($0) / 0.05).rounded() * 0.05, 0) }),
@@ -682,15 +713,15 @@ private struct BoxRow: View {
                     }
                     GridRow {
                         Text("Corner")
-                        field(position(0))
-                        field(position(1))
-                        field(position(2))
+                        field("Corner X (m)", position(0))
+                        field("Corner Y (m)", position(1))
+                        field("Corner Z (m)", position(2))
                     }
                     GridRow {
                         Text("Size")
-                        field(size(0))
-                        field(size(1))
-                        field(size(2))
+                        field("Size X (m)", size(0))
+                        field("Size Y (m)", size(1))
+                        field("Size Z (m)", size(2))
                     }
                 }
                 .font(.callout)
@@ -703,8 +734,8 @@ private struct BoxRow: View {
         return String(format: "%.3g × %.3g × %.3g m", size.x, size.y, size.z)
     }
 
-    private func field(_ value: Binding<Double>) -> some View {
-        TextField("", value: value, format: .number.precision(.fractionLength(0...3)))
+    private func field(_ title: String, _ value: Binding<Double>) -> some View {
+        TextField(title, value: value, format: .number.precision(.fractionLength(0...3)))
             .textFieldStyle(.roundedBorder)
             .multilineTextAlignment(.trailing)
             .frame(width: 62)

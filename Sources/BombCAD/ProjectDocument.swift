@@ -116,6 +116,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var fragments: FragmentSpec?
     /// Ground points whose shaking to estimate alongside each run, saved as `groundShock.json`.
     var groundShock: GroundShockSpec?
+    /// The fireball's thermal radiation to reckon alongside each run, saved as `thermal.json`.
+    var thermal: ThermalSpec?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -151,6 +153,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         savedRuns = model.savedRuns
         fragments = model.fragmentSpec
         groundShock = model.groundShockSpec
+        thermal = model.thermalSpec
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -174,8 +177,55 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         guard legacyJSON.count <= ProjectArchive.maximumFileBytes else {
             throw ProjectFileError.invalid("Layout file is too large.")
         }
-        self.init(scenario: try JSONDecoder().decode(Scenario.self, from: legacyJSON))
+        let scenario: Scenario
+        do {
+            scenario = try JSONDecoder().decode(Scenario.self, from: legacyJSON)
+        } catch let error as DecodingError {
+            throw ProjectFileError.invalid(Self.jsonDecodingMessage(error))
+        }
+        self.init(scenario: scenario)
         try Self.validate(scenario)
+    }
+
+    private static func jsonDecodingMessage(_ error: DecodingError, file: String? = nil) -> String {
+        func path(_ keys: [any CodingKey]) -> String {
+            var result = ""
+            for key in keys {
+                if let index = key.intValue {
+                    result += "[\(index)]"
+                } else {
+                    result += (result.isEmpty ? "" : ".") + key.stringValue
+                }
+            }
+            return result.isEmpty ? "layout" : result
+        }
+        let label = file.map { "Project file \"\($0)\"" } ?? "Layout JSON"
+        switch error {
+        case .keyNotFound(let key, let context):
+            return "\(label) is missing the required field \"\(path(context.codingPath + [key]))\"."
+        case .typeMismatch(_, let context):
+            return "\(label) has the wrong value type at \"\(path(context.codingPath))\"."
+        case .valueNotFound(_, let context):
+            return "\(label) requires a non-null value at \"\(path(context.codingPath))\"."
+        case .dataCorrupted(let context):
+            return context.codingPath.isEmpty
+                ? file.map { "Project file \"\($0)\" is not valid JSON." }
+                    ?? "The layout file is not valid JSON."
+                : "\(label) contains an invalid value at \"\(path(context.codingPath))\"."
+        @unknown default:
+            return file.map { "Project file \"\($0)\" could not be decoded. Check its format." }
+                ?? "The layout JSON could not be decoded. Check its format."
+        }
+    }
+
+    private static func decodeProjectJSON<T: Decodable>(_ type: T.Type, from data: Data, file: String) throws
+        -> T
+    {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch let error as DecodingError {
+            throw ProjectFileError.invalid(jsonDecodingMessage(error, file: file))
+        }
     }
 
     init(archive: ProjectArchive) throws {
@@ -185,13 +235,14 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
                 "This project belongs to \(archive.manifest.documentType), not BombCAD.")
         }
         scenario = try ImportedSceneCodec.decode(archive)
-        let run = try JSONDecoder().decode(ProjectRunSettings.self, from: archive.files["settings.json"]!)
+        let run = try Self.decodeProjectJSON(
+            ProjectRunSettings.self, from: archive.files["settings.json"]!, file: "settings.json")
         try Self.validate(scenario)
         try run.validate()
         try Self.validateGrid(scenario, resolution: Resolution(rawValue: run.resolution)!)
         runSettings = run
         if let data = archive.files["view.json"] {
-            let view = try JSONDecoder().decode(ProjectViewSettings.self, from: data)
+            let view = try Self.decodeProjectJSON(ProjectViewSettings.self, from: data, file: "view.json")
             try view.validate()
             viewSettings = view
         }
@@ -205,6 +256,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             let spec = try JSONDecoder().decode(GroundShockSpec.self, from: data)
             try spec.validate()
             groundShock = spec
+        }
+        if let data = archive.files["thermal.json"] {
+            let spec = try JSONDecoder().decode(ThermalSpec.self, from: data)
+            try spec.validate()
+            thermal = spec
         }
         self.archive = archive
         documentID = archive.manifest.documentID
@@ -238,6 +294,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         if let viewSettings {
             try viewSettings.validate()
             files["view.json"] = try ProjectArchive.encodeJSON(viewSettings)
+        } else {
+            files.removeValue(forKey: "view.json")
         }
         if let fragments {
             try fragments.validate()
@@ -250,6 +308,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["groundShock.json"] = try ProjectArchive.encodeJSON(groundShock)
         } else {
             files.removeValue(forKey: "groundShock.json")
+        }
+        if let thermal {
+            try thermal.validate()
+            files["thermal.json"] = try ProjectArchive.encodeJSON(thermal)
+        } else {
+            files.removeValue(forKey: "thermal.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

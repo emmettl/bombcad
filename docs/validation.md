@@ -23,6 +23,10 @@ swift run -c release blastbench shear --layers 24,36
 ```
 
 ```bash
+swift run -c release blastbench pushoff
+```
+
+```bash
 swift run -c release blastbench impact --layers 16
 ```
 
@@ -54,6 +58,7 @@ swift run -c release blastbench chamber
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: converges 11–12% strong, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 13% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third as far down as measured, barely spalled, and the 0.5 m breach not converged with the mesh | Good for the load; low for close-in damage: the slab is too strong and spalls too little |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
 ## Structural response against a real test
@@ -260,6 +265,43 @@ Reading this table:
   nodes. Bearings one inch wide lower the peak to 79–87 mm. The source does not
   describe the rig; [Data wanted](data-wanted.md) lists it.
 
+### Its cracks
+
+A photograph of the test slab's unloaded face after the shot is in G. A. Shetye's thesis
+(*FE analysis and experimental validation of RC single-mat slabs subjected to blast loads*,
+MS, University of Missouri–Kansas City, 2013, open access on MOspace; Fig. 6-60b, p. 121): its
+slab 2, RSC-R1-4in, 53.1 psi and 976 psi·ms, 4.29 in at 29.94 ms, the contest's record. The
+cracks were marked up after the test. About ten main cracks run straight across the width,
+wavy and branching but not fanning towards the corners, about 2–4 in (50–100 mm) apart,
+65–75 mm on average, in a band about 22–24 in (560–600 mm) long about mid-span, with nothing
+near the supports. One crack near mid-span is wider than the rest, spalled at the edge. That is
+a reading of a small photograph; no widths are given. (The thesis gives the panels' clear
+span as 58 in, where the contest's drawing, as Kewaisy et al. reproduce it, puts the supports
+52 in apart.)
+
+`blastbench slab --plan` draws the model's unloaded face at 80 ms in plan, marking cracks wider
+than 0.1 mm, read over each crack's band (the crack spacing with perfect bond, the element with
+bars that slip), and finds the lines of cracking across the width. On 8 elements through:
+
+| Model | Peak | Main cracks | Nine tenths of the face's opening within | Widest |
+|---|---|---|---|---|
+| **Test** | **108 mm** | **about 10, 65–75 mm apart** | **about 600 mm** | **one, near mid-span** |
+| Perfect bond (the default) | 113 mm | one smeared field from support to support | 650 mm | — |
+| Bars that slip (`--bond pullout`) | 95 mm | 11 over 1 mm wide, 19 over 0.1 mm, 50–55 mm apart | 570 mm | 2.7 mm, 30 mm from mid-span |
+| The same, 16 elements through | 96 mm | 9 over 1 mm wide, 60 mm apart; 19 over 0.1 mm | 530 mm | 6.0 and 5.1 mm, either side of mid-span |
+
+Perfectly bonded, every element between the supports cracks past 0.1 mm over the 100 mm
+spacing, so the cracks cannot be compared one by one, but the opening gathers in about the
+same length as the test's cracks. With slip the face cracks much as the photograph shows:
+separate cracks across the width, about as far apart as the test's, over about the same length,
+the widest at mid-span, and the same on 8 and 16 elements through. So the slab's stiffness with slip (88%) does not come from cracks too
+few or over too short a zone, as was suspected from the slice through its thickness: there are
+as many as the test had, where they were. It must come from what lies between and under them:
+the concrete between cracks still carrying tension, the bars' bond, or the compression zone.
+Keeping a crack's slide out of its opening (`--slide-apart`; see
+[one crack sheared along its measured path](#one-crack-sheared-along-its-measured-path))
+changes neither.
+
 ### What this does and does not show
 
 It shows that the model reproduces the flexural response of a lightly reinforced one-way slab
@@ -452,6 +494,113 @@ more. Solid elements need about 24 through a member's depth to fail it in shear 
 enough for bending. Beams, checked by sections, get within 3% at both sizes tried.
 It is one test, statically loaded, of one beam; the strength at blast rates, and members
 with stirrups, are not tested.
+
+## One crack sheared along its measured path
+
+Not a member but one crack: the shear a crack carries as it slides, which decides the beam
+above, checked directly.
+
+### The test
+
+J. C. Walraven and H. W. Reinhardt, "Theory and experiments on the mechanical behaviour of
+cracks in plain and reinforced concrete subjected to shear loading", *HERON* 26(1A), 1981,
+open access from the TU Delft repository. Push-off specimens with a 300 × 120 mm shear plane
+were cracked through it by splitting, to an initial width, then sheared along the crack while
+four bars outside the concrete, bolted to plates on its ends, held its faces together: as
+the crack slid it opened, and the bars, stretched, pressed it shut. With no bar across the
+crack there is no dowel action, and the stress across the crack is the bars' force over the
+plane. For each specimen the paper plots the opening against the slip (its Fig. 16a), the
+shear against the slip (16b) and the stress across the crack against the opening (16c).
+
+The seven specimens of its mix 1 (gravel to 16 mm; cube strength 36.7 and 38.5 N/mm²), coded
+mix / initial width (mm) / stress across the crack at 0.6 mm open (N/mm²): 1/.0/6.8 and
+1/.0/3.6, cracked to 0.01–0.03 mm and held hard; 1/.2/1.6, 1/.2/1.4 and 1/.2/.4, cracked to
+0.2 mm; 1/.4/1.0 and 1/.4/.3, cracked to 0.4 mm. All slid by 2.1–2.3 mm and opened to 0.8–1.2 mm.
+The curves were read off the figures by hand, to about 0.02 mm and 0.2 N/mm²; where two cross
+or run together they could be mixed up, and the stress across the crack could be read for only
+part of most paths. The paper's own fit to all its tests (eqs. 1a and 1b) gives the shear and
+the stress across from the opening and slip; at the readings it is within about a third of
+them.
+
+### The model
+
+`PushOffTest.swift`: one cubic element of plain concrete of 0.8 times the cube strength,
+50 mm on a side (25 and 100 mm give the same), its crack opened to the initial width and
+then driven along the measured path, opening across it and sliding along it at once; the
+shear along the crack and the stress across it are read from the element. `blastbench
+pushoff` runs it.
+
+### Results
+
+Along every path the model carries the interlock cap of an unpressed crack and nothing more,
+and nothing presses its crack shut: its stress across the crack stays at zero where the
+specimens' restraint pressed theirs by 1 to 8 N/mm².
+
+| Specimen | Slip  | Open    | Shear measured | Model | Model, slide kept apart | Across, measured | Model |
+|----------|-------|---------|----------------|-------|-------------------------|------------------|-------|
+| 1/.0/6.8 | 2 mm  | 0.76 mm | 9.9 MPa        | 0.58  | 1.09                    | 8.0              | 0     |
+| 1/.0/3.6 | 1.2 mm | 0.63 mm | 7.1           | 0.78  | 1.22                    | 3.9              | 0     |
+| 1/.2/1.6 | 2 mm  | 0.88 mm | 5.5            | 0.55  | 0.99                    | (3.4 at 0.8 mm)  | 0     |
+| 1/.4/1.0 | 1.2 mm | 0.87 mm | 5.6           | 0.71  | 1.02                    | 2.9              | 0     |
+| 1/.2/1.4 | 2 mm  | 1.12 mm | 4.6            | 0.50  | 0.82                    | 3.6              | 0     |
+| 1/.2/.4  | 2 mm  | 1.05 mm | 4.0            | 0.51  | 0.86                    | 2.3              | 0     |
+| 1/.4/.3  | 2 mm  | 1.18 mm | 2.6            | 0.50  | 0.81                    | 2.0              | 0     |
+
+So, at these points, the model carries a twentieth to a fifth of what the specimens carried by default, and a
+tenth to a third with the slide kept out of the crack's opening (below). The missing shear is
+the pressure's: the modified compression field theory's own limit on the shear across a crack
+(Vecchio and Collins, 1986), v = 0.18 v_max + 1.64 f − 0.82 f² / v_max with f the stress
+across it, whose first term alone is the model's cap, gives the three least restrained
+specimens 0.9 to 1.3 times their measured shear from their measured pressure (it caps the
+pressure at v_max, and falls short of the two held hardest, 6.3 and 5.8 against 9.9 and 7.1).
+Earlier, the same cap was checked against the paper's fit where the stress across the crack
+vanishes, and found 3% to 24% above it (see the
+[concrete model](concrete-model.md#shear-across-cracks)); here, on the paths the cracks really
+took, it is the pressure that matters.
+
+**Tracing the element** found a second, smaller error. Sliding along the crack also opened
+it: the crack's opening is read from the principal strains of the element's whole strain, of
+which the slide stored by `crackSlip` is part, so a crack 1.05 mm open and slid by 2 mm on
+50 mm elements read as about 1.9 mm open, and carried 57% of its cap at the measured width; it
+also opened the plane across the slide, a crack across the crack. Taking the stored slide out,
+as a second crack's opening already is (`StructureModel.slipWidensCracks`, `--slide-apart`),
+gives the cap at the measured width within 5%.
+
+It is an option, not the default, because every test it moves it moves the wrong way. Kept
+apart, cracks that slide carry more, and the members that depend on them get stronger:
+
+| Test | Default | Slide kept apart | Measured |
+|---|---|---|---|
+| Vecchio and Shim's OA1, 12 / 24 through | 456 / 368 kN | 464 / 399 kN | 332 kN |
+| The same, bars that slip | 471 / 490 kN | 486 / 524 kN | |
+| Janney's beam, 12 / 24 through | 48.1 (an instant's spike) / 40.5 kN m | 44.1 / 42.7 kN m | 41.5 kN m |
+| The contest slab, 4 / 8 through; 8 with slip | 114 / 113; 95 mm | the same | 108 mm |
+| Saatci's heavy drops with stirrups, 16 through | 39.4, 37.4, 33.2 mm | 36.9, 34.9, 32.2 mm | 39.5, 37.9, 35.3 mm |
+| Saatci's SS0a-1, light drop, no stirrups | 16.8 mm, 279 elements removed | 15.8 mm, 45 removed | 9.3 mm, whole |
+| Saatci's SS0b-1, heavy drop, no stirrups | 72.2 mm, broken | 43.8 mm, broken | broken |
+| Ando's A24 at 3 / 4 / 5 / 6 m/s | 11.8 / 22.6 / 27.8 / 67.5 mm | 7.9 / 13.0 / 19.8 / 34.1 mm | 11 / 16 / 29 / 54 mm |
+| Ando's A36 at 3 / 4 / 5 m/s | 12.5 / 24.0 / 49.6 mm | 10.2 / 16.4 / 24.9 mm | 13.5 / 28 / 66 mm |
+| The chamber's roof edge, peak / left | 38 / 15 mm | 38 / 15 mm | 95 mm left |
+
+So the error has been taking some of the excess shear strength off beams without stirrups;
+put right on its own, it leaves them far too stiff. The excess has to be found first.
+
+Pushed back shut, the model's crack carries no more: closed to 0.05 mm with the slide held, and
+slid 0.5 mm further under 9–12 MPa of pressure, it carries 0.03–0.3 MPa, where the theory's
+limit is several MPa. Its cap is read from the widest opening the crack has had, not the
+present one, and nothing in it grows with pressure.
+
+### What this does and does not show
+
+It shows that the interlock cap is not too generous: on the paths real cracks took, the model
+carries far less than they did, because a restrained crack is pressed shut by what restrains
+it and the model's crack cannot be. So a fifth of the cap, which brought Vecchio and Shim's
+beam to its measured strength with bars that slip, has nothing measured behind it, and the
+beam's excess strength must come from elsewhere. Where cracks are crossed by bars that their
+opening stretches, stirrups above all, the model will underestimate what the cracks carry;
+where nothing crosses them, as in the beam's diagonal crack, the cap is about right. It does
+not test the model's own crack path: the path is imposed, and the model's crack, given only a
+slide, would not open by itself (its dilatancy only stops it closing).
 
 ## Beams struck by a falling weight
 
@@ -1303,6 +1452,15 @@ suggest, and springs back far further; its peak wall pressures are within the lo
 the gauge positions allow. One test, one measured residual, and two pieces of detailing that
 had to be assumed: the chamber shows how the model behaves at a full-scale joint, not that it
 is right there.
+
+## A footing rocked on dry sand
+
+S. Gajan and B. L. Kutter's centrifuge test SSG02_03, from the FoRCy database: a 29 Mg shear
+wall on a 2.8 × 0.65 m surface footing on dry Nevada sand at 80% relative density, pushed
+slowly to and fro through five packets of rising amplitude. On sand of 80 MPa the footing's
+moment follows the test within 6% to 14 mrad and levels off at the rigid footing's capacity,
+7–17% below the test's at 30 to 60 mrad; it settles a tenth as much as the sand did. Details,
+the 40 MPa run and why: [footings](structural-model.md#footings) (`blastbench rocking`).
 
 ## Consistency across air grids
 

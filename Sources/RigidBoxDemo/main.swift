@@ -7,14 +7,44 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
-    if arguments.contains("--moving-loads") {
+    if arguments.contains("--initial-wall-traces") {
+        let decompose = arguments.contains("--decompose")
+        let sweep = arguments.contains("--stencil-sweep")
+        let volumeFits = arguments.contains("--volume-fit") || sweep
+        let suffix =
+            sweep ? "-stencil-sweep" : (volumeFits ? "-volume-fit" : (decompose ? "-decomposition" : ""))
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/moving-loads.json")
+                ?? ".build/initial-wall-traces\(suffix).json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalInitialWallTraceStudy.Result] = []
+        for rings in (sweep ? [1, 2, 3] : [2]) {
+            _ = try ExperimentalInitialWallTraceStudy.run(
+                rotations: sweep ? [0, 0.1, 0.23, 0.4] : [0, 0.23], decompose: decompose,
+                volumeFits: volumeFits, stencilRings: rings
+            ) { r in
+                completed.append(r)
+                try encoder.encode(completed).write(to: output, options: .atomic)
+                print(
+                    "dx \(r.cellSize), rotation \(r.rotation), stencil rings \(rings): supplied force/torque error \(r.supplied.relativeForceError)/\(r.supplied.relativeTorqueError), limited \(r.limited.relativeForceError)/\(r.limited.relativeTorqueError)"
+                )
+                fflush(stdout)
+            }
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--moving-loads") {
+        let conserved = arguments.contains("--conserved-quadratic")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/moving-loads\(conserved ? "-conserved" : "").json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalMovingLoadStudy.Result] = []
-        _ = try ExperimentalMovingLoadStudy.run { r in
+        _ = try ExperimentalMovingLoadStudy.run(conservedQuadratic: conserved) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             let f = r.frames.last!
@@ -156,17 +186,19 @@ do {
         exit(0)
     }
     if arguments.contains("--wall-reflection") {
-        let limited = arguments.contains("--limited")
+        let conserved = arguments.contains("--conserved-quadratic")
+        let limited = arguments.contains("--limited") || conserved
         let refined = arguments.contains("--refined")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/wall-reflection\(limited ? "-limited" : "")\(refined ? "-refined" : "").json")
+                ?? ".build/wall-reflection\(conserved ? "-conserved" : (limited ? "-limited" : ""))\(refined ? "-refined" : "").json"
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalWallReflectionStudy.Result] = []
         _ = try ExperimentalWallReflectionStudy.run(
             cellLengths: refined ? [0.00625, 0.003125] : [0.1, 0.05, 0.025, 0.0125],
-            cfls: refined ? [0.2] : [0.2, 0.1], limited: limited
+            cfls: refined ? [0.2] : [0.2, 0.1], limited: limited, conservedQuadratic: conserved
         ) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
@@ -508,6 +540,34 @@ do {
         print("Wrote \(output.path)")
         exit(0)
     }
+    if arguments.contains("--car-blast") {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        let fine = arguments.contains("--fine")
+        let destination = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-car-blast\(fine ? "-fine" : "")-demo.html")
+        let recordings = try RigidCarDemo.coupledRecordings(device: device, cellSize: fine ? 0.1 : 0.2)
+        let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
+        let html = try String(contentsOf: source, encoding: .utf8)
+            .replacingOccurrences(
+                of: "__RECORDINGS__", with: String(decoding: JSONEncoder().encode(recordings), as: UTF8.self)
+            )
+            .replacingOccurrences(
+                of: "Recorded from the Swift reference solver; no blast loading.",
+                with:
+                    "Experimental blast coupling: the car's shell in uniform ideal-gas air. Not grid-converged: the 0.15 m gap under the shell spans at most one air cell, and on 0.1 m cells (--fine) the 10 kg car rocks back instead of overturning."
+            )
+            .replacingOccurrences(
+                of: "<option value=\"1\" selected>Real time</option>",
+                with: "<option value=\"0.1\" selected>10× slow</option><option value=\"1\">Real time</option>"
+            )
+        try html.write(to: destination, atomically: true, encoding: .utf8)
+        print("Wrote \(destination.path) (\(recordings.count) cases)")
+        for recording in recordings { print("\(recording.name): \(recording.description)") }
+        exit(0)
+    }
     let refined = arguments.contains("--refined")
     let coupled = arguments.contains("--blast") || refined
     let destination = URL(
@@ -522,7 +582,7 @@ do {
         }
         recordings = try RigidObjectDemo.coupledRecordings(device: device, refinement: refined ? 2 : 1)
     } else {
-        recordings = try RigidObjectDemo.recordings()
+        recordings = try RigidObjectDemo.recordings() + RigidCarDemo.recordings()
     }
     let data = try JSONEncoder().encode(recordings)
     let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
@@ -539,7 +599,7 @@ do {
             of: "<option value=\"1\" selected>Real time</option>",
             with: "<option value=\"0.01\" selected>100× slow</option><option value=\"1\">Real time</option>")
         html = html.replacingOccurrences(
-            of: "All cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
+            of: "Box cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
             with:
                 "Experimental 0.8 m cube, mass 2 kg; static friction 0.6, sliding friction 0.5. Held mode fixes the pose; free mode includes gravity and ground contact."
         )

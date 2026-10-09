@@ -292,9 +292,18 @@ public final class USDSceneWriter {
                 SIMD3(0, 0, 0), SIMD3(domain.x, 0, 0), SIMD3(domain.x, domain.y, 0), SIMD3(0, domain.y, 0),
             ],
             colour: SIMD3(0.46, 0.47, 0.49), to: &text)
-        if !scenario.rigidBoxes.isEmpty {
+        let fixed =
+            scenario.boxes
+            + (scenario.importedModels ?? [])
+            .filter { $0.isAttached && $0.behavior == .rigid }.flatMap { $0.preview.boxes }
+        if !fixed.isEmpty {
             appendMesh(
-                "Blocks", boxes: scenario.rigidBoxes, quad: [], colour: SIMD3(0.80, 0.79, 0.76), to: &text)
+                "Blocks", boxes: fixed, quad: [], colour: SIMD3(0.80, 0.79, 0.76), to: &text)
+        }
+        for (index, object) in scenario.envelopeObjects.enumerated() {
+            appendMesh(
+                "Envelope_\(index)", boxes: object.envelope!.blocks, quad: [],
+                colour: SIMD3(0.80, 0.79, 0.76), owner: object, to: &text)
         }
         for (n, charge) in ([scenario.charge] + (scenario.additionalCharges ?? [])).enumerated() {
             appendSphere(
@@ -360,7 +369,8 @@ public final class USDSceneWriter {
     }
 
     private func appendMesh(
-        _ name: String, boxes: [Box], quad: [SIMD3<Float>], colour: SIMD3<Float>, to text: inout Text
+        _ name: String, boxes: [Box], quad: [SIMD3<Float>], colour: SIMD3<Float>,
+        owner: SceneObject? = nil, to text: inout Text
     ) {
         var surface = StructureSurface()
         if !quad.isEmpty {
@@ -378,6 +388,11 @@ public final class USDSceneWriter {
         let low = surface.points.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1) }
         let high = surface.points.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1) }
         text.append("    def Mesh \"\(name)\"\n    {\n        uniform token subdivisionScheme = \"none\"\n")
+        if let owner {
+            text.append("        custom uniform string bombcad:objectId = \(quoted(owner.id.uuidString))\n")
+            text.append("        custom uniform string bombcad:objectName = \(quoted(owner.name))\n")
+            text.append("        custom uniform string bombcad:representation = \"stationary-envelope\"\n")
+        }
         text.append("        float3[] extent = [")
         text.append(low)
         text.append(", ")
@@ -416,8 +431,8 @@ public final class USDSceneWriter {
     }
 
     /// The cloud: a sphere whose centre, radius, temperature (the `temperature` primvar, in
-    /// kelvin) and liquid water (`liquidWater`, in grams a kilogram) are sampled from the frame
-    /// after the run's last.
+    /// kelvin), liquid water and ice (`liquidWater` and `ice`, in grams a kilogram) are sampled
+    /// from the frame after the run's last.
     private func appendCloud(_ samples: [CloudSample], to text: inout Text) {
         let first = frames
         text.append("    def Sphere \"Cloud\"\n    {\n")
@@ -459,6 +474,12 @@ public final class USDSceneWriter {
         for (n, sample) in samples.enumerated() {
             text.append("            \(first + n): ")
             text.append(Float(1000 * sample.liquidWater), decimals: 3)
+            text.append(",\n")
+        }
+        text.append("        }\n        float primvars:ice.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            text.append("            \(first + n): ")
+            text.append(Float(1000 * sample.ice), decimals: 3)
             text.append(",\n")
         }
         text.append("        }\n    }\n\n")

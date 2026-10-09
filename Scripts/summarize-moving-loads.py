@@ -5,6 +5,7 @@ The finest grid is a numerical comparison, not exact truth or blast validation.
 """
 import json
 import math
+import sys
 from pathlib import Path
 from runpy import run_path
 
@@ -17,7 +18,9 @@ def norm_difference(a, b):
 
 
 def main():
-    rows = json.loads((ROOT / '.build/moving-loads.json').read_text())
+    conserved = '--conserved-quadratic' in sys.argv
+    suffix = '-conserved' if conserved else ''
+    rows = json.loads((ROOT / f'.build/moving-loads{suffix}.json').read_text())
     keys = [(r['cellSize'], r['rotation'], r['cfl']) for r in rows]
     expected = {(h, a, c) for h in (0.2, 0.1, 0.05) for a in (0, 0.23) for c in (0.2, 0.1)}
     assert len(keys) == len(expected) and set(keys) == expected, 'Incomplete or duplicate matrix'
@@ -32,7 +35,8 @@ def main():
         energy = 101325*(8-0.8**3)/(1.4-1) + 0.5*mass*(300**2+100**2+40**2) + 6400
         assert abs(r['initialEnergy']-energy) < 1e-7
         assert r['pulseAmplitude'] > 0 and r['maximumInitialPressure'] > 101325
-        assert r['transport'] == 'limitedHeun' and r['wallIntegration'] == 'surfaceTimeQuadrature'
+        assert r['transport'] == ('conservedQuadraticHeun' if conserved else 'limitedHeun')
+        assert r['wallIntegration'] == 'surfaceTimeQuadrature'
         assert r['maximumRelativeQuadratureVolumeResidual'] < 1e-8
         assert r['maximumRelativeGeometryResidual'] < 1e-8
         assert r['minimumOldGroupFraction'] >= 0.25 and r['minimumFinalGroupFraction'] >= 0.25

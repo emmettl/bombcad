@@ -96,7 +96,16 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Eight values in the code were written from memory and should be checked against the original.
+Nine values in the code were written from memory and should be checked against the original.
+
+- **A rigid footing's static stiffness and Wolf's cones.** G. Gazetas, "Formulas and charts for
+  impedances of surface and embedded foundations", *Journal of Geotechnical Engineering* 117(9)
+  (1991) 1363–1381, Table 1 for surface foundations; J. P. Wolf, *Foundation Vibration
+  Analysis Using Simple Physical Models* (Prentice Hall, 1994), for the cones' apex heights,
+  trapped masses, the rocking cone's internal mass and the echoes of a layer; and E. Kausel's
+  stratum factors (as quoted by Gazetas), used for rocking over a layer. Used in
+  `FootingImpedance`; the vertical and horizontal stiffness of a square agree with the rigid
+  disk's within 1% and its rocking within 9%, which checks the memory a little.
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
@@ -192,7 +201,16 @@ Supplied by hand during development, and now in use:
   slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
   Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
   were restrained, so their cracks carried compression, which the interlock cap leaves out;
-  where its laws give no stress across the crack, the model's cap is 3% to 24% above them.
+  where its laws give no stress across the crack, the model's cap is 3% to 24% above them. The
+  paths, shear and stress across the crack of its seven specimens of mix 1 with external
+  restraint (Fig. 16) were read off by hand for `blastbench pushoff` (`PushOffTest.swift`).
+- G. A. Shetye, *FE analysis and experimental validation of RC single-mat slabs subjected to
+  blast loads*, MS thesis, University of Missouri–Kansas City, 2013 (MOspace, open access): a
+  photograph of the contest slab's unloaded face after the test (Fig. 6-60b, its slab 2,
+  RSC-R1-4in), from which its cracks were counted (see
+  [Validation](validation.md#its-cracks)). It gives the panels' clear span as 58 in, where the
+  drawing Kewaisy et al. reproduce puts the supports 52 in apart; which is right is still
+  wanted.
 - J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
   effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
   (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,
@@ -242,3 +260,10 @@ Supplied by hand during development, and now in use:
 - H. Shang et al., "Experimental Study on the Damage Mechanism of Reinforced Concrete Shear
   Walls Under Internal Explosion", *Applied Sciences* 16, 48 (2026): the chamber test, in
   `ChamberTest.swift`.
+- FoRCy, the Foundation Rocking database of Cyclic and monotonic loading (M. Hakhamaneshi,
+  B. L. Kutter, A. G. Gavras and others; DesignSafe PRJ-6414, doi:10.13019/t0cq-qf64, Open Data
+  Commons Attribution), fetched on 9 October 2026 with the user's agreement: its mastersheet and
+  S. Gajan and B. L. Kutter's test SSG02_03, a shear wall on a surface footing on dry dense sand
+  rocked slowly, compared with `Footing` in [footings](structural-model.md#footings)
+  (`blastbench rocking`, data in `Samples/FoRCy`). Its dynamic sister, FoRDy, and the other
+  series (PWRI's 1 g footings on Toyoura sand, TRISEE's embedded ones) are not used yet.

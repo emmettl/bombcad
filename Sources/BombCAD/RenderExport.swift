@@ -59,17 +59,16 @@ final class RenderExport {
         state = .running(0)
         task = Task {
             do {
-                if let folder = options.vdb, FileManager.default.fileExists(atPath: folder.path) {
-                    throw ProjectFileError.invalid(
-                        "\(folder.lastPathComponent) already exists beside the scene; choose another name.")
-                }
-                if FileManager.default.fileExists(atPath: scene.path) {
-                    try FileManager.default.removeItem(at: scene)
-                }
+                let staged = try StagedRenderExport(destination: scene, includesVolumes: options.vdb != nil)
+                defer { staged.discard() }
+                options.usd = staged.scene
+                options.vdb = staged.volumes
                 let result = try await HeadlessRun.perform(document, options: options) {
                     [weak self] fraction in
                     self?.state = .running(fraction)
                 }
+                try Task.checkCancellation()
+                try staged.publish()
                 let interval = Double(frameInterval) / 1000
                 let frames = Int((result.run.elapsedTime / interval + 1e-6).rounded(.down)) + 1
                 state = .finished(scene, frames: frames)

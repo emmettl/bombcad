@@ -95,6 +95,7 @@ public enum ShearBeamBenchmark {
         rate: Float = 0.05, crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
         crackShearStiffness: Bool = false,
         mapAt: Float? = nil,
+        slipWidensCracks: Bool = true,
         adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth, slice: slice)
@@ -103,6 +104,7 @@ public enum ShearBeamBenchmark {
         model.bondSlip = bondSlip
         model.crackShearStiffness = crackShearStiffness
         adjust(&model.material)
+        model.slipWidensCracks = slipWidensCracks
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false

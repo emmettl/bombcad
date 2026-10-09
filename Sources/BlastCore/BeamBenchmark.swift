@@ -106,6 +106,7 @@ public enum BeamBenchmark {
         unload: Bool = false, crackSlip: Bool = true,
         crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
         crackShearStiffness: Bool = false,
+        slipWidensCracks: Bool = true,
         adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth)
@@ -114,6 +115,7 @@ public enum BeamBenchmark {
         model.crackShearStiffness = crackShearStiffness
         model.crackSlip = crackSlip
         adjust(&model.material)
+        model.slipWidensCracks = slipWidensCracks
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false

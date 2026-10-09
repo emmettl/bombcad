@@ -38,11 +38,20 @@ it should be used to judge the safety of a real structure.
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
-| 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
+| 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
-and its rendering is checked through offscreen snapshots, but its panels, text fields and file
-dialogs were written without being seen on screen.
+and its rendering is checked through offscreen snapshots. An initial static panel review now
+covers the Run sidebar, saved-run comparison, Export for Rendering sheet, linked-part layout
+editor, import loading state, Settings and Help content in light and dark appearances. The
+Help sidebar's selected labels and dark contrast have also been checked in a native window;
+the earlier offscreen rendering problem was a capture artifact. An isolated release app has
+passed a zero-charge layout JSON import, native package save, close and reopen at time zero.
+A completed OBJ import preview has also been reviewed in a native window, including display
+toggles, part search, scrolling and cancellation of a staged domain expansion. See the
+[native interface review](native-interface-review.md) for the procedure and its limits.
+Keyboard focus, scrolling at minimum window sizes and the other panels still need broader
+interactive review.
 
 ## Planned work
 
@@ -107,7 +116,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    the cap is 3% to 24% above what an unpressed crack carried, not five times. Bond lost where bars yield (now part of slip) spreads yield
    along them but leaves the slab at 88 mm; its stiffness with slip comes from cracks that keep
    to one element each, 90 mm apart over a shorter zone (98 mm if spread over the crack spacing).
-   A direct test of interlock across one crack, and the test slab's crack pattern, come next. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   Driven along Walraven and Reinhardt's measured crack paths, a crack carries its cap alone, a
+   twentieth to a fifth of what theirs carried pressed shut by their restraint, which the model
+   cannot do; and with slip the slab cracks as a photograph of the test shows, ten cracks over
+   600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
@@ -175,6 +187,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    fine three to five times faster in the open. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
+   Stationary [building envelopes](building-envelopes.md) now retain walls, roofs and openings
+   in shared air without mechanics. Matched pinned-solid comparisons reproduce the exposure
+   and integrated surface loads exactly; short computational scaling runs reach 64 buildings.
+   Air resolution remains a separate cost and accuracy limit, and shell junction/opening
+   approximations are retained as diagnostics in that study.
 13. **Freestanding objects and supports.** Independent rigid bodies for parked cars and
    interior furniture, with gravity, friction, lift-off and collisions, coupled to the blast.
    Start with the staged checks below. Separately, make structural support assumptions visible
@@ -183,17 +200,20 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    computing](distributed-computing.md#the-long-term-visions-effects)). (Done, illustrative: a
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
-   hot gas, which needs afterburning and hot air to make a fireball of plausible size; the
-   fireball's [rise and cloud](fireball-rise.md), handed over from the air model's final state
-   to an integral model of a rising thermal in a standard atmosphere, a wind growing with height
-   and humid air, where it condenses once saturated, within a factor of 1.6 of an empirical fit
-   to high-explosive cloud heights; and [ground shock](ground-shock.md) away from the charge,
-   the manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: radiation on the GPU's ray-tracing hardware, a fireball that is not
-   one sphere, the cloud in turbulent air and a measured sounding, with ice and rain, a layered
-   soil column and a comparison with measured ground motion, and the app showing what the
-   surfaces received and where the cloud went. The crater and the ground shock near the charge
-   act back on the blast and remain outside these.)
+   hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
+   size, shown in the app as it goes and reckoned there or on another Mac, on the GPU's
+   ray-tracing hardware; the fireball's [rise and
+   cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
+   a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
+   turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
+   within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
+   their first two minutes; and [ground shock](ground-shock.md) away from the charge, the
+   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
+   drawn in the app. Next: following the fireball's shape on the GPU too, the cloud's growth once
+   it stops rising, a layered soil column and a comparison with measured
+   ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
+   went. The crater and the ground shock near the charge act back on the blast and remain
+   outside these.)
 
 ### Freestanding objects and supports
 
@@ -216,7 +236,7 @@ convert into fresh reference mechanics state. Definitions validate on constructi
 older layouts without them still open. JSON and project-package round trips are tested. A
 nonzero centre-of-mass offset requires explicit inertia. These saved inputs are not yet used
 by the app renderer or blast solver. `swift run rigidboxdemo` generates a self-contained HTML
-replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping.
+replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping (now followed by five car cases).
 Playback and scrubbing use recorded Swift trajectories, with no second physics implementation
 in the viewer. This supplies milestone 1's standalone box demonstration.
 
@@ -1574,8 +1594,288 @@ closure still uses the original actual group-surface scale. Static callers retai
 original raw-cell check. The captured interval is tested with positive old/final group
 capacities and uniform pressure/velocity preservation through the sampled update.
 
-Next, isolate initial wall-trace error against independently integrated Gaussian surface
-loads, then assess the remaining spatial load error before free-body feedback. Local second-order time
+An initial Gaussian wall-trace probe now isolates the source of load error before any gas
+advance. Numerical stage preparation is shared with the moving flux update; a diagnostic
+accessor returns its actual initial wall states and evaluation points, without introducing
+a separate reconstruction implementation or changing the limiter. Known supplied pressure
+at those same points isolates clipping/surface quadrature from gas averaging and traces.
+Constant group states provide a further comparison. All use the matched-energy initial
+packets from the sustained-load study.
+
+The independent reference integrates the six whole, uncut rectangular faces with positive
+tensor Gauss rules, using body coordinates and orientation rather than grid clipping.
+Orders 16 and 32 agree within `7e-15` relative for this smooth Gaussian. Tests separately
+check polynomial moments, aligned Gaussian force/torque against erf integrals and first
+moments, and rotated affine force/offset-COM torque against the divergence theorem. An
+independent Python composite Simpson integral over the whole faces checks the rotated
+reference using Rodrigues rotation, without reusing Swift quadrature or numerical traces.
+
+Six `--initial-wall-traces` cases cover the same three grids and two rotations. Probe
+intervals h × `1e-9` s give negligible motion; repeating each at half duration changes
+loads by at most `8e-8` of the reference norm. Pressure supplied at comoving sample positions
+represents the known initial field. Ambient pressure is subtracted from diagnostics because
+its exact force and torque vanish on the closed box. No gas inventory is updated by this
+probe, and its reference does not prescribe later Euler evolution.
+
+With known supplied pressure, force errors are at most 0.039% and torque errors 0.157% on
+0.2 m cells, falling below 0.0004% for both on 0.05 m cells. Limited numerical traces are
+much less accurate on coarse grids: initial force errors are 70.9% aligned and 43.5%
+rotated on 0.2 m cells, then 19.0%/10.1% on 0.1 m cells and 0.105%/1.98% on 0.05 m
+cells. Corresponding torque errors are 98.8%/35.8%, 23.0%/13.7% and 0.195%/3.83%.
+These errors precede advection and are substantially larger than quadrature errors.
+
+Limited reconstruction worsens coarse-grid force and torque relative to constant group
+traces (constant force errors 52.0%/28.5% there), while improving both on finer grids.
+The coarse pulse curvature is not recovered by this reconstruction. Area-weighted limited
+pressure L1 errors are 77.8%/48.1%, 19.2%/10.9% and 0.706%/2.49% across the grids.
+This evidence localizes the initial load problem to state projection/grouping and numerical
+reconstruction rather than insufficient wall sampling; it does not yet separate the
+contributions of gradient fitting and the one-ring limiter.
+
+All 101 CPU-only tests in 20 suites pass. Additional checks verify diagnostic traces against
+actual Euler wall packets, negligible duration effects and reference/quadrature consistency.
+The independent six-case summary passes, strict Swift formatting and diff checks are clean,
+and the full release build succeeds with main's existing AirSlice concurrency warnings.
+
+The initial probe now offers `--decompose`, recording nine controlled comparisons at the
+same wall samples: supplied pressure, constant group averages, raw least-squares fits,
+actual bounded fits, and the corresponding three reconstructions from known centroid
+pressures. Two further modes use the analytic Gaussian gradient with either its centroid
+pressure or the actual group average. Raw gradients and limiter factors come from the
+same reconstruction used by numerical stages; optional recording leaves bounded traces
+identical. Centroid-pressure replacement is confined to temporary diagnostic states and
+does not modify accepted gas inventories or enter a numerical advance. The raw and
+analytic modes evaluate pressure algebraically without enabling unbounded transport.
+
+Removing the limiter worsens coarse-grid force errors from 70.9%/43.5% to 81.8%/52.1%
+for aligned/rotated boxes. Its effect on 0.1 m loads is small. On the finest rotated grid,
+the raw fit gives 1.45% force and 3.35% torque errors versus the bounded fit's 1.98%/3.83%,
+but violates neighbour bounds on 3.03% of surface area and drops below ambient on 1.58%.
+All diagnostic absolute pressures remain positive; signed excess pressure distinguishes
+these profile undershoots from an EOS positivity failure. Actual bounded traces retain
+their bounds. None of the sampled body groups has a deficient fit. Mean pressure limiter
+factors rise from about 0.25–0.29 on the coarse grid to 0.81–0.83 on the finest; these
+surface-area averages are not measures of each region's contribution to net force.
+
+Replacing conservative group averages with known centroid pressure worsens constant,
+raw and bounded load comparisons. Keeping the real averages but supplying the analytic
+gradient reduces force errors to 3.62%/7.68%, 0.536%/0.618% and 0.056%/0.110% across
+the three grids. Corresponding torque errors are 13.0%/18.9%, 1.25%/1.70% and
+0.215%/0.552%. This implicates gradient estimation from underresolved volume averages
+and wall stencils, but does not establish an implementable replacement. Even that mode
+has coarse local pressure L1 errors of 31.8%/21.7%, so cancellation can conceal local
+errors. Exact centroid pressure plus its analytic Taylor gradient still gives coarse
+force errors of 21.3%/19.8% and torque errors of 43.2%/39.0%, showing substantial
+curvature error within a local linear representation. These interventions interact;
+their differences are diagnostic comparisons, not an additive error budget.
+
+All 106 CPU-only tests in 21 suites pass, including raw-fit/factor checks, rank fallback,
+unchanged bounded traces and inventories, and an independent finite-difference check of
+the analytic-gradient loads. The six-case summary checks all nine modes at both probe
+durations against independent whole-face integrals, reported errors and pressure bounds;
+the largest duration-halving load change is `1.12e-7` of the reference norm.
+
+The `--volume-fit` probe now compares three reconstructions on the same two-ring internal
+group stencil with the same inverse-distance least-squares weights: linear, quadratic
+treating group averages as centroid values, and quadratic using gas-volume second moments.
+The point-quadratic comparison still uses actual group averages; it does not receive the
+known pressure field. The volume-aware basis subtracts each group's mean quadratic terms,
+retaining its supplied pressure average while fitting gradients and curvature together.
+This initial state has uniform density and velocity, so pressure averages correspond to
+the conservative energy initialization. That relationship cannot be assumed for arbitrary
+evolved states. Only the load/error audit receives the known Gaussian; none of the fits
+receives an analytic gradient. No numerical gas stage uses these fits.
+
+Positive degree-two gas quadrature supplies moments over the old clipped/merged volumes.
+Volume and first-moment residuals stay below `5.6e-15` in nominal cell units. Coordinates
+scaled by h and a column-pivoted, reorthogonalized least-squares solve avoid mixed-unit
+normal equations. Deficient quadratic fits fall back to linear, then constant; no such
+fallback occurs on the sampled body groups in these six cases. Area-weighted stencil
+sizes range from about 19 to 24 neighbours. This controls the polynomial/moment comparison,
+but the wider linear fit also changes neighbours and weights relative to the existing
+one-ring bounded transport, so its difference is not an isolated measure of stencil size.
+
+Force/torque errors against the independent whole-face integral are:
+
+| Cell size / orientation | Existing bounded | Two-ring linear | Point quadratic | Volume quadratic |
+|---|---|---|---|---|
+| 0.2 m / aligned | 70.9% / 98.8% | 79.0% / 73.0% | 75.8% / 47.6% | 80.3% / 58.6% |
+| 0.2 m / rotated | 43.5% / 35.8% | 44.9% / 31.2% | 33.9% / 16.1% | 38.3% / 24.4% |
+| 0.1 m / aligned | 19.0% / 23.0% | 28.6% / 31.6% | 3.17% / 0.682% | 1.64% / 6.25% |
+| 0.1 m / rotated | 10.1% / 13.7% | 14.3% / 18.3% | 1.96% / 2.97% | 1.40% / 1.39% |
+| 0.05 m / aligned | 0.105% / 0.195% | 0.250% / 0.373% | 0.399% / 1.16% | 0.281% / 0.504% |
+| 0.05 m / rotated | 1.98% / 3.83% | 2.32% / 4.38% | 0.951% / 1.51% | 0.656% / 0.584% |
+
+The volume-aware quadratic improves the fine rotated load and local pressure L1 error
+(1.15% versus the bounded fit's 2.49%), but the existing aligned fine fit remains better.
+At 0.1 m, its L1 errors are 10.1%/5.93% versus 19.2%/10.9% bounded. Accounting for volume
+moments does not uniformly improve torque relative to the point-quadratic comparison,
+and coarse curvature remains unresolved: volume-quadratic L1 errors reach 92.0%/46.1%.
+All three raw fits produce below-ambient profile values. Volume-quadratic undershoots
+cover about 18–20% of coarse/medium body area and 3.55%/3.97% on the finest grid, despite
+positive absolute pressure in every diagnostic sample. Fine stencil-bound violations
+cover 3.73%/4.07%. These results do not justify adopting an unbounded quadratic scheme.
+
+All 111 CPU-only tests in 22 suites pass. New independent polynomial tests check quadratic
+reproduction and retained averages on unequal rotated volumes, affine fields, coordinate
+scaling/order independence and both rank fallbacks. The wall probe verifies unchanged
+baseline loads. The six-case independent summary audits all three modes at full/half
+duration; the largest load change is `8.1e-8` of the reference norm. Release generation
+succeeds with main's existing concurrency warnings, and formatting/diff checks are clean.
+
+The volume-fit probe now also compares two bounds on that same moment-aware quadratic.
+One uses every wall sample as a control point; the other additionally uses internal and
+outer face centres, wall-patch centres and positive gas-volume quadrature nodes. Each
+group receives a single factor in [0, 1], scaling all mean-free linear/quadratic terms
+about its supplied average. There is no pointwise pressure clamp. Bounds hold at the
+audited control points, not everywhere between them. Neither policy changes gas stages.
+
+Both remove below-ambient profile undershoots and stencil violations within diagnostic
+tolerance at all wall samples in the six cases. The stronger policy also passes the
+face/volume control-point audit. Direct
+weighted-volume evaluation at both probe durations retains group pressure averages with
+a maximum residual of `1.8e-13`, normalized by max(1 Pa, absolute excess average).
+The largest normalized control-point bound violation is `7.2e-18`. Independent polynomial
+tests check retained averages on unequal rotated volumes with an active limiter, as well
+as inactive and zero-width bounds. Existing baseline loads remain identical.
+
+Force/torque errors for the bounded moment-aware fits are:
+
+| Cell size / orientation | Wall controls | Wall, face and volume controls |
+|---|---|---|
+| 0.2 m / aligned | 73.9% / 56.8% | 64.1% / 71.1% |
+| 0.2 m / rotated | 36.2% / 22.6% | 34.4% / 22.6% |
+| 0.1 m / aligned | 1.62% / 6.27% | 1.53% / 6.61% |
+| 0.1 m / rotated | 1.38% / 1.38% | 1.29% / 1.64% |
+| 0.05 m / aligned | 0.281% / 0.504% | 0.281% / 0.504% |
+| 0.05 m / rotated | 0.656% / 0.584% | 0.656% / 0.584% |
+
+On the fine grid, bounds remove undershoots while preserving nearly all of the raw
+quadratic load result. The stronger policy's area-weighted factors are about 0.80 there,
+with 44–45% of sampled body area limited; substantial limiting of quiet regions therefore
+has little effect on net loads. At 0.1 m, its factors are 0.46/0.43 and pressure L1 errors
+9.75%/5.33%. At 0.2 m, factors fall to 0.17/0.21; pressure L1 errors remain 68.1%/38.2%.
+Coarse curvature is still unresolved, and the existing fine aligned reconstruction still
+has smaller force/torque errors. Average retention and sampled bounds do not establish
+universal accuracy, continuous positivity, evolved-state consistency or shock stability.
+
+All 113 CPU-only tests in 22 suites pass. The independent six-case summary audits all five
+volume-fit modes and both bound policies at full/half duration; load changes stay below
+`8.1e-8` of the reference norm. Release generation succeeds with main's existing warnings,
+and strict formatting/diff checks are clean.
+
+The `--stencil-sweep` probe now measures that sensitivity in 36 cases: graph distances
+one, two and three; orientations 0, 0.1, 0.23 and 0.4 radians about the same fixed axis;
+and 0.2/0.1/0.05 m cells. Every case repeats at half duration. Neighbours are unique,
+exclude the central group and have deterministic ordering. Only the diagnostic fit and
+its stencil extrema change; geometry, matched initial packets and supplied/constant/
+existing bounded loads remain identical across depths. Default two-ring diagnostic
+loads also reproduce the preceding six-case report exactly.
+
+One-ring quadratic fits lack sufficient independent information on 98.4–100% of sampled
+body area and fall back to linear there. No quadratic fallback occurs on the two- or
+three-ring body stencils. Area-weighted neighbour counts span about 5.2–6.0, 19.0–24.3
+and 46.7–63.3 respectively. Greater rank support therefore does not itself establish
+greater pressure accuracy. The following are the worst errors across the four orientations
+for the existing reconstruction and the stronger bounded volume-aware policy:
+
+| Cell size | Existing force / torque / L1 | One ring | Two rings | Three rings |
+|---|---|---|---|---|
+| 0.2 m | 70.9% / 98.8% / 77.8% | 66.7% / 80.8% / 74.2% | 64.1% / 71.1% / 68.1% | 60.8% / 76.1% / 66.0% |
+| 0.1 m | 19.0% / 23.0% / 19.2% | 20.2% / 22.7% / 20.4% | 2.61% / 6.61% / 9.75% | 11.3% / 17.3% / 13.6% |
+| 0.05 m | 2.88% / 5.12% / 3.33% | 3.00% / 4.86% / 3.40% | 1.06% / 1.26% / 1.43% | 1.11% / 0.944% / 1.93% |
+
+Two rings improve medium-grid force, torque and local pressure errors in all four
+orientations relative to existing traces. On the fine grid they improve all three metrics
+in each rotated case, while the aligned case still favours the existing reconstruction;
+its one-ring diagnostic fallback is better again (0.021% force, 0.083% torque, 0.696% L1).
+Three rings worsen medium-grid results relative to two in every orientation and worsen
+fine-grid local pressure errors in every orientation, despite some lower net torque
+errors. Coarse errors remain large for every stencil. These comparisons favour the compact
+two-ring quadratic as a candidate, rather than selecting a wider fit by one favourable
+net-load metric. They cover this smooth pulse and four orientations, not all translations,
+pressure profiles or shock/contact configurations.
+
+All 116 CPU-only tests in 23 suites pass. Added checks cover graph distance/cycles,
+invalid depth rejection, the new orientations, recorded rank fallbacks, unchanged
+baseline loads and both duration limits. The independent 36-case summary checks whole-face
+integrals, all five fit modes, both bound policies and cross-stencil invariance. Maximum
+duration sensitivity is `5.2e-7` of the reference norm; retained-average and control-bound
+residuals stay below `8.7e-13`/`4.4e-17`, with geometric moments below `5.6e-15`.
+Release generation succeeds with main's existing warnings, and formatting/diff checks
+are clean. No numerical transport policy has changed.
+
+A conserved quadratic reconstruction now fits all five Euler densities with the same
+two-ring volume-aware basis. Geometry is factored once and reused across components.
+A fixed local velocity frame reduces kinetic-energy cancellation; its linear transform
+retains lab-frame mass, momentum and total-energy averages. A common factor bounds
+components at control points, followed by a convex EOS backoff if those component bounds
+still admit negative internal energy. The polynomial keeps its group average throughout;
+neither mass nor pressure is floored in accepted inventories. Differences beneath
+roundoff in the original conserved data retain constant coefficients, so constant rho/u
+does not spuriously flatten a real pressure gradient.
+
+The opt-in `--conserved-quadratic` moving-load update now uses distinct old/final clipped
+volume moments for Euler and Heun stages. Positive volume nodes, face centres and sampled
+walls constrain traces; prescribed reservoirs remain the same paired finite buffers.
+Existing stage CFL checks, endpoint scatter, sampled temporal wall corrections and final
+EOS acceptance remain in force. No gas/body exchange is patched independently. Missing
+endpoint moments are rejected. Ordinary transport remains unchanged by default.
+
+Independent tests reproduce five quadratic densities with varying rho/u, retain all
+five means on unequal rotated volumes, exercise nonlinear kinetic-energy backoff, and
+check a boosted smooth pressure polynomial. Moving tests preserve uniform comoving gas
+in both time integrators and close every budget in repeated nonuniform pressure updates.
+The complete preceding CPU reference suite passes 123 tests in 25 suites; the added
+Mach-2 channel test also passes, with pressure-history error decreasing from 0.1 to 0.05 m
+and closed stationary mass, energy and wall-momentum budgets. All four focused moving/
+shock tests pass. The shared reconstruction is wired into the independent stationary
+normal-shock benchmark as `--wall-reflection --conserved-quadratic`.
+
+The complete twelve-case evolving-load matrix now passes energy matching, independent
+wet/dry transition counts, accepted-state positivity and all gas/reservoir/body budgets.
+Maximum residuals are `1.5e-12` kg, `4.2e-10` N s and `5.7e-7` J; paired work and swept
+volume residuals are below `1.2e-13` J and `9e-16` m³. Minimum accepted density/pressure
+remain above 1.17 kg/m³/101 kPa; maximum perturbation speed is about 20.5 m/s. CFL halving
+changes final impulse by at most 0.070% and angular impulse by 0.239%, much less than
+the spatial differences. Relative to the 0.05 m/CFL 0.1 numerical comparison, 0.1 m final
+impulse/angular impulse differ by 6.53%/0.798% aligned and 1.37%/9.28% rotated. Matched
+history differences are 10.4%/4.37% and 2.84%/6.45% respectively. Aligned torque and
+rotated force improve over preceding transport, while rotated torque becomes more grid
+sensitive. Coarse aligned final impulse is closer to the finest comparison than the
+medium result, so a monotonic spatial-convergence claim is unwarranted.
+
+All sixteen stationary shock cases also pass the independent reference/shape checks,
+closed budgets and monotonically decreasing pressure-history errors on the four grids
+for both Mach numbers and CFL settings. Mass/energy relative changes are below `3e-16`
+and wall-momentum residuals below `8e-14` N s. At CFL 0.1, conserved reconstruction's
+history L1 errors on 0.1/0.05/0.025/0.0125 m cells are 47.3%/25.0%/13.6%/7.04% for
+Mach 1.2 and 42.6%/22.6%/11.8%/5.63% for Mach 2. The finest excess-impulse errors are
+−0.146%/−0.488%. The existing limited method has finest history errors 5.11%/6.24% and
+impulse errors −0.103%/−0.262%: the new fit is sharper for the finest strong-shock history,
+but weaker for the weak shock and not uniformly better for integrated impulse. Those
+tradeoffs are reported rather than hidden by a default switch.
+
+Additional exact quadratic-density advection checks retain constant p/u with moving
+cut volumes and improve density error under refinement. A genuinely moving 3D piston
+struck by a Mach-2 shock also improves independent wall-history error from 0.2 to 0.1 m,
+retains every gas/reservoir/wall budget and pairs pressure work with piston velocity times
+impulse. That test configures slip side walls before constructing the immutable plan;
+their tangential velocity does no pressure work. These complement the polynomial/EOS
+fixtures and stationary channel benchmark rather than substituting them for moving-flow
+validation.
+
+This is an experimental CPU reference, with measured load-study runtime about 3.6–7.2
+times the preceding limited reference in these runs (including shared-machine load).
+It remains opt-in through `--conserved-quadratic`. Ordinary transport defaults are retained;
+improved initial traces do not establish superior evolved loads in every orientation.
+`Scripts/check-grouped-gas-reference.py --release` provides optimized verification of the
+complete reference suite. All 126 CPU reference tests in 25 suites pass on the final
+source, including moving-shock work, exact density advection and the preceding default
+transport regressions; the repository release CLI also builds successfully. The reports
+and summary commands in the README reproduce
+the load/shock comparisons. Spatial load accuracy remains a
+gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
 and velocity vary, especially near shocks and geometric contacts.
@@ -1599,7 +1899,30 @@ extraction.
    all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
    contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
    rocking and tipping; distinguish these mechanical checks from validation against a blast
-   experiment. Crushing, wheel rotation and fragmentation are later extensions.
+   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done: the
+   mechanics in `RigidCarBody`, the box reference with the box as the shell and four
+   tyre contacts at the corners of a wheelbase × track rectangle, each with its own load and
+   Coulomb friction; the shell's corners catch a car that has tipped. `RigidCarDefinition`
+   saves the locked wheels and rigid suspension explicitly, as `Scenario.rigidCars` beside
+   rigid objects. Rigid suspension leaves four tyre loads indeterminate; the reported split is
+   the one equal tyre stiffnesses give, which leaves the motion unchanged. Tests check rest
+   loads against statics, the sliding threshold μW, load transfer of μWh/L under braking and
+   μWh/t sliding sideways, a sideways push holding below the static stability factor t/2h and
+   tipping above it, rocking back below the balance angle atan(t/2h) and tipping onto the side
+   above it, no energy gain, first-order timestep convergence and saved-file round trips.
+   These are mechanical checks; none is a validation against a blast experiment, and the
+   illustrative saloon's values are typical magnitudes, not a measured car. `swift run
+   rigidboxdemo` adds five car cases to the replay. Coupled to the air as the box is:
+   `ExperimentalRigidCarSimulation` puts the shell in the air, held clear of the ground so the
+   blast reaches the underside, and drives the car with the air's impulse and torque; the
+   tyres are contact points only. Tests check ambient balance on the static tyre loads, the
+   momentum budget, the force and torque of a pressure gradient about the low centre of mass,
+   and a blast loading the far tyres. `swift run -c release rigidboxdemo --car-blast` replays
+   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.1 m air cells). These are not
+   converged: the 0.15 m gap under the shell spans at most one cell, and from 0.2 to 0.1 m
+   cells the 10 kg air impulse goes from 6.4 to 9.0 kN s sideways and from 8.2 to 3.7 kN s
+   up, and the car rocks to 25° and back instead of overturning. Next: resolve the gap
+   (refinement there, or a cut-cell floor), then the car on finer grids.)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress
@@ -1632,9 +1955,14 @@ strength, opening, slip, friction, bearing capacity and stiffness. Independent r
 reactions, lift-off, clamp precedence, imported-source refinement, save/reopen and undo are
 checked. Finite support regions select initial lower-face/footprint points and use stationary
 horizontal bearing planes; they do not model a footing's finite contact extents. See
-[structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
-and moving-component connections; bounded footings, and soil with mass, radiation damping and
-layers; and a measured connection case. Loaded by the air instead of a pulse
+[structural editing](structural-editing.md#restraints). A base can now stand on a rigid footing
+of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
+for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
+impedance ([footings](structural-model.md#footings)); and support joints can face up or
+sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
+the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
+tenth as much. Still open: settlement under cyclic rocking; joints at angles to the lattice, and
+on shells; connections between moving components other than a footing; embedment. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
@@ -1652,7 +1980,32 @@ two collapsing over several seconds.
 
 ### Usability, in parallel
 
-- Review the app on screen and fix what is found.
+- Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
+  a misleading layout selector, which displayed the last preset choice after opening another
+  project. The menu now shows the actual scene name and offers built-in layouts as replacement
+  actions. The review also covers linked-part editing, import loading, Settings and Help content
+  in both appearances. During loading, the import sheet no longer reports that its preview is
+  unavailable while also saying it is updating. Native dark-appearance checks now confirm Help
+  topic selection and readable sidebar labels without a styling change. A temporary zero-charge
+  layout imported as a separate document, saved through the native panel and reopened with its
+  inputs intact at time zero. Import errors now identify missing JSON fields, wrong value types
+  and null values by path; malformed JSON has a separate syntax message.
+  Reproduce these static captures with
+  `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
+  The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
+  `dark`, and checks that capture leaves saved inputs unchanged. Settings captures use and remove
+  a temporary defaults suite. The import capture records the initial loading state rather than
+  waiting for asynchronous preview completion. The helper expands the requested size
+  to the view's fitting size, so these captures do not verify scrolling at the minimum window
+  size. A separate [native import review](native-interface-review.md#completed-obj-preview)
+  covers a completed small OBJ preview, its display controls, part search and cancellation;
+  this is not a check of every importer or window size. The helper also writes fixed viewport
+  captures of the main content at its 1000 × 640 point minimum and a short editing form;
+  these show clipping without fitting-size expansion, and have been reviewed in both
+  appearances. They exclude native chrome and toolbar, and do not check scrolling or focus.
+  See the [capture procedure and limits](native-interface-review.md#constrained-offscreen-captures).
+  Animated run rendering and broader
+  native interaction remain separate checks; the helper is skipped during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,
@@ -1686,6 +2039,9 @@ two collapsing over several seconds.
   switched off by default; the rest were removed. The lesson: trace a failing element before
   changing the model.
 
+- **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
+  read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
+  depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.
 - **Fixed design factors for strain rate** (UFC 3-340-02): deliberately conservative; they
   predict 121 mm for the slab test against 108 mm measured. The strain-rate laws are the
   default; the factors remain available as an option.

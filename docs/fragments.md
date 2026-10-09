@@ -59,8 +59,9 @@ Turn on **Cased charge** in the Run tab's Fragments section. It starts with a ca
 the charge's mass, 2,000 fragments and 300 tracers across 16 m round the charge, and sets the
 casing's mass, the number of fragments and tracers, and the casing's shape; the launch speed it
 gives is shown. The description is saved with the project (as `fragments.json`), takes effect
-from the next run, and is undone and redone with the layout's edits (⌘Z). With a Mac set for sweeps in Settings, **Fly on** that Mac sends the fragments
-there, over a connection kept open between runs.
+from the next run, and is undone and redone with the layout's edits (⌘Z). With Macs set for sweeps in Settings, **Fly on** sends the fragments to
+the one chosen, over a connection kept open between runs and shared with any other model run
+there; should that Mac drop, they carry on here.
 
 During a run the view draws them over the blast as dots of a fixed size on screen, whatever their
 true size: fragments in flight dark when slow and white-hot at their launch speed, tracers in cyan,
@@ -103,7 +104,7 @@ time: the consumer on another Mac gives the same result as on this one, to the l
 
 On another Mac, the consumer is a session of `BombCAD worker` (see
 [Sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac)), over the same SSH
-connection: the worker protocol's version 2 carries each block as a raw binary payload, and the
+connection: the worker protocol (since version 2) carries each block as a raw binary payload, and the
 trajectories come back the same way.
 
 Frames are the export's (`--frame-interval`, 1 ms by default). Without a structure the run stops

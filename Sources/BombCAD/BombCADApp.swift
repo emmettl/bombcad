@@ -2,10 +2,13 @@ import AppKit
 import SwiftUI
 
 /// `BombCAD run …` runs a project without a window (see `HeadlessRun`), `BombCAD sweep …` runs a
-/// sweep (see `HeadlessSweep`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`); anything else opens the app.
+/// sweep (see `HeadlessSweep`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`); anything else opens the app.
 @main
 enum BombCADMain {
     static func main() {
+        // A worker's connection that drops must fail a write, not end the process: the models it
+        // ran carry on here (see `ResilientFrameConsumer`).
+        signal(SIGPIPE, SIG_IGN)
         let arguments = Array(CommandLine.arguments.dropFirst())
         switch arguments.first {
         case "run":
@@ -16,6 +19,8 @@ enum BombCADMain {
             Task { @MainActor in
                 exit(await HeadlessSweep.main(Array(arguments.dropFirst())))
             }
+        case "cloud":
+            exit(HeadlessCloud.main(Array(arguments.dropFirst())))
         case "worker":
             Task { @MainActor in
                 exit(await SweepWorker.main())

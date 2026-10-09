@@ -35,22 +35,22 @@ struct FragmentSection: View {
                 Picker("Tracers", selection: spec(\.tracers)) {
                     ForEach(Self.tracerCounts, id: \.self) { Text($0 == 0 ? "None" : "\($0)").tag($0) }
                 }
-                if !host.isEmpty {
-                    Toggle("Fly on \(host)", isOn: $model.fragmentsOnRemote)
-                        .help(
-                            "Flies the fragments on the first Mac set for sweeps in Settings, a frame behind the run."
-                        )
-                }
+                PlacementPicker(
+                    title: "Fly on", host: $model.fragmentsHost,
+                    help:
+                        "Flies the fragments here or on a Mac set for sweeps in Settings, a frame behind the run."
+                )
                 FragmentStatus(model: model)
             }
         }
-        .task(id: model.fragmentsOnRemote ? host : "") {
-            await model.connectFragmentWorker(model.fragmentsOnRemote && !host.isEmpty ? host : nil)
+        // One connection to each Mac the companions run on, shared by those on the same one.
+        .task(id: wantedHosts.sorted()) {
+            await model.connectWorkers(wantedHosts)
         }
     }
 
-    /// The first of the Macs set for sweeps.
-    private var host: String { AppPreferences.hosts(sweepHosts).first ?? "" }
+    /// The Macs the companions are set to run on, of those still set for sweeps.
+    private var wantedHosts: Set<String> { model.wantedHosts.intersection(AppPreferences.hosts(sweepHosts)) }
 
     private var launchSpeed: Int {
         Int(model.fragmentSpec?.launchSpeed(chargeMass: model.settings.chargeMass) ?? 0)

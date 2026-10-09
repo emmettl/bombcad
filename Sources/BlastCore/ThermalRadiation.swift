@@ -13,6 +13,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     public var groundSpacing: Float = 2
     /// Points on the fireball's surface sampled for each receiver's view of it.
     public var samples = 128
+    /// The fireball as its own shape, or as one equivalent sphere, for comparison.
+    public var fireball = FireballModel.shape
 
     public init() {}
 
@@ -28,6 +30,7 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
         groundSpacing =
             try values.decodeIfPresent(Float.self, forKey: .groundSpacing) ?? defaults.groundSpacing
         samples = try values.decodeIfPresent(Int.self, forKey: .samples) ?? defaults.samples
+        fireball = try values.decodeIfPresent(FireballModel.self, forKey: .fireball) ?? defaults.fireball
     }
 
     public func validate() throws {
@@ -43,8 +46,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
 }
 
 /// The fireball at one moment as the blast sees it: the luminous gas, reduced to the volume,
-/// centre and temperature of an equivalent sphere. A few numbers a frame, so the radiation can be
-/// worked out anywhere.
+/// centre and temperature of an equivalent sphere, and its shape in blocks. A few numbers and a
+/// few kilobytes a frame, so the radiation can be worked out anywhere.
 public struct FireballFrame: Codable, Sendable, Equatable {
     public var time: Double
     /// Volume of luminous gas, in cubic metres; zero once none is left.
@@ -55,74 +58,62 @@ public struct FireballFrame: Codable, Sendable, Equatable {
     public var temperature: Float
     /// The hottest cell, in kelvin.
     public var hottest: Float
+    /// The luminous gas's shape; nil where no block of it is half luminous, and in the frames a
+    /// result keeps (see `withoutShape`).
+    public var shape: FireballShape?
 
-    public init(time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float) {
+    public init(
+        time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float,
+        shape: FireballShape? = nil
+    ) {
         self.time = time
         self.volume = volume
         self.centre = centre
         self.temperature = temperature
         self.hottest = hottest
+        self.shape = shape
     }
 
     /// The equivalent sphere's radius.
     public var radius: Float { Float(cbrt(3 * volume / (4 * .pi))) }
+
+    /// The frame without its shape, as a result keeps it: tens of kilobytes a frame is too much
+    /// to save with a run.
+    public var withoutShape: FireballFrame {
+        var frame = self
+        frame.shape = nil
+        return frame
+    }
 }
 
 extension BlastSolver {
-    /// The fireball now: every cell of air at least `luminousTemperature` kelvin. Reads the state,
-    /// spread across the CPU's cores; call it only while no batch is in flight.
+    /// The fireball now: every cell of air at least `luminousTemperature` kelvin, summed in
+    /// blocks of two cells a side. Summed on the GPU if the batch that ended now was asked for it
+    /// (see `frameRequest`); otherwise read from the state, spread across the CPU's cores, so call
+    /// it only while no batch is in flight.
     public func fireball(luminousTemperature: Float) -> FireballFrame {
-        let (nx, ny, nz) = (grid.nx, grid.ny, grid.nz)
-        let h = grid.cellSize
-        let gamma = configuration.gamma
-        let airModel = configuration.airModel
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        struct Sums {
-            var count = 0
-            var position = SIMD3<Double>.zero
-            var fourth = 0.0
-            var hottest: Float = 0
+        let blocks =
+            frameExtractor?.fireballBlocks(luminous: luminousTemperature, time: time, steps: stepCount)
+            ?? cpuLuminousBlocks(luminousTemperature: luminousTemperature)
+        // In the blocks' order and in double precision, so the same from one run to the next.
+        var count = 0.0
+        var position = SIMD3<Double>.zero
+        var fourth = 0.0
+        var hottest: Float = 0
+        for block in blocks {
+            count += Double(block.cells)
+            position += SIMD3<Double>(block.position)
+            fourth += Double(block.fourth)
+            hottest = max(hottest, block.hottest)
         }
-        var planes = [Sums](repeating: Sums(), count: nz)
-        withState { cells in
-            planes.withUnsafeMutableBufferPointer { planes in
-                DispatchQueue.concurrentPerform(iterations: nz) { k in
-                    var sums = Sums()
-                    for j in 0..<ny {
-                        for i in 0..<nx {
-                            let index = grid.index(i, j, k)
-                            guard mask[index] == 0 else { continue }
-                            let air = Self.primitive(of: cells[index], gamma: gamma, airModel: airModel)
-                            // Dissociating air is never hotter than this, so it bounds the search.
-                            let bound = air.pressure / (air.density * AirModel.gasConstant)
-                            guard bound >= luminousTemperature else { continue }
-                            let t =
-                                airModel == .dissociating
-                                ? airModel.temperature(density: air.density, pressure: air.pressure) : bound
-                            guard t >= luminousTemperature, t.isFinite else { continue }
-                            sums.count += 1
-                            sums.position += SIMD3<Double>(Double(i) + 0.5, Double(j) + 0.5, Double(k) + 0.5)
-                            sums.fourth += pow(Double(t), 4)
-                            sums.hottest = max(sums.hottest, t)
-                        }
-                    }
-                    planes[k] = sums
-                }
-            }
-        }
-        let total = planes.reduce(into: Sums()) { total, plane in
-            total.count += plane.count
-            total.position += plane.position
-            total.fourth += plane.fourth
-            total.hottest = max(total.hottest, plane.hottest)
-        }
-        guard total.count > 0 else {
+        guard count > 0 else {
             return FireballFrame(time: time, volume: 0, centre: .zero, temperature: 0, hottest: 0)
         }
-        let n = Double(total.count)
+        let h = grid.cellSize
         return FireballFrame(
-            time: time, volume: n * pow(Double(h), 3), centre: SIMD3<Float>(total.position / n) * h,
-            temperature: Float(pow(total.fourth / n, 0.25)), hottest: total.hottest)
+            time: time, volume: count * pow(Double(h), 3), centre: SIMD3<Float>(position / count) * h,
+            temperature: Float(pow(fourth / count, 0.25)), hottest: hottest,
+            shape: FireballShape(blocks: blocks, grid: grid))
     }
 }
 
@@ -156,7 +147,8 @@ public struct ThermalExposure: Sendable {
     /// In joules a square metre.
     public private(set) var fluence: [Double]
     public private(set) var frames: [FireballFrame] = []
-    let occluders: [Box]
+    /// What stands between the receivers and the fireball.
+    let visibility: any ThermalVisibility
     /// The charge's energy, in joules, to set the radiated energy against.
     let chargeEnergy: Double
     /// Points spread evenly over a cone, each as the fraction of the way to its rim in the
@@ -164,11 +156,12 @@ public struct ThermalExposure: Sendable {
     let cone: [SIMD3<Float>]
     private var lastIrradiance: [Float]?
 
-    public init(spec: ThermalSpec, scene: FragmentScene) {
+    /// `visibility` tests what blocks the receivers' view, by default `defaultVisibility`'s.
+    public init(spec: ThermalSpec, scene: FragmentScene, visibility: (any ThermalVisibility)? = nil) {
         self.spec = spec
         receivers = Self.receivers(scene: scene, spec: spec)
-        occluders = scene.blocks + scene.structure
-        chargeEnergy = Double(scene.charge.mass) * Double(Charge.energyPerKilogram)
+        self.visibility = visibility ?? Self.defaultVisibility(occluders: Self.occluders(scene))
+        chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
         fluence = [Double](repeating: 0, count: receivers.count)
@@ -183,19 +176,62 @@ public struct ThermalExposure: Sendable {
             for n in receivers.indices { fluence[n] += 0.5 * Double(before[n] + now[n]) * step }
         }
         for n in receivers.indices { peakIrradiance[n] = max(peakIrradiance[n], now[n]) }
-        frames.append(frame)
+        frames.append(frame.withoutShape)
         lastIrradiance = now
     }
 
-    /// The irradiance at every receiver from `frame`'s fireball.
+    /// The irradiance at every receiver from `frame`'s fireball: every receiver's rays toward it,
+    /// gathered across the CPU's cores, tested together, then summed.
     public func irradiance(_ frame: FireballFrame) -> [Float] {
         var result = [Float](repeating: 0, count: receivers.count)
         guard frame.volume > 0, frame.temperature > 0 else { return result }
         let power = Float(Double(spec.emissivity) * Self.stefanBoltzmann * pow(Double(frame.temperature), 4))
+        let chunk = 256
+        let chunks = (receivers.count + chunk - 1) / chunk
+        // Each chunk's rays and their weights, laid out a chunk at a time and then put end to end.
+        var rays = [[ThermalRay]](repeating: [], count: chunks)
+        var weights = [[Float]](repeating: [], count: chunks)
+        let views = [View](unsafeUninitializedCapacity: receivers.count) { views, count in
+            rays.withUnsafeMutableBufferPointer { rays in
+                weights.withUnsafeMutableBufferPointer { weights in
+                    DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                        let range = c * chunk..<min((c + 1) * chunk, receivers.count)
+                        var chunkRays: [ThermalRay] = []
+                        var chunkWeights: [Float] = []
+                        chunkRays.reserveCapacity(range.count * cone.count)
+                        chunkWeights.reserveCapacity(range.count * cone.count)
+                        for n in range {
+                            (views.baseAddress! + n).initialize(
+                                to: view(
+                                    from: receivers[n], frame, power: power, rays: &chunkRays,
+                                    weights: &chunkWeights))
+                        }
+                        rays[c] = chunkRays
+                        weights[c] = chunkWeights
+                    }
+                }
+            }
+            count = receivers.count
+        }
+        var offsets = [0]
+        for chunkRays in rays { offsets.append(offsets.last! + chunkRays.count) }
+        let all = [ThermalRay](unsafeUninitializedCapacity: offsets.last!) { buffer, count in
+            DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                _ = UnsafeMutableBufferPointer(rebasing: buffer[offsets[c]..<offsets[c + 1]]).initialize(
+                    from: rays[c])
+            }
+            count = offsets.last!
+        }
+        let visible = visibility.visible(all)
         result.withUnsafeMutableBufferPointer { result in
-            DispatchQueue.concurrentPerform(iterations: (receivers.count + 255) / 256) { chunk in
-                for n in chunk * 256..<min((chunk + 1) * 256, receivers.count) {
-                    result[n] = irradiance(at: receivers[n], frame, power: power)
+            visible.withUnsafeBufferPointer { visible in
+                DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                    let chunkVisible = UnsafeBufferPointer(rebasing: visible[offsets[c]..<offsets[c + 1]])
+                    var next = 0
+                    for n in c * chunk..<min((c + 1) * chunk, receivers.count) {
+                        result[n] = irradiance(
+                            views[n], visible: chunkVisible, weights: weights[c], from: &next)
+                    }
                 }
             }
         }
@@ -209,14 +245,44 @@ public struct ThermalExposure: Sendable {
     /// structure in the way. Exact for a sphere in full view at any distance, (r/d)² cos θ times E,
     /// and well behaved right up to its surface.
     func irradiance(at receiver: ThermalReceiver, _ frame: FireballFrame, power: Float) -> Float {
+        var rays: [ThermalRay] = []
+        var weights: [Float] = []
+        let view = view(from: receiver, frame, power: power, rays: &rays, weights: &weights)
+        var next = 0
+        return visibility.visible(rays).withUnsafeBufferPointer { visible in
+            irradiance(view, visible: visible, weights: weights, from: &next)
+        }
+    }
+
+    /// What one receiver sees of the fireball before anything in the way is known.
+    struct View {
+        /// Its irradiance where that needs no rays: inside the fireball, or with all of it below
+        /// the receiver's horizon.
+        var settled: Float?
+        /// How many rays it added.
+        var rays = 0
+        /// The irradiance is `scale` times the sum of the visible rays' weights, held to `cap`.
+        var scale: Float = 1
+        var cap: Float = .infinity
+    }
+
+    /// One receiver's view of `frame`'s fireball, adding the rays it needs tested to `rays` and the
+    /// cosine of each on the receiver to `weights`.
+    func view(
+        from receiver: ThermalReceiver, _ frame: FireballFrame, power: Float, rays: inout [ThermalRay],
+        weights: inout [Float]
+    ) -> View {
+        if spec.fireball == .shape, let shape = frame.shape {
+            return view(from: receiver, shape, rays: &rays, weights: &weights)
+        }
         let radius = frame.radius
         let x = receiver.position
         let toCentre = frame.centre - x
         let d = simd_length(toCentre)
         // Inside the fireball, surrounded by it: the hemisphere above radiates in full.
-        if d <= radius { return power }
+        if d <= radius { return View(settled: power) }
         // The whole sphere is below this surface's horizon.
-        if simd_dot(receiver.normal, toCentre) < -radius { return 0 }
+        if simd_dot(receiver.normal, toCentre) < -radius { return View(settled: 0) }
         let axis = toCentre / d
         let cosHalfAngle = sqrt(max(0, 1 - (radius / d) * (radius / d)))
         let solidAngle = 2 * Float.pi * (1 - cosHalfAngle)
@@ -224,7 +290,7 @@ public struct ThermalExposure: Sendable {
         let helper: SIMD3<Float> = abs(axis.z) < 0.9 ? SIMD3(0, 0, 1) : SIMD3(1, 0, 0)
         let u = simd_normalize(simd_cross(axis, helper))
         let v = simd_cross(axis, u)
-        var sum: Float = 0
+        let first = rays.count
         for sample in cone {
             let cosine = 1 - sample.x * (1 - cosHalfAngle)
             let sine = sqrt(max(0, 1 - cosine * cosine))
@@ -234,32 +300,28 @@ public struct ThermalExposure: Sendable {
             // Where the ray first meets the sphere.
             let b = simd_dot(direction, toCentre)
             let distance = b - sqrt(max(0, b * b - (d * d - radius * radius)))
-            let point = x + distance * direction
-            guard point.z >= 0 else { continue }
-            guard !occluders.contains(where: { Self.blocks($0, from: x, to: point) }) else { continue }
-            sum += cosReceiver
+            rays.append(ThermalRay(origin: x, direction: direction, length: distance))
+            weights.append(cosReceiver)
         }
-        return min(power / .pi * sum * solidAngle / Float(cone.count), power)
+        return View(rays: rays.count - first, scale: power / .pi * solidAngle / Float(cone.count), cap: power)
     }
 
-    /// Whether `box` lies across the segment from `start` to `end`; an end inside it counts.
-    static func blocks(_ box: Box, from start: SIMD3<Float>, to end: SIMD3<Float>) -> Bool {
-        let delta = end - start
-        var low: Float = 0
-        var high: Float = 1
-        for axis in 0..<3 {
-            if abs(delta[axis]) < 1e-12 {
-                if start[axis] < box.min[axis] || start[axis] > box.max[axis] { return false }
-                continue
-            }
-            var a = (box.min[axis] - start[axis]) / delta[axis]
-            var b = (box.max[axis] - start[axis]) / delta[axis]
-            if a > b { swap(&a, &b) }
-            low = max(low, a)
-            high = min(high, b)
-            if low > high { return false }
-        }
-        return true
+    /// The irradiance from a receiver's view, its rays' visibility and weights starting at `next`,
+    /// which it moves past them.
+    func irradiance(
+        _ view: View, visible: UnsafeBufferPointer<Bool>, weights: [Float], from next: inout Int
+    ) -> Float {
+        if let settled = view.settled { return settled }
+        var sum: Float = 0
+        for k in next..<next + view.rays where visible[k] { sum += weights[k] }
+        next += view.rays
+        return min(view.scale * sum, view.cap)
+    }
+
+    /// What can block a receiver's view besides the ground: the blocks and the structure's starting
+    /// outline.
+    public static func occluders(_ scene: FragmentScene) -> [Box] {
+        scene.blocks + scene.structure
     }
 
     /// `count` points on a Fibonacci spiral over a cone: even in the cosine of the angle off its
@@ -326,6 +388,11 @@ public struct ThermalExposure: Sendable {
         return result
     }
 
+    /// The charge's energy, in joules, as the result reports it.
+    public static func chargeEnergy(_ scene: FragmentScene) -> Double {
+        Double(scene.charge.mass) * Double(Charge.energyPerKilogram)
+    }
+
     public var result: ThermalResult {
         ThermalResult(
             spec: spec, receivers: receivers, peakIrradiance: peakIrradiance,
@@ -345,6 +412,18 @@ public struct ThermalResult: Codable, Sendable, Equatable {
     public var fireball: [FireballFrame]
     /// The charge's energy, in joules.
     public var chargeEnergy: Double
+
+    public init(
+        spec: ThermalSpec, receivers: [ThermalReceiver], peakIrradiance: [Float], fluence: [Float],
+        fireball: [FireballFrame], chargeEnergy: Double
+    ) {
+        self.spec = spec
+        self.receivers = receivers
+        self.peakIrradiance = peakIrradiance
+        self.fluence = fluence
+        self.fireball = fireball
+        self.chargeEnergy = chargeEnergy
+    }
 
     /// What the fireball radiated through the run, in joules: its emissive power over the part of
     /// its sphere above the ground, by the trapezium rule. Nothing takes this energy out of the
