@@ -64,6 +64,27 @@ struct AppPreferencesTests {
         #expect(session.snapshot == document)
     }
 
+    @Test("Sweep hosts are a list, and a single host saved before moves into it once")
+    func sweepHosts() throws {
+        #expect(AppPreferences.hosts(" mini \n\nstudio.local\nmini\n") == ["mini", "studio.local"])
+        #expect(AppPreferences.text(["a", "b", "a", " "]) == "a\nb")
+        try withStore { store in
+            store.set("scrimply-ci-tb", forKey: AppPreferences.Key.legacySweepHost)
+            store.set(true, forKey: AppPreferences.Key.sweepUsesRemote)
+            var preferences = AppPreferences.load(from: store)
+            #expect(preferences.sweepHosts == ["scrimply-ci-tb"])
+            #expect(preferences.sweepRemoteHosts == ["scrimply-ci-tb"])
+            #expect(store.string(forKey: AppPreferences.Key.legacySweepHost) == nil)
+            preferences.sweepHosts = ["scrimply-ci-tb", "studio.local"]
+            preferences.save(to: store)
+            // An old host written again later does not replace the list.
+            store.set("old", forKey: AppPreferences.Key.legacySweepHost)
+            #expect(AppPreferences.load(from: store).sweepHosts == ["scrimply-ci-tb", "studio.local"])
+            preferences.sweepUsesRemote = false
+            #expect(preferences.sweepRemoteHosts.isEmpty)
+        }
+    }
+
     @Test("Restoring defaults changes only owned preference keys")
     func reset() throws {
         try withStore { store in

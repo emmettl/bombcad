@@ -21,6 +21,7 @@ enum BombCADMain {
                 exit(await SweepWorker.main())
             }
         default:
+            AppPreferences.migrate()
             BombCADApp.main()
             return
         }

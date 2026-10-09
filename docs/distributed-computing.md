@@ -237,10 +237,13 @@ the run slowing, rather than making any one model faster.
   ([Performance](performance.md#structural-solver)).
 - **Independent runs.** A sweep's cases, a grid-sensitivity study or an uncertainty ensemble are
   separate runs: only the project goes out and the result comes back, so the link does not
-  matter and the scaling is perfect. Built in October 2026 for sweeps: see
+  matter and the scaling is perfect. Built in October 2026 for sweeps, across any number of
+  Macs, each given cases by its measured speed: see
   [Sharing a sweep with another Mac](run-comparison.md#sharing-a-sweep-with-another-mac). Six
   equal cases took 18.5 s on the Studio and the mini together against 22.1 s on the Studio
-  alone, the mini running one, with identical results.
+  alone, the mini running one, with identical results; with the Studio busy with other work,
+  the mini was measured faster, ran four of the six, and halved the sweep (a median 63 s against
+  119 s).
 
 ## Sources
 
