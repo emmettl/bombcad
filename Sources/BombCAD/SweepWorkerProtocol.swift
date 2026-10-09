@@ -44,7 +44,7 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 6
+    static let protocolVersion = 7
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String

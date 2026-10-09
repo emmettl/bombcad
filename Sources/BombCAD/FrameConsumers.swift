@@ -45,7 +45,8 @@ enum ConsumerInput: Sendable, Equatable {
     var header: Header {
         switch self {
         case .air(let slice): .air(slice.header)
-        case .fireball(let frame): .fireball(frame)
+        // The cells, megabytes once the fireball fills a street, go as the payload.
+        case .fireball(let frame): .fireball(frame.withoutCells)
         case .ground(let slice): .ground(slice.header)
         }
     }
@@ -53,7 +54,7 @@ enum ConsumerInput: Sendable, Equatable {
     var payload: Data {
         switch self {
         case .air(let slice): slice.payload
-        case .fireball: Data()
+        case .fireball(let frame): frame.cells?.binary ?? Data()
         case .ground(let slice): slice.payload
         }
     }
@@ -71,7 +72,7 @@ enum ConsumerInput: Sendable, Equatable {
     var byteCount: Int {
         switch self {
         case .air(let slice): 2 * slice.values.count
-        case .fireball: 0
+        case .fireball(let frame): frame.cells.map { $0.fills.count * ($0.products == nil ? 3 : 5) } ?? 0
         case .ground(let slice): 4 * slice.values.count
         }
     }
@@ -79,7 +80,9 @@ enum ConsumerInput: Sendable, Equatable {
     init(header: Header, payload: Data) throws {
         switch header {
         case .air(let header): self = .air(try AirSlice(header: header, payload: payload))
-        case .fireball(let frame): self = .fireball(frame)
+        case .fireball(var frame):
+            frame.cells = payload.isEmpty ? nil : try LuminousCells(binary: payload)
+            self = .fireball(frame)
         case .ground(let header): self = .ground(try GroundSlice(header: header, payload: payload))
         }
     }

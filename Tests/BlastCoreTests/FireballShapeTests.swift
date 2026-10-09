@@ -262,9 +262,9 @@ struct FireballShapeTests {
         #expect(exposure.frames == [frame.withoutShape])
     }
 
-    @Test("A description names its fireball model, the shape unless it says otherwise")
+    @Test("A description names its fireball model, the volume unless it says otherwise")
     func model() throws {
-        #expect(try JSONDecoder().decode(ThermalSpec.self, from: Data("{}".utf8)).fireball == .shape)
+        #expect(try JSONDecoder().decode(ThermalSpec.self, from: Data("{}".utf8)).fireball == .volume)
         let sphere = try JSONDecoder().decode(ThermalSpec.self, from: Data(#"{"fireball": "sphere"}"#.utf8))
         #expect(sphere.fireball == .sphere)
     }

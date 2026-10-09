@@ -29,7 +29,8 @@ import simd
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
-//                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
+//                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]]
+//                       [--air thermal] [--afterburn]
 //                       [--stationary-walls]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
 
@@ -675,21 +676,28 @@ func runSnapshot() throws {
         try spec.validate()
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
-    // With --thermal-compare, the same frames reckoned with the other fireball model too, and
+    // With --thermal-compare, the same frames reckoned with another fireball model too (the
+    // shape against the volume, the sphere against the shape, or --thermal-compare-with's), and
     // each timed.
     var other = thermal.map { exposure in
         var spec = exposure.spec
-        spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        if let model = option("thermal-compare-with").flatMap(FireballModel.init(rawValue:)) {
+            spec.fireball = model
+        } else {
+            spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        }
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
     if !flag("thermal-compare") { other = nil }
     var thermalSeconds = (0.0, 0.0)
     var fireballSeconds = 0.0
+    // What the compared model's fireball radiated, measured round it as the volume's is.
+    var otherRadiated: [(time: Double, power: Double)] = []
     var largestShape: FireballShape?
     func feedThermal() {
         guard var exposure = thermal else { return }
         let extracting = ContinuousClock.now
-        let frame = solver.fireball(luminousTemperature: exposure.spec.luminousTemperature)
+        let frame = solver.fireball(for: exposure.spec)
         fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
         if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
         var started = ContinuousClock.now
@@ -700,6 +708,7 @@ func runSnapshot() throws {
             started = ContinuousClock.now
             compared.add(frame)
             thermalSeconds.1 += (ContinuousClock.now - started) / .seconds(1)
+            otherRadiated.append((frame.time, compared.radiatedPower(frame)))
             other = compared
         }
     }
@@ -708,7 +717,7 @@ func runSnapshot() throws {
     feedThermal()
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
-    if let thermal { solver.frameRequest.fireball = thermal.spec.luminousTemperature }
+    if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -764,8 +773,26 @@ func runSnapshot() throws {
                     thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
                     other.spec.fireball.rawValue,
                     thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
-            // Each receiver's fluence by the shape against the sphere's, by surface.
-            let (shape, sphere) = thermal.spec.fireball == .shape ? (thermal, other) : (other, thermal)
+            for exposure in [thermal, other] {
+                if let gpu = exposure.marchGPUSeconds {
+                    print(
+                        String(
+                            format: "  The %@'s march: %.2f ms of GPU time a frame",
+                            exposure.spec.fireball.rawValue,
+                            1000 * gpu / Double(max(exposure.frames.count, 1))))
+                }
+            }
+            let measured = zip(otherRadiated, otherRadiated.dropFirst()).reduce(0.0) {
+                $0 + 0.5 * ($1.0.power + $1.1.power) * ($1.1.time - $1.0.time)
+            }
+            print(
+                String(
+                    format:
+                        "As its %@, measured round it as the volume is: radiated %.1f MJ, %.1f%% of the charge's energy",
+                    other.spec.fireball.rawValue, measured / 1e6,
+                    100 * measured / max(other.result.chargeEnergy, 1)))
+            // Each receiver's fluence by the first model against the second, by surface.
+            let (shape, sphere) = (thermal, other)
             var surfaces: [String] = []
             for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
                 surfaces.append(receiver.surface)
@@ -782,8 +809,9 @@ func runSnapshot() throws {
                 print(
                     String(
                         format:
-                            "  %@: mean fluence %.1f kJ/m² as the shape, %.1f as the sphere (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d shape, %d sphere",
-                        surface, a / Double(indices.count) / 1000, b / Double(indices.count) / 1000,
+                            "  %@: mean fluence %.1f kJ/m² as the %@, %.1f as the %@ (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d, %d",
+                        surface, a / Double(indices.count) / 1000, shape.spec.fireball.rawValue,
+                        b / Double(indices.count) / 1000, sphere.spec.fireball.rawValue,
                         100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
             }
         }

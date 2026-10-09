@@ -8,10 +8,18 @@ public struct FrameRequest: Sendable, Equatable {
     public var airSlice: AirSliceRequest?
     /// The fireball's luminous temperature, as `fireball(luminousTemperature:)` takes it.
     public var fireball: Float?
+    /// Whether the fireball is wanted cell by cell too, as the volume model takes it.
+    public var fireballCells: Bool
 
-    public init(airSlice: AirSliceRequest? = nil, fireball: Float? = nil) {
+    public init(airSlice: AirSliceRequest? = nil, fireball: Float? = nil, fireballCells: Bool = false) {
         self.airSlice = airSlice
         self.fireball = fireball
+        self.fireballCells = fireballCells
+    }
+
+    /// What the thermal radiation `spec` describes needs, if any.
+    public init(thermal spec: ThermalSpec?) {
+        self.init(fireball: spec?.luminousTemperature, fireballCells: spec?.fireball == .volume)
     }
 
     public var isEmpty: Bool { airSlice == nil && fireball == nil }
@@ -36,25 +44,28 @@ final class FrameExtractor {
     private let device: MTLDevice
     private let airPipeline: MTLComputePipelineState
     private let fireballPipeline: MTLComputePipelineState
+    private let cellsPipeline: MTLComputePipelineState
     private var airBuffer: MTLBuffer?
+    private var cellsBuffer: MTLBuffer?
     private var blocksBuffer: MTLBuffer?
     private var blockCountBuffer: MTLBuffer?
     /// What the batch in flight was asked for.
-    private var encoded: (air: AirSlice.Layout?, luminous: Float?)?
+    private var encoded: (air: AirSlice.Layout?, luminous: Float?, cells: Bool)?
     /// What the last completed batch cut out, and the moment and step it ended at; nil when
     /// nothing is ready or the state has changed since.
-    private(set) var ready: (time: Double, steps: Int, air: AirSlice.Layout?, luminous: Float?)?
+    private(set) var ready: (time: Double, steps: Int, air: AirSlice.Layout?, luminous: Float?, cells: Bool)?
 
     init(library: MTLLibrary) throws {
         device = library.device
         airPipeline = try ShaderLibrary.pipeline("extractAirSlice", in: library)
         fireballPipeline = try ShaderLibrary.pipeline("extractFireballBlocks", in: library)
+        cellsPipeline = try ShaderLibrary.pipeline("extractLuminousCells", in: library)
     }
 
     /// Encodes the request's kernels at the end of a batch, after its last step.
     func encode(
         _ encoder: MTLComputeCommandEncoder, request: FrameRequest, grid: Grid, state: MTLBuffer,
-        mask: MTLBuffer, control: MTLBuffer, uniforms: SolverUniforms
+        mask: MTLBuffer, species: MTLBuffer, hasSpecies: Bool, control: MTLBuffer, uniforms: SolverUniforms
     ) {
         ready = nil
         var uniforms = uniforms
@@ -112,14 +123,37 @@ final class FrameExtractor {
                 luminous = temperature
             }
         }
-        encoded = air == nil && luminous == nil ? nil : (air, luminous)
+        var cells = false
+        if var temperature = luminous, request.fireballCells {
+            let bytes = MemoryLayout<UInt32>.stride * grid.cellCount
+            if (cellsBuffer?.length ?? 0) < bytes {
+                cellsBuffer = device.makeBuffer(length: bytes, options: .storageModeShared)
+            }
+            if let cellsBuffer {
+                var flag = UInt32(hasSpecies ? 1 : 0)
+                encoder.setComputePipelineState(cellsPipeline)
+                encoder.setBuffer(control, offset: 0, index: 0)
+                encoder.setBuffer(state, offset: 0, index: 1)
+                encoder.setBuffer(mask, offset: 0, index: 2)
+                encoder.setBuffer(species, offset: 0, index: 3)
+                encoder.setBuffer(cellsBuffer, offset: 0, index: 4)
+                encoder.setBytes(&temperature, length: MemoryLayout<Float>.stride, index: 5)
+                encoder.setBytes(&flag, length: MemoryLayout<UInt32>.stride, index: 6)
+                encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 7)
+                encoder.dispatchThreads(
+                    MTLSize(width: grid.nx, height: grid.ny, depth: grid.nz),
+                    threadsPerThreadgroup: Self.threadgroup(cellsPipeline, depth: true))
+                cells = true
+            }
+        }
+        encoded = air == nil && luminous == nil ? nil : (air, luminous, cells)
     }
 
     /// The batch in flight has finished, at `time` after `steps` steps; what it cut out is kept
     /// if it reached its time limit.
     func complete(reachedLimit: Bool, time: Double, steps: Int) {
         if reachedLimit, let encoded {
-            ready = (time, steps, encoded.air, encoded.luminous)
+            ready = (time, steps, encoded.air, encoded.luminous, encoded.cells)
         } else {
             ready = nil
         }
@@ -156,6 +190,18 @@ final class FrameExtractor {
         }
         blocks.sort { $0.index < $1.index }
         return blocks
+    }
+
+    /// Each cell's luminous temperature and unburnt products cut out at `luminous` kelvin, at
+    /// `time` and `steps`, if they are ready, packed as `extractLuminousCells` writes them, one a
+    /// cell of the grid.
+    func luminousCells(luminous: Float, time: Double, steps: Int, count: Int) -> UnsafeBufferPointer<UInt32>?
+    {
+        guard let ready, ready.time == time, ready.steps == steps, ready.luminous == luminous, ready.cells,
+            let cellsBuffer
+        else { return nil }
+        return UnsafeBufferPointer(
+            start: cellsBuffer.contents().bindMemory(to: UInt32.self, capacity: count), count: count)
     }
 
     private static func threadgroup(_ pipeline: MTLComputePipelineState, depth: Bool) -> MTLSize {
