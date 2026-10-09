@@ -64,6 +64,7 @@ struct StreetReport: Codable {
     var device: String
     var system: String
     var planeHeightM: Float = 1.5
+    var probeSpacingM: Float = 0.5
     var arrivalThresholdPa: Float = 1000
     var sourceDepositionRadiusM: Float = 1
     var structuralElementSizeM: Float = 0.5
@@ -72,7 +73,8 @@ struct StreetReport: Codable {
     var notes = [
         "Invented RC shell buildings; conventional 2 kg TNT-equivalent source; no measured validation.",
         "Fixed 1 m energy-deposition radius is a numerical control, not a resolved detonation.",
-        "Maps use x-fast coarse cell averages, vertically interpolated pressure at 1.5 m; fine state is restricted.",
+        "Maps use fixed 0.5 m probe spacing at 1.5 m height, trilinearly interpolating coarse pressure; fine state is restricted.",
+        "Probe stencils clamp at outer grid-cell centres; comparison norms exclude a 1 m domain-edge margin.",
         "Positive map impulse uses right endpoints; arrival is first endpoint >= 1000 Pa, without interpolation.",
         "Masked-at-any-time points and unreached arrivals are null; map peak/impulse include the whole finite window.",
         "Gauge histories use containing-cell centres (fine child where present); gauge impulse is trapezoidal.",
@@ -172,7 +174,7 @@ enum StreetBenchmark {
         let setupStart = ProcessInfo.processInfo.systemUptime
         let solver = try BlastSolver(
             device: device, scenario: scene, cellSize: setting.dx, configuration: config)
-        try solver.configureExposurePlane(heightM: 1.5, arrivalThresholdPa: 1000)
+        try solver.configureExposurePlane(heightM: 1.5, arrivalThresholdPa: 1000, spacingM: 0.5)
         if profile { try solver.enableGPUProfiling(true) }
         let setup = ProcessInfo.processInfo.systemUptime - setupStart
         let initial = solver.totals()

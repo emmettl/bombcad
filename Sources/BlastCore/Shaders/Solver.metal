@@ -1065,26 +1065,45 @@ kernel void sampleExposurePlane(const device Cell *state [[buffer(0)]],
                                constant SolverUniforms &u [[buffer(4)]],
                                constant float4 &probe [[buffer(5)]],
                                constant float &weight [[buffer(6)]],
+                               constant float4 &sampling [[buffer(7)]],
                                uint2 tid [[thread_position_in_grid]]) {
-    if (tid.x >= u.nx || tid.y >= u.ny || (control.dt <= 0 && probe.w == 0)) {
+    if (tid.x >= uint(sampling.x) || tid.y >= uint(sampling.y) || (control.dt <= 0 && probe.w == 0)) {
         return;
     }
-    uint point = tid.x + u.nx * tid.y;
-    uint cell = point + u.nx * u.ny * uint(probe.x);
-    uint upper = weight > 0 ? cell + u.nx * u.ny : cell;
+    uint point = tid.x + uint(sampling.x) * tid.y;
+    float2 coordinate = sampling.z == u.dx ? float2(tid)
+                                         : clamp((float2(tid) + 0.5f) * sampling.z / u.dx - 0.5f,
+                                                 float2(0), float2(u.nx - 1, u.ny - 1));
+    uint2 lower = uint2(floor(coordinate));
+    float2 fraction = coordinate - float2(lower);
     float4 record = exposure[point];
-    if (mask[cell] != 0 || mask[upper] != 0) {
+    bool solid = false;
+    float pressure = 0;
+    for (uint k = 0; k < 2; ++k) {
+        for (uint j = 0; j < 2; ++j) {
+            for (uint i = 0; i < 2; ++i) {
+                float w = (k == 0 ? 1 - weight : weight)
+                          * (j == 0 ? 1 - fraction.y : fraction.y)
+                          * (i == 0 ? 1 - fraction.x : fraction.x);
+                if (w <= 0) {
+                    continue;
+                }
+                uint x = min(lower.x + i, u.nx - 1);
+                uint y = min(lower.y + j, u.ny - 1);
+                uint z = uint(probe.x) + k;
+                uint cell = x + u.nx * (y + u.ny * z);
+                solid = solid || mask[cell] != 0;
+                Cell c = state[cell];
+                float rho = max(c.rho, u.densityFloor);
+                float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+                pressure += w * gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma);
+            }
+        }
+    }
+    if (solid) {
         record.w = 1;
     } else {
-        Cell c = state[cell];
-        float rho = max(c.rho, u.densityFloor);
-        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
-        float pressure = gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma);
-        Cell d = state[upper];
-        float upperRho = max(d.rho, u.densityFloor);
-        float upperKinetic = 0.5f * (d.mx * d.mx + d.my * d.my + d.mz * d.mz) / upperRho;
-        float upperPressure = gasPressure(upperRho, d.energy - upperKinetic, u.airModel, u.gamma);
-        float overpressure = max(mix(pressure, upperPressure, weight) - u.ambientPressure, 0.0f);
+        float overpressure = max(pressure - u.ambientPressure, 0.0f);
         record.x = max(record.x, overpressure);
         record.y += overpressure * control.dt;
         if (record.z < 0 && overpressure >= probe.y) {

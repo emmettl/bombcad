@@ -31,12 +31,15 @@ public final class BlastSolver {
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
 
     /// Enables fixed spatial probes before stepping. Does not change the air solution.
-    /// Snapshot arrays are x-fast; masked points are null and unreached arrivals are null.
-    public func configureExposurePlane(heightM: Float, arrivalThresholdPa: Float) throws {
+    /// Snapshot arrays are x-fast; stencils touching solids and unreached arrivals are null.
+    /// Probe spacing defaults to the air grid and must divide both horizontal domain extents.
+    public func configureExposurePlane(heightM: Float, arrivalThresholdPa: Float, spacingM: Float? = nil)
+        throws
+    {
         precondition(!batchInFlight && time == 0, "Configure probes before stepping")
         exposurePlane = try ExposurePlane(
             device: device, library: library, grid: grid, height: heightM,
-            threshold: arrivalThresholdPa)
+            threshold: arrivalThresholdPa, spacing: spacingM)
         exposureNeedsInitialSample = true
     }
 
@@ -1469,6 +1472,7 @@ public final class BlastSolver {
         var uniforms = makeUniforms()
         var probe = SIMD4<Float>(Float(plane.layer), plane.threshold, Float(time), initial ? 1 : 0)
         var weight = plane.weight
+        var sampling = SIMD4<Float>(Float(plane.nx), Float(plane.ny), plane.spacing, 0)
         encoder.setComputePipelineState(plane.pipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
@@ -1477,8 +1481,9 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 4)
         encoder.setBytes(&probe, length: 16, index: 5)
         encoder.setBytes(&weight, length: 4, index: 6)
+        encoder.setBytes(&sampling, length: 16, index: 7)
         encoder.dispatchThreads(
-            MTLSize(width: grid.nx, height: grid.ny, depth: 1),
+            MTLSize(width: plane.nx, height: plane.ny, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
     }
 

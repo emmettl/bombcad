@@ -59,8 +59,8 @@ def render(directory, output):
     for column, im in enumerate(images):
         fig.colorbar(im, ax=axes[:, column], location="bottom", shrink=0.9, pad=0.04)
     fig.suptitle("Street interactions: matched conventional source, changing neighbours\n"
-                 "0.125 m air cells · 1.5 m plane · first 120 ms", fontsize=15)
-    fig.supxlabel("Grey: ever solid. White arrival cells: threshold unreached. Star: source. Dots: gauges 1–4.\n"
+                 "0.125 m air cells · 0.5 m probe spacing · 1.5 m plane · first 120 ms", fontsize=15)
+    fig.supxlabel("Grey: a probe stencil touched solid. White arrival cells: threshold unreached. Star: source. Dots: gauges 1–4.\n"
                   "Invented buildings; fixed 1 m source deposition radius; these results are not measured validation.", fontsize=9)
     fig.savefig(output / "exposure.png", dpi=150)
     plt.close(fig)
@@ -98,7 +98,7 @@ def render(directory, output):
         ax.grid(alpha=0.2)
         ax.legend()
     fig.suptitle("Resolution sensitivity: reference 0.125 m; half-CFL comparison: reference 0.25 m", fontsize=13)
-    fig.supxlabel("Common fluid xy cells; fine maps area-averaged onto coarse cells; exclude points within 3 m of source.\n"
+    fig.supxlabel("Matched physical probes with common fluid stencils; exclude a 1 m edge margin and points within 3 m of source.\n"
                   "Arrival differences use commonly reached points. A smaller difference alone does not establish convergence.", fontsize=9)
     fig.savefig(output / "sensitivity.png", dpi=150)
     plt.close(fig)

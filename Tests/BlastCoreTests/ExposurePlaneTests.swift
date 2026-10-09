@@ -144,4 +144,49 @@ struct ExposurePlaneTests {
             #expect(!scene.chargeIsBlocked)
         }
     }
+
+    @Test("A fixed physical lattice reproduces linear pressure on different air grids")
+    func physicalLattice() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        var reference: ExposurePlaneSnapshot?
+        for dx: Float in [0.5, 0.25] {
+            let grid = Grid(nx: Int(6 / dx), ny: Int(2 / dx), nz: Int(2 / dx), cellSize: dx)
+            let solver = try BlastSolver(device: device, grid: grid)
+            solver.mutateState { cells in
+                for k in 0..<grid.nz {
+                    for j in 0..<grid.ny {
+                        for i in 0..<grid.nx {
+                            let p = grid.cellCentre(i, j, k)
+                            cells[grid.index(i, j, k)] = CellState(
+                                Primitive(
+                                    density: 1.225, pressure: 101_325 + 2000 * p.x + 500 * p.y + 500 * p.z),
+                                gamma: 1.4)
+                        }
+                    }
+                }
+            }
+            solver.restart()
+            try solver.configureExposurePlane(heightM: 1, arrivalThresholdPa: 3000, spacingM: 0.5)
+            #expect(solver.advance(steps: 1, timeLimit: 0).steps == 0)
+            let map = try #require(solver.exposureSnapshot())
+            #expect(map.nx == 12 && map.ny == 4 && map.cellSizeM == 0.5 && map.airCellSizeM == dx)
+            if let reference {
+                for (a, b) in zip(map.peakPa, reference.peakPa) {
+                    #expect(abs(try #require(a) - (try #require(b))) < 0.05)
+                }
+                #expect(map.arrivalS == reference.arrivalS)
+            } else {
+                reference = map
+            }
+            for j in 0..<map.ny {
+                for i in 0..<map.nx {
+                    let expected = 2000 * (Float(i) + 0.5) * 0.5 + 500 * (Float(j) + 0.5) * 0.5 + 500
+                    #expect(abs(try #require(map.peakPa[i + map.nx * j]) - expected) < 0.1)
+                }
+            }
+        }
+        #expect(throws: BlastError.self) {
+            try solver().configureExposurePlane(heightM: 1, arrivalThresholdPa: 1000, spacingM: 0.7)
+        }
+    }
 }

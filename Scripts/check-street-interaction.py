@@ -17,7 +17,7 @@ def read(path):
 
 
 def compare_maps(a, b):
-    """Area-average finer samples onto coarse xy cells; retain common fluid only."""
+    """Compare fixed physical probes; retain common fluid stencils only."""
     ratio = round(a["cellSizeM"] / b["cellSizeM"])
     require(ratio >= 1 and a["nx"] * ratio == b["nx"] and a["ny"] * ratio == b["ny"], "nested maps")
     sums = {key: [0.0, 0.0] for key in ("peakPa", "positiveImpulsePaS")}
@@ -28,7 +28,7 @@ def compare_maps(a, b):
         for i in range(a["nx"]):
             # Exclude source deposition/near-source cells from the far-field comparison.
             x, y = (i + 0.5) * a["cellSizeM"], (j + 0.5) * a["cellSizeM"]
-            if math.hypot(x - 8, y - 16) < 3:
+            if math.hypot(x - 8, y - 16) < 3 or x < 1 or y < 1 or x > 39 or y > 31:
                 continue
             index = i + j * a["nx"]
             indices = [i * ratio + di + b["nx"] * (j * ratio + dj)
@@ -77,6 +77,7 @@ def check(directory):
         count = plane["nx"] * plane["ny"]
         require(plane["nx"] * plane["cellSizeM"] == 40 and plane["ny"] * plane["cellSizeM"] == 32, f"{name}: domain")
         require(plane["heightM"] == 1.5 and plane["thresholdPa"] == 1000, f"{name}: probes")
+        require(plane["cellSizeM"] == 0.5 and plane["airCellSizeM"] == run["cellSizeM"], f"{name}: fixed probe spacing")
         require(abs(plane["elapsedS"] - run["durationS"]) < 1e-7, f"{name}: map cutoff")
         for key in ("peakPa", "positiveImpulsePaS", "arrivalS", "everSolid"):
             require(len(plane[key]) == count, f"{name}: {key} length")
