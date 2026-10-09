@@ -5,6 +5,7 @@ No clipped geometry, gas averaging, grouped reconstruction or Swift Gauss rule i
 """
 import json
 import math
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -60,12 +61,18 @@ def relative(a, b):
 
 
 def main():
-    rows = json.loads((ROOT / '.build/initial-wall-traces.json').read_text())
-    expected = {(h,a) for h in (0.2,0.1,0.05) for a in (0,0.23)}
-    keys = [(r['cellSize'],r['rotation']) for r in rows]
+    decompose = '--decompose' in sys.argv
+    sweep = '--stencil-sweep' in sys.argv
+    volume_fit = '--volume-fit' in sys.argv or sweep
+    suffix = '-stencil-sweep' if sweep else ('-volume-fit' if volume_fit else ('-decomposition' if decompose else ''))
+    rows = json.loads((ROOT / f'.build/initial-wall-traces{suffix}.json').read_text())
+    angles = (0,0.1,0.23,0.4) if sweep else (0,0.23)
+    depths = (1,2,3) if sweep else (2,)
+    expected = {(h,a,d) for h in (0.2,0.1,0.05) for a in angles for d in depths}
+    keys = [(r['cellSize'],r['rotation'],r['volumeFits']['stencilRings'] if volume_fit else 2) for r in rows]
     assert len(keys) == len(expected) and set(keys) == expected
     refs = {}
-    for angle in (0,0.23):
+    for angle in angles:
         low, high = reference(angle,128), reference(angle,256)
         assert max(relative(a,b) for a,b in zip(low,high)) < 1e-6
         refs[angle] = high
@@ -98,8 +105,138 @@ def main():
               + '; '.join(f"{n} {100*r[n]['relativeForceError']:.4f}%/{100*r[n]['relativeTorqueError']:.4f}%"
                           for n in ('supplied','constant','limited'))
               + f"; limited pressure L1 {100*r['limited']['relativePressureL1']:.3f}%")
+    if decompose:
+        kinds = {'supplied','constant','leastSquares','limited','centroidConstant','centroidLeastSquares',
+                 'centroidLimited','analyticTaylor','averageAnalyticGradient'}
+        for r in rows:
+            full, half = r['decomposition'], r['halfDurationDecomposition']
+            a, b = ({m['kind']: m for m in d['modes']} for d in (full,half))
+            assert len(full['modes']) == len(kinds) and set(a) == kinds and set(b) == kinds
+            for name in ('meanPressureLimiterFactor','limiterActiveAreaFraction',
+                         'rankDeficientAreaFraction','centroidDataLimiterFactor'):
+                assert 0 <= full[name] <= 1
+            print(f"Decomposition dx {r['cellSize']}, angle {r['rotation']}: "
+                  f"area-weighted limiter factor {full['meanPressureLimiterFactor']:.3f}, "
+                  f"rank-deficient area {100*full['rankDeficientAreaFraction']:.3f}%")
+            for kind in sorted(kinds):
+                x = a[kind]
+                loads = x['loads']
+                assert math.isfinite(x['minimumPressure']) and math.isfinite(x['maximumPressure'])
+                assert x['minimumPressure'] <= x['maximumPressure'] and x['nonpositivePressureSamples'] >= 0
+                assert 0 <= x['negativeExcessAreaFraction'] <= 1 and 0 <= x['outsideStencilAreaFraction'] <= 1
+                assert abs(loads['relativeForceError']-relative(loads['force'],r['referenceForce'])) < 1e-12
+                assert abs(loads['relativeTorqueError']-relative(loads['torque'],r['referenceTorque'])) < 1e-12
+                assert loads['relativePressureL1'] >= 0
+                assert abs(loads['power']-sum(v*y for v,y in zip(r['velocity'],loads['force']))) < 1e-8
+                change = max(math.dist(loads['force'],b[kind]['loads']['force'])/math.hypot(*r['referenceForce']),
+                             math.dist(loads['torque'],b[kind]['loads']['torque'])/math.hypot(*r['referenceTorque']))
+                assert change < 1e-5
+                duration_changes.append(change)
+                if kind in ('constant','limited','supplied'):
+                    assert math.dist(loads['force'],r[kind]['force']) < 1e-8
+                    assert math.dist(loads['torque'],r[kind]['torque']) < 1e-8
+                if kind in ('constant','limited','centroidConstant','centroidLimited'):
+                    assert x['outsideStencilAreaFraction'] < 1e-8
+                print(f"  {kind}: force/torque/L1 "
+                      f"{100*loads['relativeForceError']:.3f}%/{100*loads['relativeTorqueError']:.3f}%/"
+                      f"{100*loads['relativePressureL1']:.3f}%; below-ambient area "
+                      f"{100*x['negativeExcessAreaFraction']:.2f}%")
+        print('Diagnostic replacements are not an additive error budget or an enabled transport policy.')
+    if volume_fit:
+        bounded_kinds = {'volumeQuadraticWallBounded', 'volumeQuadraticBounded'}
+        for r in rows:
+            full, half = r['volumeFits'], r['halfDurationVolumeFits']
+            rings = full['stencilRings']
+            assert rings in depths and half['stencilRings'] == rings
+            linear_kind = ('oneRingLinear','twoRingLinear','threeRingLinear')[rings-1]
+            kinds = {linear_kind, 'pointQuadratic', 'volumeQuadratic'} | bounded_kinds
+            a, b = ({m['kind']: m for m in d['modes']} for d in (full,half))
+            assert len(full['modes']) == len(half['modes']) == len(kinds) and set(a) == set(b) == kinds
+            for d in (full, half):
+                assert 0 <= d['maximumMomentResidual'] < 1e-8 and d['meanStencilSize'] > 0
+                for key in ('quadraticFallbackAreaFraction','pointQuadraticFallbackAreaFraction',
+                            'linearFallbackAreaFraction'):
+                    assert 0 <= d[key] <= 1
+                bounds = {x['kind']: x for x in d['bounds']}
+                assert len(d['bounds']) == 2 and set(bounds) == bounded_kinds
+                for bound in bounds.values():
+                    assert 0 <= bound['meanFactor'] <= 1 and 0 <= bound['activeAreaFraction'] <= 1
+                    assert 0 <= bound['maximumRelativeAverageResidual'] < 1e-10
+                    assert 0 <= bound['maximumRelativeBoundViolation'] < 1e-12
+                assert bounds['volumeQuadraticBounded']['meanFactor'] <= bounds['volumeQuadraticWallBounded']['meanFactor'] + 1e-12
+            print(f"Volume fits dx {r['cellSize']}, angle {r['rotation']}, rings {rings}: "
+                  f"mean stencil size {full['meanStencilSize']:.2f}, "
+                  f"quadratic fallback area {100*full['quadraticFallbackAreaFraction']:.2f}%, "
+                  f"moment residual {full['maximumMomentResidual']:.3g}")
+            for kind in sorted(kinds):
+                for x in (a[kind], b[kind]):
+                    loads = x['loads']
+                    assert math.isfinite(x['minimumPressure']) and math.isfinite(x['maximumPressure'])
+                    assert x['minimumPressure'] <= x['maximumPressure']
+                    assert isinstance(x['nonpositivePressureSamples'], int) and x['nonpositivePressureSamples'] >= 0
+                    for key in ('negativeExcessAreaFraction', 'outsideStencilAreaFraction'):
+                        assert 0 <= x[key] <= 1
+                    if kind in bounded_kinds:
+                        assert x['outsideStencilAreaFraction'] == 0 and x['negativeExcessAreaFraction'] == 0
+                        assert x['nonpositivePressureSamples'] == 0
+                    assert abs(loads['relativeForceError']-relative(loads['force'],r['referenceForce'])) < 1e-12
+                    assert abs(loads['relativeTorqueError']-relative(loads['torque'],r['referenceTorque'])) < 1e-12
+                    assert math.isfinite(loads['relativePressureL1']) and loads['relativePressureL1'] >= 0
+                    assert abs(loads['power']-sum(v*y for v,y in zip(r['velocity'],loads['force']))) < 1e-8
+                x = a[kind]
+                loads = x['loads']
+                change = max(math.dist(loads['force'],b[kind]['loads']['force'])/math.hypot(*r['referenceForce']),
+                             math.dist(loads['torque'],b[kind]['loads']['torque'])/math.hypot(*r['referenceTorque']))
+                assert change < 1e-5
+                duration_changes.append(change)
+                print(f"  {kind}: force/torque/L1 "
+                      f"{100*loads['relativeForceError']:.3f}%/{100*loads['relativeTorqueError']:.3f}%/"
+                      f"{100*loads['relativePressureL1']:.3f}%; below-ambient/stencil-violation area "
+                      f"{100*x['negativeExcessAreaFraction']:.2f}%/{100*x['outsideStencilAreaFraction']:.2f}%; "
+                      f"minimum absolute pressure {x['minimumPressure']:.1f} Pa")
+            for bound in full['bounds']:
+                print(f"  {bound['kind']}: mean factor {bound['meanFactor']:.3f}, "
+                      f"active area {100*bound['activeAreaFraction']:.2f}%, "
+                      f"average/bound residual {bound['maximumRelativeAverageResidual']:.3g}/"
+                      f"{bound['maximumRelativeBoundViolation']:.3g}")
+        print('Raw fits share neighbours and weights. Both bounded modes scale the same volume-aware polynomial about its group average.')
+        print('Bounds apply at audited control points, not everywhere between them. All five modes remain read-only diagnostics.')
+    if sweep:
+        cases = {}
+        for r in rows:
+            cases.setdefault((r['cellSize'],r['rotation']),{})[r['volumeFits']['stencilRings']] = r
+        print('Stencil sensitivity: bounded volume-quadratic force/torque/L1 errors by ring count')
+        for (h,angle), variants in sorted(cases.items(), reverse=True):
+            baseline = variants[2]
+            line = []
+            sizes = []
+            for depth in depths:
+                r = variants[depth]
+                for name in ('supplied','constant','limited'):
+                    for quantity in ('force','torque'):
+                        assert math.dist(r[name][quantity],baseline[name][quantity]) < 1e-8
+                assert r['pulseAmplitude'] == baseline['pulseAmplitude']
+                assert r['wallSamples'] == baseline['wallSamples'] and r['groups'] == baseline['groups']
+                sizes.append(r['volumeFits']['meanStencilSize'])
+                mode = next(m for m in r['volumeFits']['modes'] if m['kind'] == 'volumeQuadraticBounded')
+                x = mode['loads']
+                line.append(f"{depth}: {100*x['relativeForceError']:.3f}%/{100*x['relativeTorqueError']:.3f}%/"
+                            f"{100*x['relativePressureL1']:.3f}%")
+            assert sizes[0] <= sizes[1] <= sizes[2]
+            print(f"  dx {h}, angle {angle}: " + '; '.join(line))
+        print('Stencil changes retain the matched initial packets and all existing baseline loads.')
+        print('Worst errors across the four orientations (force/torque/local pressure L1)')
+        for h in (0.2,0.1,0.05):
+            metrics = ('relativeForceError','relativeTorqueError','relativePressureL1')
+            baseline = [cases[(h,angle)][2]['limited'] for angle in angles]
+            line = ['existing: ' + '/'.join(f'{100*max(x[k] for x in baseline):.3f}%' for k in metrics)]
+            for depth in depths:
+                loads = [next(m['loads'] for m in cases[(h,angle)][depth]['volumeFits']['modes']
+                              if m['kind'] == 'volumeQuadraticBounded') for angle in angles]
+                line.append(f'{depth}: ' + '/'.join(f'{100*max(x[k] for x in loads):.3f}%' for k in metrics))
+            print(f'  dx {h}: ' + '; '.join(line))
     print(f'Maximum half-duration load change / reference norm: {max(duration_changes):.3g}')
-    print('All six probes pass independent face integrals, reported errors and duration sensitivity checks.')
+    print(f'All {len(rows)} probes pass independent face integrals, reported errors and duration sensitivity checks.')
     print('These are initial traces; the evolved pressure-load study still needs separate spatial checks.')
 
 

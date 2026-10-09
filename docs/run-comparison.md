@@ -4,6 +4,9 @@ Complete a stable simulation, then choose **Keep Run…** beside the chart. Give
 unique name. **Compare** opens a view of retained runs, with up to four pressure or deflection
 traces overlaid. Choose a reference run to see absolute peak differences. Runs can be renamed
 (press Return in the name field), exported to CSV, removed and restored with **Undo last removal**.
+Names are trimmed, must be nonempty and at most 120 characters, and must be unique without
+regard to case. A rejected rename shows its reason beside the field and leaves the draft
+available to correct; the saved run stays unchanged.
 
 Keeping a run is explicit. Advancing, pausing or resetting the simulation does not automatically
 add result data or mark a project changed. Keeping, renaming and removing results do; native
@@ -242,7 +245,7 @@ index, and JSON layout export continues to omit this project-level result collec
 ## Verification
 
 ```sh
-swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|Fragment|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
+swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|Fragment|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests|Thermal'
 ```
 
 Tests cover actual Metal runs, explicit change tracking, stable historical inputs, fixed-time

@@ -1,0 +1,341 @@
+import Foundation
+import simd
+
+/// Soil as an elastic solid: its small-strain shear modulus, Poisson's ratio and density.
+public struct SoilMaterial: Sendable, Hashable, Codable {
+    /// Pa.
+    public var shearModulus: Float
+    public var poissonRatio: Float
+    /// kg/m³.
+    public var density: Float
+
+    public init(shearModulus: Float, poissonRatio: Float, density: Float) {
+        self.shearModulus = shearModulus
+        self.poissonRatio = poissonRatio
+        self.density = density
+    }
+
+    /// A medium dense sand: a shear wave speed of about 145 m/s, ν = 0.3 and 1,900 kg/m³, within
+    /// the ranges foundation texts give for such a sand, written from memory and not measured
+    /// for any site.
+    public static let mediumDenseSand = Self(shearModulus: 40e6, poissonRatio: 0.3, density: 1900)
+
+    /// A soft rock under a layer of soil: 2 GPa, ν = 0.25, 2,400 kg/m³ (about 900 m/s).
+    public static let softRock = Self(shearModulus: 2e9, poissonRatio: 0.25, density: 2400)
+
+    public var shearWaveSpeed: Float { (shearModulus / density).squareRoot() }
+
+    /// The speed of the waves that carry a footing's vertical and rocking motion away in Wolf's
+    /// cones: the dilatational speed up to ν = 1/3, and twice the shear speed beyond, where the
+    /// dilatational speed grows without bound and the trapped mass stands in for the rest.
+    public var coneWaveSpeed: Float {
+        let nu = poissonRatio
+        if nu <= 1 / 3 { return shearWaveSpeed * (2 * (1 - nu) / (1 - 2 * nu)).squareRoot() }
+        return 2 * shearWaveSpeed
+    }
+
+    func validate() throws {
+        guard shearModulus.isFinite, shearModulus > 0, density.isFinite, density > 0,
+            poissonRatio.isFinite, poissonRatio >= 0, poissonRatio < 0.5
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "Soil needs a positive shear modulus and density, and Poisson's ratio from 0 to below 0.5.")
+        }
+    }
+}
+
+/// The ground under a footing: an elastic half-space, or a layer of it over another (or over
+/// rock), that bears in compression only, yields past its bearing capacity and lets the footing
+/// slide on it with Coulomb friction.
+public struct Soil: Sendable, Hashable, Codable {
+    public var material: SoilMaterial
+    /// Pressure in Pa the soil bears before it yields and the footing settles for good; nil
+    /// bears any.
+    public var bearingCapacity: Float?
+    public var friction: Float
+    /// The soil's own mass and the waves that carry energy away into it (Wolf's cones). Without
+    /// them the soil is massless springs, damped only as contacts are.
+    public var radiationDamping: Bool
+    /// The soil above as a layer this deep, in metres, over `beneath`; nil for a half-space.
+    public var layerDepth: Float?
+    /// What lies under the layer; nil for rock that does not move.
+    public var beneath: SoilMaterial?
+
+    public init(
+        material: SoilMaterial = .mediumDenseSand, bearingCapacity: Float? = 600e3, friction: Float = 0.5,
+        radiationDamping: Bool = true, layerDepth: Float? = nil, beneath: SoilMaterial? = nil
+    ) {
+        self.material = material
+        self.bearingCapacity = bearingCapacity
+        self.friction = friction
+        self.radiationDamping = radiationDamping
+        self.layerDepth = layerDepth
+        self.beneath = beneath
+    }
+
+    /// The displacement reflection coefficient of a wave going down through the layer at its
+    /// base, from the two materials' impedances ρ c (−1 at rock): (Z₁ − Z₂) / (Z₁ + Z₂).
+    func reflection(shear: Bool) -> Float {
+        guard layerDepth != nil else { return 0 }
+        guard let beneath else { return -1 }
+        func impedance(_ m: SoilMaterial) -> Float {
+            m.density * (shear ? m.shearWaveSpeed : m.coneWaveSpeed)
+        }
+        let top = impedance(material)
+        let bottom = impedance(beneath)
+        return (top - bottom) / (top + bottom)
+    }
+
+    func validate() throws {
+        try material.validate()
+        try beneath?.validate()
+        guard friction.isFinite, friction >= 0, (bearingCapacity ?? 1).isFinite, (bearingCapacity ?? 1) > 0,
+            (layerDepth ?? 1).isFinite, (layerDepth ?? 1) > 0
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "Soil friction must be nonnegative, and its bearing capacity and layer depth positive.")
+        }
+    }
+}
+
+/// A rigid footing under a body's base, of finite plan, with its own mass, standing on soil.
+///
+/// The connection it belongs to (`Anchorage.footing`) ties the body to the footing's top, which
+/// moves and turns with it; the footing bears on the soil over its plan alone, so that its heel
+/// lifts and its contact shifts towards the toe as it turns, and it can slide, settle and tip
+/// over. Its plan is the box round the base points that share the connection, widened by
+/// `overhang` on each side.
+public struct Footing: Sendable, Hashable, Codable {
+    /// How far the footing reaches beyond the base on each side, along x and along y, in metres.
+    public var overhang: SIMD2<Float>
+    /// Metres.
+    public var thickness: Float
+    /// kg/m³.
+    public var density: Float
+    public var soil: Soil
+
+    public init(
+        overhang: SIMD2<Float> = SIMD2(0.5, 0.5), thickness: Float = 0.4, density: Float = 2400,
+        soil: Soil = Soil()
+    ) {
+        self.overhang = overhang
+        self.thickness = thickness
+        self.density = density
+        self.soil = soil
+    }
+
+    func validate() throws {
+        try soil.validate()
+        guard overhang.x.isFinite, overhang.y.isFinite, overhang.x >= 0, overhang.y >= 0,
+            thickness.isFinite, thickness > 0, density.isFinite, density > 0
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "A footing needs a nonnegative overhang and a positive thickness and density.")
+        }
+    }
+}
+
+/// A complex number, for the soil's dynamic stiffness.
+public struct Complex: Sendable, Equatable {
+    public var real: Double
+    public var imaginary: Double
+
+    public init(_ real: Double, _ imaginary: Double = 0) {
+        self.real = real
+        self.imaginary = imaginary
+    }
+
+    public var magnitude: Double { (real * real + imaginary * imaginary).squareRoot() }
+    public var phase: Double { atan2(imaginary, real) }
+
+    static func + (a: Self, b: Self) -> Self { Self(a.real + b.real, a.imaginary + b.imaginary) }
+    static func - (a: Self, b: Self) -> Self { Self(a.real - b.real, a.imaginary - b.imaginary) }
+    static func * (a: Self, b: Self) -> Self {
+        Self(a.real * b.real - a.imaginary * b.imaginary, a.real * b.imaginary + a.imaginary * b.real)
+    }
+    static func / (a: Self, b: Self) -> Self {
+        let d = b.real * b.real + b.imaginary * b.imaginary
+        return Self(
+            (a.real * b.real + a.imaginary * b.imaginary) / d,
+            (a.imaginary * b.real - a.real * b.imaginary) / d)
+    }
+}
+
+/// A rigid rectangular footing's impedance on its soil, for small motions about the centre of
+/// its base, in full contact.
+///
+/// The static stiffnesses are G. Gazetas's for a rigid rectangle on a half-space ("Formulas and
+/// charts for impedances of surface and embedded foundations", *J. Geotech. Eng.* 117(9),
+/// 1991), written from memory: within 1% of the rigid disk's for a square in translation and
+/// 9% in rocking. The dynamic terms are J. P. Wolf's cones (*Foundation Vibration Analysis Using
+/// Simple Physical Models*, 1994), each fitted to its static stiffness: a cone of apex height
+/// z₀ = ρ c² A / K (3 ρ c² I / K in rocking) carries waves away at c. In translation it is a
+/// spring and a dashpot ρ c A; in rocking a spring, with a dashpot ρ c I to an internal rotary
+/// mass ρ I z₀, so that rocking radiates little at low frequency. Past ν = 1/3 a mass is trapped
+/// under the footing: 2.4 (ν − 1/3) ρ A r₀ in translation and 1.2 (ν − 1/3) ρ I r₀ in rocking.
+///
+/// Over a layer, a wave sent down reflects at its base, and each echo returns after a round
+/// trip 2 d / c, weakened by the cone's spreading to z₀ / (z₀ + 2 j d) and by the reflection
+/// coefficient each time (Wolf's cones with reflections): the footing's displacement is the
+/// half-space's, u₀(t) = ũ(t) + 2 Σⱼ Rʲ z₀ / (z₀ + 2 j d) ũ(t − 2 j d / c). That holds in
+/// translation. The sum is cut off after 64 echoes, the last third of them tapered away (a raised
+/// cosine), and each echo loses 1% more per round trip, as to the soil's own damping: cut off
+/// sharply, sooner, or without the loss, the footing gains energy from the soil at some
+/// frequencies. Rocking cones echo in the same way only with far
+/// too much energy and stiffness, so over a layer a footing rocks on the half-space's cone made
+/// stiffer statically by E. Kausel's factor for a stratum on rock, 1 + r / (6 d), scaled by −R
+/// for what lies beneath.
+public struct FootingImpedance: Sendable {
+    /// The modes, in the order of the arrays: vertical, horizontal along x and along y, rocking
+    /// about x (turning in the y–z plane) and about y (turning in the x–z plane).
+    public enum Mode: Int, CaseIterable, Sendable {
+        case vertical, horizontalX, horizontalY, rockingX, rockingY
+        var isRocking: Bool { self == .rockingX || self == .rockingY }
+        var isShear: Bool { self == .horizontalX || self == .horizontalY }
+    }
+
+    public var stiffness: [Float]
+    /// Dashpot ρ c A (or ρ c I); zero without radiation.
+    public var dashpot: [Float]
+    /// The trapped mass (or rotary mass) past ν = 1/3.
+    public var trappedMass: [Float]
+    /// Wave speed and the cone's apex height per mode.
+    public var waveSpeed: [Float]
+    public var apex: [Float]
+    /// Layer: depth and reflection coefficient per mode (zero for a half-space).
+    public var layerDepth: Float?
+    public var reflection: [Float]
+
+    /// The impedance of a footing `width` along x and `length` along y on `soil`, with the
+    /// static stiffness `stiffness` per mode in place of Gazetas's when given (as a bed of springs
+    /// can give it).
+    public init(width: Float, length: Float, soil: Soil, stiffness given: [Float]? = nil) {
+        let m = soil.material
+        let nu = m.poissonRatio
+        let rho = m.density
+        let rockingFactor: Float = {
+            guard let d = soil.layerDepth else { return 1 }
+            return 1 - soil.reflection(shear: false) * Self.rockingRadius(width, length) / (6 * d)
+        }()
+        stiffness =
+            given
+            ?? Self.gazetas(width: width, length: length, material: m).enumerated().map {
+                Mode(rawValue: $0.offset)!.isRocking ? $0.element * rockingFactor : $0.element
+            }
+        let area = width * length
+        let inertia = [0, 0, 0, width * length * length * length / 12, length * width * width * width / 12]
+        let cs = m.shearWaveSpeed
+        let cv = m.coneWaveSpeed
+        waveSpeed = Mode.allCases.map { $0.isShear ? cs : cv }
+        let trapped = max(nu - 1 / 3, 0)
+        let radius = (area / .pi).squareRoot()
+        dashpot = []
+        apex = []
+        trappedMass = []
+        for mode in Mode.allCases {
+            let c = waveSpeed[mode.rawValue]
+            let k = stiffness[mode.rawValue]
+            if mode.isRocking {
+                let i = inertia[mode.rawValue]
+                let rockingRadius = (4 * i / .pi).squareRoot().squareRoot()
+                dashpot.append(soil.radiationDamping ? rho * c * i : 0)
+                apex.append(3 * rho * c * c * i / k)
+                trappedMass.append(soil.radiationDamping ? 1.2 * trapped * rho * i * rockingRadius : 0)
+            } else {
+                dashpot.append(soil.radiationDamping ? rho * c * area : 0)
+                apex.append(rho * c * c * area / k)
+                trappedMass.append(
+                    soil.radiationDamping && mode == .vertical ? 2.4 * trapped * rho * area * radius : 0)
+            }
+        }
+        layerDepth = soil.layerDepth
+        reflection = Mode.allCases.map { soil.reflection(shear: $0.isShear) }
+    }
+
+    /// The disk turning as stiffly as the footing on average about x and y: (4 I / π)^(1/4).
+    static func rockingRadius(_ width: Float, _ length: Float) -> Float {
+        let inertia = (width * length * length * length + length * width * width * width) / 24
+        return (4 * inertia / .pi).squareRoot().squareRoot()
+    }
+
+    /// Gazetas's static stiffnesses for a rigid rectangle `width` along x by `length` along y.
+    static func gazetas(width: Float, length: Float, material m: SoilMaterial) -> [Float] {
+        let shear = m.shearModulus
+        let nu = m.poissonRatio
+        // Gazetas's plan is 2L by 2B, L ≥ B, his x along L: here l and b.
+        let alongY = length >= width
+        let l = max(width, length) / 2
+        let b = min(width, length) / 2
+        let chi = 4 * b * l / (4 * l * l)
+        let vertical = 2 * shear * l / (1 - nu) * (0.73 + 1.54 * pow(chi, 0.75))
+        let across = 2 * shear * l / (2 - nu) * (2 + 2.5 * pow(chi, 0.85))  // across the long side
+        let along = across - 0.2 / (0.75 - nu) * shear * l * (1 - b / l)
+        let aboutLong = 2 * l * pow(2 * b, 3) / 12  // second moment about the long axis
+        let aboutShort = 2 * b * pow(2 * l, 3) / 12
+        let rockLong = shear / (1 - nu) * pow(aboutLong, 0.75) * pow(l / b, 0.25) * (2.4 + 0.5 * b / l)
+        let rockShort = 3 * shear / (1 - nu) * pow(aboutShort, 0.75) * pow(l / b, 0.15)
+        // Our x and y: rocking about x turns in the y–z plane.
+        return alongY
+            ? [vertical, across, along, rockShort, rockLong]
+            : [vertical, along, across, rockLong, rockShort]
+    }
+
+    /// The reflections kept over a layer, 64; none in rocking. A layer on rock is stiffer than the
+    /// half-space by a sum of echoes of alternating sign, and the soil takes energy from the
+    /// footing at low frequency only by a margin that the whole sum, smoothly ended, keeps: with
+    /// fewer echoes it gives the footing energy instead.
+    func reflections(_ mode: Mode) -> Int {
+        guard layerDepth != nil, reflection[mode.rawValue] != 0, !mode.isRocking else { return 0 }
+        return 64
+    }
+
+    /// The echoes' weights 2 Rʲ z₀ / (z₀ + 2 j d) 0.99ʲ, j = 1...n, the last third tapered away.
+    func echoes(_ mode: Mode) -> [Float] {
+        let n = reflections(mode)
+        guard n > 0, let d = layerDepth else { return [] }
+        let r = reflection[mode.rawValue]
+        let z0 = apex[mode.rawValue]
+        let tapered = n / 3
+        return (1...n).map { j in
+            let taper =
+                j > n - tapered
+                ? 0.5 * (1 + cos(Float.pi * Float(j - (n - tapered)) / Float(tapered + 1))) : 1
+            return 2 * pow(r * 0.99, Float(j)) * z0 / (z0 + 2 * Float(j) * d) * taper
+        }
+    }
+
+    /// The half-space cone's dynamic stiffness at ω rad/s (trapped mass included), Wolf's closed
+    /// form: K + i ω C in translation, K [1 − b²/(3 (1 + b²))] + i ω C b²/(1 + b²) in rocking,
+    /// b = ω z₀ / c.
+    public func halfSpace(_ mode: Mode, omega omega: Double) -> Complex {
+        let k = Double(stiffness[mode.rawValue])
+        let c = Double(dashpot[mode.rawValue])
+        let mass = Double(trappedMass[mode.rawValue])
+        guard mode.isRocking else { return Complex(k - omega * omega * mass, omega * c) }
+        guard c > 0 else { return Complex(k) }
+        let b = omega * Double(apex[mode.rawValue]) / Double(waveSpeed[mode.rawValue])
+        let f = b * b / (1 + b * b)
+        return Complex(k * (1 - f / 3) - omega * omega * mass, omega * c * f)
+    }
+
+    /// The dynamic stiffness at ω, over the layer when there is one: the half-space's divided by
+    /// 1 + 2 Σⱼ Rʲ z₀ / (z₀ + 2 j d) e^(−i ω j T), T = 2 d / c (the trapped mass outside it).
+    public func dynamicStiffness(_ mode: Mode, omega omega: Double) -> Complex {
+        let mass = Double(trappedMass[mode.rawValue])
+        let cone = halfSpace(mode, omega: omega) + Complex(omega * omega * mass)
+        let weights = echoes(mode)
+        guard !weights.isEmpty, let d = layerDepth else { return cone - Complex(omega * omega * mass) }
+        let period = 2 * Double(d) / Double(waveSpeed[mode.rawValue])
+        var flexibility = Complex(1)
+        for (j, w) in weights.enumerated() {
+            let angle = -omega * Double(j + 1) * period
+            flexibility = flexibility + Complex(Double(w) * cos(angle), Double(w) * sin(angle))
+        }
+        return cone / flexibility - Complex(omega * omega * mass)
+    }
+
+    /// The static stiffness, over the layer when there is one.
+    public func staticStiffness(_ mode: Mode) -> Float {
+        stiffness[mode.rawValue] / (1 + echoes(mode).reduce(0, +))
+    }
+}

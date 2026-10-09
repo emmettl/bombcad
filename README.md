@@ -257,8 +257,9 @@ swift run -c release blastbench slab --sensitivity
 
 `blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
 [Performance](docs/performance.md) and [Validation](docs/validation.md). `blastbench anchorage`
-compares a freestanding wall on a clamped base with one on starter bars, a construction joint
-or friction alone (see [base connections](docs/structural-model.md#base-connections)).
+compares a freestanding wall on a clamped base with one on starter bars, a construction joint,
+friction alone, soil or a footing on soil (see [base connections](docs/structural-model.md#base-connections)
+and [footings](docs/structural-model.md#footings)).
 
 `BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
 keeps the result as a saved run, for scripts and other Macs; see
@@ -577,6 +578,32 @@ The initial Gaussian load exposes substantial coarse-grid reconstruction error b
 gas update; supplied-pressure quadrature errors are much smaller. Tiny-duration halving
 checks the instantaneous limit. This diagnoses initial traces, not the evolved load history.
 
+Add `--decompose` to write `.build/initial-wall-traces-decomposition.json`, then run
+`python3 Scripts/summarize-initial-wall-traces.py --decompose`. Nine diagnostic comparisons
+retain or replace group averages, fitted gradients and bounds, including an analytic
+Gaussian gradient. They identify gradient accuracy and unresolved local curvature as
+further gates; removing the limiter or substituting centroid pressure worsens coarse loads.
+These read-only comparisons do not change gas inventories or enable alternative transport
+policies, and their differences are not an additive error budget.
+
+`swift run -c release rigidboxdemo --initial-wall-traces --volume-fit` writes
+`.build/initial-wall-traces-volume-fit.json`; audit it with
+`python3 Scripts/summarize-initial-wall-traces.py --volume-fit`. Three raw diagnostic fits
+share a two-ring stencil and distance weights: linear, quadratic treating averages as
+centroid values, and quadratic using actual gas-volume second moments. Two further modes
+bound the last polynomial at wall samples or at wall/face/volume control points by scaling
+its deviation from the group average. Both retain that average, with direct volume-sample
+audits. Bounds hold at the audited points; they do not establish bounds everywhere between
+them. The study reports the resulting load errors and limiter factors. All five modes
+remain outside gas evolution.
+
+Add `--stencil-sweep` to `--initial-wall-traces` to write
+`.build/initial-wall-traces-stencil-sweep.json`. Audit it with
+`python3 Scripts/summarize-initial-wall-traces.py --stencil-sweep`. The 36 cases cover
+one-, two- and three-ring connected group stencils, rotations 0/0.1/0.23/0.4 radians and
+the same three grids. Reported rank fallbacks, local pressure errors and load errors
+show sensitivity to stencil extent; matched initial packets and baseline loads stay fixed.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
@@ -645,9 +672,10 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |
+| [Building envelopes](docs/building-envelopes.md) | Stationary exposure-only buildings, surface loading, matched detailed references and scaling through 64 buildings |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
-| [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas |
+| [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas, drawn over the blast, here or on another Mac |
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud, carried by the wind, for minutes after |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, fed the overpressure on the ground |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |

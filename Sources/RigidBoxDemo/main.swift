@@ -8,19 +8,30 @@ import simd
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--initial-wall-traces") {
+        let decompose = arguments.contains("--decompose")
+        let sweep = arguments.contains("--stencil-sweep")
+        let volumeFits = arguments.contains("--volume-fit") || sweep
+        let suffix =
+            sweep ? "-stencil-sweep" : (volumeFits ? "-volume-fit" : (decompose ? "-decomposition" : ""))
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/initial-wall-traces.json")
+                ?? ".build/initial-wall-traces\(suffix).json"
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalInitialWallTraceStudy.Result] = []
-        _ = try ExperimentalInitialWallTraceStudy.run { r in
-            completed.append(r)
-            try encoder.encode(completed).write(to: output, options: .atomic)
-            print(
-                "dx \(r.cellSize), rotation \(r.rotation): supplied force/torque error \(r.supplied.relativeForceError)/\(r.supplied.relativeTorqueError), limited \(r.limited.relativeForceError)/\(r.limited.relativeTorqueError)"
-            )
-            fflush(stdout)
+        for rings in (sweep ? [1, 2, 3] : [2]) {
+            _ = try ExperimentalInitialWallTraceStudy.run(
+                rotations: sweep ? [0, 0.1, 0.23, 0.4] : [0, 0.23], decompose: decompose,
+                volumeFits: volumeFits, stencilRings: rings
+            ) { r in
+                completed.append(r)
+                try encoder.encode(completed).write(to: output, options: .atomic)
+                print(
+                    "dx \(r.cellSize), rotation \(r.rotation), stencil rings \(rings): supplied force/torque error \(r.supplied.relativeForceError)/\(r.supplied.relativeTorqueError), limited \(r.limited.relativeForceError)/\(r.limited.relativeTorqueError)"
+                )
+                fflush(stdout)
+            }
         }
         print("Wrote \(output.path)")
         exit(0)
@@ -540,7 +551,7 @@ do {
         }
         recordings = try RigidObjectDemo.coupledRecordings(device: device, refinement: refined ? 2 : 1)
     } else {
-        recordings = try RigidObjectDemo.recordings()
+        recordings = try RigidObjectDemo.recordings() + RigidCarDemo.recordings()
     }
     let data = try JSONEncoder().encode(recordings)
     let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
@@ -557,7 +568,7 @@ do {
             of: "<option value=\"1\" selected>Real time</option>",
             with: "<option value=\"0.01\" selected>100× slow</option><option value=\"1\">Real time</option>")
         html = html.replacingOccurrences(
-            of: "All cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
+            of: "Box cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
             with:
                 "Experimental 0.8 m cube, mass 2 kg; static friction 0.6, sliding friction 0.5. Held mode fixes the pose; free mode includes gravity and ground contact."
         )

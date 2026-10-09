@@ -6,8 +6,10 @@ import Foundation
 /// length as a big-endian 32-bit integer, the JSON, and then a binary payload's length the same
 /// way and the payload, empty for most messages. The app starts a worker over SSH and talks to it
 /// through the connection's standard input and output; tests talk to one in the same process
-/// through pipes. A worker runs one sweep case at a time, and can fly fragments for a run
-/// elsewhere (a consumer session), frame by frame.
+/// through pipes. A worker runs one sweep case at a time, and can run models fed by a run
+/// elsewhere, frame by frame, several at once (consumer sessions, see `ConsumerKind`), each on a
+/// queue of its own; a live session sends its model's state back after each frame for the app to
+/// draw.
 enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Worker to app, once on starting.
     case hello(SweepWorkerHello)
@@ -23,25 +25,25 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case finished(UUID, SweepWorkerArchive)
     /// Worker to app: the job, or the consumer session, did not finish.
     case failed(UUID, String)
-    /// App to worker: start flying fragments for a run.
+    /// App to worker: start a consumer session for a run.
     case consume(ConsumerSession)
-    /// App to worker: the next frame's air for a consumer session; the samples are the payload.
-    case air(UUID, AirSlice.Header)
-    /// Worker to app: where the session's particles have got after a frame.
+    /// App to worker: a consumer session's next frame; any samples are the payload.
+    case input(UUID, ConsumerInput.Header)
+    /// Worker to app: where the session has got after a frame.
     case report(UUID, ConsumerReport)
     /// App to worker: no more frames; send the result, frames `interval` seconds apart.
     case finishConsumer(UUID, Double)
-    /// Worker to app: the session's result, as JSON in the payload.
-    case fragments(UUID)
-    /// Worker to app, for a live session after each frame: the particles' positions and speeds
-    /// in the payload (see `FragmentLive.payload`), and the impacts new since the last.
-    case live(UUID, LiveFrameHeader)
+    /// Worker to app: the session's result, in the payload (see `ConsumerOutcome.encoded`).
+    case outcome(UUID)
+    /// Worker to app, for a live session after each frame: its model's state (see
+    /// `ConsumerLive`), any bulk of it in the payload.
+    case live(UUID, ConsumerLive.Header)
 
     static let cancelled = "cancelled"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 2
+    static let protocolVersion = 5
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
@@ -56,10 +58,13 @@ struct SweepWorkerJob: Codable, Equatable, Sendable {
 
 struct ConsumerSession: Codable, Equatable, Sendable {
     var id: UUID
-    var spec: FragmentSpec
-    var scene: FragmentScene
-    /// Send the particles back after each frame, to draw them.
-    var live = false
+    var kind: ConsumerKind
+}
+
+struct ThermalLiveHeader: Codable, Equatable, Sendable {
+    /// Frames consumed, this one included.
+    var frames: Int
+    var time: Double
 }
 
 struct LiveFrameHeader: Codable, Equatable, Sendable {
@@ -190,7 +195,15 @@ final class SweepWorkerWriter: @unchecked Sendable {
     /// Writes a frame after any before it, without waiting. A failure is lost, and shows as the
     /// worker going quiet.
     func enqueue(_ message: SweepWorkerMessage, payload: Data = Data()) {
-        guard let frame = try? SweepWorkerFrame.encode(message, payload: payload) else { return }
-        queue.async { [handle] in try? handle.write(contentsOf: frame) }
+        enqueue(message) { payload }
+    }
+
+    /// The same, the payload made, and the frame put together, on the writer's queue: for a large
+    /// payload, so that the caller, such as the thread driving the GPU, does not wait for copies.
+    func enqueue(_ message: SweepWorkerMessage, payload: @escaping @Sendable () -> Data) {
+        queue.async { [handle] in
+            guard let frame = try? SweepWorkerFrame.encode(message, payload: payload()) else { return }
+            try? handle.write(contentsOf: frame)
+        }
     }
 }

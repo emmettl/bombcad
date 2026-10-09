@@ -57,6 +57,20 @@ struct StreetRun: Codable {
     var mapFile: String
     var historiesFile: String
     var stable: Bool
+    var envelopeFile: String? = nil
+    var loadsFile: String? = nil
+}
+
+struct EnvelopeLoadSample: Codable {
+    var timeS: Double
+    var forceN: SIMD3<Double>
+    var signedImpulseNS: SIMD3<Double>
+}
+
+struct EnvelopeLoadHistory: Codable {
+    var id: UUID
+    var name: String
+    var samples: [EnvelopeLoadSample] = []
 }
 
 struct StreetReport: Codable {
@@ -170,7 +184,8 @@ enum StreetBenchmark {
 
     static func execute(
         device: MTLDevice, scene: Scenario, layout: String, setting: Setting, id: String,
-        purpose: String, duration: Double, directory: URL, profile: Bool = false
+        purpose: String, duration: Double, directory: URL, profile: Bool = false,
+        observeEnvelopes: Bool = false
     ) throws -> StreetRun {
         var config = SolverConfiguration()
         config.refinement = setting.refinement
@@ -184,10 +199,16 @@ enum StreetBenchmark {
         let solver = try BlastSolver(
             device: device, scenario: scene, cellSize: setting.dx, configuration: config)
         try solver.configureExposurePlane(heightM: 1.5, arrivalThresholdPa: 1000, spacingM: 0.5)
+        if observeEnvelopes {
+            try solver.configureEnvelopeExposure(objects: scene.envelopeObjects + scene.structuralObjects)
+        }
         if profile { try solver.enableGPUProfiling(true) }
         let setup = ProcessInfo.processInfo.systemUptime - setupStart
         let initial = solver.totals()
         var histories = solver.bodies.map { StreetBodyHistory(id: $0.id, name: $0.name) }
+        var loadHistories = (scene.envelopeObjects + scene.structuralObjects).map {
+            EnvelopeLoadHistory(id: $0.id, name: $0.name)
+        }
         var gpu = 0.0
         var stages = BatchGPUProfile()
         var maxPatches = 0
@@ -224,6 +245,15 @@ enum StreetBenchmark {
                         timeS: solver.time, displacementM: summary.maxDisplacement,
                         damage: summary.maxDamage, activeElements: summary.activeElements,
                         removedElements: summary.erodedElements))
+            }
+            if let snapshots = solver.envelopeExposureSnapshot() {
+                for (index, snapshot) in snapshots.enumerated() {
+                    stable = stable && !snapshot.surfaces.contains { $0.invalid }
+                    loadHistories[index].samples.append(
+                        EnvelopeLoadSample(
+                            timeS: solver.time,
+                            forceN: snapshot.forceN, signedImpulseNS: snapshot.signedImpulseNS))
+                }
             }
             if result.steps == 0 || !stable { break }
         }
@@ -272,7 +302,7 @@ enum StreetBenchmark {
         try compress(historyPlain, to: directory.appending(path: historiesFile))
         for index in gauges.indices { gauges[index].samples = [] }
         for index in histories.indices { histories[index].samples = [] }
-        let result = StreetRun(
+        var result = StreetRun(
             id: id, layout: layout, purpose: purpose, cellSizeM: setting.dx, refinement: setting.refinement,
             cfl: setting.cfl, sourceRadiusM: solver.balloonRadius(for: scene.charge),
             sourceMassKg: scene.charge.mass, sourceEnergyJ: scene.charge.energy,
@@ -284,6 +314,18 @@ enum StreetBenchmark {
             massInitialKg: initial.mass, massFinalKg: final.mass,
             energyInitialJ: initial.energy, energyFinalJ: final.energy, gaugeObservations: gauges,
             bodies: histories, mapFile: mapFile, historiesFile: historiesFile, stable: stable)
+        if let snapshots = solver.envelopeExposureSnapshot() {
+            result.envelopeFile = "\(id)-surfaces.json.gz"
+            result.loadsFile = "\(id)-loads.json.gz"
+            for (suffix, data) in [
+                ("surfaces", try JSONEncoder().encode(snapshots)),
+                ("loads", try JSONEncoder().encode(loadHistories)),
+            ] {
+                let plain = directory.appending(path: "\(id)-\(suffix).json")
+                try data.write(to: plain)
+                try compress(plain, to: directory.appending(path: "\(id)-\(suffix).json.gz"))
+            }
+        }
         print("\(id): \(solver.stepCount) steps to \(solver.time) s, \(wall) s wall, \(gpu) s GPU")
         return result
     }

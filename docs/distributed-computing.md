@@ -192,7 +192,7 @@ the blast, the structures, the thermal radiation and the fireball's rise exist.
 | Damage to those buildings | In effect one way, if most collapse comes after the main blast has passed (an assumption to state) | Yes: each driven by its recorded loads, as independent jobs |
 | The early fireball (expansion, afterburning) | It is the hot gas in the air model | No: the same solver |
 | The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state. Now a hand-over of a few numbers at the end of a run, followed for minutes in milliseconds: [The fireball's rise and cloud](fireball-rise.md) |
-| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on this Mac's CPU, a few numbers a frame: [Thermal radiation](thermal-radiation.md) |
+| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on a CPU, this Mac's or, from the app, another's, a few numbers a frame: [Thermal radiation](thermal-radiation.md) |
 | Material heating and fire | Driven by the radiation; the blast's wind disturbs it only weakly | Yes: after the event |
 | Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures. Built as an illustrative estimate, fed the ground's air each frame: see [Ground shock](ground-shock.md) |
 | The crater and ground shock near the charge | Both ways, in the first milliseconds: the ground loads and vents the blast, and throws soil into it | No near the charge; yes for thrown soil once airborne, ballistic like fragments, unless its dust loading of the air matters |
@@ -235,18 +235,17 @@ the run slowing, rather than making any one model faster.
 
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
-a plan, measured where it starts; built so far are one consumer on one other Mac, and the first
-step below.
+a plan, measured where it starts; built so far are the first three steps below.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
 bottom layer of cells to [ground shock](ground-shock.md), inline on this Mac; and a block of air
 around the [fragments](fragments.md), on this Mac or on one other Mac through a worker. The
-worker's protocol (version 2: JSON messages with raw binary payloads, over the standard input and
-output of an SSH connection) already carries several sessions over one connection, told apart by
-their identifiers, and its flow control is deterministic: the run waits only when a consumer falls
+worker's protocol (version 2 when this was planned: JSON messages with raw binary payloads, over
+the standard input and output of an SSH connection) already carried several sessions over one
+connection, told apart by their identifiers, and its flow control is deterministic: the run waits only when a consumer falls
 more than four frames behind, and the air it sends depends on reports already in, so a result is
-the same wherever the consumer runs. But its sessions, reports and results are the fragments'
+the same wherever the consumer runs. But its sessions, reports and results were the fragments'
 own, and a run has one remote consumer at most.
 
 **Measured.** The street canyon on the medium grid, 0.17 s in 171 frames, from the Mac Studio,
@@ -295,17 +294,50 @@ this side.
    still takes 0.5 to 1.0 ms a frame on the thread that drives the GPU, which step 3 moves off
    it. The ground's layer (about 0.1 ms) is still cut out on the CPU. The Studio was busy with
    other work again (load averages of 7 to 62), so whole runs are not compared.
-2. **One kind of consumer session** (protocol version 3). Sessions, inputs, reports and results
-   say which model they are for, and the worker gives each session a queue of its own, so that
-   two consumers on one Mac run side by side. The worker is always a copy of the same build, so
-   the protocol needs no compatibility with older versions. Each consumer gives the same result
-   to the last bit here, on one worker, or with the consumers spread over two.
-3. **Fan-out.** One list of consumers replaces the run's three separate feeds; each is placed
-   here or on a host from the [sweep worker list](run-comparison.md#sharing-a-sweep-with-another-mac),
-   consumers on the same host sharing its connection, and the run waits only for the one
-   furthest behind. Sending moves off the thread that drives the GPU. Each consumer's bytes, time
-   a frame and the run's wait for it are printed. On the command line, `--consumer
-   fragments=<host>` and the like.
+2. **One kind of consumer session** (protocol version 3). (Done.) A session names its kind
+   (fragments, thermal radiation or ground shock) and what that needs to start; each frame's
+   input travels as a header saying what it is, its samples as the payload; and the result comes
+   back as one encoded outcome. The models are held the same way here and on a worker
+   (`ConsumerEngine`), so each gives the same result to the last bit here, with all three
+   sharing one worker, or spread over two, as the tests check. On a worker each session runs on
+   a queue of its own, so several share a connection side by side. The worker is always a copy
+   of the same build, so the protocol needs no compatibility with older versions. A frame's
+   samples for another Mac are now copied out on the connection's writing queue, not the
+   thread that drives the GPU: sending to the mini went from 0.6 to 1.0 ms a frame to about
+   0.015 ms (three rounds, the old build and the new alternating), leaving 0.4 ms a frame for
+   the run with the fragments there. Runs still send only the fragments to other Macs this way
+   until step 3. Thermal radiation also has sessions of its own on a worker, built alongside,
+   which send every receiver back after each frame for the app to draw; folding them into these,
+   with that live view as an option of the kind, came with step 3.
+3. **Fan-out.** (Done.) One list of consumers replaces the run's three
+   separate feeds (`HeadlessRun.Feed`); each runs here or on another Mac, placed with
+   `--consumer fragments=<where>,thermal=<where>,ground=<where>` (`local` or an SSH host; a host
+   alone still places the fragments), those on the same Mac sharing one connection to it. The
+   run waits only for whichever falls more than four frames behind, and prints for each its
+   frames, bytes, what a frame cost the run to feed, and how long the run waited for it. Each
+   gives the same result wherever it runs, as the tests check with the fragments on one
+   in-process worker and the other two sharing another. Measured on the street canyon, the
+   Studio quieter this time (load averages about 7), two rounds of each:
+
+   | Where | Fragments | Thermal radiation | Ground shock | Run | Waited |
+   |---|---|---|---|---|---|
+   | All here | 0.30 to 0.32 ms | 0.03 ms | 0.06 to 0.07 ms | 5.3 to 5.4 s | 0 s |
+   | All on the mini | 0.23 ms | 0.03 to 0.05 ms | 0.06 to 0.07 ms | 5.7 to 5.8 s | 0.02 to 0.04 s |
+   | Fragments on the mini | 0.24 to 0.27 ms | 0.04 to 0.05 ms | 0.07 to 0.08 ms | 5.7 to 5.8 s | 0.02 to 0.03 s |
+
+   Each column but the last two is what a frame cost the run to feed that model. About 0.4 ms a
+   frame in all, wherever they run, about 1% of the run; the fragments' air went at about
+   310 MB/s. Placing models on the mini added about 0.4 s, its connection at the start, and
+   saved nothing, as expected: these models are cheap. What the step buys is the means to
+   place an expensive one.
+
+   In the app, too (protocol version 5), each of the three runs here or, by its own **Run on**
+   (**Fly on** for fragments), on the first Mac set for sweeps, sharing one connection to it.
+   A kind may be live: its model's state then comes back after each frame for the app to draw
+   (the fragments' particles, the receivers' fluence, the ground points' estimates so far), sent
+   before the frame's report, so that a model reported caught up has its last frame's state in.
+   The thermal radiation's own sessions, built alongside for its live view, are folded into
+   these. Choosing a different Mac for each model, and choosing by cost, is step 4.
 4. **Placement and failure.** Placing consumers by their measured cost, as sweeps place cases,
    and in the app's Run tab. A consumer whose Mac drops now stops the run; optionally, each
    consumer's inputs could be kept on disk (about 1.6 GB for the fragments above) so that it can

@@ -12,8 +12,9 @@ final class SweepWorkerClient {
     /// Safe from any thread: frames go out in the order given.
     nonisolated let writer: SweepWorkerWriter
     private var reports: [UUID: @Sendable (ConsumerReport) -> Void] = [:]
-    private var liveFrames: [UUID: @Sendable (LiveFrameHeader, Data) -> Void] = [:]
-    private var fragmentWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
+    private var liveFrames: [UUID: @Sendable (ConsumerLive.Header, Data) -> Void] = [:]
+    /// Consumer sessions waiting for their result.
+    private var outcomeWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
     private let onClose: () -> Void
     private var reader: Task<Void, Never>?
     private var helloWaiter: CheckedContinuation<SweepWorkerHello, Error>?
@@ -123,40 +124,31 @@ final class SweepWorkerClient {
         onClose()
     }
 
-    /// Starts a consumer session, whose reports go to `report`, and for a live one its
-    /// particles to `live`.
+    /// Starts a consumer session, whose reports go to `report`, and for a live one its model's
+    /// state after each frame to `live`.
     func startConsumer(
         _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void,
-        live: @escaping @Sendable (LiveFrameHeader, Data) -> Void = { _, _ in }
+        live: @escaping @Sendable (ConsumerLive.Header, Data) -> Void = { _, _ in }
     ) {
         reports[session.id] = report
-        if session.live { liveFrames[session.id] = live }
+        if session.kind.isLive { liveFrames[session.id] = live }
         writer.enqueue(.consume(session))
     }
 
     /// Asks for a consumer session's result, after every frame sent.
-    func finishConsumer(_ id: UUID, frameInterval: Double) async throws -> FragmentResult {
+    func finishConsumer(_ id: UUID, frameInterval: Double) async throws -> ConsumerOutcome {
         let payload = try await withCheckedThrowingContinuation {
             (continuation: CheckedContinuation<Data, Error>) in
             if let closedError {
                 continuation.resume(throwing: closedError)
                 return
             }
-            fragmentWaiters[id] = continuation
+            outcomeWaiters[id] = continuation
             writer.enqueue(.finishConsumer(id, frameInterval))
         }
         reports[id] = nil
         liveFrames[id] = nil
-        guard payload.count >= 4 else {
-            throw ProjectFileError.invalid("The fragments' result was cut short.")
-        }
-        let length = Int(payload.prefix(4).withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian })
-        guard payload.count >= 4 + length else {
-            throw ProjectFileError.invalid("The fragments' result was cut short.")
-        }
-        var result = try JSONDecoder().decode(FragmentResult.self, from: payload.subdata(in: 4..<4 + length))
-        try result.setTrajectories(payload.subdata(in: 4 + length..<payload.count))
-        return result
+        return try ConsumerOutcome(encoded: payload)
     }
 
     private func receive(_ message: SweepWorkerMessage, payload: Data) {
@@ -165,8 +157,8 @@ final class SweepWorkerClient {
             reports[id]?(report)
         case .live(let id, let header):
             liveFrames[id]?(header, payload)
-        case .fragments(let id):
-            fragmentWaiters.removeValue(forKey: id)?.resume(returning: payload)
+        case .outcome(let id):
+            outcomeWaiters.removeValue(forKey: id)?.resume(returning: payload)
         case .hello(let hello):
             self.hello = hello
             helloWaiter?.resume(returning: hello)
@@ -177,7 +169,7 @@ final class SweepWorkerClient {
             progress[id] = nil
             waiting.removeValue(forKey: id)?.resume(returning: archive)
         case .failed(let id, let reason):
-            fragmentWaiters.removeValue(forKey: id)?.resume(
+            outcomeWaiters.removeValue(forKey: id)?.resume(
                 throwing: ProjectFileError.invalid("On \(name): \(reason)"))
             progress[id] = nil
             waiting.removeValue(forKey: id)?.resume(
@@ -199,8 +191,8 @@ final class SweepWorkerClient {
         helloWaiter = nil
         for continuation in waiting.values { continuation.resume(throwing: error) }
         waiting = [:]
-        for continuation in fragmentWaiters.values { continuation.resume(throwing: error) }
-        fragmentWaiters = [:]
+        for continuation in outcomeWaiters.values { continuation.resume(throwing: error) }
+        outcomeWaiters = [:]
         progress = [:]
     }
 }

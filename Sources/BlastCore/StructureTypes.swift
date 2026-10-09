@@ -524,6 +524,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether shear that a crack's interlock and dowels cannot hold slides it for good, as a
     /// masonry joint slides, instead of springing back when the load comes off.
     public var crackSlip = true
+    /// With `crackSlip`, whether what a crack has slid by still counts in the strain whose
+    /// principal values open cracks, as it always has: sliding along a crack then also opens it,
+    /// and the plane across the slide. Off, the slide is the crack's alone, as a second crack's
+    /// opening is. Solid elements only.
+    public var slipWidensCracks = true
     /// Bars that slip in their concrete, by the Model Code's bond-slip law (see `BondSlip`); nil
     /// bonds them perfectly. Solid elements' bars along the lattice axes only.
     public var bondSlip: BondSlip?
@@ -982,6 +987,7 @@ struct StructureUniforms {
     var bondYieldExponent: Float = 0
     var barRateAlongBars: UInt32 = 0
     var couplingMapCount: UInt32 = 0
+    var footings: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1088,7 +1094,7 @@ public enum ContactMode: UInt32, Sendable {
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
-        let source = try ["Solver", "Refine", "Structure", "Shell", "Extract"].map { name in
+        let source = try ["Solver", "Refine", "Structure", "Shell", "Footing", "Extract"].map { name in
             guard
                 let url = Bundle.module.url(
                     forResource: name, withExtension: "metal", subdirectory: "Shaders")

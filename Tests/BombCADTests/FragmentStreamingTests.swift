@@ -28,7 +28,13 @@ struct FragmentRegionTests {
 }
 
 /// A consumer that consumes only when told to.
-final class StalledConsumer: LiveConsumer, @unchecked Sendable {
+final class StalledConsumer: FrameConsumer, @unchecked Sendable {
+    let kind = ConsumerKind.fragments(
+        FragmentSpec(),
+        FragmentScene(
+            Scenario(
+                name: "Stalled", domainSize: SIMD3(repeating: 4), boxes: [],
+                charge: Charge(mass: 1, position: SIMD3(2, 2, 1)))), live: false)
     private let lock = NSLock()
     private var count = 0
     private var consumed = -1
@@ -36,21 +42,22 @@ final class StalledConsumer: LiveConsumer, @unchecked Sendable {
 
     var sent: Int { lock.withLock { count } }
     var bytes: Int { 0 }
-    var live: FragmentLive? { nil }
+    var live: ConsumerLive? { nil }
     var report: ConsumerReport {
         lock.withLock {
             ConsumerReport(frame: released ? count - 1 : consumed, low: nil, high: nil, speed: 0, airborne: 0)
         }
     }
-    func send(_ slice: AirSlice) { lock.withLock { count += 1 } }
+    func send(_ input: ConsumerInput) { lock.withLock { count += 1 } }
     func report(after frame: Int) -> ConsumerReport? {
         ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0)
     }
     func release() { lock.withLock { released = true } }
-    func finish(frameInterval: Double) async throws -> FragmentResult {
-        FragmentResult(
-            launchSpeed: 0, masses: [], impacts: [], airborne: 0, frames: [], fragmentCount: 0,
-            frameInterval: frameInterval, misses: 0)
+    func finish(frameInterval: Double) async throws -> ConsumerOutcome {
+        .fragments(
+            FragmentResult(
+                launchSpeed: 0, masses: [], impacts: [], airborne: 0, frames: [], fragmentCount: 0,
+                frameInterval: frameInterval, misses: 0))
     }
     func cancel() {}
 }
@@ -101,8 +108,8 @@ struct FragmentStreamingTests {
         let here = try #require(try await HeadlessRun.perform(document(), options: options(spec)).fragments)
         let (client, server) = localWorker()
         _ = try await client.start()
-        let consumer = RemoteLiveConsumer(
-            client: client, spec: spec, scene: FragmentScene(document().scenario))
+        let consumer = RemoteFrameConsumer(
+            client: client, kind: .fragments(spec, FragmentScene(document().scenario), live: false))
         let there = try #require(
             try await HeadlessRun.perform(document(), options: options(spec), consumer: consumer).fragments)
         #expect(there == here)

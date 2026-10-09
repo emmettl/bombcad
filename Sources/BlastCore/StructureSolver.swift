@@ -161,6 +161,8 @@ public final class StructureSolver {
     private let anchorStiffness: (normal: Float, shear: Float)?
     /// The largest square angular frequency, in 1/s², of a node on its connection alone.
     private var anchorFrequencySquared: Float = 0
+    /// Rigid footings under connections that have them (`Footing`).
+    private(set) var footings: FootingSystem?
     private var stamp: UInt32 = 0
 
     public init(
@@ -460,8 +462,40 @@ public final class StructureSolver {
                         anchorFrequencySquared, stiffest * anchors[3 * n].x / nodes[n].mass)
                 }
             }
+            try setUpFootings(library: library)
         }
     }
+
+    /// Makes the footings of connections that have one, under the nodes they tie.
+    private func setUpFootings(library: MTLLibrary) throws {
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
+        let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
+        var members: [FootingSystem.Member] = []
+        var bodyMass: Float = 0
+        mutateNodes { nodes in
+            for n in 0..<nodeCount {
+                bodyMass += nodes[n].mass
+                guard anchors[3 * n].x > 0, !nodes[n].isFixed else { continue }
+                let index = Int(lattice[n])
+                let rest = referencePosition(
+                    index % (ex + 1), (index / (ex + 1)) % (ey + 1), index / ((ex + 1) * (ey + 1)))
+                guard let slot = model.connectionSlot(at: rest), let law = model.connection(at: rest),
+                    law.footing != nil
+                else { continue }
+                members.append(
+                    FootingSystem.Member(
+                        entity: n, rest: rest, area: anchors[3 * n].x, slot: slot, law: law,
+                        stiffness: law.stiffness(material: model.material, elementSize: model.elementSize)))
+            }
+        }
+        footings = try FootingSystem(
+            device: device, library: library, members: members, entityCount: nodeCount, bodyMass: bodyMass,
+            contactDamping: contactDamping)
+    }
+
+    /// The footings under the base after the last step, in the order of their connections (the
+    /// ground's, then the support regions'); empty without any.
+    public func footingSummaries() -> [FootingSummary] { footings?.summaries() ?? [] }
 
     /// With bars that slip, makes their buffers: the slip state, each element's bar forces, and
     /// the bond's area at each node along each axis, a share of the bars' surface in the elements
@@ -534,6 +568,7 @@ public final class StructureSolver {
             memset(crushBuffer.contents(), 0, crushBuffer.length)
         }
 
+        footings?.reset()
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -544,6 +579,15 @@ public final class StructureSolver {
         if anchored { memset(anchorBuffer.contents(), 0, anchorBuffer.length) }
         let laws = anchorLawBuffer.contents().bindMemory(
             to: AnchorageParameters.self, capacity: max(nodeCount, 1))
+        let turned = model.hasTurnedJoints
+        // Whether `corner` of the element at `element` lies on its face on `side` with no element
+        // beyond it.
+        func exposed(_ side: JointSide, corner: Int, element: (Int, Int, Int)) -> Bool {
+            guard (corner >> side.axis) & 1 == (side.direction < 0 ? 0 : 1) else { return false }
+            var beyond = [element.0, element.1, element.2]
+            beyond[side.axis] += side.direction
+            return compactIndex(beyond[0], beyond[1], beyond[2]) == nil
+        }
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
             for n in 0..<elementCount {
@@ -555,9 +599,11 @@ public final class StructureSolver {
                     nodes[index].mass += cornerMass
                     let nk = k + ((corner >> 2) & 1)
                     let point = referencePosition(i + (corner & 1), j + ((corner >> 1) & 1), nk)
-                    // Tributary area on exposed lower faces; finite supports never pin interior nodes.
-                    if anchored && corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil),
-                        let law = model.connection(at: point)
+                    // Tributary area on exposed faces on the joint's side (lower faces, unless a
+                    // support's joint faces another way); finite supports never pin interior nodes.
+                    if anchored && (turned || corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil)),
+                        let law = model.connection(at: point),
+                        exposed(law.side ?? .below, corner: corner, element: (i, j, k))
                     {
                         anchors[3 * index].x += h * h / 4
                         laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
@@ -775,7 +821,13 @@ public final class StructureSolver {
                 summary.meanDamage += state.x * (1 - remaining)
                 summary.reaction += force
                 summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(state.y, state.z)))
-                summary.maxOpening = max(summary.maxOpening, nodes[n].uz)
+                // On a footing, the opening is from the footing's top as it has moved.
+                let ground = footings?.footing(ofEntity: n).map {
+                    footings!.displacement(ofPointAt: position, footing: $0).z
+                }
+                let across = (anchorage.side ?? .below).normal
+                summary.maxOpening = max(
+                    summary.maxOpening, simd_dot(nodes[n].displacement, across) - (ground ?? 0))
                 area += state.x
                 centre += state.x * position
                 points.append((position, force))
@@ -812,30 +864,46 @@ public final class StructureSolver {
     /// there is no element (`x` where one has been removed). A diagnostic.
     public func crackMap(row j: Int, threshold: Float = 1e-3) -> [String] {
         (0..<ez).reversed().map { k in
-            String(
-                (0..<ex).map { i -> Character in
-                    guard let n = compactIndex(i, j, k) else { return " " }
-                    if flag(i, j, k) != .active && flag(i, j, k) != .bare { return "x" }
-                    let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
-                    let history = SIMD3(
-                        (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) })
-                    let widest =
-                        history.x >= history.y && history.x >= history.z
-                        ? 0 : (history.y >= history.z ? 1 : 2)
-                    guard history[widest] > threshold else { return "." }
-                    let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
-                    var axis = SIMD3<Float>.zero
-                    axis[widest] = 1
-                    let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
-                    let normal =
-                        simd_length(rotation.vector) > 0.5 ? simd_normalize(rotation).act(axis) : axis
-                    let angle = atan2(normal.z, normal.x) * 180 / .pi  // of the normal from x
-                    let folded = angle < -90 ? angle + 180 : (angle > 90 ? angle - 180 : angle)
-                    if abs(folded) < 22.5 { return "|" }
-                    if abs(folded) > 67.5 { return "-" }
-                    return folded > 0 ? "\\" : "/"
-                })
+            String((0..<ex).map { i in crackSymbol(i, j, k, threshold: threshold, plan: false) })
         }
+    }
+
+    /// The same for the layer of elements `k`, in plan, the last row along y first: the crack
+    /// plane's direction in the x–y plane (`|` across x, `-` across y). What a photograph of a
+    /// slab's face shows.
+    public func crackPlan(layer k: Int, threshold: Float = 1e-3) -> [String] {
+        (0..<ey).reversed().map { j in
+            String((0..<ex).map { i in crackSymbol(i, j, k, threshold: threshold, plan: true) })
+        }
+    }
+
+    /// The largest crack opening (strain) of element (i, j, k), zero where there is none.
+    public func crackOpening(_ i: Int, _ j: Int, _ k: Int) -> Float {
+        guard let n = compactIndex(i, j, k), flag(i, j, k) == .active || flag(i, j, k) == .bare else {
+            return 0
+        }
+        let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+        return (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) }.max() ?? 0
+    }
+
+    private func crackSymbol(_ i: Int, _ j: Int, _ k: Int, threshold: Float, plan: Bool) -> Character {
+        guard let n = compactIndex(i, j, k) else { return " " }
+        if flag(i, j, k) != .active && flag(i, j, k) != .bare { return "x" }
+        let base = stateBuffer.contents().advanced(by: n * Self.stateStride)
+        let history = SIMD3((0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) })
+        let widest = history.x >= history.y && history.x >= history.z ? 0 : (history.y >= history.z ? 1 : 2)
+        guard history[widest] > threshold else { return "." }
+        let q = (0..<4).map { Float(base.load(fromByteOffset: 136 + 2 * $0, as: Float16.self)) }
+        var axis = SIMD3<Float>.zero
+        axis[widest] = 1
+        let rotation = simd_quatf(ix: q[0], iy: q[1], iz: q[2], r: q[3])
+        let normal = simd_length(rotation.vector) > 0.5 ? simd_normalize(rotation).act(axis) : axis
+        // The angle of the normal from x, in the plane drawn.
+        let angle = atan2(plan ? normal.y : normal.z, normal.x) * 180 / .pi
+        let folded = angle < -90 ? angle + 180 : (angle > 90 ? angle - 180 : angle)
+        if abs(folded) < 22.5 { return "|" }
+        if abs(folded) > 67.5 { return "-" }
+        return folded > 0 ? "\\" : "/"
     }
 
     /// Total linear momentum of the body in kg m/s.
@@ -949,9 +1017,12 @@ public final class StructureSolver {
         // A node on a stiff connection to the ground: its frequency on the connection adds to
         // the highest the elements alone can give it, 2 c / h; the bearing's damping shortens the
         // stable step by √(1 + ζ²) − ζ, and the step keeps a tenth in hand.
-        guard anchorFrequencySquared > 0 else { return step }
+        let footingFrequencySquared = footings?.frequencySquared ?? 0
+        guard anchorFrequencySquared > 0 || footingFrequencySquared > 0 else { return step }
         let elementFrequency = 2 * (speeds.max() ?? 1) / model.elementSize
-        let frequency = (elementFrequency * elementFrequency + anchorFrequencySquared).squareRoot()
+        let frequency =
+            (elementFrequency * elementFrequency + anchorFrequencySquared + footingFrequencySquared)
+            .squareRoot()
         let damping = (1 + contactDamping * contactDamping).squareRoot() - contactDamping
         return min(step, 0.9 * 2 * damping / frequency)
     }
@@ -1111,8 +1182,18 @@ public final class StructureSolver {
             encoder.setBuffer(barForceBuffer, offset: 0, index: 20)
             encoder.setBuffer(anchorLawBuffer, offset: 0, index: 21)
             encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 22)
+            encoder.setBuffer(footings?.footingOfBuffer ?? placeholderBuffer, offset: 0, index: 23)
+            encoder.setBuffer(footings?.constantBuffer ?? placeholderBuffer, offset: 0, index: 24)
+            encoder.setBuffer(footings?.stateBuffer ?? placeholderBuffer, offset: 0, index: 25)
+            encoder.setBuffer(footings?.linkBuffer ?? placeholderBuffer, offset: 0, index: 26)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            footings?.encode(
+                encoder,
+                uniforms: FootingSystem.Uniforms(
+                    fixedStep: uniforms.fixedStep, criticalStep: criticalTimeStep, substep: UInt32(substep),
+                    gravity: gravity, damping: damping, footings: 0),
+                control: fluid?.control ?? placeholderBuffer)
             afterNodes?(substep)
         }
     }
@@ -1159,7 +1240,7 @@ public final class StructureSolver {
         uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
-        uniforms.crackSlip = model.crackSlip ? 1 : 0
+        uniforms.crackSlip = model.crackSlip ? (model.slipWidensCracks ? 1 : 2) : 0
         uniforms.barAxes = barAxes
         uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
         uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0
@@ -1185,6 +1266,7 @@ public final class StructureSolver {
         if anchorStiffness != nil {
             uniforms.anchored = 1
         }
+        if footings != nil { uniforms.footings = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage {
             uniforms.anchorNormalStiffness = anchorStiffness.normal
             uniforms.anchorShearStiffness = anchorStiffness.shear

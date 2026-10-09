@@ -28,7 +28,7 @@ release-smoke:
 	.build/release/blastbench shear --layers 12
 	.build/release/blastbench shear --layers 12 --bond pullout
 	.build/release/blastbench slab --shells 1
-	.build/release/blastbench anchorage --standoff 25 --bases clamped,dowelled,soil --time 0.05
+	.build/release/blastbench anchorage --standoff 25 --bases clamped,dowelled,soil,footing --time 0.05
 	.build/release/blastbench anchorage --shells --standoff 25 --bases clamped,soil --time 0.05
 
 lint:
