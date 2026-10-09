@@ -483,11 +483,10 @@ struct DotOut {
     float3 colour [[flat]];
 };
 
-// Draws fragments, tracers, landings, ground points and thermal receivers as round dots of a fixed
-// size on screen, depth-tested at their centres. Each is a position and a code: the kind (0 a
-// fragment in flight, 1 a tracer, 2 a landing, 3 a ground point, 4 a thermal receiver) plus a
-// value from 0 to 1, a fragment's speed, a landing's energy, how fast the ground under a point has
-// moved (0 before the blast arrives) or a receiver's fluence.
+// Draws fragments, tracers, landings and ground points as round dots of a fixed size on screen,
+// depth-tested at their centres. Each is a position and a code: the kind (0 a fragment in flight,
+// 1 a tracer, 2 a landing, 3 a ground point) plus a value from 0 to 1, a fragment's speed, a
+// landing's energy or how fast the ground under a point has moved (0 before the blast arrives).
 vertex DotOut dotVertex(uint vertexID [[vertex_id]],
                         uint instanceID [[instance_id]],
                         const device float4 *dots [[buffer(0)]],
@@ -505,21 +504,13 @@ vertex DotOut dotVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(1, 1),
                                float2(-1, -1), float2(1, 1), float2(-1, 1)};
     float2 corner = corners[vertexID];
-    float size = viewport.z * (kind > 3.5f ? 1.0f : (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f))));
+    float size = viewport.z * (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f)));
     clip.xy += corner * size / viewport.xy * clip.w;
 
     DotOut out;
     out.position = clip;
     out.corner = corner;
-    if (kind > 3.5f) {
-        // A receiver: slate grey with none, through dark red and orange, to pale yellow at a
-        // megajoule a square metre, as metal glows hotter.
-        const float3 stops[5] = {float3(0.35f, 0.38f, 0.45f), float3(0.55f, 0.05f, 0.05f),
-                                 float3(0.95f, 0.35f, 0.05f), float3(1.0f, 0.8f, 0.2f), float3(1.0f, 1.0f, 0.85f)};
-        float t = value * 4.0f;
-        int stop = min(int(t), 3);
-        out.colour = mix(stops[stop], stops[stop + 1], t - float(stop));
-    } else if (kind > 2.5f) {
+    if (kind > 2.5f) {
         // A ground point: grey until the blast arrives, then from blue at a millimetre a second,
         // through violet, to near white at ten metres a second.
         out.colour = value < 0.0005f ? float3(0.55f, 0.55f, 0.58f)
@@ -547,6 +538,85 @@ fragment float4 dotFragment(DotOut in [[stage_in]]) {
     float shade = 0.75f + 0.25f * (1.0f - r2) - 0.15f * (in.corner.x - in.corner.y) * 0.5f;
     float rim = smoothstep(0.7f, 1.0f, r2);
     return float4(mix(in.colour * shade, float3(0.05f), rim * 0.6f), 1.0f);
+}
+
+// The thermal radiation painted onto a surface: a rectangle of the ground or a face, lifted off it
+// and drawn over it, its values interpolated between its cells' centres. Each patch is four
+// vectors: a corner and its columns, the edge along the columns and the rows, the edge along the
+// rows and where its values start, and the normal and whether it is on the ground.
+struct PaintOut {
+    float4 position [[position]];
+    float2 uv;
+    uint patch [[flat]];
+};
+
+// The thermal radiation's colour scale, from dark red through orange to pale yellow, as metal
+// glows hotter. Matches `ThermalLegendView` in ContentView.swift.
+static inline float3 glow(float t) {
+    const float3 stops[5] = {
+        float3(0.30f, 0.04f, 0.07f), float3(0.62f, 0.08f, 0.06f), float3(0.91f, 0.32f, 0.07f),
+        float3(0.99f, 0.67f, 0.17f), float3(1.00f, 0.96f, 0.78f),
+    };
+    float x = clamp(t, 0.0f, 1.0f) * 4.0f;
+    int i = min(int(x), 3);
+    return mix(stops[i], stops[i + 1], x - float(i));
+}
+
+vertex PaintOut paintVertex(uint vertexID [[vertex_id]],
+                            uint instanceID [[instance_id]],
+                            const device float4 *patches [[buffer(0)]],
+                            constant MeshUniforms &u [[buffer(1)]]) {
+    const float2 corners[6] = {float2(0, 0), float2(1, 0), float2(1, 1),
+                               float2(0, 0), float2(1, 1), float2(0, 1)};
+    const device float4 *patch = patches + 4 * instanceID;
+    // A centimetre past each edge, so that the faces lifted off a block's corner overlap there
+    // rather than leave a sliver between them.
+    float2 margin = 0.01f / float2(length(patch[1].xyz), length(patch[2].xyz));
+    float2 corner = corners[vertexID] * (1.0f + 2.0f * margin) - margin;
+    float3 world = patch[0].xyz + corner.x * patch[1].xyz + corner.y * patch[2].xyz + 0.005f * patch[3].xyz;
+    // Drawn a thousandth of the way nearer the eye than the surface it lies on, along the line of
+    // sight, so that it covers that surface at any distance without moving on the screen.
+    world += 0.001f * (u.eye.xyz - world);
+    float3 relative = world - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    float near = u.projection.z;
+    float far = u.projection.w;
+    PaintOut out;
+    out.position = float4(view.x * u.projection.x, view.y * u.projection.y,
+                          far / (far - near) * (view.z - near), view.z);
+    // A face turned away from the eye is hidden by its own block, but for its margin.
+    if (dot(patch[3].xyz, u.eye.xyz - patch[0].xyz) <= 0.0f) {
+        out.position = float4(0.0f, 0.0f, 2.0f, 1.0f);
+    }
+    out.uv = corner;
+    out.patch = instanceID;
+    return out;
+}
+
+fragment float4 paintFragment(PaintOut in [[stage_in]],
+                              const device float4 *patches [[buffer(0)]],
+                              const device float *values [[buffer(1)]],
+                              constant MeshUniforms &u [[buffer(2)]]) {
+    const device float4 *patch = patches + 4 * in.patch;
+    int columns = int(patch[0].w);
+    int rows = int(patch[1].w);
+    int first = int(patch[2].w);
+    // Bilinear between the cells' centres, constant beyond the outermost.
+    float2 cell = clamp(in.uv * float2(columns, rows) - 0.5f, float2(0.0f), float2(columns - 1, rows - 1));
+    int2 low = int2(floor(cell));
+    int2 high = min(low + 1, int2(columns - 1, rows - 1));
+    float2 f = cell - float2(low);
+    float bottom = mix(values[first + low.y * columns + low.x], values[first + low.y * columns + high.x], f.x);
+    float top = mix(values[first + high.y * columns + low.x], values[first + high.y * columns + high.x], f.x);
+    float t = mix(bottom, top, f.y);
+
+    // Shaded as the surface beneath is, without its shadows, and tinted as `fieldTint` tints it.
+    float3 normal = patch[3].xyz;
+    bool ground = patch[3].w > 0.5f;
+    float light = ground ? 0.45f + 0.55f * max(u.sun.z, 0.0f) : 0.50f + 0.50f * max(dot(normal, u.sun.xyz), 0.0f);
+    float3 base = ground ? float3(0.46f, 0.47f, 0.49f) : float3(0.80f, 0.79f, 0.76f);
+    float dataLight = 0.78f + 0.22f * light;
+    return float4(mix(base * light, glow(t) * dataLight, smoothstep(0.0f, 0.12f, t) * 0.92f), 1.0f);
 }
 
 fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {

@@ -31,6 +31,8 @@ struct MetalView: NSViewRepresentable {
         let model: SimulationModel
         /// The GPU time a frame has been taking to draw, smoothed; 0 before the first.
         private var frameSeconds = 0.0
+        /// The paint last handed to the renderer, which keeps it between frames.
+        private var paint: SurfacePaint?
 
         /// The share of the GPU the view may take while a run goes as fast as it can. A frame of
         /// the blast wave is ray-marched through the whole domain at every pixel, so at 60 frames
@@ -61,6 +63,7 @@ struct MetalView: NSViewRepresentable {
         private struct Frame {
             var settings: RenderSettings
             var dots: [SIMD4<Float>]
+            var paint: SurfacePaint?
             var camera: OrbitCamera
         }
 
@@ -81,8 +84,8 @@ struct MetalView: NSViewRepresentable {
         /// read by the renderer outside Observation, so `sceneVersion` stands in for the scene,
         /// and `time` for the air and the structure, which change only as a run steps. The dots
         /// come from the fragments' consumer while it has them, so `fragmentLive` stands in for
-        /// those that land after a run finishes, and `thermalReckoned` for the thermal radiation's
-        /// last frames.
+        /// those that land after a run finishes, and the paint from the thermal radiation's, so
+        /// `thermalReckoned` stands in for its last frames.
         private func frame() -> Frame {
             _ = model.isRunning
             _ = model.sceneVersion
@@ -93,10 +96,10 @@ struct MetalView: NSViewRepresentable {
             settings.highlight = model.highlightedBox
             // The ground points read the project's points and the run's estimate, both observed.
             let dots =
-                (settings.showThermal ? model.thermalDots() : [])
-                + model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
+                model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
                 + (settings.showGroundPoints ? model.groundShockDots() : [])
-            return Frame(settings: settings, dots: dots, camera: model.camera)
+            let paint = settings.thermal.flatMap { model.thermalPaint($0) }
+            return Frame(settings: settings, dots: dots, paint: paint, camera: model.camera)
         }
 
         func draw(in view: MTKView) {
@@ -120,6 +123,10 @@ struct MetalView: NSViewRepresentable {
             else { return }
             renderer.settings = frame.settings
             renderer.setDots(frame.dots)
+            if frame.paint != paint {
+                paint = frame.paint
+                renderer.setSurfacePaint(paint)
+            }
             if view.bounds.width > 0 {
                 renderer.pixelsPerPoint = Float(view.drawableSize.width / view.bounds.width)
             }

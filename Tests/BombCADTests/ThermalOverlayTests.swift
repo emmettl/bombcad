@@ -1,4 +1,5 @@
 import BlastCore
+import BlastRender
 import DocumentKit
 import Foundation
 import Testing
@@ -178,17 +179,29 @@ struct ThermalOverlayTests {
         #expect(model.thermalSpec == nil)
     }
 
-    @Test("The receivers are drawn coloured by their fluence as the run goes, and Reset clears them")
-    func dots() async throws {
+    @Test("The surfaces are painted with the fluence or peak irradiance as the run goes, and Reset clears it")
+    func paint() async throws {
         let (model, kept) = try await run(airOnly(), thermal: spec)
         let thermal = try #require(kept.thermal)
-        let dots = model.thermalDots()
-        #expect(dots.count == thermal.receivers.count)
-        #expect(dots.allSatisfy { $0.w >= 4 && $0.w < 5 })
-        let hottest = try #require(thermal.fluence.indices.max { thermal.fluence[$0] < thermal.fluence[$1] })
-        #expect(dots[hottest].w == 4 + SimulationModel.thermalShade(thermal.fluence[hottest]))
-        #expect(dots.contains { $0.w > 4 })
-        #expect(SimulationModel.thermalShade(0) == 0 && SimulationModel.thermalShade(1e6) == 0.999)
+        let paint = try #require(model.thermalPaint(.fluence))
+        // The ground and the block's five faces, each a grid with a value at every cell.
+        #expect(paint.patches.count == 6 && paint.patches.filter(\.ground).count == 1)
+        #expect(paint.values.count == paint.patches.reduce(0) { $0 + $1.columns * $1.rows })
+        #expect(
+            paint.values.count >= thermal.receivers.count && paint.values.allSatisfy { (0...1).contains($0) })
+        // Every receiver's value is at its cell.
+        let grids = ThermalExposure.surfaceGrids(scene: FragmentScene(kept.scenario), spec: spec)
+        for (patch, grid) in zip(paint.patches, grids.filter { !$0.receivers.isEmpty }) {
+            for (cell, index) in grid.indices.enumerated() {
+                guard let index else { continue }
+                #expect(paint.values[patch.first + cell] == ThermalQuantity.shade(thermal.fluence[index]))
+            }
+        }
+        #expect(paint.values.contains { $0 > 0 })
+        let peak = try #require(model.thermalPaint(.peakIrradiance))
+        #expect(peak.patches == paint.patches && peak.values != paint.values)
+        #expect(ThermalQuantity.shade(0) == 0 && ThermalQuantity.shade(100) == 0)
+        #expect(ThermalQuantity.shade(1e6) == 1 && abs(ThermalQuantity.shade(1e4) - 0.5) < 1e-6)
         #expect(model.thermalStatus.contains("Fireball up to") && model.thermalStatus.contains("kJ/m²"))
         // The view, drawing only on change between runs, sees the last frames come in.
         let deadline = ContinuousClock.now + .seconds(10)
@@ -199,7 +212,8 @@ struct ThermalOverlayTests {
         #expect(model.thermalReckoned == thermal.fireball.count)
         model.reset()
         try await ready(model, by: ContinuousClock.now + .seconds(10))
-        #expect(model.thermalDots().isEmpty && model.thermalStatus.isEmpty && model.thermalReckoned == 0)
+        #expect(
+            model.thermalPaint(.fluence) == nil && model.thermalStatus.isEmpty && model.thermalReckoned == 0)
     }
 
     @Test(

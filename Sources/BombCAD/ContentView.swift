@@ -61,7 +61,11 @@ struct ContentView: View {
                     .overlay(alignment: .bottomTrailing) {
                         VStack(alignment: .trailing, spacing: 8) {
                             if model.structureSummary != nil { DamageLegendView() }
-                            LegendView(settings: model.renderSettings)
+                            if model.thermalSpec != nil, let quantity = model.renderSettings.thermal {
+                                ThermalLegendView(quantity: quantity)
+                            } else {
+                                LegendView(settings: model.renderSettings)
+                            }
                         }
                         .padding(12)
                     }
@@ -263,6 +267,46 @@ private struct LegendView: View {
         return (0...decades).map { step in
             let value = top / pow(10, Double(decades - step))
             return value >= 10 ? String(format: "%.0f", value) : String(format: "%.1f", value)
+        }
+    }
+}
+
+/// Colour scale for the thermal radiation painted on the ground and blocks.
+private struct ThermalLegendView: View {
+    let quantity: ThermalQuantity
+
+    // Matches `glow` in Render.metal.
+    private static let stops: [Color] = [
+        Color(red: 0.30, green: 0.04, blue: 0.07), Color(red: 0.62, green: 0.08, blue: 0.06),
+        Color(red: 0.91, green: 0.32, blue: 0.07), Color(red: 0.99, green: 0.67, blue: 0.17),
+        Color(red: 1.00, green: 0.96, blue: 0.78),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(quantity.title) so far (\(quantity.unit))")
+                .font(.caption.weight(.semibold))
+            LinearGradient(colors: Self.stops, startPoint: .leading, endPoint: .trailing)
+                .frame(width: 220, height: 10)
+                .clipShape(.rect(cornerRadius: 3))
+            HStack {
+                ForEach(ticks.indices, id: \.self) { index in
+                    Text(ticks[index])
+                    if index < ticks.count - 1 { Spacer() }
+                }
+            }
+            .font(.caption2.monospacedDigit())
+            .frame(width: 220)
+        }
+        .padding(10)
+        .background(.regularMaterial, in: .rect(cornerRadius: 10))
+    }
+
+    /// Labels at each decade of the scale, in kJ/m² or kW/m², lowest first.
+    private var ticks: [String] {
+        (0...Int(ThermalQuantity.decades)).map { step in
+            let value = Double(ThermalQuantity.scaleBottom) / 1000 * pow(10, Double(step))
+            return value >= 1 ? String(format: "%.0f", value) : String(format: "%.1f", value)
         }
     }
 }

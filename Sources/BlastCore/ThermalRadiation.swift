@@ -132,6 +132,79 @@ public struct ThermalReceiver: Codable, Sendable, Equatable {
     }
 }
 
+/// A rectangle of the scene's surface and the receivers on it, a grid of `columns` by `rows`
+/// at the centres of equal cells: the ground, or a face of a block or of the structure.
+public struct ThermalSurfaceGrid: Sendable, Equatable {
+    /// `ground`, `block <n>` or `structure`, as its receivers'.
+    public var surface: String
+    /// One corner, and the edges from it along which the columns and the rows run.
+    public var origin: SIMD3<Float>
+    public var u: SIMD3<Float>
+    public var v: SIMD3<Float>
+    /// Out of the surface.
+    public var normal: SIMD3<Float>
+    public var columns: Int
+    public var rows: Int
+    /// The receiver at each cell, row by row, as an index into the scene's receivers; nil where
+    /// the cell's centre is inside a solid or out of the domain, and left out.
+    public var indices: [Int?]
+    /// The receivers on it, in order.
+    public private(set) var receivers: [ThermalReceiver] = []
+
+    init(
+        surface: String, origin: SIMD3<Float>, u: SIMD3<Float>, v: SIMD3<Float>, normal: SIMD3<Float>,
+        columns: Int, rows: Int
+    ) {
+        self.surface = surface
+        self.origin = origin
+        self.u = u
+        self.v = v
+        self.normal = normal
+        self.columns = columns
+        self.rows = rows
+        indices = []
+        indices.reserveCapacity(columns * rows)
+    }
+
+    mutating func add(_ point: SIMD3<Float>, column: Int, row: Int, buried: Bool, first: inout Int) {
+        guard !buried else {
+            indices.append(nil)
+            return
+        }
+        indices.append(first)
+        first += 1
+        receivers.append(ThermalReceiver(position: point, normal: normal, surface: surface))
+    }
+
+    /// Values at its cells, row by row, from values at the scene's receivers, each cell with no
+    /// receiver taking the mean of its nearest neighbours that have one, so that a surface
+    /// interpolated between the cells' centres has no holes at its edges; nil if none has one.
+    public func filled(_ values: (Int) -> Float) -> [Float]? {
+        var result = indices.map { $0.map(values) }
+        guard result.contains(where: { $0 != nil }) else { return nil }
+        while result.contains(where: { $0 == nil }) {
+            let previous = result
+            for row in 0..<rows {
+                for column in 0..<columns where previous[row * columns + column] == nil {
+                    var sum: Float = 0
+                    var count: Float = 0
+                    for (dc, dr) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                        let (c, r) = (column + dc, row + dr)
+                        guard c >= 0, c < columns, r >= 0, r < rows, let value = previous[r * columns + c]
+                        else {
+                            continue
+                        }
+                        sum += value
+                        count += 1
+                    }
+                    if count > 0 { result[row * columns + column] = sum / count }
+                }
+            }
+        }
+        return result.map { $0! }
+    }
+}
+
 /// The fireball's radiation on a scene's surfaces, frame by frame: the irradiance at each
 /// receiver, its peak and its time integral, the fluence. The fireball radiates from the surface
 /// of its equivalent sphere as a grey body, and each receiver sees what of that surface is above
@@ -337,6 +410,12 @@ public struct ThermalExposure: Sendable {
     /// Points over the ground and over every face of the blocks and the structure that the air
     /// touches, about `spacing` apart, lifted a millimetre off their surface.
     public static func receivers(scene: FragmentScene, spec: ThermalSpec) -> [ThermalReceiver] {
+        surfaceGrids(scene: scene, spec: spec).flatMap(\.receivers)
+    }
+
+    /// The receivers by surface, as the grids they lie on: the ground's, and each face's of the
+    /// blocks and the structure, in the order `receivers` lists them.
+    public static func surfaceGrids(scene: FragmentScene, spec: ThermalSpec) -> [ThermalSurfaceGrid] {
         let solids = scene.blocks + scene.structure
         func buried(_ point: SIMD3<Float>) -> Bool {
             solids.contains { $0.contains(point) }
@@ -344,19 +423,22 @@ public struct ThermalExposure: Sendable {
                 || point.z > scene.domain.z
         }
         let lift: Float = 0.001
-        var result: [ThermalReceiver] = []
+        var grids: [ThermalSurfaceGrid] = []
+        var first = 0
         let columns = max(1, Int((scene.domain.x / spec.groundSpacing).rounded(.up)))
         let rows = max(1, Int((scene.domain.y / spec.groundSpacing).rounded(.up)))
+        var ground = ThermalSurfaceGrid(
+            surface: "ground", origin: .zero, u: SIMD3(scene.domain.x, 0, 0), v: SIMD3(0, scene.domain.y, 0),
+            normal: SIMD3(0, 0, 1), columns: columns, rows: rows)
         for j in 0..<rows {
             for i in 0..<columns {
                 let point = SIMD3<Float>(
                     (Float(i) + 0.5) * scene.domain.x / Float(columns),
                     (Float(j) + 0.5) * scene.domain.y / Float(rows), lift)
-                if !buried(point) {
-                    result.append(ThermalReceiver(position: point, normal: SIMD3(0, 0, 1), surface: "ground"))
-                }
+                ground.add(point, column: i, row: j, buried: buried(point), first: &first)
             }
         }
+        grids.append(ground)
         let labelled =
             scene.blocks.enumerated().map { ($1, "block \($0)") } + scene.structure.map { ($0, "structure") }
         for (box, label) in labelled {
@@ -370,22 +452,28 @@ public struct ThermalExposure: Sendable {
                     let nv = max(1, Int((box.size[v] / spec.surfaceSpacing).rounded(.up)))
                     var normal = SIMD3<Float>.zero
                     normal[axis] = side
+                    var origin = box.min
+                    origin[axis] = side < 0 ? box.min[axis] : box.max[axis]
+                    var (uEdge, vEdge) = (SIMD3<Float>.zero, SIMD3<Float>.zero)
+                    uEdge[u] = box.size[u]
+                    vEdge[v] = box.size[v]
+                    var face = ThermalSurfaceGrid(
+                        surface: label, origin: origin, u: uEdge, v: vEdge, normal: normal, columns: nu,
+                        rows: nv)
                     for b in 0..<nv {
                         for a in 0..<nu {
                             var point = SIMD3<Float>.zero
                             point[axis] = (side < 0 ? box.min[axis] : box.max[axis]) + side * lift
                             point[u] = box.min[u] + (Float(a) + 0.5) * box.size[u] / Float(nu)
                             point[v] = box.min[v] + (Float(b) + 0.5) * box.size[v] / Float(nv)
-                            if !buried(point) {
-                                result.append(
-                                    ThermalReceiver(position: point, normal: normal, surface: label))
-                            }
+                            face.add(point, column: a, row: b, buried: buried(point), first: &first)
                         }
                     }
+                    grids.append(face)
                 }
             }
         }
-        return result
+        return grids
     }
 
     /// The charge's energy, in joules, as the result reports it.

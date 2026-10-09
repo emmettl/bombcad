@@ -22,6 +22,71 @@ public enum DisplayMode: Int, CaseIterable, Identifiable, Sendable {
     public var unit: String { self == .impulse ? "kPa·ms" : "kPa" }
 }
 
+/// What of the fireball's thermal radiation is painted onto the surfaces in place of the blast's
+/// field: both on a log scale over four decades, 0.1 to 1,000 kJ/m² and kW/m².
+public enum ThermalQuantity: Int, CaseIterable, Identifiable, Sendable {
+    case fluence = 0
+    case peakIrradiance = 1
+
+    public var id: Int { rawValue }
+
+    public var title: String {
+        switch self {
+        case .fluence: "Thermal fluence"
+        case .peakIrradiance: "Peak irradiance"
+        }
+    }
+
+    public var unit: String { self == .fluence ? "kJ/m²" : "kW/m²" }
+
+    /// The scale's bottom and top in SI units, J/m² or W/m², and its decades.
+    public static let scaleBottom: Float = 100
+    public static let decades: Float = 4
+
+    /// A value in J/m² or W/m² on the scale, from 0 at its bottom to 1 at its top.
+    public static func shade(_ value: Float) -> Float {
+        min(max(log10(max(value, 1e-6) / scaleBottom) / decades, 0), 1)
+    }
+}
+
+/// Values painted onto the scene's surfaces, each surface a grid of them interpolated between
+/// its cells' centres: the thermal radiation's receivers, on the ground and the faces.
+public struct SurfacePaint: Sendable, Equatable {
+    public struct Patch: Sendable, Equatable {
+        /// A corner and the edges from it along which the columns and the rows run, and the
+        /// normal out of the surface.
+        public var origin: SIMD3<Float>
+        public var u: SIMD3<Float>
+        public var v: SIMD3<Float>
+        public var normal: SIMD3<Float>
+        public var columns: Int
+        public var rows: Int
+        /// Whether it is on the ground, which is shaded as the ground is.
+        public var ground: Bool
+        /// Where its values start in `values`, row by row.
+        public var first: Int
+    }
+
+    public var patches: [Patch] = []
+    /// From 0 to 1 on the colour scale.
+    public var values: [Float] = []
+
+    public init() {}
+
+    /// Each grid painted with `shades`, one for each of the scene's receivers, those at cells
+    /// with none filled from their neighbours; grids with no receiver are left out.
+    public init(grids: [ThermalSurfaceGrid], shades: [Float]) {
+        for grid in grids {
+            guard let filled = grid.filled({ shades[$0] }) else { continue }
+            patches.append(
+                Patch(
+                    origin: grid.origin, u: grid.u, v: grid.v, normal: grid.normal, columns: grid.columns,
+                    rows: grid.rows, ground: grid.surface == "ground", first: values.count))
+            values += filled
+        }
+    }
+}
+
 public struct RenderSettings: Sendable, Hashable {
     /// Field painted onto the ground and the blocks.
     public var mode: DisplayMode = .peakOverpressure
@@ -41,8 +106,9 @@ public struct RenderSettings: Sendable, Hashable {
     public var showTracers = true
     /// Ground points where the ground's shaking is estimated, when the project has any.
     public var showGroundPoints = true
-    /// The thermal radiation's receivers, coloured by their fluence, when a run reckons it.
-    public var showThermal = true
+    /// The thermal radiation painted onto the surfaces in place of `mode`'s field, when a run
+    /// reckons it; nil for the blast's.
+    public var thermal: ThermalQuantity?
     /// Their dots' diameter on screen, in points, whatever their true size.
     public var dotSize: Float = 5
     /// A box to outline in the view, such as the one being edited.
@@ -101,6 +167,10 @@ public final class SceneRenderer {
     private let beamPipeline: MTLRenderPipelineState
     private let glassPipeline: MTLRenderPipelineState
     private let dotPipeline: MTLRenderPipelineState
+    private let paintPipeline: MTLRenderPipelineState
+    private var paintPatches: MTLBuffer?
+    private var paintValues: MTLBuffer?
+    private var paintCount = 0
     private var dotBuffer: MTLBuffer?
     private var dotCount = 0
     private let compositePipeline: MTLRenderPipelineState
@@ -156,6 +226,7 @@ public final class SceneRenderer {
         glassPipeline = try pipeline(
             vertex: "shellVertex", fragment: "glassFragment", depth: true, blended: true)
         dotPipeline = try pipeline(vertex: "dotVertex", fragment: "dotFragment", depth: true)
+        paintPipeline = try pipeline(vertex: "paintVertex", fragment: "paintFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
@@ -210,9 +281,9 @@ public final class SceneRenderer {
     public var pixelsPerPoint: Float = 1
 
     /// Dots to draw over the scene: each a position and a code, its kind (0 a fragment in flight,
-    /// 1 a tracer, 2 a fragment's landing, 3 a ground point, 4 a thermal receiver) plus a value
-    /// from 0 to 1 that colours it (a fragment's speed, a landing's energy, how fast the ground
-    /// under a point has moved, a receiver's fluence).
+    /// 1 a tracer, 2 a fragment's landing, 3 a ground point) plus a value from 0 to 1 that
+    /// colours it (a fragment's speed, a landing's energy, how fast the ground under a point has
+    /// moved).
     public func setDots(_ dots: [SIMD4<Float>]) {
         dotCount = dots.count
         guard !dots.isEmpty else { return }
@@ -225,6 +296,31 @@ public final class SceneRenderer {
             return
         }
         dots.withUnsafeBytes { dotBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
+    }
+
+    /// Values to paint onto the surfaces while `settings.thermal` is set; nil for none.
+    public func setSurfacePaint(_ paint: SurfacePaint?) {
+        paintCount = 0
+        guard let paint, !paint.patches.isEmpty else { return }
+        // Four vectors a patch: the origin and its columns, the u edge and its rows, the v edge
+        // and where its values start, and the normal and whether it is on the ground.
+        let patches = paint.patches.flatMap { patch in
+            [
+                SIMD4(patch.origin, Float(patch.columns)), SIMD4(patch.u, Float(patch.rows)),
+                SIMD4(patch.v, Float(patch.first)), SIMD4(patch.normal, patch.ground ? 1 : 0),
+            ]
+        }
+        func upload<T>(_ array: [T], into buffer: inout MTLBuffer?) -> Bool {
+            let length = array.count * MemoryLayout<T>.stride
+            if (buffer?.length ?? 0) < length {
+                buffer = device.makeBuffer(length: max(length, 4096) * 2, options: .storageModeShared)
+            }
+            guard let buffer else { return false }
+            array.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
+            return true
+        }
+        guard upload(patches, into: &paintPatches), upload(paint.values, into: &paintValues) else { return }
+        paintCount = paint.patches.count
     }
 
     /// Encodes a frame into `descriptor`'s first colour attachment.
@@ -345,6 +441,23 @@ public final class SceneRenderer {
                         type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.beamCount)
                 }
             }
+        }
+        if settings.thermal != nil, paintCount > 0, let paintPatches, let paintValues {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            sceneEncoder.setRenderPipelineState(paintPipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setCullMode(.none)
+            sceneEncoder.setVertexBuffer(paintPatches, offset: 0, index: 0)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 1)
+            sceneEncoder.setFragmentBuffer(paintPatches, offset: 0, index: 0)
+            sceneEncoder.setFragmentBuffer(paintValues, offset: 0, index: 1)
+            sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 2)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: paintCount)
         }
         if dotCount > 0, let dotBuffer {
             var mesh = MeshUniforms(

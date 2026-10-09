@@ -441,12 +441,15 @@ final class SimulationModel {
     @ObservationIgnored private(set) var thermal: (any FrameConsumer)?
     /// Where the current run's thermal radiation is reckoned, laid out here as wherever it runs.
     @ObservationIgnored private(set) var thermalReceivers: [ThermalReceiver] = []
+    /// The same receivers by surface, the grids the view paints.
+    @ObservationIgnored private var thermalGrids: [ThermalSurfaceGrid] = []
     /// The thermal radiation the current run reckons, as it was when it started, and the
     /// fireball at each frame sent.
     @ObservationIgnored private var reckonedSpec: ThermalSpec?
     @ObservationIgnored private var fireballFrames: [FireballFrame] = []
     @ObservationIgnored private var nextFireballTime = 0.0
-    @ObservationIgnored private var thermalDotCache: (frames: Int, dots: [SIMD4<Float>])?
+    @ObservationIgnored private var thermalPaintCache:
+        (frames: Int, quantity: ThermalQuantity, paint: SurfacePaint)?
     /// The Macs the run's companions are set to run on.
     var wantedHosts: Set<String> { Set([fragmentsHost, thermalHost, groundShockHost].compactMap { $0 }) }
     /// Whether the run's companions, the fragments, the thermal radiation and the ground shock,
@@ -1613,7 +1616,8 @@ final class SimulationModel {
         } else {
             thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
         }
-        thermalReceivers = ThermalExposure.receivers(scene: scene, spec: spec)
+        thermalGrids = ThermalExposure.surfaceGrids(scene: scene, spec: spec)
+        thermalReceivers = thermalGrids.flatMap(\.receivers)
         reckonedSpec = spec
         nextFireballTime = 0
         sendFireball(solver)
@@ -1624,9 +1628,10 @@ final class SimulationModel {
         thermal?.cancel()
         thermal = nil
         thermalReceivers = []
+        thermalGrids = []
         reckonedSpec = nil
         fireballFrames = []
-        thermalDotCache = nil
+        thermalPaintCache = nil
         thermalStatus = ""
         thermalReckoned = 0
     }
@@ -2100,23 +2105,17 @@ extension SimulationModel {
         groundShockLive?.dots ?? groundShockSpec?.dots ?? []
     }
 
-    /// Draws the thermal radiation's receivers, coloured by their fluence so far on a log scale
-    /// from 1 J/m² to 1 MJ/m²: a position, lifted off its surface to show over it, and a code of 4
-    /// plus the scale's value from 0 to 1.
-    func thermalDots() -> [SIMD4<Float>] {
-        guard let thermal, let live = thermal.thermalLive else { return [] }
-        if let cache = thermalDotCache, cache.frames == live.frames { return cache.dots }
-        let receivers = thermalReceivers
-        let dots = receivers.indices.map { n in
-            SIMD4(receivers[n].position + 0.05 * receivers[n].normal, 4 + Self.thermalShade(live.fluence[n]))
+    /// Paints the thermal radiation so far onto the ground and the faces, its fluence or its peak
+    /// irradiance on the view's scale, interpolated between the receivers.
+    func thermalPaint(_ quantity: ThermalQuantity) -> SurfacePaint? {
+        guard let thermal, let live = thermal.thermalLive else { return nil }
+        if let cache = thermalPaintCache, cache.frames == live.frames, cache.quantity == quantity {
+            return cache.paint
         }
-        thermalDotCache = (live.frames, dots)
-        return dots
-    }
-
-    /// A fluence in J/m² on the dots' scale, from 0 at 1 J/m² to just under 1 at 1 MJ/m².
-    nonisolated static func thermalShade(_ fluence: Float) -> Float {
-        min(max(log10(max(fluence, 1)) / 6, 0), 0.999)
+        let values = quantity == .fluence ? live.fluence : live.peakIrradiance
+        let paint = SurfacePaint(grids: thermalGrids, shades: values.map(ThermalQuantity.shade))
+        thermalPaintCache = (live.frames, quantity, paint)
+        return paint
     }
 }
 
