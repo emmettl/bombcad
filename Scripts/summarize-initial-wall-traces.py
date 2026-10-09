@@ -62,7 +62,8 @@ def relative(a, b):
 
 def main():
     decompose = '--decompose' in sys.argv
-    suffix = '-decomposition' if decompose else ''
+    volume_fit = '--volume-fit' in sys.argv
+    suffix = '-volume-fit' if volume_fit else ('-decomposition' if decompose else '')
     rows = json.loads((ROOT / f'.build/initial-wall-traces{suffix}.json').read_text())
     expected = {(h,a) for h in (0.2,0.1,0.05) for a in (0,0.23)}
     keys = [(r['cellSize'],r['rotation']) for r in rows]
@@ -138,6 +139,46 @@ def main():
                       f"{100*loads['relativePressureL1']:.3f}%; below-ambient area "
                       f"{100*x['negativeExcessAreaFraction']:.2f}%")
         print('Diagnostic replacements are not an additive error budget or an enabled transport policy.')
+    if volume_fit:
+        kinds = {'twoRingLinear', 'pointQuadratic', 'volumeQuadratic'}
+        for r in rows:
+            full, half = r['volumeFits'], r['halfDurationVolumeFits']
+            a, b = ({m['kind']: m for m in d['modes']} for d in (full,half))
+            assert len(full['modes']) == len(half['modes']) == len(kinds) and set(a) == set(b) == kinds
+            for d in (full, half):
+                assert 0 <= d['maximumMomentResidual'] < 1e-8 and d['meanStencilSize'] > 0
+                for key in ('quadraticFallbackAreaFraction','pointQuadraticFallbackAreaFraction',
+                            'linearFallbackAreaFraction'):
+                    assert 0 <= d[key] <= 1
+            print(f"Volume fits dx {r['cellSize']}, angle {r['rotation']}: "
+                  f"mean stencil size {full['meanStencilSize']:.2f}, "
+                  f"quadratic fallback area {100*full['quadraticFallbackAreaFraction']:.2f}%, "
+                  f"moment residual {full['maximumMomentResidual']:.3g}")
+            for kind in sorted(kinds):
+                for x in (a[kind], b[kind]):
+                    loads = x['loads']
+                    assert math.isfinite(x['minimumPressure']) and math.isfinite(x['maximumPressure'])
+                    assert x['minimumPressure'] <= x['maximumPressure']
+                    assert isinstance(x['nonpositivePressureSamples'], int) and x['nonpositivePressureSamples'] >= 0
+                    for key in ('negativeExcessAreaFraction', 'outsideStencilAreaFraction'):
+                        assert 0 <= x[key] <= 1
+                    assert abs(loads['relativeForceError']-relative(loads['force'],r['referenceForce'])) < 1e-12
+                    assert abs(loads['relativeTorqueError']-relative(loads['torque'],r['referenceTorque'])) < 1e-12
+                    assert math.isfinite(loads['relativePressureL1']) and loads['relativePressureL1'] >= 0
+                    assert abs(loads['power']-sum(v*y for v,y in zip(r['velocity'],loads['force']))) < 1e-8
+                x = a[kind]
+                loads = x['loads']
+                change = max(math.dist(loads['force'],b[kind]['loads']['force'])/math.hypot(*r['referenceForce']),
+                             math.dist(loads['torque'],b[kind]['loads']['torque'])/math.hypot(*r['referenceTorque']))
+                assert change < 1e-5
+                duration_changes.append(change)
+                print(f"  {kind}: force/torque/L1 "
+                      f"{100*loads['relativeForceError']:.3f}%/{100*loads['relativeTorqueError']:.3f}%/"
+                      f"{100*loads['relativePressureL1']:.3f}%; below-ambient/stencil-violation area "
+                      f"{100*x['negativeExcessAreaFraction']:.2f}%/{100*x['outsideStencilAreaFraction']:.2f}%; "
+                      f"minimum absolute pressure {x['minimumPressure']:.1f} Pa")
+        print('The three fits share neighbours and distance weights; only volumeQuadratic uses volume moments.')
+        print('All three modes are unbounded, read-only diagnostics; they are not numerical transport policies.')
     print(f'Maximum half-duration load change / reference norm: {max(duration_changes):.3g}')
     print('All six probes pass independent face integrals, reported errors and duration sensitivity checks.')
     print('These are initial traces; the evolved pressure-load study still needs separate spatial checks.')
