@@ -37,6 +37,9 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let bodyWork: Double
         public let impulseWorkResidual: Double
         public let transport: Transport?
+        public let scatterLimitedGroups: Int
+        public let scatterPositivityReducedGroups: Int
+        public let scatterRankDeficientGroups: Int
     }
     public struct Result: Codable, Sendable {
         public let cellSize: Double
@@ -47,6 +50,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         public let velocity: SIMD3<Double>
         public let densityProfile: String
         public let densityAmplitude: Double?
+        public let reconstruction: String
         public let displacement: SIMD3<Double>
         public let referenceDryToWetCells: Int
         public let referenceWetToDryCells: Int
@@ -82,6 +86,7 @@ public enum ExperimentalMovingTrajectoryStudy {
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2], duration: Double = 0.0008, velocityScale: Double = 100,
         nearCrossing: Bool = false, maximumStep: Double = 0.000008,
+        limited: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard duration.isFinite, duration > 0, duration <= 0.1,
@@ -105,7 +110,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                 for cfl in cfls {
                     let result = try solve(
                         h: h, angle: angle, start: start, duration: duration,
-                        velocityScale: velocityScale, cfl: cfl, maximumStep: maximumStep)
+                        velocityScale: velocityScale, cfl: cfl, maximumStep: maximumStep, limited: limited)
                     results.append(result)
                     try progress(result)
                 }
@@ -157,7 +162,7 @@ public enum ExperimentalMovingTrajectoryStudy {
     }
     static func solve(
         h: Double, angle: Double, start: Double, duration: Double, velocityScale: Double,
-        cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil
+        cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false
     ) throws -> Result {
         let clock = Date()
         let velocity = velocityScale * ExperimentalMovingGroupsStudy.velocity
@@ -207,6 +212,9 @@ public enum ExperimentalMovingTrajectoryStudy {
         var lastPartition: [Int]?
         var frames: [Frame] = []
         var newlyWetError = 0.0
+        var scatterLimited = 0
+        var scatterReduced = 0
+        var scatterDeficient = 0
         for target in [0.25, 0.5, 0.75, 1.0].map({ $0 * duration }) {
             while elapsed < target {
                 guard steps < 10000 else { throw Failure.stepLimit }
@@ -216,7 +224,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                     let domain = try ExperimentalMovingGroupsStudy.domain(
                         h: h, angle: angle,
                         start: 0, duration: step, previous: cells, prescribedBody: body,
-                        prescribedVelocity: velocity)
+                        prescribedVelocity: velocity, reconstruct: limited)
                     do {
                         let r: MovingGroupedGasFlux.Result
                         if let reference {
@@ -225,12 +233,20 @@ public enum ExperimentalMovingTrajectoryStudy {
                                 exteriorAt: { boundary in
                                     try reference.exterior(
                                         boundary: boundary, cellSize: h, start: elapsed, duration: step)
-                                }, cfl: cfl)
+                                }, cfl: cfl, limited: limited,
+                                reconstructionExteriorAt: limited
+                                    ? { _, point in
+                                        .init(
+                                            volume: 1, density: reference.density(at: point, time: elapsed),
+                                            velocity: velocity, pressure: reference.pressure)
+                                    } : nil)
                         } else {
                             r = try MovingGroupedGasFlux.advance(
                                 domain.plan,
                                 exterior: .init(
-                                    volume: 1, density: 1.225, velocity: velocity, pressure: 101325), cfl: cfl
+                                    volume: 1, density: 1.225, velocity: velocity, pressure: 101325),
+                                cfl: cfl,
+                                limited: limited
                             )
                         }
                         let plan = domain.plan
@@ -262,6 +278,9 @@ public enum ExperimentalMovingTrajectoryStudy {
                         minimumOld = min(minimumOld, plan.cells.map { $0.volume / (h * h * h) }.min()!)
                         minimumFinal = min(minimumFinal, plan.finalVolumes.map { $0 / (h * h * h) }.min()!)
                         geometryResidual = max(geometryResidual, plan.maximumVolumeResidual)
+                        scatterLimited += r.scatterLimitedGroups
+                        scatterReduced += r.scatterPositivityReducedGroups
+                        scatterDeficient += r.scatterRankDeficientGroups
                         var packet = SIMD8<Double>.zero
                         for (n, boundary) in plan.boundaries.filter({ $0.geometry.owner == 1 }).enumerated() {
                             let impulse = r.wallImpulses[n]
@@ -325,12 +344,15 @@ public enum ExperimentalMovingTrajectoryStudy {
                     bodyImpulse: impulse,
                     bodyAngularImpulse: SIMD3(loads.value[5], loads.value[6], loads.value[7]),
                     bodyWork: loads.value[4],
-                    impulseWorkResidual: loads.value[4] - simd_dot(velocity, impulse), transport: transport))
+                    impulseWorkResidual: loads.value[4] - simd_dot(velocity, impulse), transport: transport,
+                    scatterLimitedGroups: scatterLimited, scatterPositivityReducedGroups: scatterReduced,
+                    scatterRankDeficientGroups: scatterDeficient))
         }
         return Result(
             cellSize: h, rotation: angle, cfl: cfl, startPathTime: start, duration: duration,
             velocity: velocity, densityProfile: reference == nil ? "uniform" : "quadratic-advection",
-            densityAmplitude: reference?.amplitude, displacement: body.position - initialPosition,
+            densityAmplitude: reference?.amplitude, reconstruction: limited ? "limited" : "constant",
+            displacement: body.position - initialPosition,
             referenceDryToWetCells: transitions.opening, referenceWetToDryCells: transitions.closing,
             maximumMembers: maximumMembers,
             minimumOldGroupFraction: minimumOld, minimumFinalGroupFraction: minimumFinal,

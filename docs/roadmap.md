@@ -1325,13 +1325,54 @@ transport refinement and rejected mismatched frame velocities/invalid exterior t
 All 72 CPU-only tests in 14 suites pass; formatting and diff checks are clean. The full
 release build succeeds with the incoming main's existing AirSlice concurrency warnings.
 
-Next, reduce the observed spatial diffusion and newly exposed-cell mixing with reconstruction
-and consistent time integration, preserving the geometric and budget checks. Then establish
-nonuniform moving-pressure-load convergence under grid and timestep refinement. Constant-pressure
-advection does not measure blast-wave or pressure-load accuracy. Group homogenization does
-not preserve gas angular momentum. Coupled free-body velocity, rotation, ground contact and
-gas angular momentum remain subsequent gates. Ordinary simulations are unchanged, and stable
-kernels remain candidates for separately reviewed shared extraction.
+Limited spatial reconstruction now reduces moving transport diffusion and member mixing.
+Optional interval metadata supplies true old/final gas-volume centroids and final open-face
+adjacency. Old group centroids weight only existing inventories; final centroids weight
+final wet capacities. Primitive least-squares face/wall traces reuse the existing one-ring
+limiter on time-averaged evaluation points. Reflected exterior stencil points sample supplied
+old-time states, while fluxes retain the prescribed area/time-averaged external states.
+Wall velocities and paired impulse/work remain explicit. The stationary SSPRK2 helper is
+not used for moving volumes; this update still uses one frozen-state Euler time step.
+
+Endpoint splitting reconstructs conserved densities at final member centroids. A common
+slope factor keeps each component inside its final-neighbour extrema, and weighted member
+offsets preserve the group inventory. A largest wet member takes the packet remainder.
+Euler positivity is checked on the constructed member packets; inadmissible slopes are
+reduced by bisection without mass/pressure floors or inventory changes. Rank-deficient
+multi-member groups split at constant state. Final adjacency uses actual endpoint openings,
+rather than interfaces that were open only earlier in the interval.
+
+`--moving-entropy --limited` completes the same twelve reference cases in a separate report.
+L1 errors are about 2.9%, 1.0–1.1% and 0.3–0.4% on 0.4/0.2/0.1 m grids, normalized by
+the same excess density mass as before. At CFL 0.1, fine-grid error improves 26.8× aligned
+and 32.2× rotated. Observed refinement rates range from 1.39–1.49 on the first halving
+to 1.46–1.68 on the second. Fine-grid maximum newly exposed-cell density errors fall from
+3.4%/4.0% to 1.19%/0.96% aligned/rotated. These are substantial spatial improvements,
+not a claim of a second-order moving solver: CFL halving now changes L1 error by as much
+as 5.81% relative, making the remaining first-order time integration measurable.
+
+Pressure/velocity remain within `5e-14` relative/`5e-12` m/s of their exact constants.
+Budget residuals stay below `2e-13` kg, `3e-11` N s and `5e-8` J, with paired work below
+`3e-13` J. No positivity backoff or rank fallback occurs in these smooth advection cases;
+the limiter activates near constrained member stencils. Both limited uniform trajectory
+matrices also pass (sixteen fast/original-speed cases), including every geometric transition.
+The summaries accept `--limited` and check complete matrices, independent reference integrals,
+positivity, conservation, spatial refinement and improvement against the constant-state method.
+
+All 78 CPU-only tests in 15 suites pass. New tests independently check affine conserved
+member averages and packet budgets, a nonlinear kinetic-energy case requiring positivity
+backoff, deficient-neighbour fallback, affine interior face traces with exterior stencil
+points, original-speed uniform crossings and limited advection refinement. Strict formatting
+and diff checks are clean. The release builds retain the incoming AirSlice concurrency warnings.
+
+Next, add consistent time integration while keeping endpoint volumes, trace locations,
+reservoir exchange and body loads paired through every stage. Recheck uniform preservation
+and the analytical advection matrix before nonuniform moving-pressure-load convergence.
+Constant-pressure advection does not measure blast-wave or pressure-load accuracy. The
+conservative reconstruction still does not preserve gas angular momentum. Coupled free-body
+velocity, rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary
+simulations are unchanged, and stable kernels remain candidates for separately reviewed shared
+extraction.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.

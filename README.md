@@ -524,6 +524,16 @@ changes it by less than 0.27% relative. This exposes first-order spatial diffusi
 group mixing. It tests nonuniform density transport; pressure-load accuracy remains a
 separate benchmark.
 
+Add `--limited` to the moving-entropy command for `.build/moving-entropy-limited.json`,
+then run `python3 Scripts/summarize-moving-entropy.py --limited` to compare both methods.
+Primitive face/wall reconstruction uses old gas-volume centroids and supplied exterior
+stencil points. Conservative member reconstruction uses final gas centroids, bounds slopes
+and checks Euler positivity while preserving group packets. Density L1 errors fall to
+about 2.9%, 1.0–1.1% and 0.3–0.4% on the three grids, with fine-grid newly exposed-cell
+density errors around 1%. Time integration remains first-order. The same `--limited`
+flag applies to moving trajectories; `python3 Scripts/summarize-moving-trajectory.py --limited`
+checks their fast and original-speed reports.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
