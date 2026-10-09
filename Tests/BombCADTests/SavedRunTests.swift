@@ -189,6 +189,26 @@ struct CompletedRunCaptureTests {
         #expect(model.savedRuns.contains { $0.id == run.id })
     }
 
+    @Test("A view showing whether a run can be kept learns when the run completes")
+    func keepRunObserved() async throws {
+        let model = SimulationModel(document: document(), playbackSpeed: .unlimited)
+        model.run()
+        // As the Keep Run button reads it while the run goes on.
+        let changed = Changed()
+        let before = withObservationTracking {
+            model.canKeepRun
+        } onChange: {
+            changed.value = true
+        }
+        #expect(!before)
+        try await waitUntil { !model.isRunning }
+        #expect(changed.value && model.canKeepRun)
+    }
+
+    private final class Changed: @unchecked Sendable {
+        var value = false
+    }
+
     @Test("A changed run keeps distinct inputs and measurement data without replacing its reference")
     func twoRuns() async throws {
         let model = SimulationModel(document: document(), playbackSpeed: .unlimited)

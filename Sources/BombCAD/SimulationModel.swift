@@ -167,7 +167,9 @@ final class SimulationModel {
     var duration: Double
     private(set) var savedRuns: [SavedSimulationRun] = []
     @ObservationIgnored private var loadedRunSettings: ProjectRunSettings?
-    @ObservationIgnored private var completedRunSettings: ProjectRunSettings?
+    /// Observed: `canKeepRun` reads nothing else until a run completes, so a view showing it
+    /// must learn of the completion through this.
+    private var completedRunSettings: ProjectRunSettings?
     static let structureSampleInterval = 0.001
     /// Called with the solver every `structureSampleInterval` of simulated time from time zero,
     /// while no batch is in flight. A run with a structure stops there anyway to sample it; one
