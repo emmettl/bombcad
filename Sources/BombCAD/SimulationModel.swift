@@ -424,32 +424,35 @@ final class SimulationModel {
         return try encoder.encode(snapshots)
     }
     private(set) var groundShockStatus = ""
-    @ObservationIgnored private(set) var groundShock: GroundShockConsumer?
+    @ObservationIgnored private(set) var groundShock: (any FrameConsumer)?
     @ObservationIgnored private var groundShockTime = -1.0
     /// The ground points the current run estimates, as they were when it started.
     @ObservationIgnored private var estimatedGroundSpec: GroundShockSpec?
     @ObservationIgnored private var thermalEdit: Task<Void, Never>?
     /// Reckon the thermal radiation on the Mac set for sweeps, not this one.
     var thermalOnRemote = false
+    /// Estimate the ground's shaking on the Mac set for sweeps, not this one.
+    var groundShockOnRemote = false
     /// Where the run's thermal radiation stands: the largest fireball and the highest fluence.
     private(set) var thermalStatus = ""
     /// Frames of the run's thermal radiation reckoned so far, as last published: the receivers
     /// change with it, though they are read outside Observation.
     private(set) var thermalReckoned = 0
-    @ObservationIgnored private(set) var thermal: (any ThermalConsumer)?
+    @ObservationIgnored private(set) var thermal: (any FrameConsumer)?
+    /// Where the current run's thermal radiation is reckoned, laid out here as wherever it runs.
+    @ObservationIgnored private(set) var thermalReceivers: [ThermalReceiver] = []
     /// The thermal radiation the current run reckons, as it was when it started, and the
     /// fireball at each frame sent.
     @ObservationIgnored private var reckonedSpec: ThermalSpec?
     @ObservationIgnored private var fireballFrames: [FireballFrame] = []
     @ObservationIgnored private var nextFireballTime = 0.0
     @ObservationIgnored private var thermalDotCache: (frames: Int, dots: [SIMD4<Float>])?
-    /// Whether either of the run's companions wants the Mac set for sweeps.
-    var wantsWorker: Bool { fragmentsOnRemote || thermalOnRemote }
-    /// Whether the run's companions, the fragments and the thermal radiation, have every frame
-    /// sent, so that the run can be kept.
+    /// Whether any of the run's companions wants the Mac set for sweeps.
+    var wantsWorker: Bool { fragmentsOnRemote || thermalOnRemote || groundShockOnRemote }
+    /// Whether the run's companions, the fragments, the thermal radiation and the ground shock,
+    /// have every frame sent, so that the run can be kept.
     var companionsCaughtUp: Bool {
-        (fragments.map { $0.report.frame >= $0.sent - 1 } ?? true)
-            && (thermal.map { $0.live.frames >= $0.sent } ?? true)
+        [fragments, thermal, groundShock].allSatisfy { $0?.caughtUp ?? true }
     }
     private static let undoLimit = 100
 
@@ -1284,7 +1287,7 @@ final class SimulationModel {
         }
         var flown: SavedSimulationRun.Fragments?
         if let fragments, let spec = flownSpec {
-            guard fragments.report.frame >= fragments.sent - 1, let live = fragments.live else {
+            guard fragments.caughtUp, let live = fragments.fragmentLive else {
                 throw ProjectFileError.invalid("The fragments are still landing; keep the run in a moment.")
             }
             flown = SavedSimulationRun.Fragments(
@@ -1293,13 +1296,12 @@ final class SimulationModel {
         }
         var reckoned: ThermalResult?
         if let thermal, let spec = reckonedSpec {
-            let live = thermal.live
-            guard live.frames >= thermal.sent else {
+            guard thermal.caughtUp, let live = thermal.thermalLive else {
                 throw ProjectFileError.invalid(
                     "The thermal radiation is still being reckoned; keep the run in a moment.")
             }
             reckoned = ThermalResult(
-                spec: spec, receivers: thermal.receivers, peakIrradiance: live.peakIrradiance,
+                spec: spec, receivers: thermalReceivers, peakIrradiance: live.peakIrradiance,
                 fluence: live.fluence, fireball: fireballFrames,
                 chargeEnergy: ThermalExposure.chargeEnergy(FragmentScene(scenario)))
         }
@@ -1327,7 +1329,10 @@ final class SimulationModel {
         run.fragments = flown
         run.envelopeExposure = solver.envelopeExposureSummaries()
         if let groundShock, let spec = estimatedGroundSpec {
-            var result = groundShock.result(frameInterval: 0)
+            guard groundShock.caughtUp, var result = groundShock.groundShockLive else {
+                throw ProjectFileError.invalid(
+                    "The ground's shaking is still being estimated; keep the run in a moment.")
+            }
             for n in result.points.indices { result.points[n].history = [] }
             run.groundShock = SavedSimulationRun.GroundShock(spec: spec, result: result)
         }
@@ -1414,13 +1419,19 @@ final class SimulationModel {
                 "Some ground points lie outside the domain; move them to estimate the shaking."
             return
         }
-        groundShock = GroundShockConsumer(spec: spec)
+        if groundShockOnRemote, let worker = fragmentWorker {
+            groundShock = RemoteFrameConsumer(
+                client: worker, kind: .groundShock(spec, live: true), ownsClient: false)
+        } else {
+            groundShock = LocalFrameConsumer(.groundShock(spec, live: true))
+        }
         estimatedGroundSpec = spec
         sendGroundShockFrame(solver)
         updateGroundShockStatus()
     }
 
     private func stopGroundShock() {
+        groundShock?.cancel()
         groundShock = nil
         estimatedGroundSpec = nil
         groundShockTime = -1
@@ -1438,14 +1449,14 @@ final class SimulationModel {
         let next = groundShockTime < 0 ? 0 : (floor(groundShockTime / interval + 1e-6) + 1) * interval
         guard last || solver.time >= next - 1e-9 else { return }
         groundShockTime = solver.time
-        guard let region = groundShock?.region(cellSize: solver.grid.cellSize) else { return }
-        groundShock?.consume(solver.groundSlice(low: region.low, high: region.high))
+        guard let groundShock, let spec = estimatedGroundSpec else { return }
+        let region = GroundShockConsumer(spec: spec).region(cellSize: solver.grid.cellSize)
+        groundShock.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
     }
 
     private func updateGroundShockStatus() {
-        guard let groundShock else { return }
-        let result = groundShock.result(frameInterval: 0)
-        groundShockLive = result
+        guard let groundShock, let result = groundShock.groundShockLive else { return }
+        if groundShockLive != result { groundShockLive = result }
         let open = result.points.filter { !$0.covered }
         let reached = open.filter { $0.arrival != nil }
         var text = "The blast has reached \(reached.count) of \(result.points.count) points"
@@ -1460,6 +1471,10 @@ final class SimulationModel {
         if covered > 0 { text += "; \(covered) under a block or the structure" }
         let outrun = reached.filter { $0.regime == .outrunning }.count
         if outrun > 0 { text += "; outrun by the ground's wave at \(outrun)" }
+        if !groundShock.caughtUp {
+            text += " · \(groundShock.sent - 1 - groundShock.report.frame) frames to estimate"
+        }
+        if groundShock is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
         groundShockStatus = text
     }
 
@@ -1482,7 +1497,7 @@ final class SimulationModel {
         fragments = consumer
         flownSpec = spec
         fragmentLaunchSpeed = spec.launchSpeed(chargeMass: scenario.charge.mass)
-        fragmentLive = consumer.live
+        fragmentLive = consumer.fragmentLive
         fragmentTime = -1
         // The consumer may fall up to four frames behind; then the run waits for it.
         holdBatches = { consumer.sent - 1 - consumer.report.frame > 4 }
@@ -1516,7 +1531,7 @@ final class SimulationModel {
     }
 
     private func updateFragmentStatus() {
-        guard let live = fragments?.live else { return }
+        guard let live = fragments?.fragmentLive else { return }
         fragmentLive = live
         let landed = live.impacts.count
         let flying = (0..<live.fragmentCount).filter { !live.landed[$0] }.count
@@ -1547,6 +1562,7 @@ final class SimulationModel {
         guard let host else { return }
         if fragmentsOnRemote { fragmentStatus = "Connecting to \(host)…" }
         if thermalOnRemote { thermalStatus = "Connecting to \(host)…" }
+        if groundShockOnRemote { groundShockStatus = "Connecting to \(host)…" }
         do {
             fragmentWorker = try await RemoteSweepWorker.connect(host: host)
             fragmentWorkerHost = host
@@ -1554,9 +1570,13 @@ final class SimulationModel {
             if thermalOnRemote {
                 thermalStatus = "The thermal radiation will be reckoned on \(host) from the next run."
             }
+            if groundShockOnRemote {
+                groundShockStatus = "The ground's shaking will be estimated on \(host) from the next run."
+            }
         } catch {
             if fragmentsOnRemote { fragmentStatus = "Fragments fly here: \(error.localizedDescription)" }
             if thermalOnRemote { thermalStatus = "Reckoned here: \(error.localizedDescription)" }
+            if groundShockOnRemote { groundShockStatus = "Estimated here: \(error.localizedDescription)" }
         }
     }
 
@@ -1568,10 +1588,12 @@ final class SimulationModel {
         guard let spec = thermalSpec, (try? spec.validate()) != nil else { return }
         let scene = FragmentScene(scenario)
         if thermalOnRemote, let worker = fragmentWorker {
-            thermal = RemoteThermalConsumer(client: worker, spec: spec, scene: scene, ownsClient: false)
+            thermal = RemoteFrameConsumer(
+                client: worker, kind: .thermal(spec, scene, live: true), ownsClient: false)
         } else {
-            thermal = LocalThermalConsumer(spec: spec, scene: scene)
+            thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
         }
+        thermalReceivers = ThermalExposure.receivers(scene: scene, spec: spec)
         reckonedSpec = spec
         nextFireballTime = 0
         sendFireball(solver)
@@ -1581,6 +1603,7 @@ final class SimulationModel {
     private func stopThermal() {
         thermal?.cancel()
         thermal = nil
+        thermalReceivers = []
         reckonedSpec = nil
         fireballFrames = []
         thermalDotCache = nil
@@ -1597,19 +1620,21 @@ final class SimulationModel {
         else { return }
         let frame = solver.fireball(luminousTemperature: spec.luminousTemperature)
         fireballFrames.append(frame)
-        thermal.send(frame)
+        thermal.send(.fireball(frame))
         nextFireballTime = (floor(solver.time / 0.001 + 1e-6) + 1) * 0.001
     }
 
-    /// The thermal radiation has fallen too far behind the run, which waits for it.
+    /// The thermal radiation or the ground shock has fallen too far behind the run, which waits
+    /// for it.
     private var thermalIsBehind: Bool {
-        guard let thermal else { return false }
-        return thermal.sent - thermal.live.frames > 4
+        [thermal, groundShock].contains { consumer in
+            consumer.map { $0.sent - 1 - $0.report.frame > 4 } ?? false
+        }
     }
 
     private func updateThermalStatus() {
         guard let thermal else { return }
-        let live = thermal.live
+        let live = thermal.thermalLive ?? ThermalLive(receivers: thermalReceivers.count)
         if thermalReckoned != live.frames { thermalReckoned = live.frames }
         var text: String
         if let largest = fireballFrames.max(by: { $0.volume < $1.volume }), largest.volume > 0 {
@@ -1622,10 +1647,10 @@ final class SimulationModel {
         }
         let dose = live.fluence.max() ?? 0
         text += String(format: " · fluence up to %.1f kJ/m² over ", dose / 1000)
-        text += "\(thermal.receivers.count.formatted()) receivers"
+        text += "\(thermalReceivers.count.formatted()) receivers"
 
         if live.frames < thermal.sent { text += " · \(thermal.sent - live.frames) frames to reckon" }
-        if thermal is RemoteThermalConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        if thermal is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
         thermalStatus = text
     }
 
@@ -1904,11 +1929,20 @@ final class SimulationModel {
         if let thermal {
             Task { [weak self] in
                 let deadline = ContinuousClock.now + .seconds(120)
-                while thermal.live.frames < thermal.sent, ContinuousClock.now < deadline {
+                while !thermal.caughtUp, ContinuousClock.now < deadline {
                     try? await Task.sleep(for: .milliseconds(20))
                     if self?.thermal === thermal { self?.updateThermalStatus() }
                 }
                 if self?.thermal === thermal { self?.updateThermalStatus() }
+            }
+        }
+        if let groundShock {
+            Task { [weak self] in
+                let deadline = ContinuousClock.now + .seconds(60)
+                while !groundShock.caughtUp, ContinuousClock.now < deadline {
+                    try? await Task.sleep(for: .milliseconds(20))
+                }
+                if self?.groundShock === groundShock { self?.updateGroundShockStatus() }
             }
         }
         if errorMessage == nil, var inputs = loadedRunSettings {
@@ -2018,7 +2052,7 @@ extension SimulationModel {
     /// a tracer, 2 a landing) plus a value from 0 to 1.
     func fragmentDots(showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
         // Straight from the consumer, so the dots move with every frame drawn.
-        guard let live = fragments?.live ?? fragmentLive else { return [] }
+        guard let live = fragments?.fragmentLive ?? fragmentLive else { return [] }
         var dots: [SIMD4<Float>] = []
         dots.reserveCapacity(live.positions.count)
         for n in live.positions.indices {
@@ -2049,10 +2083,9 @@ extension SimulationModel {
     /// from 1 J/m² to 1 MJ/m²: a position, lifted off its surface to show over it, and a code of 4
     /// plus the scale's value from 0 to 1.
     func thermalDots() -> [SIMD4<Float>] {
-        guard let thermal else { return [] }
-        let live = thermal.live
+        guard let thermal, let live = thermal.thermalLive else { return [] }
         if let cache = thermalDotCache, cache.frames == live.frames { return cache.dots }
-        let receivers = thermal.receivers
+        let receivers = thermalReceivers
         let dots = receivers.indices.map { n in
             SIMD4(receivers[n].position + 0.05 * receivers[n].normal, 4 + Self.thermalShade(live.fluence[n]))
         }

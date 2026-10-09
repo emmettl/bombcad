@@ -406,8 +406,10 @@ enum HeadlessRun {
         if injected == nil, let spec = options.fragments {
             kinds.append(("fragments", .fragments(spec, consumerScene, live: false)))
         }
-        if let spec = options.thermal { kinds.append(("thermal", .thermal(spec, consumerScene))) }
-        if let spec = options.groundShock { kinds.append(("ground", .groundShock(spec))) }
+        if let spec = options.thermal {
+            kinds.append(("thermal", .thermal(spec, consumerScene, live: false)))
+        }
+        if let spec = options.groundShock { kinds.append(("ground", .groundShock(spec, live: false))) }
         if let injected {
             feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))
         }
@@ -504,10 +506,10 @@ enum HeadlessRun {
                                 cellSize: solver.grid.cellSize)
                             feed.consumer.send(
                                 .air(solver.airSlice(region: region.box, stride: region.stride)))
-                        case .thermal(let spec, _):
+                        case .thermal(let spec, _, _):
                             feed.consumer.send(
                                 .fireball(solver.fireball(luminousTemperature: spec.luminousTemperature)))
-                        case .groundShock(let spec):
+                        case .groundShock(let spec, _):
                             let region = GroundShockConsumer(spec: spec).region(
                                 cellSize: solver.grid.cellSize)
                             feed.consumer.send(
