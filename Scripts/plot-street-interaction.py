@@ -90,13 +90,16 @@ def render(directory, output):
         rows = {r["run"]: r for r in summary["comparisons"]}
         for index, key in enumerate(("peakRelativeL1", "impulseRelativeL1", "arrivalMeanAbsoluteErrorS")):
             values = [rows[f"{layout}-{name}"][key] for name in names]
-            axes[index].plot(range(5), [v * (1000 if index == 2 else 100) for v in values], "o-", label=layout, color=colours[layout])
+            scaled = [v * (1000 if index == 2 else 100) for v in values]
+            axes[index].plot(range(4), scaled[:4], "o-", label=layout, color=colours[layout])
+            axes[index].plot([4], [scaled[4]], "x", color=colours[layout], markersize=8)
     for ax, title, ylabel in zip(axes, ("Peak map sensitivity", "Impulse map sensitivity", "Arrival map sensitivity"),
                                 ("Relative L1 difference (%)", "Relative L1 difference (%)", "Mean absolute difference (ms)")):
         ax.set_title(title)
         ax.set_ylabel(ylabel)
         ax.set_xticks(range(5), ("1 m", "0.5 m", "0.25 m", "0.5 m\nrefined ×2", "0.25 m\nhalf CFL"))
         ax.grid(alpha=0.2)
+        ax.axvline(3.5, color="#888888", linestyle=":", linewidth=0.8)
         ax.legend()
     fig.suptitle("Resolution sensitivity: reference 0.125 m; half-CFL comparison: reference 0.25 m", fontsize=13)
     fig.supxlabel("Matched physical probes with common fluid stencils; exclude a 1 m edge margin and points within 3 m of source.\n"
