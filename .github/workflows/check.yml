@@ -32,7 +32,29 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: make check
+      - name: Lint
+        run: make lint
+      - name: Test release and nightly scripts
+        run: make ci-test
+      - name: Build
+        run: make build
+      - name: Test
+        # Leave time to upload diagnostics before the overall job timeout.
+        timeout-minutes: 45
+        shell: bash
+        run: |
+          set -o pipefail
+          log_dir="${{ runner.temp }}/check-${{ github.run_id }}-${{ github.run_attempt }}"
+          mkdir -p "$log_dir"
+          make test 2>&1 | tee "$log_dir/tests.log"
+      - name: Retain test log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/check-${{ github.run_id }}-${{ github.run_attempt }}/tests.log
+          if-no-files-found: warn
+          retention-days: 14
 
   adiabatic:
     runs-on: [self-hosted, macOS, ARM64, metal]
