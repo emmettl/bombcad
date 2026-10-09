@@ -13,6 +13,18 @@ public struct GroundSoil: Codable, Sendable, Equatable {
         self.waveSpeed = waveSpeed
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case density, waveSpeed
+    }
+
+    /// Either field left out takes its default.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = GroundSoil()
+        density = try c.decodeIfPresent(Float.self, forKey: .density) ?? d.density
+        waveSpeed = try c.decodeIfPresent(Float.self, forKey: .waveSpeed) ?? d.waveSpeed
+    }
+
     /// The soil's acoustic impedance ρc, Pa·s/m: the stress that moves it at a metre a second.
     public var impedance: Float { density * waveSpeed }
 }

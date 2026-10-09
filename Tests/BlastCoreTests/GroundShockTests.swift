@@ -228,6 +228,9 @@ struct GroundShockTests {
         let spec = try JSONDecoder().decode(GroundShockSpec.self, from: Data(json.utf8))
         #expect(spec.points == [SIMD2(10, 20)] && spec.soil.waveSpeed == 450 && spec.depths == [0, 1, 3])
         try spec.validate(domain: SIMD3(64, 64, 32))
+        let partial = try JSONDecoder().decode(
+            GroundShockSpec.self, from: Data(#"{"soil": {"waveSpeed": 1500}}"#.utf8))
+        #expect(partial.soil == GroundSoil(density: 1600, waveSpeed: 1500) && partial.points.isEmpty)
         #expect(throws: CocoaError.self) { try spec.validate(domain: SIMD3(8, 8, 8)) }
         for change in [
             { (s: inout GroundShockSpec) in s.points = [] },
