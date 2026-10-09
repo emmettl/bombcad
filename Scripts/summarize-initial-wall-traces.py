@@ -62,14 +62,17 @@ def relative(a, b):
 
 def main():
     decompose = '--decompose' in sys.argv
-    volume_fit = '--volume-fit' in sys.argv
-    suffix = '-volume-fit' if volume_fit else ('-decomposition' if decompose else '')
+    sweep = '--stencil-sweep' in sys.argv
+    volume_fit = '--volume-fit' in sys.argv or sweep
+    suffix = '-stencil-sweep' if sweep else ('-volume-fit' if volume_fit else ('-decomposition' if decompose else ''))
     rows = json.loads((ROOT / f'.build/initial-wall-traces{suffix}.json').read_text())
-    expected = {(h,a) for h in (0.2,0.1,0.05) for a in (0,0.23)}
-    keys = [(r['cellSize'],r['rotation']) for r in rows]
+    angles = (0,0.1,0.23,0.4) if sweep else (0,0.23)
+    depths = (1,2,3) if sweep else (2,)
+    expected = {(h,a,d) for h in (0.2,0.1,0.05) for a in angles for d in depths}
+    keys = [(r['cellSize'],r['rotation'],r['volumeFits']['stencilRings'] if volume_fit else 2) for r in rows]
     assert len(keys) == len(expected) and set(keys) == expected
     refs = {}
-    for angle in (0,0.23):
+    for angle in angles:
         low, high = reference(angle,128), reference(angle,256)
         assert max(relative(a,b) for a,b in zip(low,high)) < 1e-6
         refs[angle] = high
@@ -140,9 +143,13 @@ def main():
                       f"{100*x['negativeExcessAreaFraction']:.2f}%")
         print('Diagnostic replacements are not an additive error budget or an enabled transport policy.')
     if volume_fit:
-        kinds = {'twoRingLinear', 'pointQuadratic', 'volumeQuadratic'}
+        bounded_kinds = {'volumeQuadraticWallBounded', 'volumeQuadraticBounded'}
         for r in rows:
             full, half = r['volumeFits'], r['halfDurationVolumeFits']
+            rings = full['stencilRings']
+            assert rings in depths and half['stencilRings'] == rings
+            linear_kind = ('oneRingLinear','twoRingLinear','threeRingLinear')[rings-1]
+            kinds = {linear_kind, 'pointQuadratic', 'volumeQuadratic'} | bounded_kinds
             a, b = ({m['kind']: m for m in d['modes']} for d in (full,half))
             assert len(full['modes']) == len(half['modes']) == len(kinds) and set(a) == set(b) == kinds
             for d in (full, half):
@@ -150,7 +157,14 @@ def main():
                 for key in ('quadraticFallbackAreaFraction','pointQuadraticFallbackAreaFraction',
                             'linearFallbackAreaFraction'):
                     assert 0 <= d[key] <= 1
-            print(f"Volume fits dx {r['cellSize']}, angle {r['rotation']}: "
+                bounds = {x['kind']: x for x in d['bounds']}
+                assert len(d['bounds']) == 2 and set(bounds) == bounded_kinds
+                for bound in bounds.values():
+                    assert 0 <= bound['meanFactor'] <= 1 and 0 <= bound['activeAreaFraction'] <= 1
+                    assert 0 <= bound['maximumRelativeAverageResidual'] < 1e-10
+                    assert 0 <= bound['maximumRelativeBoundViolation'] < 1e-12
+                assert bounds['volumeQuadraticBounded']['meanFactor'] <= bounds['volumeQuadraticWallBounded']['meanFactor'] + 1e-12
+            print(f"Volume fits dx {r['cellSize']}, angle {r['rotation']}, rings {rings}: "
                   f"mean stencil size {full['meanStencilSize']:.2f}, "
                   f"quadratic fallback area {100*full['quadraticFallbackAreaFraction']:.2f}%, "
                   f"moment residual {full['maximumMomentResidual']:.3g}")
@@ -162,6 +176,9 @@ def main():
                     assert isinstance(x['nonpositivePressureSamples'], int) and x['nonpositivePressureSamples'] >= 0
                     for key in ('negativeExcessAreaFraction', 'outsideStencilAreaFraction'):
                         assert 0 <= x[key] <= 1
+                    if kind in bounded_kinds:
+                        assert x['outsideStencilAreaFraction'] == 0 and x['negativeExcessAreaFraction'] == 0
+                        assert x['nonpositivePressureSamples'] == 0
                     assert abs(loads['relativeForceError']-relative(loads['force'],r['referenceForce'])) < 1e-12
                     assert abs(loads['relativeTorqueError']-relative(loads['torque'],r['referenceTorque'])) < 1e-12
                     assert math.isfinite(loads['relativePressureL1']) and loads['relativePressureL1'] >= 0
@@ -177,10 +194,49 @@ def main():
                       f"{100*loads['relativePressureL1']:.3f}%; below-ambient/stencil-violation area "
                       f"{100*x['negativeExcessAreaFraction']:.2f}%/{100*x['outsideStencilAreaFraction']:.2f}%; "
                       f"minimum absolute pressure {x['minimumPressure']:.1f} Pa")
-        print('The three fits share neighbours and distance weights; only volumeQuadratic uses volume moments.')
-        print('All three modes are unbounded, read-only diagnostics; they are not numerical transport policies.')
+            for bound in full['bounds']:
+                print(f"  {bound['kind']}: mean factor {bound['meanFactor']:.3f}, "
+                      f"active area {100*bound['activeAreaFraction']:.2f}%, "
+                      f"average/bound residual {bound['maximumRelativeAverageResidual']:.3g}/"
+                      f"{bound['maximumRelativeBoundViolation']:.3g}")
+        print('Raw fits share neighbours and weights. Both bounded modes scale the same volume-aware polynomial about its group average.')
+        print('Bounds apply at audited control points, not everywhere between them. All five modes remain read-only diagnostics.')
+    if sweep:
+        cases = {}
+        for r in rows:
+            cases.setdefault((r['cellSize'],r['rotation']),{})[r['volumeFits']['stencilRings']] = r
+        print('Stencil sensitivity: bounded volume-quadratic force/torque/L1 errors by ring count')
+        for (h,angle), variants in sorted(cases.items(), reverse=True):
+            baseline = variants[2]
+            line = []
+            sizes = []
+            for depth in depths:
+                r = variants[depth]
+                for name in ('supplied','constant','limited'):
+                    for quantity in ('force','torque'):
+                        assert math.dist(r[name][quantity],baseline[name][quantity]) < 1e-8
+                assert r['pulseAmplitude'] == baseline['pulseAmplitude']
+                assert r['wallSamples'] == baseline['wallSamples'] and r['groups'] == baseline['groups']
+                sizes.append(r['volumeFits']['meanStencilSize'])
+                mode = next(m for m in r['volumeFits']['modes'] if m['kind'] == 'volumeQuadraticBounded')
+                x = mode['loads']
+                line.append(f"{depth}: {100*x['relativeForceError']:.3f}%/{100*x['relativeTorqueError']:.3f}%/"
+                            f"{100*x['relativePressureL1']:.3f}%")
+            assert sizes[0] <= sizes[1] <= sizes[2]
+            print(f"  dx {h}, angle {angle}: " + '; '.join(line))
+        print('Stencil changes retain the matched initial packets and all existing baseline loads.')
+        print('Worst errors across the four orientations (force/torque/local pressure L1)')
+        for h in (0.2,0.1,0.05):
+            metrics = ('relativeForceError','relativeTorqueError','relativePressureL1')
+            baseline = [cases[(h,angle)][2]['limited'] for angle in angles]
+            line = ['existing: ' + '/'.join(f'{100*max(x[k] for x in baseline):.3f}%' for k in metrics)]
+            for depth in depths:
+                loads = [next(m['loads'] for m in cases[(h,angle)][depth]['volumeFits']['modes']
+                              if m['kind'] == 'volumeQuadraticBounded') for angle in angles]
+                line.append(f'{depth}: ' + '/'.join(f'{100*max(x[k] for x in loads):.3f}%' for k in metrics))
+            print(f'  dx {h}: ' + '; '.join(line))
     print(f'Maximum half-duration load change / reference norm: {max(duration_changes):.3g}')
-    print('All six probes pass independent face integrals, reported errors and duration sensitivity checks.')
+    print(f'All {len(rows)} probes pass independent face integrals, reported errors and duration sensitivity checks.')
     print('These are initial traces; the evolved pressure-load study still needs separate spatial checks.')
 
 

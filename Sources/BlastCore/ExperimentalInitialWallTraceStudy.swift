@@ -29,6 +29,13 @@ public enum ExperimentalInitialWallTraceStudy {
         public let rankDeficientAreaFraction: Double
         public let centroidDataLimiterFactor: Double
     }
+    public struct VolumeBoundDiagnostics: Codable, Sendable {
+        public let kind: String
+        public let meanFactor: Double
+        public let activeAreaFraction: Double
+        public let maximumRelativeAverageResidual: Double
+        public let maximumRelativeBoundViolation: Double
+    }
     public struct VolumeFitDiagnostics: Codable, Sendable {
         public let modes: [DiagnosticMode]
         public let quadraticFallbackAreaFraction: Double
@@ -36,6 +43,8 @@ public enum ExperimentalInitialWallTraceStudy {
         public let linearFallbackAreaFraction: Double
         public let meanStencilSize: Double
         public let maximumMomentResidual: Double
+        public var bounds: [VolumeBoundDiagnostics]? = nil
+        public var stencilRings: Int? = nil
     }
     public struct Result: Codable, Sendable {
         public let cellSize: Double
@@ -80,9 +89,11 @@ public enum ExperimentalInitialWallTraceStudy {
     public static func run(
         cellSizes: [Double] = [0.2, 0.1, 0.05], rotations: [Double] = [0, 0.23],
         targetPulseEnergy: Double = 6400, decompose: Bool = false, volumeFits: Bool = false,
+        stencilRings: Int = 2,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
-        guard !cellSizes.isEmpty && !rotations.isEmpty, targetPulseEnergy.isFinite && targetPulseEnergy > 0
+        guard !cellSizes.isEmpty && !rotations.isEmpty, targetPulseEnergy.isFinite && targetPulseEnergy > 0,
+            (1...3).contains(stencilRings)
         else {
             throw Failure.invalidConfiguration
         }
@@ -116,11 +127,11 @@ public enum ExperimentalInitialWallTraceStudy {
                 let full = try probe(
                     h: h, angle: angle, body: body, velocity: velocity, duration: dt,
                     initial: initial.cells, reference: reference, pressure: pressure, decompose: decompose,
-                    volumeFits: volumeFits)
+                    volumeFits: volumeFits, stencilRings: stencilRings)
                 let half = try probe(
                     h: h, angle: angle, body: body, velocity: velocity, duration: dt / 2,
                     initial: initial.cells, reference: reference, pressure: pressure, decompose: decompose,
-                    volumeFits: volumeFits)
+                    volumeFits: volumeFits, stencilRings: stencilRings)
                 let row = Result(
                     cellSize: h, rotation: angle, duration: dt, velocity: velocity,
                     targetPulseEnergy: targetPulseEnergy, pulseAmplitude: initial.amplitude,
@@ -146,7 +157,7 @@ public enum ExperimentalInitialWallTraceStudy {
     private static func probe(
         h: Double, angle: Double, body: RigidBoxBody, velocity: SIMD3<Double>, duration: Double,
         initial: [FractionalGasTransport.Cell], reference: BoxSurfacePressureReference.Load,
-        pressure: @escaping (SIMD3<Double>) -> Double, decompose: Bool, volumeFits: Bool
+        pressure: @escaping (SIMD3<Double>) -> Double, decompose: Bool, volumeFits: Bool, stencilRings: Int
     ) throws -> Probe {
         let domain = try ExperimentalMovingGroupsStudy.domain(
             h: h, angle: angle, start: 0, duration: duration, previous: initial, prescribedBody: body,
@@ -293,7 +304,7 @@ public enum ExperimentalInitialWallTraceStudy {
             volumeFits
             ? try ExperimentalVolumePressureFitStudy.evaluate(
                 plan: domain.plan, body: body, h: h, traces: limited, reference: reference,
-                pressure: pressure) : nil
+                pressure: pressure, stencilRings: stencilRings) : nil
         return try .init(
             supplied: loads(constant, known: true), constant: loads(constant, known: false),
             limited: loads(limited, known: false), samples: limited.count, groups: domain.plan.cells.count,

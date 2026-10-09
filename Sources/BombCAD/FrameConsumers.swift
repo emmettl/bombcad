@@ -5,13 +5,20 @@ import Foundation
 /// A model fed by the blast a frame at a time, one way, here or on another Mac: what it is and
 /// what it needs to start.
 enum ConsumerKind: Codable, Sendable, Equatable {
-    /// A cased charge's fragments and tracers, flown through blocks of the air. `live` sends their
-    /// positions back after each frame, to draw them.
+    /// A cased charge's fragments and tracers, flown through blocks of the air.
     case fragments(FragmentSpec, FragmentScene, live: Bool)
     /// The fireball's radiation on the scene's surfaces.
-    case thermal(ThermalSpec, FragmentScene)
+    case thermal(ThermalSpec, FragmentScene, live: Bool)
     /// The ground's shaking under chosen points.
-    case groundShock(GroundShockSpec)
+    case groundShock(GroundShockSpec, live: Bool)
+
+    /// Whether the model's state comes back after each frame, for the app to draw (see
+    /// `ConsumerLive`).
+    var isLive: Bool {
+        switch self {
+        case .fragments(_, _, let live), .thermal(_, _, let live), .groundShock(_, let live): live
+        }
+    }
 
     var name: String {
         switch self {
@@ -48,6 +55,15 @@ enum ConsumerInput: Sendable, Equatable {
         case .air(let slice): slice.payload
         case .fireball: Data()
         case .ground(let slice): slice.payload
+        }
+    }
+
+    /// The moment of the frame.
+    var time: Double {
+        switch self {
+        case .air(let slice): slice.time
+        case .fireball(let frame): frame.time
+        case .ground(let slice): slice.time
         }
     }
 
@@ -118,9 +134,9 @@ struct ConsumerEngine: Sendable {
         switch kind {
         case .fragments(let spec, let scene, let live):
             model = .fragments(FragmentConsumer(spec: spec, scene: scene, keepsFrames: !live), live: live)
-        case .thermal(let spec, let scene):
+        case .thermal(let spec, let scene, _):
             model = .thermal(ThermalExposure(spec: spec, scene: scene))
-        case .groundShock(let spec):
+        case .groundShock(let spec, _):
             model = .groundShock(GroundShockConsumer(spec: spec))
         }
     }
@@ -149,10 +165,14 @@ struct ConsumerEngine: Sendable {
         return ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0)
     }
 
-    /// The fragments' particles now, if they are flown live.
-    func live(time: Double) -> FragmentLive? {
-        guard case .fragments(let consumer, let live) = model, live else { return nil }
-        return FragmentLive(consumer, time: time)
+    /// The model's state now, for a live view, if its kind is live; `time` is the last frame's.
+    func live(time: Double) -> ConsumerLive? {
+        guard kind.isLive else { return nil }
+        switch model {
+        case .fragments(let consumer, _): return .fragments(FragmentLive(consumer, time: time))
+        case .thermal(let exposure): return .thermal(ThermalLive(exposure))
+        case .groundShock(let consumer): return .groundShock(consumer.result(frameInterval: 0))
+        }
     }
 
     func outcome(frameInterval: Double) -> ConsumerOutcome {
@@ -161,5 +181,106 @@ struct ConsumerEngine: Sendable {
         case .thermal(let exposure): .thermal(exposure.result)
         case .groundShock(let consumer): .groundShock(consumer.result(frameInterval: frameInterval))
         }
+    }
+}
+
+/// A model's state as of its last frame, for the app to draw while the run goes on: the fragments'
+/// particles, the thermal radiation's receivers, or the ground points' estimates so far.
+enum ConsumerLive: Sendable, Equatable {
+    case fragments(FragmentLive)
+    case thermal(ThermalLive)
+    case groundShock(GroundShockResult)
+
+    /// What travels after each frame as JSON; the particles' positions or the receivers' values go
+    /// as the payload. The fragments' impacts travel as those new since the last frame.
+    enum Header: Codable, Sendable, Equatable {
+        case fragments(LiveFrameHeader)
+        case thermal(ThermalLiveHeader)
+        case groundShock(GroundShockResult)
+    }
+
+    var fragments: FragmentLive? { if case .fragments(let live) = self { live } else { nil } }
+    var thermal: ThermalLive? { if case .thermal(let live) = self { live } else { nil } }
+    var groundShock: GroundShockResult? { if case .groundShock(let live) = self { live } else { nil } }
+
+    /// The header and payload to send, given the fragments' impacts already sent.
+    func encoded(impactsSent: Int) -> (header: Header, payload: Data) {
+        switch self {
+        case .fragments(let live):
+            (
+                .fragments(
+                    LiveFrameHeader(
+                        time: live.time, fragmentCount: live.fragmentCount,
+                        impacts: Array(live.impacts.dropFirst(impactsSent)))),
+                live.payload
+            )
+        case .thermal(let live):
+            (.thermal(ThermalLiveHeader(frames: live.frames, time: live.time)), live.payload)
+        case .groundShock(let result): (.groundShock(result), Data())
+        }
+    }
+
+    /// This state brought up to date by what came after a frame.
+    func updated(by header: Header, payload: Data) throws -> ConsumerLive {
+        switch (self, header) {
+        case (.fragments(var live), .fragments(let header)):
+            try live.read(payload)
+            live.time = header.time
+            live.fragmentCount = header.fragmentCount
+            live.impacts += header.impacts
+            return .fragments(live)
+        case (.thermal(var live), .thermal(let header)):
+            try live.read(payload, header: header)
+            return .thermal(live)
+        case (.groundShock, .groundShock(let result)):
+            return .groundShock(result)
+        default:
+            throw ProjectFileError.invalid("A consumer's live state came back as another kind.")
+        }
+    }
+}
+
+/// Every receiver's fluence and peak irradiance as of the last frame consumed, for drawing and
+/// for keeping the run.
+struct ThermalLive: Sendable, Equatable {
+    /// Frames consumed so far.
+    var frames = 0
+    var time: Double = 0
+    /// In joules a square metre, one a receiver.
+    var fluence: [Float] = []
+    /// In watts a square metre, one a receiver.
+    var peakIrradiance: [Float] = []
+
+    init(receivers: Int) {
+        fluence = [Float](repeating: 0, count: receivers)
+        peakIrradiance = fluence
+    }
+
+    init(_ exposure: ThermalExposure) {
+        frames = exposure.frames.count
+        time = exposure.frames.last?.time ?? 0
+        // As `ThermalExposure.result` rounds them, so a run kept from these is the same.
+        fluence = exposure.fluence.map { Float($0) }
+        peakIrradiance = exposure.peakIrradiance
+    }
+
+    /// The fluences then the peak irradiances, as little-endian floats.
+    var payload: Data {
+        (fluence + peakIrradiance).withUnsafeBytes { Data($0) }
+    }
+
+    mutating func read(_ payload: Data, header: ThermalLiveHeader) throws {
+        let count = fluence.count
+        guard payload.count == 8 * count else {
+            throw ProjectFileError.invalid("The thermal radiation arrived cut short.")
+        }
+        payload.withUnsafeBytes { raw in
+            for n in 0..<count {
+                fluence[n] = raw.loadUnaligned(fromByteOffset: 4 * n, as: Float.self)
+                peakIrradiance[n] = raw.loadUnaligned(fromByteOffset: 4 * (count + n), as: Float.self)
+            }
+        }
+        frames = header.frames
+        time = header.time
     }
 }

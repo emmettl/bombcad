@@ -65,27 +65,6 @@ titles; the authors, journals and years should be enough to find each one.
   pulse on its face alone (see [base connections](structural-model.md#base-connections)).
   Pressures behind a wall would check that; a deflection record would check its base too.
 
-## 2d. A footing that rocks, measured
-
-- **Where:** the two databases of rocking shallow foundations compiled at UC Davis and
-  published on DataCenterHub (datacenterhub.org): FoRCy, of slow-cyclic and monotonic tests
-  (M. Hakhamaneshi, B. L. Kutter, A. G. Gavras and others, "Database of rocking shallow
-  foundation performance: Slow-cyclic and monotonic loading", *Earthquake Spectra* 36(3),
-  2020), 456 records from centrifuge and 1 g tests, among them S. Gajan and B. L. Kutter's
-  shear walls on footings on dry sand and clay; and FoRDy, of dynamic shaking (A. G. Gavras and
-  others, *Earthquake Spectra* 36(2), 2020). Found 2026-10-09; not downloaded, as downloads are
-  asked for first. A large-scale alternative: the TRISEE tests at ELSA, JRC Ispra (P. Negro and
-  others, 1998–2000), a 1 m square footing on sand loaded cyclically.
-- **Needed:** for one or two footings on dry sand: the footing's plan, embedment and weight;
-  the structure's weight and the height of its load; the sand's density, relative density or
-  friction angle and small-strain shear modulus; the bearing capacity; and the measured moment
-  against rotation, settlement against rotation and, if possible, the contact length or uplift.
-- **Use:** a measured case for `Footing` (see [footings](structural-model.md#footings)): the
-  initial rocking stiffness against the bed's, the moment at which the heel lifts, the moment
-  capacity against W B (1 − W / (q B L)) / 2, and the settlement the toe accumulates. The model
-  has no embedment and its soil yields point by point under the bed, so the last is the
-  hardest test.
-
 ## 2a. Shear across cracks at high rates
 
 - **Where:** any test of shear across a crack (push-off specimens) loaded quickly, or a
@@ -281,3 +260,10 @@ Supplied by hand during development, and now in use:
 - H. Shang et al., "Experimental Study on the Damage Mechanism of Reinforced Concrete Shear
   Walls Under Internal Explosion", *Applied Sciences* 16, 48 (2026): the chamber test, in
   `ChamberTest.swift`.
+- FoRCy, the Foundation Rocking database of Cyclic and monotonic loading (M. Hakhamaneshi,
+  B. L. Kutter, A. G. Gavras and others; DesignSafe PRJ-6414, doi:10.13019/t0cq-qf64, Open Data
+  Commons Attribution), fetched on 9 October 2026 with the user's agreement: its mastersheet and
+  S. Gajan and B. L. Kutter's test SSG02_03, a shear wall on a surface footing on dry dense sand
+  rocked slowly, compared with `Footing` in [footings](structural-model.md#footings)
+  (`blastbench rocking`, data in `Samples/FoRCy`). Its dynamic sister, FoRDy, and the other
+  series (PWRI's 1 g footings on Toyoura sand, TRISEE's embedded ones) are not used yet.
