@@ -20,9 +20,15 @@ struct HeadlessRunOptionTests {
             ["a", "--out", "result.json"], ["a", "--frame-interval", "2"], ["a", "--usd", "scene.usdc"],
             ["a", "--usd", "scene.usda", "--frame-interval", "0.5"],
             ["a", "--vdb", FileManager.default.temporaryDirectory.path],
+            ["a", "--vdb-fields", "peak"], ["a", "--vdb", "v", "--vdb-fields", "peak,density"],
+            ["a", "--vdb", "v", "--vdb-fields", "peak,peak"], ["a", "--vdb", "v", "--vdb-fields", ""],
         ] {
             #expect(throws: ProjectFileError.self) { try HeadlessRun.Options.parse(arguments) }
         }
+        #expect(try HeadlessRun.Options.parse(["a", "--vdb", "v"]).vdbFields == ["overpressure", "shock"])
+        #expect(
+            try HeadlessRun.Options.parse(["a", "--vdb", "v", "--vdb-fields", "peak, impulse"]).vdbFields
+                == ["peak", "impulse"])
         let existing = FileManager.default.temporaryDirectory.path
         #expect(throws: ProjectFileError.self) { try HeadlessRun.Options.parse(["a", "--csv", existing]) }
     }
@@ -182,6 +188,7 @@ struct HeadlessRunTests {
         _ = try await HeadlessRun.execute(
             HeadlessRun.Options.parse([
                 project.path, "--usd", usd.path, "--vdb", volumes.path, "--frame-interval", "2",
+                "--vdb-fields", "overpressure,peak,impulse",
             ])
         ).run
         // 0, 2 and 4 ms.
@@ -190,6 +197,7 @@ struct HeadlessRunTests {
         let text = try String(contentsOf: usd, encoding: .utf8)
         #expect(text.contains("def Volume \"Blast\""))
         #expect(text.contains("rel field:overpressure = </Scene/Blast/overpressure>"))
+        #expect(text.contains("rel field:impulse = </Scene/Blast/impulse>") && !text.contains("field:shock"))
         #expect(text.contains("2: @./air.volumes/blast.0002.vdb@,"))
         #expect(!text.contains("def Mesh \"Structure\""))
         // Each frame is an OpenVDB file, and the blast has moved on between them.
@@ -197,6 +205,8 @@ struct HeadlessRunTests {
         let later = try Data(contentsOf: volumes.appending(path: "blast.0001.vdb"))
         #expect(first.prefix(4) == Data([0x20, 0x42, 0x44, 0x56]) && later.prefix(4) == first.prefix(4))
         #expect(later != first)
+        let names = String(decoding: later, as: UTF8.self)
+        #expect(names.contains("peak") && names.contains("impulse") && !names.contains("shock"))
     }
 
     @Test("A project with no room for another run is refused before running")

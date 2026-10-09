@@ -387,6 +387,36 @@ struct SimulationModelTests {
         #expect(model.settings.chargePosition == after)
     }
 
+    @Test("Fragment changes settle into steps to undo, alongside layout edits")
+    func undoFragments() async throws {
+        let model = try await makeModel()
+        #expect(!model.canUndo)
+
+        // Turning fragments on, then dragging the casing's mass, settles into two steps.
+        model.fragmentSpec = FragmentSection.defaultSpec(for: model.settings.scenario)
+        try await waitUntil { model.undoStack.count == 1 }
+        for mass in [20, 30, 40] as [Float] { model.fragmentSpec?.casingMass = mass }
+        try await waitUntil { model.undoStack.count == 2 }
+        model.settings.chargeMass = 50
+        model.settingsChanged()
+        try await waitUntil { model.undoStack.count == 3 }
+
+        model.undo()
+        #expect(model.settings.chargeMass != 50 && model.fragmentSpec?.casingMass == 40)
+        model.undo()
+        #expect(model.fragmentSpec?.casingMass == 10)
+        model.undo()
+        #expect(model.fragmentSpec == nil && !model.canUndo)
+        // Undoing is not itself an edit to record.
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(model.redoStack.count == 3)
+        model.redo()
+        model.redo()
+        #expect(model.fragmentSpec?.casingMass == 40)
+        model.redo()
+        #expect(model.settings.chargeMass == 50 && !model.canRedo)
+    }
+
     @Test("Undo and redo step through settled layout edits")
     func undoRedo() async throws {
         let model = try await makeModel()

@@ -204,6 +204,7 @@ struct RunComparisonView: View {
                                         + connectionTitle(body.anchorage(ofSupport: index)))
                             }
                         }
+                        if let fragments = run.fragments { Text(fragments.summary) }
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
                     if plotsStructure {

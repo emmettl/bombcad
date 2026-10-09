@@ -94,6 +94,7 @@ struct ContentView: View {
                         NSApp.sendAction(#selector(NSDocument.saveAs(_:)), to: nil, from: nil)
                     }
                     Button("Import Layout JSON…") { isImportingJSON = true }
+                    Button("Export for Rendering…") { model.showsRenderExport = true }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -173,6 +174,7 @@ struct ContentView: View {
                 }
             }
         }
+        .sheet(isPresented: $model.showsRenderExport) { RenderExportView(model: model) }
         .onChange(of: model.inspectedImportID) {
             if model.inspectedImportID != nil { sourceInspectorVisible = true }
         }

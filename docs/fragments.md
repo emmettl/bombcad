@@ -58,8 +58,8 @@ any field left out takes its default:
 Turn on **Cased charge** in the Run tab's Fragments section. It starts with a casing a tenth of
 the charge's mass, 2,000 fragments and 300 tracers across 16 m round the charge, and sets the
 casing's mass, the number of fragments and tracers, and the casing's shape; the launch speed it
-gives is shown. The description is saved with the project (as `fragments.json`) and takes effect
-from the next run. With a Mac set for sweeps in Settings, **Fly on** that Mac sends the fragments
+gives is shown. The description is saved with the project (as `fragments.json`), takes effect
+from the next run, and is undone and redone with the layout's edits (⌘Z). With a Mac set for sweeps in Settings, **Fly on** that Mac sends the fragments
 there, over a connection kept open between runs.
 
 During a run the view draws them over the blast as dots of a fixed size on screen, whatever their
@@ -67,6 +67,11 @@ true size: fragments in flight dark when slow and white-hot at their launch spee
 and where fragments landed, from yellow at a joule to dark red at ten megajoules. Under Display,
 each kind can be hidden and the dots' size set. A line under the section counts the fragments in
 flight and landed, and the hardest impact.
+
+**Keep Run** keeps the fragments with the run: what was flown, its launch speed and every impact.
+Compare gives a line for each run that flew them, the run's CSV lists the impacts (time and
+energy in joules, by fragment and surface), and **Use this run's inputs** brings its casing back.
+They do not act on the air, so they are no part of the run's input fingerprint.
 
 ![Fragments, tracers and landings over the street canyon's blast at 24 ms, as the app draws them](street-fragments-app-24ms.png)
 
@@ -151,7 +156,7 @@ to centimetres across.
 - No break-up, no ricochet, no penetration; a fragment stops where it first hits.
 - Only the coarse grid's air, also where refinement sharpens the shock.
 - In the app, frames fall at batch ends, so its fragments vary a little from run to run (above).
-- Fragments are not kept with a saved run.
+- A kept run keeps the fragments' impacts, not their paths.
 
 ## Sources
 

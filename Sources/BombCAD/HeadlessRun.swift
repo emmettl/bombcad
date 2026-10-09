@@ -10,15 +10,17 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine] [--mass <kg TNT>]
-                           [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>]
-                           [--frame-interval <ms>] [--fragments <spec.json> [--consumer local|<ssh host>]
+                           [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>
+                           [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
+                           [--fragments <spec.json> [--consumer local|<ssh host>]
                            [--fragment-results <file.json>]]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
         histories. --usd writes the scene for rendering elsewhere, with the structure's surface,
         and --vdb the air as OpenVDB volumes, a file a frame, both every --frame-interval
-        milliseconds of simulated time (1 by default). --fragments flies a cased charge's fragments
+        milliseconds of simulated time (1 by default); --vdb-fields picks the volumes' grids,
+        overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, on this Mac's CPU or on another Mac over SSH, frame
         by frame; they go into the USD scene and, with --fragment-results, a JSON file.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
@@ -34,8 +36,9 @@ enum HeadlessRun {
         var mass: Float?
         var duration: Double?
         var usd: URL?
-        /// A new folder for the air's volumes, one OpenVDB file a frame.
+        /// A new folder for the air's volumes, one OpenVDB file a frame, and their grids.
         var vdb: URL?
+        var vdbFields = BlastSolver.defaultVolumeFields
         /// A cased charge's fragments to fly through the blast, where, and where their results go.
         var fragments: FragmentSpec?
         var consumer = "local"
@@ -53,7 +56,8 @@ enum HeadlessRun {
                     let key = String(argument.dropFirst(2))
                     guard
                         [
-                            "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb", "fragments",
+                            "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
+                            "vdb-fields", "fragments",
                             "consumer", "fragment-results",
                             "frame-interval",
                         ]
@@ -94,6 +98,18 @@ enum HeadlessRun {
             }
             options.usd = values["usd"].map { URL(filePath: $0) }
             options.vdb = values["vdb"].map { URL(filePath: $0, directoryHint: .isDirectory) }
+            if let text = values["vdb-fields"] {
+                guard options.vdb != nil else { throw ProjectFileError.invalid("--vdb-fields needs --vdb.") }
+                let fields = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                guard !fields.isEmpty, Set(fields).count == fields.count,
+                    fields.allSatisfy(BlastSolver.volumeFields.contains)
+                else {
+                    throw ProjectFileError.invalid(
+                        "--vdb-fields takes some of "
+                            + BlastSolver.volumeFields.joined(separator: ", ") + ", each once.")
+                }
+                options.vdbFields = fields
+            }
             if let path = values["fragments"] {
                 let spec = try JSONDecoder().decode(
                     FragmentSpec.self, from: Data(contentsOf: URL(filePath: path)))
@@ -223,7 +239,7 @@ enum HeadlessRun {
                 camera: .init(
                     eye: model.camera.eye, target: model.camera.target,
                     verticalFieldOfView: model.camera.fieldOfView),
-                volumeFields: options.vdb == nil ? [] : ["overpressure", "shock"])
+                volumeFields: options.vdb == nil ? [] : options.vdbFields)
         }
         defer { scene?.discard() }
         var finished = false
@@ -271,7 +287,7 @@ enum HeadlessRun {
                     var volume: String?
                     if let folder = options.vdb {
                         let file = folder.appending(path: String(format: "blast.%04d.vdb", frame))
-                        try OpenVDBWriter.write(solver.volumeGrids(), to: file)
+                        try OpenVDBWriter.write(solver.volumeGrids(fields: options.vdbFields), to: file)
                         volume = options.usd.map { assetPath(of: file, from: $0) }
                     }
                     try scene?.append(solver.structureSurface(), volume: volume)

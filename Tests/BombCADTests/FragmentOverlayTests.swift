@@ -52,6 +52,12 @@ struct FragmentOverlayTests {
             try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
+        // The last frames may still be in flight; a run is kept with its fragments landed.
+        while let fragments = model.fragments, fragments.report.frame < fragments.sent - 1 {
+            #expect(throws: ProjectFileError.self) { try model.keepRun(named: "Run") }
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(5))
+        }
         try model.keepRun(named: "Run")
         return (model, model.savedRuns.last!)
     }
@@ -65,6 +71,46 @@ struct FragmentOverlayTests {
             #expect(with.gauges == without.gauges && with.structure == without.structure)
             #expect(model.fragments != nil)
         }
+    }
+
+    @Test("A kept run keeps its fragments, through saving and reopening, and restores them")
+    func keptFragments() async throws {
+        let (model, kept) = try await run(airOnly(), fragments: spec())
+        let fragments = try #require(kept.fragments)
+        let live = try #require(model.fragments?.live)
+        #expect(fragments.spec == spec() && fragments.impacts == live.impacts && !fragments.impacts.isEmpty)
+        #expect(fragments.impacts.count + fragments.airborne <= 300 && fragments.launchSpeed > 1000)
+        #expect(fragments.summary.hasPrefix("Fragments: 300 at "))
+        // The fragments do not act on the air, so they are no part of the inputs' fingerprint.
+        #expect(
+            kept.inputSHA256 == (try SavedSimulationRun.fingerprint(kept.scenario, settings: kept.settings)))
+        let csv = kept.csv()
+        #expect(csv.components(separatedBy: ",J\n").count - 1 == fragments.impacts.count)
+
+        var document = ProjectDocument(model: model)
+        let reopened = try ProjectDocument(archive: document.makeArchive())
+        #expect(reopened.savedRuns.last?.fragments == fragments)
+        // A run kept without them reopens without them.
+        let (_, plain) = try await run(airOnly(), fragments: nil)
+        #expect(plain.fragments == nil)
+        document.savedRuns = [plain]
+        #expect(try ProjectDocument(archive: document.makeArchive()).savedRuns.first?.fragments == nil)
+
+        // Using a run's inputs brings its fragments back, as one step to undo.
+        model.fragmentSpec = nil
+        try await Task.sleep(for: .milliseconds(300))
+        try model.useRunInputs(id: kept.id)
+        #expect(model.fragmentSpec == spec())
+        model.undo()
+        #expect(model.fragmentSpec == nil)
+
+        // Impacts out of range are refused.
+        var broken = kept
+        broken.fragments?.impacts[0].fragment = 300
+        #expect(throws: ProjectFileError.self) { try broken.validate() }
+        broken = kept
+        broken.fragments?.airborne = 300
+        #expect(throws: ProjectFileError.self) { try broken.validate() }
     }
 
     @Test("The run's particles are drawn as they fly and land, and Reset clears them")

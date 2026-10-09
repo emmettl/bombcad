@@ -69,6 +69,11 @@ struct SimulationCommands: Commands {
                 .keyboardShortcut("z", modifiers: [.command, .shift])
                 .disabled(model?.canRedo != true)
         }
+        CommandGroup(after: .importExport) {
+            Button("Export for Rendering…") { model?.showsRenderExport = true }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(model == nil)
+        }
         CommandMenu("Simulation") {
             Button(model?.isRunning == true ? "Pause" : "Run") { model?.toggleRun() }
                 .keyboardShortcut(.space, modifiers: [])

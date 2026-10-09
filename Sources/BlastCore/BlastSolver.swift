@@ -335,10 +335,14 @@ public final class BlastSolver {
 
     /// The primitive state of a cell, by the configured equation of state.
     public func primitive(of cell: CellState) -> Primitive {
-        var primitive = cell.primitive(gamma: configuration.gamma)
+        Self.primitive(of: cell, gamma: configuration.gamma, airModel: configuration.airModel)
+    }
+
+    static func primitive(of cell: CellState, gamma: Float, airModel: AirModel) -> Primitive {
+        var primitive = cell.primitive(gamma: gamma)
         let kinetic = 0.5 * primitive.density * simd_length_squared(primitive.velocity)
-        primitive.pressure = configuration.airModel.pressure(
-            density: primitive.density, internalEnergy: cell.energy - kinetic, gamma: configuration.gamma)
+        primitive.pressure = airModel.pressure(
+            density: primitive.density, internalEnergy: cell.energy - kinetic, gamma: gamma)
         return primitive
     }
 

@@ -248,6 +248,8 @@ final class SimulationModel {
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
+    /// Shows the sheet for exporting the project's run for rendering.
+    var showsRenderExport = false
 
     private(set) var isRunning = false
     private(set) var time: Double = 0
@@ -296,8 +298,20 @@ final class SimulationModel {
     @ObservationIgnored lazy var sweep = ParameterSweep(model: self)
     /// The project's fragments, if it flies any: a cased charge's fragments and tracers, flown
     /// one way through the blast from the start of each run and drawn over it. Saved with the
-    /// project; changes take effect from the next run.
-    var fragmentSpec: FragmentSpec?
+    /// project; changes take effect from the next run, and settle into a step to undo.
+    var fragmentSpec: FragmentSpec? {
+        didSet {
+            guard fragmentSpec != oldValue, !isApplyingInputs else { return }
+            fragmentEdit?.cancel()
+            fragmentEdit = Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                recordEdit()
+            }
+        }
+    }
+    @ObservationIgnored private var fragmentEdit: Task<Void, Never>?
+    @ObservationIgnored private var isApplyingInputs = false
     /// Fly the fragments on the Mac set for sweeps in Settings, not this one.
     var fragmentsOnRemote = false
     /// Where the fragments of the run stand: how many are in flight and landed.
@@ -307,6 +321,8 @@ final class SimulationModel {
     @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
     @ObservationIgnored private var fragmentTime = -1.0
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
+    /// The fragments the current run flies, as they were when it started.
+    @ObservationIgnored private var flownSpec: FragmentSpec?
     @ObservationIgnored private var fragmentWorker: SweepWorkerClient?
     @ObservationIgnored private var fragmentWorkerHost: String?
     private static let undoLimit = 100
@@ -582,18 +598,28 @@ final class SimulationModel {
         guard let previous = undoStack.popLast() else { return }
         redoStack.append(currentInputs)
         settledInputs = previous
-        applyExperimentInputs(previous)
+        applyInputs(previous)
     }
 
     func redo() {
         guard !sweep.isActive, let next = redoStack.popLast() else { return }
         undoStack.append(currentInputs)
         settledInputs = next
-        applyExperimentInputs(next)
+        applyInputs(next)
     }
 
     var currentInputs: SimulationInputs {
-        SimulationInputs(scenario: settings.scenario, settings: ProjectRunSettings(model: self))
+        SimulationInputs(
+            scenario: settings.scenario, settings: ProjectRunSettings(model: self), fragments: fragmentSpec)
+    }
+
+    /// Inputs from the undo history, fragments and all.
+    private func applyInputs(_ inputs: SimulationInputs) {
+        fragmentEdit?.cancel()
+        isApplyingInputs = true
+        fragmentSpec = inputs.fragments
+        isApplyingInputs = false
+        applyExperimentInputs(inputs)
     }
 
     private var runtimeInputsMatch: Bool {
@@ -611,7 +637,8 @@ final class SimulationModel {
         guard !sweep.isActive, let run = savedRuns.first(where: { $0.id == id }) else {
             throw ProjectFileError.invalid("Finish the sweep before restoring a saved run's inputs.")
         }
-        let inputs = SimulationInputs(scenario: run.scenario, settings: run.settings)
+        let inputs = SimulationInputs(
+            scenario: run.scenario, settings: run.settings, fragments: run.fragments?.spec)
         try inputs.validate()
         recordEdit()
         if inputs != currentInputs {
@@ -620,7 +647,7 @@ final class SimulationModel {
             redoStack.removeAll()
         }
         settledInputs = inputs
-        applyExperimentInputs(inputs)
+        applyInputs(inputs)
         camera = .framing(inputs.scenario)
     }
 
@@ -1111,7 +1138,16 @@ final class SimulationModel {
                 }, failedFraction: Double(summary.erodedFraction),
                 maximumDamage: Double(summary.maxDamage))
         }
-        let run = SavedSimulationRun(
+        var flown: SavedSimulationRun.Fragments?
+        if let fragments, let spec = flownSpec {
+            guard fragments.report.frame >= fragments.sent - 1, let live = fragments.live else {
+                throw ProjectFileError.invalid("The fragments are still landing; keep the run in a moment.")
+            }
+            flown = SavedSimulationRun.Fragments(
+                spec: spec, launchSpeed: Double(fragmentLaunchSpeed), impacts: live.impacts,
+                airborne: (0..<live.fragmentCount).filter { !live.landed[$0] }.count)
+        }
+        var run = SavedSimulationRun(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             solverVersion: scenario.structuralObjects.count > 1
                 ? SavedSimulationRun.multiBodySolverVersion : SavedSimulationRun.solverVersion,
@@ -1132,6 +1168,7 @@ final class SimulationModel {
                             failedFraction: Double(summary.erodedFraction),
                             maximumDamage: Double(summary.maxDamage)))
                 } : nil)
+        run.fragments = flown
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1209,6 +1246,7 @@ final class SimulationModel {
             consumer = LocalLiveConsumer(spec: spec, scene: scene, live: true)
         }
         fragments = consumer
+        flownSpec = spec
         fragmentLaunchSpeed = spec.launchSpeed(chargeMass: scenario.charge.mass)
         fragmentLive = consumer.live
         fragmentTime = -1
@@ -1223,6 +1261,7 @@ final class SimulationModel {
         if fragments != nil { holdBatches = nil }
         fragments?.cancel()
         fragments = nil
+        flownSpec = nil
         fragmentLive = nil
         fragmentStatus = ""
     }
@@ -1546,9 +1585,11 @@ final class SimulationModel {
         }
         updateFragmentStatus()
         let ambient = scenario.atmosphere.pressure
-        let maxPoints = 500
+        // Enough for the chart's width: each point is the extreme of its bucket, so peaks show, and
+        // Charts takes tens of milliseconds a redraw at a thousand points a gauge.
+        let maxPoints = 300
         for (index, history) in solver.gaugeHistories.enumerated() where index < traces.count {
-            let bucket = max(1, history.count / maxPoints)
+            let bucket = max(1, (history.count + maxPoints - 1) / maxPoints)
             var points: [GaugePoint] = []
             points.reserveCapacity(history.count / bucket + 1)
             var peak = 0.0

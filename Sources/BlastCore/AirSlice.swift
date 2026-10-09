@@ -107,14 +107,22 @@ extension BlastSolver {
         let high = simd_clamp(SIMD3<Int32>((region.max / h).rounded(.down)), low, dims &- 1)
         // Enough samples to reach past the region's far side, as far as the grid goes.
         let counts = simd_min((high &- low &+ stride &- 1) / stride &+ 1, (dims &- 1 &- low) / stride &+ 1)
-        var values = [Float16](repeating: 0, count: 5 * Int(counts.x) * Int(counts.y) * Int(counts.z))
+        let (nx, ny, nz) = (Int(counts.x), Int(counts.y), Int(counts.z))
+        var values = [Float16](repeating: 0, count: 5 * nx * ny * nz)
+        // A row of samples at a time, spread across the CPU's cores: each lands in its own place,
+        // so the slice is the same however the rows are shared out.
+        let gamma = configuration.gamma
+        let airModel = configuration.airModel
         withState { cells in
-            var n = 0
-            for k in 0..<Int(counts.z) {
-                for j in 0..<Int(counts.y) {
-                    for i in 0..<Int(counts.x) {
+            values.withUnsafeMutableBufferPointer { values in
+                DispatchQueue.concurrentPerform(iterations: ny * nz) { row in
+                    let (j, k) = (row % ny, row / ny)
+                    var n = 5 * nx * row
+                    for i in 0..<nx {
                         let cell = low &+ SIMD3<Int32>(Int32(i), Int32(j), Int32(k)) &* stride
-                        let state = primitive(of: cells[grid.index(Int(cell.x), Int(cell.y), Int(cell.z))])
+                        let state = Self.primitive(
+                            of: cells[grid.index(Int(cell.x), Int(cell.y), Int(cell.z))], gamma: gamma,
+                            airModel: airModel)
                         values[n] = Float16(state.density)
                         values[n + 1] = Float16(state.velocity.x)
                         values[n + 2] = Float16(state.velocity.y)
