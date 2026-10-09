@@ -6,7 +6,7 @@ import SwiftUI
 /// the blast.
 struct ThermalSection: View {
     @Bindable var model: SimulationModel
-    @AppStorage(AppPreferences.Key.sweepHost) private var sweepHost = ""
+    @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
 
     var body: some View {
         Section("Thermal radiation") {
@@ -35,7 +35,9 @@ struct ThermalSection: View {
                 .help("Gas at least this hot is part of the fireball.")
                 if !host.isEmpty {
                     Toggle("Run on \(host)", isOn: $model.thermalOnRemote)
-                        .help("Reckons the radiation on the Mac set for sweeps in Settings, frame by frame.")
+                        .help(
+                            "Reckons the radiation on the first Mac set for sweeps in Settings, frame by frame."
+                        )
                 }
                 Text(
                     model.thermalStatus.isEmpty
@@ -49,7 +51,8 @@ struct ThermalSection: View {
         }
     }
 
-    private var host: String { sweepHost.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// The first Mac set for sweeps, as the fragments use.
+    private var host: String { AppPreferences.hosts(sweepHosts).first ?? "" }
 
     private var enabled: Binding<Bool> {
         Binding(

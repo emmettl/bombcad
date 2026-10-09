@@ -34,7 +34,7 @@ Turn on **Fireball's radiant heat** in the Run tab's Thermal radiation section, 
 **emissivity** and the temperature the gas is **luminous above**; the receivers' spacing and the
 directions sampled keep their defaults. The description is saved with the project (as
 `thermal.json`), takes effect from the next run, and is undone and redone with the layout's edits
-(⌘Z). With a Mac set for sweeps in Settings, **Run on** that Mac reckons the radiation there,
+(⌘Z). With Macs set for sweeps in Settings, **Run on** the first of them reckons the radiation there,
 over the same connection as the [fragments](fragments.md#in-the-app), kept open between runs.
 
 During a run the view draws every receiver as a dot, coloured by its fluence so far on a log
@@ -68,7 +68,7 @@ to four frames ahead of them, and then waits, as for the fragments. On the stree
 receivers that is about a tenth of a second a frame on the Mac Studio, so at the default playback
 speed of 100 times slower, about the same pace as the run. A sweep's cases on this Mac reckon it
 too, as they fly any fragments, and wait for the last frames before they are kept; cases sent to
-another Mac run the blast alone.
+other Macs run the blast alone.
 
 On another Mac it is a session of `BombCAD worker`: version 3 of the worker protocol sends the
 fireball, a few numbers a frame, and each receiver's fluence and peak irradiance so far come back
