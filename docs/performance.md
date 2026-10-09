@@ -328,6 +328,14 @@ noise between runs, and changed the collapse, since the air steps fall different
 dispatch, which would let the GPU skip them, needs bounds checks in every structural kernel
 and a kernel to write the dispatch sizes, for at most those 3%; it has not been done.
 
+**Between runs** the view draws only when something it shows changes: the camera, the display
+settings, the selection, a new scene, or a run's time. It used to draw 60 frames a second
+regardless, ray-marching the domain at every pixel each time, so an idle window took GPU time
+from runs, sweeps and tests elsewhere on the Mac. With a street canyon open and nothing running,
+on an M4 Max shared with other sessions' tests, the window took 16% of a GPU's time and 5% of a
+core at 1440 × 920; it now takes none (the process's GPU time from `ioreg`'s
+`accumulatedGPUTime`, over 30 s). During a run the view still draws on its timer.
+
 ## Other Macs
 
 Measured on the CI Mac mini (M4, 10-core GPU, 120 GB/s, 24 GB) on 7 and 8 October 2026, against
