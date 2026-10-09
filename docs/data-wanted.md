@@ -139,6 +139,23 @@ Eight values in the code were written from memory and should be checked against 
   Needed: the relation between the envelope strain reached and the permanent strain left on
   unloading, as used in `concreteCompression` in `Structure.metal`.
 
+## 3a. Air-induced ground shock
+
+- **Where:** *Structures to Resist the Effects of Accidental Explosions*, UFC 3-340-02 (2008),
+  chapter 2; *Fundamentals of Protective Design for Conventional Weapons*, TM 5-855-1 (1986);
+  N. M. Newmark and J. D. Haltiwanger, *Air Force Design Manual*, AFSWC-TDR-62-138 (1962), DTIC
+  AD0295408. DTIC refused automated access, and the copy of UFC 3-340-02 reached held only its
+  front matter.
+- **Needed:** the relations as printed: the vertical particle velocity and displacement under
+  an air-blast load, the attenuation of the peak with depth and the length it uses, the
+  horizontal motion in the superseismic case, and the soils' loading wave speeds and densities
+  tabulated for use with them.
+- **Also needed:** any measurement of air-induced ground motion under a surface burst of high
+  explosive, with the overpressure on the ground recorded beside a velocity gauge at or just
+  below the surface.
+- **Use:** to check `GroundShock.swift` and [Ground shock](ground-shock.md), whose relations
+  were re-derived rather than taken from the page.
+
 ## 4. Set aside, for completeness
 
 - A paper on modified shock-wave parameter equations on MDPI, which returned HTTP 403. It is

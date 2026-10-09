@@ -25,6 +25,36 @@ public final class BlastSolver {
     /// Simulated time in seconds since the last `restart()`.
     public private(set) var time: Double = 0
     public private(set) var stepCount = 0
+    private var exposurePlane: ExposurePlane?
+    private var exposureNeedsInitialSample = false
+    private var gpuProfiler: BatchGPUProfiler?
+    public private(set) var lastBatchGPUProfile: BatchGPUProfile?
+
+    /// Enables fixed spatial probes before stepping. Does not change the air solution.
+    /// Snapshot arrays are x-fast; stencils touching solids and unreached arrivals are null.
+    /// Probe spacing defaults to the air grid and must divide both horizontal domain extents.
+    public func configureExposurePlane(heightM: Float, arrivalThresholdPa: Float, spacingM: Float? = nil)
+        throws
+    {
+        precondition(!batchInFlight && time == 0, "Configure probes before stepping")
+        exposurePlane = try ExposurePlane(
+            device: device, library: library, grid: grid, height: heightM,
+            threshold: arrivalThresholdPa, spacing: spacingM)
+        exposureNeedsInitialSample = true
+    }
+
+    public func exposureSnapshot() -> ExposurePlaneSnapshot? {
+        precondition(!batchInFlight, "Cannot read probes while a batch is in flight")
+        return exposurePlane?.snapshot(grid: grid, elapsed: time)
+    }
+
+    /// Splits compute encoders at stage boundaries for diagnostic GPU timestamps.
+    /// Run throughput benchmarks separately with this disabled.
+    public func enableGPUProfiling(_ enabled: Bool) throws {
+        precondition(!batchInFlight)
+        gpuProfiler = enabled ? try BatchGPUProfiler(device: device) : nil
+        lastBatchGPUProfile = nil
+    }
     /// One pressure history per gauge, in the order passed to `setGauges`.
     public private(set) var gaugeHistories: [[GaugeSample]] = []
     /// `rgba16Float` volume: overpressure and peak overpressure (both in units of ambient
@@ -36,6 +66,7 @@ public final class BlastSolver {
     public var shells: ShellSolver? { bodies.first?.shells }
     public var mixed: MixedStructure? { bodies.first?.mixed }
     public var hasBody: Bool { !bodies.isEmpty }
+    public var refinementPatchCapacity: Int { refinement?.maxPatches ?? 0 }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
     public var couplingStatistics: CouplingStatistics {
@@ -888,6 +919,9 @@ public final class BlastSolver {
         precondition(!batchInFlight, "Cannot restart while a batch is in flight")
         time = 0
         stepCount = 0
+        exposurePlane?.reset()
+        exposureNeedsInitialSample = exposurePlane != nil
+        lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
         for body in bodies { body.reset() }
@@ -1062,16 +1096,28 @@ public final class BlastSolver {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
         guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
         let steps = batchSteps(steps)
+        gpuProfiler?.beginBatch()
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),
-            let encoder = commandBuffer.makeComputeCommandEncoder()
+            let initialEncoder = gpuProfiler?.encoder(command: commandBuffer, phase: "observation")
+                ?? commandBuffer.makeComputeCommandEncoder()
         else { return nil }
+        var encoder = initialEncoder
+        func phase(_ name: String) {
+            guard let gpuProfiler else { return }
+            encoder.endEncoding()
+            encoder = gpuProfiler.encoder(command: commandBuffer, phase: name)!
+        }
 
         var control = StepControl()
         if let timeLimit {
             control.timeLimit = Float(max(timeLimit - time, 0))
         }
         controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
+        if exposureNeedsInitialSample {
+            encodeExposure(encoder, initial: true)
+            exposureNeedsInitialSample = false
+        }
 
         let extents = [grid.nx, grid.ny, grid.nz]
         let tileThreads = Self.tileThreads(for: kernels.sweepTiles)
@@ -1085,9 +1131,11 @@ public final class BlastSolver {
         }
         let substeps = min(checkpointSubsteps, structureSubsteps)
         for step in 0..<steps {
+            phase("coupling")
             encodeBodyEnvelopes(encoder, clear: true)
             if !airIsAsleep { encodeAllocateCoupling(encoder) }
             if tiledCoupling != nil { encodeInteractionCheck(encoder) }
+            phase("air")
             let globalStep = stepCount + step
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
             var uniforms = makeUniforms(cfl: configuration.cfl * ramp)
@@ -1190,6 +1238,7 @@ public final class BlastSolver {
                     mask: maskBuffer, control: controlBuffer, impulse: impulseBuffer, uniforms: uniforms)
             }
 
+            phase("mechanics")
             if hasBody {
                 // The structure covers the same interval in several smaller steps, loaded by the
                 // pressure the air has just reached (the fine cells', where it is refined). While
@@ -1225,6 +1274,7 @@ public final class BlastSolver {
                         body.encodeSubsteps(encoder, count: count, fluid: binding)
                     }
                 }
+                phase("coupling")
                 encodeBodyEnvelopes(encoder, clear: false)
                 encodeInteractionCheck(encoder)
                 if !asleep {
@@ -1240,6 +1290,7 @@ public final class BlastSolver {
                         uniforms: uniforms)
                 }
             }
+            phase("air")
             if let refinement, refining {
                 refinement.encodeRegrid(
                     encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
@@ -1249,6 +1300,8 @@ public final class BlastSolver {
                     tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil, grid: grid,
                     uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
             }
+            phase("observation")
+            encodeExposure(encoder, initial: false)
         }
         if gaugeCount > 0 {
             var uniforms = makeUniforms()
@@ -1279,6 +1332,7 @@ public final class BlastSolver {
     public func completeBatch() -> BatchResult {
         precondition(batchInFlight, "No batch to complete")
         batchInFlight = false
+        lastBatchGPUProfile = gpuProfiler?.resolve()
         let control = controlBuffer.contents().load(as: StepControl.self)
         // A row per step, and one for the state the batch ended in.
         let rows = Int(control.stepIndex) + (gaugeCount > 0 ? 1 : 0)
@@ -1413,6 +1467,26 @@ public final class BlastSolver {
 
     // MARK: - Reading results
 
+    private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
+        guard let plane = exposurePlane else { return }
+        var uniforms = makeUniforms()
+        var probe = SIMD4<Float>(Float(plane.layer), plane.threshold, Float(time), initial ? 1 : 0)
+        var weight = plane.weight
+        var sampling = SIMD4<Float>(Float(plane.nx), Float(plane.ny), plane.spacing, 0)
+        encoder.setComputePipelineState(plane.pipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+        encoder.setBuffer(plane.buffer, offset: 0, index: 3)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 4)
+        encoder.setBytes(&probe, length: 16, index: 5)
+        encoder.setBytes(&weight, length: 4, index: 6)
+        encoder.setBytes(&sampling, length: 16, index: 7)
+        encoder.dispatchThreads(
+            MTLSize(width: plane.nx, height: plane.ny, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+    }
+
     /// Read-only view of the current conserved state. Solid cells hold stale values.
     public func withState<R>(_ body: (UnsafeBufferPointer<CellState>) throws -> R) rethrows -> R {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
@@ -1492,6 +1566,7 @@ public final class BlastSolver {
     public var memoryFootprint: Int {
         let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
+            + (exposurePlane?.buffer.length ?? 0)
             + bodies.reduce(0) { $0 + $1.memoryFootprint } + (refinement?.memoryFootprint ?? 0)
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
             + (experimentalBoxImpulse?.length ?? 0)

@@ -1,0 +1,2959 @@
+{
+  "arrivalThresholdPa": 1000,
+  "completeMatrix": true,
+  "device": "Apple M4 Max",
+  "durationS": 0.12,
+  "notes": [
+    "Invented RC shell buildings; conventional 2 kg TNT-equivalent source; no measured validation.",
+    "Fixed 1 m energy-deposition radius is a numerical control, not a resolved detonation.",
+    "Maps use fixed 0.5 m probe spacing at 1.5 m height, trilinearly interpolating coarse pressure; fine state is restricted.",
+    "Probe stencils clamp at outer grid-cell centres; comparison norms exclude a 1 m domain-edge margin.",
+    "Positive map impulse uses right endpoints; arrival is first endpoint >= 1000 Pa, without interpolation.",
+    "Masked-at-any-time points and unreached arrivals are null; map peak/impulse include the whole finite window.",
+    "Gauge histories use containing-cell centres (fine child where present); gauge impulse is trapezoidal.",
+    "Bodies are sampled at batch endpoints; reported displacement includes gravity and is not an exact stepwise peak.",
+    "Open-boundary inventory changes are not conservation residuals. Closed clamped companions test stationary-wall conservation.",
+    "Throughput runs have exposure recording enabled and stage profiling disabled; separate profiled replays include encoder overhead."
+  ],
+  "observations": [
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 1,
+      "cfl": 0.45,
+      "commandGPUS": 0.854879500111565,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 115200,
+        "capacityCells": 1800,
+        "denseCells": 1800,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.11999999998079147,
+      "energyFinalJ": 2564695722.640625,
+      "energyInitialJ": 2572903908.0625,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.016663421571138315,
+          "coarseCellCentreM": [
+            14.5,
+            9.5,
+            1.5
+          ],
+          "name": "Front",
+          "peakPa": 6182.8594,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 58.37972082546821,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            24.5,
+            9.5,
+            1.5
+          ],
+          "name": "Behind",
+          "peakPa": 944.9219,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 10.242722587597655,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.035232196605647914,
+          "coarseCellCentreM": [
+            24.5,
+            16.5,
+            1.5
+          ],
+          "name": "Street",
+          "peakPa": 1912.7969,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 20.299874964711762,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            34.5,
+            16.5,
+            1.5
+          ],
+          "name": "Far street",
+          "peakPa": 835.8203,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 10.681022697336175,
+          "samples": []
+        }
+      ],
+      "historiesFile": "isolated-coarse-histories.json.gz",
+      "id": "isolated-coarse",
+      "layout": "isolated",
+      "mapFile": "isolated-coarse-map.json.gz",
+      "massFinalKg": 12376.371374636889,
+      "massInitialKg": 12403.90024137497,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 0.9147144999587908,
+      "setupWallS": 0.8426071666181087,
+      "solverBytes": 1732545,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 153
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 1.389557792339474,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 861184,
+        "capacityCells": 13456,
+        "denseCells": 13456,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000261934,
+      "energyFinalJ": 2578406629.451172,
+      "energyInitialJ": 2586582785.15625,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.017864906643808354,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "name": "Front",
+          "peakPa": 11198.109,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 63.13495957678629,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043197878963837866,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "name": "Behind",
+          "peakPa": 1876.7812,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 14.789002730234415,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.0361436286548269,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "name": "Street",
+          "peakPa": 3773.7422,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 33.63774231606135,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06506690910464386,
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "name": "Far street",
+          "peakPa": 1916.5547,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 17.342036484155642,
+          "samples": []
+        }
+      ],
+      "historiesFile": "isolated-medium-histories.json.gz",
+      "id": "isolated-medium",
+      "layout": "isolated",
+      "mapFile": "isolated-medium-map.json.gz",
+      "massFinalKg": 12443.697689570487,
+      "massInitialKg": 12470.050243020058,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 1.5400384167442098,
+      "setupWallS": 0.022814166615717113,
+      "solverBytes": 6564289,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 348
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.45,
+      "commandGPUS": 5.213948417222127,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6446016,
+        "capacityCells": 100719,
+        "denseCells": 100719,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.11999999999898137,
+      "energyFinalJ": 2578081584.0004883,
+      "energyInitialJ": 2586654030.9907227,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.0183149247422989,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16971.258,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 67.52806384935968,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043171523033379344,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2924.0156,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 18.178782792242714,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03658950126191485,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6383.1797,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 41.43433278971395,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06505928719343501,
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 3603.5078,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 24.23237812974787,
+          "samples": []
+        }
+      ],
+      "historiesFile": "isolated-fine-histories.json.gz",
+      "id": "isolated-fine",
+      "layout": "isolated",
+      "mapFile": "isolated-fine-map.json.gz",
+      "massFinalKg": 12443.675354290288,
+      "massInitialKg": 12470.39477448538,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 5.547716666711494,
+      "setupWallS": 0.03799041674938053,
+      "solverBytes": 44835201,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 709
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.125,
+      "cfl": 0.45,
+      "commandGPUS": 40.34939445834607,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 49850176,
+        "capacityCells": 778909,
+        "denseCells": 778909,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2577795224.8391724,
+      "energyInitialJ": 2586876669.959778,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.01853925682917179,
+          "coarseCellCentreM": [
+            14.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Front",
+          "peakPa": 20148.64,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 69.42445729681799,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043303182703311904,
+          "coarseCellCentreM": [
+            24.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Behind",
+          "peakPa": 3381.7266,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 18.268331712282816,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03688436999618716,
+          "coarseCellCentreM": [
+            24.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Street",
+          "peakPa": 8322.508,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 43.1974885079124,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06532888802576053,
+          "coarseCellCentreM": [
+            34.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Far street",
+          "peakPa": 4628.867,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 24.556587236640098,
+          "samples": []
+        }
+      ],
+      "historiesFile": "isolated-finest-histories.json.gz",
+      "id": "isolated-finest",
+      "layout": "isolated",
+      "mapFile": "isolated-finest-map.json.gz",
+      "massFinalKg": 12443.298514890776,
+      "massInitialKg": 12471.471435202751,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 41.27527183329221,
+      "setupWallS": 0.12925341667141765,
+      "solverBytes": 349728001,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1524
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 2.1525412084301934,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 861184,
+        "capacityCells": 13456,
+        "denseCells": 13456,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.11999999999898137,
+      "energyFinalJ": 2574273940.915039,
+      "energyInitialJ": 2586582786.845703,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018289253675902728,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16959.656,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 63.07990163328782,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04314420698938193,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2686.8594,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 16.430247009594495,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036496672029898036,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 5405.672,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 37.58710272916255,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.064526843612839,
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 2401.9766,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 19.265548191239077,
+          "samples": []
+        }
+      ],
+      "historiesFile": "isolated-adaptive-histories.json.gz",
+      "id": "isolated-adaptive",
+      "layout": "isolated",
+      "mapFile": "isolated-adaptive-map.json.gz",
+      "massFinalKg": 12430.190526125953,
+      "massInitialKg": 12470.050243228674,
+      "maximumRefinedPatches": 367,
+      "purpose": "interaction",
+      "refinement": 2,
+      "refinementPatchCapacity": 1280,
+      "reflectiveFaces": 16,
+      "runWallS": 2.2686159999575466,
+      "setupWallS": 0.04201249999459833,
+      "solverBytes": 87118609,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 354
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.225,
+      "commandGPUS": 5.9596414163243026,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 6446016,
+        "capacityCells": 100719,
+        "denseCells": 100719,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.11999999999716238,
+      "energyFinalJ": 2577994771.8986816,
+      "energyInitialJ": 2586654030.9907227,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018226751761176274,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16526.695,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 66.86416571245297,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043141907417521,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2818.3281,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 17.793534641097608,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03646634781216562,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6168.6953,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 40.84192447909578,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06496699487797741,
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 3488.7578,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 23.70725035006484,
+          "samples": []
+        }
+      ],
+      "historiesFile": "isolated-half-cfl-histories.json.gz",
+      "id": "isolated-half-cfl",
+      "layout": "isolated",
+      "mapFile": "isolated-half-cfl-map.json.gz",
+      "massFinalKg": 12443.303415504284,
+      "massInitialKg": 12470.39477448538,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 6.523801250034012,
+      "setupWallS": 0.065670833340846,
+      "solverBytes": 44835201,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1412
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 1,
+      "cfl": 0.45,
+      "commandGPUS": 1.3093623749446124,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 278400,
+        "capacityCells": 3480,
+        "denseCells": 3480,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.11999999998079147,
+      "energyFinalJ": 2535603355,
+      "energyInitialJ": 2543519656.25,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.016663421687553637,
+          "coarseCellCentreM": [
+            14.5,
+            9.5,
+            1.5
+          ],
+          "name": "Front",
+          "peakPa": 6182.9062,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 60.483713673080274,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            24.5,
+            9.5,
+            1.5
+          ],
+          "name": "Behind",
+          "peakPa": 938.4531,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 13.246367983305845,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.035232448411989026,
+          "coarseCellCentreM": [
+            24.5,
+            16.5,
+            1.5
+          ],
+          "name": "Street",
+          "peakPa": 2215.6094,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 25.960457625426898,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            34.5,
+            16.5,
+            1.5
+          ],
+          "name": "Far street",
+          "peakPa": 832.1406,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 9.891623657033506,
+          "samples": []
+        }
+      ],
+      "historiesFile": "pair-coarse-histories.json.gz",
+      "id": "pair-coarse",
+      "layout": "pair",
+      "mapFile": "pair-coarse-map.json.gz",
+      "massFinalKg": 12235.26676863432,
+      "massInitialKg": 12261.800238609314,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 1.3684204583987594,
+      "setupWallS": 0.01835174998268485,
+      "solverBytes": 2847542,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 153
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 1.9186594587517902,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2115840,
+        "capacityCells": 26448,
+        "denseCells": 26448,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000261934,
+      "energyFinalJ": 2563128199.7851562,
+      "energyInitialJ": 2570877409.1875,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.017864906731119845,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "name": "Front",
+          "peakPa": 11198.078,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 69.19788661969073,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04318967051949585,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "name": "Behind",
+          "peakPa": 1876.8281,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 20.299110420556417,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036143636658380274,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "name": "Street",
+          "peakPa": 4200.6094,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 54.55840600432953,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06465982984082075,
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "name": "Far street",
+          "peakPa": 2015.7969,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 19.09978916764453,
+          "samples": []
+        }
+      ],
+      "historiesFile": "pair-medium-histories.json.gz",
+      "id": "pair-medium",
+      "layout": "pair",
+      "mapFile": "pair-medium-map.json.gz",
+      "massFinalKg": 12369.204363178462,
+      "massInitialKg": 12394.100241541862,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 2.0691033750772476,
+      "setupWallS": 0.021492374944500625,
+      "solverBytes": 8770742,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 348
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.45,
+      "commandGPUS": 5.078266332973726,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 15973680,
+        "capacityCells": 199671,
+        "denseCells": 199671,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000625732,
+      "energyFinalJ": 2563065981.005371,
+      "energyInitialJ": 2571019899.166992,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018314924538572086,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16971.266,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 74.56056375742526,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04333407830199576,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2921.3281,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 28.923639702984474,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03658949173041037,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6345.867,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 70.05481881163371,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06503998882180895,
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 3927.3438,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 29.0882157488619,
+          "samples": []
+        }
+      ],
+      "historiesFile": "pair-fine-histories.json.gz",
+      "id": "pair-fine",
+      "layout": "pair",
+      "mapFile": "pair-fine-map.json.gz",
+      "massFinalKg": 12370.348188360222,
+      "massInitialKg": 12394.78930426389,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 5.3234229165827855,
+      "setupWallS": 0.039915625005960464,
+      "solverBytes": 55314662,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 709
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.125,
+      "cfl": 0.45,
+      "commandGPUS": 33.841805666685104,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 124074000,
+        "capacityCells": 1550925,
+        "denseCells": 1550925,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2562991005.557434,
+      "energyInitialJ": 2571465176.0892334,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018539257098382222,
+          "coarseCellCentreM": [
+            14.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Front",
+          "peakPa": 20148.602,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 76.69932444535277,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04330245536948496,
+          "coarseCellCentreM": [
+            24.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Behind",
+          "peakPa": 3380.8906,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 29.565611562850336,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.0368843653031945,
+          "coarseCellCentreM": [
+            24.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Street",
+          "peakPa": 8327.094,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 73.93886223357583,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06535239517506852,
+          "coarseCellCentreM": [
+            34.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Far street",
+          "peakPa": 5062.117,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 30.00008737940982,
+          "samples": []
+        }
+      ],
+      "historiesFile": "pair-finest-histories.json.gz",
+      "id": "pair-finest",
+      "layout": "pair",
+      "mapFile": "pair-finest-map.json.gz",
+      "massFinalKg": 12370.976085594506,
+      "massInitialKg": 12396.942625158466,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 34.537044500000775,
+      "setupWallS": 0.14364395826123655,
+      "solverBytes": 424903622,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1523
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 2.5087686248589307,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 2115840,
+        "capacityCells": 26448,
+        "denseCells": 26448,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000261934,
+      "energyFinalJ": 2559224117.918213,
+      "energyInitialJ": 2570877410.876953,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018289252599061,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16959.656,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 68.92812939302371,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04313956885744119,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2688.1953,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 23.846080275353188,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03684643164888257,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6091.758,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 63.973695096334495,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.0644978713899036,
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 2617.7969,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 22.845421896029166,
+          "samples": []
+        }
+      ],
+      "historiesFile": "pair-adaptive-histories.json.gz",
+      "id": "pair-adaptive",
+      "layout": "pair",
+      "mapFile": "pair-adaptive-map.json.gz",
+      "massFinalKg": 12356.68262417242,
+      "massInitialKg": 12394.100241750479,
+      "maximumRefinedPatches": 369,
+      "purpose": "interaction",
+      "refinement": 2,
+      "refinementPatchCapacity": 1280,
+      "reflectiveFaces": 16,
+      "runWallS": 2.6371674166293815,
+      "setupWallS": 0.036639166763052344,
+      "solverBytes": 99810822,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 354
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.225,
+      "commandGPUS": 6.95711270684842,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 15973680,
+        "capacityCells": 199671,
+        "denseCells": 199671,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2562965965.7143555,
+      "energyInitialJ": 2571019899.166992,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018226750386020285,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16526.703,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 73.8205892973678,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04313159807679767,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2817.1406,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 28.22864965752032,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03646633528296661,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6127.4688,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 68.92439755359794,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06494456160180562,
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 3796.2344,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 28.421607331163244,
+          "samples": []
+        }
+      ],
+      "historiesFile": "pair-half-cfl-histories.json.gz",
+      "id": "pair-half-cfl",
+      "layout": "pair",
+      "mapFile": "pair-half-cfl-map.json.gz",
+      "massFinalKg": 12369.91440631356,
+      "massInitialKg": 12394.78930426389,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 7.387147291563451,
+      "setupWallS": 0.029107000096701086,
+      "solverBytes": 55314662,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1413
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 1,
+      "cfl": 0.45,
+      "commandGPUS": 2.2942657498642802,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 464000,
+        "capacityCells": 5800,
+        "denseCells": 5800,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.11999999998079147,
+      "energyFinalJ": 2476525635.765625,
+      "energyInitialJ": 2484751152.625,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.016663421687553637,
+          "coarseCellCentreM": [
+            14.5,
+            9.5,
+            1.5
+          ],
+          "name": "Front",
+          "peakPa": 6182.9062,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 60.528868537553535,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04489633375487756,
+          "coarseCellCentreM": [
+            24.5,
+            9.5,
+            1.5
+          ],
+          "name": "Behind",
+          "peakPa": 1202.5625,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 22.99357361813054,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.035232447073212825,
+          "coarseCellCentreM": [
+            24.5,
+            16.5,
+            1.5
+          ],
+          "name": "Street",
+          "peakPa": 2216.1484,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 29.716414139861627,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06665694263938349,
+          "coarseCellCentreM": [
+            34.5,
+            16.5,
+            1.5
+          ],
+          "name": "Far street",
+          "peakPa": 1001.83594,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 11.455878482048774,
+          "samples": []
+        }
+      ],
+      "historiesFile": "street-coarse-histories.json.gz",
+      "id": "street-coarse",
+      "layout": "street",
+      "mapFile": "street-coarse-map.json.gz",
+      "massFinalKg": 11949.986663907766,
+      "massInitialKg": 11977.600233078003,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 2.3670413333456963,
+      "setupWallS": 0.019406249979510903,
+      "solverBytes": 4936680,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 153
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 2.631628500414081,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 3575040,
+        "capacityCells": 44688,
+        "denseCells": 44688,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000261934,
+      "energyFinalJ": 2531200620.830078,
+      "energyInitialJ": 2539466657.25,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.017864906934846658,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "name": "Front",
+          "peakPa": 11198.117,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 69.39112791369939,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04318967209110269,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "name": "Behind",
+          "peakPa": 1886.8672,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 27.82296369352889,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036143639248621184,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "name": "Street",
+          "peakPa": 4200.953,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 60.375892885808526,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06465984090027632,
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "name": "Far street",
+          "peakPa": 2342.7656,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 24.551553797391307,
+          "samples": []
+        }
+      ],
+      "historiesFile": "street-medium-histories.json.gz",
+      "id": "street-medium",
+      "layout": "street",
+      "mapFile": "street-medium-map.json.gz",
+      "massFinalKg": 12215.502924043685,
+      "massInitialKg": 12242.200238585472,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 2.948071416700259,
+      "setupWallS": 0.024613291607238352,
+      "solverBytes": 12133480,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 348
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.45,
+      "commandGPUS": 5.943989000166766,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 27183280,
+        "capacityCells": 339791,
+        "denseCells": 339791,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000625732,
+      "energyFinalJ": 2531473189.5134277,
+      "energyInitialJ": 2539751635.5195312,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.01831492468409124,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16971.242,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 74.44782942699862,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04333408281308948,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2923.9922,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 33.61698984417637,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03658949466989725,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6347.4844,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 79.00243060837147,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06521390305351815,
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 4167.367,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 35.42606393239987,
+          "samples": []
+        }
+      ],
+      "historiesFile": "street-fine-histories.json.gz",
+      "id": "street-fine",
+      "layout": "street",
+      "mapFile": "street-fine-map.json.gz",
+      "massFinalKg": 12218.367744239047,
+      "massInitialKg": 12243.57836382091,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 6.371053249924444,
+      "setupWallS": 0.04965820838697255,
+      "solverBytes": 68427800,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 709
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.125,
+      "cfl": 0.45,
+      "commandGPUS": 47.15700700040907,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 211914000,
+        "capacityCells": 2648925,
+        "denseCells": 2648925,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2531825582.857025,
+      "energyInitialJ": 2540642188.3481445,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018539256967414985,
+          "coarseCellCentreM": [
+            14.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Front",
+          "peakPa": 20148.617,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 76.40722509233228,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043302453339492786,
+          "coarseCellCentreM": [
+            24.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Behind",
+          "peakPa": 3384.8438,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 36.70670883760528,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036884363578792545,
+          "coarseCellCentreM": [
+            24.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Street",
+          "peakPa": 8329.797,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 82.30616058664839,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06535239858749264,
+          "coarseCellCentreM": [
+            34.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Far street",
+          "peakPa": 5047.8438,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 36.76967514229426,
+          "samples": []
+        }
+      ],
+      "historiesFile": "street-finest-histories.json.gz",
+      "id": "street-finest",
+      "layout": "street",
+      "mapFile": "street-finest-map.json.gz",
+      "massFinalKg": 12221.066044296545,
+      "massInitialKg": 12247.885005069897,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 48.00789487501606,
+      "setupWallS": 0.3184863750357181,
+      "solverBytes": 514647160,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1523
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 4.258436374831945,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 3575040,
+        "capacityCells": 44688,
+        "denseCells": 44688,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000261934,
+      "energyFinalJ": 2527312309.9628906,
+      "energyInitialJ": 2539466658.939453,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018289252715476323,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16959.656,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 69.69161153337495,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04313956746045733,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2671.1406,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 29.339459259274463,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036846431852609385,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6092.992,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 70.68431964208412,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.0644978702548542,
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "fineCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 2962.3672,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 28.66117111529161,
+          "samples": []
+        }
+      ],
+      "historiesFile": "street-adaptive-histories.json.gz",
+      "id": "street-adaptive",
+      "layout": "street",
+      "mapFile": "street-adaptive-map.json.gz",
+      "massFinalKg": 12203.093038536608,
+      "massInitialKg": 12242.200238794088,
+      "maximumRefinedPatches": 369,
+      "purpose": "interaction",
+      "refinement": 2,
+      "refinementPatchCapacity": 1280,
+      "reflectiveFaces": 16,
+      "runWallS": 4.4105825832812116,
+      "setupWallS": 0.04524516663514078,
+      "solverBytes": 103173560,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 354
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.225,
+      "commandGPUS": 10.362903916509822,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 27183280,
+        "capacityCells": 339791,
+        "denseCells": 339791,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2531394266.5893555,
+      "energyInitialJ": 2539751635.5195312,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.01822675070616242,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16526.719,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 73.7591610593671,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04313160266792693,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2818.7812,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 32.80189510502723,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03646633937933075,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 6129.008,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 77.68212801392536,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06503159804742609,
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 4078.7656,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 34.343680179774594,
+          "samples": []
+        }
+      ],
+      "historiesFile": "street-half-cfl-histories.json.gz",
+      "id": "street-half-cfl",
+      "layout": "street",
+      "mapFile": "street-half-cfl-map.json.gz",
+      "massFinalKg": 12218.021447482053,
+      "massInitialKg": 12243.57836382091,
+      "maximumRefinedPatches": 0,
+      "purpose": "interaction",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 10.901765041751787,
+      "setupWallS": 0.03737287491094321,
+      "solverBytes": 68427800,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1413
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 1,
+      "cfl": 0.45,
+      "commandGPUS": 1.3350330835673958,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 464000,
+        "capacityCells": 5800,
+        "denseCells": 5800,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.05999999998311978,
+      "energyFinalJ": 2484751108.015625,
+      "energyInitialJ": 2484751152.625,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.01666336639027577,
+          "coarseCellCentreM": [
+            14.5,
+            9.5,
+            1.5
+          ],
+          "name": "Front",
+          "peakPa": 6181.6797,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 73.95223258013812,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04472392184834462,
+          "coarseCellCentreM": [
+            24.5,
+            9.5,
+            1.5
+          ],
+          "name": "Behind",
+          "peakPa": 1376.2031,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 20.621808705948297,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03515836728911381,
+          "coarseCellCentreM": [
+            24.5,
+            16.5,
+            1.5
+          ],
+          "name": "Street",
+          "peakPa": 2207.336,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 25.832394777126865,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            34.5,
+            16.5,
+            1.5
+          ],
+          "name": "Far street",
+          "peakPa": 198.64062,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 0.3603741892479775,
+          "samples": []
+        }
+      ],
+      "historiesFile": "closed-coarse-histories.json.gz",
+      "id": "closed-coarse",
+      "layout": "street",
+      "mapFile": "closed-coarse-map.json.gz",
+      "massFinalKg": 11977.599864512682,
+      "massInitialKg": 11977.600233078003,
+      "maximumRefinedPatches": 0,
+      "purpose": "closed-conservation",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 63,
+      "runWallS": 1.3907235416118056,
+      "setupWallS": 0.01609662501141429,
+      "solverBytes": 4936680,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 79
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.5,
+      "cfl": 0.45,
+      "commandGPUS": 1.4594847917323932,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 3575040,
+        "capacityCells": 44688,
+        "denseCells": 44688,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.05999999999949068,
+      "energyFinalJ": 2539466582.876953,
+      "energyInitialJ": 2539466657.25,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.017864906003524084,
+          "coarseCellCentreM": [
+            14.25,
+            9.25,
+            1.75
+          ],
+          "name": "Front",
+          "peakPa": 11195.867,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 86.78728504375385,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04320972361165332,
+          "coarseCellCentreM": [
+            24.25,
+            9.25,
+            1.75
+          ],
+          "name": "Behind",
+          "peakPa": 1889.2969,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 23.481988760223544,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03598946231795708,
+          "coarseCellCentreM": [
+            24.25,
+            16.25,
+            1.75
+          ],
+          "name": "Street",
+          "peakPa": 5054.6797,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 46.83283642690091,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            34.25,
+            16.25,
+            1.75
+          ],
+          "name": "Far street",
+          "peakPa": 11.796875,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 0.011346232868902462,
+          "samples": []
+        }
+      ],
+      "historiesFile": "closed-medium-histories.json.gz",
+      "id": "closed-medium",
+      "layout": "street",
+      "mapFile": "closed-medium-map.json.gz",
+      "massFinalKg": 12242.199716378003,
+      "massInitialKg": 12242.200238585472,
+      "maximumRefinedPatches": 0,
+      "purpose": "closed-conservation",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 63,
+      "runWallS": 1.5479632916394621,
+      "setupWallS": 0.018252708367072046,
+      "solverBytes": 12133480,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 180
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.25,
+      "cfl": 0.45,
+      "commandGPUS": 3.2865543749649078,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 27183280,
+        "capacityCells": 339791,
+        "denseCells": 339791,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.06000000000130967,
+      "energyFinalJ": 2539751557.9125977,
+      "energyInitialJ": 2539751635.5195312,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.01831492449491634,
+          "coarseCellCentreM": [
+            14.125,
+            9.125,
+            1.625
+          ],
+          "name": "Front",
+          "peakPa": 16970.492,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 96.25374766739299,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043292770420521265,
+          "coarseCellCentreM": [
+            24.125,
+            9.125,
+            1.625
+          ],
+          "name": "Behind",
+          "peakPa": 2845.6406,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 24.976146600346283,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.03657216613282799,
+          "coarseCellCentreM": [
+            24.125,
+            16.125,
+            1.625
+          ],
+          "name": "Street",
+          "peakPa": 7947.0938,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 63.29504469621128,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            34.125,
+            16.125,
+            1.625
+          ],
+          "name": "Far street",
+          "peakPa": 0.0625,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 3.0687112825944496e-05,
+          "samples": []
+        }
+      ],
+      "historiesFile": "closed-fine-histories.json.gz",
+      "id": "closed-fine",
+      "layout": "street",
+      "mapFile": "closed-fine-map.json.gz",
+      "massFinalKg": 12243.577803010121,
+      "massInitialKg": 12243.57836382091,
+      "maximumRefinedPatches": 0,
+      "purpose": "closed-conservation",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 63,
+      "runWallS": 3.4949220416601747,
+      "setupWallS": 0.03208525001537055,
+      "solverBytes": 68427800,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 368
+    },
+    {
+      "bodies": [],
+      "cellSizeM": 0.125,
+      "cfl": 0.45,
+      "commandGPUS": 16.12065595795866,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 0,
+        "capacityCells": 0,
+        "denseCells": 0,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2592843247.89093,
+      "energyInitialJ": 2602288163.8303223,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018539257433076273,
+          "coarseCellCentreM": [
+            14.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Front",
+          "peakPa": 20149.766,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 52.68609469104331,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.04110385133935779,
+          "coarseCellCentreM": [
+            24.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Behind",
+          "peakPa": 7643.1953,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 28.92023930328986,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036884377454043715,
+          "coarseCellCentreM": [
+            24.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Street",
+          "peakPa": 8318.32,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 31.246306577422615,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06531615696258086,
+          "coarseCellCentreM": [
+            34.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Far street",
+          "peakPa": 4260.078,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 20.68226624158615,
+          "samples": []
+        }
+      ],
+      "historiesFile": "open-control-histories.json.gz",
+      "id": "open-control",
+      "layout": "open",
+      "mapFile": "open-control-map.json.gz",
+      "massFinalKg": 12516.469269307505,
+      "massInitialKg": 12546.000245247036,
+      "maximumRefinedPatches": 0,
+      "purpose": "open-control",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 16.710388208390214,
+      "setupWallS": 0.08825975004583597,
+      "solverBytes": 298926080,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1525
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.125,
+      "cfl": 0.45,
+      "commandGPUS": 24.942654999438673,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 211914000,
+        "capacityCells": 2648925,
+        "denseCells": 2648925,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2532998908.6903076,
+      "energyInitialJ": 2532274184.5178223,
+      "gaugeObservations": [
+        {
+          "coarseCellCentreM": [
+            14.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Front",
+          "peakPa": 4.96875,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 0.09670785308060204,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            24.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Behind",
+          "peakPa": 7.203125,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 0.15447056126674852,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            24.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Street",
+          "peakPa": 7.953125,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 0.15095451140632576,
+          "samples": []
+        },
+        {
+          "coarseCellCentreM": [
+            34.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Far street",
+          "peakPa": 4.65625,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 0.09914321129673453,
+          "samples": []
+        }
+      ],
+      "historiesFile": "gravity-control-histories.json.gz",
+      "id": "gravity-control",
+      "layout": "street",
+      "mapFile": "gravity-control-map.json.gz",
+      "massFinalKg": 12249.385756185977,
+      "massInitialKg": 12245.885003963485,
+      "maximumRefinedPatches": 0,
+      "purpose": "gravity-control",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 25.378928833291866,
+      "setupWallS": 0.13845924998167902,
+      "solverBytes": 514647160,
+      "sourceEnergyJ": 0,
+      "sourceMassKg": 0,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 729
+    },
+    {
+      "bodies": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Building 1",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "name": "Building 2",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "name": "Building 3",
+          "samples": []
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "name": "Building 4",
+          "samples": []
+        }
+      ],
+      "cellSizeM": 0.125,
+      "cfl": 0.45,
+      "commandGPUS": 53.71946970722638,
+      "coupling": {
+        "activeTiles": 0,
+        "bytes": 211914000,
+        "capacityCells": 2648925,
+        "denseCells": 2648925,
+        "layout": "dense",
+        "tileCapacity": 0
+      },
+      "durationS": 0.12000000000080036,
+      "energyFinalJ": 2531825582.857025,
+      "energyInitialJ": 2540642188.3481445,
+      "gaugeObservations": [
+        {
+          "arrivalS": 0.018539256967414985,
+          "coarseCellCentreM": [
+            14.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Front",
+          "peakPa": 20148.617,
+          "positionM": [
+            14,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 76.40722509233228,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.043302453339492786,
+          "coarseCellCentreM": [
+            24.0625,
+            9.0625,
+            1.5625
+          ],
+          "name": "Behind",
+          "peakPa": 3384.8438,
+          "positionM": [
+            24,
+            9,
+            1.5
+          ],
+          "positiveImpulsePaS": 36.70670883760528,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.036884363578792545,
+          "coarseCellCentreM": [
+            24.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Street",
+          "peakPa": 8329.797,
+          "positionM": [
+            24,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 82.30616058664839,
+          "samples": []
+        },
+        {
+          "arrivalS": 0.06535239858749264,
+          "coarseCellCentreM": [
+            34.0625,
+            16.0625,
+            1.5625
+          ],
+          "name": "Far street",
+          "peakPa": 5047.8438,
+          "positionM": [
+            34,
+            16,
+            1.5
+          ],
+          "positiveImpulsePaS": 36.76967514229426,
+          "samples": []
+        }
+      ],
+      "historiesFile": "profiled-street-histories.json.gz",
+      "id": "profiled-street",
+      "layout": "street",
+      "mapFile": "profiled-street-map.json.gz",
+      "massFinalKg": 12221.066044296545,
+      "massInitialKg": 12247.885005069897,
+      "maximumRefinedPatches": 0,
+      "profile": {
+        "airS": 23.739636461000007,
+        "couplingS": 14.016153488999993,
+        "mechanicsS": 4.608750077,
+        "observationS": 0.12356119100000004
+      },
+      "purpose": "stage-profile",
+      "refinement": 1,
+      "refinementPatchCapacity": 0,
+      "reflectiveFaces": 16,
+      "runWallS": 54.36626945831813,
+      "setupWallS": 0.1442502917489037,
+      "solverBytes": 514647160,
+      "sourceEnergyJ": 8368000,
+      "sourceMassKg": 2,
+      "sourceRadiusM": 1,
+      "stable": true,
+      "steps": 1523
+    }
+  ],
+  "planeHeightM": 1.5,
+  "probeSpacingM": 0.5,
+  "schemaVersion": 2,
+  "sourceDepositionRadiusM": 1,
+  "sourceRevision": "f01e2523ee822a9e609c0901c791aa4acfd4a675",
+  "structuralElementSizeM": 0.5,
+  "system": "Version 27.0.1 (Build 26A434)"
+}

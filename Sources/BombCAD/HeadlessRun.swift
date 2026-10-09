@@ -14,6 +14,9 @@ enum HeadlessRun {
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--consumer local|<ssh host>]
                            [--fragment-results <file.json>]]
+                           [--thermal <spec.json> [--thermal-results <file.json>]]
+                           [--cloud <spec.json> [--cloud-results <file.json>]]
+                           [--ground-shock <spec.json> [--ground-results <file.json>]]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
@@ -23,6 +26,13 @@ enum HeadlessRun {
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, on this Mac's CPU or on another Mac over SSH, frame
         by frame; they go into the USD scene and, with --fragment-results, a JSON file.
+        --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
+        frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
+        file. --cloud hands the hot gas left at the end of the run over to a model of the
+        fireball's rise and cloud, followed for minutes after; the cloud goes into the USD scene,
+        after the run's frames, and, with --cloud-results, a JSON file. --ground-shock estimates
+        the ground's shaking under chosen points from the overpressure the run records on the
+        ground, frame by frame; --ground-results writes it as JSON.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
         never modified.
         """
@@ -43,6 +53,16 @@ enum HeadlessRun {
         var fragments: FragmentSpec?
         var consumer = "local"
         var fragmentResults: URL?
+        /// The fireball's thermal radiation on the scene, and where its results go.
+        var thermal: ThermalSpec?
+        var thermalResults: URL?
+        /// The fireball's rise and cloud after the run, and where its results go.
+        var cloud: CloudSpec?
+        var cloudResults: URL?
+        /// Ground points whose shaking to estimate from the air on the ground, and where the
+        /// estimates go.
+        var groundShock: GroundShockSpec?
+        var groundResults: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
 
@@ -58,7 +78,8 @@ enum HeadlessRun {
                         [
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
-                            "consumer", "fragment-results",
+                            "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
+                            "cloud-results", "ground-shock", "ground-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -127,9 +148,43 @@ enum HeadlessRun {
             if options.fragmentResults != nil, options.fragments == nil {
                 throw ProjectFileError.invalid("--fragment-results needs --fragments.")
             }
+            if let path = values["thermal"] {
+                let spec = try JSONDecoder().decode(
+                    ThermalSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.thermal = spec
+            }
+            options.thermalResults = values["thermal-results"].map { URL(filePath: $0) }
+            if options.thermalResults != nil, options.thermal == nil {
+                throw ProjectFileError.invalid("--thermal-results needs --thermal.")
+            }
+            if let path = values["cloud"] {
+                let spec = try JSONDecoder().decode(
+                    CloudSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.cloud = spec
+            }
+            options.cloudResults = values["cloud-results"].map { URL(filePath: $0) }
+            if options.cloudResults != nil, options.cloud == nil {
+                throw ProjectFileError.invalid("--cloud-results needs --cloud.")
+            }
+            if let path = values["ground-shock"] {
+                let spec = try JSONDecoder().decode(
+                    GroundShockSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.groundShock = spec
+            }
+            options.groundResults = values["ground-results"].map { URL(filePath: $0) }
+            if options.groundResults != nil, options.groundShock == nil {
+                throw ProjectFileError.invalid("--ground-results needs --ground-shock.")
+            }
             if let text = values["frame-interval"] {
-                guard options.usd != nil || options.vdb != nil || options.fragments != nil else {
-                    throw ProjectFileError.invalid("--frame-interval needs --usd, --vdb or --fragments.")
+                guard
+                    options.usd != nil || options.vdb != nil || options.fragments != nil
+                        || options.thermal != nil || options.groundShock != nil
+                else {
+                    throw ProjectFileError.invalid(
+                        "--frame-interval needs --usd, --vdb, --fragments, --thermal or --ground-shock.")
                 }
                 guard let interval = Int(text), interval > 0 else {
                     throw ProjectFileError.invalid(
@@ -140,8 +195,11 @@ enum HeadlessRun {
             if let usd = options.usd, usd.pathExtension != "usda" {
                 throw ProjectFileError.invalid("The USD scene must end in .usda.")
             }
-            for url in [options.out, options.csv, options.usd, options.vdb, options.fragmentResults]
-                .compactMap({ $0 })
+            for url in [
+                options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
+                options.thermalResults, options.cloudResults, options.groundResults,
+            ]
+            .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
                 throw ProjectFileError.invalid("\(url.path) already exists; choose a new path.")
             }
@@ -185,7 +243,8 @@ enum HeadlessRun {
 
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
-        run: SavedSimulationRun, fragments: FragmentResult?, stream: String?
+        run: SavedSimulationRun, fragments: FragmentResult?, stream: String?, thermal: ThermalResult?,
+        cloud: CloudResult?, ground: GroundShockResult?
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -200,7 +259,18 @@ enum HeadlessRun {
         if let url = options.fragmentResults, let fragments = result.fragments {
             try JSONEncoder().encode(fragments).write(to: url, options: .withoutOverwriting)
         }
-        return (result.run, result.fragments, result.stream)
+        if let url = options.thermalResults, let thermal = result.thermal {
+            try JSONEncoder().encode(thermal).write(to: url, options: .withoutOverwriting)
+        }
+        if let url = options.cloudResults, let cloud = result.cloud {
+            try JSONEncoder().encode(cloud).write(to: url, options: .withoutOverwriting)
+        }
+        if let url = options.groundResults, let ground = result.ground {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(ground).write(to: url, options: .withoutOverwriting)
+        }
+        return (result.run, result.fragments, result.stream, result.thermal, result.cloud, result.ground)
     }
 
     /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
@@ -211,10 +281,12 @@ enum HeadlessRun {
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any LiveConsumer)? = nil
     ) async throws -> (
-        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?
+        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?,
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
+        try options.groundShock?.validate(domain: inputs.scenario.domainSize)
         guard document.savedRuns.count < SavedSimulationRun.maximumRuns else {
             throw ProjectFileError.invalid(
                 "The project already keeps \(SavedSimulationRun.maximumRuns) runs; remove one first.")
@@ -229,8 +301,16 @@ enum HeadlessRun {
         // A run here flies fragments as `options` says, not as the project's live view does.
         model.fragmentSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
-        // Before the inputs load, which sets the first sample time.
-        model.airSampleInterval = interval
+        // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
+        // so exporting does not change the run. Without a structure, only volumes, fragments, the
+        // radiation and ground shock ask for frames, and the run then stops at each one, ending a
+        // time step there.
+        let framed =
+            options.vdb != nil || options.fragments != nil || injected != nil || options.thermal != nil
+            || options.groundShock != nil || (options.usd != nil && inputs.scenario.structure != nil)
+        // Before the inputs load, which sets the first sample time. The cloud needs only the
+        // last sample, at the end of the run, which then stops nowhere else.
+        model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
         let scene = try options.usd.map { url in
@@ -255,6 +335,10 @@ enum HeadlessRun {
             consumer = try await makeConsumer(options.consumer, spec: spec, scenario: inputs.scenario)
         }
         defer { if !finished { consumer?.cancel() } }
+        let thermal = options.thermal.map { ThermalStudy(spec: $0, scene: FragmentScene(inputs.scenario)) }
+        // The ground's points take a sample each a frame, cheap enough to take in line.
+        var ground = options.groundShock.map(GroundShockConsumer.init)
+        var groundTime = Duration.zero
         var heldSince: ContinuousClock.Instant?
         var held = Duration.zero
         let streamStart = ContinuousClock.now
@@ -270,12 +354,15 @@ enum HeadlessRun {
                 return hold
             }
         }
-        // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
-        // so exporting does not change the run. Without a structure, only volumes and fragments
-        // ask for frames, and the run then stops at each one, ending a time step there.
-        if options.vdb != nil || consumer != nil || (scene != nil && inputs.scenario.structure != nil) {
+        var handOver: CloudHandOver?
+        let end = inputs.settings.duration
+        if framed || options.cloud != nil {
             var frame = 0
             model.onSample = { solver in
+                if let spec = options.cloud, solver.time >= end - 1e-9 {
+                    handOver = solver.cloudHandOver(hotterThan: spec.handOverTemperature)
+                }
+                guard framed else { return }
                 // The last sample, at the end of the run, can fall between frames.
                 let index = (solver.time / interval).rounded()
                 guard exportError == nil, abs(solver.time - index * interval) < 1e-6, Int(index) == frame
@@ -291,6 +378,14 @@ enum HeadlessRun {
                         volume = options.usd.map { assetPath(of: file, from: $0) }
                     }
                     try scene?.append(solver.structureSurface(), volume: volume)
+                    if let thermal, let spec = options.thermal {
+                        thermal.add(solver.fireball(luminousTemperature: spec.luminousTemperature))
+                    }
+                    if let region = ground?.region(cellSize: solver.grid.cellSize) {
+                        let start = ContinuousClock.now
+                        ground?.consume(solver.groundSlice(low: region.low, high: region.high))
+                        groundTime += start.duration(to: .now)
+                    }
                     if let consumer {
                         // From the report `lag` frames back, always in by now, so that the air
                         // sent, and the result, do not depend on how the two sides keep time.
@@ -340,11 +435,50 @@ enum HeadlessRun {
                     widths: [Float](repeating: 0.1, count: tracers), colour: SIMD3(0.9, 0.9, 0.95))
             }
         }
+        let thermalResult = thermal?.finish()
+        if let thermalResult {
+            let spacing = min(thermalResult.spec.surfaceSpacing, thermalResult.spec.groundSpacing)
+            scene?.addPoints(
+                "Thermal", frames: [thermalResult.receivers.map(\.position)],
+                widths: [Float](repeating: spacing / 2, count: thermalResult.receivers.count),
+                colour: SIMD3(0.95, 0.55, 0.2),
+                values: [
+                    ("fluence", thermalResult.fluence.map { $0 / 1000 }),
+                    ("peakIrradiance", thermalResult.peakIrradiance.map { $0 / 1000 }),
+                ])
+        }
+        var cloud: CloudResult?
+        if let spec = options.cloud {
+            guard let handOver else {
+                throw ProjectFileError.invalid("The run ended before the cloud's hand-over.")
+            }
+            let result = CloudResult(spec: spec, handOver: handOver)
+            scene?.addCloud(
+                result.frames(), centre: SIMD2(handOver.centre.x, handOver.centre.y),
+                secondsPerFrame: spec.frameInterval)
+            cloud = result
+        }
         try scene?.finish()
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (run, document, fragments, stream)
+        var groundResult = ground?.result(frameInterval: interval)
+        groundResult?.seconds = groundTime.seconds
+        return (run, document, fragments, stream, thermalResult, cloud, groundResult)
+    }
+
+    /// The fireball's radiation, reckoned frame by frame on a queue of its own so that the run
+    /// does not wait for it.
+    final class ThermalStudy: @unchecked Sendable {
+        private var exposure: ThermalExposure
+        private let queue = DispatchQueue(label: "dev.bombcad.thermal")
+
+        init(spec: ThermalSpec, scene: FragmentScene) { exposure = ThermalExposure(spec: spec, scene: scene) }
+
+        func add(_ frame: FireballFrame) { queue.async { self.exposure.add(frame) } }
+
+        /// Waits for the frames sent so far.
+        func finish() -> ThermalResult { queue.sync { exposure.result } }
     }
 
     /// How many frames a consumer may fall behind before the run waits for it.
@@ -423,6 +557,9 @@ enum HeadlessRun {
                 ))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             if let stream = result.stream { print("  " + stream) }
+            for line in result.thermal?.summary ?? [] { print("  " + line) }
+            for line in result.cloud?.summary ?? [] { print("  " + line) }
+            if let ground = result.ground { print("  " + ground.summary) }
             return 0
         } catch {
             FileHandle.standardError.write(Data("Run failed: \(error.localizedDescription)\n".utf8))

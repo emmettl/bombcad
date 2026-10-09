@@ -100,6 +100,10 @@ cannot keep it as a completed run. Historical multi-body provenance survives sav
 These checks verify allocation and exchange. They do not reproduce a measured
 multi-building experiment or validate the invented buildings below.
 
+The [street-interaction study](street-interaction.md) follows this allocation work
+with controlled geometry comparisons, spatial recording, resolution checks and
+whole-run measurements over a longer physical window.
+
 ## Neighborhood example
 
 `NeighborhoodExample.make()` creates sixteen independent reinforced-concrete shell
