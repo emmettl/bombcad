@@ -188,9 +188,16 @@ struct ThermalOverlayTests {
         #expect(dots.contains { $0.w > 4 })
         #expect(SimulationModel.thermalShade(0) == 0 && SimulationModel.thermalShade(1e6) == 0.999)
         #expect(model.thermalStatus.contains("Fireball up to") && model.thermalStatus.contains("kJ/m²"))
+        // The view, drawing only on change between runs, sees the last frames come in.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while model.thermalReckoned < thermal.fireball.count {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(model.thermalReckoned == thermal.fireball.count)
         model.reset()
         try await ready(model, by: ContinuousClock.now + .seconds(10))
-        #expect(model.thermalDots().isEmpty && model.thermalStatus.isEmpty)
+        #expect(model.thermalDots().isEmpty && model.thermalStatus.isEmpty && model.thermalReckoned == 0)
     }
 
     @Test(
