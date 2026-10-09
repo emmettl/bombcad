@@ -335,29 +335,44 @@ extension RefinementTests {
 
     @Test("A wall broken by the blast in refined air, run twice, gives the same answer to the last bit")
     func refinedRepeatableBreach() throws {
-        func run() throws -> (nodes: [StructureNode], failed: Int, refined: Int) {
+        // The air and the structure after each batch, so that a difference says where it began.
+        typealias Batch = (air: [CellState], nodes: [StructureNode])
+        func run() throws -> (batches: [Batch], failed: Int, refined: Int) {
             var scenario = ScenarioPreset.blastWall.scenario
             scenario.charge.mass = 500
             let solver = try BlastSolver(
                 device: device, scenario: scenario, cellSize: 0.5, configuration: refined(2))
             let structure = try #require(solver.structure)
             var refinedMost = 0
+            var batches: [Batch] = []
             for steps in [7, 64, 3, 128, 1, 256, 256, 256] {
-                refinedMost = max(refinedMost, solver.advance(steps: steps).refinedTiles)
+                let result = solver.advance(steps: steps)
+                // A command buffer the GPU stopped part way (as on a GPU other work starves) is
+                // unstable, not a difference in the arithmetic.
+                try #require(
+                    result.isStable && result.steps == steps, "batch \(batches.count) did not complete")
+                refinedMost = max(refinedMost, result.refinedTiles)
+                var nodes: [StructureNode] = []
+                structure.mutateNodes { nodes = Array($0) }
+                batches.append((solver.withState { Array($0) }, nodes))
             }
-            var copy: [StructureNode] = []
-            structure.mutateNodes { copy = Array($0) }
-            return (copy, structure.summary().erodedElements, refinedMost)
+            return (batches, structure.summary().erodedElements, refinedMost)
         }
         let first = try run()
         let second = try run()
         #expect(first.refined > 0)
         #expect(first.failed > 100, "only \(first.failed) elements failed")
         #expect(first.failed == second.failed)
-        let differing = zip(first.nodes, second.nodes).filter {
-            $0.0.displacement != $0.1.displacement || $0.0.velocity != $0.1.velocity
-        }.count
-        #expect(differing == 0, "\(differing) of \(first.nodes.count) nodes differ")
+        for (batch, (a, b)) in zip(first.batches, second.batches).enumerated() {
+            let air = zip(a.air, b.air).filter { $0.0 != $0.1 }.count
+            let differing = zip(a.nodes, b.nodes).filter {
+                $0.0.displacement != $0.1.displacement || $0.0.velocity != $0.1.velocity
+            }.count
+            #expect(
+                air == 0 && differing == 0,
+                "after batch \(batch): \(air) air cells and \(differing) of \(a.nodes.count) nodes differ")
+            if air > 0 || differing > 0 { break }
+        }
     }
 }
 
