@@ -215,8 +215,8 @@ final class ParameterSweep {
         while true {
             try Task.checkCancellation()
             guard let index = shared.schedule.next(.local) else {
-                // A worker may yet fail a case back to the queue.
-                if shared.schedule.workersBusy {
+                // A faster worker is taking the cases left, or a worker may yet fail one back.
+                if !shared.schedule.isEmpty || shared.schedule.workersBusy {
                     try await Task.sleep(for: .milliseconds(50))
                     continue
                 }
@@ -232,7 +232,8 @@ final class ParameterSweep {
             model.run()
             try await waitUntil {
                 shared.schedule.progress(
-                    .local, model.duration > 0 ? min(model.time / model.duration, 1) : 0)
+                    .local, model.duration > 0 ? min(model.time / model.duration, 1) : 0,
+                    seconds: start.duration(to: .now).seconds)
                 return !model.isRunning && !model.hasPendingGPUWork
             }
             try Task.checkCancellation()
@@ -275,7 +276,8 @@ final class ParameterSweep {
             let start = ContinuousClock.now
             do {
                 let run = try await worker.run(item) { [weak self] fraction in
-                    shared.schedule.progress(.worker(number), fraction)
+                    shared.schedule.progress(
+                        .worker(number), fraction, seconds: start.duration(to: .now).seconds)
                     self?.status(remote: number, "\(item.name) on \(worker.name), \(Int(fraction * 100))%")
                 }
                 try model.addRun(run)

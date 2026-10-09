@@ -74,10 +74,11 @@ struct SweepScheduleTests {
             schedule.join(worker)
             _ = schedule.next(.worker(worker))
         }
-        #expect(schedule.deadline(excluding: 2, waiting: 2) == 3.5)
+        #expect(schedule.deadline(excluding: .worker(2), waiting: 2) == 3.5)
         // The second: three wait besides; this Mac clears 2.5 by 3.5, then shares the last half
         // with the first worker, finishing at 3.89.
-        #expect(abs(schedule.deadline(excluding: 1, waiting: 3) - (3.5 + 0.5 / (1 + 1 / 3.5))) < 1e-12)
+        #expect(
+            abs(schedule.deadline(excluding: .worker(1), waiting: 3) - (3.5 + 0.5 / (1 + 1 / 3.5))) < 1e-12)
 
         // Four equal cases: two would wait besides a worker's, 3 against its 3.5, so no worker
         // takes one, however many there are.
@@ -125,6 +126,36 @@ struct SweepScheduleTests {
         _ = again.next(.worker(0))
         _ = again.next(.worker(1))
         #expect(again == schedule)
+    }
+
+    @Test("A worker measured faster than this Mac takes the largest cases, and this Mac the smallest")
+    func fasterWorker() {
+        var schedule = SweepSchedule(costs: [4, 4, 2, 1, 1, 1], workers: 1)
+        schedule.join(0)
+        // Until measured, this Mac is taken to be the faster.
+        #expect(schedule.fastest == .local)
+        #expect(schedule.next(.local) == 0)
+        #expect(schedule.next(.worker(0)) == 5)
+        // Twice as fast as this Mac, which is busy with other work, say.
+        schedule.finish(.worker(0), seconds: 0.5)
+        schedule.finish(.local, seconds: 4)
+        #expect(schedule.ratio(of: 0) == 0.5 && schedule.fastest == .worker(0))
+        #expect(schedule.next(.worker(0)) == 1)
+        // This Mac: the worker is free in 2 s and does the other 3 of waiting work in 1.5 more;
+        // the smallest case, taking 1 s here, fits.
+        #expect(schedule.next(.local) == 4)
+        schedule.finish(.local, seconds: 1)
+        #expect(schedule.next(.local) == 3)
+        schedule.finish(.local, seconds: 1)
+        // The 2 left would take 2 s here; the worker, nearly done, would do it by 1.1 s.
+        schedule.progress(.worker(0), 0.9)
+        #expect(schedule.next(.local) == nil)
+        schedule.finish(.worker(0), seconds: 2)
+        #expect(schedule.next(.worker(0)) == 2)
+        #expect(schedule.isEmpty)
+        // Had the worker gone, this Mac takes what is left.
+        schedule.fail(0)
+        #expect(schedule.fastest == .local && schedule.next(.local) == 2)
     }
 
     @Test("A case a worker fails goes back to the queue, and the worker takes no more")
@@ -177,6 +208,10 @@ struct SweepScheduleTests {
             #expect(first.time <= costs.reduce(0, +), "\(ratios)")
             #expect(simulate(costs, ratios: ratios) == first, "\(ratios)")
         }
+        // A worker found twice as fast as this Mac takes the large cases once measured, and the
+        // sweep takes 10, the least possible: 30 shared at 1 + 2 a second.
+        #expect(simulate(costs, ratios: [0.5]).time == 10)
+        #expect(simulate(costs, ratios: [0.5, 3.5]).time <= 10.5)
         // A second worker is no later; here the two largest cases here set the time.
         #expect(simulate(costs, ratios: [2, 4]).time <= simulate(costs, ratios: [2]).time)
         // Eight equal cases: 8 alone, 6 with a worker twice as slow, and 5 with another four times
@@ -220,7 +255,8 @@ struct SweepScheduleTests {
             let (machine, item) = (next.key, next.value)
             time = item.start + duration(machine, item.cost)
             for (other, value) in running where other != machine {
-                schedule.progress(other, (time - value.start) / duration(other, value.cost))
+                schedule.progress(
+                    other, (time - value.start) / duration(other, value.cost), seconds: time - value.start)
             }
             running[machine] = nil
             schedule.finish(machine, seconds: time - item.start)

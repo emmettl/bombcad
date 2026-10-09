@@ -1,11 +1,12 @@
 import Foundation
 
-/// Which sweep case runs where, when this Mac shares a sweep with other, usually slower, Macs.
-/// Cases wait largest first: this Mac takes them from the front, and a worker, whenever it is
-/// free, takes the smallest case it should finish before this Mac and the other workers have
-/// finished everything else, so that no worker holds the sweep up. Each worker's speed is
-/// measured against this Mac's as cases finish. A case a worker fails goes back to the queue,
-/// and that worker takes no more.
+/// Which sweep case runs where, when this Mac shares a sweep with other Macs. Cases wait largest
+/// first. The fastest machine, usually this one, takes them from the front; every other, whenever
+/// it is free, takes the smallest case it should finish before the rest have finished everything
+/// else, so that no slower machine holds the sweep up. Each worker's speed is measured against
+/// this Mac's as cases finish, so a worker found faster than this Mac (one busy with other work,
+/// say) takes the large cases instead. A case a worker fails goes back to the queue, and that
+/// worker takes no more.
 ///
 /// Every choice depends only on the queue, the cases running and how far they have got, and the
 /// ratios; nothing is random or timed here, so the same events give the same plan.
@@ -26,6 +27,8 @@ struct SweepSchedule: Equatable {
         var index: Int
         var cost: Double
         var fraction = 0.0
+        /// How long it has been running.
+        var seconds = 0.0
         var remaining: Double { cost * (1 - min(max(fraction, 0), 1)) }
     }
 
@@ -71,11 +74,25 @@ struct SweepSchedule: Equatable {
     }
 
     /// How many times longer `worker` takes over a case than this Mac: measured once both have
-    /// finished one, `ratio` until then.
+    /// finished a case or got a tenth of the way through one, `ratio` until then.
     func ratio(of worker: Int) -> Double {
         let measured = workers[worker]
-        guard localCost > 0, measured.cost > 0, localSeconds > 0 else { return ratio }
-        return (measured.seconds / measured.cost) / (localSeconds / localCost)
+        guard let here = Self.pace(localSeconds, localCost, local),
+            let there = Self.pace(measured.seconds, measured.cost, measured.running)
+        else { return ratio }
+        return there / here
+    }
+
+    /// Seconds per unit of cost, from the cases finished and the one running, if there is enough
+    /// to go on.
+    private static func pace(_ seconds: Double, _ cost: Double, _ running: Running?) -> Double? {
+        var seconds = seconds
+        var cost = cost
+        if let running, running.fraction >= 0.1, running.seconds > 0 {
+            seconds += running.seconds
+            cost += running.cost * min(running.fraction, 1)
+        }
+        return seconds > 0 && cost > 0 ? seconds / cost : nil
     }
 
     /// A worker has connected and may take cases.
@@ -109,43 +126,75 @@ struct SweepSchedule: Equatable {
     }
 
     /// The next case for `machine`, if it should take one; nil if it should not, which for a
-    /// worker means it should stop. This Mac takes the largest waiting case. A worker takes the
+    /// worker means it should stop. The fastest machine connected, by its ratio (this Mac's is 1,
+    /// and it is the fastest on a tie), takes the largest waiting case. Every other takes the
     /// smallest, if its ratio times the case's cost is within the time the others need for the
-    /// rest (see `deadline`).
+    /// rest (see `deadline`): a larger case would fit no better. The fastest never refuses, so
+    /// nothing is left waiting; if it is a worker and goes, this Mac is the fastest again.
     mutating func next(_ machine: Machine) -> Int? {
         switch machine {
         case .local:
-            guard local == nil, !pending.isEmpty else { return nil }
-            let item = pending.removeFirst()
-            local = Running(index: item.index, cost: item.cost)
-            return item.index
+            guard local == nil else { return nil }
         case .worker(let worker):
-            guard workers[worker].active, workers[worker].running == nil,
-                let position = pending.indices.last
-            else { return nil }
-            let item = pending[position]
-            let waiting = pending.reduce(0) { $0 + $1.cost } - item.cost
-            guard ratio(of: worker) * item.cost <= deadline(excluding: worker, waiting: waiting) else {
+            guard workers[worker].active, workers[worker].running == nil else { return nil }
+        }
+        guard let smallest = pending.last else { return nil }
+        let position: Int
+        if machine == fastest {
+            position = 0
+        } else {
+            let waiting = pending.reduce(0) { $0 + $1.cost } - smallest.cost
+            guard ratio(of: machine) * smallest.cost <= deadline(excluding: machine, waiting: waiting) else {
                 return nil
             }
-            pending.remove(at: position)
-            workers[worker].running = Running(index: item.index, cost: item.cost)
-            return item.index
+            position = pending.count - 1
+        }
+        let item = pending.remove(at: position)
+        let running = Running(index: item.index, cost: item.cost)
+        switch machine {
+        case .local: local = running
+        case .worker(let worker): workers[worker].running = running
+        }
+        return item.index
+    }
+
+    /// The fastest machine taking cases: this Mac unless a connected worker has been measured
+    /// faster, and the first such worker on a tie.
+    var fastest: Machine {
+        var best = (machine: Machine.local, ratio: 1.0)
+        for worker in workers.indices where workers[worker].active && ratio(of: worker) < best.ratio {
+            best = (.worker(worker), ratio(of: worker))
+        }
+        return best.machine
+    }
+
+    /// How many times longer `machine` takes over a case than this Mac.
+    func ratio(of machine: Machine) -> Double {
+        switch machine {
+        case .local: 1
+        case .worker(let worker): ratio(of: worker)
         }
     }
 
-    /// The time, in this Mac's seconds per unit of cost, that the machines other than `worker`
-    /// need for `waiting` and the cases they are running: each takes its share of the waiting
-    /// work once its own case is done, at its speed, as if cases could be divided exactly; and
-    /// never sooner than the last of their running cases ends, which no worker can hold up. With
-    /// only this Mac besides, it is just this Mac's work left.
-    func deadline(excluding worker: Int, waiting: Double) -> Double {
-        var machines = [(free: local?.remaining ?? 0, speed: 1.0)]
-        for other in workers.indices where other != worker {
-            guard let running = workers[other].running else { continue }
+    /// The time, in this Mac's seconds per unit of cost, that the machines other than `machine`
+    /// need for `waiting` and the cases they are running: this Mac, the workers running a case,
+    /// and those free that are faster than `machine` (a slower one free has been turned down),
+    /// each take their share of the waiting work once their own case is done, at their speed,
+    /// as if cases could be divided exactly; and never sooner than the last of their running
+    /// cases ends, which nothing can hold up. Besides this Mac alone, it is just this Mac's work
+    /// left; with no other machine, it is unbounded.
+    func deadline(excluding machine: Machine, waiting: Double) -> Double {
+        var machines: [(free: Double, speed: Double)] = []
+        if machine != .local { machines.append((local?.remaining ?? 0, 1)) }
+        for other in workers.indices where machine != .worker(other) && workers[other].active {
             let ratio = max(ratio(of: other), 1e-6)
-            machines.append((running.remaining * ratio, 1 / ratio))
+            if let running = workers[other].running {
+                machines.append((running.remaining * ratio, 1 / ratio))
+            } else if ratio < self.ratio(of: machine) {
+                machines.append((0, 1 / ratio))
+            }
         }
+        guard !machines.isEmpty else { return .infinity }
         machines.sort { $0.free < $1.free }
         let last = machines.last!.free
         var work = waiting
@@ -164,11 +213,15 @@ struct SweepSchedule: Equatable {
         return max(time + work / speed, last)
     }
 
-    /// How far `machine` has got through its case, from 0 to 1.
-    mutating func progress(_ machine: Machine, _ fraction: Double) {
+    /// How far `machine` has got through its case, from 0 to 1, and in how many seconds.
+    mutating func progress(_ machine: Machine, _ fraction: Double, seconds: Double = 0) {
         switch machine {
-        case .local: local?.fraction = fraction
-        case .worker(let worker): workers[worker].running?.fraction = fraction
+        case .local:
+            local?.fraction = fraction
+            local?.seconds = seconds
+        case .worker(let worker):
+            workers[worker].running?.fraction = fraction
+            workers[worker].running?.seconds = seconds
         }
     }
 
