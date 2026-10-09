@@ -42,7 +42,7 @@ final class StalledConsumer: FrameConsumer, @unchecked Sendable {
 
     var sent: Int { lock.withLock { count } }
     var bytes: Int { 0 }
-    var live: FragmentLive? { nil }
+    var live: ConsumerLive? { nil }
     var report: ConsumerReport {
         lock.withLock {
             ConsumerReport(frame: released ? count - 1 : consumed, low: nil, high: nil, speed: 0, airborne: 0)

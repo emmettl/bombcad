@@ -212,7 +212,7 @@ struct ModelImportView: View {
                             canRefine: resolution != .fine, refine: { previewFiner() }
                         )
                         .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
-                    } else {
+                    } else if !busy {
                         ContentUnavailableView(
                             "Preview unavailable", systemImage: "cube.transparent",
                             description: Text(

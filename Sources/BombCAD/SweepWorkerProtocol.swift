@@ -7,9 +7,9 @@ import Foundation
 /// way and the payload, empty for most messages. The app starts a worker over SSH and talks to it
 /// through the connection's standard input and output; tests talk to one in the same process
 /// through pipes. A worker runs one sweep case at a time, and can run models fed by a run
-/// elsewhere, frame by frame, several at once: consumer sessions of any kind (see
-/// `ConsumerKind`), each on a queue of its own, and thermal sessions, which also send their
-/// receivers back after each frame for the app to draw.
+/// elsewhere, frame by frame, several at once (consumer sessions, see `ConsumerKind`), each on a
+/// queue of its own; a live session sends its model's state back after each frame for the app to
+/// draw.
 enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Worker to app, once on starting.
     case hello(SweepWorkerHello)
@@ -35,26 +35,15 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case finishConsumer(UUID, Double)
     /// Worker to app: the session's result, in the payload (see `ConsumerOutcome.encoded`).
     case outcome(UUID)
-    /// Worker to app, for a live session after each frame: the particles' positions and speeds
-    /// in the payload (see `FragmentLive.payload`), and the impacts new since the last.
-    case live(UUID, LiveFrameHeader)
-    /// App to worker: start reckoning a run's thermal radiation.
-    case thermal(ThermalSession)
-    /// App to worker: the fireball at the next frame of a thermal session.
-    case fireball(UUID, FireballFrame)
-    /// Worker to app, after each frame of a thermal session: every receiver's fluence and peak
-    /// irradiance so far in the payload (see `ThermalLive.payload`).
-    case thermalLive(UUID, ThermalLiveHeader)
-    /// App to worker: no more frames; send the thermal session's result.
-    case finishThermal(UUID)
-    /// Worker to app: the thermal session's result, as JSON in the payload.
-    case thermalResult(UUID)
+    /// Worker to app, for a live session after each frame: its model's state (see
+    /// `ConsumerLive`), any bulk of it in the payload.
+    case live(UUID, ConsumerLive.Header)
 
     static let cancelled = "cancelled"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 4
+    static let protocolVersion = 5
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
@@ -70,12 +59,6 @@ struct SweepWorkerJob: Codable, Equatable, Sendable {
 struct ConsumerSession: Codable, Equatable, Sendable {
     var id: UUID
     var kind: ConsumerKind
-}
-
-struct ThermalSession: Codable, Equatable, Sendable {
-    var id: UUID
-    var spec: ThermalSpec
-    var scene: FragmentScene
 }
 
 struct ThermalLiveHeader: Codable, Equatable, Sendable {

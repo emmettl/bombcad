@@ -17,6 +17,9 @@ buried services or for vibration limits.
 swift run -c release BombCAD run street.bombcad --ground-shock ground.json --ground-results ground-results.json
 ```
 
+With `--consumer ground=<ssh host>` the estimate is made on another Mac, fed the ground's air
+frame by frame (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+
 The description is JSON, and any field left out takes its default:
 
 ```json
@@ -103,8 +106,10 @@ the ground from a metre beside the charge to a metre short of the domain's edge,
 ground runs furthest, in dry soil of 1,600 kg/m³ at 300 m/s. Sliders set the soil's density and
 wave speed, the number of points (8 to 64) and the line's two ends, to the half metre. The
 points are saved with the project (as `groundShock.json`), take effect from the next run, and
-are undone and redone with the layout's edits (⌘Z). Other points, and other depths than 0, 1
-and 3 m, need the JSON description and `BombCAD run`.
+are undone and redone with the layout's edits (⌘Z). With Macs set for sweeps in Settings,
+**Run on** the first of them estimates the shaking there, as the fragments and the thermal
+radiation can. Other points, and other depths than 0, 1 and 3 m, need the JSON description and
+`BombCAD run`.
 
 The view draws the points as dots just above the ground: grey until the blast reaches them, then
 from blue at 1 mm/s of downward surface velocity, through violet, to near white at 10 m/s, on a
@@ -133,12 +138,11 @@ ground.json` draws the points offscreen as the view does (the figure below).
 At each frame (`--frame-interval`, 1 ms by default) the run cuts out the bottom layer of cells
 over the points' bounds plus one cell (`GroundSlice`). For each cell this holds the overpressure
 now, the peak so far and the impulse so far, as 32-bit floats, with NaN over solid cells. The
-consumer (`GroundShockConsumer`) samples it at each point. It is cheap enough to run in the
-run's own loop, so it never holds the run up.
-
-The slice has a header and a binary payload like the fragments' `AirSlice`, so it could travel
-over a worker connection. It does not yet. A worker session would gain nothing: the work is a
-sample per point per frame.
+consumer (`GroundShockConsumer`) samples it at each point, on a queue of its own here or as a
+session of `BombCAD worker` on another Mac, the slice travelling as a raw binary payload (see
+[Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+Either way it gives the same result. It is cheap, a sample per point per frame, so another Mac
+gains it nothing yet; a costlier ground model could use one.
 
 As with fragments, a run without a structure stops at each frame and ends a time step there.
 In the street on the medium grid that means 1,608 steps instead of 1,527. Estimating ground
@@ -201,8 +205,7 @@ the run's cost is the frames' extra steps, not the estimate.
   load, and a single triangle describes it poorly.
 - Points under a block or the structure get nothing. The building's own load on its foundations
   is not passed to the soil.
-- Not on a worker over SSH. The USD scene holds each point's final values, not how they grew.
-  In the app, arrivals are only as fine as the batches (above), and the points lie on one
+- The USD scene holds each point's final values, not how they grew. In the app, arrivals are only as fine as the batches (above), and the points lie on one
   straight line.
 
 ## Future work
@@ -211,7 +214,6 @@ the run's cost is the frames' extra steps, not the estimate.
   elastic column the tests already integrate is the start of one. It would replace the
   attenuation factor and handle layers and the water table.
 - The ground points in the app as a grid over an area as well as a line.
-- A worker session for the slices, if a costlier ground model needs one.
 - A comparison with measured air-induced ground motion
   ([Data wanted](data-wanted.md#3a-air-induced-ground-shock)).
 
