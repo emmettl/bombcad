@@ -197,9 +197,14 @@ struct ThermalOverlayTests {
                 #expect(paint.values[patch.first + cell] == ThermalQuantity.shade(thermal.fluence[index]))
             }
         }
-        #expect(paint.values.contains { $0 > 0 })
+        // Cells without a receiver take means of their neighbours, so the paint's highest is a
+        // receiver's.
+        #expect(paint.values.max() == ThermalQuantity.shade(thermal.fluence.max()!))
         let peak = try #require(model.thermalPaint(.peakIrradiance))
-        #expect(peak.patches == paint.patches && peak.values != paint.values)
+        #expect(peak.patches == paint.patches)
+        #expect(
+            peak.values.max() == ThermalQuantity.shade(thermal.peakIrradiance.max()!)
+                && peak.values.max()! > 0)
         #expect(ThermalQuantity.shade(0) == 0 && ThermalQuantity.shade(100) == 0)
         #expect(ThermalQuantity.shade(1e6) == 1 && abs(ThermalQuantity.shade(1e4) - 0.5) < 1e-6)
         #expect(model.thermalStatus.contains("Fireball up to") && model.thermalStatus.contains("kJ/m²"))
