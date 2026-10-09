@@ -1056,6 +1056,44 @@ kernel void sampleGauges(const device StepControl &control [[buffer(0)]],
     }
 }
 
+// Fixed Eulerian coarse-cell probes. Fine state has been conservatively restricted before
+// this sample. Positive impulse uses a right-endpoint sum over complete fluid intervals.
+kernel void sampleExposurePlane(const device Cell *state [[buffer(0)]],
+                               const device uchar *mask [[buffer(1)]],
+                               const device StepControl &control [[buffer(2)]],
+                               device float4 *exposure [[buffer(3)]],
+                               constant SolverUniforms &u [[buffer(4)]],
+                               constant float4 &probe [[buffer(5)]],
+                               constant float &weight [[buffer(6)]],
+                               uint2 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || (control.dt <= 0 && probe.w == 0)) {
+        return;
+    }
+    uint point = tid.x + u.nx * tid.y;
+    uint cell = point + u.nx * u.ny * uint(probe.x);
+    uint upper = weight > 0 ? cell + u.nx * u.ny : cell;
+    float4 record = exposure[point];
+    if (mask[cell] != 0 || mask[upper] != 0) {
+        record.w = 1;
+    } else {
+        Cell c = state[cell];
+        float rho = max(c.rho, u.densityFloor);
+        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+        float pressure = gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma);
+        Cell d = state[upper];
+        float upperRho = max(d.rho, u.densityFloor);
+        float upperKinetic = 0.5f * (d.mx * d.mx + d.my * d.my + d.mz * d.mz) / upperRho;
+        float upperPressure = gasPressure(upperRho, d.energy - upperKinetic, u.airModel, u.gamma);
+        float overpressure = max(mix(pressure, upperPressure, weight) - u.ambientPressure, 0.0f);
+        record.x = max(record.x, overpressure);
+        record.y += overpressure * control.dt;
+        if (record.z < 0 && overpressure >= probe.y) {
+            record.z = probe.z + control.batchTime;
+        }
+    }
+    exposure[point] = record;
+}
+
 // Seeds the wave-speed maximum from the initial condition.
 kernel void measureWaveSpeed(const device Cell *state [[buffer(0)]],
                              const device uchar *mask [[buffer(1)]],
