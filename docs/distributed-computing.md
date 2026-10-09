@@ -2,9 +2,9 @@
 
 Whether one simulation could be spread over several Macs' GPUs, and when that would be worth
 it. Written in October 2026, prompted by the CI Mac mini sitting next to the development Mac
-Studio on a Thunderbolt cable. Nothing here is built: it is an analysis, and the figures in it
-are estimates from the measured single-GPU speeds in [Performance](performance.md) and the
-machines' published specifications, not measurements of a distributed solver.
+Studio on a Thunderbolt cable. It began as an analysis, its figures estimates from the measured
+single-GPU speeds in [Performance](performance.md) and the machines' published specifications;
+what has since been built, and measured, is said where it comes up.
 
 ## Short answer
 
@@ -21,6 +21,10 @@ machines' published specifications, not measurements of a distributed solver.
   the better second worker. See [Separate models](#separate-models-on-separate-machines).
   Most of the effects in the [long-term vision](long-term-vision.md) separate this way; three
   pairings do not. See [The long-term vision's effects](#the-long-term-visions-effects).
+- **Feeding several models alongside the blast, on several machines,** is limited first by
+  this Mac, not the network: cutting out each model's share of the air takes the CPU a few
+  milliseconds a frame while the GPU waits. See
+  [Several consumers on several machines](#several-consumers-on-several-machines).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
   size. [`BombCAD run`](run-comparison.md#headless-runs) is the building block for the last.
@@ -226,6 +230,78 @@ the run slowing, rather than making any one model faster.
 - One larger machine does some of this already, on its CPU or spare GPU, so extra machines pay
   once one machine is full; the inseparable core stays on one GPU, where a faster machine is
   the only help, until its grid outgrows it.
+
+## Several consumers on several machines
+
+The case the table above points to: one blast feeding several separable models at once, each on
+the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
+a plan, measured where it starts; only its first piece, one consumer on one other Mac, is built.
+
+**What there is.** A headless run feeds three consumers each frame: the fireball's size and
+temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
+bottom layer of cells to [ground shock](ground-shock.md), inline on this Mac; and a block of air
+around the [fragments](fragments.md), on this Mac or on one other Mac through a worker. The
+worker's protocol (version 2: JSON messages with raw binary payloads, over the standard input and
+output of an SSH connection) already carries several sessions over one connection, told apart by
+their identifiers, and its flow control is deterministic: the run waits only when a consumer falls
+more than four frames behind, and the air it sends depends on reports already in, so a result is
+the same wherever the consumer runs. But its sessions, reports and results are the fragments'
+own, and a run has one remote consumer at most.
+
+**Measured.** The street canyon on the medium grid, 0.17 s in 171 frames, from the Mac Studio,
+with the CI mini as the other Mac, in October 2026 (two rounds of each arrangement; the Studio
+was busy with other work, so its wall times are not compared, only the shares within a run):
+
+| Each frame | Time | Size |
+|---|---|---|
+| Cutting out the fragments' block of air | 1.6 to 3.9 ms | 9.5 MB |
+| Working out the fireball for thermal radiation | 3.2 to 5.1 ms | a few numbers |
+| Cutting out the ground's layer | about 0.1 ms | 0.19 MB |
+| Sending the fragments' air to the mini | 0.5 to 1.0 ms | |
+
+All three together took 8 to 17% of each run, every frame with the GPU waiting, since a frame's
+air is read between batches. The fireball is the dearest although it sends only a few numbers: it
+is a pass over every cell on the CPU. The network is not the limit: the fragments' air went at 90
+to 220 MB/s, against 0.9 GB/s measured through SSH over the Thunderbolt cable (1 GB in 1.1 s,
+AES-GCM), and the run waited at most 0.27 s for the consumer. Taking frames at all also cost
+about 5% more steps (1608 against 1527), each step ending on a frame's time.
+
+**What it means.** Moving a consumer to another machine moves its own work, but not the cost of
+feeding it, which stays on this Mac and grows with every consumer added. So the first work is on
+this side.
+
+**The plan, in order.**
+
+1. **Cut the air out on the GPU.** A kernel at the end of a frame's batch writes each
+   consumer's share (the block of air, the ground's layer, the fireball's sums by reduction) to
+   shared buffers, read once the batch is done, instead of passes over the state on the CPU
+   while the GPU waits. The aim is under a millisecond a frame for all three; the measurement
+   above, repeated, says whether it was met.
+2. **One kind of consumer session** (protocol version 3). Sessions, inputs, reports and results
+   say which model they are for, and the worker gives each session a queue of its own, so that
+   two consumers on one Mac run side by side. The worker is always a copy of the same build, so
+   the protocol needs no compatibility with older versions. Each consumer gives the same result
+   to the last bit here, on one worker, or with the consumers spread over two.
+3. **Fan-out.** One list of consumers replaces the run's three separate feeds; each is placed
+   here or on a host from the [sweep worker list](run-comparison.md#sharing-a-sweep-with-another-mac),
+   consumers on the same host sharing its connection, and the run waits only for the one
+   furthest behind. Sending moves off the thread that drives the GPU. Each consumer's bytes, time
+   a frame and the run's wait for it are printed. On the command line, `--consumer
+   fragments=<host>` and the like.
+4. **Placement and failure.** Placing consumers by their measured cost, as sweeps place cases,
+   and in the app's Run tab. A consumer whose Mac drops now stops the run; optionally, each
+   consumer's inputs could be kept on disk (about 1.6 GB for the fragments above) so that it can
+   run again here afterwards.
+5. **A direct data channel, only if measured to be needed.** A TCP connection over the
+   Thunderbolt Bridge, opened with a one-time token passed over SSH, which keeps control and
+   authentication. At 0.9 GB/s a connection, and with separate connections for separate Macs
+   spreading the encryption across cores, nothing foreseen needs it.
+
+**What it will not do.** Today's consumers are cheap: one core keeps up with a few thousand
+fragments, and the fireball's radiation and the ground's shaking are lighter still. Moving them
+gains nothing until one is expensive, such as thermal radiation over a city or by ray tracing,
+fragments that collide, or many buildings' damage. What the plan buys is room for those without
+the run slowing, within the bound in [Adding machines](#the-long-term-visions-effects).
 
 ## Better first
 
