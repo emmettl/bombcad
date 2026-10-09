@@ -1617,8 +1617,48 @@ actual Euler wall packets, negligible duration effects and reference/quadrature 
 The independent six-case summary passes, strict Swift formatting and diff checks are clean,
 and the full release build succeeds with main's existing AirSlice concurrency warnings.
 
-Next, separate initial averaging, gradient-fitting and limiter errors before changing wall
-reconstruction, then reassess the evolved load histories. Spatial load accuracy remains a
+The initial probe now offers `--decompose`, recording nine controlled comparisons at the
+same wall samples: supplied pressure, constant group averages, raw least-squares fits,
+actual bounded fits, and the corresponding three reconstructions from known centroid
+pressures. Two further modes use the analytic Gaussian gradient with either its centroid
+pressure or the actual group average. Raw gradients and limiter factors come from the
+same reconstruction used by numerical stages; optional recording leaves bounded traces
+identical. Centroid-pressure replacement is confined to temporary diagnostic states and
+does not modify accepted gas inventories or enter a numerical advance. The raw and
+analytic modes evaluate pressure algebraically without enabling unbounded transport.
+
+Removing the limiter worsens coarse-grid force errors from 70.9%/43.5% to 81.8%/52.1%
+for aligned/rotated boxes. Its effect on 0.1 m loads is small. On the finest rotated grid,
+the raw fit gives 1.45% force and 3.35% torque errors versus the bounded fit's 1.98%/3.83%,
+but violates neighbour bounds on 3.03% of surface area and drops below ambient on 1.58%.
+All diagnostic absolute pressures remain positive; signed excess pressure distinguishes
+these profile undershoots from an EOS positivity failure. Actual bounded traces retain
+their bounds. None of the sampled body groups has a deficient fit. Mean pressure limiter
+factors rise from about 0.25–0.29 on the coarse grid to 0.81–0.83 on the finest; these
+surface-area averages are not measures of each region's contribution to net force.
+
+Replacing conservative group averages with known centroid pressure worsens constant,
+raw and bounded load comparisons. Keeping the real averages but supplying the analytic
+gradient reduces force errors to 3.62%/7.68%, 0.536%/0.618% and 0.056%/0.110% across
+the three grids. Corresponding torque errors are 13.0%/18.9%, 1.25%/1.70% and
+0.215%/0.552%. This implicates gradient estimation from underresolved volume averages
+and wall stencils, but does not establish an implementable replacement. Even that mode
+has coarse local pressure L1 errors of 31.8%/21.7%, so cancellation can conceal local
+errors. Exact centroid pressure plus its analytic Taylor gradient still gives coarse
+force errors of 21.3%/19.8% and torque errors of 43.2%/39.0%, showing substantial
+curvature error within a local linear representation. These interventions interact;
+their differences are diagnostic comparisons, not an additive error budget.
+
+All 106 CPU-only tests in 21 suites pass, including raw-fit/factor checks, rank fallback,
+unchanged bounded traces and inventories, and an independent finite-difference check of
+the analytic-gradient loads. The six-case summary checks all nine modes at both probe
+durations against independent whole-face integrals, reported errors and pressure bounds;
+the largest duration-halving load change is `1.12e-7` of the reference norm.
+
+Next, investigate finite-volume-aware gradient estimation and pressure curvature or
+resolution in this isolated wall probe, then reassess the evolved load histories.
+The present evidence does not justify weakening the limiter or replacing conservative
+averages with point pressure. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure

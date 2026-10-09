@@ -577,6 +577,14 @@ The initial Gaussian load exposes substantial coarse-grid reconstruction error b
 gas update; supplied-pressure quadrature errors are much smaller. Tiny-duration halving
 checks the instantaneous limit. This diagnoses initial traces, not the evolved load history.
 
+Add `--decompose` to write `.build/initial-wall-traces-decomposition.json`, then run
+`python3 Scripts/summarize-initial-wall-traces.py --decompose`. Nine diagnostic comparisons
+retain or replace group averages, fitted gradients and bounds, including an analytic
+Gaussian gradient. They identify gradient accuracy and unresolved local curvature as
+further gates; removing the limiter or substituting centroid pressure worsens coarse loads.
+These read-only comparisons do not change gas inventories or enable alternative transport
+policies, and their differences are not an additive error budget.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).

@@ -10,9 +10,18 @@ enum LimitedGroupedGasFlux {
         case invalidGeometry
         case stageLimit(Double)
     }
+    struct PressureReconstruction {
+        let value: Double
+        let gradient: SIMD3<Double>  // Unbounded least-squares fit; diagnostic only.
+        let factor: Double
+        let lower: Double
+        let upper: Double
+        let rankDeficient: Bool
+    }
     struct Traces {
         let faces: [FractionalEulerFlux.Face]
         let walls: [FractionalEulerFlux.Wall]
+        var pressureDiagnostics: [PressureReconstruction]? = nil
     }
     struct Geometry {
         let centres: [SIMD3<Double>]
@@ -69,7 +78,9 @@ enum LimitedGroupedGasFlux {
             }
         }
 
-        func traces(_ cells: [FractionalGasTransport.Cell]) throws -> Traces {
+        func traces(
+            _ cells: [FractionalGasTransport.Cell], recordPressureDiagnostics: Bool = false
+        ) throws -> Traces {
             guard cells.count == centres.count && cells.allSatisfy({ $0.volume > 0 }) else {
                 throw Failure.invalidGeometry
             }
@@ -81,6 +92,13 @@ enum LimitedGroupedGasFlux {
             }
             var gradients = [[SIMD3<Double>]](
                 repeating: [.zero, .zero, .zero, .zero, .zero], count: cells.count)
+            var diagnostics: [PressureReconstruction]? =
+                recordPressureDiagnostics
+                ? states.indices.map { n in
+                    .init(
+                        value: states[n][4], gradient: .zero, factor: 0,
+                        lower: states[n][4], upper: states[n][4], rankDeficient: inverses[n] == nil)
+                } : nil
             var lower = states
             var upper = states
             for n in cells.indices {
@@ -106,6 +124,11 @@ enum LimitedGroupedGasFlux {
                         if delta < 0 { factor = min(factor, (low - value) / delta) }
                     }
                     gradients[n][component] = max(0, factor) * gradient
+                    if component == 4 && recordPressureDiagnostics {
+                        diagnostics![n] = .init(
+                            value: value, gradient: gradient, factor: max(0, factor),
+                            lower: low, upper: high, rankDeficient: false)
+                    }
                 }
             }
             func trace(_ n: Int, _ point: SIMD3<Double>) -> FractionalGasTransport.Cell {
@@ -129,7 +152,7 @@ enum LimitedGroupedGasFlux {
                 },
                 walls: boundaries.map {
                     .init(cell: $0.cell, normal: $0.normal, area: $0.area, state: trace($0.cell, $0.centroid))
-                })
+                }, pressureDiagnostics: diagnostics)
         }
 
         /// SSPRK2 averages extensive gas updates and the matching wall impulse/work.

@@ -8,13 +8,14 @@ import simd
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--initial-wall-traces") {
+        let decompose = arguments.contains("--decompose")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/initial-wall-traces.json")
+                ?? ".build/initial-wall-traces\(decompose ? "-decomposition" : "").json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalInitialWallTraceStudy.Result] = []
-        _ = try ExperimentalInitialWallTraceStudy.run { r in
+        _ = try ExperimentalInitialWallTraceStudy.run(decompose: decompose) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             print(
