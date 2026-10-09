@@ -411,6 +411,12 @@ final class SimulationModel {
     @ObservationIgnored private var thermalDotCache: (frames: Int, dots: [SIMD4<Float>])?
     /// Whether either of the run's companions wants the Mac set for sweeps.
     var wantsWorker: Bool { fragmentsOnRemote || thermalOnRemote }
+    /// Whether the run's companions, the fragments and the thermal radiation, have every frame
+    /// sent, so that the run can be kept.
+    var companionsCaughtUp: Bool {
+        (fragments.map { $0.report.frame >= $0.sent - 1 } ?? true)
+            && (thermal.map { $0.live.frames >= $0.sent } ?? true)
+    }
     private static let undoLimit = 100
 
     init(document: ProjectDocument? = nil, playbackSpeed: PlaybackSpeed = .x100) {

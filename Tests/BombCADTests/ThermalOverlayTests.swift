@@ -131,6 +131,28 @@ struct ThermalOverlayTests {
         #expect(throws: ProjectFileError.self) { try broken.validate() }
     }
 
+    @Test("A sweep's cases here wait for their thermal radiation before they are kept")
+    func sweep() async throws {
+        var document = airOnly()
+        document.runSettings?.duration = 0.006
+        // Slow enough to fall behind the run.
+        var slow = spec
+        slow.samples = 2048
+        slow.groundSpacing = 0.2
+        document.thermal = slow
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        try await ready(model, by: ContinuousClock.now + .seconds(60))
+        try model.sweep.start(.init(prefix: "Mass", parameter: .chargeMass([1, 2])))
+        let deadline = ContinuousClock.now + .seconds(300)
+        while model.sweep.isActive {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(model.sweep.completed == 2, "\(model.sweep.message)")
+        #expect(model.savedRuns.map(\.scenario.charge.mass) == [1, 2])
+        #expect(model.savedRuns.allSatisfy { $0.thermal?.spec == slow })
+    }
+
     @Test("Each edit to the section settles into a step to undo")
     func undo() async throws {
         let model = SimulationModel(document: airOnly(), playbackSpeed: .unlimited)

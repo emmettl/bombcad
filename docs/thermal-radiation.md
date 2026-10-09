@@ -60,7 +60,9 @@ of `BombCAD run --thermal`, which stops at each; for a study that repeats exactl
 The receivers are reckoned on a queue of their own, here or on the other Mac; the run may get up
 to four frames ahead of them, and then waits, as for the fragments. On the street's 10,500
 receivers that is about a tenth of a second a frame on the Mac Studio, so at the default playback
-speed of 100 times slower, about the same pace as the run.
+speed of 100 times slower, about the same pace as the run. A sweep's cases on this Mac reckon it
+too, as they fly any fragments, and wait for the last frames before they are kept; cases sent to
+another Mac run the blast alone.
 
 On another Mac it is a session of `BombCAD worker`: version 3 of the worker protocol sends the
 fireball, a few numbers a frame, and each receiver's fluence and peak irradiance so far come back
