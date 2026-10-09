@@ -544,7 +544,9 @@ public struct ThermalResult: Codable, Sendable, Equatable {
             let how =
                 spec.fireball == .volume
                 ? (isRadiationMeasured
-                    ? String(format: "from its cells, absorbing %g/m and soot", spec.absorption)
+                    ? String(format: "from its cells, absorbing %g/m", spec.absorption)
+                        + (spec.sootYield > 0
+                            ? String(format: " and soot %g of its products", spec.sootYield) : "")
                     : "as its equivalent sphere, not measured from its cells")
                 : String(format: "at emissivity %.2f", spec.emissivity)
             lines.append(

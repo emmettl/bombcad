@@ -16,14 +16,31 @@ struct ThermalSection: View {
                         + "lies in the way. Illustrative: no comparison with measurements, and the air between "
                         + "is taken as transparent.")
             if let spec = model.thermalSpec {
-                LabeledSlider(
-                    title: "Emissivity",
-                    value: Binding(
-                        get: { Double(spec.emissivity) },
-                        set: { model.thermalSpec?.emissivity = Float(($0 * 20).rounded() / 20) }),
-                    range: 0.05...1, text: String(format: "%.2f", spec.emissivity)
-                )
-                .help("1, a black body, is the most the fireball could radiate; real fireballs radiate less.")
+                if spec.fireball == .volume {
+                    // On a log scale, a tenth of a decade at a time.
+                    LabeledSlider(
+                        title: "Gas absorbs",
+                        value: Binding(
+                            get: { Double(log10(max(spec.absorption, 0.01))) },
+                            set: { model.thermalSpec?.absorption = Float(pow(10, ($0 * 10).rounded() / 10)) }),
+                        range: -2...0, text: String(format: "%.2g/m", spec.absorption)
+                    )
+                    .help(
+                        "The hot gas's own absorption a metre, an assumption; the emissivity follows from it. "
+                            + "With afterburning, the soot of the unburnt products makes the fireball opaque "
+                            + "whatever it is.")
+                } else {
+                    LabeledSlider(
+                        title: "Emissivity",
+                        value: Binding(
+                            get: { Double(spec.emissivity) },
+                            set: { model.thermalSpec?.emissivity = Float(($0 * 20).rounded() / 20) }),
+                        range: 0.05...1, text: String(format: "%.2f", spec.emissivity)
+                    )
+                    .help(
+                        "1, a black body, is the most the fireball could radiate; real fireballs radiate less."
+                    )
+                }
                 LabeledSlider(
                     title: "Luminous above",
                     value: Binding(
