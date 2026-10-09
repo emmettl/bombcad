@@ -22,6 +22,7 @@ SOURCES = [
     "ExperimentalPistonWaveStudy", "PlanarPistonWave", "PrescribedPistonTube",
 ]
 TESTS = [
+    "WallStencilSensitivityTests",
     "FiniteVolumePressureFitTests",
     "WallTraceDecompositionTests",
     "InitialWallTraceTests",

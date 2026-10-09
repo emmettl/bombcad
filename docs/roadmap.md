@@ -1758,10 +1758,52 @@ volume-fit modes and both bound policies at full/half duration; load changes sta
 `8.1e-8` of the reference norm. Release generation succeeds with main's existing warnings,
 and strict formatting/diff checks are clean.
 
-Next, measure sensitivity to stencil extent and additional box/grid alignments before
-choosing a reconstruction for an experimental numerical update. That update must handle
-conserved states, positivity and paired gas/body budgets, then reassess evolved load
-histories and shock response. Spatial load accuracy remains a
+The `--stencil-sweep` probe now measures that sensitivity in 36 cases: graph distances
+one, two and three; orientations 0, 0.1, 0.23 and 0.4 radians about the same fixed axis;
+and 0.2/0.1/0.05 m cells. Every case repeats at half duration. Neighbours are unique,
+exclude the central group and have deterministic ordering. Only the diagnostic fit and
+its stencil extrema change; geometry, matched initial packets and supplied/constant/
+existing bounded loads remain identical across depths. Default two-ring diagnostic
+loads also reproduce the preceding six-case report exactly.
+
+One-ring quadratic fits lack sufficient independent information on 98.4–100% of sampled
+body area and fall back to linear there. No quadratic fallback occurs on the two- or
+three-ring body stencils. Area-weighted neighbour counts span about 5.2–6.0, 19.0–24.3
+and 46.7–63.3 respectively. Greater rank support therefore does not itself establish
+greater pressure accuracy. The following are the worst errors across the four orientations
+for the existing reconstruction and the stronger bounded volume-aware policy:
+
+| Cell size | Existing force / torque / L1 | One ring | Two rings | Three rings |
+|---|---|---|---|---|
+| 0.2 m | 70.9% / 98.8% / 77.8% | 66.7% / 80.8% / 74.2% | 64.1% / 71.1% / 68.1% | 60.8% / 76.1% / 66.0% |
+| 0.1 m | 19.0% / 23.0% / 19.2% | 20.2% / 22.7% / 20.4% | 2.61% / 6.61% / 9.75% | 11.3% / 17.3% / 13.6% |
+| 0.05 m | 2.88% / 5.12% / 3.33% | 3.00% / 4.86% / 3.40% | 1.06% / 1.26% / 1.43% | 1.11% / 0.944% / 1.93% |
+
+Two rings improve medium-grid force, torque and local pressure errors in all four
+orientations relative to existing traces. On the fine grid they improve all three metrics
+in each rotated case, while the aligned case still favours the existing reconstruction;
+its one-ring diagnostic fallback is better again (0.021% force, 0.083% torque, 0.696% L1).
+Three rings worsen medium-grid results relative to two in every orientation and worsen
+fine-grid local pressure errors in every orientation, despite some lower net torque
+errors. Coarse errors remain large for every stencil. These comparisons favour the compact
+two-ring quadratic as a candidate, rather than selecting a wider fit by one favourable
+net-load metric. They cover this smooth pulse and four orientations, not all translations,
+pressure profiles or shock/contact configurations.
+
+All 116 CPU-only tests in 23 suites pass. Added checks cover graph distance/cycles,
+invalid depth rejection, the new orientations, recorded rank fallbacks, unchanged
+baseline loads and both duration limits. The independent 36-case summary checks whole-face
+integrals, all five fit modes, both bound policies and cross-stencil invariance. Maximum
+duration sensitivity is `5.2e-7` of the reference norm; retained-average and control-bound
+residuals stay below `8.7e-13`/`4.4e-17`, with geometric moments below `5.6e-15`.
+Release generation succeeds with main's existing warnings, and formatting/diff checks
+are clean. No numerical transport policy has changed.
+
+Next, develop an isolated two-ring reconstruction of all five conserved gas densities,
+with volume moments, retained group inventories and a common positivity bound for the
+sampled EOS states. A scalar pressure fit is insufficient when density and velocity vary.
+Only after those checks should it enter an experimental numerical update with paired
+gas/body budgets, evolved load histories and shock response. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure
