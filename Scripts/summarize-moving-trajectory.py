@@ -44,13 +44,14 @@ def transition_counts(row):
     return opening, closing
 
 
-def check(path, window, mode='constant'):
+def check(path, window, mode='constant', integrator='euler'):
     rows = json.loads(path.read_text())
     keys = [(r['cellSize'], r['rotation'], r['cfl']) for r in rows]
     assert len(keys) == len(EXPECTED) and set(keys) == EXPECTED, 'Incomplete or duplicate case matrix'
     duration, scale = (0.000064, 1) if window else (0.0008, 100)
     for r in rows:
         assert r.get('reconstruction', 'constant') == mode
+        assert r.get('timeIntegration', 'euler') == integrator
         assert r['duration'] == duration
         assert r['velocity'] == [scale*v for v in (3, 1, -0.4)]
         assert math.dist(r['displacement'], [duration*v for v in r['velocity']]) < 1e-11
@@ -81,7 +82,9 @@ def check(path, window, mode='constant'):
 
 if __name__ == '__main__':
     limited = '--limited' in sys.argv
-    suffix = '-limited' if limited else ''
+    second_order = '--heun' in sys.argv
+    suffix = ('-limited' if limited else '') + ('-heun' if second_order else '')
+    integrator = 'heun' if second_order else 'euler'
     mode = 'limited' if limited else 'constant'
-    check(ROOT / f'.build/moving-trajectory-halving{suffix}.json', window=False, mode=mode)
-    check(ROOT / f'.build/moving-trajectory-ambient-window-halving{suffix}.json', window=True, mode=mode)
+    check(ROOT / f'.build/moving-trajectory-halving{suffix}.json', window=False, mode=mode, integrator=integrator)
+    check(ROOT / f'.build/moving-trajectory-ambient-window-halving{suffix}.json', window=True, mode=mode, integrator=integrator)

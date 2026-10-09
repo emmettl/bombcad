@@ -18,7 +18,7 @@ struct MetalView: NSViewRepresentable {
         view.delegate = context.coordinator
         view.colorPixelFormat = SceneRenderer.pixelFormat
         view.framebufferOnly = true
-        view.preferredFramesPerSecond = 60
+        view.preferredFramesPerSecond = Coordinator.frameRates.upperBound
         context.coordinator.updateDrawing(view)
         view.needsDisplay = true
         return view
@@ -29,9 +29,32 @@ struct MetalView: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, MTKViewDelegate {
         let model: SimulationModel
+        /// The GPU time a frame has been taking to draw, smoothed; 0 before the first.
+        private var frameSeconds = 0.0
+
+        /// The share of the GPU the view may take while a run goes as fast as it can. A frame of
+        /// the blast wave is ray-marched through the whole domain at every pixel, so at 60 frames
+        /// a second a large window took most of the GPU from the run; and the frames a second it
+        /// never drops below, nor goes above.
+        static let runShare = 0.1
+        static let frameRates = 10...60
 
         init(model: SimulationModel) {
             self.model = model
+        }
+
+        /// As many frames a second as the GPU can spare during a run as fast as possible.
+        private var framesPerSecond: Int {
+            guard model.isRunning, model.speed == .unlimited, frameSeconds > 0 else {
+                return Self.frameRates.upperBound
+            }
+            let rate = Int((Self.runShare / frameSeconds).rounded())
+            return min(max(rate, Self.frameRates.lowerBound), Self.frameRates.upperBound)
+        }
+
+        private func frameDrawn(gpuSeconds: Double) {
+            guard gpuSeconds > 0 else { return }
+            frameSeconds = frameSeconds == 0 ? gpuSeconds : frameSeconds + 0.2 * (gpuSeconds - frameSeconds)
         }
 
         /// What a frame draws from the model.
@@ -96,8 +119,14 @@ struct MetalView: NSViewRepresentable {
                 renderer.pixelsPerPoint = Float(view.drawableSize.width / view.bounds.width)
             }
             renderer.encode(into: commandBuffer, descriptor: descriptor, camera: frame.camera)
+            commandBuffer.addCompletedHandler { [weak self] buffer in
+                let seconds = buffer.gpuEndTime - buffer.gpuStartTime
+                Task { @MainActor in self?.frameDrawn(gpuSeconds: seconds) }
+            }
             commandBuffer.present(drawable)
             commandBuffer.commit()
+            let rate = framesPerSecond
+            if view.preferredFramesPerSecond != rate { view.preferredFramesPerSecond = rate }
         }
     }
 }

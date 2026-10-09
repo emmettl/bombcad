@@ -264,7 +264,7 @@ or friction alone (see [base connections](docs/structural-model.md#base-connecti
 keeps the result as a saved run, for scripts and other Macs; see
 [headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` and `--vdb Example.volumes` to
 write the scene, the structure and the blast over time for rendering elsewhere
-([USD export](docs/usd-export.md)). Sweeps can share their cases with another Mac over SSH,
+([USD export](docs/usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
 [sharing a sweep](docs/run-comparison.md#sharing-a-sweep-with-another-mac).
 
@@ -530,9 +530,29 @@ Primitive face/wall reconstruction uses old gas-volume centroids and supplied ex
 stencil points. Conservative member reconstruction uses final gas centroids, bounds slopes
 and checks Euler positivity while preserving group packets. Density L1 errors fall to
 about 2.9%, 1.0–1.1% and 0.3–0.4% on the three grids, with fine-grid newly exposed-cell
-density errors around 1%. Time integration remains first-order. The same `--limited`
+density errors around 1%. This mode uses Euler time integration. The same `--limited`
 flag applies to moving trajectories; `python3 Scripts/summarize-moving-trajectory.py --limited`
 checks their fast and original-speed reports.
+
+Add `--heun` to `--moving-entropy --limited` for a separate two-stage report, and
+run `python3 Scripts/summarize-moving-entropy.py --heun` to compare its CFL sensitivity.
+The update averages extensive gas inventories and paired wall/reservoir exchanges, checks
+both stage limits and splits members only after acceptance. Old/final gas centroids and
+exterior stencil states belong to their respective stages; prescribed flux reservoirs keep
+the same interval-average states. `--heun` also applies to moving trajectories; run
+`python3 Scripts/summarize-moving-trajectory.py --limited --heun` after generating both
+halving reports. A local expanding-piston test checks second-order time convergence
+independently of clipping and regrouping. Maximum relative L1 change under CFL halving
+falls from 5.81% to 0.087% in the twelve density-advection cases. Moving pressure-load
+accuracy remains a separate gate.
+
+`swift run -c release rigidboxdemo --moving-pressure` writes `.build/moving-pressure.json`.
+`python3 Scripts/summarize-moving-pressure.py` checks twelve known-pressure load cases against
+independent box integrals. Positive surface/time quadrature follows the moving wall and
+centre of mass through clipping events; it recovers impulse, torque and work to roundoff.
+Centroid evaluation loses pressure/lever-arm covariance and temporal variance. This probe
+prescribes affine pressure with a quadratic time envelope; it does not evolve gas or validate
+a blast. The sampled load kernel is available separately from the moving-group flux update.
 
 ## Headline results
 
@@ -605,7 +625,7 @@ Collapse and debris have not been compared with anything.
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas |
-| [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud for minutes after |
+| [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud, carried by the wind, for minutes after |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, fed the overpressure on the ground |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |

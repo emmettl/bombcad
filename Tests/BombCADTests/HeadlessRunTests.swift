@@ -266,7 +266,9 @@ struct HeadlessRunTests {
         // On 0.5 m cells the charge's gas is spread thin and only a few hundred kelvin above
         // ambient.
         let spec = folder.appending(path: "cloud.json")
-        try Data(#"{"handOverTemperature": 400, "duration": 30, "frameInterval": 3}"#.utf8).write(to: spec)
+        try Data(#"{"handOverTemperature": 400, "duration": 30, "frameInterval": 3, "windSpeed": 5}"#.utf8)
+            .write(
+                to: spec)
         let usd = folder.appending(path: "cloud.usda")
         let results = folder.appending(path: "cloud-results.json")
         #expect(throws: ProjectFileError.self) {
@@ -280,6 +282,8 @@ struct HeadlessRunTests {
         #expect(abs(cloud.handOver.time - 0.004) < 1e-9 && cloud.handOver.mass > 0, "\(cloud.handOver)")
         #expect(abs((cloud.samples.last?.time ?? 0) - 30.004) < 1e-9)
         #expect((cloud.samples.last?.height ?? 0) > Double(cloud.handOver.centre.z))
+        // Blown along x, the wind's default direction.
+        #expect((cloud.samples.last?.position.x ?? 0) > Double(cloud.handOver.centre.x) + 50)
         let saved = try JSONDecoder().decode(CloudResult.self, from: Data(contentsOf: results))
         #expect(saved.samples == cloud.samples && saved.handOver == cloud.handOver)
         // The cloud reads only the end of the run, which stops nowhere else on its account.

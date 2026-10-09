@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 transition_counts = run_path(str(ROOT / 'Scripts/summarize-moving-trajectory.py'))['transition_counts']
 
 
-def check(path, mode):
+def check(path, mode, integrator='euler'):
     rows = json.loads(path.read_text())
     expected = {(h, a, c) for h in (0.4, 0.2, 0.1) for a in (0, 0.23) for c in (0.2, 0.1)}
     keys = [(r['cellSize'], r['rotation'], r['cfl']) for r in rows]
@@ -19,6 +19,7 @@ def check(path, mode):
     for r in rows:
         key = (r['cellSize'], r['rotation'], r['cfl'])
         assert r.get('reconstruction', 'constant') == mode
+        assert r.get('timeIntegration', 'euler') == integrator
         assert r['densityProfile'] == 'quadratic-advection' and r['densityAmplitude'] == 0.2
         assert r['velocity'] == [300, 100, -40] and r['duration'] == 0.0008 and r['startPathTime'] == 0
         assert math.dist(r['displacement'], [0.24, 0.08, -0.032]) < 1e-11
@@ -64,7 +65,7 @@ def check(path, mode):
 
 def main():
     baseline, base_rows = check(ROOT / '.build/moving-entropy.json', 'constant')
-    if '--limited' in sys.argv:
+    if '--limited' in sys.argv or '--heun' in sys.argv:
         limited, limited_rows = check(ROOT / '.build/moving-entropy-limited.json', 'limited')
         for key in baseline:
             assert limited[key] < baseline[key], 'Limited reconstruction did not improve density transport'
@@ -75,6 +76,18 @@ def main():
             assert l < b
             print(f'Fine angle {angle}: L1 improvement {baseline[key]/limited[key]:.2f}×; '
                   f'newly wet error {100*b:.3f}% → {100*l:.3f}%')
+
+    if '--heun' in sys.argv:
+        heun, _ = check(ROOT / '.build/moving-entropy-limited-heun.json', 'limited', 'heun')
+        for angle in (0, 0.23):
+            for h in (0.4, 0.2, 0.1):
+                old_change = abs(limited[h, angle, 0.1] / limited[h, angle, 0.2] - 1)
+                new_change = abs(heun[h, angle, 0.1] / heun[h, angle, 0.2] - 1)
+                assert new_change < old_change and new_change < 0.005, 'CFL sensitivity did not improve'
+                print(f'dx {h}, angle {angle}: relative CFL sensitivity '
+                      f'{100*old_change:.3f}% Euler → {100*new_change:.3f}% Heun')
+        # Full moving runs include changing partitions and bounded member scatter;
+        # report their CFL sensitivity without assuming overall second-order convergence.
 
 
 if __name__ == '__main__':

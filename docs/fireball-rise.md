@@ -2,7 +2,7 @@
 
 What becomes of the fireball once the blast has gone: the hot gas the air model leaves at the end
 of a run is handed over to a model of a rising buoyant cloud, which follows its height, size,
-temperature and rise speed for minutes after. It is the hand-over in sequence that
+temperature, rise speed and drift in the wind for minutes after. It is the hand-over in sequence that
 [Distributed computing](distributed-computing.md#the-long-term-visions-effects) foresaw: a few
 numbers from the air model's final state, and nothing passed back.
 
@@ -10,8 +10,8 @@ numbers from the air model's final state, and nothing passed back.
 coefficients from laboratory thermals, started from whatever the gas model leaves; it agrees in
 height, within a factor of about 1.6, with an empirical fit to high-explosive clouds (below), but
 nothing here has been compared with a measured cloud's growth over time. Use it to see roughly
-how high and wide the cloud of a charge goes and how that changes with the charge and the gas
-model, not for dispersion or hazard estimates.
+how high and wide the cloud of a charge goes, roughly where the wind takes it, and how that
+changes with the charge and the gas model, not for dispersion or hazard estimates.
 
 ```bash
 swift run -c release BombCAD run street.bombcad --cloud cloud.json --cloud-results cloud-results.json --usd street.usda
@@ -28,6 +28,11 @@ The description is JSON; any field left out takes its default, so `{}` will do:
   "lapseRate": 0.0065,
   "tropopause": 11000,
   "specificHeat": 1005,
+  "windSpeed": 0,
+  "windDirection": 0,
+  "windHeight": 10,
+  "windExponent": 0.142857,
+  "windCeiling": 1000,
   "duration": 600,
   "frameInterval": 1
 }
@@ -41,27 +46,46 @@ The description is JSON; any field left out takes its default, so `{}` will do:
   the blast has not quite left it; its temperature is then p / (ρR), which for dissociating air
   is above the true temperature but gives the right density, and so the right buoyancy. The
   cloud starts as a sphere of their mass, of the volume they then fill, at their centre of mass,
-  at their mass-weighted temperature and rising at their mean vertical velocity.
+  at their mass-weighted temperature and moving at their mean velocity.
 - **The cloud** is a sphere of well-mixed gas at the pressure of the air around it, a turbulent
   thermal in the sense of Morton, Taylor and Turner (1956): it draws in the surrounding air across
-  its surface at a speed that is a fixed share α, the `entrainment` coefficient, of its rise
-  speed. Escudier and Maxworthy (1973) showed how to keep that assumption without the small
+  its surface at a speed that is a fixed share α, the `entrainment` coefficient, of its speed
+  through that air, in still air its rise speed. Escudier and Maxworthy (1973) showed how to keep that assumption without the small
   density differences of the original, and that the added mass of the air the cloud pushes aside
   matters at any density; this model follows them. With m its mass, V its volume, b its radius, w
-  its rise speed, T its temperature and ρ_air, T_air and p_air the air's at its height:
-  - mass: dm/dt = 4π b² α ρ_air |w|
-  - impulse: d/dt [(m + k ρ_air V) w] = (ρ_air V − m) g, k the `addedMass`, a half for a sphere
+  its rise speed, u its velocity across the ground, T its temperature and ρ_air, T_air, p_air and
+  U the air's temperature, pressure and wind at its height:
+  - mass: dm/dt = 4π b² α ρ_air |(u − U, w)|
+  - upward impulse: d/dt [(m + k ρ_air V) w] = (ρ_air V − m) g, k the `addedMass`, a half for a
+    sphere
+  - horizontal impulse: d/dt [m u + k ρ_air V (u − U)] = U dm/dt
   - heat: m c_p dT/dt = c_p (T_air − T) dm/dt + m (R T / p_air)(dp_air/dz) w − εσ(T⁴ − T_air⁴) 4πb²
 
   The terms of the last are the air drawn in, cooling by expansion as the pressure falls
   (c_p dT = dp / ρ), and radiation, off by default (`emissivity` 0). The gas is ideal air with a
   constant specific heat throughout, and V = mRT / p_air.
-- **The atmosphere** is still and dry: the temperature falls from the run's own ambient air at the
+
+  The horizontal impulse is the cloud's momentum and its added mass's relative to the wind: the
+  air drawn in brings the wind's momentum with it, and the air pushed aside acts only on the
+  cloud's motion through it. In a uniform wind this keeps (m + k ρ_air V)(u − U) constant, so a
+  cloud moving with the wind rises exactly as in still air, and one starting at rest takes up
+  the wind as it grows. In a wind growing with height the cloud lags the wind around it and, moving
+  through the air, draws more of it in; a single coefficient for drawing in air whichever way the
+  cloud moves through it is this model's own choice, the simplest that is the same in every
+  direction.
+- **The atmosphere** is dry: the temperature falls from the run's own ambient air at the
   ground at `lapseRate` (6.5 K/km, the standard atmosphere's) up to the `tropopause` and is
   constant above it, and the pressure is in hydrostatic balance. Air cooling more slowly with
   height than the 9.8 K/km of dry air rising is stable, so a cloud rises until it has mixed itself
   down to the temperature of its surroundings, overshoots and settles back. Lapse rates of
   g / c_p or more, in which nothing would stop it, are refused.
+- **The wind** is steady and from one direction, `windSpeed` at `windHeight` (10 m, where winds
+  are usually measured) blowing towards `windDirection`, in degrees anticlockwise from the scene's
+  x axis towards its y axis. It grows with height as (z / windHeight)^`windExponent`, the power law
+  usually used for the wind near the ground, with a seventh for open country in neutral air, up to
+  `windCeiling` (1,000 m), and is steady above it. There is none by default. The blast itself is
+  worked out in still air, so the cloud starts still across the ground, unless its gas was moving,
+  and is taken up by the wind from the hand-over.
 - **Stopped rising** is the first moment the rise speed falls to zero, a common definition of a
   cloud's stabilisation; the model goes on past it to `duration` seconds after the run.
 - **The domain and the ground are left behind**: the cloud rises freely from the hand-over, with
@@ -69,8 +93,8 @@ The description is JSON; any field left out takes its default, so `{}` will do:
   it overlaps it at the start.
 
 Integration is by fourth-order Runge–Kutta, with steps short against the time the cloud takes to
-rise its own radius, from rest or at its speed, and to draw in its own mass; the whole ten minutes
-takes a few milliseconds.
+move its own radius through the air, from rest or at its speed, and to draw in its own mass; the
+whole ten minutes takes a few milliseconds.
 
 ## Checks
 
@@ -86,6 +110,11 @@ The tests check the model against what it should reproduce exactly:
 - **The ceiling in stable air.** From a small start, the height at which the cloud stops rising
   doubles for sixteen times the buoyancy and grows by √2 for a quarter of the stability N², the
   (F / N²)^¼ that dimensional analysis requires of a thermal in a stable fluid, to within 1%.
+- **Wind.** In a uniform wind, a cloud already moving with it rises exactly as in still air, to
+  a part in a billion, and drifts at the wind's speed; one starting at rest takes up the wind as
+  u = U (1 − M₀ / M), M = m + k ρ_air V, to a part in a million, rising less than in still air
+  for the air it draws in. In a wind growing with height it ends up moving within 2% of the wind
+  around it and stops lower than in still air.
 - The standard atmosphere's pressure at the tropopause and at 20 km, a hot sphere in the air model
   handed over with its mass, place, temperature and buoyancy, and a headless run whose number of
   steps and gauges are the same with the cloud as without.
@@ -132,6 +161,24 @@ matters once it takes in most of the hot gas, nor does when it is made, since th
 gains little more heat after 80 ms. Radiation takes little because the cloud cools by mixing
 within a second or two.
 
+**In wind**, with afterburning, the wind blowing along the street's x axis and growing as the
+seventh power of height:
+
+| Wind 10 m up | Stopped rising | Centre then | Top | Across | Downwind then | Downwind at 600 s |
+|---|---|---|---|---|---|---|
+| None | 365 s | 361 m | 459 m | 197 m | | |
+| 2 m/s | 365 s | 357 m | 456 m | 200 m | 1.1 km | 1.9 km |
+| 5 m/s | 365 s | 352 m | 456 m | 208 m | 2.8 km | 4.7 km |
+| 10 m/s | 365 s | 334 m | 447 m | 225 m | 5.5 km | 9.3 km |
+| 5 m/s, the same at every height | 365 s | 358 m | 456 m | 197 m | 1.8 km | 3.0 km |
+
+The wind carries the cloud far but hardly changes how high it goes. Starting still, it takes up
+nine-tenths of the wind in its first 0.3 s, so heavily does it draw in air early on, and then lags
+the wind around it by 3 to 8% as it rises into faster air; that lag makes it draw in a little more
+air, wider and lower at 10 m/s. A wind growing with height carries it half as far again as a wind
+of its 10 m speed at every height. With the default gas and 5 m/s it stops at 235 m, 2.6 km
+downwind.
+
 **Against high-explosive clouds.** Church (1969) fitted the stabilised height of the clouds of
 chemical explosions as H = 92.6 W^0.25 m, W in kilograms of TNT, as quoted by Liolios (2008); the
 quotation does not say whether H is the centre or the top. With afterburning:
@@ -157,9 +204,10 @@ fills much of the street's domain, so some of its hot gas may have left it befor
 - **`--cloud-results`** writes the description, the hand-over, the cloud at times closer together
   early on (a hundredth of a second after the hand-over, then 5% further apart each time), and the
   moment it stopped rising, as JSON: each with the time since the detonation, the height of the
-  centre, the radius, the temperature and the air's, the rise speed and the mass.
-- **The USD scene** (`--usd`) gains `/Scene/Cloud`, a sphere over the hand-over's centre whose
-  position, radius and `temperature` primvar (kelvin) are sampled every `frameInterval` seconds of
+  centre, the radius, the temperature and the air's, the rise speed, the mass, and the centre's
+  place and velocity across the ground.
+- **The USD scene** (`--usd`) gains `/Scene/Cloud`, a sphere starting at the hand-over's centre
+  whose position, radius and `temperature` primvar (kelvin) are sampled every `frameInterval` seconds of
   the cloud's rise. Its frames follow the run's on the timeline, at that slower rate, and it is
   hidden until then; `cloudStartTimeCode` and `simulatedSecondsPerCloudFrame` in the layer's
   data say where it starts and how fast it goes. The scene's camera is set for the blast, so a
@@ -173,8 +221,15 @@ fills much of the street's domain, so some of its hot gas may have left it befor
   and spread into a cap; the integral model knows only their averages.
 - The entrainment coefficient is from laboratory thermals of small density difference; a
   fireball's first seconds are far from that.
-- A still, dry atmosphere: no wind, which bends and dilutes a cloud, no moisture, whose
-  condensation heats it and lets it rise further, and no inversion or boundary layer.
+- A dry atmosphere: no moisture, whose condensation heats a cloud and lets it rise further, and
+  no inversion or boundary layer.
+- The wind is steady, from one direction and without turbulence. Its gusts and eddies would
+  spread and dilute the cloud, and its turning with height would shear it; the only effect of
+  the wind here beyond carrying the cloud is the extra air drawn in while it lags. Bent-over
+  plumes, the steady counterpart, are found to draw in air across the wind much faster than
+  along their own motion (Hoult, Fay and Forney, 1969); whether a thermal does too, this model
+  does not say.
+- The blast is worked out in still air, and the wind starts only at the hand-over.
 - The ground does not hold the cloud back at the start, and the blocks and buildings do not
   disturb it.
 - The gas is ideal air of constant specific heat; dissociated air's energy, recombining as it
@@ -199,5 +254,9 @@ fills much of the street's domain, so some of its hot gas may have left it befor
   1969, as quoted in T. E. Liolios, "Broken Arrows: radiological hazards from nuclear warhead
   accidents", 2008 ([arXiv:0902.3824](https://arxiv.org/abs/0902.3824)): the empirical height.
 - *U.S. Standard Atmosphere, 1976*, NOAA, NASA and USAF: the lapse rate and the tropopause.
+- S. P. Arya, *Introduction to Micrometeorology*, 2nd ed., Academic Press, 2001: the wind's
+  power law near the ground.
+- D. P. Hoult, J. A. Fay and L. J. Forney, "A theory of plume rise compared with field
+  observations", *J. Air Pollut. Control Assoc.* 19, 585–590, 1969: entrainment in a crosswind.
 - Long-term scope: [Long-term vision](long-term-vision.md); where it runs:
   [Distributed computing](distributed-computing.md#the-long-term-visions-effects).

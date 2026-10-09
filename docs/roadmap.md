@@ -185,12 +185,12 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    [thermal radiation](thermal-radiation.md) on the ground and faces of a scene, from the air
    model's own hot gas, which needs afterburning and hot air to make a fireball of plausible
    size; the fireball's [rise and cloud](fireball-rise.md), handed over from the air
-   model's final state to an integral model of a rising thermal in a standard atmosphere,
-   within a factor of 1.6 of an empirical fit to high-explosive cloud heights; and
-   [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional estimate
-   fed the overpressure on the rigid ground each frame. Next: radiation on the GPU's
-   ray-tracing hardware, a fireball that is not one sphere, the cloud in wind and moist air, a
-   layered soil column and a comparison with measured ground motion, and the app showing what
+   model's final state to an integral model of a rising thermal in a standard atmosphere and a
+   wind growing with height, within a factor of 1.6 of an empirical fit to high-explosive cloud
+   heights; and [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional
+   estimate fed the overpressure on the rigid ground each frame. Next: radiation on the GPU's
+   ray-tracing hardware, a fireball that is not one sphere, the cloud in moist and turbulent air,
+   a layered soil column and a comparison with measured ground motion, and the app showing what
    the surfaces received, where the cloud went and how the ground shook. The crater and the
    ground shock near the charge act back on the blast and remain outside these.)
 
@@ -1379,9 +1379,90 @@ backoff, deficient-neighbour fallback, affine interior face traces with exterior
 points, original-speed uniform crossings and limited advection refinement. Strict formatting
 and diff checks are clean. The release builds retain the incoming AirSlice concurrency warnings.
 
-Next, add consistent time integration while keeping endpoint volumes, trace locations,
-reservoir exchange and body loads paired through every stage. Recheck uniform preservation
-and the analytical advection matrix before nonuniform moving-pressure-load convergence.
+An opt-in `--heun` update now integrates interval-local moving groups in two stages.
+The time-averaged faces and wall measures remain fixed for the accepted interval. The
+first Euler stage takes old inventories at V0 to the true endpoint V1; the second starts
+there and temporarily extrapolates capacity to V2 = V0 + 2(V1 − V0). Averaging old and
+second-stage extensive inventories returns the true endpoint capacity V1. This preserves
+the moving geometric conservation law and uniform comoving states. No raw-member scatter
+occurs between stages; only the final averaged group packets are reconstructed/split.
+Both Euler stages and the final state must pass CFL/positivity checks transactionally.
+Wall impulse, wall work and reservoir exchange use the same half-stage weights as gas.
+
+Limited traces use old gas centroids/old-time exterior stencil points in stage one and
+final gas centroids/endpoint-time stencil points in stage two. Prescribed flux reservoirs
+are sampled once per interval and retain the same area/time averages in both stages,
+avoiding an additional time shift of already averaged boundary data. The default Euler
+mode and its separate reports remain available for comparisons.
+
+A single-group expanding piston separates temporal error from clipping, changing partitions
+and spatial reconstruction. An independent dense RK4 integration of its local pressure ODE,
+using V(t) directly, provides a reference. Halving steps from 4 to 8 to 16 to 32 gives
+rates between 1.9 and 2.1 for Heun, versus 0.9–1.1 for Euler. Every step preserves gas/wall
+momentum and energy, with work equal to piston speed times impulse. Additional tests check
+second-stage CFL rejection, one reservoir sample per patch, endpoint stencil evaluation
+and aligned/rotated uniform wet/dry regrouping with constant and limited reconstruction.
+
+The twelve `--moving-entropy --limited --heun` cases retain decreasing spatial errors:
+about 2.8–2.9%, 0.98–1.03% and 0.30–0.36% on the three grids. Observed spatial rates
+range from 1.47 to 1.71. Maximum relative L1 sensitivity under CFL halving falls from
+5.81% to 0.087%, with improvement at every grid/orientation. Fine-grid maximum newly
+exposed-cell density errors remain about 1.19% aligned and 0.96% rotated; time integration
+has not removed bounded member mixing near walls. Pressure stays within `5e-14` relative,
+velocity within `5e-12` m/s, and cumulative budget residuals below `7e-14` kg, `2e-11` N s
+and `3e-8` J. Paired work residuals stay below `5e-13` J. No member positivity backoff
+or rank fallback occurs. The entropy summary checks all three method matrices and verifies
+improved CFL sensitivity, along with independent integrals and geometric transition counts.
+
+Both two-stage uniform trajectory matrices pass all sixteen fast/original-speed cases,
+including every independently predicted wet/dry transition and cumulative reservoir/body
+budget. All 82 CPU-only tests in 16 suites pass, and the twelve advection cases pass the
+independent summary. Strict Swift formatting and diff checks are clean. The full release
+build succeeds with main's existing AirSlice concurrency warnings.
+
+Known-pressure moving loads now isolate the surface/time quadrature gate. Optional wall
+samples combine positive degree-two triangle nodes with four positive Gauss nodes per
+clipping-event interval. Their weights are area × time, with actual world positions and
+relative times. They recover existing area, spatial first moments and time-weighted area;
+samples follow the translating wall plane rather than its time-averaged plane. Four time
+nodes integrate the degree-six products arising from clipped areas, moving lever arms
+and affine pressure with quadratic time coefficients. The original two-node geometric
+integrals remain unchanged when sampling is disabled.
+
+`--moving-pressure` imposes p(x,t) = b(s) + g(s)·(x − c0 − vt), s = t/T, on a translating
+0.8 × 0.6 × 0.4 m box with an offset centre of mass. Both b and g are quadratic in s.
+For this imposed trace, the divergence theorem gives impulse −VT(g0 + g1/2 + g2/3),
+angular impulse (c0 − COM0) × impulse, and work v·impulse. The rectangular box, rotated
+orientation and offset COM exercise force and torque separately. This pressure field is
+not a source-free Euler solution: no gas state or numerical reflection is evolved here.
+
+Twelve cases cover 0.4/0.2/0.1 m grids, aligned/rotated boxes and one/four time slices over
+0.8 ms at (300,100,−40) m/s. Joint centroid evaluation gives 2.84–3.49% impulse error and
+9.23–16.84% angular-impulse error with one slice. Four slices reduce impulse error to
+0.237–0.259%, but torque error still spans 0.65–9.42%; spatial refinement is not uniformly
+monotonic for centroid loads. Temporal subdivision alone does not remove surface covariance
+error. Positive samples match exact impulse, angular impulse and work within `4e-14`
+relative, and work/impulse consistency within `6e-12` J. Sample moment residuals remain
+below `2e-14` relative; minimum prescribed sample pressure exceeds 81 kPa. These load
+accuracy errors are separate from the roundoff-scale paired exchange budget.
+
+The sampled load kernel validates positive finite weights, time bounds, translating-plane
+positions, area/space/time moments and positive finite pressure. It provides the same
+pressure impulse and work with opposite signs as a gas reaction packet. Tests check exact
+local force/torque/time integration, a paired extensive gas-buffer update, transient wall
+intersections with clear endpoints, malformed samples/pressures and full-box exact loads.
+The independent Python summary uses Simpson integration of the quadratic gradient and
+Rodrigues rotation for the offset COM; it checks all twelve reports and their errors.
+All 86 CPU-only tests in 17 suites pass. Strict formatting and diff checks pass; the release
+build succeeds with the existing AirSlice warnings. Samples are opt-in and have not yet
+been connected to the numerical moving-group wall traces.
+
+Next, carry positive surface/time samples through numerical moving-group wall states,
+paired gas/body packets and torque about the translating COM. Then measure evolving
+nonuniform-pressure loads under spatial/time refinement. Local second-order time
+convergence does not establish second-order accuracy across changing group partitions and
+bounded member scatter. Frozen interval measures also require further checks when pressure
+and velocity vary, especially near shocks and geometric contacts.
 Constant-pressure advection does not measure blast-wave or pressure-load accuracy. The
 conservative reconstruction still does not preserve gas angular momentum. Coupled free-body
 velocity, rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary

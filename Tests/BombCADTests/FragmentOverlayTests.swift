@@ -125,6 +125,10 @@ struct FragmentOverlayTests {
         let live = try #require(model.fragments?.live)
         #expect(live.positions.count == 340 && live.fragmentCount == 300)
         #expect(abs(live.time - 0.01) < 1e-6)
+        // A frame at the start, one as the run passes each millisecond, and one at the end, as a
+        // headless run sends them: not one after every batch, here of a step each.
+        let sent = try #require(model.fragments?.sent)
+        #expect(sent <= 11 && sent < model.stepCount)
         let dots = model.fragmentDots(showFragments: true, showTracers: true)
         let landed = dots.filter { $0.w >= 2 }.count
         #expect(landed == live.impacts.count && landed > 0)

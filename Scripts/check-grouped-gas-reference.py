@@ -7,6 +7,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCES = [
+    "MovingWallPressureQuadrature", "ExperimentalMovingPressureStudy",
     "LimitedMovingGroupScatter",
     "AdvectedQuadraticGas", "ExperimentalMovingEntropyStudy",
     "ExperimentalMovingTrajectoryStudy",
@@ -18,6 +19,8 @@ SOURCES = [
     "ExperimentalPistonWaveStudy", "PlanarPistonWave", "PrescribedPistonTube",
 ]
 TESTS = [
+    "MovingPressureQuadratureTests",
+    "MovingTimeIntegrationTests",
     "LimitedMovingReconstructionTests",
     "MovingEntropyTests",
     "MovingTrajectoryTests",

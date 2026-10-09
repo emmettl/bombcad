@@ -8,7 +8,7 @@ struct ParameterSweepView: View {
     @State private var masses = "1, 2, 5"
     @State private var grids: Set<Resolution> = [.coarse, .medium, .fine]
     @State private var error: String?
-    @AppStorage(AppPreferences.Key.sweepHost) private var sweepHost = ""
+    @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
     @AppStorage(AppPreferences.Key.sweepUsesRemote) private var sweepUsesRemote = false
 
     var body: some View {
@@ -19,7 +19,7 @@ struct ParameterSweepView: View {
                 Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
             }
             Text(
-                "Cases run one at a time at unlimited playback, shared with another Mac if one is set in Settings. Successful results are kept; your original editor inputs and playback speed are restored at the end."
+                "Cases run one at a time at unlimited playback, shared with other Macs if any are set in Settings. Successful results are kept; your original editor inputs and playback speed are restored at the end."
             )
             .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 10) {
@@ -53,8 +53,11 @@ struct ParameterSweepView: View {
                     )
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
                 }
-                if !sweepHost.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Toggle("Share cases with \(sweepHost)", isOn: $sweepUsesRemote)
+                let hosts = AppPreferences.hosts(sweepHosts)
+                if !hosts.isEmpty {
+                    Toggle(
+                        "Share cases with \(ListFormatter.localizedString(byJoining: hosts))",
+                        isOn: $sweepUsesRemote)
                 }
             }.disabled(model.sweep.isActive)
             if let error { Text(error).foregroundStyle(.red).font(.callout) }
@@ -80,7 +83,7 @@ struct ParameterSweepView: View {
                             }
                             parameter = .chargeMass(values)
                         }
-                        model.sweep.remoteWorker = Self.remoteWorker()
+                        model.sweep.remoteWorkers = Self.remoteWorkers()
                         try model.sweep.start(ParameterSweepPlan(prefix: prefix, parameter: parameter))
                         error = nil
                     } catch { self.error = error.localizedDescription }
@@ -99,10 +102,11 @@ struct ParameterSweepView: View {
             .onAppear { masses = String(model.settings.scenario.charge.mass) }
     }
 
-    /// Starts a worker on the Mac set in Settings, if sweeps are to share it.
-    private static func remoteWorker() -> (@MainActor () async throws -> SweepWorkerClient)? {
-        guard let host = AppPreferences.load().sweepRemoteHost else { return nil }
-        return { @MainActor in try await RemoteSweepWorker.connect(host: host) }
+    /// Starts a worker on each Mac set in Settings, if sweeps are to share them.
+    private static func remoteWorkers() -> [@MainActor () async throws -> SweepWorkerClient] {
+        AppPreferences.load().sweepRemoteHosts.map { host in
+            { @MainActor in try await RemoteSweepWorker.connect(host: host) }
+        }
     }
 
     private enum SweepInputError: LocalizedError {
