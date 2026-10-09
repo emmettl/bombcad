@@ -246,6 +246,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         if let viewSettings {
             try viewSettings.validate()
             files["view.json"] = try ProjectArchive.encodeJSON(viewSettings)
+        } else {
+            files.removeValue(forKey: "view.json")
         }
         if let fragments {
             try fragments.validate()

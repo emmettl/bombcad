@@ -12,11 +12,12 @@ enum HeadlessRun {
                            [--csv <file.csv>] [--resolution coarse|medium|fine] [--mass <kg TNT>]
                            [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
-                           [--fragments <spec.json> [--consumer local|<ssh host>]
-                           [--fragment-results <file.json>]]
+                           [--fragments <spec.json> [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
+                           [--envelope-results <file.json>]
+                           [--consumer <ssh host> | fragments=<where>,thermal=<where>,ground=<where>]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
@@ -24,8 +25,10 @@ enum HeadlessRun {
         and --vdb the air as OpenVDB volumes, a file a frame, both every --frame-interval
         milliseconds of simulated time (1 by default); --vdb-fields picks the volumes' grids,
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
-        and tracers through the blast, one way, on this Mac's CPU or on another Mac over SSH, frame
-        by frame; they go into the USD scene and, with --fragment-results, a JSON file.
+        and tracers through the blast, one way, frame by frame; they go into the USD scene and, with
+        --fragment-results, a JSON file. --envelope-results writes individual stationary-building
+        surface records as JSON; scenes with only envelopes collect compact surface summaries in kept
+        runs and CSV too.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -34,7 +37,9 @@ enum HeadlessRun {
         atmosphere for it, in the University of Wyoming archive's comma-separated values, in place
         of the standard one. --ground-shock estimates
         the ground's shaking under chosen points from the overpressure the run records on the
-        ground, frame by frame; --ground-results writes it as JSON.
+        ground, frame by frame; --ground-results writes it as JSON. Each of these three runs here
+        unless --consumer places it on another Mac over SSH, <where> being local or an SSH host;
+        models on one Mac share a connection to it, and a host alone places the fragments.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
         never modified.
         """
@@ -53,7 +58,9 @@ enum HeadlessRun {
         var vdbFields = BlastSolver.defaultVolumeFields
         /// A cased charge's fragments to fly through the blast, where, and where their results go.
         var fragments: FragmentSpec?
-        var consumer = "local"
+        /// Where each consumer runs, by name (fragments, thermal, ground): "local", or an SSH
+        /// host; here unless named.
+        var consumers: [String: String] = [:]
         var fragmentResults: URL?
         /// The fireball's thermal radiation on the scene, and where its results go.
         var thermal: ThermalSpec?
@@ -64,9 +71,16 @@ enum HeadlessRun {
         /// Ground points whose shaking to estimate from the air on the ground, and where the
         /// estimates go.
         var groundShock: GroundShockSpec?
+        var envelopeResults: URL?
         var groundResults: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
+
+        /// The consumers `--consumer` can place.
+        static let consumerNames = ["fragments", "thermal", "ground"]
+
+        /// Where the consumer `name` runs: "local" or an SSH host.
+        func place(_ name: String) -> String { consumers[name] ?? "local" }
 
         static func parse(_ arguments: [String]) throws -> Options {
             var positional: [String] = []
@@ -81,7 +95,7 @@ enum HeadlessRun {
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
-                            "cloud-results", "sounding", "ground-shock", "ground-results",
+                            "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -103,6 +117,7 @@ enum HeadlessRun {
             options.name = values["name"]
             options.out = values["out"].map { URL(filePath: $0) }
             options.csv = values["csv"].map { URL(filePath: $0) }
+            options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             if let text = values["resolution"] {
                 guard let resolution = Resolution(rawValue: text) else {
                     throw ProjectFileError.invalid("Resolution must be coarse, medium or fine.")
@@ -138,13 +153,6 @@ enum HeadlessRun {
                     FragmentSpec.self, from: Data(contentsOf: URL(filePath: path)))
                 try spec.validate()
                 options.fragments = spec
-            }
-            if let consumer = values["consumer"] {
-                guard options.fragments != nil else {
-                    throw ProjectFileError.invalid("--consumer needs --fragments.")
-                }
-                if consumer != "local" { try RemoteSweepWorker.validate(consumer) }
-                options.consumer = consumer
             }
             options.fragmentResults = values["fragment-results"].map { URL(filePath: $0) }
             if options.fragmentResults != nil, options.fragments == nil {
@@ -186,6 +194,35 @@ enum HeadlessRun {
             if options.groundResults != nil, options.groundShock == nil {
                 throw ProjectFileError.invalid("--ground-results needs --ground-shock.")
             }
+            if let value = values["consumer"] {
+                // A bare place is the fragments', as before there were others.
+                let pairs =
+                    value.contains("=")
+                    ? value.split(separator: ",").map(String.init) : ["fragments=\(value)"]
+                for pair in pairs {
+                    let parts = pair.split(separator: "=", maxSplits: 1).map {
+                        $0.trimmingCharacters(in: .whitespaces)
+                    }
+                    guard parts.count == 2, Self.consumerNames.contains(parts[0]),
+                        options.consumers[parts[0]] == nil
+                    else {
+                        throw ProjectFileError.invalid(
+                            "--consumer takes a place, or fragments=, thermal= and ground= each with one.")
+                    }
+                    let needed = [
+                        "fragments": "--fragments", "thermal": "--thermal", "ground": "--ground-shock",
+                    ]
+                    guard
+                        parts[0] == "fragments"
+                            ? options.fragments != nil
+                            : parts[0] == "thermal" ? options.thermal != nil : options.groundShock != nil
+                    else {
+                        throw ProjectFileError.invalid("--consumer \(parts[0])= needs \(needed[parts[0]]!).")
+                    }
+                    if parts[1] != "local" { try RemoteSweepWorker.validate(parts[1]) }
+                    options.consumers[parts[0]] = parts[1]
+                }
+            }
             if let text = values["frame-interval"] {
                 guard
                     options.usd != nil || options.vdb != nil || options.fragments != nil
@@ -205,7 +242,7 @@ enum HeadlessRun {
             }
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
-                options.thermalResults, options.cloudResults, options.groundResults,
+                options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -251,8 +288,8 @@ enum HeadlessRun {
 
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
-        run: SavedSimulationRun, fragments: FragmentResult?, stream: String?, thermal: ThermalResult?,
-        cloud: CloudResult?, ground: GroundShockResult?
+        run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
+        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -278,22 +315,38 @@ enum HeadlessRun {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(ground).write(to: url, options: .withoutOverwriting)
         }
-        return (result.run, result.fragments, result.stream, result.thermal, result.cloud, result.ground)
+        if let url = options.envelopeResults, let data = result.envelopes {
+            try data.write(to: url, options: .withoutOverwriting)
+        }
+        return (
+            result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
+            result.envelopes
+        )
     }
 
     /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
     /// the kept run and the document, its own inputs unchanged, with the run added to its saved
     /// runs. `progress` is told the fraction of the simulated time reached, now and then.
-    /// Cancelling the task stops the run.
+    /// `connect` starts a worker on a host named in `options.consumers`; tests stand in-process
+    /// workers in for them. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
-        consumer injected: (any LiveConsumer)? = nil
+        consumer injected: (any FrameConsumer)? = nil,
+        connect: (String) async throws -> SweepWorkerClient = {
+            try await RemoteSweepWorker.connect(host: $0)
+        }
     ) async throws -> (
-        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?,
-        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?
+        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
+        if options.envelopeResults != nil {
+            guard !inputs.scenario.envelopeObjects.isEmpty, inputs.scenario.structuralObjects.isEmpty else {
+                throw ProjectFileError.invalid(
+                    "--envelope-results requires a scene containing only stationary envelopes.")
+            }
+        }
         try options.groundShock?.validate(domain: inputs.scenario.domainSize)
         guard document.savedRuns.count < SavedSimulationRun.maximumRuns else {
             throw ProjectFileError.invalid(
@@ -322,6 +375,9 @@ enum HeadlessRun {
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
+        if options.envelopeResults != nil, model.envelopeExposure.isEmpty {
+            throw ProjectFileError.invalid(model.envelopeExposureStatus)
+        }
         let scene = try options.usd.map { url in
             try USDSceneWriter(
                 url: url, scenario: inputs.scenario, frameInterval: interval,
@@ -339,31 +395,53 @@ enum HeadlessRun {
             if !finished, let folder = options.vdb { try? FileManager.default.removeItem(at: folder) }
         }
         var exportError: Error?
-        var consumer = injected
-        if consumer == nil, let spec = options.fragments {
-            consumer = try await makeConsumer(options.consumer, spec: spec, scenario: inputs.scenario)
+        // The models fed each frame, each here or on another Mac, those on the same Mac sharing
+        // one connection to it.
+        var clients: [String: SweepWorkerClient] = [:]
+        defer { for client in clients.values { client.close() } }
+        var feeds: [Feed] = []
+        defer { if !finished { for feed in feeds { feed.consumer.cancel() } } }
+        let consumerScene = FragmentScene(inputs.scenario)
+        var kinds: [(name: String, kind: ConsumerKind)] = []
+        if injected == nil, let spec = options.fragments {
+            kinds.append(("fragments", .fragments(spec, consumerScene, live: false)))
         }
-        defer { if !finished { consumer?.cancel() } }
-        let thermal = options.thermal.map { ThermalStudy(spec: $0, scene: FragmentScene(inputs.scenario)) }
-        // The ground's points take a sample each a frame, cheap enough to take in line.
-        var ground = options.groundShock.map(GroundShockConsumer.init)
-        var groundTime = Duration.zero
-        var heldSince: ContinuousClock.Instant?
-        var held = Duration.zero
+        if let spec = options.thermal { kinds.append(("thermal", .thermal(spec, consumerScene))) }
+        if let spec = options.groundShock { kinds.append(("ground", .groundShock(spec))) }
+        if let injected {
+            feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))
+        }
+        for (name, kind) in kinds {
+            let place = options.place(name)
+            if place == "local" {
+                feeds.append(Feed(LocalFrameConsumer(kind), place: "here"))
+            } else {
+                if clients[place] == nil { clients[place] = try await connect(place) }
+                feeds.append(
+                    Feed(
+                        RemoteFrameConsumer(client: clients[place]!, kind: kind, ownsClient: false),
+                        place: "on \(place)"))
+            }
+        }
+        let fragmentFeed = feeds.first { if case .fragments = $0.consumer.kind { true } else { false } }
         let streamStart = ContinuousClock.now
-        if let consumer {
-            // The consumer may fall up to four frames behind; then the run waits for it.
+        if !feeds.isEmpty {
+            // A consumer may fall up to four frames behind; then the run waits for it.
             model.holdBatches = {
-                let hold = consumer.sent - 1 - consumer.report.frame > consumerLag
-                if hold, heldSince == nil { heldSince = .now }
-                if !hold, let since = heldSince {
-                    held += since.duration(to: .now)
-                    heldSince = nil
+                var hold = false
+                for feed in feeds {
+                    let behind = feed.consumer.sent - 1 - feed.consumer.report.frame > consumerLag
+                    if behind, feed.heldSince == nil { feed.heldSince = .now }
+                    if !behind, let since = feed.heldSince {
+                        feed.held += since.duration(to: .now)
+                        feed.heldSince = nil
+                    }
+                    hold = hold || behind
                 }
                 return hold
             }
         }
-        if framed, consumer != nil || options.thermal != nil {
+        if framed, fragmentFeed != nil || options.thermal != nil {
             // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
             // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
             model.prepareBatch = { solver, limit in
@@ -373,7 +451,7 @@ enum HeadlessRun {
                     return
                 }
                 var request = FrameRequest(fireball: options.thermal?.luminousTemperature)
-                if let consumer {
+                if let consumer = fragmentFeed?.consumer {
                     let frame = Int(index)
                     let basis = consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
                     let region = basis.region(
@@ -412,23 +490,30 @@ enum HeadlessRun {
                         volume = options.usd.map { assetPath(of: file, from: $0) }
                     }
                     try scene?.append(solver.structureSurface(), volume: volume)
-                    if let thermal, let spec = options.thermal {
-                        thermal.add(solver.fireball(luminousTemperature: spec.luminousTemperature))
-                    }
-                    if let region = ground?.region(cellSize: solver.grid.cellSize) {
+                    for feed in feeds {
                         let start = ContinuousClock.now
-                        ground?.consume(solver.groundSlice(low: region.low, high: region.high))
-                        groundTime += start.duration(to: .now)
-                    }
-                    if let consumer {
-                        // From the report `lag` frames back, always in by now, so that the air
-                        // sent, and the result, do not depend on how the two sides keep time.
-                        let basis =
-                            consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
-                        let region = basis.region(
-                            for: frame, interval: interval, domain: inputs.scenario.domainSize,
-                            cellSize: solver.grid.cellSize)
-                        consumer.send(solver.airSlice(region: region.box, stride: region.stride))
+                        switch feed.consumer.kind {
+                        case .fragments:
+                            // From the report `lag` frames back, always in by now, so that the air
+                            // sent, and the result, do not depend on how the two sides keep time.
+                            let basis =
+                                feed.consumer.report(after: max(frame - consumerLag - 1, -1))
+                                ?? feed.consumer.report
+                            let region = basis.region(
+                                for: frame, interval: interval, domain: inputs.scenario.domainSize,
+                                cellSize: solver.grid.cellSize)
+                            feed.consumer.send(
+                                .air(solver.airSlice(region: region.box, stride: region.stride)))
+                        case .thermal(let spec, _):
+                            feed.consumer.send(
+                                .fireball(solver.fireball(luminousTemperature: spec.luminousTemperature)))
+                        case .groundShock(let spec):
+                            let region = GroundShockConsumer(spec: spec).region(
+                                cellSize: solver.grid.cellSize)
+                            feed.consumer.send(
+                                .ground(solver.groundSlice(low: region.low, high: region.high)))
+                        }
+                        feed.cost += start.duration(to: .now)
                     }
                 } catch {
                     exportError = error
@@ -448,13 +533,29 @@ enum HeadlessRun {
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
         let running = streamStart.duration(to: .now)
-        let fragments = try await consumer?.finish(frameInterval: interval)
-        let stream = consumer.map { consumer in
-            String(
-                format:
-                    "%d frames, %.1f MB of air (%.0f MB/s); the run waited %.2f s of %.2f s for the consumer",
-                consumer.sent, Double(consumer.bytes) / 1e6,
-                Double(consumer.bytes) / 1e6 / max(running.seconds, 1e-9), held.seconds, running.seconds)
+        var fragments: FragmentResult?
+        var thermalResult: ThermalResult?
+        var groundResult: GroundShockResult?
+        var streams: [String] = []
+        for feed in feeds {
+            switch try await feed.consumer.finish(frameInterval: interval) {
+            case .fragments(let result): fragments = result
+            case .thermal(let result): thermalResult = result
+            case .groundShock(var result):
+                // What feeding it cost the run.
+                result.seconds = feed.cost.seconds
+                groundResult = result
+            }
+            let consumer = feed.consumer
+            let name = consumer.kind.name.prefix(1).uppercased() + consumer.kind.name.dropFirst()
+            streams.append(
+                String(
+                    format:
+                        "%@ %@: %d frames, %.1f MB (%.0f MB/s), %.2f ms a frame to feed; the run waited %.2f s of %.2f s for it",
+                    name, feed.place, consumer.sent, Double(consumer.bytes) / 1e6,
+                    Double(consumer.bytes) / 1e6 / max(running.seconds, 1e-9),
+                    1000 * feed.cost.seconds / Double(max(consumer.sent, 1)), feed.held.seconds,
+                    running.seconds))
         }
         if let fragments {
             let edges = fragments.masses.map { cbrt($0 / (options.fragments?.fragmentDensity ?? 7850)) }
@@ -469,7 +570,6 @@ enum HeadlessRun {
                     widths: [Float](repeating: 0.1, count: tracers), colour: SIMD3(0.9, 0.9, 0.95))
             }
         }
-        let thermalResult = thermal?.finish()
         if let thermalResult {
             let spacing = min(thermalResult.spec.surfaceSpacing, thermalResult.spec.groundSpacing)
             scene?.addPoints(
@@ -481,8 +581,6 @@ enum HeadlessRun {
                     ("peakIrradiance", thermalResult.peakIrradiance.map { $0 / 1000 }),
                 ])
         }
-        var groundResult = ground?.result(frameInterval: interval)
-        groundResult?.seconds = groundTime.seconds
         if let groundResult, let spec = options.groundShock {
             scene?.addGroundShock(groundResult, spec: spec)
         }
@@ -499,35 +597,27 @@ enum HeadlessRun {
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (run, document, fragments, stream, thermalResult, cloud, groundResult)
+        let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
+        return (run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData)
     }
 
-    /// The fireball's radiation, reckoned frame by frame on a queue of its own so that the run
-    /// does not wait for it.
-    final class ThermalStudy: @unchecked Sendable {
-        private var exposure: ThermalExposure
-        private let queue = DispatchQueue(label: "dev.bombcad.thermal")
+    /// A consumer the run feeds each frame, where it runs, and what it has cost the run: the time
+    /// spent cutting out and handing over its frames, and waiting for it to catch up.
+    @MainActor final class Feed {
+        let consumer: any FrameConsumer
+        let place: String
+        var cost = Duration.zero
+        var held = Duration.zero
+        var heldSince: ContinuousClock.Instant?
 
-        init(spec: ThermalSpec, scene: FragmentScene) { exposure = ThermalExposure(spec: spec, scene: scene) }
-
-        func add(_ frame: FireballFrame) { queue.async { self.exposure.add(frame) } }
-
-        /// Waits for the frames sent so far.
-        func finish() -> ThermalResult { queue.sync { exposure.result } }
+        init(_ consumer: any FrameConsumer, place: String) {
+            self.consumer = consumer
+            self.place = place
+        }
     }
 
     /// How many frames a consumer may fall behind before the run waits for it.
     static let consumerLag = 4
-
-    /// The consumer to fly fragments: on this Mac's CPU, or on another Mac over SSH.
-    static func makeConsumer(_ placement: String, spec: FragmentSpec, scenario: Scenario) async throws
-        -> any LiveConsumer
-    {
-        let scene = FragmentScene(scenario)
-        guard placement != "local" else { return LocalLiveConsumer(spec: spec, scene: scene) }
-        let client = try await RemoteSweepWorker.connect(host: placement)
-        return RemoteLiveConsumer(client: client, spec: spec, scene: scene)
-    }
 
     /// `file` as the USD file at `scene` should name it: relative where it lies beside or below it.
     nonisolated static func assetPath(of file: URL, from scene: URL) -> String {
@@ -591,7 +681,7 @@ enum HeadlessRun {
                     wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
                 ))
             if let fragments = result.fragments { print("  " + fragments.summary) }
-            if let stream = result.stream { print("  " + stream) }
+            for stream in result.streams { print("  " + stream) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }
             for line in result.cloud?.summary ?? [] { print("  " + line) }
             if let ground = result.ground { print("  " + ground.summary) }

@@ -578,6 +578,22 @@ The initial Gaussian load exposes substantial coarse-grid reconstruction error b
 gas update; supplied-pressure quadrature errors are much smaller. Tiny-duration halving
 checks the instantaneous limit. This diagnoses initial traces, not the evolved load history.
 
+Add `--decompose` to write `.build/initial-wall-traces-decomposition.json`, then run
+`python3 Scripts/summarize-initial-wall-traces.py --decompose`. Nine diagnostic comparisons
+retain or replace group averages, fitted gradients and bounds, including an analytic
+Gaussian gradient. They identify gradient accuracy and unresolved local curvature as
+further gates; removing the limiter or substituting centroid pressure worsens coarse loads.
+These read-only comparisons do not change gas inventories or enable alternative transport
+policies, and their differences are not an additive error budget.
+
+`swift run -c release rigidboxdemo --initial-wall-traces --volume-fit` writes
+`.build/initial-wall-traces-volume-fit.json`; audit it with
+`python3 Scripts/summarize-initial-wall-traces.py --volume-fit`. Three unbounded diagnostic
+fits share a two-ring stencil and distance weights: linear, quadratic treating averages
+as centroid values, and quadratic using actual gas-volume second moments. The last retains
+each group's initial pressure average. It improves the fine rotated comparison but does
+not improve every case and creates profile undershoots. It remains outside gas evolution.
+
 ## Headline results
 
 Measured on an Apple M4 Max (32-core GPU, 36 GB).
@@ -646,6 +662,7 @@ Collapse and debris have not been compared with anything.
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |
+| [Building envelopes](docs/building-envelopes.md) | Stationary exposure-only buildings, surface loading, matched detailed references and scaling through 64 buildings |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas, drawn over the blast, here or on another Mac |

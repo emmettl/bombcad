@@ -248,6 +248,23 @@ final class SimulationModel {
         selection = nil
     }
 
+    func useEditedEnvelope() {
+        guard !isPreparingImports, let object = editedObject else { return }
+        do {
+            var scene = settings.scenario
+            try scene.useEnvelope(id: object.id)
+            try scene.validateObjectOwnership()
+            settings.scenario = scene
+            selectedStructureID = nil
+            selection = nil
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func removeEnvelope(id: UUID) {
+        guard !isPreparingImports, settings.scenario.object(id: id)?.envelope != nil else { return }
+        do { try settings.scenario.removeObject(id: id) } catch { errorMessage = error.localizedDescription }
+    }
+
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
@@ -349,7 +366,7 @@ final class SimulationModel {
     private(set) var fragmentStatus = ""
     /// The run's fragments, in flight and landed, to draw.
     private(set) var fragmentLive: FragmentLive?
-    @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
+    @ObservationIgnored private(set) var fragments: (any FrameConsumer)?
     @ObservationIgnored private var fragmentTime = -1.0
     private static let fragmentFrameInterval = 0.001
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
@@ -389,6 +406,23 @@ final class SimulationModel {
     @ObservationIgnored private var groundShockEdit: Task<Void, Never>?
     /// How the ground has moved so far in the run, at each point, and a line saying so.
     private(set) var groundShockLive: GroundShockResult?
+    private(set) var envelopeExposure: [EnvelopeExposureSummary] = []
+    private(set) var envelopeExposureStatus = ""
+
+    var canExportEnvelopeExposure: Bool {
+        !isRunning && !batchInFlight && !isLoadingInputs && !rebuildPending
+            && settings.scenario == scenario && stepCount > 0 && !envelopeExposure.isEmpty
+    }
+
+    func envelopeResultsData() throws -> Data {
+        guard canExportEnvelopeExposure, let snapshots = solver?.envelopeExposureSnapshot() else {
+            throw ProjectFileError.invalid(
+                "Pause a run with available building surface results before exporting.")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(snapshots)
+    }
     private(set) var groundShockStatus = ""
     @ObservationIgnored private(set) var groundShock: GroundShockConsumer?
     @ObservationIgnored private var groundShockTime = -1.0
@@ -1291,6 +1325,7 @@ final class SimulationModel {
                             maximumDamage: Double(summary.maxDamage)))
                 } : nil)
         run.fragments = flown
+        run.envelopeExposure = solver.envelopeExposureSummaries()
         if let groundShock, let spec = estimatedGroundSpec {
             var result = groundShock.result(frameInterval: 0)
             for n in result.points.indices { result.points[n].history = [] }
@@ -1330,15 +1365,25 @@ final class SimulationModel {
         for (place, run) in zip(places, ordered) { savedRuns[place] = run }
     }
 
-    func renameRun(id: UUID, name: String) {
-        guard !sweep.isActive else { return }
+    func renameRun(id: UUID, name: String) throws {
+        guard !sweep.isActive else {
+            throw ProjectFileError.invalid("Wait for the sweep to finish before renaming a run.")
+        }
+        guard let index = savedRuns.firstIndex(where: { $0.id == id }) else {
+            throw ProjectFileError.invalid("This saved run is no longer available.")
+        }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed.count <= 120,
+        guard !trimmed.isEmpty else { throw ProjectFileError.invalid("Enter a run name.") }
+        guard trimmed.count <= 120 else {
+            throw ProjectFileError.invalid("Run names must be 120 characters or fewer.")
+        }
+        guard
             !savedRuns.contains(where: {
                 $0.id != id && $0.name.localizedCaseInsensitiveCompare(trimmed) == .orderedSame
-            }),
-            let index = savedRuns.firstIndex(where: { $0.id == id })
-        else { return }
+            })
+        else {
+            throw ProjectFileError.invalid("A saved run already uses that name. Choose a unique name.")
+        }
         savedRuns[index].name = trimmed
     }
 
@@ -1427,12 +1472,12 @@ final class SimulationModel {
         }
         stopFragments()
         let scene = FragmentScene(scenario)
-        let consumer: any LiveConsumer
+        let consumer: any FrameConsumer
         if fragmentsOnRemote, let worker = fragmentWorker {
-            consumer = RemoteLiveConsumer(
-                client: worker, spec: spec, scene: scene, live: true, ownsClient: false)
+            consumer = RemoteFrameConsumer(
+                client: worker, kind: .fragments(spec, scene, live: true), ownsClient: false)
         } else {
-            consumer = LocalLiveConsumer(spec: spec, scene: scene, live: true)
+            consumer = LocalFrameConsumer(.fragments(spec, scene, live: true))
         }
         fragments = consumer
         flownSpec = spec
@@ -1467,7 +1512,7 @@ final class SimulationModel {
         let region = fragments.report.region(
             for: fragments.sent, interval: interval, domain: scenario.domainSize,
             cellSize: solver.grid.cellSize)
-        fragments.send(solver.airSlice(region: region.box, stride: region.stride))
+        fragments.send(.air(solver.airSlice(region: region.box, stride: region.stride)))
     }
 
     private func updateFragmentStatus() {
@@ -1483,7 +1528,7 @@ final class SimulationModel {
                 ? String(format: ", hardest %.1f MJ", energy / 1e6)
                 : String(format: ", hardest %.0f kJ", energy / 1e3)
         }
-        if fragments is RemoteLiveConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        if fragments is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
         fragmentStatus = text
     }
 
@@ -1587,6 +1632,8 @@ final class SimulationModel {
     // MARK: - Building
 
     private func requestRebuild() {
+        envelopeExposure = []
+        envelopeExposureStatus = ""
         if batchInFlight {
             isLoadingInputs = true
             // The GPU still owns the solver's buffers; rebuild when the batch lands.
@@ -1609,6 +1656,8 @@ final class SimulationModel {
         defer { isLoadingInputs = false }
         stopFragments()
         stopGroundShock()
+        envelopeExposure = []
+        envelopeExposureStatus = ""
         stopThermal()
         completedRunSettings = nil
         loadedRunSettings = nil
@@ -1644,6 +1693,19 @@ final class SimulationModel {
                     try created.load(scenario)
                 }
                 solver = created
+            }
+            if let solver, !scenario.envelopeObjects.isEmpty {
+                if scenario.structuralObjects.isEmpty {
+                    do {
+                        try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                        envelopeExposure = solver.envelopeExposureSummaries() ?? []
+                    } catch {
+                        envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
+                    }
+                } else {
+                    envelopeExposureStatus =
+                        "Surface results require a scene containing only stationary envelopes. This scene also has deformable structures."
+                }
             }
             errorMessage = nil
         } catch {
@@ -1910,6 +1972,7 @@ final class SimulationModel {
     private func publishTraces() {
         guard let solver else { return }
         lastTracePublication = .now
+        envelopeExposure = solver.envelopeExposureSummaries() ?? []
         recordSampleIfDue(solver)
         structureSummary = solver.bodySummary()
         bodySummaries = Dictionary(

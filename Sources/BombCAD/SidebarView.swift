@@ -34,10 +34,15 @@ struct SidebarView: View {
     private var runForm: some View {
         Form {
             Section("Scenario") {
-                Picker(
-                    "Layout", selection: Binding(get: { model.settings.preset }, set: { model.select($0) })
-                ) {
-                    ForEach(ScenarioPreset.allCases) { Text($0.title).tag($0) }
+                LabeledContent("Layout") {
+                    Menu {
+                        ForEach(ScenarioPreset.allCases) { preset in
+                            Button(preset.title) { model.select(preset) }
+                        }
+                    } label: {
+                        Text(model.settings.scenario.name).lineLimit(1).truncationMode(.middle)
+                    }
+                    .help("\(model.settings.scenario.name). Choose a built-in layout to replace this scene.")
                 }
                 Picker("Grid", selection: $model.settings.resolution) {
                     ForEach(Resolution.allCases) { Text($0.title).tag($0) }
@@ -117,6 +122,7 @@ struct SidebarView: View {
             ThermalSection(model: model)
 
             GroundShockSection(model: model)
+            EnvelopeExposureSection(model: model)
 
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")

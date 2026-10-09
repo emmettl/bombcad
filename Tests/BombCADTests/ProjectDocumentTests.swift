@@ -115,4 +115,38 @@ struct ProjectDocumentTests {
         #expect(model.renderSettings.mode == .peakOverpressure)
         #expect(!model.isRunning)
     }
+
+    @Test("Clearing a saved view removes it when the project is saved again")
+    func clearedViewRoundTrip() throws {
+        var original = ProjectDocument(scenario: ScenarioPreset.openGround.scenario)
+        original.runSettings?.resolution = "coarse"
+        original.viewSettings?.target = SIMD3(100, 200, 300)
+        original.viewSettings?.displayMode = DisplayMode.impulse.rawValue
+        var archive = try original.makeArchive()
+        let notes = Data("Keep these project notes".utf8)
+        archive.files["results/notes.txt"] = notes
+        let assetData = Data("source mesh".utf8)
+        let asset = ProjectManifest.Asset(path: "assets/model.obj", data: assetData)
+        archive.manifest.assets.append(asset)
+        archive.files[asset.path] = assetData
+
+        var reopened = try ProjectDocument(archive: archive)
+        #expect(reopened.viewSettings == original.viewSettings)
+        reopened.viewSettings = nil
+        let saved = try reopened.makeArchive()
+        #expect(saved.files["view.json"] == nil)
+        #expect(saved.files["results/notes.txt"] == notes)
+        #expect(saved.files[asset.path] == assetData)
+        #expect(saved.manifest == archive.manifest)
+
+        let restored = try ProjectDocument(fileWrapper: saved.fileWrapper())
+        #expect(restored.viewSettings == nil)
+        #expect(restored.documentID == original.documentID)
+        #expect(restored.scenario == original.scenario)
+        #expect(restored.runSettings == original.runSettings)
+
+        let model = SimulationModel(document: restored)
+        #expect(model.camera == OrbitCamera.framing(original.scenario))
+        #expect(model.renderSettings.mode == .peakOverpressure)
+    }
 }

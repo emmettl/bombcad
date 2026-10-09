@@ -65,6 +65,8 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// them; the explicit standalone rigid-box driver can consume one definition.
     /// Optional so layouts predating rigid-object definitions continue to decode unchanged.
     public var rigidObjects: [RigidObjectDefinition]?
+    /// Experimental simplified cars, inert like `rigidObjects`. Optional for older layouts.
+    public var rigidCars: [RigidCarDefinition]?
     /// Import diagnostics persist with the layout: voxelisation cannot recover lost geometry.
     public var importNotes: [String]?
     public var importedModels: [ImportedModel]?
@@ -127,9 +129,9 @@ extension Scenario {
     public static let physicsInputEncoding = CodingUserInfoKey(rawValue: "dev.bombcad.physics-input")!
 
     private enum CodingKeys: String, CodingKey {
-        case name, domainSize, boxes, rigidObjects, importNotes, importedModels, charge,
+        case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures
+            additionalStructures, buildingEnvelopes
     }
 
     private struct Ownership: Codable {
@@ -144,6 +146,11 @@ extension Scenario {
         var ownership: SceneObject.Ownership?
     }
 
+    private struct SavedEnvelope: Codable {
+        var model: BuildingEnvelope
+        var ownership: SceneObject.Ownership?
+    }
+
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -154,6 +161,7 @@ extension Scenario {
             gauges: try c.decode([Gauge].self, forKey: .gauges),
             structure: try c.decodeIfPresent(StructureModel.self, forKey: .structure),
             rigidObjects: try c.decodeIfPresent([RigidObjectDefinition].self, forKey: .rigidObjects))
+        rigidCars = try c.decodeIfPresent([RigidCarDefinition].self, forKey: .rigidCars)
         importNotes = try c.decodeIfPresent([String].self, forKey: .importNotes)
         importedModels = try c.decodeIfPresent([ImportedModel].self, forKey: .importedModels)
         additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
@@ -168,6 +176,13 @@ extension Scenario {
             let object = SceneObject.legacyStructure(saved.model, index: index + 1)
             return try saved.ownership?.applying(to: object) ?? object
         }
+        let envelopes = try (c.decodeIfPresent([SavedEnvelope].self, forKey: .buildingEnvelopes) ?? [])
+            .enumerated().map { index, saved in
+                let object = SceneObject(
+                    id: SceneObject.legacyID(6, index), name: "Building \(index + 1)",
+                    representation: .envelope(saved.model))
+                return try saved.ownership?.applying(to: object) ?? object
+            }
         if let ownership = try c.decodeIfPresent(Ownership.self, forKey: .objectOwnership) {
             guard ownership.version == 1, ownership.blocks.count == fixedObjects.count,
                 (ownership.structure == nil) == (structuralObject == nil)
@@ -177,11 +192,13 @@ extension Scenario {
                 restored.append(try owner.applying(to: body))
             }
             restored.append(contentsOf: extraObjects)
+            restored.append(contentsOf: envelopes)
             objects = restored
             try validateObjectOwnership()
             try reorderObjects(ownership.order)
         } else {
             objects.append(contentsOf: extraObjects)
+            objects.append(contentsOf: envelopes)
             resolveLegacyStructuralSource()
         }
         try validateObjectOwnership()
@@ -194,6 +211,7 @@ extension Scenario {
         try c.encode(domainSize, forKey: .domainSize)
         try c.encode(boxes, forKey: .boxes)
         try c.encodeIfPresent(rigidObjects, forKey: .rigidObjects)
+        try c.encodeIfPresent(rigidCars, forKey: .rigidCars)
         try c.encodeIfPresent(importNotes, forKey: .importNotes)
         try c.encodeIfPresent(importedModels, forKey: .importedModels)
         try c.encode(charge, forKey: .charge)
@@ -203,6 +221,12 @@ extension Scenario {
         try c.encode(atmosphere, forKey: .atmosphere)
         try c.encode(reflectiveFaces, forKey: .reflectiveFaces)
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
+        if !envelopeObjects.isEmpty {
+            try c.encode(
+                envelopeObjects.map {
+                    SavedEnvelope(model: $0.envelope!, ownership: physicsOnly ? nil : .init($0))
+                }, forKey: .buildingEnvelopes)
+        }
         if structuralObjects.count > 1 {
             try c.encode(
                 structuralObjects.dropFirst().map { object in
@@ -242,6 +266,7 @@ extension BlastSolver {
     /// The scenario's domain must match the solver's grid.
     public func load(_ scenario: Scenario) throws {
         try scenario.validateObjectOwnership()
+        clearEnvelopeExposure()
         configuration.ambientPressure = scenario.atmosphere.pressure
         configuration.reflectiveFaces = scenario.reflectiveFaces
         ambientSoundSpeed = scenario.atmosphere.soundSpeed(gamma: configuration.gamma)

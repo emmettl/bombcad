@@ -13,6 +13,11 @@ In the app, **File ▸ Export for Rendering…** (⇧⌘E, or the toolbar's extr
 same from the open project: it runs a copy of it in the background, with a frame interval, the
 volumes' grids, the project's fragments and its ground points chosen in a sheet, and writes the scene where the
 save panel says and the volumes in a folder beside it (`Example.volumes` for `Example.usda`).
+The app prepares both outputs beside the destination before publishing them. A failed or
+cancelled export leaves an existing scene intact and removes its temporary outputs. An
+existing volumes folder is refused rather than replaced, including one created while the
+export runs. The scene is replaced atomically after its volumes are moved into place; the
+two outputs are not an atomic transaction across a process crash or power loss.
 
 `--usd` and `--vdb` are options of the [headless run](run-comparison.md#headless-runs), and
 either can be used alone; `--frame-interval` sets the milliseconds of simulated time between

@@ -8,13 +8,16 @@ import simd
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments.contains("--initial-wall-traces") {
+        let decompose = arguments.contains("--decompose")
+        let volumeFits = arguments.contains("--volume-fit")
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
-                ?? ".build/initial-wall-traces.json")
+                ?? ".build/initial-wall-traces\(volumeFits ? "-volume-fit" : (decompose ? "-decomposition" : "")).json"
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         var completed: [ExperimentalInitialWallTraceStudy.Result] = []
-        _ = try ExperimentalInitialWallTraceStudy.run { r in
+        _ = try ExperimentalInitialWallTraceStudy.run(decompose: decompose, volumeFits: volumeFits) { r in
             completed.append(r)
             try encoder.encode(completed).write(to: output, options: .atomic)
             print(
@@ -540,7 +543,7 @@ do {
         }
         recordings = try RigidObjectDemo.coupledRecordings(device: device, refinement: refined ? 2 : 1)
     } else {
-        recordings = try RigidObjectDemo.recordings()
+        recordings = try RigidObjectDemo.recordings() + RigidCarDemo.recordings()
     }
     let data = try JSONEncoder().encode(recordings)
     let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
@@ -557,7 +560,7 @@ do {
             of: "<option value=\"1\" selected>Real time</option>",
             with: "<option value=\"0.01\" selected>100× slow</option><option value=\"1\">Real time</option>")
         html = html.replacingOccurrences(
-            of: "All cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
+            of: "Box cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.",
             with:
                 "Experimental 0.8 m cube, mass 2 kg; static friction 0.6, sliding friction 0.5. Held mode fixes the pose; free mode includes gravity and ground contact."
         )

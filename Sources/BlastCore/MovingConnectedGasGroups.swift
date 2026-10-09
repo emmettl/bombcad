@@ -385,37 +385,62 @@ enum MovingGroupedGasFlux {
         let maximumStep: Double
     }
     struct InitialWallTrace {
+        let cell: Int
         let point: SIMD3<Double>
         let time: Double
         let normal: SIMD3<Double>
         let area: Double
         let velocity: SIMD3<Double>
         let state: FractionalGasTransport.Cell
+        var pressureReconstruction: LimitedGroupedGasFlux.PressureReconstruction? = nil
     }
     /// Diagnostic access to the exact initial reconstruction used by the numerical
     /// update. No gas inventory is advanced and no independent slope implementation is used.
     static func initialWallTraces(
-        _ plan: MovingConnectedGasGroups.Plan, exterior: FractionalGasTransport.Cell, limited: Bool
+        _ plan: MovingConnectedGasGroups.Plan, exterior: FractionalGasTransport.Cell, limited: Bool,
+        recordPressureDiagnostics: Bool = false,
+        diagnosticPressureAt: ((SIMD3<Double>) throws -> Double)? = nil
     ) throws -> [InitialWallTrace] {
         guard exterior.volume > 0 else { throw MovingConnectedGasGroups.Failure.invalidState }
         _ = try FractionalGasTransport.advance([exterior], newVolumes: [exterior.volume], transfers: [])
+        var inventories = plan.cells
+        if let diagnosticPressureAt {
+            guard let centres = plan.oldCentres else {
+                throw MovingConnectedGasGroups.Failure.invalidGeometry
+            }
+            // Only this read-only accessor permits point-pressure substitution. It
+            // changes diagnostic energy; it is never passed into a numerical advance.
+            inventories = try plan.cells.indices.map { n in
+                let pressure = try diagnosticPressureAt(centres[n])
+                guard pressure.isFinite && pressure > 0 else {
+                    throw MovingConnectedGasGroups.Failure.invalidState
+                }
+                let cell = plan.cells[n]
+                return .init(
+                    volume: cell.volume, density: cell.amount[0] / cell.volume,
+                    velocity: cell.velocity, pressure: pressure)
+            }
+        }
         let locations = wallLocations(plan)
         let supplied = plan.boundaries.map { $0.geometry.owner == 0 ? exterior : nil }
         let prepared = try prepare(
-            plan, inventories: plan.cells, centres: plan.oldCentres, supplied: supplied,
+            plan, inventories: inventories, centres: plan.oldCentres, supplied: supplied,
             limited: limited, locations: locations,
-            reconstructionExteriorAt: limited ? { _, _ in exterior } : nil)
+            reconstructionExteriorAt: limited ? { _, _ in exterior } : nil,
+            recordPressureDiagnostics: recordPressureDiagnostics)
         return zip(locations, prepared.walls).map { location, wall in
             .init(
-                point: location.boundary.geometry.centroid, time: location.boundary.meanTime,
+                cell: wall.cell, point: location.boundary.geometry.centroid, time: location.boundary.meanTime,
                 normal: wall.normal, area: wall.area, velocity: wall.velocity,
-                state: wall.state ?? plan.cells[wall.cell])
+                state: wall.state ?? inventories[wall.cell],
+                pressureReconstruction: prepared.pressureDiagnostics?[wall.cell])
         }
     }
     private struct Prepared {
         let cells: [FractionalGasTransport.Cell]
         let faces: [FractionalEulerFlux.Face]
         let walls: [FractionalEulerFlux.Wall]
+        let pressureDiagnostics: [LimitedGroupedGasFlux.PressureReconstruction]?
     }
     private static func prepare(
         _ plan: MovingConnectedGasGroups.Plan, inventories: [FractionalGasTransport.Cell],
@@ -423,7 +448,7 @@ enum MovingGroupedGasFlux {
         limited: Bool, locations: [WallLocation],
         reconstructionExteriorAt: (
             (MovingConnectedGasGroups.Boundary, SIMD3<Double>) throws -> FractionalGasTransport.Cell
-        )?
+        )?, recordPressureDiagnostics: Bool = false
     ) throws -> Prepared {
         var cells = inventories
         if limited && (suppliedCentres == nil || reconstructionExteriorAt == nil) {
@@ -471,11 +496,14 @@ enum MovingGroupedGasFlux {
                         velocity: exterior.velocity, pressure: exterior.pressure()))
             }
         }
+        var pressureDiagnostics: [LimitedGroupedGasFlux.PressureReconstruction]?
         if limited {
             let geometry = try LimitedGroupedGasFlux.Geometry(
                 centres: centres, faces: reconstructionFaces,
                 boundaries: locations.map { $0.boundary.geometry })
-            let traces = try geometry.traces(reconstructionStates)
+            let traces = try geometry.traces(
+                reconstructionStates, recordPressureDiagnostics: recordPressureDiagnostics)
+            pressureDiagnostics = traces.pressureDiagnostics
             faces = traces.faces.map { f in
                 .init(
                     a: f.a, b: f.b, normal: f.normal, area: f.area,
@@ -485,7 +513,7 @@ enum MovingGroupedGasFlux {
                 .init(cell: w.cell, normal: w.normal, area: w.area, velocity: plan.velocity, state: w.state)
             }
         }
-        return Prepared(cells: cells, faces: faces, walls: walls)
+        return Prepared(cells: cells, faces: faces, walls: walls, pressureDiagnostics: pressureDiagnostics)
     }
     /// Stage two can have extrapolated volumes; only the accepted interval scatters.
     private static func stage(

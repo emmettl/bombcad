@@ -35,56 +35,21 @@ enum SweepWorker {
                     )
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
-                    jobs.sessions[id] = nil
-                    jobs.live[id] = nil
+                    jobs.sessions.removeValue(forKey: id)?.cancel()
                     jobs.thermal[id] = nil
                 case .shutdown:
                     await jobs.stop()
                     return
                 case .consume(let session):
-                    jobs.sessions[session.id] = FragmentConsumer(
-                        spec: session.spec, scene: session.scene, keepsFrames: !session.live)
-                    if session.live { jobs.live[session.id] = 0 }
-                case .air(let id, let header):
-                    guard var consumer = jobs.sessions[id] else { continue }
-                    do {
-                        consumer.consume(try AirSlice(header: header, payload: packet.payload))
-                        jobs.sessions[id] = consumer
-                        writer.enqueue(.report(id, consumer.report))
-                        if let reported = jobs.live[id] {
-                            let live = FragmentLive(consumer, time: header.time)
-                            let impacts = Array(live.impacts.dropFirst(reported))
-                            jobs.live[id] = live.impacts.count
-                            writer.enqueue(
-                                .live(
-                                    id,
-                                    LiveFrameHeader(
-                                        time: header.time, fragmentCount: live.fragmentCount, impacts: impacts
-                                    )),
-                                payload: live.payload)
-                        }
-                    } catch {
-                        jobs.sessions[id] = nil
-                        writer.enqueue(.failed(id, error.localizedDescription))
-                    }
+                    jobs.sessions[session.id] = ConsumerRunner(session, writer: writer)
+                case .input(let id, let header):
+                    jobs.sessions[id]?.consume(header, payload: packet.payload)
                 case .finishConsumer(let id, let interval):
-                    guard let consumer = jobs.sessions.removeValue(forKey: id) else {
-                        writer.enqueue(.failed(id, "No such fragment session."))
+                    guard let runner = jobs.sessions.removeValue(forKey: id) else {
+                        writer.enqueue(.failed(id, "No such consumer session."))
                         continue
                     }
-                    do {
-                        // The JSON's length, the JSON, then the trajectories.
-                        let result = consumer.result(frameInterval: interval)
-                        let json = try JSONEncoder().encode(result)
-                        var length = UInt32(json.count).bigEndian
-                        writer.enqueue(
-                            .fragments(id),
-                            payload: Data(bytes: &length, count: 4) + json + result.trajectoryData)
-                    } catch {
-                        writer.enqueue(
-                            .failed(
-                                id, "The fragments' result could not be sent: \(error.localizedDescription)"))
-                    }
+                    runner.finish(frameInterval: interval)
                 case .thermal(let session):
                     jobs.thermal[session.id] = ThermalExposure(spec: session.spec, scene: session.scene)
                 case .fireball(let id, let frame):
@@ -118,12 +83,10 @@ enum SweepWorker {
         await jobs.stop()
     }
 
-    /// The job running, if one is.
+    /// The job running, if one is, and the consumer sessions.
     private final class Jobs {
         var current: (id: UUID, task: Task<Void, Never>)?
-        var sessions: [UUID: FragmentConsumer] = [:]
-        /// Live sessions, and the impacts each has been sent.
-        var live: [UUID: Int] = [:]
+        var sessions: [UUID: ConsumerRunner] = [:]
         var thermal: [UUID: ThermalExposure] = [:]
 
         func stop() async {
@@ -149,4 +112,73 @@ enum SweepWorker {
             try? writer.send(.failed(job.id, error.localizedDescription))
         }
     }
+}
+
+/// A consumer session on a worker: its model, fed on a queue of its own, so that sessions run
+/// side by side and the connection's reader never waits for one; the frames in the order sent.
+private final class ConsumerRunner: @unchecked Sendable {
+    private let id: UUID
+    private let writer: SweepWorkerWriter
+    private let queue: DispatchQueue
+    /// Touched only on `queue`.
+    private var engine: ConsumerEngine
+    /// Why the session failed, if it has; it then takes no more frames.
+    private var failure: String?
+    private var cancelled = false
+    /// For a live session, the impacts sent so far.
+    private var impactsSent = 0
+
+    init(_ session: ConsumerSession, writer: SweepWorkerWriter) {
+        id = session.id
+        self.writer = writer
+        engine = ConsumerEngine(session.kind)
+        queue = DispatchQueue(label: "dev.bombcad.consumer.\(session.kind.name)")
+    }
+
+    func consume(_ header: ConsumerInput.Header, payload: Data) {
+        queue.async { [self] in
+            guard failure == nil, !cancelled else { return }
+            do {
+                let input = try ConsumerInput(header: header, payload: payload)
+                try engine.consume(input)
+                writer.enqueue(.report(id, engine.report))
+                if case .air(let slice) = input, let live = engine.live(time: slice.time) {
+                    let impacts = Array(live.impacts.dropFirst(impactsSent))
+                    impactsSent = live.impacts.count
+                    writer.enqueue(
+                        .live(
+                            id,
+                            LiveFrameHeader(
+                                time: live.time, fragmentCount: live.fragmentCount, impacts: impacts)),
+                        payload: live.payload)
+                }
+            } catch {
+                failure = error.localizedDescription
+                writer.enqueue(.failed(id, error.localizedDescription))
+            }
+        }
+    }
+
+    /// Sends the result once every frame before has been taken, or, if the session failed, why
+    /// again: the app may not have been waiting for it the first time.
+    func finish(frameInterval: Double) {
+        queue.async { [self] in
+            if let failure {
+                writer.enqueue(.failed(id, failure))
+                return
+            }
+            guard !cancelled else {
+                writer.enqueue(.failed(id, SweepWorkerMessage.cancelled))
+                return
+            }
+            do {
+                let outcome = engine.outcome(frameInterval: frameInterval)
+                writer.enqueue(.outcome(id), payload: try outcome.encoded())
+            } catch {
+                writer.enqueue(.failed(id, "The result could not be sent: \(error.localizedDescription)"))
+            }
+        }
+    }
+
+    func cancel() { queue.async { [self] in cancelled = true } }
 }

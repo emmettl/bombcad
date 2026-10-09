@@ -16,7 +16,11 @@ enum ImportedSceneCodec {
             // Older readers must not silently discard durable object/component ownership, nor
             // stand a base on the ground that stands on a footing, nor turn a joint face down.
             encodingVersion =
-                scenario.hasFootingsOrTurnedJoints ? 5 : scenario.structuralObjects.count > 1 ? 4 : 3
+                !scenario.envelopeObjects.isEmpty
+                ? 6
+                : scenario.hasFootingsOrTurnedJoints
+                    ? 5
+                    : scenario.structuralObjects.count > 1 ? 4 : 3
         }
     }
 
@@ -161,7 +165,7 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", (1...5).contains(header.encodingVersion) else {
+        guard header.format == "dev.bombcad.scene", (1...6).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
@@ -171,15 +175,18 @@ enum ImportedSceneCodec {
                 throw ProjectFileError.invalid("This scene encoding requires object ownership.")
             }
         }
-        guard
-            header.encodingVersion == 5
-                ? payload.scenario.hasFootingsOrTurnedJoints
-                : (payload.scenario.structuralObjects.count > 1) == (header.encodingVersion == 4)
-                    && !payload.scenario.hasFootingsOrTurnedJoints
-        else {
-            throw ProjectFileError.invalid(
-                "Multiple structures require scene encoding version 4, and footings or turned joints version 5."
-            )
+        let hasEnvelopes = !payload.scenario.envelopeObjects.isEmpty
+        let hasFootings = payload.scenario.hasFootingsOrTurnedJoints
+        let expected =
+            hasEnvelopes ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
+        // The unmerged envelope prototype also wrote v5 before footing support landed on main.
+        // Its geometry is explicit and can migrate to v6 without discarding either feature.
+        let prototypeEnvelope = header.encodingVersion == 5 && hasEnvelopes
+        let legacy =
+            header.encodingVersion < 3 && !hasEnvelopes && !hasFootings
+            && payload.scenario.structuralObjects.count <= 1
+        guard header.encodingVersion == expected || prototypeEnvelope || legacy else {
+            throw ProjectFileError.invalid("Scene objects do not match their encoding version.")
         }
         guard payload.scenario.importedModels == nil else {
             throw ProjectFileError.invalid("The scene contains conflicting inline and referenced imports.")
