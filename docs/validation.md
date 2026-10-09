@@ -809,7 +809,13 @@ elements). SS0a-1 still loses 430–890 elements, now along the top of the sprea
 one-row bars' agreement on 16 elements owes something to the split along the bars, which
 softens a beam and holds its deflection; without it the beams spring back. Either way the
 shear such a beam carries across its cracks, and what keeps a struck beam bent, are not yet
-right, and the spread is not the default.
+right, and the spread is not the default. Rerun on the present defaults (the CEB's law for the bars, over their debonded
+length), the spread still trades one for the other: Ando's fourteen faster peaks are 20% off on
+16 elements and 26% on 24 (13% and 53% with the bars in one row), but nearly all short, the
+heavily reinforced 1.0 m beams by half (A24 at 6 m/s 31 mm against 54), keeping half the
+residuals measured; Saatci's heavy drops with stirrups come within 6% on 16 elements, their
+residuals within 27% (41.7 / 22.5, 38.1 / 19.8 and 34.5 / 16.7 mm), and within −5% to −12% on
+24; and SS0a-1 still loses 520–640 elements.
 
 How the jig held the beams decides much of this. Held as pins at both ends (the paper's "turning
 and nothing else"), the 1.0 m beams came within 15% at every speed and B36 broke at 5 m/s, but
