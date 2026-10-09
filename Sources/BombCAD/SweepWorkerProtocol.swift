@@ -54,7 +54,7 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 4
+    static let protocolVersion = 5
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
@@ -115,7 +115,11 @@ enum SweepWorkerFrame {
     static let maximumBytes = 512 << 20
 
     static func encode(_ message: SweepWorkerMessage, payload: Data = Data()) throws -> Data {
-        let body = try JSONEncoder().encode(message)
+        // Base64 is full of slashes, which JSON need not escape: the fireball's shape (a frame a
+        // millisecond) would be half as large again.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .withoutEscapingSlashes
+        let body = try encoder.encode(message)
         return length(body.count) + body + length(payload.count) + payload
     }
 

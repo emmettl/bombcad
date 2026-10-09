@@ -135,10 +135,12 @@ struct ThermalOverlayTests {
     func sweep() async throws {
         var document = airOnly()
         document.runSettings?.duration = 0.006
-        // Slow enough to fall behind the run.
+        // Slow enough to fall behind the run, with the sphere, whose cost this is tuned to: the
+        // shape's would take minutes in a debug build.
         var slow = spec
         slow.samples = 2048
         slow.groundSpacing = 0.2
+        slow.fireball = .sphere
         document.thermal = slow
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         try await ready(model, by: ContinuousClock.now + .seconds(60))
@@ -204,6 +206,10 @@ struct ThermalOverlayTests {
         "Run on a worker, the thermal radiation comes out exactly as here, over a connection kept between runs"
     )
     func remote() async throws {
+        // A run keeps its frames without the fireball's shape, so this checks them reckoned from
+        // its sphere; ThermalSessionTests checks the shape sent to a worker.
+        var spec = spec
+        spec.fireball = .sphere
         let (_, here) = try await run(airOnly(), thermal: spec)
         var document = airOnly()
         document.thermal = spec

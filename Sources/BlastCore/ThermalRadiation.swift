@@ -13,6 +13,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     public var groundSpacing: Float = 2
     /// Points on the fireball's surface sampled for each receiver's view of it.
     public var samples = 128
+    /// The fireball as its own shape, or as one equivalent sphere, for comparison.
+    public var fireball = FireballModel.shape
 
     public init() {}
 
@@ -28,6 +30,7 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
         groundSpacing =
             try values.decodeIfPresent(Float.self, forKey: .groundSpacing) ?? defaults.groundSpacing
         samples = try values.decodeIfPresent(Int.self, forKey: .samples) ?? defaults.samples
+        fireball = try values.decodeIfPresent(FireballModel.self, forKey: .fireball) ?? defaults.fireball
     }
 
     public func validate() throws {
@@ -43,8 +46,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
 }
 
 /// The fireball at one moment as the blast sees it: the luminous gas, reduced to the volume,
-/// centre and temperature of an equivalent sphere. A few numbers a frame, so the radiation can be
-/// worked out anywhere.
+/// centre and temperature of an equivalent sphere, and its shape in blocks. A few numbers and a
+/// few kilobytes a frame, so the radiation can be worked out anywhere.
 public struct FireballFrame: Codable, Sendable, Equatable {
     public var time: Double
     /// Volume of luminous gas, in cubic metres; zero once none is left.
@@ -55,108 +58,62 @@ public struct FireballFrame: Codable, Sendable, Equatable {
     public var temperature: Float
     /// The hottest cell, in kelvin.
     public var hottest: Float
+    /// The luminous gas's shape; nil where no block of it is half luminous, and in the frames a
+    /// result keeps (see `withoutShape`).
+    public var shape: FireballShape?
 
-    public init(time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float) {
+    public init(
+        time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float,
+        shape: FireballShape? = nil
+    ) {
         self.time = time
         self.volume = volume
         self.centre = centre
         self.temperature = temperature
         self.hottest = hottest
+        self.shape = shape
     }
 
     /// The equivalent sphere's radius.
     public var radius: Float { Float(cbrt(3 * volume / (4 * .pi))) }
+
+    /// The frame without its shape, as a result keeps it: tens of kilobytes a frame is too much
+    /// to save with a run.
+    public var withoutShape: FireballFrame {
+        var frame = self
+        frame.shape = nil
+        return frame
+    }
 }
 
 extension BlastSolver {
-    /// The fireball now: every cell of air at least `luminousTemperature` kelvin. Summed on the GPU
-    /// if the batch that ended now was asked for it (see `frameRequest`); otherwise read from the
-    /// state, spread across the CPU's cores, so call it only while no batch is in flight.
+    /// The fireball now: every cell of air at least `luminousTemperature` kelvin, summed in
+    /// blocks of two cells a side. Summed on the GPU if the batch that ended now was asked for it
+    /// (see `frameRequest`); otherwise read from the state, spread across the CPU's cores, so call
+    /// it only while no batch is in flight.
     public func fireball(luminousTemperature: Float) -> FireballFrame {
-        if let rows = frameExtractor?.fireballRows(
-            luminous: luminousTemperature, grid: grid, time: time, steps: stepCount)
-        {
-            // In a fixed order and in double precision, so the same from one run to the next.
-            var count = 0.0
-            var position = SIMD3<Double>.zero
-            var fourth = 0.0
-            var hottest: Float = 0
-            for k in 0..<grid.nz {
-                for j in 0..<grid.ny {
-                    let row = rows[j + grid.ny * k]
-                    let n = Double(row.x)
-                    guard n > 0 else { continue }
-                    count += n
-                    position += SIMD3(Double(row.y), n * (Double(j) + 0.5), n * (Double(k) + 0.5))
-                    fourth += Double(row.z)
-                    hottest = max(hottest, row.w)
-                }
-            }
-            return Self.fireball(
-                time: time, count: count, position: position, fourth: fourth, hottest: hottest,
-                cellSize: grid.cellSize)
+        let blocks =
+            frameExtractor?.fireballBlocks(luminous: luminousTemperature, time: time, steps: stepCount)
+            ?? cpuLuminousBlocks(luminousTemperature: luminousTemperature)
+        // In the blocks' order and in double precision, so the same from one run to the next.
+        var count = 0.0
+        var position = SIMD3<Double>.zero
+        var fourth = 0.0
+        var hottest: Float = 0
+        for block in blocks {
+            count += Double(block.cells)
+            position += SIMD3<Double>(block.position)
+            fourth += Double(block.fourth)
+            hottest = max(hottest, block.hottest)
         }
-        let (nx, ny, nz) = (grid.nx, grid.ny, grid.nz)
-        let h = grid.cellSize
-        let gamma = configuration.gamma
-        let airModel = configuration.airModel
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        struct Sums {
-            var count = 0
-            var position = SIMD3<Double>.zero
-            var fourth = 0.0
-            var hottest: Float = 0
-        }
-        var planes = [Sums](repeating: Sums(), count: nz)
-        withState { cells in
-            planes.withUnsafeMutableBufferPointer { planes in
-                DispatchQueue.concurrentPerform(iterations: nz) { k in
-                    var sums = Sums()
-                    for j in 0..<ny {
-                        for i in 0..<nx {
-                            let index = grid.index(i, j, k)
-                            guard mask[index] == 0 else { continue }
-                            let air = Self.primitive(of: cells[index], gamma: gamma, airModel: airModel)
-                            // Dissociating air is never hotter than this, so it bounds the search.
-                            let bound = air.pressure / (air.density * AirModel.gasConstant)
-                            guard bound >= luminousTemperature else { continue }
-                            let t =
-                                airModel == .dissociating
-                                ? airModel.temperature(density: air.density, pressure: air.pressure) : bound
-                            guard t >= luminousTemperature, t.isFinite else { continue }
-                            sums.count += 1
-                            sums.position += SIMD3<Double>(Double(i) + 0.5, Double(j) + 0.5, Double(k) + 0.5)
-                            sums.fourth += pow(Double(t), 4)
-                            sums.hottest = max(sums.hottest, t)
-                        }
-                    }
-                    planes[k] = sums
-                }
-            }
-        }
-        let total = planes.reduce(into: Sums()) { total, plane in
-            total.count += plane.count
-            total.position += plane.position
-            total.fourth += plane.fourth
-            total.hottest = max(total.hottest, plane.hottest)
-        }
-        return Self.fireball(
-            time: time, count: Double(total.count), position: total.position, fourth: total.fourth,
-            hottest: total.hottest, cellSize: h)
-    }
-
-    /// The fireball from its luminous cells' count, the sum of their positions in cells, of their
-    /// temperatures to the fourth power, and the hottest.
-    private static func fireball(
-        time: Double, count: Double, position: SIMD3<Double>, fourth: Double, hottest: Float,
-        cellSize h: Float
-    ) -> FireballFrame {
         guard count > 0 else {
             return FireballFrame(time: time, volume: 0, centre: .zero, temperature: 0, hottest: 0)
         }
+        let h = grid.cellSize
         return FireballFrame(
             time: time, volume: count * pow(Double(h), 3), centre: SIMD3<Float>(position / count) * h,
-            temperature: Float(pow(fourth / count, 0.25)), hottest: hottest)
+            temperature: Float(pow(fourth / count, 0.25)), hottest: hottest,
+            shape: FireballShape(blocks: blocks, grid: grid))
     }
 }
 
@@ -219,7 +176,7 @@ public struct ThermalExposure: Sendable {
             for n in receivers.indices { fluence[n] += 0.5 * Double(before[n] + now[n]) * step }
         }
         for n in receivers.indices { peakIrradiance[n] = max(peakIrradiance[n], now[n]) }
-        frames.append(frame)
+        frames.append(frame.withoutShape)
         lastIrradiance = now
     }
 
@@ -287,12 +244,18 @@ public struct ThermalExposure: Sendable {
         /// `weights` holds the cosine on the receiver of each ray it added, in order; `solidAngle`
         /// is the cone's.
         case sampled(weights: [Float], solidAngle: Float)
+        /// `weights` holds what each ray it added gives if nothing is in the way, in W/m², and the
+        /// sum is held to `cap` (see `view(from:_:rays:)` for the fireball's shape).
+        case weighted(weights: [Float], cap: Float)
     }
 
     /// One receiver's view of `frame`'s fireball, adding the rays it needs tested to `rays`.
     func view(from receiver: ThermalReceiver, _ frame: FireballFrame, power: Float, rays: inout [ThermalRay])
         -> View
     {
+        if spec.fireball == .shape, let shape = frame.shape {
+            return view(from: receiver, shape, rays: &rays)
+        }
         let radius = frame.radius
         let x = receiver.position
         let toCentre = frame.centre - x
@@ -337,6 +300,13 @@ public struct ThermalExposure: Sendable {
                 next += 1
             }
             return min(power / .pi * sum * solidAngle / Float(cone.count), power)
+        case .weighted(let weights, let cap):
+            var sum: Float = 0
+            for weight in weights {
+                if visible[next] { sum += weight }
+                next += 1
+            }
+            return min(sum, cap)
         }
     }
 
