@@ -36,6 +36,7 @@ struct StreetRun: Codable {
     var cfl: Float
     var sourceRadiusM: Float
     var sourceMassKg: Float
+    var sourceEnergyJ: Float
     var reflectiveFaces: UInt32
     var durationS: Double
     var steps: Int
@@ -46,6 +47,7 @@ struct StreetRun: Codable {
     var solverBytes: Int
     var coupling: CouplingStatistics
     var maximumRefinedPatches: Int
+    var refinementPatchCapacity: Int
     var massInitialKg: Double
     var massFinalKg: Double
     var energyInitialJ: Double
@@ -103,7 +105,8 @@ enum StreetBenchmark {
             ? [Setting(name: "coarse", dx: 1)]
             : [
                 Setting(name: "coarse", dx: 1), Setting(name: "medium", dx: 0.5),
-                Setting(name: "fine", dx: 0.25), Setting(name: "adaptive", dx: 0.5, refinement: 2),
+                Setting(name: "fine", dx: 0.25), Setting(name: "finest", dx: 0.125),
+                Setting(name: "adaptive", dx: 0.5, refinement: 2),
                 Setting(name: "half-cfl", dx: 0.25, cfl: 0.225),
             ]
         var observations: [StreetRun] = []
@@ -134,12 +137,12 @@ enum StreetBenchmark {
             sceneWithoutBlast.charge.mass = 0
             observations.append(
                 try execute(
-                    device: device, scene: sceneWithoutBlast, layout: "street", setting: settings[2],
+                    device: device, scene: sceneWithoutBlast, layout: "street", setting: settings[3],
                     id: "gravity-control", purpose: "gravity-control", duration: duration,
                     directory: directory))
             observations.append(
                 try execute(
-                    device: device, scene: sceneWithGravity, layout: "street", setting: settings[2],
+                    device: device, scene: sceneWithGravity, layout: "street", setting: settings[3],
                     id: "profiled-street", purpose: "stage-profile", duration: duration,
                     directory: directory, profile: true))
         }
@@ -243,18 +246,32 @@ enum StreetBenchmark {
                     arrivalS: samples.first { $0.pressure - scene.atmosphere.pressure >= 1000 }?.time,
                     samples: samples.map { [$0.time, Double($0.pressure - scene.atmosphere.pressure)] }))
         }
-        let mapFile = "\(id)-map.json"
+        let mapFile = "\(id)-map.json.gz"
         guard let map = solver.exposureSnapshot() else { throw BlastError.allocationFailed("exposure map") }
-        try write(map, to: directory.appending(path: mapFile), pretty: false)
+        let plain = directory.appending(path: "\(id)-map.json")
+        try write(map, to: plain, pretty: false)
+        let compressed = directory.appending(path: mapFile)
+        FileManager.default.createFile(atPath: compressed.path, contents: nil)
+        let output = try FileHandle(forWritingTo: compressed)
+        defer { try? output.close() }
+        let gzip = Process()
+        gzip.executableURL = URL(filePath: "/usr/bin/gzip")
+        gzip.arguments = ["-n", "-c", plain.path]
+        gzip.standardOutput = output
+        try gzip.run()
+        gzip.waitUntilExit()
+        guard gzip.terminationStatus == 0 else { throw BlastError.allocationFailed("map compression") }
+        try FileManager.default.removeItem(at: plain)
         let result = StreetRun(
             id: id, layout: layout, purpose: purpose, cellSizeM: setting.dx, refinement: setting.refinement,
             cfl: setting.cfl, sourceRadiusM: solver.balloonRadius(for: scene.charge),
-            sourceMassKg: scene.charge.mass,
+            sourceMassKg: scene.charge.mass, sourceEnergyJ: scene.charge.energy,
             reflectiveFaces: scene.reflectiveFaces.rawValue, durationS: solver.time,
             steps: solver.stepCount, setupWallS: setup, runWallS: wall, commandGPUS: gpu,
             profile: profile ? stages : nil, solverBytes: solver.memoryFootprint,
             coupling: solver.couplingStatistics,
-            maximumRefinedPatches: maxPatches, massInitialKg: initial.mass, massFinalKg: final.mass,
+            maximumRefinedPatches: maxPatches, refinementPatchCapacity: solver.refinementPatchCapacity,
+            massInitialKg: initial.mass, massFinalKg: final.mass,
             energyInitialJ: initial.energy, energyFinalJ: final.energy, gaugeObservations: gauges,
             bodies: histories, mapFile: mapFile, stable: stable)
         print("\(id): \(solver.stepCount) steps to \(solver.time) s, \(wall) s wall, \(gpu) s GPU")

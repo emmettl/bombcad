@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate retained runs and report sensitivity without asserting convergence."""
 import argparse
+import gzip
 import json
 import math
 from pathlib import Path
@@ -12,7 +13,7 @@ def require(condition, message):
 
 
 def read(path):
-    return json.loads(path.read_text())
+    return json.loads(gzip.decompress(path.read_bytes()) if path.suffix == ".gz" else path.read_text())
 
 
 def compare_maps(a, b):
@@ -66,6 +67,9 @@ def check(directory):
         expected_time = 0.06 if run["purpose"] == "closed-conservation" else report["durationS"]
         require(abs(run["durationS"] - expected_time) < 1e-7, f"{name}: time cutoff")
         require(abs(run["sourceRadiusM"] - 1) < 1e-6, f"{name}: changed source radius")
+        require(run["refinementPatchCapacity"] >= run["maximumRefinedPatches"], f"{name}: refinement capacity")
+        require(run["reflectiveFaces"] == (63 if run["purpose"] == "closed-conservation" else 16), f"{name}: boundaries")
+        require(run["sourceMassKg"] == (0 if run["purpose"] == "gravity-control" else 2), f"{name}: source")
         for key in ("setupWallS", "runWallS", "commandGPUS", "solverBytes", "massInitialKg", "massFinalKg", "energyInitialJ", "energyFinalJ"):
             require(math.isfinite(run[key]) and run[key] > 0, f"{name}: {key}")
         plane = read(directory / run["mapFile"])
@@ -100,11 +104,11 @@ def check(directory):
             require(abs(gauge["peakPa"] - max(0, max(s[1] for s in samples))) < 0.1, f"{name}: gauge peak")
     summary = {"schemaVersion": 1, "sourceRevision": report["sourceRevision"], "comparisons": [], "conservation": []}
     if report["completeMatrix"]:
-        require(len(runs) == 20, "expected fifteen comparisons, three closed checks, gravity control and profile")
+        require(len(runs) == 23, "expected eighteen comparisons, three closed checks, gravity control and profile")
         require(len(report["sourceRevision"]) == 40 and all(c in "0123456789abcdef" for c in report["sourceRevision"]), "source revision")
         for layout in ("isolated", "pair", "street"):
-            reference = f"{layout}-fine"
-            for setting in ("coarse", "medium", "adaptive", "half-cfl"):
+            for setting in ("coarse", "medium", "fine", "adaptive", "half-cfl"):
+                reference = f"{layout}-fine" if setting == "half-cfl" else f"{layout}-finest"
                 name = f"{layout}-{setting}"
                 require(name in runs and reference in runs, "missing comparison")
                 require([b["id"] for b in runs[name]["bodies"]] == [b["id"] for b in runs[reference]["bodies"]], "owner changes")
@@ -113,13 +117,17 @@ def check(directory):
             run = runs[name]
             mass = abs(run["massFinalKg"] / run["massInitialKg"] - 1)
             energy = abs(run["energyFinalJ"] / run["energyInitialJ"] - 1)
-            require(mass < 0.003 and energy < 0.003, f"{name}: stationary closed conservation > 0.3%")
-            summary["conservation"].append({"run": name, "massRelativeResidual": mass, "energyRelativeResidual": energy})
+            source_mass = abs(run["massFinalKg"] - run["massInitialKg"]) / run["sourceMassKg"]
+            source_energy = abs(run["energyFinalJ"] - run["energyInitialJ"]) / run["sourceEnergyJ"]
+            require(mass < 0.003 and energy < 0.003 and source_mass < 0.003 and source_energy < 0.003,
+                    f"{name}: stationary closed conservation > 0.3%")
+            summary["conservation"].append({"run": name, "massRelativeResidual": mass, "energyRelativeResidual": energy,
+                                            "massErrorPerSourceMass": source_mass, "energyErrorPerSourceEnergy": source_energy})
         profile = runs["profiled-street"]
         require(profile.get("profile") and all(v > 0 for v in profile["profile"].values()), "profile counters")
         require(sum(profile["profile"].values()) <= profile["commandGPUS"] * 1.05, "profile exceeds GPU command intervals")
         for key in ("peakPa", "positiveImpulsePaS", "everSolid"):
-            require(maps["street-fine"][key] == maps["profiled-street"][key], f"profiling changed {key}")
+            require(maps["street-finest"][key] == maps["profiled-street"][key], f"profiling changed {key}")
         require(all(s["removedElements"] == 0 for b in runs["gravity-control"]["bodies"] for s in b["samples"]), "gravity control failed")
     return summary
 

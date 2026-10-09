@@ -63,6 +63,7 @@ public final class BlastSolver {
     public var shells: ShellSolver? { bodies.first?.shells }
     public var mixed: MixedStructure? { bodies.first?.mixed }
     public var hasBody: Bool { !bodies.isEmpty }
+    public var refinementPatchCapacity: Int { refinement?.maxPatches ?? 0 }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
     public var couplingStatistics: CouplingStatistics {

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Render retained street-study data with matplotlib (no solver or inferred fields)."""
 import argparse
+import gzip
 import json
 from pathlib import Path
 
@@ -13,7 +14,7 @@ import numpy as np
 
 
 def load(path):
-    return json.loads(path.read_text())
+    return json.loads(gzip.decompress(path.read_bytes()) if path.suffix == ".gz" else path.read_text())
 
 
 def render(directory, output):
@@ -30,7 +31,7 @@ def render(directory, output):
     norms = (LogNorm(0.1, 1000), LogNorm(0.1, 1000), Normalize(0, report["durationS"] * 1000))
     images = []
     for row, layout in enumerate(layouts):
-        run = runs[f"{layout}-fine"]
+        run = runs[f"{layout}-finest"]
         data = load(directory / run["mapFile"])
         solids = np.array(data["everSolid"]).reshape(data["ny"], data["nx"])
         for column, key in enumerate(keys):
@@ -58,7 +59,7 @@ def render(directory, output):
     for column, im in enumerate(images):
         fig.colorbar(im, ax=axes[:, column], location="bottom", shrink=0.9, pad=0.04)
     fig.suptitle("Street interactions: matched conventional source, changing neighbours\n"
-                 "0.25 m air cells · 1.5 m plane · first 120 ms", fontsize=15)
+                 "0.125 m air cells · 1.5 m plane · first 120 ms", fontsize=15)
     fig.supxlabel("Grey: ever solid. White arrival cells: threshold unreached. Star: source. Dots: gauges 1–4.\n"
                   "Invented buildings; fixed 1 m source deposition radius; these results are not measured validation.", fontsize=9)
     fig.savefig(output / "exposure.png", dpi=150)
@@ -68,9 +69,9 @@ def render(directory, output):
     colours = {"isolated": "#335f9d", "pair": "#cd6c25", "street": "#2b8260"}
     for index, ax in enumerate(axes.flat):
         for layout in layouts:
-            samples = np.array(runs[f"{layout}-fine"]["gaugeObservations"][index]["samples"])
+            samples = np.array(runs[f"{layout}-finest"]["gaugeObservations"][index]["samples"])
             ax.plot(samples[:, 0] * 1000, samples[:, 1] / 1000, label=layout, color=colours[layout], linewidth=1.4)
-        gauge = runs["street-fine"]["gaugeObservations"][index]
+        gauge = runs["street-finest"]["gaugeObservations"][index]
         ax.set_title(f"{index + 1}. {gauge['name']} — nominal {gauge['positionM']} m")
         ax.set_xlabel("Time (ms)")
         ax.set_ylabel("Overpressure (kPa)")
@@ -83,20 +84,20 @@ def render(directory, output):
     plt.close(fig)
 
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.5), layout="constrained")
-    names = ("coarse", "medium", "adaptive", "half-cfl")
+    names = ("coarse", "medium", "fine", "adaptive", "half-cfl")
     for layout in layouts:
         rows = {r["run"]: r for r in summary["comparisons"]}
         for index, key in enumerate(("peakRelativeL1", "impulseRelativeL1", "arrivalMeanAbsoluteErrorS")):
             values = [rows[f"{layout}-{name}"][key] for name in names]
-            axes[index].plot(range(4), [v * (1000 if index == 2 else 100) for v in values], "o-", label=layout, color=colours[layout])
+            axes[index].plot(range(5), [v * (1000 if index == 2 else 100) for v in values], "o-", label=layout, color=colours[layout])
     for ax, title, ylabel in zip(axes, ("Peak map sensitivity", "Impulse map sensitivity", "Arrival map sensitivity"),
                                 ("Relative L1 difference (%)", "Relative L1 difference (%)", "Mean absolute difference (ms)")):
         ax.set_title(title)
         ax.set_ylabel(ylabel)
-        ax.set_xticks(range(4), ("1 m", "0.5 m", "0.5 m\nrefined ×2", "0.25 m\nhalf CFL"))
+        ax.set_xticks(range(5), ("1 m", "0.5 m", "0.25 m", "0.5 m\nrefined ×2", "0.25 m\nhalf CFL"))
         ax.grid(alpha=0.2)
         ax.legend()
-    fig.suptitle("Sensitivity to resolution and timestep — reference: uniform 0.25 m, CFL 0.45", fontsize=13)
+    fig.suptitle("Resolution sensitivity: reference 0.125 m; half-CFL comparison: reference 0.25 m", fontsize=13)
     fig.supxlabel("Common fluid xy cells; fine maps area-averaged onto coarse cells; exclude points within 3 m of source.\n"
                   "Arrival differences use commonly reached points. A smaller difference alone does not establish convergence.", fontsize=9)
     fig.savefig(output / "sensitivity.png", dpi=150)
