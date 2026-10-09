@@ -4,6 +4,9 @@ Complete a stable simulation, then choose **Keep Run…** beside the chart. Give
 unique name. **Compare** opens a view of retained runs, with up to four pressure or deflection
 traces overlaid. Choose a reference run to see absolute peak differences. Runs can be renamed
 (press Return in the name field), exported to CSV, removed and restored with **Undo last removal**.
+Names are trimmed, must be nonempty and at most 120 characters, and must be unique without
+regard to case. A rejected rename shows its reason beside the field and leaves the draft
+available to correct; the saved run stays unchanged.
 
 Keeping a run is explicit. Advancing, pausing or resetting the simulation does not automatically
 add result data or mark a project changed. Keeping, renaming and removing results do; native
@@ -204,7 +207,7 @@ device, each gauge's peak and the structure's largest deflection.
 | `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
 | `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
 | `--thermal <spec.json>` | Reckons the fireball's thermal radiation on the ground and the scene's faces, a frame at a time; `--thermal-results` writes it as JSON; see [Thermal radiation](thermal-radiation.md) |
-| `--cloud <spec.json>` | Hands the hot gas left at the end over to a model of the fireball's rise and cloud, followed for minutes; `--cloud-results` writes it as JSON; see [The fireball's rise and cloud](fireball-rise.md) |
+| `--cloud <spec.json>` | Hands the hot gas left at the end over to a model of the fireball's rise and cloud, followed for minutes; `--cloud-results` writes it as JSON, `--sounding <file.csv>` gives it a measured atmosphere, and `BombCAD cloud <results.json>` follows it again without the blast; see [The fireball's rise and cloud](fireball-rise.md) |
 | `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
 | `--fragment-results <file>` | Writes the fragments' impacts as JSON |
 | `--ground-shock <spec.json>` | Estimates the ground's shaking under chosen points from the overpressure on the ground, a frame at a time; `--ground-results` writes it as JSON; see [Ground shock](ground-shock.md) |
@@ -242,7 +245,7 @@ index, and JSON layout export continues to omit this project-level result collec
 ## Verification
 
 ```sh
-swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|Fragment|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests'
+swift test --filter 'HeadlessRun|SweepSchedule|SweepWorker|Fragment|SavedRunTests|CompletedRunCaptureTests|ParameterSweepPlanTests|ParameterSweepExecutionTests|ProjectSessionTests|ProjectDocumentTests|Thermal'
 ```
 
 Tests cover actual Metal runs, explicit change tracking, stable historical inputs, fixed-time

@@ -10,6 +10,8 @@ struct SimulationInputs: Equatable, Sendable {
     var fragments: FragmentSpec?
     /// The ground points estimated alongside, likewise.
     var groundShock: GroundShockSpec? = nil
+    /// The thermal radiation reckoned alongside, likewise.
+    var thermal: ThermalSpec? = nil
 
     func validate() throws {
         try ProjectDocument.validate(scenario)
@@ -236,7 +238,7 @@ final class ParameterSweep {
                 shared.schedule.progress(
                     .local, model.duration > 0 ? min(model.time / model.duration, 1) : 0,
                     seconds: start.duration(to: .now).seconds)
-                return !model.isRunning && !model.hasPendingGPUWork
+                return !model.isRunning && !model.hasPendingGPUWork && model.companionsCaughtUp
             }
             try Task.checkCancellation()
             try model.keepRun(named: item.name)

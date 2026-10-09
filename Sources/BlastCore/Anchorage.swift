@@ -20,6 +20,10 @@ import Foundation
 /// (`soil(...)`) the connection is a Winkler bed: a subgrade modulus for its stiffness, a bearing
 /// capacity, friction and no tension.
 ///
+/// With a `footing`, the connection ties the base to a rigid footing of finite plan, with its own
+/// mass, instead of the ground: the joint moves and turns with the footing, which stands on soil
+/// that bears over its plan alone (`Footing`).
+///
 /// The law has no rate dependence, no dilatancy and no rotational stiffness of its own: a solid
 /// body's base rocks through the opening of its nodes on one side, and a shell's or a column's
 /// through points of its footprint that turn with its node (`ShellMesh.baseFibres`).
@@ -44,13 +48,20 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var friction: Float
     /// Pressure in Pa the ground bears before it yields and the base settles; nil bears any.
     public var bearingCapacity: Float?
+    /// A rigid footing between the base and the soil; nil ties the base to the ground itself.
+    public var footing: Footing?
+    /// Which side of the body the joint is on, for a support region's connection; nil (or
+    /// `below`) for a horizontal joint under it.
+    public var side: JointSide?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,
         tensionPlateau: Float = 0, tensionOpening: Float, cohesion: Float, cohesionSlip: Float,
-        friction: Float, bearingCapacity: Float? = nil
+        friction: Float, bearingCapacity: Float? = nil, footing: Footing? = nil, side: JointSide? = nil
     ) {
         self.bearingCapacity = bearingCapacity
+        self.footing = footing
+        self.side = side
         self.normalStiffness = normalStiffness
         self.shearStiffness = shearStiffness
         self.tensileStrength = tensileStrength
@@ -139,6 +150,45 @@ public struct Anchorage: Sendable, Hashable, Codable {
     }
 }
 
+/// Which side of a body a connection's joint is on, the support beyond it: under the body (a
+/// horizontal joint it bears on), over it (one it hangs from), or against one of its faces
+/// across x or y (a vertical joint, as of a wall cast against another). The joint acts across
+/// the lattice faces of solid elements that face that way; shells and columns are tied only
+/// under them.
+public enum JointSide: String, CaseIterable, Sendable, Hashable, Codable {
+    case below, above, negativeX, positiveX, negativeY, positiveY
+
+    /// The lattice axis across the joint.
+    var axis: Int {
+        switch self {
+        case .below, .above: 2
+        case .negativeX, .positiveX: 0
+        case .negativeY, .positiveY: 1
+        }
+    }
+
+    /// Which way along `axis` the joint lies from the body: -1 or 1.
+    var direction: Int { self == .below || self == .negativeX || self == .negativeY ? -1 : 1 }
+
+    /// The unit vector across the joint from the support into the body, the way it opens.
+    public var normal: SIMD3<Float> {
+        var value = SIMD3<Float>.zero
+        value[axis] = Float(-direction)
+        return value
+    }
+
+    public var title: String {
+        switch self {
+        case .below: "Under the body"
+        case .above: "Over the body"
+        case .negativeX: "Against its −x face"
+        case .positiveX: "Against its +x face"
+        case .negativeY: "Against its −y face"
+        case .positiveY: "Against its +y face"
+        }
+    }
+}
+
 /// The ways a body's base can stand on the ground, for choosing one by name.
 public enum BaseConnection: String, CaseIterable, Sendable {
     /// Clamped: the base never gives (`fixedBase` with no anchorage).
@@ -151,6 +201,10 @@ public enum BaseConnection: String, CaseIterable, Sendable {
     case resting
     /// On a footing over soil that can settle and yield (`Anchorage.soil()`).
     case soil
+    /// Cast on starter bars onto a rigid footing, 0.4 m thick and reaching 0.5 m beyond the base
+    /// on each side, on a half-space of medium dense sand with its mass and radiation damping
+    /// (`Footing`).
+    case footing
 
     /// The starter bars' ratio of `dowelled`.
     public static let dowelRatio: Float = 2 * 565e-6 / 0.25
@@ -162,6 +216,12 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .joint: .constructionJoint
         case .resting: .resting()
         case .soil: .soil()
+        case .footing:
+            {
+                var joint = Anchorage.dowelled(ratio: Self.dowelRatio)
+                joint.footing = Footing()
+                return joint
+            }()
         }
     }
 
@@ -172,18 +232,21 @@ public enum BaseConnection: String, CaseIterable, Sendable {
         case .joint: "Construction joint"
         case .resting: "Resting on the ground"
         case .soil: "On soil"
+        case .footing: "On a footing over soil"
         }
     }
 
-    /// The connection `anchorage` is, or the nearest: any with a bearing capacity counts as soil,
-    /// any other with a plateau as starter bars, any other with strength as a joint, and any
-    /// without as resting.
+    /// The connection `anchorage` is, or the nearest: any with a footing counts as one, any with
+    /// a bearing capacity as soil, any other with a plateau as starter bars, any other with
+    /// strength as a joint, and any without as resting.
     public init(_ anchorage: Anchorage?) {
         guard let anchorage else {
             self = .clamped
             return
         }
-        if anchorage.bearingCapacity != nil {
+        if anchorage.footing != nil {
+            self = .footing
+        } else if anchorage.bearingCapacity != nil {
             self = .soil
         } else if anchorage.tensileStrength <= 0 && anchorage.cohesion <= 0 {
             self = .resting
@@ -197,7 +260,8 @@ public enum BaseConnection: String, CaseIterable, Sendable {
 struct AnchorageParameters {
     var stiffnessAndTension: SIMD4<Float>
     var failureAndFriction: SIMD4<Float>
-    /// The ground's bearing capacity (zero: without limit), then padding.
+    /// The ground's bearing capacity (zero: without limit), then the joint's normal when it is
+    /// not under the body (zero otherwise).
     var bearing: SIMD4<Float>
 
     init(_ law: Anchorage, material: StructureMaterial, elementSize: Float) {
@@ -205,7 +269,9 @@ struct AnchorageParameters {
         stiffnessAndTension = SIMD4(
             stiffness.normal, stiffness.shear, law.tensileStrength, law.tensionPlateau)
         failureAndFriction = SIMD4(law.tensionOpening, law.cohesion, law.cohesionSlip, law.friction)
-        bearing = SIMD4(law.bearingCapacity ?? 0, 0, 0, 0)
+        // A joint that is not under the body carries its normal; zero is up.
+        let normal = (law.side ?? .below) == .below ? SIMD3<Float>.zero : law.side!.normal
+        bearing = SIMD4(law.bearingCapacity ?? 0, normal.x, normal.y, normal.z)
     }
 }
 
@@ -224,6 +290,10 @@ extension Anchorage {
             throw ImportedMesh.ImportError.invalid(
                 "Connection values must be finite and nonnegative, stiffness must be positive, and final opening cannot precede the strength plateau."
             )
+        }
+        try footing?.validate()
+        guard footing == nil || (side ?? .below) == .below else {
+            throw ImportedMesh.ImportError.invalid("A footing can only stand under the body.")
         }
     }
 }
@@ -256,6 +326,14 @@ extension StructureModel {
         supports.indices.contains { anchorage(ofSupport: $0) == nil && containsSupport($0, at: point) }
     }
 
+    /// Which connection holds the point: 0 the ground's, 1 + n support region n's; nil clamped
+    /// or free. As `connection(at:)`.
+    func connectionSlot(at point: SIMD3<Float>) -> Int? {
+        guard !isClampedBySupport(at: point) else { return nil }
+        if let index = finiteSupportIndex(at: point) { return 1 + index }
+        return fixedBase && abs(point.z) < 1e-4 && baseAnchorage != nil ? 0 : nil
+    }
+
     /// An ideal clamp takes precedence, followed by the last finite support, then the ground.
     func connection(at point: SIMD3<Float>) -> Anchorage? {
         guard !isClampedBySupport(at: point) else { return nil }
@@ -275,8 +353,14 @@ extension StructureModel {
             throw ImportedMesh.ImportError.invalid("A connection references a missing support region.")
         }
         try baseAnchorage?.validate()
+        guard (baseAnchorage?.side ?? .below) == .below else {
+            throw ImportedMesh.ImportError.invalid("The ground's connection can only be under the body.")
+        }
         for law in supportAnchorages.compactMap({ $0 }) { try law.validate() }
     }
+
+    /// Whether any support region's connection faces another way than down.
+    var hasTurnedJoints: Bool { supportAnchorages.contains { ($0?.side ?? .below) != .below } }
 
     var connectionStiffness: (normal: Float, shear: Float)? {
         let laws = (fixedBase ? [baseAnchorage].compactMap { $0 } : []) + supportAnchorages.compactMap { $0 }

@@ -7,6 +7,27 @@ import simd
 // swift run rigidboxdemo [output.html]
 do {
     let arguments = Array(CommandLine.arguments.dropFirst())
+    if arguments.contains("--initial-wall-traces") {
+        let decompose = arguments.contains("--decompose")
+        let volumeFits = arguments.contains("--volume-fit")
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/initial-wall-traces\(volumeFits ? "-volume-fit" : (decompose ? "-decomposition" : "")).json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var completed: [ExperimentalInitialWallTraceStudy.Result] = []
+        _ = try ExperimentalInitialWallTraceStudy.run(decompose: decompose, volumeFits: volumeFits) { r in
+            completed.append(r)
+            try encoder.encode(completed).write(to: output, options: .atomic)
+            print(
+                "dx \(r.cellSize), rotation \(r.rotation): supplied force/torque error \(r.supplied.relativeForceError)/\(r.supplied.relativeTorqueError), limited \(r.limited.relativeForceError)/\(r.limited.relativeTorqueError)"
+            )
+            fflush(stdout)
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--moving-loads") {
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })

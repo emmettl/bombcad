@@ -60,6 +60,40 @@ struct ProjectSessionTests {
         #expect(second.snapshot == original)
     }
 
+    @Test("A disappearing editor pauses its live run without dirtying the document and can resume")
+    func suspendRun() throws {
+        let session = ProjectSession(document: document())
+        // Hold execution at the scheduler so this test measures document lifecycle, not solver progress.
+        session.model.holdBatches = { true }
+        defer { if session.model.isRunning { session.model.toggleRun() } }
+        let original = session.snapshot
+        session.model.run()
+        try #require(session.model.isRunning)
+        session.suspend()
+        #expect(!session.model.isRunning)
+        #expect(session.snapshot == original)
+        session.suspend()
+        #expect(!session.model.isRunning)
+        session.model.run()
+        #expect(session.model.isRunning)
+        session.suspend()
+        #expect(!session.model.isRunning)
+        #expect(session.snapshot == original)
+    }
+
+    @Test("Suspending an idle editor leaves other document windows running")
+    func suspendIndependentWindow() throws {
+        let first = ProjectSession(document: document())
+        let second = ProjectSession(document: document())
+        second.model.holdBatches = { true }
+        second.model.run()
+        try #require(second.model.isRunning)
+        defer { if second.model.isRunning { second.model.toggleRun() } }
+        first.suspend()
+        #expect(!first.model.isRunning)
+        #expect(second.model.isRunning)
+    }
+
     @Test("Revert restores the binding snapshot; publishing an edit does not reload its model")
     func revert() {
         let original = document()

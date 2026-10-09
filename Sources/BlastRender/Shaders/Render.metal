@@ -483,10 +483,11 @@ struct DotOut {
     float3 colour [[flat]];
 };
 
-// Draws fragments, tracers, landings and ground points as round dots of a fixed size on screen,
-// depth-tested at their centres. Each is a position and a code: the kind (0 a fragment in flight,
-// 1 a tracer, 2 a landing, 3 a ground point) plus a value from 0 to 1, a fragment's speed, a
-// landing's energy or how fast the ground under a point has moved, 0 before the blast arrives.
+// Draws fragments, tracers, landings, ground points and thermal receivers as round dots of a fixed
+// size on screen, depth-tested at their centres. Each is a position and a code: the kind (0 a
+// fragment in flight, 1 a tracer, 2 a landing, 3 a ground point, 4 a thermal receiver) plus a
+// value from 0 to 1, a fragment's speed, a landing's energy, how fast the ground under a point has
+// moved (0 before the blast arrives) or a receiver's fluence.
 vertex DotOut dotVertex(uint vertexID [[vertex_id]],
                         uint instanceID [[instance_id]],
                         const device float4 *dots [[buffer(0)]],
@@ -504,13 +505,21 @@ vertex DotOut dotVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(1, 1),
                                float2(-1, -1), float2(1, 1), float2(-1, 1)};
     float2 corner = corners[vertexID];
-    float size = viewport.z * (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f)));
+    float size = viewport.z * (kind > 3.5f ? 1.0f : (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f))));
     clip.xy += corner * size / viewport.xy * clip.w;
 
     DotOut out;
     out.position = clip;
     out.corner = corner;
-    if (kind > 2.5f) {
+    if (kind > 3.5f) {
+        // A receiver: slate grey with none, through dark red and orange, to pale yellow at a
+        // megajoule a square metre, as metal glows hotter.
+        const float3 stops[5] = {float3(0.35f, 0.38f, 0.45f), float3(0.55f, 0.05f, 0.05f),
+                                 float3(0.95f, 0.35f, 0.05f), float3(1.0f, 0.8f, 0.2f), float3(1.0f, 1.0f, 0.85f)};
+        float t = value * 4.0f;
+        int stop = min(int(t), 3);
+        out.colour = mix(stops[stop], stops[stop + 1], t - float(stop));
+    } else if (kind > 2.5f) {
         // A ground point: grey until the blast arrives, then from blue at a millimetre a second,
         // through violet, to near white at ten metres a second.
         out.colour = value < 0.0005f ? float3(0.55f, 0.55f, 0.58f)
