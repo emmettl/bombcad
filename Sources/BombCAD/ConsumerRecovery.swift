@@ -4,25 +4,28 @@ import Foundation
 
 /// Every frame's input to a consumer, kept in a file as it is sent, so that the consumer can be
 /// run again from the start elsewhere: as on the wire, the header's length and JSON, then the
-/// payload's length and the payload. Written, and read back, on a queue of its own, which is also
+/// payload's length and the payload. The file is unlinked as soon as it is opened, so it leaves
+/// nothing behind however the process ends. Written, and read back, on a queue of its own, which is also
 /// where frames are handed on once a replacement is reading them (see
 /// `ResilientFrameConsumer`), so that they reach it in the order sent.
 final class ConsumerSpool: @unchecked Sendable {
     let queue = DispatchQueue(label: "dev.bombcad.consumer-spool")
-    private let url: URL
     private var handle: FileHandle?
+    private var reader: FileHandle?
     private var error: Error?
     /// Frames written, and their bytes; touched only on `queue`.
     private(set) var frames = 0
     private(set) var bytes = 0
 
     init() throws {
-        url = FileManager.default.temporaryDirectory.appending(
+        let url = FileManager.default.temporaryDirectory.appending(
             path: "BombCAD-consumer-\(UUID().uuidString).spool")
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
             throw ProjectFileError.invalid("Cannot keep a consumer's frames in \(url.path).")
         }
+        defer { try? FileManager.default.removeItem(at: url) }
         handle = try FileHandle(forWritingTo: url)
+        reader = try FileHandle(forReadingFrom: url)
     }
 
     deinit { discard() }
@@ -47,9 +50,8 @@ final class ConsumerSpool: @unchecked Sendable {
     func replay(_ body: (ConsumerInput) -> Void) throws {
         dispatchPrecondition(condition: .onQueue(queue))
         if let error { throw error }
-        try handle?.synchronize()
-        let reader = try FileHandle(forReadingFrom: url)
-        defer { try? reader.close() }
+        guard let reader else { throw ProjectFileError.invalid("A consumer's kept frames are gone.") }
+        try reader.seek(toOffset: 0)
         for _ in 0..<frames {
             let header = try JSONDecoder().decode(
                 ConsumerInput.Header.self, from: try Self.read(Self.readLength(reader), from: reader))
@@ -58,11 +60,12 @@ final class ConsumerSpool: @unchecked Sendable {
         }
     }
 
-    /// Removes the file.
+    /// Lets the file go.
     func discard() {
         try? handle?.close()
+        try? reader?.close()
         handle = nil
-        try? FileManager.default.removeItem(at: url)
+        reader = nil
     }
 
     private static func length(_ count: Int) -> Data {
