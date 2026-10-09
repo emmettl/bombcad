@@ -257,8 +257,9 @@ swift run -c release blastbench slab --sensitivity
 
 `blastbench` also has `structure`, `validate`, `gas`, `chamber` and `snapshot` commands; see
 [Performance](docs/performance.md) and [Validation](docs/validation.md). `blastbench anchorage`
-compares a freestanding wall on a clamped base with one on starter bars, a construction joint
-or friction alone (see [base connections](docs/structural-model.md#base-connections)).
+compares a freestanding wall on a clamped base with one on starter bars, a construction joint,
+friction alone, soil or a footing on soil (see [base connections](docs/structural-model.md#base-connections)
+and [footings](docs/structural-model.md#footings)).
 
 `BombCAD run Example.bombcad --out Example-run.bombcad` runs a saved project without a window and
 keeps the result as a saved run, for scripts and other Macs; see

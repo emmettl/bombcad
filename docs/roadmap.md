@@ -1632,9 +1632,12 @@ strength, opening, slip, friction, bearing capacity and stiffness. Independent r
 reactions, lift-off, clamp precedence, imported-source refinement, save/reopen and undo are
 checked. Finite support regions select initial lower-face/footprint points and use stationary
 horizontal bearing planes; they do not model a footing's finite contact extents. See
-[structural editing](structural-editing.md#restraints). Still open: arbitrary joint orientations
-and moving-component connections; bounded footings, and soil with mass, radiation damping and
-layers; and a measured connection case. Loaded by the air instead of a pulse
+[structural editing](structural-editing.md#restraints). A base can now stand on a rigid footing
+of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
+for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
+impedance ([footings](structural-model.md#footings)). Still open: arbitrary joint orientations
+and connections between moving components other than a footing; embedment; and a measured
+case (FoRCy, see [data wanted](data-wanted.md)). Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
