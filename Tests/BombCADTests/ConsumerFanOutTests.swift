@@ -123,4 +123,27 @@ struct ConsumerFanOutTests {
         #expect(there.streams[1].hasPrefix("Thermal radiation on second: 7 frames"))
         #expect(there.streams[2].hasPrefix("Ground shock on second: 7 frames"))
     }
+
+    @Test("A run whose other Mac drops carries its models on here, and says so")
+    func recovery() async throws {
+        var options = options(["thermal": "flaky", "ground": "flaky"])
+        options.fragments = nil
+        var local = options
+        local.consumers = [:]
+        let here = try await HeadlessRun.perform(document(), options: local)
+        let there = try await HeadlessRun.perform(
+            document(), options: options,
+            connect: { _ in
+                let worker = flakyWorker(dropAfter: 5)
+                _ = try await worker.start()
+                return worker
+            })
+        #expect(there.thermal == here.thermal && there.run.gauges == here.run.gauges)
+        var groundThere = try #require(there.ground)
+        var groundHere = try #require(here.ground)
+        groundThere.seconds = 0
+        groundHere.seconds = 0
+        #expect(groundThere == groundHere)
+        #expect(there.streams.count == 2 && there.streams.allSatisfy { $0.contains("here after frame") })
+    }
 }

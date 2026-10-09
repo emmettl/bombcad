@@ -1420,8 +1420,7 @@ final class SimulationModel {
             return
         }
         if groundShockOnRemote, let worker = fragmentWorker {
-            groundShock = RemoteFrameConsumer(
-                client: worker, kind: .groundShock(spec, live: true), ownsClient: false)
+            groundShock = remoteConsumer(worker, kind: .groundShock(spec, live: true))
         } else {
             groundShock = LocalFrameConsumer(.groundShock(spec, live: true))
         }
@@ -1474,7 +1473,8 @@ final class SimulationModel {
         if !groundShock.caughtUp {
             text += " · \(groundShock.sent - 1 - groundShock.report.frame) frames to estimate"
         }
-        if groundShock is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        let place = groundShock.placement(host: fragmentWorkerHost)
+        if !place.isEmpty { text += " ·" + place }
         groundShockStatus = text
     }
 
@@ -1489,8 +1489,7 @@ final class SimulationModel {
         let scene = FragmentScene(scenario)
         let consumer: any FrameConsumer
         if fragmentsOnRemote, let worker = fragmentWorker {
-            consumer = RemoteFrameConsumer(
-                client: worker, kind: .fragments(spec, scene, live: true), ownsClient: false)
+            consumer = remoteConsumer(worker, kind: .fragments(spec, scene, live: true))
         } else {
             consumer = LocalFrameConsumer(.fragments(spec, scene, live: true))
         }
@@ -1543,8 +1542,16 @@ final class SimulationModel {
                 ? String(format: ", hardest %.1f MJ", energy / 1e6)
                 : String(format: ", hardest %.0f kJ", energy / 1e3)
         }
-        if fragments is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        let place = fragments?.placement(host: fragmentWorkerHost) ?? ""
+        if !place.isEmpty { text += " ·" + place }
         fragmentStatus = text
+    }
+
+    /// A companion on the Mac set for sweeps that carries on here if that Mac fails it, or on its
+    /// own there if its frames cannot be kept.
+    private func remoteConsumer(_ worker: SweepWorkerClient, kind: ConsumerKind) -> any FrameConsumer {
+        (try? ResilientFrameConsumer(client: worker, kind: kind, ownsClient: false))
+            ?? RemoteFrameConsumer(client: worker, kind: kind, ownsClient: false)
     }
 
     /// Flies fragments through `worker` from the next run, as if connected to `host`; for tests.
@@ -1588,8 +1595,7 @@ final class SimulationModel {
         guard let spec = thermalSpec, (try? spec.validate()) != nil else { return }
         let scene = FragmentScene(scenario)
         if thermalOnRemote, let worker = fragmentWorker {
-            thermal = RemoteFrameConsumer(
-                client: worker, kind: .thermal(spec, scene, live: true), ownsClient: false)
+            thermal = remoteConsumer(worker, kind: .thermal(spec, scene, live: true))
         } else {
             thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
         }
@@ -1650,7 +1656,8 @@ final class SimulationModel {
         text += "\(thermalReceivers.count.formatted()) receivers"
 
         if live.frames < thermal.sent { text += " · \(thermal.sent - live.frames) frames to reckon" }
-        if thermal is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        let place = thermal.placement(host: fragmentWorkerHost)
+        if !place.isEmpty { text += " ·" + place }
         thermalStatus = text
     }
 

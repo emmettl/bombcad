@@ -190,8 +190,12 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     /// Whether the connection is this consumer's to close when done, or shared, as by the app.
     private let ownsClient: Bool
 
+    /// `failed` is told why, if the session or its connection fails before the result.
     @MainActor
-    init(client: SweepWorkerClient, kind: ConsumerKind, ownsClient: Bool = true) {
+    init(
+        client: SweepWorkerClient, kind: ConsumerKind, ownsClient: Bool = true,
+        failed: @escaping @Sendable (Error) -> Void = { _ in }
+    ) {
         self.client = client
         self.kind = kind
         self.ownsClient = ownsClient
@@ -215,7 +219,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
                     let next = try? live.updated(by: header, payload: payload)
                 else { return }
                 self.lock.withLock { self.current = next }
-            })
+            }, failed: failed)
     }
 
     func report(after frame: Int) -> ConsumerReport? {

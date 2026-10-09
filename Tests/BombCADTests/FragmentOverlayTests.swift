@@ -164,7 +164,7 @@ struct FragmentOverlayTests {
                 try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
                 try await Task.sleep(for: .milliseconds(5))
             }
-            let consumer = try #require(model.fragments as? RemoteFrameConsumer)
+            let consumer = try #require(model.fragments as? ResilientFrameConsumer)
             while consumer.fragmentLive.map({ abs($0.time - 0.01) > 1e-6 }) ?? true {
                 try #require(ContinuousClock.now < deadline)
                 try await Task.sleep(for: .milliseconds(5))

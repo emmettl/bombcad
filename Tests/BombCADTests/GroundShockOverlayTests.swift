@@ -177,7 +177,7 @@ struct GroundShockOverlayTests {
         try await waitUntil(model) {
             !model.isRunning && !model.hasPendingGPUWork && model.companionsCaughtUp
         }
-        #expect(model.groundShock is RemoteFrameConsumer)
+        #expect(model.groundShock is ResilientFrameConsumer)
         try model.keepRun(named: "There")
         let there = try #require(model.savedRuns.last)
         #expect(there.gauges == here.gauges && there.stepCount == here.stepCount)

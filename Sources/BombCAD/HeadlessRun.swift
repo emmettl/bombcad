@@ -419,9 +419,10 @@ enum HeadlessRun {
                 feeds.append(Feed(LocalFrameConsumer(kind), place: "here"))
             } else {
                 if clients[place] == nil { clients[place] = try await connect(place) }
+                // Should that Mac fail, the model carries on here from the frames kept.
                 feeds.append(
                     Feed(
-                        RemoteFrameConsumer(client: clients[place]!, kind: kind, ownsClient: false),
+                        try ResilientFrameConsumer(client: clients[place]!, kind: kind, ownsClient: false),
                         place: "on \(place)"))
             }
         }
@@ -557,7 +558,10 @@ enum HeadlessRun {
                     name, feed.place, consumer.sent, Double(consumer.bytes) / 1e6,
                     Double(consumer.bytes) / 1e6 / max(running.seconds, 1e-9),
                     1000 * feed.cost.seconds / Double(max(consumer.sent, 1)), feed.held.seconds,
-                    running.seconds))
+                    running.seconds)
+                    + ((consumer as? ResilientFrameConsumer)?.fallback.map {
+                        "; here after frame \($0.frame + 1), that Mac having failed: \($0.reason)"
+                    } ?? ""))
         }
         if let fragments {
             let edges = fragments.masses.map { cbrt($0 / (options.fragments?.fragmentDensity ?? 7850)) }
