@@ -281,9 +281,13 @@ final class SimulationModel {
     /// Damage and deflection of the deformable structure, if the scenario has one.
     private(set) var structureSummary: StructureSummary?
     private(set) var structureSubsteps = 0
-    /// Deflection of the structure through the run, sampled about ten times a second.
+    /// Deflection of the structure through the run, a sample every `structureSampleInterval`,
+    /// and of each structure, as last shown, at most ten times a second while running.
     private(set) var structureHistory: [StructureSample] = []
     private(set) var bodyHistories: [UUID: [StructureSample]] = [:]
+    /// The same, up to the latest sample.
+    @ObservationIgnored private var structureRecord: [StructureSample] = []
+    @ObservationIgnored private var bodyRecords: [UUID: [StructureSample]] = [:]
     private(set) var bodySummaries: [UUID: StructureSummary] = [:]
     /// Largest deflection recorded so far, in millimetres.
     var peakDeflection: Double { structureHistory.map(\.deflection).max() ?? 0 }
@@ -420,15 +424,15 @@ final class SimulationModel {
         }
         completedRunSettings = nil
         if solver?.time == 0, lastSampleTime == nil {
-            if structureHistory.isEmpty, let summary = structureSummary {
-                structureHistory = [
+            if structureRecord.isEmpty, let summary = structureSummary {
+                structureRecord = [
                     StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
                 ]
             }
             if let solver, samples {
                 for body in solver.bodies {
                     if let summary = body.summary() {
-                        bodyHistories[body.id] = [
+                        bodyRecords[body.id] = [
                             StructureSample(
                                 id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
                         ]
@@ -437,6 +441,8 @@ final class SimulationModel {
                 lastSampleTime = 0
                 onSample?(solver)
             }
+            structureHistory = structureRecord
+            bodyHistories = bodyRecords
             if let solver { startFragments(solver) }
         }
         isRunning = true
@@ -1109,7 +1115,7 @@ final class SimulationModel {
                 }
             }
         }
-        for sample in structureHistory {
+        for sample in structureRecord {
             lines.append(
                 "Largest deflection,\(String(format: "%.4f", sample.time)),\(String(format: "%.3f", sample.deflection)),mm"
             )
@@ -1117,7 +1123,7 @@ final class SimulationModel {
         if scenario.structuralObjects.count > 1 {
             for object in scenario.structuralObjects {
                 let label = field("\(object.name) [\(object.id.uuidString)] deflection")
-                for sample in bodyHistories[object.id] ?? [] {
+                for sample in bodyRecords[object.id] ?? [] {
                     lines.append("\(label),\(sample.time),\(sample.deflection),mm")
                 }
             }
@@ -1155,7 +1161,7 @@ final class SimulationModel {
         }
         let response = structureSummary.map { summary in
             SavedSimulationRun.Structure(
-                points: structureHistory.map {
+                points: structureRecord.map {
                     .init(time: $0.time / 1000, value: $0.deflection)
                 }, failedFraction: Double(summary.erodedFraction),
                 maximumDamage: Double(summary.maxDamage))
@@ -1184,7 +1190,7 @@ final class SimulationModel {
                     return SavedSimulationRun.BodyResponse(
                         id: object.id, name: object.name,
                         response: .init(
-                            points: (bodyHistories[object.id] ?? []).map {
+                            points: (bodyRecords[object.id] ?? []).map {
                                 .init(time: $0.time / 1000, value: $0.deflection)
                             },
                             failedFraction: Double(summary.erodedFraction),
@@ -1417,6 +1423,8 @@ final class SimulationModel {
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
         bodyHistories = [:]
+        structureRecord = []
+        bodyRecords = [:]
         bodySummaries = Dictionary(
             uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
                 body.summary().map { (body.id, $0) }
@@ -1545,9 +1553,8 @@ final class SimulationModel {
         if !isRunning || finished || (now - lastProgressPublication).seconds >= Self.progressInterval {
             publishProgress()
         }
-        if (now - lastTracePublication).seconds > 0.1 || !isRunning
-            || (samples && solver.time >= nextStructureSampleTime - 1e-9)
-        {
+        recordSampleIfDue(solver)
+        if (now - lastTracePublication).seconds > 0.1 || !isRunning {
             publishTraces()
         }
         if rebuildPending {
@@ -1593,13 +1600,39 @@ final class SimulationModel {
         }
     }
 
-    /// Copies the gauge histories into chart-sized traces, keeping the extremes of each bucket.
-    private func publishTraces() {
-        guard let solver else { return }
-        lastTracePublication = .now
-        structureSummary = solver.bodySummary()
-        bodySummaries = Dictionary(
-            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+    /// Records the structure's deflection, and hands the solver to `onSample`, if a sample falls
+    /// due now: at every one, whether or not it is shown then.
+    private func recordSampleIfDue(_ solver: BlastSolver) {
+        guard samples, lastSampleTime != solver.time,
+            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
+        else { return }
+        let summary = solver.bodySummary()
+        stopIfSolverFailed(solver, summary: summary)
+        guard summary?.hasBlownUp != true else { return }
+        if let summary, structureRecord.last?.time != solver.time * 1000 {
+            structureRecord.append(
+                StructureSample(
+                    id: structureRecord.count, time: solver.time * 1000,
+                    deflection: Double(summary.maxDisplacement) * 1000))
+        }
+        for body in solver.bodies {
+            if let summary = body.summary(), bodyRecords[body.id]?.last?.time != solver.time * 1000 {
+                var history = bodyRecords[body.id] ?? []
+                history.append(
+                    StructureSample(
+                        id: history.count, time: solver.time * 1000,
+                        deflection: Double(summary.maxDisplacement) * 1000))
+                bodyRecords[body.id] = history
+            }
+        }
+        nextStructureSampleTime =
+            (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
+        lastSampleTime = solver.time
+        onSample?(solver)
+    }
+
+    /// Stops the run where the solver can no longer go on.
+    private func stopIfSolverFailed(_ solver: BlastSolver, summary: StructureSummary?) {
         if solver.interObjectContactDetected {
             errorMessage =
                 "Independent structures entered overlapping envelopes or resolved cells. Inter-object contact is unsupported; reset and separate the bodies."
@@ -1610,36 +1643,25 @@ final class SimulationModel {
                 "Local coupling storage could not cover the moving geometry. The run stopped before a completed result could be captured."
             isRunning = false
         }
-        if samples, structureSummary?.hasBlownUp != true, lastSampleTime != solver.time,
-            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
-        {
-            if let summary = structureSummary, structureHistory.last?.time != solver.time * 1000 {
-                structureHistory.append(
-                    StructureSample(
-                        id: structureHistory.count, time: solver.time * 1000,
-                        deflection: Double(summary.maxDisplacement) * 1000))
-            }
-            for body in solver.bodies {
-                if let summary = bodySummaries[body.id],
-                    bodyHistories[body.id]?.last?.time != solver.time * 1000
-                {
-                    var history = bodyHistories[body.id] ?? []
-                    history.append(
-                        StructureSample(
-                            id: history.count, time: solver.time * 1000,
-                            deflection: Double(summary.maxDisplacement) * 1000))
-                    bodyHistories[body.id] = history
-                }
-            }
-            nextStructureSampleTime =
-                (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
-            lastSampleTime = solver.time
-            onSample?(solver)
-        }
-        if structureSummary?.hasBlownUp == true {
+        if summary?.hasBlownUp == true {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."
             isRunning = false
         }
+    }
+
+    /// Shows the structure's state and histories, and copies the gauge histories into chart-sized
+    /// traces, keeping the extremes of each bucket: at most ten times a second while running, as
+    /// the charts and the readouts are drawn again each time.
+    private func publishTraces() {
+        guard let solver else { return }
+        lastTracePublication = .now
+        recordSampleIfDue(solver)
+        structureSummary = solver.bodySummary()
+        bodySummaries = Dictionary(
+            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+        stopIfSolverFailed(solver, summary: structureSummary)
+        structureHistory = structureRecord
+        bodyHistories = bodyRecords
         updateFragmentStatus()
         let ambient = scenario.atmosphere.pressure
         // Enough for the chart's width: each point is the extreme of its bucket, so peaks show, and
