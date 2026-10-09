@@ -38,11 +38,13 @@ it should be used to judge the safety of a real structure.
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
-| 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
+| 10 | Only selected app panels have had a static visual review               | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
-and its rendering is checked through offscreen snapshots, but its panels, text fields and file
-dialogs were written without being seen on screen.
+and its rendering is checked through offscreen snapshots. An initial static panel review now
+covers the Run sidebar, saved-run comparison and Export for Rendering sheet in light and dark
+appearances. Native file dialogs, keyboard focus, scrolling and the other panels still need
+interactive review.
 
 ## Planned work
 
@@ -226,7 +228,7 @@ convert into fresh reference mechanics state. Definitions validate on constructi
 older layouts without them still open. JSON and project-package round trips are tested. A
 nonzero centre-of-mass offset requires explicit inertia. These saved inputs are not yet used
 by the app renderer or blast solver. `swift run rigidboxdemo` generates a self-contained HTML
-replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping.
+replay of six reference cases: resting, friction holding, sliding, lift-off, rocking and tipping (now followed by five car cases).
 Playback and scrubbing use recorded Swift trajectories, with no second physics implementation
 in the viewer. This supplies milestone 1's standalone box demonstration.
 
@@ -1741,7 +1743,20 @@ extraction.
    all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
    contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
    rocking and tipping; distinguish these mechanical checks from validation against a blast
-   experiment. Crushing, wheel rotation and fragmentation are later extensions.
+   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done, not
+   coupled to the air: `RigidCarBody`, the box reference with the box as the shell and four
+   tyre contacts at the corners of a wheelbase × track rectangle, each with its own load and
+   Coulomb friction; the shell's corners catch a car that has tipped. `RigidCarDefinition`
+   saves the locked wheels and rigid suspension explicitly, as `Scenario.rigidCars` beside
+   rigid objects. Rigid suspension leaves four tyre loads indeterminate; the reported split is
+   the one equal tyre stiffnesses give, which leaves the motion unchanged. Tests check rest
+   loads against statics, the sliding threshold μW, load transfer of μWh/L under braking and
+   μWh/t sliding sideways, a sideways push holding below the static stability factor t/2h and
+   tipping above it, rocking back below the balance angle atan(t/2h) and tipping onto the side
+   above it, no energy gain, first-order timestep convergence and saved-file round trips.
+   These are mechanical checks; none is a validation against a blast experiment, and the
+   illustrative saloon's values are typical magnitudes, not a measured car. `swift run
+   rigidboxdemo` adds five car cases to the replay. Next: the car under the air, as the box.)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress
@@ -1798,7 +1813,17 @@ two collapsing over several seconds.
 
 ### Usability, in parallel
 
-- Review the app on screen and fix what is found.
+- Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
+  a misleading layout selector, which displayed the last preset choice after opening another
+  project. The menu now shows the actual scene name and offers built-in layouts as replacement
+  actions. The Run sidebar, comparison and export panels have been inspected in both appearances.
+  Reproduce these static captures with
+  `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
+  The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
+  `dark`, and checks that capture leaves saved inputs unchanged. It expands the requested size
+  to the view's fitting size, so these captures do not verify scrolling at the minimum window
+  size. The Metal viewport and native interaction remain separate checks; the helper is skipped
+  during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,
