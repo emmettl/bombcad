@@ -1365,15 +1365,25 @@ final class SimulationModel {
         for (place, run) in zip(places, ordered) { savedRuns[place] = run }
     }
 
-    func renameRun(id: UUID, name: String) {
-        guard !sweep.isActive else { return }
+    func renameRun(id: UUID, name: String) throws {
+        guard !sweep.isActive else {
+            throw ProjectFileError.invalid("Wait for the sweep to finish before renaming a run.")
+        }
+        guard let index = savedRuns.firstIndex(where: { $0.id == id }) else {
+            throw ProjectFileError.invalid("This saved run is no longer available.")
+        }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed.count <= 120,
+        guard !trimmed.isEmpty else { throw ProjectFileError.invalid("Enter a run name.") }
+        guard trimmed.count <= 120 else {
+            throw ProjectFileError.invalid("Run names must be 120 characters or fewer.")
+        }
+        guard
             !savedRuns.contains(where: {
                 $0.id != id && $0.name.localizedCaseInsensitiveCompare(trimmed) == .orderedSame
-            }),
-            let index = savedRuns.firstIndex(where: { $0.id == id })
-        else { return }
+            })
+        else {
+            throw ProjectFileError.invalid("A saved run already uses that name. Choose a unique name.")
+        }
         savedRuns[index].name = trimmed
     }
 
