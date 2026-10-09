@@ -302,9 +302,9 @@ enum HeadlessRun {
         model.fragmentSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
-        // so exporting does not change the run. Without a structure, only volumes, fragments and
-        // the radiation ask for frames, and the run then stops at each one, ending a time step
-        // there.
+        // so exporting does not change the run. Without a structure, only volumes, fragments, the
+        // radiation and ground shock ask for frames, and the run then stops at each one, ending a
+        // time step there.
         let framed =
             options.vdb != nil || options.fragments != nil || injected != nil || options.thermal != nil
             || options.groundShock != nil || (options.usd != nil && inputs.scenario.structure != nil)
