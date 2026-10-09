@@ -151,6 +151,8 @@ struct SimulationStats {
 @Observable
 final class SimulationModel {
     var settings = SimulationSettings()
+    /// Freestanding objects' computed motion (see `FreestandingObjectsSection`).
+    let freestanding = FreestandingMotionState()
     @ObservationIgnored var projectArchive: ProjectArchive?
     var projectDocumentID = UUID()
     var renderSettings = RenderSettings()

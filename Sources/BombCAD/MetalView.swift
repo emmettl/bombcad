@@ -62,6 +62,7 @@ struct MetalView: NSViewRepresentable {
             var settings: RenderSettings
             var dots: [SIMD4<Float>]
             var camera: OrbitCamera
+            var freestanding: [SceneRenderer.OrientedBox]
         }
 
         /// Draws on the view's timer during a run, and otherwise when marked as needing display:
@@ -96,7 +97,8 @@ struct MetalView: NSViewRepresentable {
                 (settings.showThermal ? model.thermalDots() : [])
                 + model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
                 + (settings.showGroundPoints ? model.groundShockDots() : [])
-            return Frame(settings: settings, dots: dots, camera: model.camera)
+            return Frame(
+                settings: settings, dots: dots, camera: model.camera, freestanding: model.freestandingBoxes())
         }
 
         func draw(in view: MTKView) {
@@ -120,6 +122,7 @@ struct MetalView: NSViewRepresentable {
             else { return }
             renderer.settings = frame.settings
             renderer.setDots(frame.dots)
+            renderer.setFreestanding(frame.freestanding)
             if view.bounds.width > 0 {
                 renderer.pixelsPerPoint = Float(view.drawableSize.width / view.bounds.width)
             }

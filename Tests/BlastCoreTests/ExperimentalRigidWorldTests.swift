@@ -58,4 +58,34 @@ struct ExperimentalRigidWorldTests {
             #expect(any(abs(local) .> SIMD3(2.3, 0.775, 0.65) - 1e-5))
         }
     }
+
+    @Test(
+        "Freestanding motion crops the scene around the objects and records them from where they were placed")
+    func freestandingMotion() throws {
+        var scene = Scenario(
+            name: "Car park", domainSize: SIMD3(60, 60, 20),
+            boxes: [
+                Box(min: SIMD3(40, 20, 0), max: SIMD3(50, 40, 6)),
+                Box(min: SIMD3(31, 33, 0), max: SIMD3(34, 34, 2)),
+            ],
+            charge: Charge(mass: 1, position: SIMD3(30, 27.725, 0.3)))
+        scene.rigidCars = [
+            try .saloon(position: SIMD3(30, 30, 0)), try .saloon(position: SIMD3(30, 32.4, 0)),
+        ]
+        let (cropped, offset) = try FreestandingMotion.cropped(scene)
+        #expect(cropped.domainSize.x < 20 && cropped.domainSize.y < 20 && cropped.domainSize.z < 6)
+        #expect(
+            simd_distance(try #require(cropped.rigidCars?[1].position) + offset, SIMD3(30, 32.4, 0)) < 1e-9)
+        // The far block is dropped and the near one clipped to the crop.
+        #expect(cropped.boxes.count == 1)
+        // Coarse uniform air: this checks the bookkeeping, not the loads.
+        let motion = try FreestandingMotion.compute(
+            device: device, scenario: scene, duration: 0.006, frameInterval: 0.001, cellSize: 0.3,
+            refinement: 1)
+        #expect(motion.coupled == 0 && motion.objects.count == 2 && motion.failure == nil)
+        #expect(motion.frames.count >= 4)
+        let placed = try #require(motion.frames.first?.poses.first)
+        #expect(simd_distance(placed.centre, SIMD3(30, 30, 0.15 + 0.65)) < 1e-9)
+        #expect(motion.objects[0].peakSpeed > 0.01 && motion.objects[1].peakSpeed < 1e-6)
+    }
 }

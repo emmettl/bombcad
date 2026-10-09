@@ -569,6 +569,56 @@ fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms
     return float4(colour, 1.0f);
 }
 
+// Freestanding objects (rigid boxes and cars): one oriented box per instance, `centre.w` 1 for a
+// car's shell, 0 for a box, `rotation` a unit quaternion (x, y, z, w) from body to world axes.
+struct OrientedBox {
+    float4 centre;
+    float4 rotation;
+    float4 halfSize;
+};
+
+static inline float3 rotate(float4 q, float3 v) {
+    float3 t = 2.0f * cross(q.xyz, v);
+    return v + q.w * t + cross(q.xyz, t);
+}
+
+vertex MeshOut freestandingVertex(uint vertexID [[vertex_id]],
+                                  uint instanceID [[instance_id]],
+                                  const device OrientedBox *boxes [[buffer(0)]],
+                                  constant MeshUniforms &u [[buffer(1)]]) {
+    OrientedBox box = boxes[instanceID];
+    uint face = vertexID / 6;
+    uint axis = face >> 1;
+    const uint2 quad[6] = {uint2(0, 0), uint2(1, 0), uint2(1, 1), uint2(0, 0), uint2(1, 1), uint2(0, 1)};
+    uint2 corner = quad[vertexID % 6];
+    float3 local = float3(0.0f);
+    local[axis] = (face & 1u) == 0 ? -1.0f : 1.0f;
+    local[(axis + 1) % 3] = corner.x == 0 ? -1.0f : 1.0f;
+    local[(axis + 2) % 3] = corner.y == 0 ? -1.0f : 1.0f;
+    float3 world = box.centre.xyz + rotate(box.rotation, local * box.halfSize.xyz);
+    float3 relative = world - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    float near = u.projection.z;
+    float far = u.projection.w;
+    MeshOut out;
+    out.position = float4(view.x * u.projection.x, view.y * u.projection.y,
+                          far / (far - near) * (view.z - near), view.z);
+    out.world = world;
+    out.damage = box.centre.w;
+    return out;
+}
+
+// Cars in a muted blue, boxes in tan, lit like the structure.
+fragment float4 freestandingFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
+    float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
+    if (dot(normal, u.eye.xyz - in.world) < 0.0f) {
+        normal = -normal;
+    }
+    float light = 0.50f + 0.50f * max(dot(normal, u.sun.xyz), 0.0f);
+    float3 colour = in.damage > 0.5f ? float3(0.30f, 0.45f, 0.70f) : float3(0.78f, 0.66f, 0.46f);
+    return float4(colour * light, 1.0f);
+}
+
 // Glass, drawn after everything opaque and blended over it without writing depth. Clear float
 // glass is a faint green-blue; it reflects the sky more as the view grazes it (Schlick's
 // approximation to the Fresnel term, with 4% reflected head-on) and shows a sharp highlight

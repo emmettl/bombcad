@@ -103,6 +103,9 @@ public final class SceneRenderer {
     private let dotPipeline: MTLRenderPipelineState
     private var dotBuffer: MTLBuffer?
     private var dotCount = 0
+    private let freestandingPipeline: MTLRenderPipelineState
+    private var freestandingBuffer: MTLBuffer?
+    private var freestandingCount = 0
     private let compositePipeline: MTLRenderPipelineState
     private let sceneDepthState: MTLDepthStencilState
     private let meshDepthState: MTLDepthStencilState
@@ -156,6 +159,8 @@ public final class SceneRenderer {
         glassPipeline = try pipeline(
             vertex: "shellVertex", fragment: "glassFragment", depth: true, blended: true)
         dotPipeline = try pipeline(vertex: "dotVertex", fragment: "dotFragment", depth: true)
+        freestandingPipeline = try pipeline(
+            vertex: "freestandingVertex", fragment: "freestandingFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
 
@@ -225,6 +230,42 @@ public final class SceneRenderer {
             return
         }
         dots.withUnsafeBytes { dotBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length) }
+    }
+
+    /// A freestanding object to draw: an oriented box, a car's shell or a rigid box.
+    public struct OrientedBox: Sendable, Hashable {
+        public var centre: SIMD3<Float>
+        /// Body to world, as a unit quaternion.
+        public var orientation: simd_quatf
+        public var size: SIMD3<Float>
+        public var isCar: Bool
+
+        public init(centre: SIMD3<Float>, orientation: simd_quatf, size: SIMD3<Float>, isCar: Bool) {
+            self.centre = centre
+            self.orientation = orientation
+            self.size = size
+            self.isCar = isCar
+        }
+    }
+
+    /// Freestanding objects to draw over the scene, at their current poses.
+    public func setFreestanding(_ boxes: [OrientedBox]) {
+        freestandingCount = boxes.count
+        guard !boxes.isEmpty else { return }
+        let values = boxes.flatMap {
+            [SIMD4($0.centre, $0.isCar ? 1 : 0), $0.orientation.vector, SIMD4($0.size / 2, 0)]
+        }
+        let length = values.count * MemoryLayout<SIMD4<Float>>.stride
+        if (freestandingBuffer?.length ?? 0) < length {
+            freestandingBuffer = device.makeBuffer(length: max(length, 4096), options: .storageModeShared)
+        }
+        guard let freestandingBuffer else {
+            freestandingCount = 0
+            return
+        }
+        values.withUnsafeBytes {
+            freestandingBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: length)
+        }
     }
 
     /// Encodes a frame into `descriptor`'s first colour attachment.
@@ -345,6 +386,21 @@ public final class SceneRenderer {
                         type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.beamCount)
                 }
             }
+        }
+        if freestandingCount > 0, let freestandingBuffer {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            sceneEncoder.setRenderPipelineState(freestandingPipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setCullMode(.none)
+            sceneEncoder.setVertexBuffer(freestandingBuffer, offset: 0, index: 0)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 1)
+            sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: freestandingCount)
         }
         if dotCount > 0, let dotBuffer {
             var mesh = MeshUniforms(
