@@ -192,7 +192,7 @@ the blast, the structures, the thermal radiation and the fireball's rise exist.
 | Damage to those buildings | In effect one way, if most collapse comes after the main blast has passed (an assumption to state) | Yes: each driven by its recorded loads, as independent jobs |
 | The early fireball (expansion, afterburning) | It is the hot gas in the air model | No: the same solver |
 | The fireball's rise and cloud | Handed over once the blast has left | Yes, in sequence, from the air model's final state. Now a hand-over of a few numbers at the end of a run, followed for minutes in milliseconds: [The fireball's rise and cloud](fireball-rise.md) |
-| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on a CPU, this Mac's or, from the app, another's, a few numbers a frame: [Thermal radiation](thermal-radiation.md) |
+| Thermal radiation (flash exposure) | One way, fireball to surfaces; needs the fireball's size and temperature each frame, and the scene | Yes, the best candidate: small exchanges, concurrent with the blast, and what each surface sees is a job for the GPU's ray-tracing hardware ([Ray tracing](ray-tracing.md)). Now on a CPU, this Mac's or, from the app, another's, the fireball's shape a few to a hundred kilobytes a frame: [Thermal radiation](thermal-radiation.md) |
 | Material heating and fire | Driven by the radiation; the blast's wind disturbs it only weakly | Yes: after the event |
 | Ground shock away from the charge | One way: the air's pressure on the ground drives the soil | Yes: driven by recorded ground pressures. Built as an illustrative estimate, fed the ground's air each frame: see [Ground shock](ground-shock.md) |
 | The crater and ground shock near the charge | Both ways, in the first milliseconds: the ground loads and vents the blast, and throws soil into it | No near the charge; yes for thrown soil once airborne, ballistic like fragments, unless its dust loading of the air matters |
@@ -273,7 +273,7 @@ this side.
 **The plan, in order.**
 
 1. **Cut the air out on the GPU.** (Done.) Kernels at the end of each batch, in
-   `Extract.metal`, cut out the fragments' block of air and the fireball's sums row by row
+   `Extract.metal`, cut out the fragments' block of air and the fireball's sums block by block
    (added up on the CPU in double precision in a fixed order, so the same from run to run), but
    write only in the batch whose last step lands on its time limit, as a frame's does. A
    headless run says before each batch what the coming frame will want
