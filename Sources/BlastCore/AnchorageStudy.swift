@@ -41,6 +41,12 @@ public enum AnchorageStudy {
         public var netImpulse: Float = 0
         /// The top's largest sway back towards the charge.
         public var peakBackSway: Float = 0
+        /// On a footing: its largest rotation (radians, towards the back), the largest lift of
+        /// its heel off the soil, and where it ends up: slid away from the charge and settled.
+        public var footingRotation: Float = 0
+        public var footingUplift: Float = 0
+        public var footingSlide: Float = 0
+        public var footingSettlement: Float = 0
         public var summary: StructureSummary
         public var wallSeconds: Double
     }
@@ -55,7 +61,29 @@ public enum AnchorageStudy {
         /// The top's displacement away from the charge, at mid-length.
         var sway: () -> Float
         var anchors: () -> StructureSolver.AnchorSummary?
+        var footings: () -> [FootingSummary]
         var summary: () -> StructureSummary
+    }
+
+    /// The connection `base` stands for. On a footing, the strip's footing reaches beyond the wall
+    /// across its thickness only, as a slice of a long footing does, and stands on `soil` when
+    /// given.
+    public static func anchorage(_ base: BaseConnection, soil: Soil? = nil) -> Anchorage? {
+        guard var law = base.anchorage else { return nil }
+        law.footing?.overhang.y = 0
+        if let soil { law.footing?.soil = soil }
+        return law
+    }
+
+    /// Records a footing's state into `result`.
+    private static func record(_ footings: [FootingSummary], into result: inout Result, final: Bool) {
+        guard let footing = footings.first else { return }
+        result.footingRotation = max(result.footingRotation, footing.rotation.y)
+        result.footingUplift = max(result.footingUplift, footing.uplift)
+        if final {
+            result.footingSlide = footing.displacement.x
+            result.footingSettlement = -footing.displacement.z
+        }
     }
 
     private static func body(_ solver: StructureSolver) -> Body {
@@ -67,7 +95,7 @@ public enum AnchorageStudy {
                 var value: Float = 0
                 solver.mutateNodes { value = $0[top].ux }
                 return value
-            }, anchors: solver.anchorSummary, summary: solver.summary)
+            }, anchors: solver.anchorSummary, footings: solver.footingSummaries, summary: solver.summary)
     }
 
     private static func body(_ solver: ShellSolver) -> Body {
@@ -75,21 +103,45 @@ public enum AnchorageStudy {
         return Body(
             step: Double(solver.criticalTimeStep), time: { solver.time }, advance: solver.advance(steps:),
             setDamping: { solver.damping = $0 }, setLoad: { solver.appliedLoad = $0 },
-            sway: { solver.node(top).ux }, anchors: solver.anchorSummary, summary: solver.summary)
+            sway: { solver.node(top).ux }, anchors: solver.anchorSummary, footings: solver.footingSummaries,
+            summary: solver.summary)
     }
 
     /// Runs the wall on `base` for `duration` seconds after a charge of `mass` kg of TNT bursts
     /// on the ground `standoff` metres in front of it, meshed with solid elements of
     /// `elementSize`, or with shells of that size if `shells`.
+    ///
+    /// With `edges`, the wall is instead a panel as long as it is high, between two columns that
+    /// do not move, its vertical edges tied to them by `edges` across joints facing along it
+    /// (`JointSide`; clamped, starter bars, a construction joint, or resting against them), and
+    /// its top's sway is at mid-length. Solid elements only.
     public static func run(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 6, duration: Float = 0.5,
-        elementSize: Float = 0.0625, shells: Bool = false
+        elementSize: Float = 0.0625, shells: Bool = false, soil: Soil? = nil, edges: BaseConnection? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
+        let length = edges == nil ? Self.length : height
         let wall = Box(min: .zero, max: SIMD3(thickness, length, height))
         var model = StructureModel(solids: [wall], elementSize: elementSize, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: barArea, depth: 0.04)
-        model.baseAnchorage = base.anchorage
+        model.baseAnchorage = anchorage(base, soil: soil)
+        if let edges {
+            guard !shells, edges.anchorage?.footing == nil, edges != .soil else {
+                throw ImportedMesh.ImportError.invalid(
+                    "A panel's edges are joints of solid elements, not soil.")
+            }
+            let slack = 0.01 * elementSize
+            for side in [JointSide.negativeY, .positiveY] {
+                let y: Float = side == .negativeY ? 0 : length
+                model.supports.append(
+                    Box(
+                        min: SIMD3(-slack, y - slack, -slack),
+                        max: SIMD3(thickness + slack, y + slack, height + slack)))
+                var law = edges.anchorage
+                law?.side = side
+                model.supportAnchorages.append(law)
+            }
+        }
         let solver: Body
         if shells {
             model.elementKind = .shell
@@ -130,7 +182,9 @@ public enum AnchorageStudy {
                 result.peakUplift = max(result.peakUplift, anchors.maxOpening)
                 result.peakBaseMoment = max(result.peakBaseMoment, abs(anchors.moment.y) / length)
             }
+            record(solver.footings(), into: &result, final: false)
         }
+        record(solver.footings(), into: &result, final: true)
         result.finalSway = solver.sway()
         if let anchors = solver.anchors() {
             result.maxSlip = anchors.maxSlip
@@ -153,7 +207,7 @@ public enum AnchorageStudy {
     public static func runCoupled(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 10,
         duration: Double = 0.5, cellSize: Float = 0.25, elementSize: Float = 0.0625, margin: Float = 12,
-        domainHeight: Float = 18, progress: ((String) -> Void)? = nil
+        domainHeight: Float = 18, soil: Soil? = nil, progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         let wallLength: Float = 12
@@ -163,7 +217,7 @@ public enum AnchorageStudy {
             min: SIMD3(front, margin, 0), max: SIMD3(front + thickness, margin + wallLength, height))
         var model = StructureModel(solids: [wall], elementSize: elementSize, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: barArea, depth: 0.04)
-        model.baseAnchorage = base.anchorage
+        model.baseAnchorage = anchorage(base, soil: soil)
         let face = SIMD3<Float>(front - 0.5 * cellSize, middle, height / 2)
         let back = SIMD3<Float>(front + thickness + 0.5 * cellSize, middle, height / 2)
         let scenario = Scenario(
@@ -194,11 +248,13 @@ public enum AnchorageStudy {
                 result.peakUplift = max(result.peakUplift, anchors.maxOpening)
                 result.peakBaseMoment = max(result.peakBaseMoment, abs(anchors.moment.y) / wallLength)
             }
+            record(structure.footingSummaries(), into: &result, final: false)
             if let progress, solver.time >= nextReport {
                 nextReport += 0.05
                 progress(String(format: "%3.0f ms: sway %5.1f mm", solver.time * 1000, sway() * 1000))
             }
         }
+        record(structure.footingSummaries(), into: &result, final: true)
         result.finalSway = sway()
         if let anchors = structure.anchorSummary() {
             result.maxSlip = anchors.maxSlip

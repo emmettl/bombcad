@@ -212,21 +212,31 @@ struct FireballRiseTests {
         #expect(wind(5000) == wind(1000) && wind(0) == .zero && wind(-1) == .zero)
     }
 
-    @Test("Bolton's saturation vapour pressure, and gas split into vapour and liquid at saturation")
+    @Test("Saturation over water and ice, and gas split into vapour, liquid and ice at saturation")
     func saturation() {
         #expect(abs(CloudRise.saturationPressure(temperature: 273.15) - 611.2) < 1e-9)
         // 4.246 kPa at 30 °C, from the steam tables.
         #expect(abs(CloudRise.saturationPressure(temperature: 303.15) / 4246 - 1) < 0.002)
         #expect(CloudRise.saturationHumidity(temperature: 400, pressure: 101_325) == .infinity)
+        // Over ice: 611.2 Pa at the triple point and 103.3 Pa at −20 °C.
+        #expect(abs(CloudRise.saturationPressureOverIce(temperature: 273.16) / 611.2 - 1) < 0.001)
+        #expect(abs(CloudRise.saturationPressureOverIce(temperature: 253.15) / 103.3 - 1) < 0.003)
+        // The condensate is liquid above freezing, ice below 250.16 K, and a quarter liquid half way.
+        #expect(
+            CloudRise.liquidFraction(temperature: 280) == 1 && CloudRise.liquidFraction(temperature: 240) == 0
+        )
+        #expect(abs(CloudRise.liquidFraction(temperature: 261.66) - 0.25) < 1e-12)
         let cp = 1005.0
         let pressure = 90_000.0
-        for (temperature, water) in [(280.0, 0.02), (300.0, 0.05), (250.0, 0.001)] {
-            // Saturated air at `temperature` with the rest of `water` liquid.
-            let saturated = CloudRise.saturationHumidity(temperature: temperature, pressure: pressure)
-            let enthalpy = cp * temperature + CloudRise.latentHeat * saturated
+        for (temperature, water) in [(280.0, 0.02), (300.0, 0.05), (262.0, 0.004), (245.0, 0.001)] {
+            // Saturated air at `temperature` with the rest of `water` condensed, liquid and ice.
+            let saturated = CloudRise.cloudSaturationHumidity(temperature: temperature, pressure: pressure)
+            let ice = (1 - CloudRise.liquidFraction(temperature: temperature)) * (water - saturated)
+            let enthalpy = cp * temperature + CloudRise.latentHeat * saturated - CloudRise.fusionHeat * ice
             let split = CloudRise.split(
                 enthalpy: enthalpy, water: water, pressure: pressure, specificHeat: cp)
             #expect(abs(split.temperature - temperature) < 1e-7 && abs(split.vapour / saturated - 1) < 1e-9)
+            #expect(abs(split.ice - ice) < 1e-12)
         }
         // Too little water to saturate: all vapour.
         let dry = CloudRise.split(
@@ -241,6 +251,7 @@ struct FireballRiseTests {
     func moistMixing() {
         var spec = CloudSpec()
         spec.productWater = 0.6
+        spec.rainRate = 0
         let humidity =
             0.9 * CloudRise.saturationHumidity(temperature: ambientTemperature, pressure: ambientPressure)
         // Warm, wet gas, like breath on a cold day: its water rises faster with its heat along
@@ -346,6 +357,77 @@ struct FireballRiseTests {
         #expect(saturated.samples[2].height > 2 * dryStop.height && saturated.samples[2].liquidWater > 0)
     }
 
+    @Test(
+        "Water falling out of the cloud leaves its condensate at the threshold, and every drop is accounted for"
+    )
+    func rain() throws {
+        var spec = CloudSpec()
+        spec.productWater = 0.6
+        spec.rainRate = 0.01
+        // Warm, wet gas in cold, humid, still air: it condenses, freezes in part and precipitates.
+        let cold = 260.0
+        let air: (Double) -> (temperature: Double, pressure: Double) = { [ambientPressure] _ in
+            (cold, ambientPressure)
+        }
+        let humidity = 0.9 * CloudRise.saturationHumidity(temperature: cold, pressure: ambientPressure)
+        var start = handOver(radius: 3, height: 7, excess: 0.3)
+        start.ambientTemperature = cold
+        start.temperature = cold * 1.3
+        start.chargeMass = start.mass / 4
+        let times = [0.0, 1, 3, 10, 30, 100, 300, 1000, 3000]
+        let (samples, _) = CloudRise.follow(
+            start, spec: spec, atmosphere: air, humidity: { _ in humidity }, at: times)
+        let first = samples[0]
+        // The water the cloud started with and drew in is in it or has fallen out.
+        for sample in samples {
+            let drawnIn = sample.mass + sample.precipitation - first.mass
+            let budget = first.mass * first.water + humidity * drawnIn
+            #expect(abs((sample.mass * sample.water + sample.precipitation) / budget - 1) < 1e-6)
+        }
+        let last = try #require(samples.last)
+        #expect(last.precipitation > 0 && last.snow > 0 && last.snow < last.precipitation, "\(last)")
+        #expect(samples.contains { $0.ice > 0 && $0.liquidWater > 0 })
+    }
+
+    @Test(
+        "In saturated air a cloud condenses, freezes and snows as it rises, until saturated air would cool faster than the air"
+    )
+    func iceAndTropopause() throws {
+        var spec = CloudSpec()
+        spec.relativeHumidity = 1
+        let atmosphere = CloudAtmosphere(
+            groundTemperature: ambientTemperature, groundPressure: ambientPressure, lapseRate: 0.0065,
+            tropopause: 11_000)
+        var start = handOver(radius: 7, height: 7, excess: 4)
+        start.chargeMass = 50
+        let times = (0...72).map { Double($0) * 100 }
+        let (samples, stabilised) = CloudRise.follow(
+            start, spec: spec, atmosphere: atmosphere.callAsFunction,
+            humidity: spec.humidity(start).callAsFunction,
+            at: times)
+        // Above the freezing level, 2.3 km up, its condensate turns to ice.
+        let freezing = (ambientTemperature - CloudRise.freezingPoint) / 0.0065
+        #expect(samples.contains { $0.height > freezing && $0.ice > 0 })
+        #expect(samples.allSatisfy { $0.height > freezing - 100 || $0.ice == 0 })
+        let last = try #require(samples.last)
+        #expect(last.precipitation > 0 && last.snow > 0)
+        // The saturated adiabatic lapse rate grows as the air grows colder and holds less water;
+        // the cloud stops where it has passed the air's 6.5 K/km, well below the tropopause.
+        let stop = try #require(stabilised)
+        func saturatedLapse(_ height: Double) -> Double {
+            let air = atmosphere(height)
+            let r = CloudRise.saturationHumidity(temperature: air.temperature, pressure: air.pressure)
+            let l = CloudRise.latentHeat
+            let rt = CloudRise.gasConstant * air.temperature
+            return CloudRise.gravity * (1 + l * r / rt)
+                / (spec.specificHeat + l * l * r * CloudRise.molarRatio / (rt * air.temperature))
+        }
+        #expect(
+            saturatedLapse(0) < 0.0065 && saturatedLapse(stop.height) > 0.0065,
+            "\(saturatedLapse(stop.height))")
+        #expect(stop.height > freezing && stop.height < 8_000, "\(stop.height)")
+    }
+
     @Test("The standard atmosphere's pressure at the tropopause and above")
     func standardAtmosphere() {
         let atmosphere = CloudAtmosphere(
@@ -420,7 +502,9 @@ struct FireballRiseTests {
         #expect(throws: CocoaError.self) { try backwards.validate() }
         let soaked = try JSONDecoder().decode(CloudSpec.self, from: Data(#"{"relativeHumidity": 1.2}"#.utf8))
         #expect(throws: CocoaError.self) { try soaked.validate() }
-        #expect(spec.relativeHumidity == 0 && spec.productWater == 0.2)
+        #expect(spec.relativeHumidity == 0 && spec.productWater == 0.2 && spec.rainRate == 0.001)
+        let pouring = try JSONDecoder().decode(CloudSpec.self, from: Data(#"{"rainThreshold": 0.1}"#.utf8))
+        #expect(throws: CocoaError.self) { try pouring.validate() }
     }
 
     @Test(
@@ -454,7 +538,9 @@ struct FireballRiseTests {
         #expect(text.contains("double simulatedSecondsPerCloudFrame = 2.0\n"))
         #expect(text.contains("def Sphere \"Cloud\"") && text.contains("            3: \"inherited\""))
         #expect(text.contains("float primvars:temperature.timeSamples"))
-        #expect(text.contains("float primvars:liquidWater.timeSamples"))
+        #expect(
+            text.contains("float primvars:liquidWater.timeSamples")
+                && text.contains("float primvars:ice.timeSamples"))
 
         let checker = URL(filePath: "/usr/bin/usdchecker")
         if FileManager.default.isExecutableFile(atPath: checker.path) {

@@ -65,6 +65,27 @@ titles; the authors, journals and years should be enough to find each one.
   pulse on its face alone (see [base connections](structural-model.md#base-connections)).
   Pressures behind a wall would check that; a deflection record would check its base too.
 
+## 2d. A footing that rocks, measured
+
+- **Where:** the two databases of rocking shallow foundations compiled at UC Davis and
+  published on DataCenterHub (datacenterhub.org): FoRCy, of slow-cyclic and monotonic tests
+  (M. Hakhamaneshi, B. L. Kutter, A. G. Gavras and others, "Database of rocking shallow
+  foundation performance: Slow-cyclic and monotonic loading", *Earthquake Spectra* 36(3),
+  2020), 456 records from centrifuge and 1 g tests, among them S. Gajan and B. L. Kutter's
+  shear walls on footings on dry sand and clay; and FoRDy, of dynamic shaking (A. G. Gavras and
+  others, *Earthquake Spectra* 36(2), 2020). Found 2026-10-09; not downloaded, as downloads are
+  asked for first. A large-scale alternative: the TRISEE tests at ELSA, JRC Ispra (P. Negro and
+  others, 1998–2000), a 1 m square footing on sand loaded cyclically.
+- **Needed:** for one or two footings on dry sand: the footing's plan, embedment and weight;
+  the structure's weight and the height of its load; the sand's density, relative density or
+  friction angle and small-strain shear modulus; the bearing capacity; and the measured moment
+  against rotation, settlement against rotation and, if possible, the contact length or uplift.
+- **Use:** a measured case for `Footing` (see [footings](structural-model.md#footings)): the
+  initial rocking stiffness against the bed's, the moment at which the heel lifts, the moment
+  capacity against W B (1 − W / (q B L)) / 2, and the settlement the toe accumulates. The model
+  has no embedment and its soil yields point by point under the bed, so the last is the
+  hardest test.
+
 ## 2a. Shear across cracks at high rates
 
 - **Where:** any test of shear across a crack (push-off specimens) loaded quickly, or a
@@ -81,9 +102,31 @@ titles; the authors, journals and years should be enough to find each one.
   heavily reinforced 1.5 m beam at the speed the test did; beyond 3 m/s how the ends were held
   matters more than interlock.
 
+## 2c. Saatci's records
+
+- **Where:** the digital records of Saatci and Vecchio's drop-weight tests, which their paper
+  (ACI Structural Journal 106(1), 2009) says the University of Toronto's VecTor Analysis Group
+  publishes.
+- **Needed:** the impact force against time for each first impact (from the weight's
+  accelerometers), and how the 50 mm plate sat on the beam.
+- **Use:** the paper gives one peak, 1,421 kN for SS3a-1 under the light drop; the model's
+  weight, striking the plate's top nodes outright, delivers about 3,200 kN, and a pad matched to
+  the measured peak changes the beams (see
+  [Validation](validation.md#beams-struck-by-a-falling-weight)). The heavy drops' forces, and
+  the shape of the pulse, would say what the contact should be.
+
 ## 3. Formulae quoted from memory
 
-Eight values in the code were written from memory and should be checked against the original.
+Nine values in the code were written from memory and should be checked against the original.
+
+- **A rigid footing's static stiffness and Wolf's cones.** G. Gazetas, "Formulas and charts for
+  impedances of surface and embedded foundations", *Journal of Geotechnical Engineering* 117(9)
+  (1991) 1363–1381, Table 1 for surface foundations; J. P. Wolf, *Foundation Vibration
+  Analysis Using Simple Physical Models* (Prentice Hall, 1994), for the cones' apex heights,
+  trapped masses, the rocking cone's internal mass and the echoes of a layer; and E. Kausel's
+  stratum factors (as quoted by Gazetas), used for rocking over a layer. Used in
+  `FootingImpedance`; the vertical and horizontal stiffness of a square agree with the rigid
+  disk's within 1% and its rocking within 9%, which checks the memory a little.
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
@@ -179,7 +222,16 @@ Supplied by hand during development, and now in use:
   slope is the crack shear stiffness in `Structure.metal` (the offset −f_cc/30 is left out).
   Its crack opening paths (Fig. 10) bear on `crackDilatancy` (above). Its specimens
   were restrained, so their cracks carried compression, which the interlock cap leaves out;
-  where its laws give no stress across the crack, the model's cap is 3% to 24% above them.
+  where its laws give no stress across the crack, the model's cap is 3% to 24% above them. The
+  paths, shear and stress across the crack of its seven specimens of mix 1 with external
+  restraint (Fig. 16) were read off by hand for `blastbench pushoff` (`PushOffTest.swift`).
+- G. A. Shetye, *FE analysis and experimental validation of RC single-mat slabs subjected to
+  blast loads*, MS thesis, University of Missouri–Kansas City, 2013 (MOspace, open access): a
+  photograph of the contest slab's unloaded face after the test (Fig. 6-60b, its slab 2,
+  RSC-R1-4in), from which its cracks were counted (see
+  [Validation](validation.md#its-cracks)). It gives the panels' clear span as 58 in, where the
+  drawing Kewaisy et al. reproduce puts the supports 52 in apart; which is right is still
+  wanted.
 - J. Santos and A. A. Henriques, "New finite element to model bond–slip with steel strain
   effect for the analysis of reinforced concrete structures", *Engineering Structures* 86
   (2015) 72–83: the fib Model Code 2010's reduction of bond in yielded bars as printed,

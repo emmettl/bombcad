@@ -15,7 +15,7 @@ enum HeadlessRun {
                            [--fragments <spec.json> [--consumer local|<ssh host>]
                            [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
-                           [--cloud <spec.json> [--cloud-results <file.json>]]
+                           [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
                            [--envelope-results <file.json>]
 
@@ -33,7 +33,9 @@ enum HeadlessRun {
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
         fireball's rise and cloud, followed for minutes after; the cloud goes into the USD scene,
-        after the run's frames, and, with --cloud-results, a JSON file. --ground-shock estimates
+        after the run's frames, and, with --cloud-results, a JSON file; --sounding reads a measured
+        atmosphere for it, in the University of Wyoming archive's comma-separated values, in place
+        of the standard one. --ground-shock estimates
         the ground's shaking under chosen points from the overpressure the run records on the
         ground, frame by frame; --ground-results writes it as JSON.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
@@ -83,7 +85,7 @@ enum HeadlessRun {
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
-                            "cloud-results", "ground-shock", "ground-results", "envelope-results",
+                            "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -164,10 +166,16 @@ enum HeadlessRun {
                 throw ProjectFileError.invalid("--thermal-results needs --thermal.")
             }
             if let path = values["cloud"] {
-                let spec = try JSONDecoder().decode(
+                var spec = try JSONDecoder().decode(
                     CloudSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                if let sounding = values["sounding"] {
+                    spec.sounding = try CloudSounding(
+                        wyomingCSV: String(contentsOf: URL(filePath: sounding), encoding: .utf8))
+                }
                 try spec.validate()
                 options.cloud = spec
+            } else if values["sounding"] != nil {
+                throw ProjectFileError.invalid("--sounding needs --cloud.")
             }
             options.cloudResults = values["cloud-results"].map { URL(filePath: $0) }
             if options.cloudResults != nil, options.cloud == nil {
@@ -373,6 +381,27 @@ enum HeadlessRun {
                     heldSince = nil
                 }
                 return hold
+            }
+        }
+        if framed, consumer != nil || options.thermal != nil {
+            // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
+            // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
+            model.prepareBatch = { solver, limit in
+                let index = (limit / interval).rounded()
+                guard abs(limit - index * interval) < 1e-6 else {
+                    solver.frameRequest = FrameRequest()
+                    return
+                }
+                var request = FrameRequest(fireball: options.thermal?.luminousTemperature)
+                if let consumer {
+                    let frame = Int(index)
+                    let basis = consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
+                    let region = basis.region(
+                        for: frame, interval: interval, domain: inputs.scenario.domainSize,
+                        cellSize: solver.grid.cellSize)
+                    request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
+                }
+                solver.frameRequest = request
             }
         }
         var handOver: CloudHandOver?

@@ -137,10 +137,44 @@ the ground over its share of the base (a quarter of each element face it touches
 Support regions can also carry independent `Anchorage` laws (`supportAnchorages`, aligned
 with `supports`; null entries retain ideal clamping). Finite connections act on exposed lower
 solid faces or lower wall/vertical-column footprint points selected by each region. The law
-uses each point’s reference height as a stationary horizontal bearing plane. Regions select
-initial attachment points; they do not bound the bearing plane after sliding or separation.
-Side-facing joints, finite footing contact extents and connections between moving components
-are not represented. Ideal support clamps take precedence over finite laws; among finite
+uses each point’s reference position as a stationary bearing plane, horizontal unless the
+region's joint faces another way (below). Regions select initial attachment points; they do
+not bound the bearing plane after sliding or separation. A footing ([below](#footings)) is a
+connection to a moving component with a finite plan; other connections between moving
+components are not represented.
+
+**Joints facing other ways** (`Anchorage.side`, `JointSide`). A support region's joint can be
+over the body (a soffit it hangs from) or against one of its faces across x or y (a vertical
+joint, as of a panel cast between columns), as well as under it. It then ties the exposed
+lattice faces of solid elements that face that way, and the law acts in the joint's own frame:
+opening and tension across it, Mohr–Coulomb shear in its plane. The ground's connection and a
+footing are under the body only, and shells and beam columns are tied only under them. Checks
+(`SupportConnectionTests`): a 1 m block hung on a vertical joint facing −x or +y (1 m² tied,
+the face on that side only) holds its weight with a cohesion of 1/0.7 of it and slides down
+with 1/1.3 of it, without friction; with friction 0.6 the lower third, pressed by the block's
+moment with about 0.75 W, holds it at 1/1.3 too; and a block under a soffit joint holds with a
+tensile strength of 1/0.7 of its weight and falls away with 1/1.3.
+
+`blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
+ground between two columns that do not move, its vertical edges tied to them by each connection
+in turn, under the same pulse (sway at the top's middle):
+
+| Edges | 6 m | 10 m | 15 m | 25 m |
+|---|---|---|---|---|
+| clamped | 11.2 mm | 4.8 mm | 1.9 mm | 0.6 mm |
+| starter bars | 12.3 mm | 5.2 mm | 2.3 mm | 0.8 mm |
+| construction joint | 13.1 mm | 6.0 mm | 3.1 mm | 1.1 mm |
+| resting against them | 22.0 mm | 11.7 mm | 6.8 mm | 3.2 mm |
+
+A panel tied at its edges sways a tenth or less of what the freestanding strip does. A plain
+construction joint along its edges loses all its strength at 68% of the panel's tied points
+at 6 to 15 m (28% at 25 m; the points of its resting base, which have none to lose, count
+among them), and the panel then hangs on what is left. Even resting against the columns, without any tie,
+it stands at every distance where the freestanding wall goes over: as it bends between rigid
+columns it arches, pressing its edges into them (62 kN of friction along the edges of a 3 m
+panel at 10 m, with no ties at all), the arching action that holds infill walls wedged between
+stiff frames. Columns that give, or gaps at the edges, would take that away; the panel's
+columns here are rigid. About 3 s a run. Ideal support clamps take precedence over finite laws; among finite
 regions the last region wins. See [editing supports](structural-editing.md#restraints) for the
 app controls, active bearing-area diagnostics and save/undo behavior.
 
@@ -274,13 +308,156 @@ freestanding wall on soil goes over in every case of the study above, as it does
 rigid ground: its 250 mm base is the same lever either way.
 
 **Not modelled.** The ground is flat, and rigid unless it is given a bearing capacity. There is
-no embedment, and a footing is whatever the structure's own solids make of one. The Winkler bed
-is the simplest of soils: it has no mass, no radiation damping, no rate dependence and no
-layers, its springs do not interact, and it neither softens nor hardens as it settles. The connection has no rate dependence and no
+no embedment. The Winkler bed of `Anchorage.soil()` is the simplest of soils: it has no mass,
+no radiation damping, no rate dependence and no layers, its springs do not interact, and it
+neither softens nor hardens as it settles; a footing ([below](#footings)) has a finite plan,
+mass, and soil with mass, radiation damping and a layer. The connection has no rate dependence and no
 dilatancy, the bars' yield is a plateau of the joint as a whole rather than bars at the faces,
 and opening and sliding interact only through the shared loss of strength. Support regions
 (`supports`) hold their nodes still unless given a connection of their own, which acts as a
 horizontal bearing (see [structural editing](structural-editing.md)).
+
+## Footings
+
+A connection can stand the base on a rigid footing instead of the ground (`Anchorage.footing`,
+`Footing`; `BaseConnection.footing` is a wall cast on starter bars onto a footing 0.4 m thick
+reaching 0.5 m beyond it on each side). The footing is a rigid body of its own, with its mass
+and moments of inertia, moved on the GPU by one threadgroup after each node pass
+(`FootingSystem`, `footingStep` in Footing.metal). The connection's law acts between the body
+and the footing's top as it does between the body and the ground, but in the footing's frame,
+which moves and turns with it: a wall can open at its heel on a footing that is itself
+lifting. The ground's connection makes one footing under all the base points it ties, and each
+support region with a footing its own; its plan is the box round those points, widened by
+`overhang` on each side. Solid elements' nodes and the footprint points of shell walls and beam
+columns are tied to it alike.
+
+The footing bears on the soil over its plan alone, through a bed of 17 × 17 points from edge
+to edge (`FootingBed`). Each bears in compression only, lifts off and lands again unstrained,
+slides with Coulomb friction, and yields past its share of the bearing capacity, settling for
+good. So the heel lifts once the moment passes the bed's kern, the contact shifts towards the
+toe as the footing turns, the toe crushes the soil, and the footing tips about its own toe,
+not the wall's. A bed of equal springs turns 2.5 times too easily for its vertical stiffness,
+as a rigid footing on an elastic half-space bears hardest at its edges, so each point's
+stiffness is its share of (1 − s²)^−a (1 − t²)^−b over the base (s and t from −1 to 1 across
+it; a = b = 1/2 is the rigid punch's pressure), each exponent set so that the bed turns about
+its axis as stiffly, against its vertical stiffness, as the half-space does. Along the base the
+springs take the same shares, so that the footing slides all at once. A footing more than
+about twice as long as it is wide turns about its long axis more stiffly than any bed of its
+width can; there the exponent stops at 0.95 and the bed is scaled to rock as stiffly as the
+half-space, which leaves it stiffer vertically (by 1.1 at twice as long, 1.6 at ten times).
+
+**The soil** (`Soil`, `SoilMaterial`) is an elastic half-space, medium dense sand by default
+(G = 40 MPa, ν = 0.3, 1,900 kg/m³, about 145 m/s in shear; 600 kPa bearing, friction 0.5),
+values within the ranges foundation texts give, not measured for any site. Its static
+stiffnesses are G. Gazetas's for a rigid rectangle (1991), which agree with the rigid disk's
+within 1% in translation and 9% in rocking for a square.
+
+**The soil's mass and radiation damping** (`Soil.radiationDamping`, on by default) follow
+J. P. Wolf's cones (*Foundation Vibration Analysis Using Simple Physical Models*, 1994), each
+fitted to the bed's static stiffness K: a cone of apex height z₀ = ρ c² A / K carries the waves
+away at c, the shear speed along the base and, across it and in rocking, the dilatational speed
+up to ν = 1/3 and twice the shear speed beyond. In translation that is a dashpot ρ c A beside
+the spring; spread over the bed in proportion to its springs and driven by the base centre's
+velocity, so that a point's dashpot never pulls it below nothing before the footing's does.
+Rocking radiates little at low frequency, so the rocking cone is a dashpot ρ c I to an internal
+rotary mass ρ I z₀, moved exactly over each step, which reproduces Wolf's dynamic stiffness
+K [1 − b²/(3 (1 + b²))] + i ω ρ c I b²/(1 + b²), b = ω z₀ / c; it is scaled by the share of the
+bed's rocking stiffness still bearing. Past ν = 1/3 the footing carries Wolf's trapped masses,
+2.4 (ν − 1/3) ρ A r₀ vertically and 1.2 (ν − 1/3) ρ I r₀ in rocking. Without them the soil is
+massless springs damped as contacts are (30% of critical on the footing and what it carries).
+
+**Layers** (`Soil.layerDepth`, `Soil.beneath`). The soil can be a layer d deep over rock, or
+over another half-space. A wave the footing sends down reflects at the layer's base, by
+R = (Z₁ − Z₂)/(Z₁ + Z₂) with Z = ρ c (−1 at rock), and returns after each round trip 2 d / c,
+weakened by the cone's spreading: in Wolf's cones with reflections the footing moves as
+u₀(t) = ũ(t) + 2 Σⱼ Rʲ z₀/(z₀ + 2 j d) ũ(t − 2 j d / c), ũ the half-space's motion under the
+same force. The footing kernel keeps ũ and its rate for each translation, sampled 32 times a
+round trip, and adds the half-space's force on ũ − u₀, a sum over ũ's past, to the bed's. It
+takes 64 echoes, the last third tapered away, each losing 1% more per round trip as to the
+soil's own damping: the echoes of a layer on rock alternate in sign, and the soil takes energy
+from the footing at low frequency only by a margin that the whole sum, smoothly ended, keeps.
+Cut off sharply, after the few echoes that reach 1% of the first (as at first), or with no
+loss, the soil fed the footing energy, and a footing driven for two seconds blew up. The
+echoes follow the soil's own deformation under the footing, the bed's spring force over its
+stiffness, not the footing's motion, which lifts and slides past what the soil carries: fed
+the footing's whole displacement, a wall at 10 m over 3 m of sand on rock slid 7 m and broke
+from its footing. They cannot make the soil pull, nor hold the footing past its friction, and
+the share of the weight they carry counts towards the friction of the bed's points. Rocking
+cones echo in the same way only with far too much energy and stiffness (they double the 1.5 m
+footing's rocking stiffness over 1.5 m of soil on rock, where Kausel's stratum adds 9.5%, and
+they feed it energy at every attenuation tried down to 30% a trip), so in
+rocking the layer only stiffens the bed, by E. Kausel's 1 + r / (6 d) for a stratum on rock,
+scaled by −R, and the half-space's rocking cone carries on. Without the soil's mass, the bed is
+given the layer's static stiffness from the start.
+
+**Checks** (`FootingTests`, a stiff elastic block or wall cast on starter bars):
+
+- the bed gives the half-space's vertical and both rocking stiffnesses within 1% under a
+  square footing, and both rocking stiffnesses under footings two and ten times as long as
+  wide, with the vertical within the factor above;
+- a block on a 1.5 m square footing settles W / K under its own and the footing's weight
+  within 3%, the soil bearing the weight within 2%;
+- pushed with moments of 0.1, 0.25 and 0.4 of W B, the footing turns within 5% of the bed's own
+  statics, a rigid plate on tensionless springs solved separately, with its bearing range the
+  same within one point of the bed; past the kern (0.4) its heel lifts and the contact moves
+  towards the toe;
+- a 3 m wall 250 mm thick on a footing 1.25 m wide, of solid elements or shells, holds 0.8 of
+  the push whose moment about the footing's toe is W B / 2, and goes over at 1.3 of it; that
+  push is more than five times what tips the wall about its own toe;
+- driven up and down at half, once and twice its natural frequency on the sand, a block on a
+  footing answers with the vertical cone's dynamic stiffness within 5% (its imaginary part, the
+  radiation damping, is 0.58 of critical);
+- pushed to and fro on its face at 0.6 and 1.6 times its rocking frequency, it sways and turns
+  as the two coupled equations of a rigid body on the horizontal and rocking cones say, within
+  7% in amplitude and phase together; with the dashpots spread by area instead of by
+  stiffness, the lightly loaded middle of the bed slid near the coupled resonance and the
+  footing lagged twice as far;
+- over a layer 1.5 m deep on rock, the 1.5 m square footing's vertical stiffness is 1.81 times
+  the half-space's, 5% above E. Kausel's 1 + 1.28 r / d for a stratum on rock (1.72), and the
+  block settles under its weight within 3% of that, with the soil's mass (the echoes building it
+  up) and without (the bed);
+- pushed with 1.3 times its friction, a block on a footing slides at (F − μ W) / M within 15%,
+  on the half-space and over a layer 2 m deep on rock, where the bed's points alone bear only
+  about 56% of the weight and slid at twice that rate until they were given the echoes' share;
+  and the wall on its footing tips about the toe as above over a layer 2 m deep;
+- over layers 0.3 to 10 m deep, on rock, soft rock or a soft clay, the impedance's imaginary
+  part is nowhere negative in any mode, up to ten times the layer's lowest frequency: the soil
+  never gives the footing energy;
+- driven up and down at 0.4 and 1.5 times the layer's cut-off, c / 4 d, the block answers with
+  the layered cone's dynamic stiffness within 7%; below the cut-off the layer radiates under a
+  third of what the half-space does. Here the body is given a little mass-proportional damping
+  (20/s, i ω M c in the expected impedance), as the layer otherwise keeps the footing's own
+  free vibration going for longer than the test runs.
+
+**On the freestanding wall** (`blastbench anchorage --bases footing`), the study's 1 m strip of
+wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand with its mass:
+
+| Distance | Peak sway | At 0.5 s | Footing turned | Heel lifted | Slid | Rose |
+|---|---|---|---|---|---|---|
+| 6 m | over (1.38 m) | over | 398 mrad | 440 mm | 54 mm | 197 mm |
+| 10 m | 360 mm | 318 mm | 103 mrad | 115 mm | 8 mm | 44 mm |
+| 15 m | 130 mm | −69 mm | 37 mrad | 40 mm | 1.8 mm | 7 mm |
+| 25 m | 43 mm | 28 mm | 12 mrad | 12 mm | 0.8 mm | 1.8 mm |
+
+Without the soil's mass (`--massless`) the peak sway is within 1.5% at every distance and the
+footing turns within 0.5%: rocking on its toe radiates little, and the toe's crushing and the
+heel's lift do the rest. Over a layer 3 m deep (`--layer 3`) on rock the wall and footing rock
+further, 426 mm and 122 mrad at 10 m, 149 mm and 43 mrad at 15 m, as the stiffer ground under
+the toe gives back more of what it takes; over a soft clay (`--beneath clay`) a little less,
+338 mm and 96 mrad at 10 m. The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
+on the footing's toe, which crushes the sand. Clamped, the wall sways 200, 65, 29 and 11 mm;
+on the Winkler bed of `Anchorage.soil()` under its own 250 mm base it goes over at every
+distance. The footing is what keeps it up at 10 m and beyond, but it rocks. At 10 m the pulse's
+angular impulse about the toe, 5.3 kN m s, gives the wall and footing (9,250 kg m² about the
+toe) 1.5 kJ; rocking as a rigid block on its toe, they would rise until that has lifted their
+weight, at 0.09 rad, against 0.103 found on the yielding sand. Each run takes about 22 s, as
+on the other bases. Meshed with shells (`--shells`, 10 s a run) the wall and footing do the
+same within 1% at 10, 15 and 25 m and 2% at 6 m.
+
+**Not modelled.** The footing is rigid, rectangular, flat-bottomed and sits on the surface:
+there is no embedment and no soil against its sides. It is drawn nowhere in the app. The bed's
+springs do not interact, and its points yield one by one with no rounding of the soil under
+the toe. One footing spans every point its connection ties, however far apart.
 
 ## Failure and removal
 

@@ -25,7 +25,7 @@ struct EnvelopeProjectTests {
         #expect(text.contains("stationary-envelope") && !text.contains("def Mesh \"Structure\""))
     }
 
-    @Test("Mixed envelopes and structures require version five and round trip")
+    @Test("Mixed envelopes and structures use version six and migrate prototype version five")
     func package() throws {
         var scene = try StreetInteractionStudy.make(.pair)
         let owner = scene.structuralObjects[0]
@@ -34,7 +34,7 @@ struct EnvelopeProjectTests {
         let payload = try JSONDecoder().decode(
             ImportedSceneCodec.ScenePayload.self,
             from: archive.files["scene.json"]!)
-        #expect(payload.encodingVersion == 5)
+        #expect(payload.encodingVersion == 6)
         #expect(try ProjectDocument(archive: archive).scenario == scene)
         var old = archive
         var json = try #require(
@@ -42,6 +42,14 @@ struct EnvelopeProjectTests {
         json["encodingVersion"] = 4
         old.files["scene.json"] = try JSONSerialization.data(withJSONObject: json)
         #expect(throws: (any Error).self) { try ProjectDocument(archive: old) }
+        json["encodingVersion"] = 5
+        old.files["scene.json"] = try JSONSerialization.data(withJSONObject: json)
+        let migrated = try ProjectDocument(archive: old)
+        #expect(migrated.scenario == scene)
+        let restored = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self,
+            from: migrated.makeArchive().files["scene.json"]!)
+        #expect(restored.encodingVersion == 6)
     }
 
     @MainActor

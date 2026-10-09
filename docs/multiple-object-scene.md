@@ -120,7 +120,9 @@ ContinuumKit contracts or release.
 Local authored structures can be converted into stationary `BuildingEnvelope` objects with
 their name, object ID, wall/roof solids and openings retained. They use the fixed-obstacle
 air path and allocate no mechanics or moving-boundary state. Projects containing envelopes
-use scene encoding version 5; versions 3 and 4 remain unchanged for earlier representations.
+use scene encoding version 6; versions 3 and 4 remain unchanged for earlier representations,
+and version 5 remains the footing/turned-joint encoding. Prototype envelope version-5 packages
+migrate without losing geometry or ownership.
 Undo restores the original structure. Source-owned imports retain their import workflow.
 
 The [building-envelope study](building-envelopes.md) checks surface pressure, signed and

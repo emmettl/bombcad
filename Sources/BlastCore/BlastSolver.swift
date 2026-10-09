@@ -271,6 +271,13 @@ public final class BlastSolver {
     private let gaugeChildBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
+    /// What to cut out of the air on the GPU at the end of each batch that reaches its time limit,
+    /// as one landing on a frame does, for `airSlice(region:stride:)` and
+    /// `fireball(luminousTemperature:)` to return then instead of reading the state on the CPU
+    /// while the GPU waits. Set it before encoding a batch that may end on a frame.
+    public var frameRequest = FrameRequest()
+    /// Built the first time a request is made.
+    private(set) var frameExtractor: FrameExtractor?
     /// nil once the mask has been edited by hand.
     var rigidBoxes: [Box]?
     /// Charges laid down in fine cells for refined air (see `deposit`): what each fine cell gained,
@@ -476,6 +483,7 @@ public final class BlastSolver {
     /// The same, keeping any charge laid down in fine cells.
     func editState(_ body: (UnsafeMutableBufferPointer<CellState>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit state while a batch is in flight")
+        frameExtractor?.invalidate()
         let pointer = stateBuffers[current].contents().bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
@@ -484,6 +492,7 @@ public final class BlastSolver {
     /// Direct access to the solid mask (non-zero marks a rigid cell). Call `restart()` after editing.
     public func mutateMask(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
+        frameExtractor?.invalidate()
         rigidBoxes = nil
         needsRigidMaskCapture = true
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
@@ -967,6 +976,7 @@ public final class BlastSolver {
     /// The structure, if any, returns to its undeformed state.
     public func restart() {
         precondition(!batchInFlight, "Cannot restart while a batch is in flight")
+        frameExtractor?.invalidate()
         time = 0
         stepCount = 0
         exposurePlane?.reset()
@@ -1376,6 +1386,12 @@ public final class BlastSolver {
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
         }
+        if !frameRequest.isEmpty, frameExtractor == nil {
+            frameExtractor = try? FrameExtractor(library: library)
+        }
+        frameExtractor?.encode(
+            encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
+            control: controlBuffer, uniforms: makeUniforms())
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -1440,6 +1456,7 @@ public final class BlastSolver {
                 control.activeSteps > 0
                 ? Double(control.tileSweeps) / (Double(control.activeSteps) * tiles) : 0
         }
+        frameExtractor?.complete(reachedLimit: control.stopped == 2, time: time, steps: stepCount)
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             isStable: control.batchTime.isFinite && control.dt.isFinite,

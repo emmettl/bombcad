@@ -37,6 +37,7 @@ enum SweepWorker {
                     if let running = jobs.current, running.id == id { running.task.cancel() }
                     jobs.sessions[id] = nil
                     jobs.live[id] = nil
+                    jobs.thermal[id] = nil
                 case .shutdown:
                     await jobs.stop()
                     return
@@ -84,6 +85,30 @@ enum SweepWorker {
                             .failed(
                                 id, "The fragments' result could not be sent: \(error.localizedDescription)"))
                     }
+                case .thermal(let session):
+                    jobs.thermal[session.id] = ThermalExposure(spec: session.spec, scene: session.scene)
+                case .fireball(let id, let frame):
+                    guard var exposure = jobs.thermal[id] else { continue }
+                    exposure.add(frame)
+                    jobs.thermal[id] = exposure
+                    let live = ThermalLive(exposure)
+                    writer.enqueue(
+                        .thermalLive(id, ThermalLiveHeader(frames: live.frames, time: live.time)),
+                        payload: live.payload)
+                case .finishThermal(let id):
+                    guard let exposure = jobs.thermal.removeValue(forKey: id) else {
+                        writer.enqueue(.failed(id, "No such thermal session."))
+                        continue
+                    }
+                    do {
+                        writer.enqueue(.thermalResult(id), payload: try JSONEncoder().encode(exposure.result))
+                    } catch {
+                        writer.enqueue(
+                            .failed(
+                                id,
+                                "The thermal radiation's result could not be sent: \(error.localizedDescription)"
+                            ))
+                    }
                 default:
                     continue
                 }
@@ -99,6 +124,7 @@ enum SweepWorker {
         var sessions: [UUID: FragmentConsumer] = [:]
         /// Live sessions, and the impacts each has been sent.
         var live: [UUID: Int] = [:]
+        var thermal: [UUID: ThermalExposure] = [:]
 
         func stop() async {
             guard let task = current?.task else { return }

@@ -115,6 +115,11 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     var fragments: Fragments? = nil
     var groundShock: GroundShock? = nil
     var envelopeExposure: [EnvelopeExposureSummary]? = nil
+    /// The fireball's thermal radiation, reckoned alongside the run: every receiver's peak
+    /// irradiance and fluence, and the fireball at each frame. It does not act on the air either.
+    var thermal: ThermalResult? = nil
+
+    static let maximumThermalReceivers = 1_000_000
 
     static func fingerprint(_ scenario: Scenario, settings: ProjectRunSettings) throws -> String {
         struct Inputs: Encodable {
@@ -217,6 +222,32 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 })
             else { throw ProjectFileError.invalid("Invalid saved ground shock.") }
         }
+        if let thermal {
+            let count = thermal.receivers.count
+            var previous = -Double.infinity
+            guard (try? thermal.spec.validate()) != nil, count <= Self.maximumThermalReceivers,
+                thermal.fluence.count == count, thermal.peakIrradiance.count == count,
+                thermal.chargeEnergy.isFinite, thermal.chargeEnergy >= 0,
+                thermal.fluence.allSatisfy({ $0.isFinite && $0 >= 0 }),
+                thermal.peakIrradiance.allSatisfy({ $0.isFinite && $0 >= 0 }),
+                thermal.receivers.allSatisfy({ receiver in
+                    receiver.position.x.isFinite && receiver.position.y.isFinite
+                        && receiver.position.z.isFinite
+                        && receiver.normal.x.isFinite && receiver.normal.y.isFinite
+                        && receiver.normal.z.isFinite && !receiver.surface.isEmpty
+                        && receiver.surface.count <= 64
+                }),
+                thermal.fireball.count <= Self.maximumSamples,
+                thermal.fireball.allSatisfy({ frame in
+                    defer { previous = frame.time }
+                    return frame.time.isFinite && frame.time >= 0 && frame.time <= elapsedTime + 1e-6
+                        && frame.time > previous && frame.volume.isFinite && frame.volume >= 0
+                        && frame.centre.x.isFinite && frame.centre.y.isFinite && frame.centre.z.isFinite
+                        && frame.temperature.isFinite && frame.temperature >= 0 && frame.hottest.isFinite
+                        && frame.hottest >= 0
+                })
+            else { throw ProjectFileError.invalid("Invalid saved thermal radiation.") }
+        }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,
                 valid(structure.points), structure.points.allSatisfy({ $0.value >= 0 }),
@@ -303,7 +334,29 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         + "\(response.verticalVelocity * 1000),mm/s")
             }
         }
+        for frame in thermal?.fireball ?? [] {
+            lines.append("\(field(name)),\"Fireball diameter\",\(frame.time * 1000),\(2 * frame.radius),m")
+        }
+        for frame in thermal?.fireball ?? [] {
+            lines.append(
+                "\(field(name)),\"Fireball temperature\",\(frame.time * 1000),\(frame.temperature),K")
+        }
         return lines.joined(separator: "\n") + "\n"
+    }
+}
+
+extension ThermalResult {
+    /// One line for comparing runs: the largest fireball and the highest fluence anywhere.
+    var comparison: String {
+        let dose = (fluence.max() ?? 0) / 1000
+        guard let largest = fireball.max(by: { $0.volume < $1.volume }), largest.volume > 0 else {
+            return "Thermal: no luminous fireball"
+        }
+        let lasting = fireball.last { $0.volume > 0 }?.time ?? 0
+        return String(
+            format:
+                "Thermal: fireball up to %.1f m across, luminous until %.0f ms; fluence up to %.1f kJ/m² (ε %.2f)",
+            2 * largest.radius, lasting * 1000, dose, spec.emissivity)
     }
 }
 

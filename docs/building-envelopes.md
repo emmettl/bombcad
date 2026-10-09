@@ -23,9 +23,11 @@ resolution still constrain useful scene size.
 ## Saving and exporting
 
 Layouts encode `buildingEnvelopes` beside the existing geometry, with durable object ownership.
-Projects containing envelopes use scene encoding version 5 so older package readers reject
+Projects containing envelopes use scene encoding version 6 so older package readers reject
 them instead of silently dropping buildings. Projects without envelopes retain their existing
-version 3 or 4 encoding. Existing numerical fingerprints are unchanged; envelope geometry
+version 3 or 4 encoding, or version 5 for footings and turned support joints. Prototype
+envelope packages written as version 5 remain readable and migrate to version 6 on save.
+Existing numerical fingerprints are unchanged; envelope geometry
 enters new fingerprints while object names and IDs remain excluded.
 
 The viewport draws the subtracted rigid fragments, and ordinary runs retain gauge histories
