@@ -190,7 +190,8 @@ public struct ThermalExposure: Sendable {
     /// In joules a square metre.
     public private(set) var fluence: [Double]
     public private(set) var frames: [FireballFrame] = []
-    let occluders: [Box]
+    /// What stands between the receivers and the fireball.
+    let visibility: any ThermalVisibility
     /// The charge's energy, in joules, to set the radiated energy against.
     let chargeEnergy: Double
     /// Points spread evenly over a cone, each as the fraction of the way to its rim in the
@@ -198,10 +199,11 @@ public struct ThermalExposure: Sendable {
     let cone: [SIMD3<Float>]
     private var lastIrradiance: [Float]?
 
-    public init(spec: ThermalSpec, scene: FragmentScene) {
+    /// `visibility` tests what blocks the receivers' view, by default on the CPU.
+    public init(spec: ThermalSpec, scene: FragmentScene, visibility: (any ThermalVisibility)? = nil) {
         self.spec = spec
         receivers = Self.receivers(scene: scene, spec: spec)
-        occluders = scene.blocks + scene.structure
+        self.visibility = visibility ?? CPUThermalVisibility(occluders: Self.occluders(scene))
         chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
@@ -221,15 +223,44 @@ public struct ThermalExposure: Sendable {
         lastIrradiance = now
     }
 
-    /// The irradiance at every receiver from `frame`'s fireball.
+    /// The irradiance at every receiver from `frame`'s fireball: every receiver's rays toward it,
+    /// gathered across the CPU's cores, tested together, then summed.
     public func irradiance(_ frame: FireballFrame) -> [Float] {
         var result = [Float](repeating: 0, count: receivers.count)
         guard frame.volume > 0, frame.temperature > 0 else { return result }
         let power = Float(Double(spec.emissivity) * Self.stefanBoltzmann * pow(Double(frame.temperature), 4))
+        let chunk = 256
+        let chunks = (receivers.count + chunk - 1) / chunk
+        var views = [[View]](repeating: [], count: chunks)
+        var rays = [[ThermalRay]](repeating: [], count: chunks)
+        views.withUnsafeMutableBufferPointer { views in
+            rays.withUnsafeMutableBufferPointer { rays in
+                DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                    var chunkViews: [View] = []
+                    var chunkRays: [ThermalRay] = []
+                    for n in c * chunk..<min((c + 1) * chunk, receivers.count) {
+                        chunkViews.append(view(from: receivers[n], frame, power: power, rays: &chunkRays))
+                    }
+                    views[c] = chunkViews
+                    rays[c] = chunkRays
+                }
+            }
+        }
+        var offsets = [0]
+        for chunkRays in rays { offsets.append(offsets.last! + chunkRays.count) }
+        let all = [ThermalRay](unsafeUninitializedCapacity: offsets.last!) { buffer, count in
+            DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                _ = UnsafeMutableBufferPointer(rebasing: buffer[offsets[c]..<offsets[c + 1]]).initialize(
+                    from: rays[c])
+            }
+            count = offsets.last!
+        }
+        let visible = visibility.visible(all)
         result.withUnsafeMutableBufferPointer { result in
-            DispatchQueue.concurrentPerform(iterations: (receivers.count + 255) / 256) { chunk in
-                for n in chunk * 256..<min((chunk + 1) * 256, receivers.count) {
-                    result[n] = irradiance(at: receivers[n], frame, power: power)
+            DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                var next = offsets[c]
+                for (k, view) in views[c].enumerated() {
+                    result[c * chunk + k] = irradiance(view, visible: visible, from: &next, power: power)
                 }
             }
         }
@@ -243,14 +274,33 @@ public struct ThermalExposure: Sendable {
     /// structure in the way. Exact for a sphere in full view at any distance, (r/d)² cos θ times E,
     /// and well behaved right up to its surface.
     func irradiance(at receiver: ThermalReceiver, _ frame: FireballFrame, power: Float) -> Float {
+        var rays: [ThermalRay] = []
+        let view = view(from: receiver, frame, power: power, rays: &rays)
+        var next = 0
+        return irradiance(view, visible: visibility.visible(rays), from: &next, power: power)
+    }
+
+    /// What one receiver sees of the fireball before anything in the way is known: either its
+    /// irradiance, or the rays to test and what each counts for.
+    enum View {
+        case settled(Float)
+        /// `weights` holds the cosine on the receiver of each ray it added, in order; `solidAngle`
+        /// is the cone's.
+        case sampled(weights: [Float], solidAngle: Float)
+    }
+
+    /// One receiver's view of `frame`'s fireball, adding the rays it needs tested to `rays`.
+    func view(from receiver: ThermalReceiver, _ frame: FireballFrame, power: Float, rays: inout [ThermalRay])
+        -> View
+    {
         let radius = frame.radius
         let x = receiver.position
         let toCentre = frame.centre - x
         let d = simd_length(toCentre)
         // Inside the fireball, surrounded by it: the hemisphere above radiates in full.
-        if d <= radius { return power }
+        if d <= radius { return .settled(power) }
         // The whole sphere is below this surface's horizon.
-        if simd_dot(receiver.normal, toCentre) < -radius { return 0 }
+        if simd_dot(receiver.normal, toCentre) < -radius { return .settled(0) }
         let axis = toCentre / d
         let cosHalfAngle = sqrt(max(0, 1 - (radius / d) * (radius / d)))
         let solidAngle = 2 * Float.pi * (1 - cosHalfAngle)
@@ -258,7 +308,7 @@ public struct ThermalExposure: Sendable {
         let helper: SIMD3<Float> = abs(axis.z) < 0.9 ? SIMD3(0, 0, 1) : SIMD3(1, 0, 0)
         let u = simd_normalize(simd_cross(axis, helper))
         let v = simd_cross(axis, u)
-        var sum: Float = 0
+        var weights: [Float] = []
         for sample in cone {
             let cosine = 1 - sample.x * (1 - cosHalfAngle)
             let sine = sqrt(max(0, 1 - cosine * cosine))
@@ -268,32 +318,32 @@ public struct ThermalExposure: Sendable {
             // Where the ray first meets the sphere.
             let b = simd_dot(direction, toCentre)
             let distance = b - sqrt(max(0, b * b - (d * d - radius * radius)))
-            let point = x + distance * direction
-            guard point.z >= 0 else { continue }
-            guard !occluders.contains(where: { Self.blocks($0, from: x, to: point) }) else { continue }
-            sum += cosReceiver
+            rays.append(ThermalRay(origin: x, direction: direction, length: distance))
+            weights.append(cosReceiver)
         }
-        return min(power / .pi * sum * solidAngle / Float(cone.count), power)
+        return .sampled(weights: weights, solidAngle: solidAngle)
     }
 
-    /// Whether `box` lies across the segment from `start` to `end`; an end inside it counts.
-    static func blocks(_ box: Box, from start: SIMD3<Float>, to end: SIMD3<Float>) -> Bool {
-        let delta = end - start
-        var low: Float = 0
-        var high: Float = 1
-        for axis in 0..<3 {
-            if abs(delta[axis]) < 1e-12 {
-                if start[axis] < box.min[axis] || start[axis] > box.max[axis] { return false }
-                continue
+    /// The irradiance from a receiver's view, its rays' visibility starting at `next`, which it
+    /// moves past them.
+    func irradiance(_ view: View, visible: [Bool], from next: inout Int, power: Float) -> Float {
+        switch view {
+        case .settled(let irradiance):
+            return irradiance
+        case .sampled(let weights, let solidAngle):
+            var sum: Float = 0
+            for weight in weights {
+                if visible[next] { sum += weight }
+                next += 1
             }
-            var a = (box.min[axis] - start[axis]) / delta[axis]
-            var b = (box.max[axis] - start[axis]) / delta[axis]
-            if a > b { swap(&a, &b) }
-            low = max(low, a)
-            high = min(high, b)
-            if low > high { return false }
+            return min(power / .pi * sum * solidAngle / Float(cone.count), power)
         }
-        return true
+    }
+
+    /// What can block a receiver's view besides the ground: the blocks and the structure's starting
+    /// outline.
+    public static func occluders(_ scene: FragmentScene) -> [Box] {
+        scene.blocks + scene.structure
     }
 
     /// `count` points on a Fibonacci spiral over a cone: even in the cosine of the angle off its
