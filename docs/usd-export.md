@@ -57,21 +57,28 @@ time between them.
 ## The air
 
 `--vdb` writes the air at each frame to `blast.0000.vdb`, `blast.0001.vdb`, … in a new folder,
-each file holding two float grids:
+each file holding float grids, `overpressure` and `shock` unless `--vdb-fields` names others:
 
 | Grid | What it is | Left out below |
 |---|---|---|
 | `overpressure` | Pressure above ambient, in kPa (negative behind the front) | 0.5 kPa in magnitude |
 | `shock` | Magnitude of the pressure gradient, in kPa/m, which picks out the fronts | 5 kPa/m |
+| `peak` | The highest overpressure each cell has seen so far, in kPa | 0.5 kPa |
+| `impulse` | Positive overpressure integrated over time so far, in Pa·s | 0.5 Pa·s |
 
-They are read from the solver's visualisation volume, the one the app ray-marches, so they are
-the cell values of the coarse grid (averaged from refined patches where there are any). Voxels
+```bash
+swift run -c release BombCAD run street.bombcad --usd street.usda --vdb street.volumes --vdb-fields overpressure,peak,impulse
+```
+
+`overpressure` and `shock` are read from the solver's visualisation volume, the one the app
+ray-marches; `peak` and `impulse` from the solver's own fields, in full precision. All are the
+cell values of the coarse grid (averaged from refined patches where there are any). Voxels
 are centred on the cells, in metres from the domain's corner, and solid cells are left out. Still
 air below the thresholds is not written, so early frames are small; the region behind a front
 that has fallen back towards ambient shows as a hole.
 
-With `--usd` as well, the scene gains a `Volume` prim, `/Scene/Blast`, with fields
-`overpressure` and `shock` reading the frames' files through relative paths. Blender also opens
+With `--usd` as well, the scene gains a `Volume` prim, `/Scene/Blast`, with a field for each
+grid reading the frames' files through relative paths. Blender also opens
 the files directly as a volume sequence. Neither grid is called `density`, the name a renderer's
 default volume material usually reads, so point the material at `overpressure` or `shock`.
 
@@ -103,6 +110,11 @@ cells, 0.17 s):
 | None | 19.0 s | 1,527 | 3,075.9 kPa | |
 | Every 10 ms | 27.7 s | 1,534 | 3,075.9 kPa | 253 MB, up to 22 MB a frame |
 | Every 1 ms | 100.6 s | 1,608 | 3,044.9 kPa | 2.4 GB in 171 files |
+
+`peak` and `impulse` fill every cell the blast has reached, so they grow with the frames rather
+than following the fronts: on the same street, 35 MB at 85 ms and 45 MB at 170 ms for the two
+together. Blender 5.2 reads them. For a map of the damage done, one late frame (a large
+`--frame-interval`) is usually enough.
 
 Each frame costs about half a second (reading the volume back, building the leaves, zipping).
 Without a structure, each frame also stops the run: every millisecond, that ends 5% more steps
