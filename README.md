@@ -497,8 +497,20 @@ with empty final members receiving zero. Prescribed outer reservoirs supply matc
 comoving gas and report their inventory exchange. An excessive acoustic timestep is
 rejected and the interval geometry rebuilt. Thin corner volumes and face measures
 are integrated directly to avoid cancellation. This verifies a single numerical
-interval; sustained motion, nonuniform moving-load convergence and gas angular
-momentum transport still need separate checks.
+interval; the sustained driver below extends the constant-state check over a trajectory.
+
+`swift run -c release rigidboxdemo --moving-trajectory --halving` writes
+`.build/moving-trajectory-halving.json`. Eight aligned/rotated, 0.2/0.1 m grid and
+CFL 0.2/0.1 cases carry accepted gas inventories through a prescribed 0.24 m translation.
+Gas and box move together at (300,100,-40) m/s for 0.8 ms, retaining ambient density
+and pressure. This stresses repeated grid crossings; the trajectory is prescribed.
+Add `--ambient-window` for repeated 64-microsecond crossing windows at the original
+(3,1,-0.4) m/s, writing `.build/moving-trajectory-ambient-window-halving.json`.
+`python3 Scripts/summarize-moving-trajectory.py` checks both complete matrices, matched
+snapshot times, cumulative conservation/positivity, and wet/dry counts against an
+independent corner-containment oracle. Rejected trials retain the accepted pose and gas;
+roundoff contacts use consistent geometric volume/face predicates. Nonuniform moving-load
+accuracy, free-body feedback, rotation and gas angular momentum remain subsequent work.
 
 ## Headline results
 

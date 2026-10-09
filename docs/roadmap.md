@@ -1242,12 +1242,56 @@ unsupported groups and inconsistent volumes, the thin tetrahedral corner, nonuni
 pressure budgets and finer-grid CFL retry. Both geometry and moving-group release reports
 pass their conservation/transition checks; formatting and diff checks are clean.
 
-Next, repeat moving group construction and conservative scatter over a sustained prescribed
-trajectory, checking the cumulative budgets and every active-set transition. Then establish
-nonuniform moving-load accuracy under grid and timestep refinement. Group homogenization
-does not preserve gas angular momentum. Coupled free-body velocity, rotation, ground contact
-and gas angular momentum remain subsequent gates. Ordinary simulations are unchanged, and
-stable kernels remain candidates for separately reviewed shared extraction.
+Sustained prescribed translation now repeats interval geometry, grouping, paired Euler flux
+and final-volume scatter while retaining each accepted gas inventory. The next interval checks
+those volumes against its initial geometry and uses the existing extensive packets unchanged.
+A prescribed pose copy preserves orientation exactly, so repeated construction does not
+renormalize it or recompute the accepted position from a separate clock. CFL/invalid-state
+rejections keep gas, pose and cumulative loads untouched and rebuild the shorter interval.
+Four matched-time snapshots split steps at their physical output times. Compensated sums
+audit gas, outer-reservoir exchange and body impulse/work throughout the trajectory.
+
+`--moving-trajectory --halving` runs 0.2/0.1 m grids, aligned/0.23-radian boxes and CFL
+0.2/0.1. Gas and box move together at (300,100,-40) m/s for 0.8 ms: a prescribed stress
+trajectory with ambient density/pressure and displacement (0.24,0.08,-0.032) m. The faster
+translation exercises several cell crossings without changing the initial thermodynamic
+state. The eight cases take 141–692 accepted steps. Aligned trajectories open/close 9/9 cells
+on the coarse grid and 147/147 on the finer grid; rotated counts are 9/14 and 137/133.
+An independent reference intersects six linear corner-containment inequalities to count
+fully solid intervals, including cells wet at both endpoints that become solid in between.
+Every numerical transition count agrees, at both CFL settings.
+
+`--moving-trajectory --ambient-window --halving` retains (3,1,-0.4) m/s and evolves 64-microsecond
+windows straddling an opening event, with 9–40 accepted steps and the same output-time checks.
+These windows exposed a roundoff contact where tetrahedral gas volume was positive while
+all face apertures were zero. Quadrature now uses the same geometric contact tolerance as
+open-face clipping, preventing isolated phantom support; gas inventories are still neither
+reset nor floored. A dedicated dry-volume/face regression covers this case, alongside the
+existing analytically resolved thin tetrahedral corner.
+
+Across all sixteen trajectories and their snapshots, maximum density/pressure errors stay
+below `4e-14` relative, and velocity error below `1e-11` m/s. Cumulative budget residuals
+are below `3e-14` kg, `8e-12` N s and `2e-9` J; gas-volume change is below `2e-15` m³,
+and paired `W - v·I` below `2e-13` J. Every endpoint group retains at least 0.25 nominal
+cell volume, with two members at most. These residuals assess conservation and preservation
+of an exact constant state, rather than spatial or temporal accuracy of a nonuniform wave.
+
+`Scripts/summarize-moving-trajectory.py` requires both complete eight-case matrices and checks
+positivity, endpoint group capacity, prescribed displacement, matched snapshots, cumulative
+mass/momentum/energy and paired impulse/work. Its independent Rodrigues-rotation/projected-cube
+reference also verifies the Swift oracle and all transition counts. Tests additionally carry
+a nonuniform accepted packet into a second interval to detect accidental ambient reinitialization,
+reject inconsistent inventories, and preserve mechanical state during prescribed pose copies.
+All 67 CPU-only tests in 13 suites pass. The sixteen final release reports pass the independent
+summary checks; strict formatting and diff checks are clean.
+
+Next, establish nonuniform gas transport accuracy during prescribed motion, then nonuniform
+moving-load convergence under grid and timestep refinement. The uniform comoving trajectories
+check conservation and active-set handling; they do not measure blast-wave or pressure-load
+accuracy. Group homogenization does not preserve gas angular momentum. Coupled free-body
+velocity, rotation, ground contact and gas angular momentum remain subsequent gates. Ordinary
+simulations are unchanged, and stable kernels remain candidates for separately reviewed shared
+extraction.
 
 1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
    gravity, rotational inertia and contact properties, with backward-compatible persistence.

@@ -156,20 +156,17 @@ struct TranslatingBoxSpaceTimeGeometry {
         }
         if duration - events.last! <= duration * 1e-12 && events.count > 1 { events.removeLast() }
         events.append(duration)
-        func geometry(_ time: Double) throws -> FractionalBoxGeometry {
-            FractionalBoxGeometry(
-                try RigidBoxBody(
-                    mass: body.mass, size: body.size, position: body.position + time * velocity,
-                    orientation: body.orientation, centreOfMass: body.centreOfMass, inertia: body.inertia))
+        func geometry(_ time: Double) -> FractionalBoxGeometry {
+            FractionalBoxGeometry(body.translated(by: time * velocity))
         }
-        let initial = try geometry(0).gasVolume(lower: lower, cellSize: h)
-        let final = try geometry(duration).gasVolume(lower: lower, cellSize: h)
+        let initial = geometry(0).gasVolume(lower: lower, cellSize: h)
+        let final = geometry(duration).gasVolume(lower: lower, cellSize: h)
         var volumeTime = 0.0
         for interval in 0..<(events.count - 1) {
             let midpoint = (events[interval] + events[interval + 1]) / 2
             let weight = (events[interval + 1] - events[interval]) / 2
             for time in [midpoint - weight / sqrt(3.0), midpoint + weight / sqrt(3.0)] {
-                let current = try geometry(time)
+                let current = geometry(time)
                 volumeTime += weight * current.gasVolume(lower: lower, cellSize: h)
                 let open = current.openFacePatches(lower: lower, cellSize: h)
                 for side in 0..<6 {

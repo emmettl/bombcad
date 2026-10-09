@@ -180,7 +180,10 @@ struct FractionalBoxGeometry {
             low + h * SIMD3<Double>(n & 1 == 0 ? 0 : 1, n & 2 == 0 ? 0 : 1, n & 4 == 0 ? 0 : 1)
         }
         let epsilon = h * 1e-12
-        if vertices.allSatisfy({ point in planes.allSatisfy { $0.distance(point) <= 0 } }) { return [] }
+        // A tolerance-scale contact is solid under the same clipping predicate used by
+        // open faces. Otherwise roundoff can create positive tetrahedra without any
+        // aperture, producing an isolated phantom gas cell at an exact grid crossing.
+        if vertices.allSatisfy({ point in planes.allSatisfy { $0.distance(point) <= epsilon } }) { return [] }
         if planes.contains(where: { plane in vertices.allSatisfy { plane.distance($0) > epsilon } }) {
             let offset = h / (2 * sqrt(3.0))
             return (0..<8).map { n in

@@ -31,7 +31,9 @@ public enum ExperimentalMovingGroupsStudy {
         public let bodyWork: Double
         public let impulseWorkResidual: Double
     }
-    enum Failure: Error { case invalidConfiguration, missingTransition, inconsistentFace }
+    enum Failure: Error {
+        case invalidConfiguration, missingTransition, inconsistentFace, inconsistentInventory
+    }
     public static func run(
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
         duration: Double = 0.000004, progress: (Result) throws -> Void = { _ in }
@@ -72,7 +74,7 @@ public enum ExperimentalMovingGroupsStudy {
             position: SIMD3(1.013, 1.027, 1.041) + time * velocity,
             orientation: simd_quatd(angle: angle, axis: simd_normalize(SIMD3(1, 2, 3))))
     }
-    private static func eventTime(h: Double, angle: Double, opening: Bool) throws -> Double {
+    static func eventTime(h: Double, angle: Double, opening: Bool) throws -> Double {
         let count = Int((2 / h).rounded())
         let first = FractionalBoxGeometry(try body(angle: angle, time: 0))
         let last = FractionalBoxGeometry(try body(angle: angle, time: 0.08))
@@ -107,10 +109,17 @@ public enum ExperimentalMovingGroupsStudy {
         let old: [FractionalGasTransport.Cell]
         let body: RigidBoxBody
     }
-    static func domain(h: Double, angle: Double, start: Double, duration: Double) throws -> Domain {
+    static func domain(
+        h: Double, angle: Double, start: Double, duration: Double,
+        previous: [FractionalGasTransport.Cell]? = nil, prescribedBody: RigidBoxBody? = nil,
+        prescribedVelocity: SIMD3<Double> = velocity
+    ) throws -> Domain {
         let count = Int((2 / h).rounded())
-        let body = try body(angle: angle, time: start)
-        let sweep = try TranslatingBoxSpaceTimeGeometry(body: body, velocity: velocity)
+        guard previous == nil || previous!.count == count * count * count else {
+            throw Failure.inconsistentInventory
+        }
+        let body = try prescribedBody ?? self.body(angle: angle, time: start)
+        let sweep = try TranslatingBoxSpaceTimeGeometry(body: body, velocity: prescribedVelocity)
         var geometry: [TranslatingBoxSpaceTimeGeometry.Result] = []
         var old: [FractionalGasTransport.Cell] = []
         var centres: [SIMD3<Double>] = []
@@ -122,9 +131,17 @@ public enum ExperimentalMovingGroupsStudy {
                     let centre = lower + SIMD3(repeating: h / 2)
                     let r = try sweep.integrate(lower: lower, cellSize: h, duration: duration)
                     let index = old.count
-                    old.append(
-                        .init(
-                            volume: r.initialGasVolume, density: 1.225, velocity: velocity, pressure: 101325))
+                    if let previous {
+                        guard abs(previous[index].volume - r.initialGasVolume) <= 1e-10 * h * h * h,
+                            (previous[index].volume == 0) == (r.initialGasVolume == 0)
+                        else { throw Failure.inconsistentInventory }
+                        old.append(previous[index])
+                    } else {
+                        old.append(
+                            .init(
+                                volume: r.initialGasVolume, density: 1.225,
+                                velocity: prescribedVelocity, pressure: 101325))
+                    }
                     centres.append(centre)
                     geometry.append(r)
                     for wall in r.walls where wall.areaTime > 0 {
@@ -184,7 +201,7 @@ public enum ExperimentalMovingGroupsStudy {
             finalVolumes: geometry.map(\.finalGasVolume),
             meanVolumes: geometry.map { $0.gasVolumeTime / duration },
             centres: centres, nominalVolume: h * h * h, faces: faces, boundaries: boundaries,
-            duration: duration, velocity: velocity)
+            duration: duration, velocity: prescribedVelocity)
         return Domain(plan: plan, old: old, body: body)
     }
     private static func measure(

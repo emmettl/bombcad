@@ -67,6 +67,15 @@ struct RigidBoxBody {
         position + orientation.act(bodyPoint - centreOfMass)
     }
 
+    /// Prescribed pose translation, preserving the exact orientation and mechanical state.
+    /// Returning a copy lets rejected gas steps leave the accepted pose untouched.
+    func translated(by displacement: SIMD3<Double>) -> RigidBoxBody {
+        precondition(Self.finite(displacement) && Self.finite(position + displacement))
+        var result = self
+        result.position += displacement
+        return result
+    }
+
     /// An instantaneous world-space impulse (N s), optionally applied away from the centre.
     mutating func applyImpulse(_ impulse: SIMD3<Double>, at point: SIMD3<Double>? = nil) {
         precondition(Self.finite(impulse) && Self.finite(point ?? position))
