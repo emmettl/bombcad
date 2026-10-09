@@ -17,6 +17,9 @@ buried services or for vibration limits.
 swift run -c release BombCAD run street.bombcad --ground-shock ground.json --ground-results ground-results.json
 ```
 
+With `--consumer ground=<ssh host>` the estimate is made on another Mac, fed the ground's air
+frame by frame (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+
 The description is JSON, and any field left out takes its default:
 
 ```json
