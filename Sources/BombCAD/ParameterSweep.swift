@@ -10,6 +10,8 @@ struct SimulationInputs: Equatable, Sendable {
     var fragments: FragmentSpec?
     /// The ground points estimated alongside, likewise.
     var groundShock: GroundShockSpec? = nil
+    /// The thermal radiation reckoned alongside, likewise.
+    var thermal: ThermalSpec? = nil
 
     func validate() throws {
         try ProjectDocument.validate(scenario)

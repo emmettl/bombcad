@@ -114,6 +114,7 @@ struct SidebarView: View {
             }
 
             FragmentSection(model: model)
+            ThermalSection(model: model)
 
             GroundShockSection(model: model)
 
@@ -205,6 +206,7 @@ struct SidebarView: View {
                 if model.groundShockSpec != nil {
                     Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
                 }
+                ThermalDisplaySettings(model: model)
             }
 
             Section("Solver") { SolverStats(model: model) }
