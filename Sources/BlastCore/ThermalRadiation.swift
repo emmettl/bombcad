@@ -273,7 +273,7 @@ public struct ThermalExposure: Sendable {
                     var next = 0
                     for n in c * chunk..<min((c + 1) * chunk, receivers.count) {
                         result[n] = irradiance(
-                            views[n], visible: chunkVisible, weights: weights[c], from: &next, power: power)
+                            views[n], visible: chunkVisible, weights: weights[c], from: &next)
                     }
                 }
             }
@@ -293,7 +293,7 @@ public struct ThermalExposure: Sendable {
         let view = view(from: receiver, frame, power: power, rays: &rays, weights: &weights)
         var next = 0
         return visibility.visible(rays).withUnsafeBufferPointer { visible in
-            irradiance(view, visible: visible, weights: weights, from: &next, power: power)
+            irradiance(view, visible: visible, weights: weights, from: &next)
         }
     }
 
@@ -302,9 +302,11 @@ public struct ThermalExposure: Sendable {
         /// Its irradiance where that needs no rays: inside the fireball, or with all of it below
         /// the receiver's horizon.
         var settled: Float?
-        /// How many rays it added, and the solid angle of the cone they sample.
+        /// How many rays it added.
         var rays = 0
-        var solidAngle: Float = 0
+        /// The irradiance is `scale` times the sum of the visible rays' weights, held to `cap`.
+        var scale: Float = 1
+        var cap: Float = .infinity
     }
 
     /// One receiver's view of `frame`'s fireball, adding the rays it needs tested to `rays` and the
@@ -341,19 +343,19 @@ public struct ThermalExposure: Sendable {
             rays.append(ThermalRay(origin: x, direction: direction, length: distance))
             weights.append(cosReceiver)
         }
-        return View(rays: rays.count - first, solidAngle: solidAngle)
+        return View(rays: rays.count - first, scale: power / .pi * solidAngle / Float(cone.count), cap: power)
     }
 
     /// The irradiance from a receiver's view, its rays' visibility and weights starting at `next`,
     /// which it moves past them.
     func irradiance(
-        _ view: View, visible: UnsafeBufferPointer<Bool>, weights: [Float], from next: inout Int, power: Float
+        _ view: View, visible: UnsafeBufferPointer<Bool>, weights: [Float], from next: inout Int
     ) -> Float {
         if let settled = view.settled { return settled }
         var sum: Float = 0
         for k in next..<next + view.rays where visible[k] { sum += weights[k] }
         next += view.rays
-        return min(power / .pi * sum * view.solidAngle / Float(cone.count), power)
+        return min(view.scale * sum, view.cap)
     }
 
     /// What can block a receiver's view besides the ground: the blocks and the structure's starting
