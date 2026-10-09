@@ -171,6 +171,9 @@ final class SimulationModel {
     /// How often `onSample` is called in a run without a structure, a whole number of
     /// `structureSampleInterval`s: each sample stops the run, so the fewer the better.
     @ObservationIgnored var airSampleInterval = structureSampleInterval
+    /// Called with the solver and the batch's time limit just before each batch is encoded, after
+    /// any hold: the place to set `frameRequest` for a batch that may end on a frame.
+    @ObservationIgnored var prepareBatch: ((BlastSolver, Double) -> Void)?
     /// While this says so, the run waits before its next batch: a consumer of its frames has
     /// fallen behind. Checked every couple of milliseconds; the main thread is not blocked.
     @ObservationIgnored var holdBatches: (() -> Bool)?
@@ -1601,6 +1604,7 @@ final class SimulationModel {
         if fragments != nil, timeStep > 0 {
             steps = min(steps, max(1, Int(Self.fragmentFrameInterval / timeStep)))
         }
+        prepareBatch?(solver, limit)
         guard
             let commandBuffer = solver.encodeBatch(steps: steps, timeLimit: limit, updateVisualization: true)
         else {
