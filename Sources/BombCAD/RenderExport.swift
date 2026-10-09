@@ -107,7 +107,9 @@ struct RenderExportView: View {
                     }
                 }
                 if model.fragmentSpec != nil {
-                    Toggle("Fly the fragments into the scene", isOn: $export.includesFragments)
+                    LabeledContent("Fragments") {
+                        Toggle("Fly them into the scene", isOn: $export.includesFragments)
+                    }
                 }
             }
             .disabled(export.isRunning)
