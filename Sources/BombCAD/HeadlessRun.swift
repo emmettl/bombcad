@@ -14,6 +14,7 @@ enum HeadlessRun {
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--consumer local|<ssh host>]
                            [--fragment-results <file.json>]]
+                           [--thermal <spec.json> [--thermal-results <file.json>]]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
@@ -23,6 +24,9 @@ enum HeadlessRun {
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, on this Mac's CPU or on another Mac over SSH, frame
         by frame; they go into the USD scene and, with --fragment-results, a JSON file.
+        --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
+        frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
+        file.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
         never modified.
         """
@@ -43,6 +47,9 @@ enum HeadlessRun {
         var fragments: FragmentSpec?
         var consumer = "local"
         var fragmentResults: URL?
+        /// The fireball's thermal radiation on the scene, and where its results go.
+        var thermal: ThermalSpec?
+        var thermalResults: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
 
@@ -58,7 +65,7 @@ enum HeadlessRun {
                         [
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
-                            "consumer", "fragment-results",
+                            "consumer", "fragment-results", "thermal", "thermal-results",
                             "frame-interval",
                         ]
                         .contains(key)
@@ -127,9 +134,23 @@ enum HeadlessRun {
             if options.fragmentResults != nil, options.fragments == nil {
                 throw ProjectFileError.invalid("--fragment-results needs --fragments.")
             }
+            if let path = values["thermal"] {
+                let spec = try JSONDecoder().decode(
+                    ThermalSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.thermal = spec
+            }
+            options.thermalResults = values["thermal-results"].map { URL(filePath: $0) }
+            if options.thermalResults != nil, options.thermal == nil {
+                throw ProjectFileError.invalid("--thermal-results needs --thermal.")
+            }
             if let text = values["frame-interval"] {
-                guard options.usd != nil || options.vdb != nil || options.fragments != nil else {
-                    throw ProjectFileError.invalid("--frame-interval needs --usd, --vdb or --fragments.")
+                guard
+                    options.usd != nil || options.vdb != nil || options.fragments != nil
+                        || options.thermal != nil
+                else {
+                    throw ProjectFileError.invalid(
+                        "--frame-interval needs --usd, --vdb, --fragments or --thermal.")
                 }
                 guard let interval = Int(text), interval > 0 else {
                     throw ProjectFileError.invalid(
@@ -140,8 +161,11 @@ enum HeadlessRun {
             if let usd = options.usd, usd.pathExtension != "usda" {
                 throw ProjectFileError.invalid("The USD scene must end in .usda.")
             }
-            for url in [options.out, options.csv, options.usd, options.vdb, options.fragmentResults]
-                .compactMap({ $0 })
+            for url in [
+                options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
+                options.thermalResults,
+            ]
+            .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
                 throw ProjectFileError.invalid("\(url.path) already exists; choose a new path.")
             }
@@ -185,7 +209,7 @@ enum HeadlessRun {
 
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
-        run: SavedSimulationRun, fragments: FragmentResult?, stream: String?
+        run: SavedSimulationRun, fragments: FragmentResult?, stream: String?, thermal: ThermalResult?
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -200,7 +224,10 @@ enum HeadlessRun {
         if let url = options.fragmentResults, let fragments = result.fragments {
             try JSONEncoder().encode(fragments).write(to: url, options: .withoutOverwriting)
         }
-        return (result.run, result.fragments, result.stream)
+        if let url = options.thermalResults, let thermal = result.thermal {
+            try JSONEncoder().encode(thermal).write(to: url, options: .withoutOverwriting)
+        }
+        return (result.run, result.fragments, result.stream, result.thermal)
     }
 
     /// Runs `document` as `options` change it, with any `--usd` and `--vdb` exports, and returns
@@ -211,7 +238,8 @@ enum HeadlessRun {
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any LiveConsumer)? = nil
     ) async throws -> (
-        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?
+        run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?,
+        thermal: ThermalResult?
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
@@ -255,6 +283,7 @@ enum HeadlessRun {
             consumer = try await makeConsumer(options.consumer, spec: spec, scenario: inputs.scenario)
         }
         defer { if !finished { consumer?.cancel() } }
+        let thermal = options.thermal.map { ThermalStudy(spec: $0, scene: FragmentScene(inputs.scenario)) }
         var heldSince: ContinuousClock.Instant?
         var held = Duration.zero
         let streamStart = ContinuousClock.now
@@ -273,7 +302,9 @@ enum HeadlessRun {
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
         // so exporting does not change the run. Without a structure, only volumes and fragments
         // ask for frames, and the run then stops at each one, ending a time step there.
-        if options.vdb != nil || consumer != nil || (scene != nil && inputs.scenario.structure != nil) {
+        if options.vdb != nil || consumer != nil || thermal != nil
+            || (scene != nil && inputs.scenario.structure != nil)
+        {
             var frame = 0
             model.onSample = { solver in
                 // The last sample, at the end of the run, can fall between frames.
@@ -291,6 +322,9 @@ enum HeadlessRun {
                         volume = options.usd.map { assetPath(of: file, from: $0) }
                     }
                     try scene?.append(solver.structureSurface(), volume: volume)
+                    if let thermal, let spec = options.thermal {
+                        thermal.add(solver.fireball(luminousTemperature: spec.luminousTemperature))
+                    }
                     if let consumer {
                         // From the report `lag` frames back, always in by now, so that the air
                         // sent, and the result, do not depend on how the two sides keep time.
@@ -340,11 +374,37 @@ enum HeadlessRun {
                     widths: [Float](repeating: 0.1, count: tracers), colour: SIMD3(0.9, 0.9, 0.95))
             }
         }
+        let thermalResult = thermal?.finish()
+        if let thermalResult {
+            let spacing = min(thermalResult.spec.surfaceSpacing, thermalResult.spec.groundSpacing)
+            scene?.addPoints(
+                "Thermal", frames: [thermalResult.receivers.map(\.position)],
+                widths: [Float](repeating: spacing / 2, count: thermalResult.receivers.count),
+                colour: SIMD3(0.95, 0.55, 0.2),
+                values: [
+                    ("fluence", thermalResult.fluence.map { $0 / 1000 }),
+                    ("peakIrradiance", thermalResult.peakIrradiance.map { $0 / 1000 }),
+                ])
+        }
         try scene?.finish()
         finished = true
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
-        return (run, document, fragments, stream)
+        return (run, document, fragments, stream, thermalResult)
+    }
+
+    /// The fireball's radiation, reckoned frame by frame on a queue of its own so that the run
+    /// does not wait for it.
+    final class ThermalStudy: @unchecked Sendable {
+        private var exposure: ThermalExposure
+        private let queue = DispatchQueue(label: "dev.bombcad.thermal")
+
+        init(spec: ThermalSpec, scene: FragmentScene) { exposure = ThermalExposure(spec: spec, scene: scene) }
+
+        func add(_ frame: FireballFrame) { queue.async { self.exposure.add(frame) } }
+
+        /// Waits for the frames sent so far.
+        func finish() -> ThermalResult { queue.sync { exposure.result } }
     }
 
     /// How many frames a consumer may fall behind before the run waits for it.
@@ -423,6 +483,7 @@ enum HeadlessRun {
                 ))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             if let stream = result.stream { print("  " + stream) }
+            for line in result.thermal?.summary ?? [] { print("  " + line) }
             return 0
         } catch {
             FileHandle.standardError.write(Data("Run failed: \(error.localizedDescription)\n".utf8))

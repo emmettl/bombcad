@@ -28,8 +28,11 @@ public final class USDSceneWriter {
     private let camera: Camera?
     private let volumeFields: [String]
     private var volumes: [(frame: Int, path: String)] = []
-    private var pointSets: [(name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>)] =
-        []
+    private var pointSets:
+        [(
+            name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>,
+            values: [(name: String, values: [Float])]
+        )] = []
     public let frameInterval: Double
     private let scenario: Scenario
     private let playbackRate: Double
@@ -176,8 +179,12 @@ public final class USDSceneWriter {
 
     /// Adds a set of points, such as fragments, with their positions at each frame from the first
     /// and their sizes; written with the rest by `finish()`.
-    public func addPoints(_ name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>) {
-        pointSets.append((name, frames, widths, colour))
+    /// `values` are per-point numbers that do not change, as float primvars.
+    public func addPoints(
+        _ name: String, frames: [[SIMD3<Float>]], widths: [Float], colour: SIMD3<Float>,
+        values: [(name: String, values: [Float])] = []
+    ) {
+        pointSets.append((name, frames, widths, colour, values))
     }
 
     /// Joins the parts into `url`, which must not exist yet.
@@ -265,7 +272,9 @@ public final class USDSceneWriter {
         }
         if let camera { appendCamera(camera, to: &text) }
         if !volumes.isEmpty, !volumeFields.isEmpty { appendVolume(to: &text) }
-        for set in pointSets { appendPoints(set.name, set.frames, set.widths, set.colour, to: &text) }
+        for set in pointSets {
+            appendPoints(set.name, set.frames, set.widths, set.colour, set.values, to: &text)
+        }
         try flush()
 
         if hasBody {
@@ -369,7 +378,7 @@ public final class USDSceneWriter {
 
     private func appendPoints(
         _ name: String, _ frames: [[SIMD3<Float>]], _ widths: [Float], _ colour: SIMD3<Float>,
-        to text: inout Text
+        _ values: [(name: String, values: [Float])], to text: inout Text
     ) {
         let all = frames.joined()
         let low = all.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1) }
@@ -387,7 +396,16 @@ public final class USDSceneWriter {
             "] (\n            interpolation = \"vertex\"\n        )\n        color3f[] primvars:displayColor = ["
         )
         text.append(colour)
-        text.append("]\n        point3f[] points.timeSamples = {\n")
+        text.append("]\n")
+        for (primvar, numbers) in values {
+            text.append("        float[] primvars:\(primvar) = [")
+            for (n, number) in numbers.enumerated() {
+                if n > 0 { text.append(", ") }
+                text.append(number, decimals: 3)
+            }
+            text.append("] (\n            interpolation = \"vertex\"\n        )\n")
+        }
+        text.append("        point3f[] points.timeSamples = {\n")
         for (frame, points) in frames.enumerated() {
             text.append("            \(frame): [")
             for (n, point) in points.enumerated() {

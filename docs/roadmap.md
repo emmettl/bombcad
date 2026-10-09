@@ -179,6 +179,13 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    interior furniture, with gravity, friction, lift-off and collisions, coupled to the blast.
    Start with the staged checks below. Separately, make structural support assumptions visible
    and add connections with finite stiffness and strength where anchorage failure matters.
+14. **Effects beside the blast**, one way and separable (see
+   [Distributed computing](distributed-computing.md#the-long-term-visions-effects)). (Done,
+   illustrative: a cased charge's [fragments](fragments.md), and the fireball's
+   [thermal radiation](thermal-radiation.md) on the ground and faces of a scene, from the air
+   model's own hot gas, which needs afterburning and hot air to make a fireball of plausible
+   size. Next: radiation on the GPU's ray-tracing hardware, a fireball that is not one sphere,
+   and the app showing what the surfaces received.)
 
 ### Freestanding objects and supports
 

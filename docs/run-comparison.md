@@ -165,6 +165,7 @@ device, each gauge's peak and the structure's largest deflection.
 | `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
 | `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
 | `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
+| `--thermal <spec.json>` | Reckons the fireball's thermal radiation on the ground and the scene's faces, a frame at a time; `--thermal-results` writes it as JSON; see [Thermal radiation](thermal-radiation.md) |
 | `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
 | `--fragment-results <file>` | Writes the fragments' impacts as JSON |
 | `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb` and `--fragments`, 1 by default |
