@@ -1870,7 +1870,10 @@ times the preceding limited reference in these runs (including shared-machine lo
 It remains opt-in through `--conserved-quadratic`. Ordinary transport defaults are retained;
 improved initial traces do not establish superior evolved loads in every orientation.
 `Scripts/check-grouped-gas-reference.py --release` provides optimized verification of the
-complete reference suite. All 126 CPU reference tests in 25 suites pass on the final
+complete reference suite. The three conserved refinement comparisons (stationary shock on
+0.1/0.05 m, density advection on 0.2/0.1 m, moving piston on 0.2/0.1 m) run only in such
+optimized builds: they take seconds to minutes there, but in a debug `swift test` the piston
+alone needs hours. Debug runs instead check every budget on one coarse grid. All 126 CPU reference tests in 25 suites pass on the final
 source, including moving-shock work, exact density advection and the preceding default
 transport regressions; the repository release CLI also builds successfully. The reports
 and summary commands in the README reproduce
