@@ -1799,11 +1799,76 @@ residuals stay below `8.7e-13`/`4.4e-17`, with geometric moments below `5.6e-15`
 Release generation succeeds with main's existing warnings, and formatting/diff checks
 are clean. No numerical transport policy has changed.
 
-Next, develop an isolated two-ring reconstruction of all five conserved gas densities,
-with volume moments, retained group inventories and a common positivity bound for the
-sampled EOS states. A scalar pressure fit is insufficient when density and velocity vary.
-Only after those checks should it enter an experimental numerical update with paired
-gas/body budgets, evolved load histories and shock response. Spatial load accuracy remains a
+A conserved quadratic reconstruction now fits all five Euler densities with the same
+two-ring volume-aware basis. Geometry is factored once and reused across components.
+A fixed local velocity frame reduces kinetic-energy cancellation; its linear transform
+retains lab-frame mass, momentum and total-energy averages. A common factor bounds
+components at control points, followed by a convex EOS backoff if those component bounds
+still admit negative internal energy. The polynomial keeps its group average throughout;
+neither mass nor pressure is floored in accepted inventories. Differences beneath
+roundoff in the original conserved data retain constant coefficients, so constant rho/u
+does not spuriously flatten a real pressure gradient.
+
+The opt-in `--conserved-quadratic` moving-load update now uses distinct old/final clipped
+volume moments for Euler and Heun stages. Positive volume nodes, face centres and sampled
+walls constrain traces; prescribed reservoirs remain the same paired finite buffers.
+Existing stage CFL checks, endpoint scatter, sampled temporal wall corrections and final
+EOS acceptance remain in force. No gas/body exchange is patched independently. Missing
+endpoint moments are rejected. Ordinary transport remains unchanged by default.
+
+Independent tests reproduce five quadratic densities with varying rho/u, retain all
+five means on unequal rotated volumes, exercise nonlinear kinetic-energy backoff, and
+check a boosted smooth pressure polynomial. Moving tests preserve uniform comoving gas
+in both time integrators and close every budget in repeated nonuniform pressure updates.
+The complete preceding CPU reference suite passes 123 tests in 25 suites; the added
+Mach-2 channel test also passes, with pressure-history error decreasing from 0.1 to 0.05 m
+and closed stationary mass, energy and wall-momentum budgets. All four focused moving/
+shock tests pass. The shared reconstruction is wired into the independent stationary
+normal-shock benchmark as `--wall-reflection --conserved-quadratic`.
+
+The complete twelve-case evolving-load matrix now passes energy matching, independent
+wet/dry transition counts, accepted-state positivity and all gas/reservoir/body budgets.
+Maximum residuals are `1.5e-12` kg, `4.2e-10` N s and `5.7e-7` J; paired work and swept
+volume residuals are below `1.2e-13` J and `9e-16` m³. Minimum accepted density/pressure
+remain above 1.17 kg/m³/101 kPa; maximum perturbation speed is about 20.5 m/s. CFL halving
+changes final impulse by at most 0.070% and angular impulse by 0.239%, much less than
+the spatial differences. Relative to the 0.05 m/CFL 0.1 numerical comparison, 0.1 m final
+impulse/angular impulse differ by 6.53%/0.798% aligned and 1.37%/9.28% rotated. Matched
+history differences are 10.4%/4.37% and 2.84%/6.45% respectively. Aligned torque and
+rotated force improve over preceding transport, while rotated torque becomes more grid
+sensitive. Coarse aligned final impulse is closer to the finest comparison than the
+medium result, so a monotonic spatial-convergence claim is unwarranted.
+
+All sixteen stationary shock cases also pass the independent reference/shape checks,
+closed budgets and monotonically decreasing pressure-history errors on the four grids
+for both Mach numbers and CFL settings. Mass/energy relative changes are below `3e-16`
+and wall-momentum residuals below `8e-14` N s. At CFL 0.1, conserved reconstruction's
+history L1 errors on 0.1/0.05/0.025/0.0125 m cells are 47.3%/25.0%/13.6%/7.04% for
+Mach 1.2 and 42.6%/22.6%/11.8%/5.63% for Mach 2. The finest excess-impulse errors are
+−0.146%/−0.488%. The existing limited method has finest history errors 5.11%/6.24% and
+impulse errors −0.103%/−0.262%: the new fit is sharper for the finest strong-shock history,
+but weaker for the weak shock and not uniformly better for integrated impulse. Those
+tradeoffs are reported rather than hidden by a default switch.
+
+Additional exact quadratic-density advection checks retain constant p/u with moving
+cut volumes and improve density error under refinement. A genuinely moving 3D piston
+struck by a Mach-2 shock also improves independent wall-history error from 0.2 to 0.1 m,
+retains every gas/reservoir/wall budget and pairs pressure work with piston velocity times
+impulse. That test configures slip side walls before constructing the immutable plan;
+their tangential velocity does no pressure work. These complement the polynomial/EOS
+fixtures and stationary channel benchmark rather than substituting them for moving-flow
+validation.
+
+This is an experimental CPU reference, with measured load-study runtime about 3.6–7.2
+times the preceding limited reference in these runs (including shared-machine load).
+It remains opt-in through `--conserved-quadratic`. Ordinary transport defaults are retained;
+improved initial traces do not establish superior evolved loads in every orientation.
+`Scripts/check-grouped-gas-reference.py --release` provides optimized verification of the
+complete reference suite. All 126 CPU reference tests in 25 suites pass on the final
+source, including moving-shock work, exact density advection and the preceding default
+transport regressions; the repository release CLI also builds successfully. The reports
+and summary commands in the README reproduce
+the load/shock comparisons. Spatial load accuracy remains a
 gate before free-body feedback. Local second-order time
 convergence does not establish second-order accuracy across changing group partitions and
 bounded member scatter. Frozen interval measures also require further checks when pressure

@@ -18,6 +18,13 @@ def read(path, method, grids=(0.1, 0.05, 0.025, 0.0125), cfls=(0.2, 0.1)):
                 or [f["arrivalFraction"] for f in r["frames"]] != [0.8, 1, 1.2, 1.4]
                 or not math.isfinite(r["relativePressureHistoryL1"])):
             raise ValueError("Mismatched history method or unsupported reference time")
+        if method == 'conservedQuadraticSSPRK2':
+            budgets = [r['relativeMassChange'], r['relativeEnergyChange'], *r['momentumBudgetResidual']]
+            if (not all(math.isfinite(x) for x in budgets)
+                    or abs(r['relativeMassChange']) >= 1e-10
+                    or abs(r['relativeEnergyChange']) >= 1e-10
+                    or math.hypot(*r['momentumBudgetResidual']) >= 1e-8):
+                raise ValueError("Every conserved reconstruction case must retain all channel budgets")
     return index
 
 
@@ -31,10 +38,12 @@ def main():
     parser.add_argument("constant", nargs="?", default=".build/wall-reflection.json")
     parser.add_argument("limited", nargs="?", default=".build/wall-reflection-limited.json")
     parser.add_argument("--refined", nargs="?", const=".build/wall-reflection-limited-refined.json")
+    parser.add_argument("--conserved", nargs="?", const=".build/wall-reflection-conserved.json")
     args = parser.parse_args()
     constant = read(args.constant, "constantEuler")
     limited = read(args.limited, "limitedSSPRK2")
-    for index in [constant, limited]:
+    conserved = read(args.conserved, "conservedQuadraticSSPRK2") if args.conserved else None
+    for index in [constant, limited] + ([conserved] if conserved else []):
         for mach in [1.2, 2]:
             for cfl in [0.2, 0.1]:
                 history = [index[h, mach, cfl]["relativePressureHistoryL1"]
@@ -53,6 +62,16 @@ def main():
                   f"{100*b['relativePressureHistoryL1']:12.3f} "
                   f"{100*a['frames'][-1]['impulseError']:18.3f} "
                   f"{100*b['frames'][-1]['impulseError']:17.3f} {100*cfl_change:16.3f}")
+    if conserved:
+        print("\nConserved quadratic transport against the same exact history (CFL 0.1)")
+        for mach in [1.2, 2]:
+            for h in [0.1, 0.05, 0.025, 0.0125]:
+                r = conserved[h, mach, 0.1]
+                same_reference(limited[h, mach, 0.1], r)
+                if abs(r['relativeMassChange']) >= 1e-10 or abs(r['relativeEnergyChange']) >= 1e-10 or math.hypot(*r['momentumBudgetResidual']) >= 1e-8:
+                    raise ValueError("Conserved reconstruction must retain all channel budgets")
+                print(f"Mach {mach}, dx {h}: history L1 {100*r['relativePressureHistoryL1']:.3f}%; "
+                      f"impulse error {100*r['frames'][-1]['impulseError']:.3f}%")
     if args.refined:
         fine = read(args.refined, "limitedSSPRK2", grids=(0.00625, 0.003125), cfls=(0.2,))
         print("\nFurther reconstruction refinement at CFL 0.2; rise times use step-average pressure")

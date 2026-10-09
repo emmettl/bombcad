@@ -38,9 +38,11 @@ public enum ExperimentalWallReflectionStudy {
     public static func run(
         cellLengths: [Double] = [0.1, 0.05, 0.025, 0.0125],
         cfls: [Double] = [0.2, 0.1], machNumbers: [Double] = [1.2, 2], limited: Bool = false,
+        conservedQuadratic: Bool = false,
         progress: (Result) throws -> Void = { _ in }
     ) throws -> [Result] {
         guard
+            !conservedQuadratic || limited,
             cellLengths.allSatisfy({
                 $0.isFinite && $0 > 0 && 2 / $0 <= 800 && abs(2 / $0 - (2 / $0).rounded()) < 1e-10
             }),
@@ -103,6 +105,21 @@ public enum ExperimentalWallReflectionStudy {
                 }
                 let geometry = try LimitedGroupedGasFlux.Geometry(
                     centres: centres, faces: faces, boundaries: boundaries)
+                let conservedGeometry =
+                    conservedQuadratic
+                    ? ConservedGroupedGasGeometry(
+                        centres: centres,
+                        covariance: centres.map { _ in
+                            simd_double3x3(diagonal: SIMD3(h * h, dy * dy, dy * dy) / 12)
+                        },
+                        volumePoints: centres.map { centre in
+                            (0..<8).map { n in
+                                centre + SIMD3<Double>(h, dy, dy)
+                                    * SIMD3<Double>(
+                                        n & 1 == 0 ? -1 : 1, n & 2 == 0 ? -1 : 1, n & 4 == 0 ? -1 : 1)
+                                    / (2 * sqrt(3.0))
+                            }
+                        }, scale: h) : nil
                 let constantFaces = faces.map {
                     FractionalEulerFlux.Face(a: $0.a, b: $0.b, normal: $0.normal, area: $0.area)
                 }
@@ -139,7 +156,13 @@ public enum ExperimentalWallReflectionStudy {
                     for fraction in [0.8, 1.0, 1.2, 1.4] {
                         let target = fraction * reference.arrivalTime
                         while elapsed < target {
-                            let traces = limited ? try geometry.traces(cells) : nil
+                            let traces: LimitedGroupedGasFlux.Traces?
+                            if let conservedGeometry {
+                                traces = try conservedGeometry.traces(
+                                    cells, centres: centres, faces: faces, walls: boundaries)
+                            } else {
+                                traces = limited ? try geometry.traces(cells) : nil
+                            }
                             let limit = try FractionalEulerFlux.maximumStep(
                                 cells, faces: traces?.faces ?? constantFaces,
                                 walls: traces?.walls ?? constantWalls, cfl: cfl)
@@ -153,7 +176,13 @@ public enum ExperimentalWallReflectionStudy {
                                 for _ in 0..<24 {
                                     do {
                                         accepted = try geometry.advance(
-                                            cells, traces: traces, duration: dt, cfl: cfl)
+                                            cells, traces: traces, duration: dt, cfl: cfl,
+                                            reconstruct: conservedGeometry.map { g in
+                                                {
+                                                    try g.traces(
+                                                        $0, centres: centres, faces: faces, walls: boundaries)
+                                                }
+                                            })
                                         break
                                     } catch LimitedGroupedGasFlux.Failure.stageLimit(let allowed) {
                                         dt = 0.99 * allowed
@@ -206,7 +235,8 @@ public enum ExperimentalWallReflectionStudy {
                     let after = total(cells)
                     let result = Result(
                         cellLength: h, cfl: cfl, mach: mach,
-                        transport: limited ? "limitedSSPRK2" : "constantEuler",
+                        transport: conservedQuadratic
+                            ? "conservedQuadraticSSPRK2" : (limited ? "limitedSSPRK2" : "constantEuler"),
                         arrivalTime: reference.arrivalTime,
                         duration: duration, interactionTime: reference.interactionTime,
                         reflectedPressure: reference.reflectedPressure,

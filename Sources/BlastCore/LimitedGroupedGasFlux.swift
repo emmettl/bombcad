@@ -159,12 +159,13 @@ enum LimitedGroupedGasFlux {
         /// The caller must retry a shorter step if the second stage's CFL shrinks.
         func advance(
             _ old: [FractionalGasTransport.Cell], traces firstTraces: Traces,
-            duration: Double, cfl: Double
+            duration: Double, cfl: Double,
+            reconstruct: (([FractionalGasTransport.Cell]) throws -> Traces)? = nil
         ) throws -> FractionalEulerFlux.Result {
             let first = try FractionalEulerFlux.advanceWithWalls(
                 old, faces: firstTraces.faces,
                 walls: firstTraces.walls, duration: duration, cfl: cfl)
-            let secondTraces = try traces(first.cells)
+            let secondTraces = try reconstruct?(first.cells) ?? traces(first.cells)
             let limit = try FractionalEulerFlux.maximumStep(
                 first.cells, faces: secondTraces.faces,
                 walls: secondTraces.walls, cfl: cfl)
