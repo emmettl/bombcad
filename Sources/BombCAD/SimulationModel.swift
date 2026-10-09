@@ -268,10 +268,15 @@ final class SimulationModel {
         }
     }
     @ObservationIgnored private var runActivity: NSObjectProtocol?
+    /// The solver's time, step count and rates, as last shown: while running, at most every
+    /// `progressInterval`, not after every batch, since everything that shows them is drawn again.
     private(set) var time: Double = 0
     private(set) var stepCount = 0
     private(set) var traces: [GaugeTrace] = []
     private(set) var stats = SimulationStats()
+    @ObservationIgnored private var liveStats = SimulationStats()
+    @ObservationIgnored private var lastProgressPublication = ContinuousClock.now
+    private static let progressInterval = 1.0 / 60
     private(set) var grid: Grid?
     /// Damage and deflection of the deformable structure, if the scenario has one.
     private(set) var structureSummary: StructureSummary?
@@ -409,11 +414,11 @@ final class SimulationModel {
         guard solver != nil, runtimeInputsMatch, !isLoadingInputs, !rebuildPending, !isRunning,
             !isPreparingImports, !importsNeedResampling
         else { return }
-        if time >= duration - 1e-9 {
+        if (solver?.time ?? 0) >= duration - 1e-9 {
             rebuild()
         }
         completedRunSettings = nil
-        if time == 0, lastSampleTime == nil {
+        if solver?.time == 0, lastSampleTime == nil {
             if structureHistory.isEmpty, let summary = structureSummary {
                 structureHistory = [
                     StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
@@ -1415,6 +1420,7 @@ final class SimulationModel {
         time = 0
         stepCount = 0
         stats = SimulationStats()
+        liveStats = SimulationStats()
         batchSize = 4
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
@@ -1426,7 +1432,7 @@ final class SimulationModel {
 
     private func restartPacing() {
         paceOriginWall = .now
-        paceOriginTime = time
+        paceOriginTime = solver?.time ?? time
         lastBatchCompletion = .now
     }
 
@@ -1434,6 +1440,7 @@ final class SimulationModel {
     private func pump() {
         guard isRunning, !batchInFlight, let solver else { return }
         if let holdBatches, holdBatches() {
+            publishProgressIfBehind(solver)
             if !waitingForHold {
                 waitingForHold = true
                 Task {
@@ -1456,6 +1463,7 @@ final class SimulationModel {
             if solver.time >= duration - 1e-9 {
                 finish()
             } else if !waitingForPace {
+                publishProgressIfBehind(solver)
                 // Ahead of the playback clock: check again shortly.
                 waitingForPace = true
                 Task {
@@ -1468,12 +1476,13 @@ final class SimulationModel {
         }
 
         // Steps past the limit would be wasted work, so only encode as many as are needed.
-        let needed = stats.timeStep > 0 ? Int((remaining / stats.timeStep).rounded(.up)) + 1 : 2
+        let timeStep = liveStats.timeStep
+        let needed = timeStep > 0 ? Int((remaining / timeStep).rounded(.up)) + 1 : 2
         var steps = max(1, min(batchSize, needed))
         // Fragments take a frame at each batch's end: keep frames within about a millisecond, by
         // taking fewer steps, never shorter ones, so the air is the same as without them.
-        if fragments != nil, stats.timeStep > 0 {
-            steps = min(steps, max(1, Int(0.001 / stats.timeStep)))
+        if fragments != nil, timeStep > 0 {
+            steps = min(steps, max(1, Int(0.001 / timeStep)))
         }
         guard
             let commandBuffer = solver.encodeBatch(steps: steps, timeLimit: limit, updateVisualization: true)
@@ -1497,8 +1506,6 @@ final class SimulationModel {
         guard let solver else { return }
         batchInFlight = false
         let result = solver.completeBatch()
-        time = solver.time
-        stepCount = solver.stepCount
         sendFragmentFrame(solver)
 
         let now = ContinuousClock.now
@@ -1506,13 +1513,13 @@ final class SimulationModel {
         lastBatchCompletion = now
         if result.steps > 0, gpuSeconds > 0 {
             let stepRate = Double(result.steps) / gpuSeconds
-            let blend = stats.stepsPerSecond == 0 ? 1 : 0.1
-            stats.stepsPerSecond += blend * (stepRate - stats.stepsPerSecond)
-            stats.cellUpdatesPerSecond = stats.stepsPerSecond * Double(solver.grid.cellCount)
-            stats.timeStep = result.lastTimeStep
+            let blend = liveStats.stepsPerSecond == 0 ? 1 : 0.1
+            liveStats.stepsPerSecond += blend * (stepRate - liveStats.stepsPerSecond)
+            liveStats.cellUpdatesPerSecond = liveStats.stepsPerSecond * Double(solver.grid.cellCount)
+            liveStats.timeStep = result.lastTimeStep
             if result.elapsed > 0, wall > 0 {
                 let ratio = wall / result.elapsed
-                stats.slowMotion += (stats.slowMotion == 0 ? 1 : 0.1) * (ratio - stats.slowMotion)
+                liveStats.slowMotion += (liveStats.slowMotion == 0 ? 1 : 0.1) * (ratio - liveStats.slowMotion)
             }
             // Aim for roughly 10 ms of GPU work per batch so the display stays fluid.
             let ideal = 0.010 * stepRate
@@ -1527,8 +1534,12 @@ final class SimulationModel {
             errorMessage = "The solution became unstable. Reset, or try a smaller charge or a finer grid."
             isRunning = false
         }
+        let finished = solver.time >= duration - 1e-9
+        if !isRunning || finished || (now - lastProgressPublication).seconds >= Self.progressInterval {
+            publishProgress()
+        }
         if (now - lastTracePublication).seconds > 0.1 || !isRunning
-            || (samples && time >= nextStructureSampleTime - 1e-9)
+            || (samples && solver.time >= nextStructureSampleTime - 1e-9)
         {
             publishTraces()
         }
@@ -1536,10 +1547,24 @@ final class SimulationModel {
             rebuild()
             return
         }
-        if time >= duration - 1e-9 {
+        if finished {
             finish()
         }
         pump()
+    }
+
+    /// Shows the solver's time, step count and rates.
+    private func publishProgress() {
+        guard let solver else { return }
+        lastProgressPublication = .now
+        time = solver.time
+        stepCount = solver.stepCount
+        stats = liveStats
+    }
+
+    /// Shows the solver's progress if the last batch's has not been shown, before the run waits.
+    private func publishProgressIfBehind(_ solver: BlastSolver) {
+        if time != solver.time || stepCount != solver.stepCount { publishProgress() }
     }
 
     private func finish() {

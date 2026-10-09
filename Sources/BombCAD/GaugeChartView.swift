@@ -37,7 +37,11 @@ struct GaugeChartView: View {
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 6) {
-                        if plotsStructure { structureReadout } else { pressureReadout }
+                        if plotsStructure {
+                            StructureReadout(model: model)
+                        } else {
+                            PressureReadout(model: model)
+                        }
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack {
@@ -52,12 +56,7 @@ struct GaugeChartView: View {
                         .disabled(model.savedRuns.isEmpty)
                 }.controlSize(.small)
                 HStack {
-                    Button("Export CSV…", systemImage: "square.and.arrow.up") {
-                        export = ResultsDocument(text: model.resultsCSV())
-                    }
-                    .controlSize(.small)
-                    .disabled(model.stepCount == 0)
-                    .help("Save every gauge sample and the deflection history as a spreadsheet")
+                    ExportResultsButton(model: model, export: $export)
                     Button("Sweep…") { isSweeping = true }.controlSize(.small)
                 }
                 if model.sweep.isActive {
@@ -101,51 +100,71 @@ struct GaugeChartView: View {
         }
     }
 
-    // MARK: Air
+    static let palette: [Color] = [.blue, .orange, .green, .pink, .purple, .teal, .brown, .mint]
+}
 
-    private var pressureReadout: some View {
-        Group {
-            Text("Peak overpressure")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            ForEach(model.traces) { trace in
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Self.palette[trace.id % Self.palette.count])
-                        .frame(width: 8, height: 8)
-                    Text(trace.name)
-                    Spacer(minLength: 12)
-                    Text(trace.peak > 0 ? String(format: "%.1f kPa", trace.peak) : "–")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                .font(.callout)
-            }
-            Spacer(minLength: 0)
-            Text("Gauges are the cyan markers in the view.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+/// Disabled until the run has taken a step; on its own so that the step count, which changes as
+/// the run goes, draws only this button again.
+private struct ExportResultsButton: View {
+    let model: SimulationModel
+    @Binding var export: ResultsDocument?
+
+    var body: some View {
+        Button("Export CSV…", systemImage: "square.and.arrow.up") {
+            export = ResultsDocument(text: model.resultsCSV())
         }
+        .controlSize(.small)
+        .disabled(model.stepCount == 0)
+        .help("Save every gauge sample and the deflection history as a spreadsheet")
     }
+}
 
-    // MARK: Structure
+/// The peak at each gauge.
+private struct PressureReadout: View {
+    let model: SimulationModel
 
-    private var structureReadout: some View {
-        Group {
-            Text("Structure")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            if let summary = model.structureSummary {
-                row("Deflection now", String(format: "%.0f mm", summary.maxDisplacement * 1000))
-                row("Largest so far", String(format: "%.0f mm", model.peakDeflection))
-                row("Elements failed", String(format: "%.1f%%", summary.erodedFraction * 100))
-                row("Worst damage", String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
+    var body: some View {
+        Text("Peak overpressure")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+        ForEach(model.traces) { trace in
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(GaugeChartView.palette[trace.id % GaugeChartView.palette.count])
+                    .frame(width: 8, height: 8)
+                Text(trace.name)
+                Spacer(minLength: 12)
+                Text(trace.peak > 0 ? String(format: "%.1f kPa", trace.peak) : "–")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 0)
-            Text("Deflection is of the part still attached; debris is not counted.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            .font(.callout)
         }
+        Spacer(minLength: 0)
+        Text("Gauges are the cyan markers in the view.")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+    }
+}
+
+/// The deformable structure's state now and its largest deflection so far.
+private struct StructureReadout: View {
+    let model: SimulationModel
+
+    var body: some View {
+        Text("Structure")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+        if let summary = model.structureSummary {
+            row("Deflection now", String(format: "%.0f mm", summary.maxDisplacement * 1000))
+            row("Largest so far", String(format: "%.0f mm", model.peakDeflection))
+            row("Elements failed", String(format: "%.1f%%", summary.erodedFraction * 100))
+            row("Worst damage", String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
+        }
+        Spacer(minLength: 0)
+        Text("Deflection is of the part still attached; debris is not counted.")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
     }
 
     private func row(_ title: String, _ value: String) -> some View {
@@ -158,8 +177,6 @@ struct GaugeChartView: View {
         }
         .font(.callout)
     }
-
-    static let palette: [Color] = [.blue, .orange, .green, .pink, .purple, .teal, .brown, .mint]
 }
 
 private struct PressureChart: View {

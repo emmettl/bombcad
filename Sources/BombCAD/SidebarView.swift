@@ -202,15 +202,8 @@ struct SidebarView: View {
                 FragmentDisplaySettings(model: model)
             }
 
-            Section("Solver") {
-                LabeledContent(
-                    "Throughput",
-                    value: String(format: "%.2f G cells/s", model.stats.cellUpdatesPerSecond / 1e9))
-                LabeledContent("Step rate", value: "\(Int(model.stats.stepsPerSecond)) steps/s")
-                LabeledContent("Time step", value: String(format: "%.0f µs", model.stats.timeStep * 1e6))
-                LabeledContent("Steps taken", value: "\(model.stepCount)")
-            }
-            .monospacedDigit()
+            Section("Solver") { SolverStats(model: model) }
+                .monospacedDigit()
         }
         .formStyle(.grouped)
     }
@@ -226,6 +219,20 @@ struct SidebarView: View {
 
     private func cellSummary(_ grid: BlastCore.Grid) -> String {
         String(format: "%d × %d × %d = %.1f M", grid.nx, grid.ny, grid.nz, Double(grid.cellCount) / 1e6)
+    }
+}
+
+/// The solver's rates and progress, on their own so that, as they change during a run, the rest
+/// of the sidebar is not drawn again.
+private struct SolverStats: View {
+    let model: SimulationModel
+
+    var body: some View {
+        LabeledContent(
+            "Throughput", value: String(format: "%.2f G cells/s", model.stats.cellUpdatesPerSecond / 1e9))
+        LabeledContent("Step rate", value: "\(Int(model.stats.stepsPerSecond)) steps/s")
+        LabeledContent("Time step", value: String(format: "%.0f µs", model.stats.timeStep * 1e6))
+        LabeledContent("Steps taken", value: "\(model.stepCount)")
     }
 }
 
