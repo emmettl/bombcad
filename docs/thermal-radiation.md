@@ -16,6 +16,9 @@ compares between layouts, not for burn, ignition or damage thresholds.
 swift run -c release BombCAD run street.bombcad --thermal thermal.json --thermal-results thermal-results.json --usd street.usda
 ```
 
+With `--consumer thermal=<ssh host>` the radiation is reckoned on another Mac, fed the fireball
+frame by frame (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+
 The description is JSON; any field left out takes its default, so `{}` will do:
 
 ```json

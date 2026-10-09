@@ -38,11 +38,13 @@ it should be used to judge the safety of a real structure.
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; close-in concrete is unchecked | Rebound is too large; compaction is modelled, but its strength does not grow with pressure | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
-| 10 | The app's interface has not been reviewed by eye                       | Layout or interaction problems may exist                      | Below |
+| 10 | Only selected app panels have had a static visual review               | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
-and its rendering is checked through offscreen snapshots, but its panels, text fields and file
-dialogs were written without being seen on screen.
+and its rendering is checked through offscreen snapshots. An initial static panel review now
+covers the Run sidebar, saved-run comparison and Export for Rendering sheet in light and dark
+appearances. Native file dialogs, keyboard focus, scrolling and the other panels still need
+interactive review.
 
 ## Planned work
 
@@ -1811,7 +1813,17 @@ two collapsing over several seconds.
 
 ### Usability, in parallel
 
-- Review the app on screen and fix what is found.
+- Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
+  a misleading layout selector, which displayed the last preset choice after opening another
+  project. The menu now shows the actual scene name and offers built-in layouts as replacement
+  actions. The Run sidebar, comparison and export panels have been inspected in both appearances.
+  Reproduce these static captures with
+  `BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
+  The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
+  `dark`, and checks that capture leaves saved inputs unchanged. It expands the requested size
+  to the view's fitting size, so these captures do not verify scrolling at the minimum window
+  size. The Metal viewport and native interaction remain separate checks; the helper is skipped
+  during ordinary test runs.
 - **Export a run for rendering elsewhere**, so a finished simulation can be rendered in
   Blender's Cycles with hardware ray tracing instead of a renderer of our own (see
   [Ray tracing](ray-tracing.md#the-shortcut-export-to-blender)). The app keeps no frames today,
