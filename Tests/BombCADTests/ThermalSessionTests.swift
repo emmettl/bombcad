@@ -36,26 +36,35 @@ struct ThermalSessionTests {
 
     @Test("On a worker, through its connection, the receivers come to exactly the same result")
     func remote() async throws {
-        let here = LocalThermalConsumer(spec: spec, scene: scene)
-        for frame in frames { here.send(frame) }
-        let local = try await here.finish()
-        #expect(here.live.frames == frames.count && here.sent == frames.count)
+        let kind = ConsumerKind.thermal(spec, scene, live: true)
+        let here = LocalFrameConsumer(kind)
+        for frame in frames { here.send(.fireball(frame)) }
+        guard case .thermal(let local) = try await here.finish(frameInterval: 0.001) else {
+            Issue.record("Not a thermal result")
+            return
+        }
+        #expect(here.thermalLive?.frames == frames.count && here.sent == frames.count)
         #expect(local.fluence.contains { $0 > 0 } && local.fireball == frames)
 
         let (client, server) = localWorker()
         _ = try await client.start()
-        let there = RemoteThermalConsumer(client: client, spec: spec, scene: scene)
-        #expect(there.receivers == local.receivers)
-        for frame in frames { there.send(frame) }
+        let there = RemoteFrameConsumer(client: client, kind: kind)
+        #expect(ThermalExposure.receivers(scene: scene, spec: spec) == local.receivers)
+        for frame in frames { there.send(.fireball(frame)) }
         // The receivers come back after each frame, the same as here.
         let deadline = ContinuousClock.now + .seconds(30)
-        while there.live.frames < frames.count {
+        while (there.thermalLive?.frames ?? 0) < frames.count {
             try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
-        #expect(there.live == here.live)
-        #expect(there.live.fluence == local.fluence && there.live.peakIrradiance == local.peakIrradiance)
-        let remote = try await there.finish()
+        #expect(there.thermalLive == here.thermalLive)
+        #expect(
+            there.thermalLive?.fluence == local.fluence
+                && there.thermalLive?.peakIrradiance == local.peakIrradiance)
+        guard case .thermal(let remote) = try await there.finish(frameInterval: 0.001) else {
+            Issue.record("Not a thermal result")
+            return
+        }
         #expect(remote == local)
         await server.value
     }
@@ -64,11 +73,16 @@ struct ThermalSessionTests {
     func unknown() async throws {
         let (client, server) = localWorker()
         _ = try await client.start()
-        await #expect(throws: ProjectFileError.self) { try await client.finishThermal(UUID()) }
-        let there = RemoteThermalConsumer(client: client, spec: spec, scene: scene, ownsClient: false)
-        there.send(frames[0])
+        await #expect(throws: ProjectFileError.self) {
+            try await client.finishConsumer(UUID(), frameInterval: 0.001)
+        }
+        let there = RemoteFrameConsumer(
+            client: client, kind: .thermal(spec, scene, live: true), ownsClient: false)
+        there.send(.fireball(frames[0]))
         there.cancel()
-        await #expect(throws: ProjectFileError.self) { try await client.finishThermal(there.id) }
+        await #expect(throws: ProjectFileError.self) {
+            try await client.finishConsumer(there.id, frameInterval: 0.001)
+        }
         client.close()
         await server.value
     }

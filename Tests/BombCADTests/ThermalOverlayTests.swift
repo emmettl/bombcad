@@ -53,7 +53,7 @@ struct ThermalOverlayTests {
             try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
-        while let thermal = model.thermal, thermal.live.frames < thermal.sent {
+        while let thermal = model.thermal, !thermal.caughtUp {
             #expect(throws: ProjectFileError.self) { try model.keepRun(named: name) }
             try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
@@ -86,10 +86,10 @@ struct ThermalOverlayTests {
     func kept() async throws {
         let (model, kept) = try await run(airOnly(), thermal: spec)
         let thermal = try #require(kept.thermal)
-        let live = try #require(model.thermal?.live)
+        let live = try #require(model.thermal?.thermalLive)
         #expect(thermal.spec == spec && thermal.fluence == live.fluence)
         #expect(
-            thermal.peakIrradiance == live.peakIrradiance && thermal.receivers == model.thermal?.receivers)
+            thermal.peakIrradiance == live.peakIrradiance && thermal.receivers == model.thermalReceivers)
         #expect(thermal.fluence.contains { $0 > 0 } && thermal.receivers.contains { $0.surface == "block 0" })
         // A frame at the start, about one a millisecond, and one at the end.
         #expect(thermal.fireball.first?.time == 0 && abs((thermal.fireball.last?.time ?? 0) - 0.01) < 1e-6)
@@ -214,7 +214,7 @@ struct ThermalOverlayTests {
         model.thermalOnRemote = true
         for name in ["First", "Second"] {
             let there = try await runAndKeep(model, named: name)
-            #expect(model.thermal is RemoteThermalConsumer)
+            #expect(model.thermal is RemoteFrameConsumer)
             #expect(model.thermalStatus.hasSuffix("on the mini"))
             // The frames fall where batches end, which follows the GPU's timing; the same frames
             // reckoned here give the same result, to the last bit.

@@ -12,9 +12,8 @@ final class SweepWorkerClient {
     /// Safe from any thread: frames go out in the order given.
     nonisolated let writer: SweepWorkerWriter
     private var reports: [UUID: @Sendable (ConsumerReport) -> Void] = [:]
-    private var liveFrames: [UUID: @Sendable (LiveFrameHeader, Data) -> Void] = [:]
-    private var thermalFrames: [UUID: @Sendable (ThermalLiveHeader, Data) -> Void] = [:]
-    /// Consumer and thermal sessions waiting for their result.
+    private var liveFrames: [UUID: @Sendable (ConsumerLive.Header, Data) -> Void] = [:]
+    /// Consumer sessions waiting for their result.
     private var outcomeWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
     private let onClose: () -> Void
     private var reader: Task<Void, Never>?
@@ -125,14 +124,14 @@ final class SweepWorkerClient {
         onClose()
     }
 
-    /// Starts a consumer session, whose reports go to `report`, and for fragments flown live
-    /// their particles to `live`.
+    /// Starts a consumer session, whose reports go to `report`, and for a live one its model's
+    /// state after each frame to `live`.
     func startConsumer(
         _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void,
-        live: @escaping @Sendable (LiveFrameHeader, Data) -> Void = { _, _ in }
+        live: @escaping @Sendable (ConsumerLive.Header, Data) -> Void = { _, _ in }
     ) {
         reports[session.id] = report
-        if case .fragments(_, _, live: true) = session.kind { liveFrames[session.id] = live }
+        if session.kind.isLive { liveFrames[session.id] = live }
         writer.enqueue(.consume(session))
     }
 
@@ -152,35 +151,8 @@ final class SweepWorkerClient {
         return try ConsumerOutcome(encoded: payload)
     }
 
-    /// Starts a thermal session, whose receivers go to `live` after each frame.
-    func startThermal(
-        _ session: ThermalSession, live: @escaping @Sendable (ThermalLiveHeader, Data) -> Void
-    ) {
-        thermalFrames[session.id] = live
-        writer.enqueue(.thermal(session))
-    }
-
-    /// Asks for a thermal session's result, after every frame sent.
-    func finishThermal(_ id: UUID) async throws -> ThermalResult {
-        let payload = try await withCheckedThrowingContinuation {
-            (continuation: CheckedContinuation<Data, Error>) in
-            if let closedError {
-                continuation.resume(throwing: closedError)
-                return
-            }
-            outcomeWaiters[id] = continuation
-            writer.enqueue(.finishThermal(id))
-        }
-        thermalFrames[id] = nil
-        return try JSONDecoder().decode(ThermalResult.self, from: payload)
-    }
-
     private func receive(_ message: SweepWorkerMessage, payload: Data) {
         switch message {
-        case .thermalLive(let id, let header):
-            thermalFrames[id]?(header, payload)
-        case .thermalResult(let id):
-            outcomeWaiters.removeValue(forKey: id)?.resume(returning: payload)
         case .report(let id, let report):
             reports[id]?(report)
         case .live(let id, let header):

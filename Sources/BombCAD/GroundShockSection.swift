@@ -2,9 +2,11 @@ import BlastCore
 import SwiftUI
 
 /// The Run tab's Ground shock section: a line of points on the ground, and the soil under them,
-/// whose shaking each run estimates from the overpressure on the ground, drawn as dots there.
+/// whose shaking each run estimates from the overpressure on the ground, here or on the Mac set
+/// for sweeps, drawn as dots there.
 struct GroundShockSection: View {
     @Bindable var model: SimulationModel
+    @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
 
     private static let counts = [8, 16, 32, 64]
 
@@ -36,6 +38,12 @@ struct GroundShockSection: View {
                 coordinate("From y", \.from.y, axis: 1)
                 coordinate("To x", \.to.x, axis: 0)
                 coordinate("To y", \.to.y, axis: 1)
+                if !host.isEmpty {
+                    Toggle("Run on \(host)", isOn: $model.groundShockOnRemote)
+                        .help(
+                            "Estimates the shaking on the first Mac set for sweeps in Settings, frame by frame."
+                        )
+                }
                 Text(
                     model.groundShockStatus.isEmpty
                         ? "Changes take effect from the next run." : model.groundShockStatus
@@ -46,6 +54,9 @@ struct GroundShockSection: View {
             }
         }
     }
+
+    /// The first Mac set for sweeps, as the fragments and the thermal radiation use.
+    private var host: String { AppPreferences.hosts(sweepHosts).first ?? "" }
 
     private var enabled: Binding<Bool> {
         Binding(
