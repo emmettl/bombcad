@@ -205,6 +205,7 @@ took. A frame of the shape is 3 bytes a block, 15 to 90 KB, and as JSON a third 
 - The shape is resolved only to its blocks, a metre a side when it fills the street on the
   medium grid: its edges and corners are rounded within half a block (a long box's view factor
   came out 3% low on blocks an eighth of its width), and a flame thinner than a block is lost.
+  A fireball so small that no block of two cells is half luminous is taken as its sphere.
 - The flame is opaque, at each block's mean temperature from its surface inwards. A partly
   transparent flame, its emissivity growing with the path length through it, would need an
   absorption coefficient for the explosive's hot products, for which no source was found.
