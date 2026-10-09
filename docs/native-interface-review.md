@@ -70,6 +70,28 @@ empty project saved again; the package retained its original domain and zero cha
 These checks use the existing macOS keyboard-navigation setting. They do not establish access
 to every control by keyboard or test VoiceOver's spoken navigation.
 
+## Constrained offscreen captures
+
+The opt-in helper also captures `editor-minimum.png` at a fixed 1000 × 640 points, matching
+`ProjectEditor`'s declared minimum content size, and `layout-editing-short.png` at 310 × 580
+points. These four light/dark images use an empty zero-charge project and have been visually
+reviewed. The main sidebar, status, chart labels, legend and chart actions fit the minimum
+content viewport. The short editing form shows its upper controls and clips the lower content
+at the scroll viewport, rather than enlarging the capture to include it.
+
+Reproduce them with:
+
+```sh
+BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests.constrainedPanels
+```
+
+The helper checks the fixed host bounds and unchanged project inputs. The older captures still
+expand to the view's fitting size. These new captures exclude the native window chrome and
+toolbar; Metal content is not drawn in the hidden host. They do not verify native window
+resizing, scrolling, keyboard focus or interactive render behaviour. Passing the helper means
+the artifacts were captured and the checked invariants held; it does not automatically certify
+their visual layout.
+
 ## Remaining checks
 
 - Broader tab order, keyboard-only workflows and focus restoration after sheets close.
