@@ -540,6 +540,146 @@ do {
         print("Wrote \(output.path)")
         exit(0)
     }
+    if arguments.contains("--contact-benchmark") {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var results: [RigidBodyWorldBenchmark.Result] = []
+        for count in [16, 64, 256] {
+            let r = try RigidBodyWorldBenchmark.run(count: count, steps: 1000)
+            results.append(r)
+            print(
+                String(
+                    format: "%d boxes: %.3f ms/step, %.0f contacts, %.0f candidate pairs of %d",
+                    r.bodies, 1000 * r.secondsPerStep, r.meanContacts, r.meanCandidatePairs, r.allPairs))
+            fflush(stdout)
+        }
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/contact-benchmark.json")
+        try encoder.encode(results).write(to: output, options: .atomic)
+        print("Wrote \(output.path)")
+        exit(0)
+    }
+    if arguments.contains("--car-row") {
+        // --mass=10 --cases=0.2x4 --duration=2 --cars=4
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        func option(_ name: String) -> String? {
+            arguments.first(where: { $0.hasPrefix("--\(name)=") }).map {
+                String($0.dropFirst(name.count + 3))
+            }
+        }
+        let mass = option("mass").flatMap(Double.init) ?? 10
+        let duration = option("duration").flatMap(Double.init) ?? 2
+        let cars = option("cars").flatMap(Int.init) ?? 4
+        let parts = (option("cases") ?? "0.2x4").split(separator: "x")
+        let study = ExperimentalRigidCarStudy.Case(
+            cellSize: Float(parts[0]) ?? 0.2, refinement: parts.count > 1 ? Int(parts[1]) ?? 1 : 1)
+        let destination = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
+                ?? ".build/rigid-car-row-demo.html")
+        var results: [ExperimentalRigidRowStudy.Result] = []
+        var recording: RigidObjectDemo.Recording?
+        for held in [false, true] {
+            let (r, frames) = try ExperimentalRigidRowStudy.run(
+                device: device, study: study, chargeMass: mass, held: held, count: cars, duration: duration,
+                recordEvery: held ? nil : 0.01
+            ) { time in
+                print(String(format: "  %@: %.1f s", held ? "held" : "free", time))
+                fflush(stdout)
+            }
+            results.append(r)
+            print(
+                String(
+                    format: "%@, %@: %d steps in %.0f s (air %.0f, coupling %.0f, motion and contact %.1f)%@",
+                    held ? "Held" : "Free", study.label, r.steps, r.wallSeconds, r.timings.air,
+                    r.timings.coupling,
+                    r.timings.mechanics, r.failure.map { "; FAILED: \($0)" } ?? ""))
+            for car in r.cars where !held {
+                print(
+                    String(
+                        format: "  %@: moved %.2f m, peak speed %.2f m/s, peak tilt %.1f°, final %.1f° (%@)",
+                        car.name, simd_length(car.displacement), car.peakSpeed, car.peakTilt, car.finalTilt,
+                        car.outcome.rawValue))
+            }
+            if !held {
+                let summary = r.cars.map {
+                    String(format: "%@ %.2f m, %.1f°", $0.name, simd_length($0.displacement), $0.peakTilt)
+                }.joined(separator: "; ")
+                recording = RigidObjectDemo.Recording(
+                    name: String(format: "Row of %d cars, %g kg", cars, mass),
+                    description: String(
+                        format:
+                            "%g kg 1.5 m from Car 1's near side at 0.3 m height; only Car 1 is in the air, the others move only when struck. Moved and peak tilt: %@. %@ air.",
+                        mass, summary, study.label),
+                    frames: frames, view: "front")
+            }
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(results).write(
+            to: destination.deletingPathExtension().appendingPathExtension("json"))
+        if let recording {
+            let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
+            let html = try String(contentsOf: source, encoding: .utf8)
+                .replacingOccurrences(
+                    of: "__RECORDINGS__",
+                    with: String(decoding: JSONEncoder().encode([recording]), as: UTF8.self)
+                )
+                .replacingOccurrences(
+                    of: "Recorded from the Swift reference solver; no blast loading.",
+                    with:
+                        "Experimental: the nearest car coupled to the air, the row moving through contact. The other cars take no air load and do not obstruct the blast."
+                )
+                .replacingOccurrences(
+                    of: "<option value=\"1\" selected>Real time</option>",
+                    with:
+                        "<option value=\"0.1\" selected>10× slow</option><option value=\"1\">Real time</option>"
+                )
+            try html.write(to: destination, atomically: true, encoding: .utf8)
+        }
+        print("Wrote \(destination.path)")
+        exit(0)
+    }
+    if arguments.contains("--car-flight") {
+        // --cases=0.2x1,0.2x2 [--transport]
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        let text =
+            arguments.first(where: { $0.hasPrefix("--cases=") })?.dropFirst(8) ?? "0.2x1,0.1x1,0.2x2,0.2x4"
+        let cases = text.split(separator: ",").compactMap { item -> ExperimentalRigidCarStudy.Case? in
+            let parts = item.split(separator: "x")
+            guard parts.count == 2, let cell = Float(parts[0]), let ratio = Int(parts[1]) else { return nil }
+            return ExperimentalRigidCarStudy.Case(cellSize: cell, refinement: ratio)
+        }
+        var results: [ExperimentalRigidCarStudy.Flight] = []
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/rigid-car-flight.json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        for mode in arguments.contains("--transport")
+            ? [.redistribution, .connectedTransport] : [ExperimentalBoxRemap.redistribution]
+        {
+            for study in cases {
+                let r = try ExperimentalRigidCarStudy.flight(device: device, study: study, remapMode: mode)
+                results.append(r)
+                try encoder.encode(results).write(to: output, options: .atomic)
+                print(
+                    String(
+                        format:
+                            "%@, %@: air impulse (%.0f, %.0f, %.0f) N s, moment (%.0f, %.0f, %.0f) N m s; piston scale %.0f N s; %.0f s",
+                        study.label, mode.rawValue, r.airImpulse.x, r.airImpulse.y, r.airImpulse.z,
+                        r.airAngularImpulse.x, r.airAngularImpulse.y, r.airAngularImpulse.z, r.pistonScale,
+                        r.wallSeconds))
+                fflush(stdout)
+            }
+        }
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--car-convergence") {
         // --mass=1,5,10 --duration=2 --cases=0.2x1,0.2x4 (cell size × refinement factor)
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -557,7 +697,9 @@ do {
                 guard parts.count == 2, let cell = Float(parts[0]), let ratio = Int(parts[1]) else {
                     return nil
                 }
-                return ExperimentalRigidCarStudy.Case(cellSize: cell, refinement: ratio)
+                return ExperimentalRigidCarStudy.Case(
+                    cellSize: cell, refinement: ratio, large: arguments.contains("--large"),
+                    remapMode: arguments.contains("--transport") ? .connectedTransport : .redistribution)
             } ?? ExperimentalRigidCarStudy.defaultCases
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })

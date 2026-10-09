@@ -10,16 +10,25 @@ public enum ExperimentalRigidCarStudy {
     public struct Case: Codable, Sendable, Hashable {
         public let cellSize: Float
         public let refinement: Int
-        public init(cellSize: Float, refinement: Int) {
+        /// The domain grown by half each way around the same car and charge (12.6 × 14.4 × 7.2 m).
+        public var large = false
+        public var remapMode: ExperimentalBoxRemap = .redistribution
+        public init(
+            cellSize: Float, refinement: Int, large: Bool = false,
+            remapMode: ExperimentalBoxRemap = .redistribution
+        ) {
             self.cellSize = cellSize
             self.refinement = refinement
+            self.large = large
+            self.remapMode = remapMode
         }
         /// The air cell size next to the car.
         public var nearCellSize: Float { cellSize / Float(max(refinement, 1)) }
         public var label: String {
-            refinement > 1
+            (refinement > 1
                 ? String(format: "%.2f m, ×%d (%.3f m at the car)", cellSize, refinement, nearCellSize)
-                : String(format: "%.2f m uniform", cellSize)
+                : String(format: "%.2f m uniform", cellSize)) + (large ? ", large domain" : "")
+                + (remapMode == .redistribution ? "" : ", connected transport")
         }
     }
 
@@ -76,12 +85,14 @@ public enum ExperimentalRigidCarStudy {
     /// 0.025 m ones). The gap under the shell, 0.15 m, is a whole number of 0.075, 0.05, 0.0375
     /// and 0.025 m cells, so those resolve it exactly; whole-cell masks make it 0.2 m on 0.2 m
     /// cells and 0.1 m on 0.1 m cells, whose centres lie on the shell's underside.
-    public static func scenario(chargeMass: Double, standoff: Double) throws -> Scenario {
+    public static func scenario(chargeMass: Double, standoff: Double, large: Bool = false) throws -> Scenario
+    {
+        let shift = large ? SIMD3<Float>(2.1, 3, 0) : .zero
         var scene = Scenario(
-            name: "Car blast", domainSize: SIMD3(8.4, 9.6, 4.8), boxes: [],
+            name: "Car blast", domainSize: large ? SIMD3(12.6, 14.4, 7.2) : SIMD3(8.4, 9.6, 4.8), boxes: [],
             charge: Charge(
-                mass: Float(chargeMass), position: SIMD3(4.2, Float(3.025 - 0.775 - standoff), 0.3)))
-        scene.rigidCars = [try .saloon(position: SIMD3(4.2, 3.025, 0))]
+                mass: Float(chargeMass), position: SIMD3(4.2, Float(3.025 - 0.775 - standoff), 0.3) + shift))
+        scene.rigidCars = [try .saloon(position: SIMD3(4.2, 3.025, 0) + SIMD3<Double>(shift))]
         return scene
     }
 
@@ -98,8 +109,10 @@ public enum ExperimentalRigidCarStudy {
         stopWhenDecided: Bool = true, progress: ((Double) -> Void)? = nil
     ) throws -> Result {
         let simulation = try ExperimentalRigidCarSimulation(
-            device: device, scenario: scenario(chargeMass: chargeMass, standoff: standoff),
+            device: device,
+            scenario: scenario(chargeMass: chargeMass, standoff: standoff, large: study.large),
             cellSize: study.cellSize, configuration: configuration(for: study))
+        simulation.remapMode = study.remapMode
         let before = simulation.air.totals()
         let start = simulation.position
         var impulse = SIMD3<Double>.zero
@@ -166,5 +179,58 @@ public enum ExperimentalRigidCarStudy {
     static func tiltDegrees(_ orientation: SIMD4<Double>) -> Double {
         let up = simd_quatd(vector: orientation).act(SIMD3<Double>(0, 0, 1))
         return acos(min(1, max(-1, up.z))) * 180 / .pi
+    }
+
+    public struct Flight: Codable, Sendable {
+        public let study: Case
+        public let remapMode: ExperimentalBoxRemap
+        public let velocity: SIMD3<Double>
+        public let spin: SIMD3<Double>
+        public let time: Double
+        /// Gas impulse and its moment about the centre of mass on the moving shell (N s, N m s).
+        public let airImpulse: SIMD3<Double>
+        public let airAngularImpulse: SIMD3<Double>
+        /// ρ c v A over the run for the largest face, the scale of a wholly acoustic (piston) load;
+        /// the true load of steady motion this slow is a small fraction of it.
+        public let pistonScale: Double
+        public let wallSeconds: Double
+    }
+
+    /// The saloon's shell flying through still air at a set velocity and spin, with no charge,
+    /// no gravity and nothing touching it, lifted 0.6 m so its tyres clear the ground. At a few
+    /// metres per second the air's true load is drag and added mass, tens of newtons; what the
+    /// coupling records beyond that comes from moving the shell across whole cells.
+    public static func flight(
+        device: MTLDevice, study: Case, velocity: SIMD3<Double> = SIMD3(0, 2, 0),
+        spin: SIMD3<Double> = SIMD3(1.5, 0, 0), duration: Double = 0.2,
+        remapMode: ExperimentalBoxRemap = .redistribution
+    ) throws -> Flight {
+        var scene = try scenario(chargeMass: 0, standoff: 1.5)
+        scene.rigidCars = [try .saloon(position: SIMD3(4.2, 3.025, 0.6))]
+        let simulation = try ExperimentalRigidCarSimulation(
+            device: device, scenario: scene, cellSize: study.cellSize,
+            configuration: configuration(for: study))
+        simulation.remapMode = remapMode
+        simulation.gravity = .zero
+        let car = simulation.definition
+        try simulation.applyImpulse(car.mass * velocity)
+        // Spin about the centre of mass along the body's principal axes (initially the world's).
+        try simulation.applyAngularImpulse(car.inertia * spin)
+        var impulse = SIMD3<Double>.zero
+        var angular = SIMD3<Double>.zero
+        let started = Date.timeIntervalSinceReferenceDate
+        while simulation.air.time < duration - 1e-8 {
+            try simulation.advance(steps: 1, timeLimit: duration)
+            impulse += simulation.lastImpulse
+            angular += simulation.lastAngularImpulse
+        }
+        let size = car.shellSize
+        let face = max(size.x * size.y, max(size.x * size.z, size.y * size.z))
+        let speed = simd_length(velocity) + simd_length(spin) * simd_length(size) / 2
+        return Flight(
+            study: study, remapMode: remapMode, velocity: velocity, spin: spin, time: simulation.air.time,
+            airImpulse: impulse, airAngularImpulse: angular,
+            pistonScale: 1.225 * 340 * speed * face * duration,
+            wallSeconds: Date.timeIntervalSinceReferenceDate - started)
     }
 }

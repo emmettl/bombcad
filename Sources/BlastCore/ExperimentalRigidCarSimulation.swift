@@ -15,6 +15,12 @@ public final class ExperimentalRigidCarSimulation {
     public let definition: RigidCarDefinition
     public let motion: Motion
     public var gravity = SIMD3<Double>(0, 0, -9.81)
+    public var remapMode: ExperimentalBoxRemap = .redistribution {
+        didSet {
+            air.experimentalBoxRemapMode = remapMode
+            air.refinement?.boxRemapMode = remapMode
+        }
+    }
     private var car: RigidCarBody
     /// World position of the centre of mass.
     public var position: SIMD3<Double> { car.position }
@@ -76,6 +82,12 @@ public final class ExperimentalRigidCarSimulation {
     public func applyImpulse(_ impulse: SIMD3<Double>, at point: SIMD3<Double>? = nil) throws {
         guard motion == .free else { throw Failure.unsupportedConfiguration }
         car.applyImpulse(impulse, at: point)
+        try air.updateExperimentalBox(car.body)
+    }
+
+    public func applyAngularImpulse(_ impulse: SIMD3<Double>) throws {
+        guard motion == .free else { throw Failure.unsupportedConfiguration }
+        car.applyAngularImpulse(impulse)
         try air.updateExperimentalBox(car.body)
     }
 
