@@ -251,18 +251,43 @@ final class SimulationModel {
     /// Shows the sheet for exporting the project's run for rendering.
     var showsRenderExport = false
 
-    private(set) var isRunning = false
+    private(set) var isRunning = false {
+        didSet {
+            guard isRunning != (runActivity != nil) else { return }
+            if isRunning {
+                // A run is work the user is waiting for, even with the window behind another app:
+                // without this, macOS moves a background app's main thread to the efficiency cores
+                // on a busy Mac, and each batch's round trip, and each redraw of the chart, takes
+                // several times as long.
+                runActivity = ProcessInfo.processInfo.beginActivity(
+                    options: .userInitiated, reason: "Running a blast simulation")
+            } else if let runActivity {
+                ProcessInfo.processInfo.endActivity(runActivity)
+                self.runActivity = nil
+            }
+        }
+    }
+    @ObservationIgnored private var runActivity: NSObjectProtocol?
+    /// The solver's time, step count and rates, as last shown: while running, at most every
+    /// `progressInterval`, not after every batch, since everything that shows them is drawn again.
     private(set) var time: Double = 0
     private(set) var stepCount = 0
     private(set) var traces: [GaugeTrace] = []
     private(set) var stats = SimulationStats()
+    @ObservationIgnored private var liveStats = SimulationStats()
+    @ObservationIgnored private var lastProgressPublication = ContinuousClock.now
+    private static let progressInterval = 1.0 / 60
     private(set) var grid: Grid?
     /// Damage and deflection of the deformable structure, if the scenario has one.
     private(set) var structureSummary: StructureSummary?
     private(set) var structureSubsteps = 0
-    /// Deflection of the structure through the run, sampled about ten times a second.
+    /// Deflection of the structure through the run, a sample every `structureSampleInterval`,
+    /// and of each structure, as last shown, at most ten times a second while running.
     private(set) var structureHistory: [StructureSample] = []
     private(set) var bodyHistories: [UUID: [StructureSample]] = [:]
+    /// The same, up to the latest sample.
+    @ObservationIgnored private var structureRecord: [StructureSample] = []
+    @ObservationIgnored private var bodyRecords: [UUID: [StructureSample]] = [:]
     private(set) var bodySummaries: [UUID: StructureSummary] = [:]
     /// Largest deflection recorded so far, in millimetres.
     var peakDeflection: Double { structureHistory.map(\.deflection).max() ?? 0 }
@@ -320,6 +345,7 @@ final class SimulationModel {
     private(set) var fragmentLive: FragmentLive?
     @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
     @ObservationIgnored private var fragmentTime = -1.0
+    private static let fragmentFrameInterval = 0.001
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
     /// The fragments the current run flies, as they were when it started.
     @ObservationIgnored private var flownSpec: FragmentSpec?
@@ -393,20 +419,20 @@ final class SimulationModel {
         guard solver != nil, runtimeInputsMatch, !isLoadingInputs, !rebuildPending, !isRunning,
             !isPreparingImports, !importsNeedResampling
         else { return }
-        if time >= duration - 1e-9 {
+        if (solver?.time ?? 0) >= duration - 1e-9 {
             rebuild()
         }
         completedRunSettings = nil
-        if time == 0, lastSampleTime == nil {
-            if structureHistory.isEmpty, let summary = structureSummary {
-                structureHistory = [
+        if solver?.time == 0, lastSampleTime == nil {
+            if structureRecord.isEmpty, let summary = structureSummary {
+                structureRecord = [
                     StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
                 ]
             }
             if let solver, samples {
                 for body in solver.bodies {
                     if let summary = body.summary() {
-                        bodyHistories[body.id] = [
+                        bodyRecords[body.id] = [
                             StructureSample(
                                 id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
                         ]
@@ -415,6 +441,8 @@ final class SimulationModel {
                 lastSampleTime = 0
                 onSample?(solver)
             }
+            structureHistory = structureRecord
+            bodyHistories = bodyRecords
             if let solver { startFragments(solver) }
         }
         isRunning = true
@@ -1087,7 +1115,7 @@ final class SimulationModel {
                 }
             }
         }
-        for sample in structureHistory {
+        for sample in structureRecord {
             lines.append(
                 "Largest deflection,\(String(format: "%.4f", sample.time)),\(String(format: "%.3f", sample.deflection)),mm"
             )
@@ -1095,7 +1123,7 @@ final class SimulationModel {
         if scenario.structuralObjects.count > 1 {
             for object in scenario.structuralObjects {
                 let label = field("\(object.name) [\(object.id.uuidString)] deflection")
-                for sample in bodyHistories[object.id] ?? [] {
+                for sample in bodyRecords[object.id] ?? [] {
                     lines.append("\(label),\(sample.time),\(sample.deflection),mm")
                 }
             }
@@ -1133,7 +1161,7 @@ final class SimulationModel {
         }
         let response = structureSummary.map { summary in
             SavedSimulationRun.Structure(
-                points: structureHistory.map {
+                points: structureRecord.map {
                     .init(time: $0.time / 1000, value: $0.deflection)
                 }, failedFraction: Double(summary.erodedFraction),
                 maximumDamage: Double(summary.maxDamage))
@@ -1162,7 +1190,7 @@ final class SimulationModel {
                     return SavedSimulationRun.BodyResponse(
                         id: object.id, name: object.name,
                         response: .init(
-                            points: (bodyHistories[object.id] ?? []).map {
+                            points: (bodyRecords[object.id] ?? []).map {
                                 .init(time: $0.time / 1000, value: $0.deflection)
                             },
                             failedFraction: Double(summary.erodedFraction),
@@ -1266,12 +1294,18 @@ final class SimulationModel {
         fragmentStatus = ""
     }
 
-    /// The air now, for the fragments, if they have not had this moment's yet.
-    private func sendFragmentFrame(_ solver: BlastSolver) {
+    /// The air now, for the fragments: at the start, then once a run passes each millisecond, as a
+    /// headless run sends it, not after every batch, which took a copy of the air on the main
+    /// thread while the GPU waited; and at the end (`last`).
+    private func sendFragmentFrame(_ solver: BlastSolver, last: Bool = false) {
         guard let fragments, solver.time > fragmentTime + 1e-9 else { return }
+        let interval = Self.fragmentFrameInterval
+        let next = fragmentTime < 0 ? 0 : (floor(fragmentTime / interval + 1e-6) + 1) * interval
+        guard last || solver.time >= next - 1e-9 else { return }
         fragmentTime = solver.time
         let region = fragments.report.region(
-            for: fragments.sent, interval: 0.001, domain: scenario.domainSize, cellSize: solver.grid.cellSize)
+            for: fragments.sent, interval: interval, domain: scenario.domainSize,
+            cellSize: solver.grid.cellSize)
         fragments.send(solver.airSlice(region: region.box, stride: region.stride))
     }
 
@@ -1389,6 +1423,8 @@ final class SimulationModel {
         structureSubsteps = solver?.structureSubsteps ?? 0
         structureHistory = []
         bodyHistories = [:]
+        structureRecord = []
+        bodyRecords = [:]
         bodySummaries = Dictionary(
             uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
                 body.summary().map { (body.id, $0) }
@@ -1399,6 +1435,7 @@ final class SimulationModel {
         time = 0
         stepCount = 0
         stats = SimulationStats()
+        liveStats = SimulationStats()
         batchSize = 4
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
@@ -1410,7 +1447,7 @@ final class SimulationModel {
 
     private func restartPacing() {
         paceOriginWall = .now
-        paceOriginTime = time
+        paceOriginTime = solver?.time ?? time
         lastBatchCompletion = .now
     }
 
@@ -1418,6 +1455,7 @@ final class SimulationModel {
     private func pump() {
         guard isRunning, !batchInFlight, let solver else { return }
         if let holdBatches, holdBatches() {
+            publishProgressIfBehind(solver)
             if !waitingForHold {
                 waitingForHold = true
                 Task {
@@ -1440,6 +1478,7 @@ final class SimulationModel {
             if solver.time >= duration - 1e-9 {
                 finish()
             } else if !waitingForPace {
+                publishProgressIfBehind(solver)
                 // Ahead of the playback clock: check again shortly.
                 waitingForPace = true
                 Task {
@@ -1452,12 +1491,13 @@ final class SimulationModel {
         }
 
         // Steps past the limit would be wasted work, so only encode as many as are needed.
-        let needed = stats.timeStep > 0 ? Int((remaining / stats.timeStep).rounded(.up)) + 1 : 2
+        let timeStep = liveStats.timeStep
+        let needed = timeStep > 0 ? Int((remaining / timeStep).rounded(.up)) + 1 : 2
         var steps = max(1, min(batchSize, needed))
-        // Fragments take a frame at each batch's end: keep frames within about a millisecond, by
-        // taking fewer steps, never shorter ones, so the air is the same as without them.
-        if fragments != nil, stats.timeStep > 0 {
-            steps = min(steps, max(1, Int(0.001 / stats.timeStep)))
+        // Fragments take a frame a millisecond: keep batches within one, so that frames are too,
+        // by taking fewer steps, never shorter ones, so the air is the same as without them.
+        if fragments != nil, timeStep > 0 {
+            steps = min(steps, max(1, Int(Self.fragmentFrameInterval / timeStep)))
         }
         guard
             let commandBuffer = solver.encodeBatch(steps: steps, timeLimit: limit, updateVisualization: true)
@@ -1481,22 +1521,21 @@ final class SimulationModel {
         guard let solver else { return }
         batchInFlight = false
         let result = solver.completeBatch()
-        time = solver.time
-        stepCount = solver.stepCount
-        sendFragmentFrame(solver)
+        let finished = solver.time >= duration - 1e-9
+        sendFragmentFrame(solver, last: finished)
 
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
         lastBatchCompletion = now
         if result.steps > 0, gpuSeconds > 0 {
             let stepRate = Double(result.steps) / gpuSeconds
-            let blend = stats.stepsPerSecond == 0 ? 1 : 0.1
-            stats.stepsPerSecond += blend * (stepRate - stats.stepsPerSecond)
-            stats.cellUpdatesPerSecond = stats.stepsPerSecond * Double(solver.grid.cellCount)
-            stats.timeStep = result.lastTimeStep
+            let blend = liveStats.stepsPerSecond == 0 ? 1 : 0.1
+            liveStats.stepsPerSecond += blend * (stepRate - liveStats.stepsPerSecond)
+            liveStats.cellUpdatesPerSecond = liveStats.stepsPerSecond * Double(solver.grid.cellCount)
+            liveStats.timeStep = result.lastTimeStep
             if result.elapsed > 0, wall > 0 {
                 let ratio = wall / result.elapsed
-                stats.slowMotion += (stats.slowMotion == 0 ? 1 : 0.1) * (ratio - stats.slowMotion)
+                liveStats.slowMotion += (liveStats.slowMotion == 0 ? 1 : 0.1) * (ratio - liveStats.slowMotion)
             }
             // Aim for roughly 10 ms of GPU work per batch so the display stays fluid.
             let ideal = 0.010 * stepRate
@@ -1511,19 +1550,35 @@ final class SimulationModel {
             errorMessage = "The solution became unstable. Reset, or try a smaller charge or a finer grid."
             isRunning = false
         }
-        if (now - lastTracePublication).seconds > 0.1 || !isRunning
-            || (samples && time >= nextStructureSampleTime - 1e-9)
-        {
+        if !isRunning || finished || (now - lastProgressPublication).seconds >= Self.progressInterval {
+            publishProgress()
+        }
+        recordSampleIfDue(solver)
+        if (now - lastTracePublication).seconds > 0.1 || !isRunning {
             publishTraces()
         }
         if rebuildPending {
             rebuild()
             return
         }
-        if time >= duration - 1e-9 {
+        if finished {
             finish()
         }
         pump()
+    }
+
+    /// Shows the solver's time, step count and rates.
+    private func publishProgress() {
+        guard let solver else { return }
+        lastProgressPublication = .now
+        time = solver.time
+        stepCount = solver.stepCount
+        stats = liveStats
+    }
+
+    /// Shows the solver's progress if the last batch's has not been shown, before the run waits.
+    private func publishProgressIfBehind(_ solver: BlastSolver) {
+        if time != solver.time || stepCount != solver.stepCount { publishProgress() }
     }
 
     private func finish() {
@@ -1545,13 +1600,39 @@ final class SimulationModel {
         }
     }
 
-    /// Copies the gauge histories into chart-sized traces, keeping the extremes of each bucket.
-    private func publishTraces() {
-        guard let solver else { return }
-        lastTracePublication = .now
-        structureSummary = solver.bodySummary()
-        bodySummaries = Dictionary(
-            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+    /// Records the structure's deflection, and hands the solver to `onSample`, if a sample falls
+    /// due now: at every one, whether or not it is shown then.
+    private func recordSampleIfDue(_ solver: BlastSolver) {
+        guard samples, lastSampleTime != solver.time,
+            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
+        else { return }
+        let summary = solver.bodySummary()
+        stopIfSolverFailed(solver, summary: summary)
+        guard summary?.hasBlownUp != true else { return }
+        if let summary, structureRecord.last?.time != solver.time * 1000 {
+            structureRecord.append(
+                StructureSample(
+                    id: structureRecord.count, time: solver.time * 1000,
+                    deflection: Double(summary.maxDisplacement) * 1000))
+        }
+        for body in solver.bodies {
+            if let summary = body.summary(), bodyRecords[body.id]?.last?.time != solver.time * 1000 {
+                var history = bodyRecords[body.id] ?? []
+                history.append(
+                    StructureSample(
+                        id: history.count, time: solver.time * 1000,
+                        deflection: Double(summary.maxDisplacement) * 1000))
+                bodyRecords[body.id] = history
+            }
+        }
+        nextStructureSampleTime =
+            (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
+        lastSampleTime = solver.time
+        onSample?(solver)
+    }
+
+    /// Stops the run where the solver can no longer go on.
+    private func stopIfSolverFailed(_ solver: BlastSolver, summary: StructureSummary?) {
         if solver.interObjectContactDetected {
             errorMessage =
                 "Independent structures entered overlapping envelopes or resolved cells. Inter-object contact is unsupported; reset and separate the bodies."
@@ -1562,36 +1643,25 @@ final class SimulationModel {
                 "Local coupling storage could not cover the moving geometry. The run stopped before a completed result could be captured."
             isRunning = false
         }
-        if samples, structureSummary?.hasBlownUp != true, lastSampleTime != solver.time,
-            solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
-        {
-            if let summary = structureSummary, structureHistory.last?.time != solver.time * 1000 {
-                structureHistory.append(
-                    StructureSample(
-                        id: structureHistory.count, time: solver.time * 1000,
-                        deflection: Double(summary.maxDisplacement) * 1000))
-            }
-            for body in solver.bodies {
-                if let summary = bodySummaries[body.id],
-                    bodyHistories[body.id]?.last?.time != solver.time * 1000
-                {
-                    var history = bodyHistories[body.id] ?? []
-                    history.append(
-                        StructureSample(
-                            id: history.count, time: solver.time * 1000,
-                            deflection: Double(summary.maxDisplacement) * 1000))
-                    bodyHistories[body.id] = history
-                }
-            }
-            nextStructureSampleTime =
-                (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
-            lastSampleTime = solver.time
-            onSample?(solver)
-        }
-        if structureSummary?.hasBlownUp == true {
+        if summary?.hasBlownUp == true {
             errorMessage = "The structure became numerically unstable. Reset and try a smaller charge."
             isRunning = false
         }
+    }
+
+    /// Shows the structure's state and histories, and copies the gauge histories into chart-sized
+    /// traces, keeping the extremes of each bucket: at most ten times a second while running, as
+    /// the charts and the readouts are drawn again each time.
+    private func publishTraces() {
+        guard let solver else { return }
+        lastTracePublication = .now
+        recordSampleIfDue(solver)
+        structureSummary = solver.bodySummary()
+        bodySummaries = Dictionary(
+            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+        stopIfSolverFailed(solver, summary: structureSummary)
+        structureHistory = structureRecord
+        bodyHistories = bodyRecords
         updateFragmentStatus()
         let ambient = scenario.atmosphere.pressure
         // Enough for the chart's width: each point is the extreme of its bucket, so peaks show, and

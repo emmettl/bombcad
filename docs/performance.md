@@ -316,8 +316,23 @@ neighbourhood of up to nine points along each axis.
 ## Display
 
 One frame takes 1 to 5 ms at 1400 × 875, depending on how much of the view the blast wave
-fills, so the display never limits the simulation. The app aims for about 10 ms of GPU work per
-batch of steps to keep the view fluid.
+fills, and frames share the GPU's queue with the solver's batches: at 60 frames a second that is
+up to a third of the GPU, and more in a larger window or on a GPU that other work is using. So
+while a run goes as fast as possible, the view times its frames and draws as often as a tenth of
+the GPU allows, from 10 to 60 frames a second; paced playback and editing draw at 60. On a GPU
+shared with other runs and tests, a fragments-on street canyon run (medium grid, 170 ms) took
+53–55 s at 60 frames a second, 11–12 s with the limit, and 19–20 s headless, which also ends a
+step at each millisecond's frame (1,856 steps against 1,527). The app aims for about 10 ms of
+GPU work per batch of steps to keep the view fluid.
+
+**The main thread.** Between batches the main thread takes in the batch's results and commits
+the next, and the GPU waits whenever the rest of its work takes longer than a batch. A run's time,
+step count and rates are shown at most 60 times a second, by small views of their own: when they
+were set after every batch and read by the whole sidebar, SwiftUI took about 9 ms a batch, now
+under 3 ms. The gauge chart is drawn again at most ten times a second, at about 9 ms each. A run
+also tells macOS it is work the user is waiting for: in one trace of a window behind another app
+on a busy Mac, 95% of the main thread's samples were on the efficiency cores, where each batch's
+round trip and each chart took several times as long.
 
 **Idle substeps.** The structural substeps for each air step are encoded before the GPU has
 chosen the air's time step, so some return without work. In the three-storey building's first

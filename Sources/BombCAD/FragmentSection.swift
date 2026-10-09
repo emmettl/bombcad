@@ -41,13 +41,7 @@ struct FragmentSection: View {
                             "Flies the fragments on the first Mac set for sweeps in Settings, a frame behind the run."
                         )
                 }
-                Text(
-                    model.fragmentStatus.isEmpty
-                        ? "Changes take effect from the next run." : model.fragmentStatus
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                FragmentStatus(model: model)
             }
         }
         .task(id: model.fragmentsOnRemote ? host : "") {
@@ -88,6 +82,19 @@ struct FragmentSection: View {
             min(6, scenario.domainSize.z))
         spec.tracerRegion = Box(min: low, max: high)
         return spec
+    }
+}
+
+/// What the fragments are doing, on its own so that, as it changes during a run, the section's
+/// controls are not drawn again.
+private struct FragmentStatus: View {
+    let model: SimulationModel
+
+    var body: some View {
+        Text(model.fragmentStatus.isEmpty ? "Changes take effect from the next run." : model.fragmentStatus)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
