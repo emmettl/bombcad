@@ -588,11 +588,14 @@ policies, and their differences are not an additive error budget.
 
 `swift run -c release rigidboxdemo --initial-wall-traces --volume-fit` writes
 `.build/initial-wall-traces-volume-fit.json`; audit it with
-`python3 Scripts/summarize-initial-wall-traces.py --volume-fit`. Three unbounded diagnostic
-fits share a two-ring stencil and distance weights: linear, quadratic treating averages
-as centroid values, and quadratic using actual gas-volume second moments. The last retains
-each group's initial pressure average. It improves the fine rotated comparison but does
-not improve every case and creates profile undershoots. It remains outside gas evolution.
+`python3 Scripts/summarize-initial-wall-traces.py --volume-fit`. Three raw diagnostic fits
+share a two-ring stencil and distance weights: linear, quadratic treating averages as
+centroid values, and quadratic using actual gas-volume second moments. Two further modes
+bound the last polynomial at wall samples or at wall/face/volume control points by scaling
+its deviation from the group average. Both retain that average, with direct volume-sample
+audits. Bounds hold at the audited points; they do not establish bounds everywhere between
+them. The study reports the resulting load errors and limiter factors. All five modes
+remain outside gas evolution.
 
 ## Headline results
 

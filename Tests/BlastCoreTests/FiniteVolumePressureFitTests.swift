@@ -117,7 +117,11 @@ struct FiniteVolumePressureFitTests {
         #expect(base.volumeFits == nil && base.halfDurationVolumeFits == nil)
         #expect(base.limited.force == row.limited.force && base.limited.torque == row.limited.torque)
         let full = row.volumeFits!
-        #expect(full.modes.map(\.kind) == ["twoRingLinear", "pointQuadratic", "volumeQuadratic"])
+        #expect(
+            full.modes.map(\.kind) == [
+                "twoRingLinear", "pointQuadratic", "volumeQuadratic",
+                "volumeQuadraticWallBounded", "volumeQuadraticBounded",
+            ])
         #expect(full.maximumMomentResidual < 1e-8 && full.meanStencilSize > 9)
         #expect(full.quadraticFallbackAreaFraction >= 0 && full.quadraticFallbackAreaFraction <= 1)
         for (a, b) in zip(full.modes, row.halfDurationVolumeFits!.modes) {
@@ -125,6 +129,57 @@ struct FiniteVolumePressureFitTests {
             #expect(a.loads.relativePressureL1 >= 0)
             #expect(simd_distance(a.loads.force, b.loads.force) / simd_length(row.referenceForce) < 1e-5)
             #expect(simd_distance(a.loads.torque, b.loads.torque) / simd_length(row.referenceTorque) < 1e-5)
+            if a.kind.hasSuffix("Bounded") {
+                #expect(a.outsideStencilAreaFraction == 0 && a.negativeExcessAreaFraction == 0)
+            }
         }
+        for bound in full.bounds! + row.halfDurationVolumeFits!.bounds! {
+            #expect(bound.meanFactor >= 0 && bound.meanFactor <= 1)
+            #expect(bound.activeAreaFraction >= 0 && bound.activeAreaFraction <= 1)
+            #expect(bound.maximumRelativeAverageResidual < 1e-10)
+            #expect(bound.maximumRelativeBoundViolation < 1e-12)
+        }
+    }
+
+    @Test("An active common bound retains the independent volume average on an unequal rotated volume")
+    func activeBound() {
+        let samples = stencil()
+        let local = samples[13]
+        let raw = FiniteVolumePressureFit.fit(
+            cell: local,
+            neighbours: samples.enumerated().filter { $0.offset != 13 }.map(\.element),
+            scale: 0.4, quadratic: true, volumeAware: true)
+        let volumePoints = nodes(local.centre, 13)
+        let controls = volumePoints + [local.centre + SIMD3(5, -6, 3), local.centre + SIMD3(-4, 2, -3)]
+        let limited = raw.limited(at: controls)
+        #expect(limited.factor > 0 && limited.factor < 1)
+        for p in controls {
+            #expect(limited.value(at: p) >= raw.lower - 1e-10)
+            #expect(limited.value(at: p) <= raw.upper + 1e-10)
+        }
+        let recovered = volumePoints.reduce(0) { $0 + limited.value(at: $1) } / 8
+        #expect(abs(recovered - local.average) < 1e-10)
+        let point = local.centre + SIMD3(0.2, -0.1, 0.17)
+        #expect(abs(raw.value(at: point) - polynomial(point)) < 1e-9)
+    }
+
+    @Test("Inactive and zero-width bounds retain the original polynomial or the constant average")
+    func inactiveAndConstantBounds() {
+        let cell = FiniteVolumePressureFit.Sample(
+            centre: .zero, covariance: simd_double3x3(diagonal: SIMD3(repeating: 1.0 / 3)), average: 2)
+        let coefficients = [1.0, -0.5, 0.2, 2, -0.7, 0.3, 0.6, -0.2, 0.1]
+        let raw = FiniteVolumePressureFit.Fit(
+            cell: cell, scale: 1, coefficients: coefficients, volumeAware: true,
+            lower: -100, upper: 100, stencilSize: 26)
+        let points = nodes(.zero, 3)
+        let inactive = raw.limited(at: points)
+        #expect(inactive.factor == 1)
+        #expect(points.allSatisfy { inactive.value(at: $0) == raw.value(at: $0) })
+        let constant = FiniteVolumePressureFit.Fit(
+            cell: cell, scale: 1, coefficients: coefficients, volumeAware: true,
+            lower: 2, upper: 2, stencilSize: 26
+        ).limited(at: points)
+        #expect(constant.factor == 0)
+        #expect(points.allSatisfy { constant.value(at: $0) == 2 })
     }
 }

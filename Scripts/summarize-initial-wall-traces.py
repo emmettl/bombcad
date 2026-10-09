@@ -140,7 +140,8 @@ def main():
                       f"{100*x['negativeExcessAreaFraction']:.2f}%")
         print('Diagnostic replacements are not an additive error budget or an enabled transport policy.')
     if volume_fit:
-        kinds = {'twoRingLinear', 'pointQuadratic', 'volumeQuadratic'}
+        bounded_kinds = {'volumeQuadraticWallBounded', 'volumeQuadraticBounded'}
+        kinds = {'twoRingLinear', 'pointQuadratic', 'volumeQuadratic'} | bounded_kinds
         for r in rows:
             full, half = r['volumeFits'], r['halfDurationVolumeFits']
             a, b = ({m['kind']: m for m in d['modes']} for d in (full,half))
@@ -150,6 +151,13 @@ def main():
                 for key in ('quadraticFallbackAreaFraction','pointQuadraticFallbackAreaFraction',
                             'linearFallbackAreaFraction'):
                     assert 0 <= d[key] <= 1
+                bounds = {x['kind']: x for x in d['bounds']}
+                assert len(d['bounds']) == 2 and set(bounds) == bounded_kinds
+                for bound in bounds.values():
+                    assert 0 <= bound['meanFactor'] <= 1 and 0 <= bound['activeAreaFraction'] <= 1
+                    assert 0 <= bound['maximumRelativeAverageResidual'] < 1e-10
+                    assert 0 <= bound['maximumRelativeBoundViolation'] < 1e-12
+                assert bounds['volumeQuadraticBounded']['meanFactor'] <= bounds['volumeQuadraticWallBounded']['meanFactor'] + 1e-12
             print(f"Volume fits dx {r['cellSize']}, angle {r['rotation']}: "
                   f"mean stencil size {full['meanStencilSize']:.2f}, "
                   f"quadratic fallback area {100*full['quadraticFallbackAreaFraction']:.2f}%, "
@@ -162,6 +170,9 @@ def main():
                     assert isinstance(x['nonpositivePressureSamples'], int) and x['nonpositivePressureSamples'] >= 0
                     for key in ('negativeExcessAreaFraction', 'outsideStencilAreaFraction'):
                         assert 0 <= x[key] <= 1
+                    if kind in bounded_kinds:
+                        assert x['outsideStencilAreaFraction'] == 0 and x['negativeExcessAreaFraction'] == 0
+                        assert x['nonpositivePressureSamples'] == 0
                     assert abs(loads['relativeForceError']-relative(loads['force'],r['referenceForce'])) < 1e-12
                     assert abs(loads['relativeTorqueError']-relative(loads['torque'],r['referenceTorque'])) < 1e-12
                     assert math.isfinite(loads['relativePressureL1']) and loads['relativePressureL1'] >= 0
@@ -177,8 +188,13 @@ def main():
                       f"{100*loads['relativePressureL1']:.3f}%; below-ambient/stencil-violation area "
                       f"{100*x['negativeExcessAreaFraction']:.2f}%/{100*x['outsideStencilAreaFraction']:.2f}%; "
                       f"minimum absolute pressure {x['minimumPressure']:.1f} Pa")
-        print('The three fits share neighbours and distance weights; only volumeQuadratic uses volume moments.')
-        print('All three modes are unbounded, read-only diagnostics; they are not numerical transport policies.')
+            for bound in full['bounds']:
+                print(f"  {bound['kind']}: mean factor {bound['meanFactor']:.3f}, "
+                      f"active area {100*bound['activeAreaFraction']:.2f}%, "
+                      f"average/bound residual {bound['maximumRelativeAverageResidual']:.3g}/"
+                      f"{bound['maximumRelativeBoundViolation']:.3g}")
+        print('Raw fits share neighbours and weights. Both bounded modes scale the same volume-aware polynomial about its group average.')
+        print('Bounds apply at audited control points, not everywhere between them. All five modes remain read-only diagnostics.')
     print(f'Maximum half-duration load change / reference norm: {max(duration_changes):.3g}')
     print('All six probes pass independent face integrals, reported errors and duration sensitivity checks.')
     print('These are initial traces; the evolved pressure-load study still needs separate spatial checks.')
