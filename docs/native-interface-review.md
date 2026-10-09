@@ -47,9 +47,32 @@ panel; the source extent is 4.1 × 1 × 1 m.
 These checks passed without a code change. Geometry warnings were visible and Import remained
 disabled until warning review; the check ended by cancelling, without accepting the import.
 
+## Keyboard and coordinate labels
+
+A follow-up native review used the same temporary project and dark appearance. In the import
+file picker, typing the OBJ's initial letter selected it and Return opened the sheet. Tab
+moved from Corner X to Y, Z and Find a part. Typing `Thin panel` entered the space normally;
+Escape cancelled the sheet and returned to the unchanged document at time zero.
+
+The document and editor remained readable after **Window → Move & Resize → Top Left** placed
+the window in a quarter of the screen. The lower editor controls were reachable by scrolling.
+This did not establish the absolute minimum window size. A temporary gauge label accepted a
+space, and document undo restored the label and then removed the gauge.
+
+That review exposed unnamed gauge coordinate fields in the native accessibility tree. The
+editor now supplies axis and unit names while keeping the visible grid labels. A separate
+optimized release build of this change was checked in a native window: its three gauge
+fields expose `Position X (m)`, `Position Y (m)` and `Position Z (m)`. Its six block fields
+expose `Corner X/Y/Z (m)` and `Size X/Y/Z (m)`, with each axis named separately. The visible
+grids retain their compact layout. The temporary gauge and block were undone and the original
+empty project saved again; the package retained its original domain and zero charge.
+
+These checks use the existing macOS keyboard-navigation setting. They do not establish access
+to every control by keyboard or test VoiceOver's spoken navigation.
+
 ## Remaining checks
 
-- Tab order, keyboard-only workflows and focus restoration after sheets close.
+- Broader tab order, keyboard-only workflows and focus restoration after sheets close.
 - Scrolling and text clipping at minimum window sizes and other display scales.
 - Native light appearance and completed STL/IFC previews.
 - Imported-project save/reopen, multiple document windows and their independent state.
