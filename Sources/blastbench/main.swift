@@ -31,6 +31,7 @@ import simd
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json] [--air thermal] [--afterburn]
 //                       [--stationary-walls]
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -1780,6 +1781,78 @@ func runAnchorage() throws {
     }
 }
 
+/// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
+/// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
+/// does with afterburning; and whether the two agree.
+func runThermal() throws {
+    let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    let scene = FragmentScene(scenario)
+    var spec = ThermalSpec()
+    if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
+    try spec.validate()
+    let count = option("frames").flatMap { Int($0) } ?? 60
+    let frames = (0..<count).map { n -> FireballFrame in
+        let s = Float(n) / Float(max(count - 1, 1))
+        let radius = 0.5 + 7 * s
+        return FireballFrame(
+            time: Double(n) * 0.001, volume: 4 / 3 * Double.pi * pow(Double(radius), 3),
+            centre: scenario.charge.position + SIMD3(0, 0, radius * 0.5), temperature: 2200 - 400 * s,
+            hottest: 2500)
+    }
+    /// Times the visibility test within each frame.
+    final class Timed: ThermalVisibility, @unchecked Sendable {
+        let inner: any ThermalVisibility
+        var seconds = 0.0
+        var rays = 0
+        init(_ inner: any ThermalVisibility) { self.inner = inner }
+        func visible(_ rays: [ThermalRay]) -> [Bool] {
+            let started = ContinuousClock.now
+            defer {
+                seconds += (ContinuousClock.now - started) / .seconds(1)
+                self.rays += rays.count
+            }
+            return inner.visible(rays)
+        }
+    }
+    let occluders = ThermalExposure.occluders(scene)
+    let metal = MetalThermalVisibility(occluders: occluders)
+    print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
+    var answers: [[Float]] = []
+    for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
+        + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
+    {
+        let timed = Timed(visibility)
+        let exposure = ThermalExposure(spec: spec, scene: scene, visibility: timed)
+        func processorSeconds() -> Double {
+            var usage = rusage()
+            getrusage(RUSAGE_SELF, &usage)
+            return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+                + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1e6
+        }
+        let started = ContinuousClock.now
+        let processor = processorSeconds()
+        var irradiance: [Float] = []
+        for frame in frames { irradiance += exposure.irradiance(frame) }
+        let total = (ContinuousClock.now - started) / .seconds(1)
+        let busy = processorSeconds() - processor
+        answers.append(irradiance)
+        print(
+            "\(name): \(exposure.receivers.count) receivers, \(timed.rays / count) rays a frame; "
+                + "\(format(total / Double(count) * 1000, 1)) ms a frame, "
+                + "\(format(timed.seconds / Double(count) * 1000, 1)) ms of it the visibility test; "
+                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame")
+    }
+    if let metal {
+        let usage = metal.usage
+        print(
+            "GPU: \(usage.gpuFrames) frames there, \(usage.cpuFrames) answered first on the CPU, "
+                + "\(format(usage.gpuSeconds / Double(max(usage.gpuFrames, 1)) * 1000, 2)) ms of GPU time a frame"
+        )
+        let differing = zip(answers[0], answers[1]).filter { $0 != $1 }.count
+        print("Receivers' irradiance differing between CPU and GPU: \(differing) of \(answers[0].count)")
+    }
+}
+
 /// A footing rocked slowly on dry sand against Gajan and Kutter's centrifuge test SSG02_03
 /// (`FootingRockingTest`). `--shear` is the sand's shear modulus in MPa, `--bearing` its bearing
 /// capacity in kPa; `--history` writes rotation, moment and settlement every 10 ms.
@@ -1836,6 +1909,7 @@ do {
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
+    case "thermal": try runThermal()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

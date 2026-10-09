@@ -1,10 +1,11 @@
 # Ray tracing
 
 How hard it would be to adopt hardware ray tracing on the Mac, written in October 2026 as a note
-for other projects, ones that render simulations computed in advance. BombCAD does not need it:
-its GPU is busy with the simulation, and its renderer already ray-marches the blast over
-rasterized meshes ([Performance](performance.md#display)). Effort figures are judgements, not
-measurements.
+for other projects, ones that render simulations computed in advance. BombCAD's renderer does not
+need it: its GPU is busy with the simulation, and the renderer already ray-marches the blast over
+rasterized meshes ([Performance](performance.md#display)). It does use it for one thing, the
+thermal radiation's receivers' view of the fireball ([below](#in-bombcad-the-fireballs-radiation)).
+Effort figures are judgements, not measurements, except in that section.
 
 ## Short answer
 
@@ -59,6 +60,31 @@ Blender's Cycles renderer uses the hardware (MetalRT) by default on M3 and newer
 of work; the renderer it saves is months. BombCAD now has both, the geometry and the volumes:
 see [Exporting a run for rendering](usd-export.md).
 
+## In BombCAD: the fireball's radiation
+
+The [thermal radiation](thermal-radiation.md) asks, each frame, whether about half a million
+segments from the receivers to the fireball are clear of the blocks and the structure's starting
+outline. `MetalThermalVisibility` answers in one compute dispatch:
+
+- **Bounding boxes, no intersection functions.** The scene is axis-aligned boxes, so each goes into
+  one primitive acceleration structure as a bounding-box primitive, enlarged by a millimetre. The
+  kernel runs an inline `intersection_query`: the hardware returns each candidate box, and the
+  CPU's own slab test, operation for operation, decides. There is no intersection function table
+  to build, and the ground, the plane z = 0, is a comparison rather than geometry.
+- **The same answer as the CPU.** The kernel is compiled in safe math mode (no fused or reordered
+  arithmetic), so the test is the CPU's arithmetic. On every scene tried, the irradiance agrees
+  with the CPU's to the bit, which keeps a result the same whichever Mac, GPU or CPU worked it out.
+  The tests allow float tolerance, since nothing guarantees this on other GPUs.
+- **A busy GPU.** The blast or another app can keep the GPU from the rays for a while. If a frame
+  has not come back within a few times the usual wait (4 to 50 ms), the CPU tests it as well and
+  the first answer is taken, as RoomCAD's wave solver moves to the CPU.
+- **What it saves.** On the street canyon (10,456 receivers, 128 directions each, about 500,000
+  rays a frame), the GPU takes about 0.2 ms a frame, against 0.9 ms on all of an M4 Max's CPU cores.
+  That is a small share of a frame: laying out the rays and summing them stay on the CPU, so the
+  receivers take 5 ms of the cores' time a frame instead of 12. Copying the rays is a real cost
+  at this size. Rays went from 48 to 28 bytes, packed as seven floats, and are copied to the GPU
+  across the cores; before that, the GPU's answer took longer to arrive than the CPU's.
+
 ## Pitfalls
 
 - **Rebuilding every frame** when refitting would do wastes most of the frame. But refitting
@@ -68,10 +94,17 @@ see [Exporting a run for rendering](usd-export.md).
 - **Older Macs.** On M1 and M2, ray tracing runs in software. Cycles even turns MetalRT off by
   default there, because its own intersection code is faster without the hardware. Test on them
   if they must be supported.
+- **Short dispatches cost their copies.** A test that takes the hardware a fraction of a
+  millisecond can lose to the CPU once the inputs are copied over and the command buffer
+  scheduled; keep what crosses small, or make it on the GPU.
 - **Noise.** Any effect that needs more than one ray per pixel (soft shadows, glossy reflections,
   global illumination) needs accumulation or a denoiser before it looks right.
 
 ## Sources
+
+- Apple, [`intersection_query` in the Metal Shading Language
+  Specification](https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf),
+  section 6.18: ray queries with bounding-box candidates handled in the shader.
 
 - Apple, [Your guide to Metal ray tracing](https://developer.apple.com/videos/play/wwdc2023/10128/)
   (WWDC 2023): acceleration structures, ray queries in any shader, instancing, refitting.
