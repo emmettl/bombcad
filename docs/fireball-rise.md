@@ -2,7 +2,8 @@
 
 What becomes of the fireball once the blast has gone: the hot gas the air model leaves at the end
 of a run is handed over to a model of a rising buoyant cloud, which follows its height, size,
-temperature, rise speed, drift in the wind and the water it condenses for minutes after. It is the hand-over in sequence that
+temperature, rise speed, drift in the wind, the water it condenses and freezes, and the rain and
+snow that fall from it, for minutes to hours after. It is the hand-over in sequence that
 [Distributed computing](distributed-computing.md#the-long-term-visions-effects) foresaw: a few
 numbers from the air model's final state, and nothing passed back.
 
@@ -35,6 +36,8 @@ The description is JSON; any field left out takes its default, so `{}` will do:
   "windCeiling": 1000,
   "relativeHumidity": 0,
   "productWater": 0.2,
+  "rainRate": 0.001,
+  "rainThreshold": 0.0005,
   "duration": 600,
   "frameInterval": 1
 }
@@ -56,29 +59,31 @@ The description is JSON; any field left out takes its default, so `{}` will do:
 - **The cloud** is a sphere of well-mixed gas at the pressure of the air around it, a turbulent
   thermal in the sense of Morton, Taylor and Turner (1956): it draws in the surrounding air across
   its surface at a speed that is a fixed share α, the `entrainment` coefficient, of its speed
-  through that air, in still air its rise speed. Escudier and Maxworthy (1973) showed how to keep that assumption without the small
-  density differences of the original, and that the added mass of the air the cloud pushes aside
-  matters at any density; this model follows them. With m its mass, V its volume, b its radius, w
+  through that air, in still air its rise speed. Escudier and Maxworthy (1973) showed how to keep
+  that assumption without the small density differences of the original, and that the added
+  mass of the air the cloud pushes aside matters at any density; this model follows them. With m its mass, V its volume, b its radius, w
   its rise speed, u its velocity across the ground, T its temperature and ρ_air, T_air, p_air and
   U the air's temperature, pressure and wind at its height:
   - mass: dm/dt = 4π b² α ρ_air |(u − U, w)|
   - upward impulse: d/dt [(m + k ρ_air V) w] = (ρ_air V − m) g, k the `addedMass`, a half for a
     sphere
   - horizontal impulse: d/dt [m u + k ρ_air V (u − U)] = U dm/dt
-  - water: m dq/dt = (q_air − q) dm/dt, q its water and q_air the air's vapour, each a kilogram
-  - heat: m dh/dt = (h_air − h) dm/dt + V (dp_air/dz) w − εσ(T⁴ − T_air⁴) 4πb², with
-    h = c_p T + L q_v its moist enthalpy, q_v its vapour and L water's latent heat
+  - water: m dq/dt = (q_air − q) dm/dt − P (1 − q), q its water and q_air the air's vapour, each
+    a kilogram, and P the water falling out
+  - heat: m dh/dt = (h_air − h) dm/dt + V (dp_air/dz) w − εσ(T⁴ − T_air⁴) 4πb² − P (h_P − h),
+    with h = c_p T + L_v q_v − L_f q_i its frozen moist enthalpy, q_v its vapour, q_i its ice, L_v
+    and L_f water's latent heats of vaporisation and fusion, and h_P that of the water falling
 
   The terms of the last are the air drawn in, cooling by expansion as the pressure falls
-  (dh = dp / ρ), and radiation, off by default (`emissivity` 0). At each step the cloud's water is
-  all vapour if that leaves it unsaturated, and otherwise as much vapour as saturates it, the
-  rest liquid, with T found from h; condensing and evaporating move heat between c_p T and L q_v,
-  so latent heat needs no term of its own. The saturation humidity is Bolton's (1980) fit to the
-  vapour pressure over water. The gas is ideal air with a constant specific heat throughout, its
-  density that of dry air at its density temperature T (1 + q_v / ε − q), ε = 0.622, so that
-  vapour lightens it and liquid weighs it down, as in Morton's (1957) and Squires and Turner's
-  (1962) moist plumes; V = mRT(1 + q_v / ε − q) / p_air, and likewise for the air. Liquid water
-  stays in the cloud: none falls out as rain.
+  (dh = dp / ρ), radiation, off by default (`emissivity` 0), and the water falling out. At each
+  step the cloud's water is all vapour if that leaves it unsaturated, and otherwise as much vapour
+  as saturates it, with T found from h; condensing, evaporating, freezing and melting move heat
+  between c_p T, L_v q_v and L_f q_i, so latent heat needs no term of its own.
+
+  The gas is ideal air with a constant specific heat throughout, its density that of dry air at
+  its density temperature T (1 + q_v / ε − q), ε = 0.622, so that vapour lightens it and
+  condensed water weighs it down, as in Morton's (1957) and Squires and Turner's (1962) moist
+  plumes: V = mRT(1 + q_v / ε − q) / p_air, and likewise for the air.
 
   The horizontal impulse is the cloud's momentum and its added mass's relative to the wind: the
   air drawn in brings the wind's momentum with it, and the air pushed aside acts only on the
@@ -110,10 +115,22 @@ The description is JSON; any field left out takes its default, so `{}` will do:
 - **The domain and the ground are left behind**: the cloud rises freely from the hand-over, with
   no blocks, structure, ground or domain ceiling, and the ground does not hold it back even while
   it overlaps it at the start.
+- **Ice.** The condensed water is liquid above the freezing point and ice below 250.16 K, the
+  liquid share the square of the way between, as in ECMWF's IFS, which has supercooled water
+  down to about −23 °C as real clouds do. Saturation is over that mixture, its vapour pressure
+  blended between Bolton's (1980) fit over water and Tetens' form over ice with the IFS's
+  constants. The air's relative humidity is over water, as weather observations give it.
+- **Rain and snow.** Condensed water beyond `rainThreshold` (0.5 g/kg) falls out of the cloud at
+  `rainRate` (a thousandth of the excess a second), Kessler's (1969) conversion of cloud water
+  into rain, here taken to fall out at once: P = m × rainRate × (q_c − rainThreshold), q_c the
+  condensed water. It takes its mass, its momentum and its enthalpy with it, liquid and ice in
+  the shares of the cloud's condensed water, and the ice is counted as snow. It falls straight out:
+  it does not evaporate below the cloud or wash out what is in it.
 
 Integration is by fourth-order Runge–Kutta, with steps short against the time the cloud takes to
-move its own radius through the air, from rest or at its speed, and to draw in its own mass; the
-whole ten minutes takes a few milliseconds.
+move its own radius through the air, from rest or at its speed, and to draw in its own mass; ten
+minutes takes a few milliseconds, two hours of a cloud filling the troposphere a few tenths of a
+second.
 
 ## Checks
 
@@ -141,6 +158,12 @@ The tests check the model against what it should reproduce exactly:
   without mixing cools at g / c_p to 0.2% and, saturated, at the saturated adiabatic lapse rate,
   g (1 + L r / RT) / (c_p + L² r ε / RT²), to 2%. In humid air the cloud stops a little higher
   than in dry air, and in saturated air it condenses and goes on rising.
+- **Ice and rain.** The vapour pressure over ice at the triple point and at −20 °C, the liquid
+  share at 0 °C, −13.5 °C and below −23 °C, and gas split into vapour, liquid and ice at
+  saturation. Warm, wet gas mixing into cold, humid air condenses, freezes in part and
+  precipitates, with every drop of water accounted for, in the cloud or fallen out, to a part in a
+  million. In saturated air a cloud freezes only above the freezing level, snows, and stops where
+  the saturated adiabatic lapse rate has passed the air's.
 - The standard atmosphere's pressure at the tropopause and at 20 km, a hot sphere in the air model
   handed over with its mass, place, temperature and buoyancy, and a headless run whose number of
   steps and gauges are the same with the cloud as without.
@@ -213,25 +236,37 @@ speed at every height. With the default gas and 5 m/s it stops at 233 m, 2.6 km 
 **In humid air**, with afterburning, the relative humidity the same up to the tropopause, followed
 for 20 minutes:
 
-| Relative humidity | Stopped rising | Centre then | Top | Liquid water |
+| Relative humidity | Stopped rising | Centre then | Top | Condensed water |
 |---|---|---|---|---|
 | None | 365 s | 355 m | 453 m | none |
 | 50% | 378 s | 363 m | 462 m | none |
 | 80% | 387 s | 367 m | 468 m | none |
 | 95% | 392 s | 369 m | 471 m | none |
-| 100% | not by 1,200 s | 1,423 m at 1,200 s, rising at 1.7 m/s | 1,796 m | from 106 s, 0.67 g/kg at 1,200 s |
+| 100% | not by 1,200 s | 1,423 m at 1,200 s, rising at 1.7 m/s | 1,797 m | from 106 s, 0.66 g/kg at 1,200 s; 3.6 t of rain from 954 s |
 
 Up to 95% nothing condenses, and the humidity lifts the cloud only a little: it carries the damper
-air from lower down, whose vapour makes it lighter than the drier air around it at its height. The
-products' water is too little to matter: diluted a hundredfold within half a minute, it never brings the
-cloud near saturation. In saturated air the cloud reaches saturation itself at about 230 m,
+air from lower down, whose vapour makes it lighter than the drier air around it at its height.
+The products' water is too little to matter: diluted a hundredfold within half a minute, it
+never brings the cloud near saturation. In saturated air the cloud reaches saturation itself at about 230 m,
 110 s after the blast, and then each metre it rises condenses more water, whose latent heat keeps
 it 0.2 to 0.5 K warmer than the air around it. It cools as saturated air does, at about 5 K/km,
 more slowly than the air's 6.5 K/km, so the higher it goes the more buoyant it is: it is a
-growing cumulus cloud, still rising at 1.4 km after 20 minutes and gathering speed. With the
-default gas the same happens from 96 s, reaching 1,009 m by 20 minutes. Real air is rarely
-saturated from the ground up at a steady lapse rate, and how far such a cloud goes depends on the
-layers above, which this atmosphere does not describe.
+growing cumulus cloud, still rising at 1.4 km after 20 minutes and gathering speed. Beyond
+0.5 g/kg its water starts to rain out, 16 minutes after the blast and 1 km up.
+
+Followed for two hours, it goes on rising to the freezing level, 2.5 km up after 29 minutes,
+where its water starts to freeze and to fall as snow, and rises fastest since its first seconds,
+at 2.9 m/s, at about 4.3 km. It stops 50 minutes after the blast with its centre 5.4 km up and
+its top at 6.9 km, 3 km across: there the air is at −20 °C and holds so little water that
+saturated air rising cools at more than the air's 6.5 K/km, and condensing no longer keeps the
+cloud warmer than its surroundings. By the end of the two hours some 10,600 t of water has fallen
+out of it, nine-tenths of it as snow, against the charge's 20 kg; without rain it stops a little
+lower, at 5.2 km, weighed down by the water it keeps. With the default gas it stops at the same
+height, 54 minutes after the blast: in saturated air the charge only starts the cloud, and the
+heat that carries it to its ceiling is the air's own water condensing, so its height is the
+atmosphere's, not the explosion's. Real air is rarely saturated from the ground up at a steady
+lapse rate, and how far such a cloud goes depends on the layers above, which this atmosphere does
+not describe.
 
 **Against high-explosive clouds.** Church (1969) fitted the stabilised height of the clouds of
 chemical explosions as H = 92.6 W^0.25 m, W in kilograms of TNT, as quoted by Liolios (2008); the
@@ -254,16 +289,18 @@ fills much of the street's domain, so some of its hot gas may have left it befor
 ## Output
 
 - **The summary** printed gives what was handed over, its share of the warm gas's buoyancy, the
-  cloud when it stopped rising and at the end, how far downwind, and when and where it condensed.
+  cloud when it stopped rising and at the end, how far downwind, when and where it condensed and
+  how much of its water was ice, and how much rain and snow fell.
 - **`--cloud-results`** writes the description, the hand-over, the cloud at times closer together
   early on (a hundredth of a second after the hand-over, then 5% further apart each time), and the
   moment it stopped rising, as JSON: each with the time since the detonation, the height of the
   centre, the radius, the temperature and the air's, the rise speed, the mass, and the centre's
-  place and velocity across the ground, its water and the liquid part of it.
+  place and velocity across the ground, its water and the liquid and frozen parts of it, and the
+  water fallen out of it so far, in all and as snow.
 - **The USD scene** (`--usd`) gains `/Scene/Cloud`, a sphere starting at the hand-over's centre
-  whose position, radius, `temperature` primvar (kelvin) and `liquidWater` primvar (grams a
-  kilogram, for showing it as a visible cloud) are sampled every `frameInterval` seconds of the
-  cloud's rise. Its frames follow the run's on the timeline, at that slower rate, and it is
+  whose position, radius, `temperature` primvar (kelvin) and `liquidWater` and `ice` primvars
+  (grams a kilogram, for showing it as a visible cloud) are sampled every `frameInterval`
+  seconds of the cloud's rise. Its frames follow the run's on the timeline, at that slower rate, and it is
   hidden until then; `cloudStartTimeCode` and `simulatedSecondsPerCloudFrame` in the layer's
   data say where it starts and how fast it goes. The scene's camera is set for the blast, so a
   cloud hundreds of metres up leaves its view.
@@ -277,12 +314,13 @@ fills much of the street's domain, so some of its hot gas may have left it befor
 - The entrainment coefficient is from laboratory thermals of small density difference; a
   fireball's first seconds are far from that.
 - One lapse rate and one relative humidity up to the tropopause: no inversion, no boundary layer
-  capped by drier air, no cloud base. Saturated air from the ground up is unstable at this lapse
-  rate and lets a condensing cloud rise without limit, which real air, drier aloft, seldom does.
-- Water only as vapour and liquid: no ice, which matters above the freezing level, a couple of
-  kilometres up in mild weather; no rain falling out; liquid and vapour at the same temperature as
-  the gas, and the water's own heat capacity left out. The products' water is TNT's and assumed
-  to be all in the gas handed over.
+  capped by drier air, no cloud base. Saturated air from the ground up lets a condensing cloud
+  rise for kilometres, which real air, drier aloft, seldom does.
+- The water's microphysics in one line each: ice by temperature alone, with no freezing of
+  supercooled drops by nuclei or by contact with ice; one rate for rain and snow, falling out at
+  once, none evaporating below the cloud and none washing out its dust and smoke; the water's
+  own heat capacity left out, and its condensate at the gas's temperature. The products' water
+  is TNT's and assumed to be all in the gas handed over.
 - The wind is steady, from one direction and without turbulence. Its gusts and eddies would
   spread and dilute the cloud, and its turning with height would shear it; the only effect of
   the wind here beyond carrying the cloud is the extra air drawn in while it lags. Bent-over
@@ -310,6 +348,11 @@ fills much of the street's domain, so some of its hot gas may have left it befor
   14, 422–434, 1962: entraining plumes in humid air, condensing.
 - D. Bolton, "The computation of equivalent potential temperature", *Mon. Weather Rev.* 108,
   1046–1053, 1980: the saturation vapour pressure over water.
+- E. Kessler, *On the Distribution and Continuity of Water Substance in Atmospheric
+  Circulations*, Meteorological Monographs 10 (32), American Meteorological Society, 1969: cloud
+  water converted to rain beyond a threshold.
+- ECMWF, *IFS Documentation, Part IV: Physical Processes*: the share of condensate liquid
+  between 0 °C and −23 °C, and the saturation vapour pressure over ice.
 - R. S. Scorer, "Experiments on convection of isolated masses of buoyant fluid", *J. Fluid Mech.*
   2, 583–594, 1957, and J. S. Turner, *Buoyancy Effects in Fluids*, Cambridge University Press,
   1973: laboratory thermals and how fast they spread.

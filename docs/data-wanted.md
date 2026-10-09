@@ -81,6 +81,19 @@ titles; the authors, journals and years should be enough to find each one.
   heavily reinforced 1.5 m beam at the speed the test did; beyond 3 m/s how the ends were held
   matters more than interlock.
 
+## 2c. Saatci's records
+
+- **Where:** the digital records of Saatci and Vecchio's drop-weight tests, which their paper
+  (ACI Structural Journal 106(1), 2009) says the University of Toronto's VecTor Analysis Group
+  publishes.
+- **Needed:** the impact force against time for each first impact (from the weight's
+  accelerometers), and how the 50 mm plate sat on the beam.
+- **Use:** the paper gives one peak, 1,421 kN for SS3a-1 under the light drop; the model's
+  weight, striking the plate's top nodes outright, delivers about 3,200 kN, and a pad matched to
+  the measured peak changes the beams (see
+  [Validation](validation.md#beams-struck-by-a-falling-weight)). The heavy drops' forces, and
+  the shape of the pulse, would say what the contact should be.
+
 ## 3. Formulae quoted from memory
 
 Eight values in the code were written from memory and should be checked against the original.

@@ -67,9 +67,10 @@ struct GroundShockRunTests {
         let file = folder.appending(path: "ground.json")
         try JSONEncoder().encode(spec).write(to: file)
         let out = folder.appending(path: "results.json")
+        let usd = folder.appending(path: "ground.usda")
         let result = try await HeadlessRun.execute(
             HeadlessRun.Options.parse([
-                project.path, "--ground-shock", file.path, "--ground-results", out.path,
+                project.path, "--ground-shock", file.path, "--ground-results", out.path, "--usd", usd.path,
             ]))
         let ground = try #require(result.ground)
         #expect(try JSONDecoder().decode(GroundShockResult.self, from: Data(contentsOf: out)) == ground)
@@ -95,6 +96,22 @@ struct GroundShockRunTests {
         }
         // Under the block there is no open ground.
         #expect(ground.points[0].covered && ground.points[0].responses[0].verticalVelocity == 0)
+
+        // In the scene, the four open points, with what the ground did there; the covered one is
+        // left out.
+        let text = try String(contentsOf: usd, encoding: .utf8)
+        let prim = try #require(text.range(of: "def Points \"GroundShock\"")).upperBound
+        let body = text[prim...].prefix { $0 != "}" }
+        for name in ["peakOverpressure", "impulse", "verticalVelocity", "verticalDisplacement", "arrival"] {
+            #expect(body.contains("float[] primvars:\(name) = ["))
+        }
+        let velocities = try #require(body.range(of: "primvars:verticalVelocity = ["))
+        let list = body[velocities.upperBound...].prefix { $0 != "]" }
+        let values = list.split(separator: ",").compactMap { Float($0.trimmingCharacters(in: .whitespaces)) }
+        #expect(values.count == 4)
+        for (value, point) in zip(values, line) {
+            #expect(abs(value - point.surfaceVelocity(in: ground.soil) * 1000) < 0.01 * max(value, 1))
+        }
     }
 
     @Test("Estimating ground shock leaves the air as a run with the same frames gives it")

@@ -483,9 +483,10 @@ struct DotOut {
     float3 colour [[flat]];
 };
 
-// Draws fragments, tracers and landings as round dots of a fixed size on screen, depth-tested at
-// their centres. Each is a position and a code: the kind (0 a fragment in flight, 1 a tracer, 2 a
-// landing) plus a value from 0 to 1, a fragment's speed or a landing's energy.
+// Draws fragments, tracers, landings and ground points as round dots of a fixed size on screen,
+// depth-tested at their centres. Each is a position and a code: the kind (0 a fragment in flight,
+// 1 a tracer, 2 a landing, 3 a ground point) plus a value from 0 to 1, a fragment's speed, a
+// landing's energy or how fast the ground under a point has moved, 0 before the blast arrives.
 vertex DotOut dotVertex(uint vertexID [[vertex_id]],
                         uint instanceID [[instance_id]],
                         const device float4 *dots [[buffer(0)]],
@@ -503,13 +504,19 @@ vertex DotOut dotVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(1, 1),
                                float2(-1, -1), float2(1, 1), float2(-1, 1)};
     float2 corner = corners[vertexID];
-    float size = viewport.z * (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f));
+    float size = viewport.z * (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f)));
     clip.xy += corner * size / viewport.xy * clip.w;
 
     DotOut out;
     out.position = clip;
     out.corner = corner;
-    if (kind > 1.5f) {
+    if (kind > 2.5f) {
+        // A ground point: grey until the blast arrives, then from blue at a millimetre a second,
+        // through violet, to near white at ten metres a second.
+        out.colour = value < 0.0005f ? float3(0.55f, 0.55f, 0.58f)
+            : value < 0.5f ? mix(float3(0.2f, 0.45f, 0.95f), float3(0.8f, 0.25f, 0.85f), value * 2.0f)
+                           : mix(float3(0.8f, 0.25f, 0.85f), float3(1.0f, 0.9f, 0.95f), value * 2.0f - 1.0f);
+    } else if (kind > 1.5f) {
         // A landing: yellow at a joule, through orange, to dark red at ten megajoules.
         out.colour = value < 0.5f ? mix(float3(0.98f, 0.85f, 0.2f), float3(0.95f, 0.4f, 0.1f), value * 2.0f)
                                   : mix(float3(0.95f, 0.4f, 0.1f), float3(0.45f, 0.03f, 0.05f), value * 2.0f - 1.0f);

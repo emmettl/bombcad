@@ -205,6 +205,7 @@ struct RunComparisonView: View {
                             }
                         }
                         if let fragments = run.fragments { Text(fragments.summary) }
+                        if let groundShock = run.groundShock { Text(groundShock.summary) }
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
                     if plotsStructure {
