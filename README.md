@@ -558,7 +558,17 @@ two stage pressure packets at its actual time; the same correction reaches gas m
 and energy. Torque uses each sample's position relative to the translating centre of mass.
 The corresponding summary scripts accept `--surface-quadrature` (and the trajectory summary
 also needs `--limited --heun` for that report). A nonuniform-pressure interval test checks
-paired loads, while sustained pressure-load convergence remains a separate benchmark.
+paired loads.
+
+`swift run -c release rigidboxdemo --moving-loads` writes `.build/moving-loads.json`;
+`python3 Scripts/summarize-moving-loads.py` audits it and reports load changes under grid/CFL
+refinement. A 6.4 kJ smooth pressure pulse evolves over 200 microseconds around a prescribed
+translating box. Positive gas-volume averages and per-grid amplitude normalization match
+the initial excess internal energy. Twelve cases cover 0.2/0.1/0.05 m cells, aligned/rotated
+boxes and CFL 0.2/0.1. The study reports impulse and angular impulse at four matched times,
+positive states and complete gas/reservoir/body budgets. Pressure and velocity departures
+are physical responses, not errors against an exact solution. The finest grid is a numerical
+comparison; this is not blast validation or free-body motion.
 
 ## Headline results
 
