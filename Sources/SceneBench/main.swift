@@ -50,6 +50,10 @@ func fixture(count: Int, spacing: Float) throws -> Scenario {
 enum SceneBench {
     static func main() throws {
         let args = Array(CommandLine.arguments.dropFirst())
+        if args.first == "envelopes" {
+            try EnvelopeBenchmark.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "street" {
             try StreetBenchmark.run(Array(args.dropFirst()))
             return

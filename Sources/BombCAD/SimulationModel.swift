@@ -245,6 +245,23 @@ final class SimulationModel {
         selection = nil
     }
 
+    func useEditedEnvelope() {
+        guard !isPreparingImports, let object = editedObject else { return }
+        do {
+            var scene = settings.scenario
+            try scene.useEnvelope(id: object.id)
+            try scene.validateObjectOwnership()
+            settings.scenario = scene
+            selectedStructureID = nil
+            selection = nil
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func removeEnvelope(id: UUID) {
+        guard !isPreparingImports, settings.scenario.object(id: id)?.envelope != nil else { return }
+        do { try settings.scenario.removeObject(id: id) } catch { errorMessage = error.localizedDescription }
+    }
+
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
