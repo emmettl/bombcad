@@ -201,8 +201,8 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
-   their first two minutes; and [ground shock](ground-shock.md) away from the charge, the manuals' one-dimensional
-   estimate fed the overpressure on the rigid ground each frame and drawn in the app. Next:
+   their first two minutes; and [ground shock](ground-shock.md) away from the charge, the
+   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and drawn in the app. Next:
    radiation on the GPU's ray-tracing hardware, a fireball that is not one sphere, the cloud's
    growth once it stops rising, a layered soil column and a comparison with measured
    ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
