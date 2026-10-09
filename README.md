@@ -264,7 +264,7 @@ or friction alone (see [base connections](docs/structural-model.md#base-connecti
 keeps the result as a saved run, for scripts and other Macs; see
 [headless runs](docs/run-comparison.md#headless-runs). Add `--usd Example.usda` and `--vdb Example.volumes` to
 write the scene, the structure and the blast over time for rendering elsewhere
-([USD export](docs/usd-export.md)). Sweeps can share their cases with another Mac over SSH,
+([USD export](docs/usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
 [sharing a sweep](docs/run-comparison.md#sharing-a-sweep-with-another-mac).
 

@@ -45,49 +45,87 @@ or a running simulation.
 
 ## Sharing a sweep with another Mac
 
-A sweep can share its cases with another Apple silicon Mac, such as a Mac mini on the desk.
-In Settings, under Sweeps on another Mac, enter its SSH host name or alias, turn on Share sweeps
-with this Mac, and use Test Connection. The sweep dialog then offers to share each sweep with it.
-SSH must log in without a password, with a key, as for any batch connection.
+A sweep can share its cases with other Apple silicon Macs, such as a Mac mini on the desk. In
+Settings, under Sweeps on other Macs, add each by its SSH host name or alias, use Test beside it,
+and turn on Share sweeps with these Macs. The sweep dialog then offers to share each sweep with
+them. SSH must log in without a password, with a key, as for any batch connection. A host saved
+by an earlier version, when there could be only one, moves into the list the first time this
+version opens. [Fragments](fragments.md) fly on the first Mac in the list.
 
-**What happens.** At a sweep's start, BombCAD connects over SSH. The first time for each build it
-copies its own executable and resource bundles to `~/Library/Caches/BombCAD/remote/<hash>` on
-the other Mac (the three newest builds are kept), so the other Mac always runs this solver and
-nothing need be installed there. It then starts `BombCAD worker` there, which takes cases over
-the SSH connection one at a time and answers with progress and results; no port is opened. A
-returned run is kept only if its input fingerprint matches the case's, so the other Mac is known
-to have run exactly that case. It records its own device, so the Compare view shows which Mac
-ran what.
+**What happens.** At a sweep's start, BombCAD connects to every Mac in the list at once, over
+SSH. The first time for each build it copies its own executable and resource bundles to
+`~/Library/Caches/BombCAD/remote/<hash>` on each (the three newest builds are kept), so the
+other Macs always run this solver and nothing need be installed there; a copy counts only once
+it is whole and signed, so one cut short is sent again. It then starts `BombCAD worker` on each,
+which takes cases over its SSH connection one at a time and answers with progress and results;
+no port is opened. A returned run is kept only if its input fingerprint matches the case's, so
+the other Mac is known to have run exactly that case. It records its own device, so the Compare
+view shows which Mac ran what.
 
-**Who runs what.** Cases wait largest first, by cells times steps. This Mac takes the largest;
-the other Mac takes the smallest it should finish before this Mac has finished everything else,
-starting from the assumption that it is 3.5 times slower (the CI Mac mini's M4 against an M4
-Max) and measuring the ratio once each has finished a case. A slower Mac is therefore given only
-cases it will not hold the sweep up with: in a sweep of equal cases it takes one when there are
-at least five, and in a grid sweep the coarse ones. Results are kept in the sweep's order,
-whichever Mac finishes first.
+**Who runs what.** Cases wait largest first, by cells times steps. Each Mac's speed is a ratio
+against this one: how many times longer it takes over a case. Until measured it is taken as 3.5
+(the CI Mac mini's M4 against an M4 Max), and it is measured from the cases each Mac has
+finished and from those at least a tenth done. The fastest Mac, this one on a tie, takes the
+largest case. Every other Mac, this one included when another is faster, takes the smallest
+case it should finish no later than the others need for the rest: the waiting work shared among
+this Mac and the other Macs at work (each joining once its own case is done, at its own speed,
+as if cases could be divided exactly), and never sooner than the last case already running
+ends. A larger case would fit no better, so a Mac that cannot fit the smallest takes nothing;
+a worker turned down waits while others are busy, in case one hands a case back, and otherwise
+stops.
 
-**When things go wrong.** If the other Mac cannot be reached, the sweep runs here only and says
-why. If it fails a case (out of memory, say), the case runs here and so does the rest. Cancelling
-the sweep cancels the other Mac's case too, and if this Mac stops or the connection drops, the
-worker's input closes and it stops its case and exits.
+So usually this Mac takes the large cases and slower Macs only those they will not hold the
+sweep up with. In a sweep of equal cases one mini takes a case when there are at least five, and
+with six cases each of up to three minis takes one; in a grid sweep they take the coarse ones. A
+Mac found faster than this one, as the mini was while this Mac was busy with other work, takes
+the large cases instead, and this Mac the small ones. With one other Mac the rule is the one used
+before there could be several. Every choice depends only on the queue, how far each case has got,
+and the ratios, so the same events give the same plan; which Mac connects first can still change
+who gets which case. Results are kept in the sweep's order, whichever Mac finishes first.
 
-**Measured.** Six charge masses, 50 to 200 kg, in the street canyon on the medium grid, with the
-Mac Studio (M4 Max) and the CI mini (M4) over Thunderbolt: 22.1 s alone and 18.5 s shared, the
-mini running one case. Every result was identical, the mini's included, to the last bit.
+**When things go wrong.** A Mac that cannot be reached is left out, and the sweep's outcome says
+why. If a Mac fails a case (out of memory, say) or its connection drops mid-case, the case goes
+back to the queue, for this Mac or another worker, that Mac takes no more, and the outcome says
+so. Cancelling the sweep cancels every worker's case, and if this Mac stops or a connection
+drops, that worker's input closes and it stops its case and exits.
+
+**Measured.** Six charge masses, 50 to 200 kg, in the street canyon on the medium grid, from the
+Mac Studio (M4 Max), with the CI mini (M4) over Thunderbolt. With one other Mac, measured before
+there could be several while the Studio was otherwise idle: 22.1 s alone and 18.5 s shared, the
+mini running one case. On 9 October 2026 the Studio was busy with other work (load averages of 7
+to 37), so a case took 21 to 27 s there against 15 s on the mini. Three interleaved rounds took:
+
+| | Round 1 | Round 2 | Round 3 | Median | Cases elsewhere |
+|---|---|---|---|---|---|
+| Studio alone | 90.9 s | 127.0 s | 119.1 s | 119.1 s | none |
+| With the mini | 62.8 s | 59.4 s | 72.7 s | 62.8 s | 2, 4 and 4 on the mini |
+| With the mini and a stand-in | 59.8 s | 43.0 s | 63.2 s | 59.8 s | 2 to 4 on the mini, 1 on the stand-in |
+
+The stand-in second worker is `--local-workers 1`, a worker process on the Studio sharing its
+GPU, since a second Mac was not at hand; it adds little because it shares the GPU it would
+relieve, and a real second Mac would do better. Found faster, the mini took the large cases and
+most of the sweep, and the sweep took about half as long. All 54 results were identical to the
+last bit, wherever they ran. The load makes single timings vary by half or more, so the medians
+are the figures to go by.
 
 `BombCAD sweep` runs the same without a window:
 
 ```bash
-swift run -c release BombCAD sweep Example.bombcad --masses 50,100,200 --remote my-mac.local --out Example-swept.bombcad
+swift run -c release BombCAD sweep Example.bombcad --masses 50,100,200 --worker mini.local --worker studio.local --out Example-swept.bombcad
 ```
 
-with `--grids coarse,medium` instead of `--masses`, `--prefix` for the results' names and
-`--ratio` for the starting estimate of how much slower the other Mac is.
+with `--worker` once for each Mac (`--remote` is the same), `--grids coarse,medium` instead of
+`--masses`, `--prefix` for the results' names and `--ratio` for the starting estimate of how much
+slower the other Macs are. `--local-workers 1` adds a `BombCAD worker` process on this Mac, sharing
+its GPU, to try the scheduling without another Mac. It prints each result with the device that ran
+it, and the outcome with each Mac that stopped or could not start.
 
-Limits: one other Mac at a time (the code takes a list of workers in principle); the
-structure's work is not counted in a case's cost; and a shared Mac's other work, such as CI on
-the mini, slows its cases, which only shifts what the scheduler gives it.
+Limits: until a Mac has run a tenth of a case, its speed is the starting estimate, so the first
+cases can go to a Mac slower than estimated (`--ratio` helps when that is known); the structure's
+work is not counted in a case's cost; a shared Mac's other work, such as CI on the mini, slows its
+cases, which only shifts what the scheduler gives it once measured; a worker that hands a case back
+takes no more in that sweep; and a sweep's end waits for any Mac still connecting, which on the
+first connection for a build includes copying it.
 
 ## Measurements and interpretation
 
