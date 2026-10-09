@@ -1104,6 +1104,10 @@ func runImpact() throws {
                 spreadBars: flag("spread"), specimen: chooseSupports
             ) { model in
                 if flag("no-rate") { model.material.rateDependent = false }
+                // `--bond`: the D19 or D13 bars slip.
+                if let bond = chosenBondSlip(diameter: test.heavyBars ? 0.019 : 0.013) {
+                    model.bondSlip = bond
+                }
                 applyRateOptions(&model)
             } inspect: { solver in
                 if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }

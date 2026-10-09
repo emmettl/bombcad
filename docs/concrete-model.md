@@ -470,6 +470,17 @@ whole, as the test beam did, where perfectly bonded it splits along its bars, an
 it under the heavy drop, as in the test; but it stiffens the beams with stirrups by a fifth under the heavy drops. So
 the option stays off until the shear across discrete cracks, and the slab, are understood.
 
+Rerun on the present defaults (the CEB's strain-rate law for the bars, taken over their
+debonded length, and crack widths read over each crack's own band), slip still parts the
+tests: Saatci's SS0a-1 comes through the light drop whole on 16 and 24 elements (11.0 / 1.7
+and 12.0 / 2.5 mm, against 9.3 / 1.6), where perfectly bonded it loses elements along its bars;
+but his heavy drops with stirrups go 9–14% short and are left 12–13 mm down against 18, Ando's
+beams without stirrups go 30% wrong on average, nearly all short, keeping a third of the
+measured residuals (13% and three quarters perfectly bonded), OA1 carries 142% and 148% on 12
+and 24 elements, Janney's beam on 24 elements fails at 29 mm, and the contest slab peaks at
+95 mm on 8 elements (88%) and, under fixed design factors or static strengths, collapses.
+`--bond splitting` on `blastbench impact` and `impact --ando`.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
