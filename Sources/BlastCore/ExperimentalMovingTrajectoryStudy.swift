@@ -170,10 +170,11 @@ public enum ExperimentalMovingTrajectoryStudy {
         h: Double, angle: Double, start: Double, duration: Double, velocityScale: Double,
         cfl: Double, maximumStep: Double, reference: AdvectedQuadraticGas? = nil, limited: Bool = false,
         secondOrder: Bool = false, surfaceQuadrature: Bool = false,
-        initialCells: [FractionalGasTransport.Cell]? = nil
+        initialCells: [FractionalGasTransport.Cell]? = nil, conservedQuadratic: Bool = false
     ) throws -> Result {
         let clock = Date()
         let velocity = velocityScale * ExperimentalMovingGroupsStudy.velocity
+        guard !conservedQuadratic || limited else { throw Failure.invalidConfiguration }
         guard reference == nil || reference!.velocity == velocity else { throw Failure.invalidConfiguration }
         var body = try ExperimentalMovingGroupsStudy.body(angle: angle, time: start)
         let initialBody = body
@@ -247,7 +248,7 @@ public enum ExperimentalMovingTrajectoryStudy {
                         h: h, angle: angle,
                         start: 0, duration: step, previous: cells, prescribedBody: body,
                         prescribedVelocity: velocity, reconstruct: limited,
-                        surfaceQuadrature: surfaceQuadrature)
+                        surfaceQuadrature: surfaceQuadrature, conservedQuadratic: conservedQuadratic)
                     do {
                         let r: MovingGroupedGasFlux.Result
                         if let reference {
@@ -269,14 +270,16 @@ public enum ExperimentalMovingTrajectoryStudy {
                                             volume: 1,
                                             density: reference.density(at: point, time: elapsed + step),
                                             velocity: velocity, pressure: reference.pressure)
-                                    } : nil, timeIntegration: secondOrder ? .heun : .euler)
+                                    } : nil, timeIntegration: secondOrder ? .heun : .euler,
+                                conservedQuadratic: conservedQuadratic)
                         } else {
                             r = try MovingGroupedGasFlux.advance(
                                 domain.plan,
                                 exterior: .init(
                                     volume: 1, density: 1.225, velocity: velocity, pressure: 101325),
                                 cfl: cfl,
-                                limited: limited, timeIntegration: secondOrder ? .heun : .euler
+                                limited: limited, timeIntegration: secondOrder ? .heun : .euler,
+                                conservedQuadratic: conservedQuadratic
                             )
                         }
                         let plan = domain.plan
@@ -382,7 +385,8 @@ public enum ExperimentalMovingTrajectoryStudy {
         return Result(
             cellSize: h, rotation: angle, cfl: cfl, startPathTime: start, duration: duration,
             velocity: velocity, densityProfile: reference == nil ? "uniform" : "quadratic-advection",
-            densityAmplitude: reference?.amplitude, reconstruction: limited ? "limited" : "constant",
+            densityAmplitude: reference?.amplitude,
+            reconstruction: conservedQuadratic ? "conservedQuadratic" : (limited ? "limited" : "constant"),
             timeIntegration: secondOrder ? "heun" : "euler",
             wallIntegration: surfaceQuadrature ? "surfaceTimeQuadrature" : "centroid",
             displacement: body.position - initialPosition,
