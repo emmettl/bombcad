@@ -24,6 +24,7 @@ public enum ScenePicking {
             }
         }
         visit(scenario.boxes, id: nil)
+        visit(scenario.envelopeObjects.flatMap { $0.envelope!.blocks }, id: nil)
         let legacySources = (scenario.importedModels ?? []).filter {
             $0.isAttached && $0.behavior == .deformable
         }

@@ -236,17 +236,17 @@ the run slowing, rather than making any one model faster.
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
 a plan, measured where it starts; built so far are one consumer on one other Mac, and the first
-step below.
+two steps below.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
 bottom layer of cells to [ground shock](ground-shock.md), inline on this Mac; and a block of air
 around the [fragments](fragments.md), on this Mac or on one other Mac through a worker. The
-worker's protocol (version 2: JSON messages with raw binary payloads, over the standard input and
-output of an SSH connection) already carries several sessions over one connection, told apart by
-their identifiers, and its flow control is deterministic: the run waits only when a consumer falls
+worker's protocol (version 2 when this was planned: JSON messages with raw binary payloads, over
+the standard input and output of an SSH connection) already carried several sessions over one
+connection, told apart by their identifiers, and its flow control is deterministic: the run waits only when a consumer falls
 more than four frames behind, and the air it sends depends on reports already in, so a result is
-the same wherever the consumer runs. But its sessions, reports and results are the fragments'
+the same wherever the consumer runs. But its sessions, reports and results were the fragments'
 own, and a run has one remote consumer at most.
 
 **Measured.** The street canyon on the medium grid, 0.17 s in 171 frames, from the Mac Studio,
@@ -295,16 +295,25 @@ this side.
    still takes 0.5 to 1.0 ms a frame on the thread that drives the GPU, which step 3 moves off
    it. The ground's layer (about 0.1 ms) is still cut out on the CPU. The Studio was busy with
    other work again (load averages of 7 to 62), so whole runs are not compared.
-2. **One kind of consumer session** (protocol version 3). Sessions, inputs, reports and results
-   say which model they are for, and the worker gives each session a queue of its own, so that
-   two consumers on one Mac run side by side. The worker is always a copy of the same build, so
-   the protocol needs no compatibility with older versions. Each consumer gives the same result
-   to the last bit here, on one worker, or with the consumers spread over two.
+2. **One kind of consumer session** (protocol version 3). (Done.) A session names its kind
+   (fragments, thermal radiation or ground shock) and what that needs to start; each frame's
+   input travels as a header saying what it is, its samples as the payload; and the result comes
+   back as one encoded outcome. The models are held the same way here and on a worker
+   (`ConsumerEngine`), so each gives the same result to the last bit here, with all three
+   sharing one worker, or spread over two, as the tests check. On a worker each session runs on
+   a queue of its own, so several share a connection side by side. The worker is always a copy
+   of the same build, so the protocol needs no compatibility with older versions. A frame's
+   samples for another Mac are now copied out on the connection's writing queue, not the
+   thread that drives the GPU: sending to the mini went from 0.6 to 1.0 ms a frame to about
+   0.015 ms (three rounds, the old build and the new alternating), leaving 0.4 ms a frame for
+   the run with the fragments there. Runs still send only the fragments to other Macs this way
+   until step 3. Thermal radiation also has sessions of its own on a worker, built alongside,
+   which send every receiver back after each frame for the app to draw; folding them into these,
+   with that live view as an option of the kind, belongs to step 3.
 3. **Fan-out.** One list of consumers replaces the run's three separate feeds; each is placed
    here or on a host from the [sweep worker list](run-comparison.md#sharing-a-sweep-with-another-mac),
    consumers on the same host sharing its connection, and the run waits only for the one
-   furthest behind. Sending moves off the thread that drives the GPU. Each consumer's bytes, time
-   a frame and the run's wait for it are printed. On the command line, `--consumer
+   furthest behind. Each consumer's bytes, time a frame and the run's wait for it are printed. On the command line, `--consumer
    fragments=<host>` and the like.
 4. **Placement and failure.** Placing consumers by their measured cost, as sweeps place cases,
    and in the app's Run tab. A consumer whose Mac drops now stops the run; optionally, each

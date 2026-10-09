@@ -178,6 +178,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    fine three to five times faster in the open. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
+   Stationary [building envelopes](building-envelopes.md) now retain walls, roofs and openings
+   in shared air without mechanics. Matched pinned-solid comparisons reproduce the exposure
+   and integrated surface loads exactly; short computational scaling runs reach 64 buildings.
+   Air resolution remains a separate cost and accuracy limit, and shell junction/opening
+   approximations are retained as diagnostics in that study.
 13. **Freestanding objects and supports.** Independent rigid bodies for parked cars and
    interior furniture, with gravity, friction, lift-off and collisions, coupled to the blast.
    Start with the staged checks below. Separately, make structural support assumptions visible

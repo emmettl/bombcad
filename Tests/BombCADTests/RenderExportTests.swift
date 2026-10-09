@@ -63,6 +63,8 @@ struct RenderExportTests {
         #expect(text.contains("rel field:peak") && text.contains("rel field:overpressure"))
         #expect(!text.contains("field:shock") && text.contains("def Points \"Fragments\""))
         #expect(text.contains("def Points \"GroundShock\"") && text.contains("primvars:verticalVelocity"))
+        #expect(text.contains("@./Export.volumes/blast.0000.vdb@"))
+        #expect(!text.contains(".bombcad-export-"))
     }
 
     @Test("Without volumes or fragments, only the scene; a volumes folder in the way is refused")
@@ -96,6 +98,8 @@ struct RenderExportTests {
         let folder = try folder()
         defer { try? FileManager.default.removeItem(at: folder) }
         let scene = folder.appending(path: "Long.usda")
+        let previous = Data("previous scene".utf8)
+        try previous.write(to: scene)
         let export = RenderExport()
         export.frameInterval = 1
         export.start(document(duration: 0.5), to: scene)
@@ -104,9 +108,32 @@ struct RenderExportTests {
             try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(10))
         }
+        #expect(try Data(contentsOf: scene) == previous)
         export.cancel()
         try await wait(export)
         #expect(export.state == .idle)
+        #expect(try Data(contentsOf: scene) == previous)
         #expect(!FileManager.default.fileExists(atPath: RenderExport.volumes(for: scene).path))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == ["Long.usda"])
+    }
+
+    @Test("An invalid project leaves the previous export intact")
+    func failedReplacement() async throws {
+        let folder = try folder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let scene = folder.appending(path: "Previous.usda")
+        let previous = Data("previous scene".utf8)
+        try previous.write(to: scene)
+        var invalid = document()
+        invalid.runSettings?.duration = -1
+        let export = RenderExport()
+        export.start(invalid, to: scene)
+        try await wait(export)
+        guard case .failed = export.state else {
+            Issue.record("Expected a failure, got \(export.state)")
+            return
+        }
+        #expect(try Data(contentsOf: scene) == previous)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == ["Previous.usda"])
     }
 }
