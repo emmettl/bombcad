@@ -9,9 +9,10 @@ struct EnvelopeReport: Codable {
     var device: String
     var system: String
     var completeMatrix: Bool
+    var referenceElementKind = "solid"
     var notes = [
         "Stationary conventional exposure study; invented buildings, no measured validation or failure prediction.",
-        "Detailed references pin every structural node. Envelopes retain solids, openings and object IDs.",
+        "Detailed references use 0.5 m solid elements and pin every node. Envelopes retain solids, openings and object IDs.",
         "Shared air, 2 kg TNT equivalent, fixed 1 m source radius. Spatial probes at 0.5 m spacing and 1.5 m height.",
         "Surface loads sample adjacent coarse fluid centres, including restricted fine state; not wall Riemann fluxes.",
         "Faces follow each run's voxel boundary, include interior and exterior, omit domain boundaries; area is dx squared.",
@@ -25,6 +26,15 @@ struct EnvelopeReport: Codable {
 }
 
 enum EnvelopeBenchmark {
+    static func reference(_ layout: StreetInteractionStudy.Layout) throws -> Scenario {
+        var scene = try StreetInteractionStudy.make(layout, clamped: true)
+        for object in scene.structuralObjects {
+            var model = object.structure!
+            model.elementKind = .solid
+            try scene.updateStructureObject(id: object.id, model: model)
+        }
+        return scene
+    }
     static func approximated(_ scene: Scenario) throws -> Scenario {
         var result = scene
         for object in scene.structuralObjects { try result.useEnvelope(id: object.id) }
@@ -32,8 +42,7 @@ enum EnvelopeBenchmark {
     }
 
     static func scaled(count: Int, detailed: Bool) throws -> Scenario {
-        let template = try StreetInteractionStudy.make(.isolated, clamped: true).structuralObjects[0]
-            .structure!
+        let template = try reference(.isolated).structuralObjects[0].structure!
         let side = Int(ceil(sqrt(Double(count))))
         let extent = Float(side * 10 + 16)
         var scene = Scenario(
@@ -91,7 +100,7 @@ enum EnvelopeBenchmark {
                 StreetBenchmark.Setting(name: "adaptive", dx: 0.5, refinement: 2),
             ]
         for layout in StreetInteractionStudy.Layout.allCases {
-            let detailed = try StreetInteractionStudy.make(layout, clamped: true)
+            let detailed = try reference(layout)
             let envelope = try approximated(detailed)
             for (mode, scene) in [("detailed", detailed), ("envelope", envelope)] {
                 try StreetBenchmark.write(
@@ -106,7 +115,7 @@ enum EnvelopeBenchmark {
         }
         if !quick {
             // A doorway and roof opening exercise access to the building's interior.
-            var opened = try StreetInteractionStudy.make(.isolated, clamped: true)
+            var opened = try reference(.isolated)
             let owner = opened.structuralObjects[0]
             var model = owner.structure!
             model.openings = [
@@ -127,7 +136,7 @@ enum EnvelopeBenchmark {
                     closed, layout: "opened", setting: settings[0],
                     id: "closed-\(mode)", purpose: "conservation", duration: 0.06)
             }
-            let street = try StreetInteractionStudy.make(.street, clamped: true)
+            let street = try reference(.street)
             for (mode, scene) in [("detailed", street), ("envelope", try approximated(street))] {
                 try execute(
                     scene, layout: "street", setting: .init(name: "half-cfl", dx: 0.25, cfl: 0.225),

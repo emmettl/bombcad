@@ -86,7 +86,8 @@ extension Scenario {
         return object.id
     }
 
-    /// Explicit approximation, retaining the object's identity. Attached imports must first detach.
+    /// Explicit approximation of a local authored structure, retaining its object identity.
+    /// Source-owned imports remain on their import workflow.
     public mutating func useEnvelope(id: UUID) throws {
         guard let index = objects.firstIndex(where: { $0.id == id }),
             let body = objects[index].structure, objects[index].sourceModelID == nil

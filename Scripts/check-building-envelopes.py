@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Check stationary envelope comparisons and retain numerical differences, not validation claims."""
 import argparse
-import gzip
 import json
 import math
 import statistics
@@ -23,9 +22,11 @@ def key(face):
     return tuple(face["positionM"] + face["normal"])
 
 
-def check(directory):
+def check(directory, diagnostic=False):
     report = read(directory / "report.json")
     require(report["schemaVersion"] == 1, "report schema")
+    if not diagnostic:
+        require(report.get("referenceElementKind") == "solid", "strict comparison requires matched solid-element reference geometry")
     runs = {r["id"]: r for r in report["observations"]}
     require(len(runs) == len(report["observations"]), "duplicate runs")
     expected = set()
@@ -112,8 +113,15 @@ def check(directory):
             metrics = street.compare_maps(a, b, excluded=mask)
             metrics["solidProbeClassificationDifferences"] = sum(x != y for x, y in zip(a["everSolid"], b["everSolid"]))
             matched, unmatched, peak_a, peak_b, impulse_a, impulse_b, signed_a, signed_b = 0, 0, [], [], [], [], [], []
+            area_a, area_b, vector_difference, vector_reference = [], [], 0.0, 0.0
             require([o["id"] for o in surfaces[candidate]] == [o["id"] for o in surfaces[reference]], "changed owner IDs")
             for ca, rb in zip(surfaces[candidate], surfaces[reference]):
+                area_a.append(sum(f["areaM2"] * f["positiveImpulsePaS"] for f in ca["surfaces"]))
+                area_b.append(sum(f["areaM2"] * f["positiveImpulsePaS"] for f in rb["surfaces"]))
+                vector_a = [-sum(f["areaM2"] * f["normal"][k] * f["signedImpulsePaS"] for f in ca["surfaces"]) for k in range(3)]
+                vector_b = [-sum(f["areaM2"] * f["normal"][k] * f["signedImpulsePaS"] for f in rb["surfaces"]) for k in range(3)]
+                vector_difference += math.dist(vector_a, vector_b)
+                vector_reference += math.dist(vector_b, [0, 0, 0])
                 c, r = {key(f): f for f in ca["surfaces"]}, {key(f): f for f in rb["surfaces"]}
                 common = c.keys() & r.keys()
                 matched += len(common)
@@ -124,12 +132,17 @@ def check(directory):
                     signed_a.append(c[p]["signedImpulsePaS"]); signed_b.append(r[p]["signedImpulsePaS"])
             require(matched > 0, "no matched faces")
             metrics.update(commonFaces=matched, unmatchedFaces=unmatched,
+                fullSurfacePositiveLoadRelativeL1=relative(area_a, area_b),
+                fullSurfaceVectorImpulseRelativeDifference=vector_difference / max(vector_reference, 1e-20),
                 surfacePeakRelativeL1=relative(peak_a, peak_b), surfacePositiveImpulseRelativeL1=relative(impulse_a, impulse_b),
                 surfaceSignedImpulseRelativeL1=relative(signed_a, signed_b))
             # Acceptance gates for the representation comparison, not physical accuracy.
-            require(metrics["solidProbeClassificationDifferences"] == 0 and unmatched == 0, f"{candidate}: geometry mismatch")
-            require(metrics["peakRelativeL1"] < 0.10 and metrics["impulseRelativeL1"] < 0.05
-                and metrics["surfacePeakRelativeL1"] < 0.10 and metrics["surfacePositiveImpulseRelativeL1"] < 0.05, f"{candidate}: representation differences exceed limits")
+            if not diagnostic:
+                require(metrics["solidProbeClassificationDifferences"] == 0 and unmatched == 0, f"{candidate}: geometry mismatch")
+                require(metrics["peakRelativeL1"] < 0.10 and metrics["impulseRelativeL1"] < 0.05
+                    and metrics["surfacePeakRelativeL1"] < 0.10 and metrics["surfacePositiveImpulseRelativeL1"] < 0.05
+                    and metrics["fullSurfacePositiveLoadRelativeL1"] < 0.05 and metrics["fullSurfaceVectorImpulseRelativeDifference"] < 0.10,
+                    f"{candidate}: representation differences exceed limits")
             comparisons.append(dict(candidate=candidate, reference=reference, **metrics))
 
     sensitivity, conservation, profiles, scaling = [], [], {}, []
@@ -165,7 +178,7 @@ def check(directory):
                 require(result["envelope"]["solverBytes"] < result["detailed"]["solverBytes"], "envelope did not remove mechanics memory")
                 require(maps[f"scaling-{count}-envelope-0"] == maps[f"scaling-{count}-detailed-0"], "scaling changed exposure")
             scaling.append(result)
-    return dict(schemaVersion=1, sourceRevision=report["sourceRevision"], comparisons=comparisons,
+    return dict(schemaVersion=1, sourceRevision=report["sourceRevision"], acceptanceChecked=not diagnostic, comparisons=comparisons,
                 sensitivity=sensitivity, conservation=conservation, stageProfiles=profiles, scaling=scaling)
 
 
@@ -173,8 +186,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--summary", type=Path)
+    parser.add_argument("--diagnostic", action="store_true", help="Report reference mismatches without applying representation acceptance gates")
     args = parser.parse_args()
-    summary = check(args.directory)
+    summary = check(args.directory, diagnostic=args.diagnostic)
     if args.summary:
         args.summary.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
-    print(f"Checked {len(summary['comparisons'])} representation comparisons, {len(summary['sensitivity'])} sensitivity comparisons and {len(summary['scaling'])} scaling sizes")
+    print(f"{'Diagnosed' if args.diagnostic else 'Checked'} {len(summary['comparisons'])} representation comparisons, {len(summary['sensitivity'])} sensitivity comparisons and {len(summary['scaling'])} scaling sizes")

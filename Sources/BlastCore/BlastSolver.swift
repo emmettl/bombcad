@@ -524,7 +524,6 @@ public final class BlastSolver {
     }
 
     public func setStructures(_ objects: [SceneObject]) throws {
-        clearEnvelopeExposure()
         precondition(!batchInFlight, "Cannot change structures while a batch is in flight")
         guard objects.count <= Scenario.maximumStructures, Set(objects.map(\.id)).count == objects.count,
             objects.allSatisfy({ $0.structure != nil })
@@ -534,6 +533,7 @@ public final class BlastSolver {
         let compiled = try ordered.map {
             try StructuralBody(object: $0, device: device, queue: commandQueue, library: library)
         }
+        clearEnvelopeExposure()
         bodies = compiled
         couplingRegion = nil
         tiledCoupling = nil

@@ -156,6 +156,43 @@ struct BuildingEnvelopeTests {
         }
     }
 
+    @Test(
+        "Solid references retain matching door and roof boundaries on all study grids",
+        arguments: [Float(0.5), 0.25, 0.125])
+    func resolvedOpenings(dx: Float) throws {
+        var model = StructureModel(
+            solids: [
+                Box(min: SIMD3(3, 2, 0), max: SIMD3(3.5, 6, 4)),
+                Box(min: SIMD3(3, 2, 4), max: SIMD3(7, 6, 4.5)),
+            ], elementSize: 0.5)
+        model.openings = [
+            Box(min: SIMD3(2.5, 3, 0), max: SIMD3(4, 4, 2.5)),
+            Box(min: SIMD3(4, 3, 3.5), max: SIMD3(5, 4, 5)),
+        ]
+        model.supports = [Box(min: model.bounds.min - 0.01, max: model.bounds.max + 0.01)]
+        let reference = Scenario(
+            name: "Openings", domainSize: SIMD3(8, 8, 6), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)), structure: model)
+        var envelope = reference
+        let id = try #require(reference.structuralObject?.id)
+        try envelope.useEnvelope(id: id)
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let a = try BlastSolver(device: device, scenario: reference, cellSize: dx)
+        let b = try BlastSolver(device: device, scenario: envelope, cellSize: dx)
+        var differing = 0
+        for k in 0..<a.grid.nz {
+            for j in 0..<a.grid.ny {
+                for i in 0..<a.grid.nx { if a.isSolid(i, j, k) != b.isSolid(i, j, k) { differing += 1 } }
+            }
+        }
+        #expect(differing == 0)
+        try a.configureEnvelopeExposure(objects: reference.structuralObjects)
+        try b.configureEnvelopeExposure(objects: envelope.envelopeObjects)
+        #expect(
+            a.envelopeExposureSnapshot()?.first?.surfaces.count
+                == b.envelopeExposureSnapshot()?.first?.surfaces.count)
+    }
+
     @Test("Moving structural references are rejected")
     func rejectMoving() throws {
         let scene = try StreetInteractionStudy.make(.isolated)
