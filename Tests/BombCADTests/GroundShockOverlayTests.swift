@@ -170,14 +170,14 @@ struct GroundShockOverlayTests {
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
-        model.useFragmentWorker(worker, host: "the mini")
-        model.groundShockOnRemote = true
+        model.useWorker(worker, host: "the mini")
+        model.groundShockHost = "the mini"
         try await waitUntil(model) { model.experimentIsReady }
         model.run()
         try await waitUntil(model) {
             !model.isRunning && !model.hasPendingGPUWork && model.companionsCaughtUp
         }
-        #expect(model.groundShock is RemoteFrameConsumer)
+        #expect(model.groundShock is ResilientFrameConsumer)
         try model.keepRun(named: "There")
         let there = try #require(model.savedRuns.last)
         #expect(there.gauges == here.gauges && there.stepCount == here.stepCount)

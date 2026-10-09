@@ -42,6 +42,7 @@ final class StalledConsumer: FrameConsumer, @unchecked Sendable {
 
     var sent: Int { lock.withLock { count } }
     var bytes: Int { 0 }
+    var seconds: Double { 0 }
     var live: ConsumerLive? { nil }
     var report: ConsumerReport {
         lock.withLock {

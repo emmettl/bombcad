@@ -29,8 +29,9 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case consume(ConsumerSession)
     /// App to worker: a consumer session's next frame; any samples are the payload.
     case input(UUID, ConsumerInput.Header)
-    /// Worker to app: where the session has got after a frame.
-    case report(UUID, ConsumerReport)
+    /// Worker to app: where the session has got after a frame, and the seconds its model has
+    /// spent on frames so far, there.
+    case report(UUID, ConsumerReport, Double)
     /// App to worker: no more frames; send the result, frames `interval` seconds apart.
     case finishConsumer(UUID, Double)
     /// Worker to app: the session's result, in the payload (see `ConsumerOutcome.encoded`).
@@ -43,7 +44,7 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 5
+    static let protocolVersion = 6
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String

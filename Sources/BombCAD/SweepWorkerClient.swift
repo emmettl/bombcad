@@ -11,8 +11,10 @@ final class SweepWorkerClient {
     private(set) var hello: SweepWorkerHello?
     /// Safe from any thread: frames go out in the order given.
     nonisolated let writer: SweepWorkerWriter
-    private var reports: [UUID: @Sendable (ConsumerReport) -> Void] = [:]
+    private var reports: [UUID: @Sendable (ConsumerReport, Double) -> Void] = [:]
     private var liveFrames: [UUID: @Sendable (ConsumerLive.Header, Data) -> Void] = [:]
+    /// Consumer sessions to tell if they fail, or the connection does, before their result.
+    private var sessionFailures: [UUID: @Sendable (Error) -> Void] = [:]
     /// Consumer sessions waiting for their result.
     private var outcomeWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
     private let onClose: () -> Void
@@ -124,13 +126,21 @@ final class SweepWorkerClient {
         onClose()
     }
 
-    /// Starts a consumer session, whose reports go to `report`, and for a live one its model's
-    /// state after each frame to `live`.
+    /// Starts a consumer session, whose reports, with its model's seconds on frames so far, go to
+    /// `report`, for a live one its model's state
+    /// after each frame to `live`, and why it stopped to `failed` if it fails, or the connection
+    /// does, before its result is asked for.
     func startConsumer(
-        _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport) -> Void,
-        live: @escaping @Sendable (ConsumerLive.Header, Data) -> Void = { _, _ in }
+        _ session: ConsumerSession, report: @escaping @Sendable (ConsumerReport, Double) -> Void,
+        live: @escaping @Sendable (ConsumerLive.Header, Data) -> Void = { _, _ in },
+        failed: @escaping @Sendable (Error) -> Void = { _ in }
     ) {
+        if let closedError {
+            failed(closedError)
+            return
+        }
         reports[session.id] = report
+        sessionFailures[session.id] = failed
         if session.kind.isLive { liveFrames[session.id] = live }
         writer.enqueue(.consume(session))
     }
@@ -143,6 +153,7 @@ final class SweepWorkerClient {
                 continuation.resume(throwing: closedError)
                 return
             }
+            sessionFailures[id] = nil
             outcomeWaiters[id] = continuation
             writer.enqueue(.finishConsumer(id, frameInterval))
         }
@@ -153,8 +164,8 @@ final class SweepWorkerClient {
 
     private func receive(_ message: SweepWorkerMessage, payload: Data) {
         switch message {
-        case .report(let id, let report):
-            reports[id]?(report)
+        case .report(let id, let report, let seconds):
+            reports[id]?(report, seconds)
         case .live(let id, let header):
             liveFrames[id]?(header, payload)
         case .outcome(let id):
@@ -169,6 +180,9 @@ final class SweepWorkerClient {
             progress[id] = nil
             waiting.removeValue(forKey: id)?.resume(returning: archive)
         case .failed(let id, let reason):
+            if reason != SweepWorkerMessage.cancelled {
+                sessionFailures.removeValue(forKey: id)?(ProjectFileError.invalid("On \(name): \(reason)"))
+            }
             outcomeWaiters.removeValue(forKey: id)?.resume(
                 throwing: ProjectFileError.invalid("On \(name): \(reason)"))
             progress[id] = nil
@@ -194,6 +208,9 @@ final class SweepWorkerClient {
         for continuation in outcomeWaiters.values { continuation.resume(throwing: error) }
         outcomeWaiters = [:]
         progress = [:]
+        let failures = sessionFailures.values
+        sessionFailures = [:]
+        for failed in failures { failed(error) }
     }
 }
 

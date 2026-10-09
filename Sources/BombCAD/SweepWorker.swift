@@ -101,6 +101,8 @@ private final class ConsumerRunner: @unchecked Sendable {
     private var cancelled = false
     /// For a live session, the impacts sent so far.
     private var impactsSent = 0
+    /// The model's time on frames so far.
+    private var seconds = 0.0
 
     init(_ session: ConsumerSession, writer: SweepWorkerWriter) {
         id = session.id
@@ -114,7 +116,10 @@ private final class ConsumerRunner: @unchecked Sendable {
             guard failure == nil, !cancelled else { return }
             do {
                 let input = try ConsumerInput(header: header, payload: payload)
+                let start = ContinuousClock.now
                 try engine.consume(input)
+                let took = start.duration(to: .now)
+                seconds += Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
                 // The live state before the report, so that a session reported caught up has its
                 // last frame's state in.
                 if let live = engine.live(time: input.time) {
@@ -122,7 +127,7 @@ private final class ConsumerRunner: @unchecked Sendable {
                     impactsSent = live.fragments?.impacts.count ?? 0
                     writer.enqueue(.live(id, header), payload: payload)
                 }
-                writer.enqueue(.report(id, engine.report))
+                writer.enqueue(.report(id, engine.report, seconds))
             } catch {
                 failure = error.localizedDescription
                 writer.enqueue(.failed(id, error.localizedDescription))

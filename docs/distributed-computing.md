@@ -235,7 +235,8 @@ the run slowing, rather than making any one model faster.
 
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
-a plan, measured where it starts; built so far are the first three steps below.
+a plan, measured where it starts; built so far are the first four steps below, but for
+placing models by cost automatically.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
@@ -331,17 +332,48 @@ this side.
    saved nothing, as expected: these models are cheap. What the step buys is the means to
    place an expensive one.
 
-   In the app, too (protocol version 5), each of the three runs here or, by its own **Run on**
-   (**Fly on** for fragments), on the first Mac set for sweeps, sharing one connection to it.
+   In the app, too, each of the three runs here or, by its own **Run on** (**Fly on** for
+   fragments), on a Mac set for sweeps, those on the same Mac sharing one connection to it.
    A kind may be live: its model's state then comes back after each frame for the app to draw
    (the fragments' particles, the receivers' fluence, the ground points' estimates so far), sent
    before the frame's report, so that a model reported caught up has its last frame's state in.
    The thermal radiation's own sessions, built alongside for its live view, are folded into
-   these. Choosing a different Mac for each model, and choosing by cost, is step 4.
-4. **Placement and failure.** Placing consumers by their measured cost, as sweeps place cases,
-   and in the app's Run tab. A consumer whose Mac drops now stops the run; optionally, each
-   consumer's inputs could be kept on disk (about 1.6 GB for the fragments above) so that it can
-   run again here afterwards.
+   these.
+4. **Placement and failure.** (Done, but for placing by cost, which waits on a model worth it.)
+
+   *Failure.* A consumer whose Mac dropped stopped reporting, and since the run waits for one
+   more than four frames behind, the run waited for ever. Now every model placed on another Mac
+   keeps each frame sent in a file (`ConsumerSpool`, written on a queue of its own and unlinked
+   as soon as it is open, so nothing is left behind however the process ends), and if that Mac
+   fails it or the connection drops, a consumer here takes every frame kept from the start, then
+   those that follow (`ResilientFrameConsumer`). Same model, same inputs: the result is the
+   same as if the other Mac had finished, and the run waits while this one catches up. Tried on
+   the mini, its worker killed 46 frames into the street canyon with all three models there,
+   the run finished with every result the same as a run kept here throughout (but for the
+   ground's feeding time), its lines saying so: "here after frame 46, that Mac having failed:
+   The worker on scrimply-ci-tb stopped." That test found that a write to the dead connection
+   ended BombCAD with SIGPIPE; it now ignores the signal. Keeping the fragments' frames writes
+   about 1.6 GB to the temporary folder in the street canyon, off the thread that drives the GPU.
+
+   *Choosing the Mac.* Each model has its own picker in the app, this Mac or any Mac set for
+   sweeps, as `--consumer` places each in a headless run.
+
+   *Cost.* A worker reports with each frame the seconds its model has spent so far (protocol
+   version 6), and a headless run prints each model's own time a frame where it ran. In the
+   street canyon, the Studio busy with other work and the mini not:
+
+   | Model | Here | On the mini |
+   |---|---|---|
+   | Fragments (2,000 and 500 tracers) | 1.19 ms | 1.09 ms |
+   | Thermal radiation (about 10,500 receivers) | 1.17 ms | 0.93 ms |
+   | Ground shock (19 points) | 0.01 ms | 0.01 ms |
+
+   against about 39 ms a frame for the run. Each takes a few per cent of one core while the GPU
+   runs the blast, so where it runs changes nothing. The rule for placing by cost follows: a
+   model is worth another Mac once its time a frame nears the run's, when the run would begin to
+   wait for it (the time each run waited is printed too), and then the fastest Mac free, as
+   sweeps measure them. Choosing so automatically waits for a model that costly; until then it
+   could only ever choose this Mac.
 5. **A direct data channel, only if measured to be needed.** A TCP connection over the
    Thunderbolt Bridge, opened with a one-time token passed over SSH, which keeps control and
    authentication. At 0.9 GB/s a connection, and with separate connections for separate Macs

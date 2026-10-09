@@ -107,8 +107,8 @@ ground runs furthest, in dry soil of 1,600 kg/m³ at 300 m/s. Sliders set the so
 wave speed, the number of points (8 to 64) and the line's two ends, to the half metre. The
 points are saved with the project (as `groundShock.json`), take effect from the next run, and
 are undone and redone with the layout's edits (⌘Z). With Macs set for sweeps in Settings,
-**Run on** the first of them estimates the shaking there, as the fragments and the thermal
-radiation can. Other points, and other depths than 0, 1 and 3 m, need the JSON description and
+**Run on** estimates the shaking on the one chosen, as the fragments and the thermal radiation
+can; should that Mac drop, it carries on here. Other points, and other depths than 0, 1 and 3 m, need the JSON description and
 `BombCAD run`.
 
 The view draws the points as dots just above the ground: grey until the blast reaches them, then
