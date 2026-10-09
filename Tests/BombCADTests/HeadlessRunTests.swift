@@ -250,6 +250,49 @@ struct HeadlessRunTests {
         #expect(text.contains("def Points \"Thermal\"") && text.contains("float[] primvars:fluence = ["))
     }
 
+    @Test("The hot gas left at the end is handed over to the cloud, into the scene and a JSON file")
+    func cloud() async throws {
+        var scene = Scenario(
+            name: "Cloud", domainSize: SIMD3(repeating: 4), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(2, 2, 1)))
+        scene.gauges = [Gauge("Near", at: SIMD3(2.5, 2, 1))]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.004
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "cloud.bombcad")
+        try write(document, to: project)
+        // On 0.5 m cells the charge's gas is spread thin and only a few hundred kelvin above
+        // ambient.
+        let spec = folder.appending(path: "cloud.json")
+        try Data(#"{"handOverTemperature": 400, "duration": 30, "frameInterval": 3}"#.utf8).write(to: spec)
+        let usd = folder.appending(path: "cloud.usda")
+        let results = folder.appending(path: "cloud-results.json")
+        #expect(throws: ProjectFileError.self) {
+            try HeadlessRun.Options.parse([project.path, "--cloud-results", results.path])
+        }
+        let result = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([
+                project.path, "--cloud", spec.path, "--cloud-results", results.path, "--usd", usd.path,
+            ]))
+        let cloud = try #require(result.cloud)
+        #expect(abs(cloud.handOver.time - 0.004) < 1e-9 && cloud.handOver.mass > 0, "\(cloud.handOver)")
+        #expect(abs((cloud.samples.last?.time ?? 0) - 30.004) < 1e-9)
+        #expect((cloud.samples.last?.height ?? 0) > Double(cloud.handOver.centre.z))
+        let saved = try JSONDecoder().decode(CloudResult.self, from: Data(contentsOf: results))
+        #expect(saved.samples == cloud.samples && saved.handOver == cloud.handOver)
+        // The cloud reads only the end of the run, which stops nowhere else on its account.
+        let plain = try await HeadlessRun.execute(HeadlessRun.Options.parse([project.path])).run
+        #expect(plain.stepCount == result.run.stepCount && plain.gauges == result.run.gauges)
+        // Without a structure or volumes, the run makes no frames of its own: the cloud's eleven
+        // start the timeline.
+        let text = try String(contentsOf: usd, encoding: .utf8)
+        #expect(
+            text.contains("def Sphere \"Cloud\"") && text.contains("endTimeCode = 10\n"),
+            "\(text.prefix(600))")
+    }
+
     @Test("A project with no room for another run is refused before running")
     func fullProject() async throws {
         let runs = try (0..<SavedSimulationRun.maximumRuns).map {
