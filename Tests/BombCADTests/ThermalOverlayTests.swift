@@ -157,10 +157,19 @@ struct ThermalOverlayTests {
     func undo() async throws {
         let model = SimulationModel(document: airOnly(), playbackSpeed: .unlimited)
         try await ready(model, by: ContinuousClock.now + .seconds(60))
+        let steps = model.undoStack.count
+        // Each edit settles into its step a moment later, however busy the Mac.
+        func settled(_ count: Int) async throws {
+            let deadline = ContinuousClock.now + .seconds(30)
+            while model.undoStack.count < steps + count {
+                try #require(ContinuousClock.now < deadline)
+                try await Task.sleep(for: .milliseconds(10))
+            }
+        }
         model.thermalSpec = ThermalSpec()
-        try await Task.sleep(for: .milliseconds(300))
+        try await settled(1)
         model.thermalSpec?.emissivity = 0.4
-        try await Task.sleep(for: .milliseconds(300))
+        try await settled(2)
         model.undo()
         #expect(model.thermalSpec == ThermalSpec())
         model.undo()
