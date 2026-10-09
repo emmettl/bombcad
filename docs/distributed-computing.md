@@ -235,8 +235,7 @@ the run slowing, rather than making any one model faster.
 
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
-a plan, measured where it starts; built so far are the first three steps below, for headless
-runs.
+a plan, measured where it starts; built so far are the first three steps below.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
@@ -309,8 +308,8 @@ this side.
    the run with the fragments there. Runs still send only the fragments to other Macs this way
    until step 3. Thermal radiation also has sessions of its own on a worker, built alongside,
    which send every receiver back after each frame for the app to draw; folding them into these,
-   with that live view as an option of the kind, belongs to step 3.
-3. **Fan-out.** (Done, for headless runs.) One list of consumers replaces the run's three
+   with that live view as an option of the kind, came with step 3.
+3. **Fan-out.** (Done.) One list of consumers replaces the run's three
    separate feeds (`HeadlessRun.Feed`); each runs here or on another Mac, placed with
    `--consumer fragments=<where>,thermal=<where>,ground=<where>` (`local` or an SSH host; a host
    alone still places the fragments), those on the same Mac sharing one connection to it. The
@@ -330,8 +329,15 @@ this side.
    frame in all, wherever they run, about 1% of the run; the fragments' air went at about
    310 MB/s. Placing models on the mini added about 0.4 s, its connection at the start, and
    saved nothing, as expected: these models are cheap. What the step buys is the means to
-   place an expensive one. The app still flies only its fragments, and reckons its thermal
-   radiation through its own sessions, here or on the first Mac in the list.
+   place an expensive one.
+
+   In the app, too (protocol version 5), each of the three runs here or, by its own **Run on**
+   (**Fly on** for fragments), on the first Mac set for sweeps, sharing one connection to it.
+   A kind may be live: its model's state then comes back after each frame for the app to draw
+   (the fragments' particles, the receivers' fluence, the ground points' estimates so far), sent
+   before the frame's report, so that a model reported caught up has its last frame's state in.
+   The thermal radiation's own sessions, built alongside for its live view, are folded into
+   these. Choosing a different Mac for each model, and choosing by cost, is step 4.
 4. **Placement and failure.** Placing consumers by their measured cost, as sweeps place cases,
    and in the app's Run tab. A consumer whose Mac drops now stops the run; optionally, each
    consumer's inputs could be kept on disk (about 1.6 GB for the fragments above) so that it can
