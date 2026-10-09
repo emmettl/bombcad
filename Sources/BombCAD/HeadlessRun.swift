@@ -287,7 +287,7 @@ enum HeadlessRun {
     /// Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
-        consumer injected: (any LiveConsumer)? = nil
+        consumer injected: (any FrameConsumer)? = nil
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, stream: String?,
         thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?
@@ -428,7 +428,7 @@ enum HeadlessRun {
                         let region = basis.region(
                             for: frame, interval: interval, domain: inputs.scenario.domainSize,
                             cellSize: solver.grid.cellSize)
-                        consumer.send(solver.airSlice(region: region.box, stride: region.stride))
+                        consumer.send(.air(solver.airSlice(region: region.box, stride: region.stride)))
                     }
                 } catch {
                     exportError = error
@@ -448,7 +448,7 @@ enum HeadlessRun {
         try model.keepRun(named: name)
         let run = model.savedRuns.last!
         let running = streamStart.duration(to: .now)
-        let fragments = try await consumer?.finish(frameInterval: interval)
+        let fragments = try await consumer?.fragments(frameInterval: interval)
         let stream = consumer.map { consumer in
             String(
                 format:
@@ -521,12 +521,12 @@ enum HeadlessRun {
 
     /// The consumer to fly fragments: on this Mac's CPU, or on another Mac over SSH.
     static func makeConsumer(_ placement: String, spec: FragmentSpec, scenario: Scenario) async throws
-        -> any LiveConsumer
+        -> any FrameConsumer
     {
-        let scene = FragmentScene(scenario)
-        guard placement != "local" else { return LocalLiveConsumer(spec: spec, scene: scene) }
+        let kind = ConsumerKind.fragments(spec, FragmentScene(scenario), live: false)
+        guard placement != "local" else { return LocalFrameConsumer(kind) }
         let client = try await RemoteSweepWorker.connect(host: placement)
-        return RemoteLiveConsumer(client: client, spec: spec, scene: scene)
+        return RemoteFrameConsumer(client: client, kind: kind)
     }
 
     /// `file` as the USD file at `scene` should name it: relative where it lies beside or below it.

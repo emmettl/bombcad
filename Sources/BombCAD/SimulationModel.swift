@@ -349,7 +349,7 @@ final class SimulationModel {
     private(set) var fragmentStatus = ""
     /// The run's fragments, in flight and landed, to draw.
     private(set) var fragmentLive: FragmentLive?
-    @ObservationIgnored private(set) var fragments: (any LiveConsumer)?
+    @ObservationIgnored private(set) var fragments: (any FrameConsumer)?
     @ObservationIgnored private var fragmentTime = -1.0
     private static let fragmentFrameInterval = 0.001
     @ObservationIgnored private var fragmentLaunchSpeed: Float = 1
@@ -1427,12 +1427,12 @@ final class SimulationModel {
         }
         stopFragments()
         let scene = FragmentScene(scenario)
-        let consumer: any LiveConsumer
+        let consumer: any FrameConsumer
         if fragmentsOnRemote, let worker = fragmentWorker {
-            consumer = RemoteLiveConsumer(
-                client: worker, spec: spec, scene: scene, live: true, ownsClient: false)
+            consumer = RemoteFrameConsumer(
+                client: worker, kind: .fragments(spec, scene, live: true), ownsClient: false)
         } else {
-            consumer = LocalLiveConsumer(spec: spec, scene: scene, live: true)
+            consumer = LocalFrameConsumer(.fragments(spec, scene, live: true))
         }
         fragments = consumer
         flownSpec = spec
@@ -1467,7 +1467,7 @@ final class SimulationModel {
         let region = fragments.report.region(
             for: fragments.sent, interval: interval, domain: scenario.domainSize,
             cellSize: solver.grid.cellSize)
-        fragments.send(solver.airSlice(region: region.box, stride: region.stride))
+        fragments.send(.air(solver.airSlice(region: region.box, stride: region.stride)))
     }
 
     private func updateFragmentStatus() {
@@ -1483,7 +1483,7 @@ final class SimulationModel {
                 ? String(format: ", hardest %.1f MJ", energy / 1e6)
                 : String(format: ", hardest %.0f kJ", energy / 1e3)
         }
-        if fragments is RemoteLiveConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
+        if fragments is RemoteFrameConsumer, let host = fragmentWorkerHost { text += " · on \(host)" }
         fragmentStatus = text
     }
 
