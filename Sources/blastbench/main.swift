@@ -25,6 +25,7 @@ import simd
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
+//                       [--thermal spec.json] [--air thermal] [--afterburn]
 //                       [--stationary-walls]
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -630,10 +631,7 @@ func runSnapshot() throws {
     let width = option("width").flatMap { Int($0) } ?? 1600
     let height = option("height").flatMap { Int($0) } ?? 1000
 
-    var configuration = SolverConfiguration()
-    configureRefinement(&configuration)
-    let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+    let solver = try makeAirSolver(scenario, cellSize: cellSize)
     solver.configuration.movingWalls = !flag("stationary-walls")
     let started = ContinuousClock.now
     var sleptAt: Double?
@@ -663,13 +661,28 @@ func runSnapshot() throws {
         guard let region = ground?.region(cellSize: solver.grid.cellSize) else { return }
         ground?.consume(solver.groundSlice(low: region.low, high: region.high))
     }
+    // The fireball's thermal radiation, reckoned a frame a millisecond, as the app does.
+    var thermal = try option("thermal").map { path in
+        let spec = try JSONDecoder().decode(
+            ThermalSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        try spec.validate()
+        return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+    }
+    func feedThermal() {
+        guard var exposure = thermal else { return }
+        exposure.add(solver.fireball(luminousTemperature: exposure.spec.luminousTemperature))
+        thermal = exposure
+    }
     feedFragments()
     feedGround()
+    feedThermal()
     while solver.time < time - 1e-9 {
         let result = solver.advance(
-            steps: 64, timeLimit: fragments == nil ? time : min(time, solver.time + 0.001))
+            steps: 64,
+            timeLimit: fragments == nil && thermal == nil ? time : min(time, solver.time + 0.001))
         feedFragments()
         feedGround()
+        feedThermal()
         if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
         if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
         if result.steps == 0 || !result.isStable { break }
@@ -696,6 +709,17 @@ func runSnapshot() throws {
         let result = ground.result(frameInterval: 0)
         dots += result.dots
         print("  " + result.summary)
+    }
+    if let thermal {
+        // Coloured by fluence over six decades from 1 J/m², lifted off their surface, as the app
+        // draws them.
+        for (receiver, fluence) in zip(thermal.receivers, thermal.fluence) {
+            dots.append(
+                SIMD4(
+                    receiver.position + 0.05 * receiver.normal,
+                    4 + min(max(log10(max(Float(fluence), 1)) / 6, 0), 0.999)))
+        }
+        for line in thermal.result.summary { print(line) }
     }
     if let fragments {
         let launch = max(fragments.cloud.launchSpeed, 1)

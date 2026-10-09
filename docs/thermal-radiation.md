@@ -43,6 +43,12 @@ the bottom of the scale). Under Display, **Thermal fluence** hides them. A line 
 gives the largest fireball so far, its temperature now, the highest fluence and the number of
 receivers, and any frames still to reckon; Reset clears it all.
 
+![The street canyon's receivers at 60 ms, 100 kg with afterburning and hot air, coloured by fluence as the app draws them: the faces turned to the fireball orange, the roofs and the faces turned away grey](street-thermal-60ms.png)
+
+`blastbench snapshot --thermal thermal.json` reckons it alongside an offscreen snapshot, a frame a
+millisecond, and draws the receivers as the view does (the figure above, with `--preset street
+--air thermal --afterburn --time 0.06 --mode now --no-wave --dot 7`).
+
 **Keep Run** keeps the result with the run: the description, every receiver with its peak
 irradiance and fluence, and the fireball at each frame, as `--thermal-results` writes them.
 Compare gives a line for each run that reckoned it (the largest fireball, how long it was
