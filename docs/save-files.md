@@ -138,6 +138,9 @@ fresh run and clears undo across documents.
   projects normally save automatically instead of prompting after each edit; errors are handled
   by the native document controller. This follows macOS document conventions rather than
   maintaining a second timer or custom close/quit alert.
+- When a document editor disappears, its live run pauses and any sweep is cancelled. Other
+  document windows continue independently. A paused editor can resume with Run if it returns;
+  pausing does not change the saved project inputs. An already submitted GPU batch may finish.
 - The document retains its ID and embedded assets across scene replacement and resaving. Retained
   assets remain available for undo. New documents/windows receive independent identities.
 - Export Layout JSON remains available for scene interchange. It omits run/view settings.
