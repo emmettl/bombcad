@@ -29,6 +29,13 @@ public enum ExperimentalInitialWallTraceStudy {
         public let rankDeficientAreaFraction: Double
         public let centroidDataLimiterFactor: Double
     }
+    public struct VolumeBoundDiagnostics: Codable, Sendable {
+        public let kind: String
+        public let meanFactor: Double
+        public let activeAreaFraction: Double
+        public let maximumRelativeAverageResidual: Double
+        public let maximumRelativeBoundViolation: Double
+    }
     public struct VolumeFitDiagnostics: Codable, Sendable {
         public let modes: [DiagnosticMode]
         public let quadraticFallbackAreaFraction: Double
@@ -36,6 +43,7 @@ public enum ExperimentalInitialWallTraceStudy {
         public let linearFallbackAreaFraction: Double
         public let meanStencilSize: Double
         public let maximumMomentResidual: Double
+        public var bounds: [VolumeBoundDiagnostics]? = nil
     }
     public struct Result: Codable, Sendable {
         public let cellSize: Double
