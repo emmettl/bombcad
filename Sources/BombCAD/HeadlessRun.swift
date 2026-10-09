@@ -363,6 +363,27 @@ enum HeadlessRun {
                 return hold
             }
         }
+        if framed, consumer != nil || options.thermal != nil {
+            // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
+            // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
+            model.prepareBatch = { solver, limit in
+                let index = (limit / interval).rounded()
+                guard abs(limit - index * interval) < 1e-6 else {
+                    solver.frameRequest = FrameRequest()
+                    return
+                }
+                var request = FrameRequest(fireball: options.thermal?.luminousTemperature)
+                if let consumer {
+                    let frame = Int(index)
+                    let basis = consumer.report(after: max(frame - consumerLag - 1, -1)) ?? consumer.report
+                    let region = basis.region(
+                        for: frame, interval: interval, domain: inputs.scenario.domainSize,
+                        cellSize: solver.grid.cellSize)
+                    request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
+                }
+                solver.frameRequest = request
+            }
+        }
         var handOver: CloudHandOver?
         let end = inputs.settings.duration
         if framed || options.cloud != nil {
