@@ -140,8 +140,8 @@ the region's joint. The law
 uses each point’s reference position as a stationary bearing plane, horizontal unless the
 region's joint faces another way (below). Regions select initial attachment points; they do
 not bound the bearing plane after sliding or separation. A footing ([below](#footings)) is a
-connection to a moving component with a finite plan; other connections between moving
-components are not represented.
+connection to a moving component with a finite plan, and a joint between parts (below) ties two
+parts of the body that both move.
 
 **Joints facing other ways** (`Anchorage.side`, `JointSide`). A support region's joint can be
 over the body (a soffit it hangs from) or against one of its faces across x or y (a vertical
@@ -173,6 +173,81 @@ at 1.2 of the push that tips it, upright and turned 30° and 45° against the la
 joint and gravity (`StructureSolver.gravityDirection`). Turned 45° it sways within 3% of the
 upright wall; turned 30° on 125 mm elements the staircase's corners stand out at its toe and it
 takes 30% more push to tip than b / H.
+
+**Joints between parts** (`Anchorage.betweenParts`, `PartPairs`; solid elements only). A
+support region's joint can tie the body to another of its own parts across a gap, both moving,
+instead of to fixed ground: a precast beam seated on a corbel through a bearing pad, a panel
+against its frame. The parts are meshed apart, a gap of at least one element between them (the
+pad), and the region spans the gap. Each node on faces that face the joint is paired with the
+node of the other part straight across it, and the law acts on their relative motion: a pass
+before the node pass works out each pair's force, which the node pass gives the first node and,
+negated, the second, so the pairs keep the body's momentum exactly. The seat runs out half an
+element past the other part's last node in the region along each axis of the joint; a node that
+slides further is off its seat for good and carries nothing, and the part falls unless something
+else holds it (contact, if switched on, catches it on what is below). The joint's frame does not
+turn with the parts. Checks (`PartConnectionTests`): a block seated across a gap on another
+bears its weight within 3%; floating blocks tied by a joint keep their momentum within 10⁻⁵,
+moving on together when the tie holds and the lower one left behind when it shears through;
+struck together they rebound with their momentum and never more kinetic energy than they began
+with; a block thrown along its seat with friction 0.5 slides v² / (2 μ g), 0.25 m, within 10%,
+its kinetic energy all spent on friction, the pairs within a quarter metre less half an element
+of the edge off their seat; thrown to slide 1.5 m it goes off the end and falls.
+
+`blastbench seat` (`DroppedSpanStudy`) seats a precast beam 0.5 m deep on corbels at the tops of
+two reinforced concrete columns 6 m apart, resting with friction 0.5 on a 100 mm pad, and gives
+the right column a velocity away from the span rising from nothing at its base to a speed at its
+top, as a blast's impulse on its far face might (0.1 m elements, 1.5 s, about 12 s a run):
+
+| Seat | Column struck at | Column sways | Beam slides on the seat | Bearing off the seat | Beam end falls |
+|---|---|---|---|---|---|
+| 100 mm | 4 m/s | 54 mm | 51 mm | 67% | 0 |
+| | 8 m/s | 156 mm | 148 mm | 67% | 0 |
+| | 12 m/s | 316 mm | off | 100% | 3.6 m: the span drops |
+| 200 mm | 8 m/s | 154 mm | 146 mm | 40% | 0 |
+| | 12 m/s | 292 mm | 277 mm | 100% | 0.1 m, onto the corbel as the column swings back |
+| | 16 m/s | 497 mm | off | 100% | 3.6 m: the span drops |
+
+The beam rides on the column by friction until its column outruns it, and slides; a seat that
+the column's sway passes drops the span. Off its seat for good, a beam whose column swings back
+under it falls by the pad's thickness onto the corbel and rests there by contact. The share off
+the seat moves in steps: the row of the beam's nodes over the corbel's edge carries half a span's
+element of tributary area and goes first. With starter bars through the pad (`--dowels`, 0.4%),
+the beam at 12 m/s on a 100 mm seat drops too: the bars pull it after the column until they
+break. This shows the mechanism; it is not a validation.
+
+**Measured seats** (`PrecastSeatTest`, `blastbench precast`, data in
+[Samples/PrecastSeat](../Samples/PrecastSeat/README.md)). N. Batalha, H. Rodrigues, A. Arêde,
+A. Furtado, R. Sousa and H. Varum (2022) cycled the end of a full-scale precast beam on its
+column's corbel along the seat, at 0.2 mm/s in cycles growing to about ±48 mm, under an axial
+load of 50, 100 or 150 kN: concrete on concrete, on one or two neoprene pads, or with two 16 mm
+dowels. The model is the seat as a stiff block resting on a bearing with the given law, for a
+stiff column's corbel, pushed by an actuator block that follows the test's reversals at up to
+0.25 m/s through a joint between parts that pushes and pulls only; the seat is damped in
+proportion to its mass at 3,000/s, which stops the actuator's pin ringing (undamped, it made the
+seat stick and slip by turns and its bearing dissipate half what it should) and leaves the
+bearing's own work alone. That work, accumulated on the GPU, is compared with the test's ∮ F du
+over its whole history, and the force at which it slides with the test's median beyond 5 mm:
+
+| Test | Law | Slides at, model / test | Energy, model / test |
+|---|---|---|---|
+| concrete, 50 kN | resting, μ 0.7 | 35.0 / 34.7 kN | 111 / 109 kJ |
+| concrete, 100 kN | resting, μ 0.7 | 69.8 / 68.2 kN | 213 / 207 kJ |
+| concrete, 150 kN | resting, μ 0.7 | 104.8 / 101.8 kN | 243 / 233 kJ |
+| concrete, 100 kN | resting, μ 0.6 (the preset) | 60.0 / 68.2 kN | 183 / 207 kJ |
+| one pad, 50, 100, 150 kN | resting, μ 0.5 | 25, 50, 75 / 24, 45, 59 kN | 80, 156, 229 / 75, 127, 162 kJ |
+| two pads, 50, 100, 150 kN | resting, μ 0.5 | 25, 50, 75 / 27, 47, 62 kN | 80, 156, 229 / 78, 121, 149 kJ |
+| dowels, 100 and 150 kN | resting, μ 0.7 | 70, 105 / 98–129 kN | 101–119 / 43–57 kJ |
+
+On concrete the seat slides at 0.68 to 0.69 of its load, flat to ±48 mm with no loss, and a
+resting joint with Eurocode 2's 0.7 for a rough joint follows each test within 2–4% in energy;
+the preset's 0.6 is 11% low. On neoprene the seat slides at 0.48 of the load at 50 kN, falling to
+0.39 at 150 kN and with wear over the cycles: one coefficient matches the light load and
+overstates the heavy ones by 23–53%; the law has neither friction that falls with pressure nor
+wear of the pad. With dowels the seat's force rises with slip to 160–200 kN at 20–25 mm one way
+and stays near friction (0.4 of the load) the other, the dowels bending against the corbel's
+edge; the law has nothing of the kind, and Rasmussen's 1.3 d² √(f_c f_y) (82 kN for the two,
+with the strengths assumed) only bounds the first millimetres. The seat's length, the pads and
+the materials are in the paper, not read; the model here needs none of them.
 
 `blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
 ground between two columns that do not move, its vertical edges tied to them by each connection
@@ -517,8 +592,49 @@ flows from under the toe. `FootingTests` checks the moment of the first two pack
 and that the model still settles less than a third as much. A run of all five packets takes
 about 90 s.
 
-**Not modelled.** The footing is rigid, rectangular, flat-bottomed and sits on the surface:
-there is no embedment and no soil against its sides. It is drawn nowhere in the app. The bed's
+**Set into the soil** (`Footing.embedment`, `Embedment`, `FootingSides`). A footing can have its
+base a depth D below the surface, the soil then against its sides over its thickness or D,
+whichever is less (d). Each side carries 9 × 5 points. The soil there starts at rest, at
+J. Jáky's K₀ γ z (the same on opposite sides, so it pushes nowhere), and bears on the side as a
+spring until it reaches W. J. M. Rankine's passive pressure Kₚ γ z, past which it gives way for
+good, or falls to the active Kₐ γ z as the side moves away, past which it follows; along the side
+it grips by friction (tan 2φ/3 by default) on that pressure. The springs are set so that the
+footing's static stiffness vertically and horizontally is G. Gazetas's for an embedded rigid
+rectangle: the base bed made stiffer by his trench factor, the sides adding his sidewall
+factor (vertically by their shear, horizontally by the sides facing the motion, less the grip of
+those along it). Springs on the sides turn the footing about its base far less than Gazetas's
+embedded rocking factor says, their lever no longer than d: in the checks they add a fifth to
+two fifths of what he says embedment adds. The rest is a rocking spring on the footing itself,
+scaled by the share of the base bearing, as the cones are, and limited to the moment that the
+passive pressure (less that at rest) on the side being pushed into resists about the base
+centre. The base bears more by the soil beside it: the surface footing's bearing capacity plus
+γ D N_q s_q d_q, with N_q = e^(π tan φ) tan²(45° + φ/2), E. E. De Beer's s_q = 1 + (B/L) tan φ and
+J. Brinch Hansen's d_q = 1 + 2 tan φ (1 − sin φ)² D/B (arctan D/B past D = B); φ is 35° by
+default, a medium dense sand's. Gazetas's formulas are written from memory, as his surface
+ones are; the bearing factors are the textbooks' (B. M. Das, *Principles of Foundation
+Engineering*; J. E. Bowles, *Foundation Analysis and Design*).
+
+Checks (`EmbedmentTests`): base and sides give Gazetas's embedded vertical and horizontal
+stiffnesses within 1%, and with the footing's spring his rocking, for square footings 1 m and
+0.5 m thick 1 m deep and a 1.5 by 4 m one 0.8 m deep; N_q, s_q and d_q give the tables' 33.3,
+1.70 and 1.127 for φ = 35° and D/B = 0.5, and Kₚ, Kₐ and K₀ 3.69, 0.271 and 0.426; a block on an
+embedded footing settles W / K within 3%, its sides carrying their share (with sides that grip
+without slipping: at half a metre sand's friction on its pressure at rest lets them slip under
+the weight, and the stiffness is for small motions); pushed a little sideways, the footing slides
+and turns as its stiffnesses about the base centre, coupled through the sides, say within 5%;
+pressed by 0.8 of the embedded bearing capacity it settles and holds, by 1.2 it sinks; and pushed
+sideways it holds 0.8 of its base friction plus (Kₚ − Kₐ) γ D² / 2 on the face it pushes and the
+sides' friction on K₀, and slides at 1.2, where on the surface 0.8 of it slides.
+
+On the freestanding wall (`blastbench anchorage --bases footing --embed 1`), its footing 0.4 m
+thick set 1 m into the sand: the footing turns 187, 51, 20 and 6.5 mrad at 6, 10, 15 and 25 m
+against 398, 103, 37 and 12 on the surface, the wall sways 659, 179, 70 and 24 mm against
+1,384 (over), 360, 130 and 43, and at 6 m it is left leaning 0.6 m rather than going over.
+
+**Not modelled.** The footing is rigid, rectangular and flat-bottomed. Embedded, the soil
+against its sides is springs with limits, its rocking past their reach a spring on the footing
+with its own limit; the soil's radiation from the sides, and a gap left by soil that has given
+way, are left out. It is drawn nowhere in the app. The bed's
 springs do not interact, and its points yield one by one with no rounding of the soil under
 the toe. One footing spans every point its connection ties, however far apart. Settlement under cyclic
 rocking is a tenth of a measured footing's (above).
@@ -659,8 +775,9 @@ shock, and the drag and pressure-gradient push on loose debris.
 1. **Each body is bonded throughout unless joints are asked for.** A layout can have up to
    sixteen independent bodies, each of up to eight materials (joints take some of those). Joints
    between materials are an element thick and open at the bond's strength, and masonry's own
-   mortar joints are meshed on fine enough elements, but there are no bearings that can
-   separate and no joints between other pieces of the same material. Rigid blocks never
+   mortar joints are meshed on fine enough elements; pieces of one body meshed apart can be
+   tied by a support region's joint between parts, which can separate, slide and fail, but
+   pieces that touch are bonded. Rigid blocks never
    respond. Independent bodies have no mutual contact or moving connections; conservative
    interaction checks stop the run when their envelopes or resolved cells overlap.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
@@ -729,9 +846,10 @@ shock, and the drag and pressure-gradient push on loose debris.
   conservation fix, but measurement showed the gas is already conserved within 0.3% (see
   limitation 3), so it is now a matter of geometric accuracy, and a large change to the air
   solver for it.
-- **Joints within a material**: bearings that separate, and pieces of the same material that
-  are not bonded. (Masonry's mortar joints are done, on solid elements fine enough to show
-  them.)
+- **Joints within a material**: pieces of the same material that touch without being bonded.
+  (Masonry's mortar joints are done, on solid elements fine enough to show them; pieces meshed
+  apart can be tied by a joint between parts, on solid elements; on shells, and with a joint
+  frame that turns with the parts, they are not.)
 - **Glass that fragments realistically**: its strength depends on the duration of the load and
   on surface flaws, and its pieces are sharp and small.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the
@@ -741,6 +859,14 @@ shock, and the drag and pressure-gradient push on loose debris.
 
 ## Sources
 
+- G. Gazetas, "Formulas and charts for impedances of surface and embedded foundations", *J.
+  Geotech. Eng.* 117(9), 1991; and G. Mylonakis, S. Nikolaou and G. Gazetas, "Footings under
+  seismic loading: Analysis and design issues with emphasis on bridge foundations", *Soil Dyn.
+  Earthq. Eng.* 26, 2006. Static stiffness of surface and embedded footings.
+- J. Brinch Hansen, "A revised and extended formula for bearing capacity", *Danish Geotechnical
+  Institute Bulletin* 28, 1970; A. S. Vesić, "Analysis of ultimate loads of shallow
+  foundations", *J. Soil Mech. Found. Div.* 99(SM1), 1973. Bearing capacity and its depth and
+  shape factors, as tabulated by B. M. Das, *Principles of Foundation Engineering*.
 - CEN, EN 1992-1-1:2004, *Eurocode 2: Design of concrete structures — Part 1-1*, §6.2.5, shear
   at the interface between concretes cast at different times. The construction joint's
   cohesion and friction, and the clamping of bars across it.

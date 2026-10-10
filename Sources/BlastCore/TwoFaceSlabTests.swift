@@ -3,7 +3,7 @@ import Metal
 import simd
 
 /// Slabs with steel in one face or both, under TNT in contact, close in and in the open air:
-/// two open data sets (both CC BY 4.0; the derived data are in `Benchmarks/Slabs`).
+/// two open data sets (both CC BY 4.0; the derived data are in `Fixtures/TwoFaceSlabs`).
 ///
 /// Y. Wu et al., "A research investigation into the impact of reinforcement distribution and
 /// blast distance on the blast resilience of reinforced concrete slabs", *Materials* 16, 4068

@@ -35,6 +35,10 @@ swift run -c release blastbench closein
 ```
 
 ```bash
+swift run -c release blastbench contact
+```
+
+```bash
 swift run -c release blastbench closeair --dx 0.01
 ```
 
@@ -59,8 +63,9 @@ swift run -c release blastbench chamber
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), 40–70% under 0.2–0.8 kg where the tests spalled; contact charges hole them, not to size. Wang et al. (2022): an aluminised charge's impulse 75% as its stated 10 kg of TNT, 94% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges; low for one layer against two, spall and holes |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4% | Low: illustrative; the fireball neither rises nor mixes with cold air |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
-| Collapse and debris  | Nothing                                              | None: plausible-looking only       |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
 ## Structural response against a real test
 
@@ -1186,7 +1191,7 @@ restraint, the space under the slab and the charges' shapes are assumptions that
 
 The sixth and seventh structural tests: slabs reinforced in one face or both, under TNT in
 contact, close in and in the open air, the air solver loading them. Neither paper had been
-used before; both are open (CC BY 4.0), and the values used are in `Benchmarks/Slabs`,
+used before; both are open (CC BY 4.0), and the values used are in `Fixtures/TwoFaceSlabs`,
 transcribed from their tables, text and drawings with nothing digitised from plots.
 `blastbench twoface --wu S5,D5` and `--wang A,B` run them (`TwoFaceSlabTests.swift`).
 
@@ -1279,7 +1284,10 @@ For the first time the model holes a slab: under contact, elements are removed t
 thickness beneath the charge. But it reverses the tests' order, holing the slab with two layers
 twice as wide as measured and the slab with one a third too narrow, which has not been traced
 further; the charge's shape (stacked blocks) and its contact are not modelled, and on 12.5 mm
-elements a hole is a few elements across.
+elements a hole is a few elements across. Under the contact charges of the
+[next section](#slabs-under-contact-charges), on slabs two to three times as thick, the model
+holes none, and there a charge in contact was found to load the slab with about twice the
+impulse a proper equation of state for its products gives, which may also widen these holes.
 
 **Wang's slabs.** Reflected pressure on the slab's face where the plate's gauges were, measured
 / model:
@@ -1322,6 +1330,119 @@ as the tests did; it falls well short under the smaller charges, where the tests
 spalled and the model's do not; and Wang's slabs, as supported in the model, are several times
 too stiff, a matter of supports the paper leaves unclear. Wang's pressures check the load from
 an aluminised charge, and say its TNT equivalence is low for impulse.
+
+## Slabs under contact charges
+
+The first comparison of debris: the speed of the concrete thrown off the far face of slabs
+under charges laid on them, the spall crater it leaves, and whether the slab is holed.
+
+### The test
+
+M. A. Hupfauf, *Secondary debris resulting from concrete slabs subjected to contact
+detonations*, PhD thesis, Universität der Bundeswehr München, 2024, with the first results in
+M. Hupfauf and N. Gebbeken, *Advances in Structural Engineering* 25(7) (2022) 1373–1385. Both
+CC BY 4.0; the data used are in `Fixtures/Hupfauf/slabs.json`, read off the thesis's figures
+where it gives no table (see its README).
+
+| Property  | Value                                                                        |
+|-----------|------------------------------------------------------------------------------|
+| Slabs     | 2.0 × 2.0 m, 20, 25 and 30 cm thick, fifteen without steel fibres; 42.7 MPa on cubes, 2,220 kg/m³, 8 mm aggregate |
+| Bars      | B500B, 10 mm at 150 mm both ways in both faces, 35 mm cover                   |
+| Supports  | Stood upright between steel beams 20 cm wide on both faces at two opposite edges, 1.6 m clear |
+| Charges   | Cylinders of 1000, 1500 and 2000 g of SEMTEX 10, 103 mm across, one end flush with the slab's centre; 1,550, 1,841 and 2,058 g of TNT as spheres of the same energy-equivalent impulse (the thesis's own factors) |
+| Measured  | High-speed video of the far face: the debris's velocities, its fastest (the tip of the cloud) within ±25%; 3D scans of the craters; the debris's mass from the scanned volume |
+
+The thesis fits its tip velocities as 292 / T_W − 98 m/s over the scaled thickness
+T_W = T / W^(1/3) (cm g^(−1/3)), within a few m/s of every slab, and the debris's velocity over
+the radius as a bell of width σ = 57 + 45 T_W mm; the slabs are holed below T_W = 2.1.
+
+### The model
+
+`ContactSlabTest.swift`: the slab horizontal, the charge a sphere of hot gas at its TNT mass
+touching the loaded face (no room to start it from the one-dimensional solution), air cells of
+20 mm refined twice by 2 to 5 mm near the shock, and 12 elements through the slab (17 to 25
+mm), as the [close-in trace](#what-stops-the-spall-and-the-breach) found a spall needs; the
+beams hold both faces still along two edges. The structure's step is a quarter of its elastic
+limit: at the limit, the column under the charge, compacted past the Holmquist–Johnson–Cook
+curve's locking point where it is three to twenty times stiffer than elastic, ran away within
+50 µs, to 3.7 TPa. The far face's velocity is taken as the median of its nodes in rings about
+the axis. `blastbench contact` runs one slab of each of the eight kinds, about five minutes each
+for 3 ms.
+
+### Results
+
+**The load.** The thesis simulated 1500 g of SEMTEX 10 (a cylinder 100 mm across, L/D 1.2) on a
+rigid wall with the detonation products' own equation of state, on cells down to 0.6 mm: 951
+N s by 0.1 ms, and nothing more after 0.05 ms. A sphere of the same total impulse by its
+factors, 1.43 kg of TNT, gives the slab 1,231 N s by 0.1 ms here (1,162 on air twice as fine),
+and goes on pushing to about 1,900 N s by 0.5 ms: a ball of air expanding from the charge's
+density loses its pressure far more slowly than detonation products do (γ = 1.4 against about
+3 for the products while dense), so in contact it delivers about twice the impulse. From 0.3
+m/kg^(1/3) out ([close in](#close-in)) the products' own equation of state did not matter; in
+contact it does.
+
+**The debris.** Downward velocity of the far face (m/s) at 0.5 ms, under the charge and 14 cm
+out (16 cm on the 30 cm slabs), against the thesis's fit, with the charges at their energy-equivalent mass; the spall
+crater's diameter (cm), measured against the model's cover cracked loose (a crack within 45° of
+the face's plane, between the face and the bars, opened past 0.5 mm); and the breach:
+
+| Slab  | T_W  | Under the charge | Fit | 14–16 cm out | Fit | Spall crater | Cracked loose | Breach (test / model) |
+|-------|------|------------------|-----|--------------|-----|--------------|---------------|-----------------------|
+| SN174 | 1.63 | 94–138           | 81  | 26           | 37  | 68–70        | 78            | yes / no              |
+| SN142 | 1.73 | 131              | 71  | 21           | 34  | 62.5–66      | 71            | yes / no              |
+| SN144 | 1.97 | 92               | 50  | 24           | 27  | 81–88        | 69            | yes / no              |
+| SN128 | 2.04 | 64               | 45  | 21           | 25  | 63–74        | 63            | yes / no              |
+| SN147 | 2.36 | 33               | 26  | 16           | 13  | 82–96        | 54            | no / no               |
+| SN131 | 2.59 | 22               | 15  | 12           | 8   | 83–85        | 24            | no / no               |
+
+(The measured tip velocities are within a few m/s of the fit: 76–84, 69–72.5, 46–55.5, 41.5–46,
+23.4–25 and 14.7–15 m/s.)
+
+At first, then, the far face under the charge moves 1.2 to 1.9 times as fast as the debris did,
+its profile narrower than the measured on the thinner slabs and about as wide on the thicker,
+and on the 20 and 25 cm slabs its cover cracks loose over about the measured spall crater. But
+the debris does not leave. Outside a central cap a few element widths across, the loose layer
+is held at its rim and pulled back to the slab's own motion: by 3 ms the face 14 to 16 cm out
+moves at −0.4 to 21 m/s, against the 8 to 37 m/s the thesis's fragments kept in flight. No slab
+is holed, where every 20 and 25 cm slab was; the concrete removed or left as bare bars in the
+slab's far half is 15 to 30 kg on those slabs and SN147 (the measured debris 37 to 70 kg), and
+under 1 kg on SN131. On the loaded face, the region removed or crushed past 1% is 22 to 30 cm across and
+15 to 19 cm deep, where the crushing craters measured 44 to 54 cm across and 6.5 cm deep to the
+breach (8 to 10 cm without).
+
+**With the load matched instead.** Charges cut to give the thesis's total impulse in this model
+(0.68 to 0.84 kg) leave the face too slow: under the charge 59 m/s on SN174 against 81, and 17
+on SN147 against 26, and almost nothing cracks loose. The measured debris lies between the two
+loads, so the load's error and the slab's cannot be told apart here.
+
+**What holds the debris back,** for the work on removal under close-in charges:
+
+- A layer cracked loose parallel to the face is removed only once its crack is 5 mm open. Until
+  then it is a plate held at its rim by the uncracked face around it, and is pulled back; the
+  tests' layer broke up along radial cracks and flew. The thesis also found, with two
+  established concrete models, that the energy a spall dissipates is spread over its fracture
+  zone rather than one layer of elements, where this model softens a crack no bar crosses over
+  one element.
+- Nodes freed under the charge leave at 400 to 800 m/s and pass through the intact slab:
+  contact checks no node whose eight elements are whole, and changes a node's speed by at most
+  2 m/s a step, so a loose node from the crater reached the far face in 0.75 ms and knocked a
+  node of it away at 180 m/s.
+- Removal by strain alone would not help: in the thesis's own models, eroding elements at 0.4 to
+  1.1% principal strain took 46 to 67% of the charge's energy out of the concrete within 0.02
+  ms, during the detonation itself, and the author advises against erosion for contact charges.
+- Compacted concrete is several times stiffer than the step allows (above); a contact charge in
+  the app, at the default step, would run away.
+
+### What this does and does not show
+
+It shows that the model, given the charge's mass, throws the far face of a slab under a contact
+charge at about the measured speed to within a factor of two, and cracks its cover loose over
+about the measured spall crater on the thinner slabs. It does not reproduce the debris: the
+loose layer is held back rather than thrown, so the velocities the fragments kept and their
+mass are a fraction of those measured, and no slab is holed where most were. The charge's load
+is the first error, about twice the impulse of a proper equation of state for the products;
+removal of loose and broken concrete is the second. The thesis's own simulations did not
+reproduce the debris's velocity either. Nothing here touches collapse.
 
 ## Blast loads against empirical references
 
@@ -1792,6 +1913,19 @@ suggest, and springs back far further; its peak wall pressures are within the lo
 the gauge positions allow. One test, one measured residual, and two pieces of detailing that
 had to be assumed: the chamber shows how the model behaves at a full-scale joint, not that it
 is right there.
+
+## The fireball's radiation against Dial Pack
+
+Dial Pack, 500 tons of TNT on the ground at Suffield in 1970, measured at 600 and 1,700 m from
+1 ms to 15 s (Pattman, DREO Report 642), radiated 7.0% to 7.4% of 10⁹ cal a ton, a third of it by
+2 s. The model's fireball, run at full size on 2 to 8 m cells (`blastbench dialpack`), is a sixth
+as bright as measured at the pulse's first maximum, too cool at the start for want of a thin,
+very hot shock layer. It has no luminous gas from 40 to 350 ms on 4 and 2 m cells, and after a
+second it is two to five times too bright and still brightening, its products burning in a
+fireball that neither rises nor draws in cold air. By 2 s it has radiated 3.9% (3.3% with the gas
+losing its radiated heat) against 2.4%. Details, the opaque shapes' answers, the resolution's
+effect and the assumptions:
+[thermal radiation](thermal-radiation.md#against-dial-pack).
 
 ## A footing rocked on dry sand
 

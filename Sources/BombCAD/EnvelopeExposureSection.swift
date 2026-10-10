@@ -15,6 +15,7 @@ struct EnvelopeExposureSection: View {
     var body: some View {
         if !model.settings.scenario.envelopeObjects.isEmpty {
             Section("Building surface exposure") {
+                StandingRow(model: model, kinds: [.envelopeExposure])
                 if let result = selected {
                     Picker("Building", selection: Binding(get: { selected?.id }, set: { selectedID = $0 })) {
                         ForEach(Array(model.envelopeExposure.enumerated()), id: \.element.id) {

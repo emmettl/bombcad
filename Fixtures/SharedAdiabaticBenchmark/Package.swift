@@ -7,7 +7,7 @@ let source =
     ?? "https://github.com/emmettl/ContinuumKit.git"
 let package = Package(
     name: "BombCADSharedAdiabatic", platforms: [.macOS(.v15)],
-    dependencies: [.package(url: source, exact: "0.1.0-alpha.14")],
+    dependencies: [.package(url: source, exact: "0.1.0-alpha.16")],
     targets: [
         .executableTarget(
             name: "AdiabaticAdapter",

@@ -124,9 +124,13 @@ private struct PressureReadout: View {
     let model: SimulationModel
 
     var body: some View {
-        Text("Peak overpressure")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
+        HStack {
+            Text("Peak overpressure")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 6)
+            LiveStandingBadge(model: model, kinds: [.peakOverpressure, .impulse])
+        }
         ForEach(model.traces) { trace in
             HStack(spacing: 6) {
                 Circle()
@@ -152,9 +156,13 @@ private struct StructureReadout: View {
     let model: SimulationModel
 
     var body: some View {
-        Text("Structure")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
+        HStack {
+            Text("Structure")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 6)
+            LiveStandingBadge(model: model, kinds: [.structuralResponse, .structuralDamage])
+        }
         if let summary = model.structureSummary {
             row("Deflection now", String(format: "%.0f mm", summary.maxDisplacement * 1000))
             row("Largest so far", String(format: "%.0f mm", model.peakDeflection))

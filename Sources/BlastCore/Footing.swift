@@ -113,11 +113,15 @@ public struct Footing: Sendable, Hashable, Codable {
     /// kg/m³.
     public var density: Float
     public var soil: Soil
+    /// How deep the footing is set into the soil, which then bears against its sides; nil for a
+    /// footing on the surface.
+    public var embedment: Embedment?
 
     public init(
         overhang: SIMD2<Float> = SIMD2(0.5, 0.5), thickness: Float = 0.4, density: Float = 2400,
-        soil: Soil = Soil()
+        soil: Soil = Soil(), embedment: Embedment? = nil
     ) {
+        self.embedment = embedment
         self.overhang = overhang
         self.thickness = thickness
         self.density = density
@@ -126,12 +130,112 @@ public struct Footing: Sendable, Hashable, Codable {
 
     func validate() throws {
         try soil.validate()
+        try embedment?.validate()
         guard overhang.x.isFinite, overhang.y.isFinite, overhang.x >= 0, overhang.y >= 0,
             thickness.isFinite, thickness > 0, density.isFinite, density > 0
         else {
             throw ImportedMesh.ImportError.invalid(
                 "A footing needs a nonnegative overhang and a positive thickness and density.")
         }
+    }
+}
+
+/// A footing set into the soil: its base `depth` below the surface, the soil against its sides
+/// over the footing's thickness or the depth, whichever is less.
+///
+/// The soil against a side starts at rest, its pressure at depth z K₀ γ z (J. Jáky's K₀ = 1 − sin φ,
+/// the same on opposite sides, so that it pushes the footing nowhere), and bears on the side as a
+/// spring until it reaches the passive pressure Kₚ γ z, past which it gives way for good, or
+/// falls to the active Kₐ γ z as the side moves away, past which it follows the side (W. J. M.
+/// Rankine's Kₚ = tan²(45° + φ/2) and Kₐ = tan²(45° − φ/2)). Along the side the soil grips by
+/// friction on that pressure. The springs are set so that the footing's static stiffness,
+/// vertically and horizontally, is G. Gazetas's for an embedded rigid rectangle ("Formulas and
+/// charts for impedances of surface and embedded foundations", *J. Geotech. Eng.* 117(9),
+/// 1991; tabulated again by G. Mylonakis, S. Nikolaou and G. Gazetas, "Footings under seismic
+/// loading", *Soil Dyn. Earthq. Eng.* 26, 2006), written from memory: the base made stiffer by
+/// its depth (the trench factor) and the sides adding the rest (the sidewall factor). Its
+/// rocking stiffness then follows, and is compared with Gazetas's. The base bears more, by the
+/// weight of soil beside it: the bearing capacity of the surface footing plus γ D N_q s_q d_q,
+/// N_q = e^(π tan φ) tan²(45° + φ/2), s_q = 1 + (B/L) tan φ (E. E. De Beer) and
+/// d_q = 1 + 2 tan φ (1 − sin φ)² D/B (J. Brinch Hansen, 1970; arctan(D/B) for D past B).
+public struct Embedment: Sendable, Hashable, Codable {
+    /// Metres from the surface down to the footing's base.
+    public var depth: Float
+    /// The soil's angle of internal friction, radians: its pressures on the sides and the
+    /// overburden's share of its bearing capacity. 35° by default, a medium dense sand's.
+    public var frictionAngle: Float
+    /// Friction between the sides and the soil; nil for tan(2φ/3), as for cast concrete.
+    public var sideFriction: Float?
+
+    public init(depth: Float = 1, frictionAngle: Float = 35 * .pi / 180, sideFriction: Float? = nil) {
+        self.depth = depth
+        self.frictionAngle = frictionAngle
+        self.sideFriction = sideFriction
+    }
+
+    func validate() throws {
+        guard depth.isFinite, depth > 0, frictionAngle.isFinite, frictionAngle > 0, frictionAngle < .pi / 2,
+            (sideFriction ?? 0).isFinite, (sideFriction ?? 0) >= 0
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "An embedded footing needs a positive depth, a friction angle between 0° and 90° and nonnegative side friction."
+            )
+        }
+    }
+
+    /// The friction between the sides and the soil.
+    public var wallFriction: Float { sideFriction ?? tan(2 * frictionAngle / 3) }
+
+    /// Jáky's, Rankine's active and passive coefficients of earth pressure.
+    public var atRest: Float { 1 - sin(frictionAngle) }
+    public var active: Float { pow(tan(.pi / 4 - frictionAngle / 2), 2) }
+    public var passive: Float { pow(tan(.pi / 4 + frictionAngle / 2), 2) }
+
+    /// The height of the sides in contact with the soil, for a footing `thickness` deep.
+    public func contactHeight(thickness: Float) -> Float { min(depth, thickness) }
+
+    /// Gazetas's factors on a surface footing's static stiffness for one `width` along x by
+    /// `length` along y and `thickness` deep, embedded so: the trench factor (the base deeper) and
+    /// the sidewall factor, by `FootingImpedance.Mode`. (Rocking has one factor, given as the
+    /// sidewall's.)
+    public func gazetasFactors(width: Float, length: Float, thickness: Float) -> (
+        trench: [Float], sidewall: [Float]
+    ) {
+        let alongY = length >= width
+        let l = max(width, length) / 2
+        let b = min(width, length) / 2
+        let chi = b / l
+        let d = contactHeight(thickness: thickness)
+        let big = depth
+        let wall = 4 * (b + l) * d  // sidewall in contact
+        let base = 4 * b * l
+        let centroid = big - d / 2  // the depth of the sidewall's centroid
+        let vertical = (1 + big / (21 * b) * (1 + 1.3 * chi), 1 + 0.2 * pow(wall / base, 2 / 3))
+        let trench = 1 + 0.15 * (big / b).squareRoot()
+        let across = 1 + 0.52 * pow(centroid * wall / (b * l * l), 0.4)  // Gazetas's y, across the long side
+        let along = 1 + 0.52 * pow(centroid * wall / (l * b * b), 0.4)  // his x, along it
+        let rockLong = 1 + 1.26 * d / b * (1 + d / b * pow(d / big, -0.2) * (b / l).squareRoot())
+        let rockShort = 1 + 0.92 * pow(d / l, 0.6) * (1.5 + pow(d / l, 1.9) * pow(d / big, -0.6))
+        // Our x and y, as `FootingImpedance.gazetas`.
+        let sidewall: [Float] =
+            alongY
+            ? [vertical.1, across, along, rockShort, rockLong]
+            : [vertical.1, along, across, rockLong, rockShort]
+        return ([vertical.0, trench, trench, 1, 1], sidewall)
+    }
+
+    /// The ultimate bearing pressure under the base: the surface footing's `surface` plus the
+    /// overburden's γ D N_q s_q d_q, for a footing `width` by `length` on `material`.
+    public func bearingCapacity(surface: Float, width: Float, length: Float, material: SoilMaterial) -> Float
+    {
+        let phi = frictionAngle
+        let b = min(width, length)
+        let l = max(width, length)
+        let nq = exp(.pi * tan(phi)) * pow(tan(.pi / 4 + phi / 2), 2)
+        let shape = 1 + b / l * tan(phi)
+        let ratio = depth <= b ? depth / b : atan(depth / b)
+        let deep = 1 + 2 * tan(phi) * pow(1 - sin(phi), 2) * ratio
+        return surface + material.density * 9.81 * depth * nq * shape * deep
     }
 }
 

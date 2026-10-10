@@ -302,6 +302,9 @@ final class SimulationModel {
     private(set) var traces: [GaugeTrace] = []
     private(set) var stats = SimulationStats()
     @ObservationIgnored private var liveStats = SimulationStats()
+    /// The GPU's time on the blast's batches since the run began, in seconds, as each command
+    /// buffer's start and end on the GPU give it; work sharing the GPU stretches it.
+    @ObservationIgnored private(set) var blastGPUSeconds = 0.0
     @ObservationIgnored private var lastProgressPublication = ContinuousClock.now
     private static let progressInterval = 1.0 / 60
     private(set) var grid: Grid?
@@ -481,8 +484,26 @@ final class SimulationModel {
     @ObservationIgnored private var nextFireballTime = 0.0
     @ObservationIgnored private var thermalPaintCache:
         (frames: Int, quantity: ThermalQuantity, paint: SurfacePaint)?
-    /// The Macs the run's companions are set to run on.
-    var wantedHosts: Set<String> { Set([fragmentsHost, thermalHost, groundShockHost].compactMap { $0 }) }
+    /// The Macs the run's companions are set to run on; for one placed automatically, every Mac
+    /// set for sweeps.
+    var wantedHosts: Set<String> {
+        Set(
+            [fragmentsHost, thermalHost, groundShockHost].compactMap { $0 }.flatMap {
+                $0 == ConsumerPlacement.automatic ? automaticHosts : [$0]
+            })
+    }
+    /// The Macs a companion placed automatically may go to: those set for sweeps.
+    var automaticHosts: [String] {
+        AppPreferences.hosts(UserDefaults.standard.string(forKey: AppPreferences.Key.sweepHosts) ?? "")
+    }
+    /// What the companions cost, kept between runs for those placed automatically; nil keeps it
+    /// for this model only, as in tests. The app keeps it in the user's caches.
+    @ObservationIgnored var costStore: ConsumerCostStore?
+    @ObservationIgnored private var measuredCosts: [String: ConsumerCosts] = [:]
+    /// Where the current run's companions placed automatically went, by name ("local" or a host),
+    /// and the key their costs are kept under.
+    @ObservationIgnored private(set) var automaticPlaces: [String: String] = [:]
+    @ObservationIgnored private var runCostKey: String?
     /// Whether the run's companions, the fragments, the thermal radiation and the ground shock,
     /// have every frame sent, so that the run can be kept.
     var companionsCaughtUp: Bool {
@@ -585,6 +606,7 @@ final class SimulationModel {
             structureHistory = structureRecord
             bodyHistories = bodyRecords
             if let solver {
+                placeAutomatically()
                 startFragments(solver)
                 startGroundShock(solver)
                 startThermal(solver)
@@ -1389,6 +1411,7 @@ final class SimulationModel {
             throw ProjectFileError.invalid("The cloud is still being followed; keep the run in a moment.")
         }
         run.cloud = cloud
+        run.standing = run.derivedStanding()
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1471,7 +1494,7 @@ final class SimulationModel {
                 "Some ground points lie outside the domain; move them to estimate the shaking."
             return
         }
-        if let host = groundShockHost, let worker = workers[host] {
+        if let host = host(groundShockHost, name: "ground"), let worker = workers[host] {
             groundShock = remoteConsumer(worker, kind: .groundShock(spec, live: true))
         } else {
             groundShock = LocalFrameConsumer(.groundShock(spec, live: true))
@@ -1540,7 +1563,7 @@ final class SimulationModel {
         stopFragments()
         let scene = FragmentScene(scenario)
         let consumer: any FrameConsumer
-        if let host = fragmentsHost, let worker = workers[host] {
+        if let host = host(fragmentsHost, name: "fragments"), let worker = workers[host] {
             consumer = remoteConsumer(worker, kind: .fragments(spec, scene, live: true))
         } else {
             consumer = LocalFrameConsumer(.fragments(spec, scene, live: true))
@@ -1606,6 +1629,99 @@ final class SimulationModel {
             ?? RemoteFrameConsumer(client: worker, kind: kind, ownsClient: false)
     }
 
+    // MARK: - Placing companions by cost
+
+    /// The Mac a companion set to run on `setting` runs on in a run starting now; nil for this
+    /// one.
+    private func host(_ setting: String?, name: String) -> String? {
+        guard setting == ConsumerPlacement.automatic else { return setting }
+        return automaticPlaces[name].flatMap { $0 == "local" ? nil : $0 }
+    }
+
+    /// The companions the project runs, by name, as a run starting now would start them.
+    private var companionKinds: [String: ConsumerKind] {
+        let scene = FragmentScene(scenario)
+        var kinds: [String: ConsumerKind] = [:]
+        if let spec = fragmentSpec { kinds["fragments"] = .fragments(spec, scene, live: true) }
+        if let spec = thermalSpec { kinds["thermal"] = .thermal(spec, scene, live: true) }
+        if let spec = groundShockSpec { kinds["ground"] = .groundShock(spec, live: true) }
+        return kinds
+    }
+
+    private func costs(for key: String) -> ConsumerCosts {
+        measuredCosts[key] ?? costStore?.costs(for: key) ?? ConsumerCosts()
+    }
+
+    private func keep(_ costs: ConsumerCosts, for key: String) {
+        measuredCosts[key] = costs
+        costStore?.record(costs, for: key)
+    }
+
+    /// Where each companion set to Automatic goes in a run starting now: by `ConsumerPlacement`'s
+    /// plan, among this Mac and the Macs connected, from what the last run and the probes
+    /// measured; this Mac until something has been.
+    private func placeAutomatically() {
+        let settings = ["fragments": fragmentsHost, "thermal": thermalHost, "ground": groundShockHost]
+        runCostKey = ConsumerCostStore.key(currentInputs, frameInterval: 0.001)
+        automaticPlaces = [:]
+        guard settings.values.contains(ConsumerPlacement.automatic), let key = runCostKey else { return }
+        let kinds = companionKinds
+        let hosts = workers.keys.sorted()
+        var choices: [String: [String]] = [:]
+        for name in kinds.keys {
+            let setting = settings[name] ?? nil
+            choices[name] =
+                setting == ConsumerPlacement.automatic
+                ? ["local"] + hosts : [setting.flatMap { workers[$0] == nil ? nil : $0 } ?? "local"]
+        }
+        let plan = ConsumerPlacement.plan(choices, kinds: kinds, costs: costs(for: key))
+        automaticPlaces = plan.places.filter { settings[$0.key] == ConsumerPlacement.automatic }
+    }
+
+    /// Probes the thermal radiation, if placed automatically, here and on each Mac connected, so
+    /// that the next run is placed by each Mac's speed now.
+    func probeAutomatic() async {
+        guard thermalHost == ConsumerPlacement.automatic, !isRunning, let kind = companionKinds["thermal"],
+            let spec = thermalSpec, (try? spec.validate()) != nil,
+            let key = ConsumerCostStore.key(currentInputs, frameInterval: 0.001)
+        else { return }
+        var costs = costs(for: key)
+        await ConsumerProbe.probe(
+            "thermal", kind: kind, inputs: currentInputs,
+            workers: workers.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }, into: &costs)
+        keep(costs, for: key)
+    }
+
+    /// What the run's companions cost, a millisecond of simulated time, once each has every
+    /// frame in: each where it ran, and the blast's GPU time, less that of companions here
+    /// sharing its GPU.
+    private func recordCosts(blastGPUSeconds: Double, elapsed: Double) async {
+        let deadline = ContinuousClock.now + .seconds(60)
+        while !companionsCaughtUp, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        guard companionsCaughtUp, let key = runCostKey, elapsed > 0 else { return }
+        let frames = elapsed / 0.001
+        var costs = costs(for: key)
+        var blast = blastGPUSeconds
+        for (name, consumer) in [("fragments", fragments), ("thermal", thermal), ("ground", groundShock)] {
+            guard let consumer, consumer.sent > 0, (consumer as? ResilientFrameConsumer)?.fallback == nil
+            else {
+                continue
+            }
+            let site =
+                (consumer as? ResilientFrameConsumer)?.host ?? (consumer as? RemoteFrameConsumer)?.host
+                ?? "local"
+            let gpu = (consumer as? LocalFrameConsumer)?.gpuSeconds.map { $0 > 0 }
+            costs.measured(
+                name, kind: consumer.kind, place: site, seconds: consumer.seconds / frames, usesGPU: gpu)
+            if site == "local", gpu == true { blast -= consumer.seconds }
+        }
+        costs.frameSeconds = max(blast, 0) / frames
+        if let radius = fireballFrames.map(\.radius).max(), radius > 0 { costs.fireballRadius = radius }
+        keep(costs, for: key)
+    }
+
     /// Runs the companions set for `host` through `worker` from the next run, as if connected to
     /// it; for tests.
     func useWorker(_ worker: SweepWorkerClient, host: String) {
@@ -1642,6 +1758,7 @@ final class SimulationModel {
                     ground: "Estimated here: \(reason)")
             }
         }
+        await probeAutomatic()
     }
 
     /// Says how the connection to `host` stands, in the status of each companion set to run there.
@@ -1658,7 +1775,7 @@ final class SimulationModel {
         stopThermal()
         guard let spec = thermalSpec, (try? spec.validate()) != nil else { return }
         let scene = FragmentScene(scenario)
-        if let host = thermalHost, let worker = workers[host] {
+        if let host = host(thermalHost, name: "thermal"), let worker = workers[host] {
             thermal = remoteConsumer(worker, kind: .thermal(spec, scene, live: true))
         } else {
             thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
@@ -1789,10 +1906,9 @@ final class SimulationModel {
     /// Sets the air's charge model and refinement from the settings; takes effect when the
     /// scenario is loaded.
     private func configureAir(_ solver: BlastSolver) {
-        solver.configuration.afterburning = settings.detailedCharge
-        solver.configuration.airModel = settings.detailedCharge ? .thermallyPerfect : .idealGas
-        solver.configuration.refinement = settings.sharpShocks ? 2 : 1
-        solver.configuration.refinementLevels = settings.sharpShocks ? settings.shockLevels : 1
+        ProjectRunSettings.configureAir(
+            &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
+            shockLevels: settings.shockLevels)
     }
 
     private func rebuild() {
@@ -1880,6 +1996,7 @@ final class SimulationModel {
         stepCount = 0
         stats = SimulationStats()
         liveStats = SimulationStats()
+        blastGPUSeconds = 0
         batchSize = 4
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
@@ -1985,6 +2102,7 @@ final class SimulationModel {
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
         lastBatchCompletion = now
+        if gpuSeconds > 0 { blastGPUSeconds += gpuSeconds }
         if result.steps > 0, gpuSeconds > 0 {
             let stepRate = Double(result.steps) / gpuSeconds
             let blend = liveStats.stepsPerSecond == 0 ? 1 : 0.1
@@ -2042,6 +2160,10 @@ final class SimulationModel {
     private func finish() {
         isRunning = false
         publishTraces()
+        if fragments != nil || thermal != nil || groundShock != nil {
+            let (gpu, elapsed) = (blastGPUSeconds, time)
+            Task { [weak self] in await self?.recordCosts(blastGPUSeconds: gpu, elapsed: elapsed) }
+        }
         // The fragments' last frames may still be in flight: show them once they are in.
         if let fragments {
             Task { [weak self] in

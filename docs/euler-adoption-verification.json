@@ -1,0 +1,38 @@
+{
+  "baseline": "586ed4e4780267049beedd197cac2aa9cdd01ec0",
+  "coreRevision": "1977b38a66382533be902350b40e7084a2d1e9ca",
+  "coreTag": "0.1.0-alpha.16",
+  "crossedReports": "all original/shared wall/packet/Euler reports byte-identical across both hosts",
+  "integratedAffectedTests": 26,
+  "integratedSource": "60ffa4ee379a5f4980a3c28a2b9a40218315876a",
+  "localAffectedTests": 78,
+  "measuredMaxSource": "657b385b620cbce21bcb2cc94e23d1fb4dd1616c",
+  "measuredMiniAndCheckerSource": "af16db764d3f5c68d1971165e11a7416d6d600c1",
+  "miniAppTests": 239,
+  "miniComparison": "https://github.com/emmettl/bombcad/actions/runs/38058873383",
+  "miniCoreTests": 702,
+  "miniFull": "https://github.com/emmettl/bombcad/actions/runs/38058870921",
+  "movingFrameCells": 72000,
+  "negativeControlsPerHost": {
+    "euler": 15,
+    "packet": 13,
+    "wall": 12
+  },
+  "newEulerHistories": 40,
+  "newEulerIntervals": 176,
+  "newEulerStageCells": 30900,
+  "newGroupFinalFrameCells": 17144,
+  "newTubeFinalFrameCells": 3456,
+  "optimizedPackagesAndStrictSignatures": "passed candidate and integrated source",
+  "pistonFrameCells": 9424,
+  "preservedMain": "43e27f8941224d39da70d304f1ae056b3b2d8535",
+  "privateEvidence": "Edgerton docs/benchmarks/evidence/2026-10-10-shared-euler-adoption",
+  "remapFrameCells": 192,
+  "retainedFailures": [
+    "initial checker omitted gross cancelling flux/load magnitudes; corrected scale retains 256-epsilon factor",
+    "one local playback timing assertion failed under concurrent load; isolated unchanged-limit rerun passed"
+  ],
+  "schemaVersion": 1,
+  "scope": "shared prescribed Euler primitive and public result assembly; app reconstruction/geometry/grouping/scatter/time/body policy and production Metal air remain app-owned; no empirical blast claim",
+  "status": "complete two-host adoption candidate acceptance"
+}

@@ -4,12 +4,12 @@ import Testing
 @testable import BlastCore
 
 /// The slabs with steel in one face or both (`TwoFaceSlabTests`) against the derived data in
-/// Benchmarks/Slabs, transcribed from the papers.
+/// Fixtures/TwoFaceSlabs, transcribed from the papers.
 @Suite("Slabs with steel in both faces")
 struct TwoFaceSlabTestsTests {
     private func fixture(_ name: String) throws -> [String: Any] {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().appendingPathComponent("Benchmarks/Slabs/\(name).json")
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/TwoFaceSlabs/\(name).json")
         let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
         return try #require(object as? [String: Any])
     }

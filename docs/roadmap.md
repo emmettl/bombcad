@@ -33,7 +33,7 @@ it should be used to judge the safety of a real structure.
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
-| 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
+| 5 | Collapse has never been compared with anything; debris once, off slabs under contact charges | Collapse looks plausible, that is all; loose concrete is held back rather than thrown | [Validation](validation.md#slabs-under-contact-charges) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
@@ -164,7 +164,12 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    so there is no hole; and the tests' damage lies mostly along the mid-span hinge, following
    bending the model gets a third to a half of, after the wave wrapping under the slab takes
    back a quarter of its impulse. Confinement now comes from the stresses carried, not strains.
-   See [Validation](validation.md#what-stops-the-spall-and-the-breach).)
+   See [Validation](validation.md#what-stops-the-spall-and-the-breach). Against Hupfauf's
+   slabs under contact charges, the first debris comparison: the far face starts at about the
+   debris's speed, within a factor of two, and cracks loose over about the spall crater, but
+   the loose layer is held back, not thrown, and no slab is holed; a ball of hot air in contact
+   gives about twice the products' impulse. See
+   [Validation](validation.md#slabs-under-contact-charges).)
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done for beams: cracks that slide for good and ride up on their aggregate,
    after which beams struck by a falling weight keep their deflection as the tests did; the
@@ -218,9 +223,11 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
-   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
+   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac, chosen
+   by cost if asked,
    its luminous cells marched on the GPU as a partly transparent volume, and, as an option, the
-   heat they radiate taken out of the gas, which halves the fluences; the radiation [conducted into
+   heat they radiate taken out of the gas, which halves the fluences, and compared with two TNT
+   shots, whose pulse it gets wrong in shape; the radiation [conducted into
    the surfaces' materials](surface-heating.md) for their peak temperatures, with ignition
    thresholds from tests marked illustrative; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
@@ -233,6 +240,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
    of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
+15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from
+   shapes or a DEM, solid in the air's mask on every level; see [Terrain](terrain.md). Next: cut
+   cells for its slopes, and terrain in thermal visibility and rigid contact.)
 
 ### Freestanding objects and supports
 
@@ -1993,8 +2003,12 @@ for its mass and radiation damping and a layer's echoes, checked against statics
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
 sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
 the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
-tenth as much. Still open: settlement under cyclic rocking; joints at angles to the lattice, and
-on shells; connections between moving components other than a footing; embedment. Loaded by the air instead of a pulse
+tenth as much. Joints can lie at any angle, on solids and shells, and tie two moving parts of a
+body (a beam seated on a corbel slides off and drops its span: `blastbench seat`); footings can
+be set into the soil, as stiff as Gazetas's embedded footing; and a seat resting with Eurocode
+2's 0.7 dissipates within 4% of three measured precast seats' energy over their whole cycling
+(`blastbench precast`; neoprene pads and dowels are not followed). Still open: settlement under
+cyclic rocking; pads' and dowels' laws; a measured embedded footing. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
@@ -2060,6 +2074,9 @@ two collapsing over several seconds.
      street grid. See [Exporting a run for rendering](usd-export.md#the-air).)
   3. **In the app**: File ▸ Export for Rendering… runs a copy of the project in the background
      and writes both, with peak overpressure and impulse as further grids. (Done.)
+- **Show each result's standing** (done): a badge beside each result, from measured agreement to
+  illustrative, derived from the scene's settings, with its evidence a click away, and carried
+  with kept runs, comparisons and exports. See [Standing of results](standing.md).
 
 ## Things tried and set aside
 

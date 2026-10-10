@@ -18,6 +18,7 @@ struct FragmentSection: View {
                         + "the start of each run. Illustrative: Gurney launch speeds, Mott masses, and drag "
                         + "from the blast; they do not push back on the air or the structure.")
             if model.fragmentSpec != nil {
+                StandingRow(model: model, kinds: [.fragments])
                 LabeledSlider(
                     title: "Casing",
                     value: Binding(
@@ -44,7 +45,8 @@ struct FragmentSection: View {
             }
         }
         // One connection to each Mac the companions run on, shared by those on the same one.
-        .task(id: wantedHosts.sorted()) {
+        // Choosing Automatic probes the Macs again, though they are the same.
+        .task(id: wantedHosts.sorted() + [model.thermalHost == ConsumerPlacement.automatic ? "probe" : ""]) {
             await model.connectWorkers(wantedHosts)
         }
     }

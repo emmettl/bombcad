@@ -168,6 +168,7 @@ struct CompletedRunCaptureTests {
         let run = try #require(model.savedRuns.first)
         #expect(run.gauges[0].points.count > 0)
         #expect(run.elapsedTime >= run.settings.duration - 1e-9)
+        #expect(run.standing != nil && run.standing == run.derivedStanding())
         #expect(throws: ProjectFileError.self) { try model.keepRun(named: "baseline") }
         // Changing the stop target after completion must not rewrite the completed run's target.
         model.duration = 0.01

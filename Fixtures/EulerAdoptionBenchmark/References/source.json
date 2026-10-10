@@ -1,0 +1,7 @@
+{
+  "path": "Scripts/verify-euler-flux-output.py",
+  "purpose": "immutable independent scalar SI/CFL/wall checker; verification only",
+  "repository": "https://github.com/emmettl/ContinuumKit",
+  "revision": "1977b38a66382533be902350b40e7084a2d1e9ca",
+  "sha256": "ac4d86f98d6c39324a8089c314c6d7f2e2c6726f40f53e9b728812838def2c9f"
+}
