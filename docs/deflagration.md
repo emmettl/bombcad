@@ -134,6 +134,9 @@ mass flux through each is ρ_u S_T.
   rather than strain, so that a passing pressure wave does not count. It is not a turbulence
   model, and in a quiescent sphere it speeds the flame by about a tenth, from the vorticity the
   flame itself makes on the grid.
+  With the air's [sub-grid mixing](air-blast-model.md#sub-grid-mixing) on as well, the mixture
+  and its products also diffuse turbulently, and the two partly count the same unresolved
+  turbulence twice.
 
 **What was tried first.** The front was first a level set G, a signed distance carried by the
 gas and advanced at S_T (the G-equation), with the mixture burnt as the front passed. It ran at
