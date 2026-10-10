@@ -57,6 +57,9 @@ import simd
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1] [--terrain hill]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
+//                           [--laminar] [--turbulence 0.7] [--factor 1] [--wrinkling 1] [--mixing [--mixing-model smagorinsky]]
+//                           vented: [--vent 5.4] [--dx 0.1] [--ignition back] [--release Pa] [--posts 0.2] [--speeds]
+//                           [--arrivals f.csv] [--history f.csv] [--front] [--axis --until s]; ball: [--closed] [--shells]
 //                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68;
 //                            a tube's and a free sphere's flame profiles; layout --out f.json writes the
 //                            gas-room preset as a layout for `BombCAD run`)

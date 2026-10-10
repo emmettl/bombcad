@@ -260,10 +260,12 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    points, objects and the thermal paint; see [Terrain](terrain.md). Next: cut cells for its
    slopes, and footings and the ground's connection on a slope.)
 16. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
-   at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
-   closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
-   correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
-   [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
+   at a point, burning by Weller's regress variable and wrinkled by sub-grid turbulence from the
+   air's σ-model mixing, and vent panels that release at a pressure. Closed vessels converge on the
+   thin-flame model. In FM Global's chamber, lit at the back wall, the flame runs at the tests'
+   speeds and peaks at 55–60% of their pressure; lit in the middle, at a fifth to a seventh, its back
+   half stalling. See [Gas deflagrations](deflagration.md). Next: why it stalls, a young flame's
+   speed on coarse cells, and the instabilities.)
 17. **Large scenes**: surface bursts of hundreds of tonnes to kilotonnes over kilometres. (Started:
    checked against Kingery–Bulmash to 40 m/kg^(1/3) and over terrain at 500 t; refined twice at a low
    threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large

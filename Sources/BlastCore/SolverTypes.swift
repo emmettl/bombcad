@@ -223,6 +223,8 @@ struct SolverUniforms {
     var mixingPrandtl: Float = 0
     var ignitionTemperature: Float = 0
     var limitFlameTemperature: Float = 0
+    /// Sub-grid mixing's model: 0 Smagorinsky's, 1 the σ-model (see `SubgridMixing.Model`).
+    var mixingModel: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

@@ -111,6 +111,8 @@ struct SolverUniforms {
     // limit flame temperature a mixture must reach by burning.
     float ignitionTemperature;
     float limitFlameTemperature;
+    // Sub-grid mixing's model (see `eddyViscosity`): 0 Smagorinsky's, 1 the sigma model.
+    uint mixingModel;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.

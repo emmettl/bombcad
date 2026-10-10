@@ -1679,7 +1679,7 @@ public final class BlastSolver {
                     encoder, state: stateBuffers[current],
                     species: hasSpecies ? speciesBuffers[current] : nil,
                     mask: maskBuffer,
-                    rigidMask: rigidMaskBuffer, control: controlBuffer)
+                    rigidMask: rigidMaskBuffer, viscosity: mixingViscosity(), control: controlBuffer)
             }
 
             phase("mechanics")
@@ -2160,6 +2160,7 @@ public final class BlastSolver {
         if let mixing = configuration.mixing {
             uniforms.mixingCoefficient = mixing.coefficient
             uniforms.mixingPrandtl = mixing.prandtl
+            uniforms.mixingModel = mixing.model == .sigma ? 1 : 0
         }
         if let gravity = configuration.gravity {
             uniforms.gravity = gravity.acceleration

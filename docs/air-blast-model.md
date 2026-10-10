@@ -325,8 +325,17 @@ It costs about 28% more a step (the street to 170 ms: 13.6–13.8 s against 10.5
   of the integral model of a thermal that entrains at Morton, Taylor and Turner's α = 0.25.
 
 So on these cells the large eddies the grid resolves, and the scheme's own dissipation, do the
-mixing. A [deflagration](deflagration.md)'s burning velocity has its own sub-grid term; with both
-on, sub-grid turbulence is partly counted twice.
+mixing.
+
+**The σ-model, an option** (`SubgridMixing.model = .sigma`, coefficient 1.35). Nicoud et al.'s
+(2011) operator σ₃(σ₁ − σ₂)(σ₂ − σ₃)/σ₁², from the singular values of the velocity gradient,
+replaces |S|. It is zero wherever the resolved flow is one- or two-dimensional, axisymmetric, a
+pure shear or a rigid rotation. So the laminar flow round a growing flame, an irrotational
+spherical expansion that Smagorinsky's |S| takes for turbulence, gets none (`MixingTests`; on the
+grid's differences a point source's flow keeps a share of Smagorinsky's that falls as (Δ/r)², a
+quarter at five cells and a twelfth at ten). A [deflagration](deflagration.md#the-burning-velocity)
+with flame turbulence turns it on and takes its sub-grid velocity from it, so the flame and the
+air share one sub-grid model. Charges keep Smagorinsky's, bit for bit.
 
 ## Skipping still air
 

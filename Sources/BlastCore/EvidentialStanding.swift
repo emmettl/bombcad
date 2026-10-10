@@ -487,8 +487,9 @@ public enum StandingTable {
                 title: "Gas deflagration", affects: air + structure + [.envelopeExposure],
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
-                    + "vessel, but its acceleration by turbulence and instabilities is an uncalibrated factor, and "
-                    + "vented rooms' pressures come out far below the venting correlations and FM Global's tests.",
+                    + "vessel and wrinkled by sub-grid turbulence after FM Global's LES; in their vented chamber it "
+                    + "reaches 55–60% of the tests' peaks lit at the back wall, a fifth to a seventh lit in the "
+                    + "middle, and far below the venting correlations.",
                 document: "deflagration.md#limitations")
         case .ventPanels:
             return Entry(
@@ -735,7 +736,8 @@ public enum StandingTable {
         "Deflagration.acceleration": .option([.deflagration]),
         "FlameAcceleration.factor": .option([.deflagration]),
         "FlameAcceleration.wrinklingRadius": .option([.deflagration]),
-        "FlameAcceleration.subgridCoefficient": .option([.deflagration]),
+        "FlameAcceleration.turbulence": .option([.deflagration]),
+        "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,
         "Terrain.origin": .input,
@@ -1198,21 +1200,22 @@ private struct StandingScene {
             StandingEvidence(
                 "A closed sphere of stoichiometric methane against the thin-flame model (blastbench "
                     + "deflagration vessel)",
-                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; rise times "
-                    + "within 1–3% on 48 cells across the radius; K_G 51 bar m/s against 76, converging from "
-                    + "below (verified)", "deflagration.md#a-closed-sphere"),
+                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; laminar rise "
+                    + "times within 1–3% on 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G "
+                    + "51 bar m/s against 76, converging from below (verified)",
+                "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "A laminar flame lit at a tube's closed end",
                 "Runs at the expansion ratio times the burning velocity within 10% (verified)",
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A thirtieth to a fiftieth of Molkov's best fit with the default flame, a fifth to an eighth "
-                    + "with the burning velocity tripled",
+                "A thirtieth to a sixtieth of Molkov's best fit; trend with vent area A^-1.4 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
-                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, peaks only plotted)",
-                "A tenth (lit in the middle) to a half (at the back wall) of the plots' axes",
+                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
+                "Lit at the back wall, 55–60% of the measured peaks with the measured flame speeds; lit in the "
+                    + "middle, a fifth to a seventh, the flame stalling towards the back wall",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1225,15 +1228,16 @@ private struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel, but its "
-                + "acceleration by turbulence and instabilities is an uncalibrated factor, and vented rooms' "
-                + "pressures fall far below EN 14994, NFPA 68 and FM Global's tests.",
+            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel and is "
+                + "wrinkled by sub-grid turbulence, but its instabilities are not modelled, and vented rooms' "
+                + "pressures fall below FM Global's tests and far below EN 14994 and NFPA 68.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
                     + "combustion that reaches the stoichiometric AICC pressure.",
-                "The flame's acceleration is a constant factor, wrinkling with radius and a vorticity estimate "
-                    + "of sub-grid turbulence; none is calibrated.",
+                "The flame is wrinkled by sub-grid turbulence from the air's σ-model mixing through Bradley's "
+                    + "correlation, scaled as Bauwens et al. fitted it in FM Global's chamber; instabilities are "
+                    + "not modelled, and a young flame is slow until it is about seventeen cells across.",
             ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
     }
 
