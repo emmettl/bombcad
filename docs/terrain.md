@@ -261,8 +261,8 @@ history) over flat ground's on the same cells:
   acceleration structure), and in rigid contact and footings.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.
 - **Measured terrain shielding** or blast over hills, to validate rather than check.
-- **Landscape scale**: kilometres of terrain need the domain, refinement and source models of that
-  scale, which are not yet in the solver.
+- **Landscape scale**: the shielding study holds at 500 t, scaled (see [Large
+  scenes](large-scenes.md#over-terrain-at-scale)); the app cannot yet make such a scene.
 
 ## Sources
 

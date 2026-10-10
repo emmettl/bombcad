@@ -256,6 +256,10 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
    correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
    [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
+17. **Large scenes**: surface bursts of hundreds of tonnes to kilotonnes over kilometres. (Started:
+   checked against Kingery–Bulmash to 40 m/kg^(1/3) and over terrain at 500 t; refined twice at a low
+   threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large
+   scenes](large-scenes.md). Next: cell sizes and domains chosen by the scene in the app.)
 
 ### Freestanding objects and supports
 

@@ -5,7 +5,7 @@ import simd
 
 // Large surface bursts at landscape scale (docs/large-scenes.md):
 //
-//   blastbench landscape [--mass 500000] [--dx 8,4] [--zmax 40] [--height 0.5] [--refine 2]
+//   blastbench landscape [--mass 500000] [--dx 8,4] [--zmax 40] [--height share] [--refine 2]
 //                        [--refine-levels 2] [--refine-threshold 0.1] [--gravity] [--afterburn] [--time s]
 //   blastbench landscape --study terrain [--mass 500000] [--dx 4.3] [--gravity] [--refine 2]
 //   [--out dir]   (CSV of every gauge and the ground's peak profile; default
@@ -114,9 +114,14 @@ private func runLandscapeBurst(device: MTLDevice, out: URL) throws {
     let mass = option("mass").flatMap(Double.init) ?? 500_000
     let cells = (option("dx") ?? "8").split(separator: ",").compactMap { Float($0) }
     let zMax = option("zmax").flatMap(Double.init) ?? 40
-    let heightShare = option("height").flatMap(Float.init) ?? 0.5
     let scale = cbrt(mass)
     let reach = Float(1.05 * zMax * scale)
+    // The open top reflects a little; what it sends down reaches a ground gauge at range R within
+    // its positive phase (about 2 W^(1/3) long) unless the top is at least sqrt(R W^(1/3)) up:
+    // half as much again, or a quarter of the reach, whichever is higher (`--height` as a share).
+    let heightShare =
+        option("height").flatMap(Float.init)
+        ?? max(0.25, Float(1.5 * (zMax * scale * scale).squareRoot()) / reach)
     let axis = [1, 1.5, 2, 3, 4, 5, 7, 10, 14, 20, 28, 40].filter { $0 <= zMax }
     let diagonal = [2, 5, 14, 40].filter { $0 <= zMax }
     let last = KingeryBulmash.point(at: zMax)!

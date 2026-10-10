@@ -1080,7 +1080,9 @@ private struct StandingScene {
             notes.append(
                 String(
                     format: "Gauges as far as %.1f m/kg^(1/3) lie beyond the open-air comparison, which "
-                        + "stopped at 6.", far))
+                        + "stopped at 6; the large-scene comparison, to 40, found the peaks' share the same "
+                        + "there on the same scaled cells, but falling to the coarse cells' share where "
+                        + "the shock is too weak to be refined.", far))
         }
         let near = nearOpenFace
         if !near.isEmpty {

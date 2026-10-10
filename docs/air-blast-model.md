@@ -482,6 +482,10 @@ refined air first lost 15% of its energy and the roof rose half as far: ghost ce
 kind from the coarse mask even inside a neighbouring patch, so where the fine outline differed
 the two sides of a face disagreed on whether it was a wall.
 
+The threshold decides how far out the refinement follows a shock: at the default 0.1 to about
+20 kPa, at 0.005 beyond 40 m/kg^(1/3), after which the peak falls to the coarse cells' share (see
+[Large scenes](large-scenes.md#against-kingerybulmash-to-40-mkg13)).
+
 ## Freezing the air
 
 When a deformable structure is present, the air is frozen (its sweeps are skipped) once either
