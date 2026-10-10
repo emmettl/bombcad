@@ -160,3 +160,10 @@ wall/piston/packet/moving and new Euler/SSPRK2 stage/trace/scatter reports, inde
 scalar and composed-budget checks, exact pins and rejection controls. Its manual
 concurrency group survives unrelated main pushes; full app tests/package/signature
 checks remain a separate `all` run.
+
+The Euler adoption's complete mini comparison and full app/package runs pass.
+Original/shared/cross-host wall, packet and staged reports remain byte-identical.
+The public aggregate records separate measured and integrated revisions; package
+and affected peer checks supplement the earlier full-run source rather than
+relabeling its measurements. One local playback timing failure passes an isolated
+unchanged-limit rerun, with its initial log retained.

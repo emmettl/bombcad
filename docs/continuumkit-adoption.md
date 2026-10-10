@@ -144,7 +144,7 @@ alias. Both adapters use identical cases and compare every recorded sample, whil
 retaining independent conformance/refinement gates and correct source metadata.
 This preserves historical evidence and checks the current reusable implementation.
 
-## Prescribed Euler adoption candidate
+## Prescribed Euler adoption acceptance
 
 The experimental fractional Euler operator now binds directly to released
 alpha.16, including the public result assembly used by app-owned SSPRK2 wrappers.
@@ -152,7 +152,8 @@ Geometry, traces/limiting, aggregation/scatter, volume trajectories, reservoirs,
 timestep/body policy and production Metal air remain here. Two source files need
 explicit CompressibleFlow imports for the newly external Face/Wall declarations;
 their numerical bodies are unchanged. Complete two-host app/benchmark/package
-gates precede acceptance. The [comparison fixture](../Fixtures/EulerAdoptionBenchmark/README.md)
+gates pass; the [acceptance aggregate](euler-adoption-verification.json) preserves
+source identities, initial failures/corrections and current peer integration. The [comparison fixture](../Fixtures/EulerAdoptionBenchmark/README.md)
 freezes the current pre-adoption application and retains all affected native
 Euler/staged/tube/group/moving-gas/piston/wall evidence. Earlier releases and
 historical fixture identities remain verifiable.
