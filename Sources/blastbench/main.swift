@@ -200,6 +200,11 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 func prepareTrace(_ solver: StructureSolver) {
     solver.tracesWork = flag("work")
     if let factor = option("hourglass").flatMap({ Float($0) }) { solver.hourglassCoefficient = factor }
+    // `--step-divisor 4`: the structure's step a quarter of its elastic limit, which concrete
+    // compacted under a contact charge needs (see `ContactSlabTest`).
+    if let divisor = option("step-divisor").flatMap({ Float($0) }) {
+        solver.stepOverride = solver.stableTimeStep / divisor
+    }
 }
 
 /// The work trace's channels in the order printed.
