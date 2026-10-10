@@ -511,8 +511,7 @@ enum HeadlessRun {
                             feed.consumer.send(
                                 .fireball(solver.fireball(for: spec)))
                         case .groundShock(let spec, _):
-                            let region = GroundShockConsumer(spec: spec).region(
-                                cellSize: solver.grid.cellSize)
+                            let region = spec.region(cellSize: solver.grid.cellSize)
                             feed.consumer.send(
                                 .ground(solver.groundSlice(low: region.low, high: region.high)))
                         }
@@ -586,7 +585,13 @@ enum HeadlessRun {
                 values: [
                     ("fluence", thermalResult.fluence.map { $0 / 1000 }),
                     ("peakIrradiance", thermalResult.peakIrradiance.map { $0 / 1000 }),
-                ])
+                ]
+                    + (thermalResult.heating.map { heating in
+                        [
+                            ("peakSurfaceTemperature", heating.peakTemperature),
+                            ("ignition", heating.ignition.map(Float.init)),
+                        ]
+                    } ?? []))
         }
         if let groundResult, let spec = options.groundShock {
             scene?.addGroundShock(groundResult, spec: spec)

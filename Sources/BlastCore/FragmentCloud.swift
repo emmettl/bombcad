@@ -96,6 +96,8 @@ public struct FragmentScene: Codable, Sendable, Equatable {
     public var structure: [Box]
     /// One owner per starting structural region. Absent for legacy and single-body scenes.
     public var structureOwners: [UUID]?
+    /// The material's name of each starting structural region, for the surfaces' heating.
+    public var structureMaterials: [String]?
     /// The ground's shape; nil for flat ground (and for scenes saved before terrain).
     public var terrain: Terrain?
 
@@ -105,6 +107,9 @@ public struct FragmentScene: Codable, Sendable, Equatable {
         blocks = scenario.rigidBoxes
         let bodies = scenario.structuralObjects.sorted { $0.id.uuidString < $1.id.uuidString }
         structure = bodies.flatMap { $0.structure!.solids }
+        structureMaterials = bodies.flatMap { body in
+            body.structure!.solids.indices.map { body.structure!.material(of: $0).name }
+        }
         structureOwners =
             bodies.count > 1
             ? bodies.flatMap { body in body.structure!.solids.map { _ in body.id } } : nil
