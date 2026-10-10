@@ -471,7 +471,11 @@ public enum StandingTable {
                 document: "validation.md#gas-pressure-in-a-closed-room")
         case .terrain:
             return Entry(
-                title: "Terrain", affects: air + structure + [.envelopeExposure], limit: .approximation,
+                title: "Terrain",
+                affects: air + structure + [
+                    .envelopeExposure, .thermal, .freestandingMotion, .fragments, .groundShock,
+                ],
+                limit: .approximation,
                 note:
                     "A staircase of whole cells: it delays Mach reflection off a slope by 3–11° and under-reads "
                     + "the triple point's angle by 20–75% on 100–400 cells along the run; shielding behind "
@@ -1727,8 +1731,10 @@ private struct StandingScene {
         }
         if has(.terrain) {
             effects.append(
-                "The terrain does not hide the fireball from receivers; freestanding objects and footings stay "
-                    + "on level ground, and ground points' soil is level beneath it.")
+                "Over the terrain, footings and the ground's connection stay level and hold the base at z = 0 "
+                    + "(a stepped base takes a support region a level); a ground point's soil column is level "
+                    + "ground's, along the surface's normal; the fireball's radiated power is measured over the "
+                    + "floor.")
         }
         if !(inputs.scenario.rigidObjects ?? []).isEmpty || !(inputs.scenario.rigidCars ?? []).isEmpty {
             effects.append("Freestanding objects in the ordinary run: they move only in Compute Motion.")

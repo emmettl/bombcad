@@ -615,6 +615,13 @@ followed further, and the cloud's hand-over [made later](air-blast-model.md#grav
 radiation will not come right while the grid burns the fireball through its whole volume rather
 than in thin flame sheets round a fuel-rich core.
 
+**This work is paused** (October 2026). Gravity put the fireball's rise right, but sub-grid mixing
+and an extinction limit for afterburning left Dial Pack at about 21% of the blast yield radiated
+by 6 s, against 5.1%. If it resumes, the candidates are burning in flame sheets round a fuel-rich
+core (a mixture-fraction flame model), and the hot luminous shock layer the grid smears out,
+which makes the first millisecond's pulse a sixth as bright as measured. Until then the thermal
+radiation stays illustrative.
+
 Over the first second the errors offset: the fluence at 600 m by 1 s is 4.9 kJ/m² (4.5 cooling;
 4 m cells refined), against 6.7 measured. **The opaque shapes are no better.** The shape at
 emissivity 1 is a tenth to a third brighter than the volume, and the equivalent sphere, a ball of

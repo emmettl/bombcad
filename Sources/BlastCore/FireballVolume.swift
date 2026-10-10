@@ -555,7 +555,14 @@ final class ThermalReceiverSet: @unchecked Sendable {
 /// The march on the CPU's cores, as `MetalThermalMarch` does it on the GPU.
 struct CPUThermalMarch: ThermalMarch {
     let occluders: [Box]
+    let terrain: TerrainSight?
     let spiral: [SIMD3<Float>]
+
+    init(occluders: [Box], terrain: Terrain? = nil, spiral: [SIMD3<Float>]) {
+        self.occluders = occluders
+        self.terrain = TerrainSight(terrain)
+        self.spiral = spiral
+    }
 
     func irradiance(_ medium: ThermalMedium, receivers set: ThermalReceiverSet, occluded: Bool) -> [Float] {
         let receivers = set.receivers
@@ -600,6 +607,7 @@ struct CPUThermalMarch: ThermalMarch {
         for box in occluders {
             if let t = Self.entry(box, origin, direction, nearest) { nearest = t }
         }
+        if let terrain { nearest = terrain.nearest(from: origin, along: direction, within: nearest) }
         return nearest
     }
 
@@ -629,14 +637,16 @@ extension ThermalExposure {
     /// acceleration structure if given, otherwise on the CPU; `BOMBCAD_THERMAL_VISIBILITY=cpu` in
     /// the environment keeps it on the CPU.
     static func defaultMarch(
-        occluders: [Box], spiral: [SIMD3<Float>], visibility: MetalThermalVisibility? = nil
+        occluders: [Box], terrain: Terrain? = nil, spiral: [SIMD3<Float>],
+        visibility: MetalThermalVisibility? = nil
     ) -> any ThermalMarch {
         if ProcessInfo.processInfo.environment["BOMBCAD_THERMAL_VISIBILITY"] != "cpu",
-            let metal = MetalThermalMarch(occluders: occluders, spiral: spiral, visibility: visibility)
+            let metal = MetalThermalMarch(
+                occluders: occluders, terrain: terrain, spiral: spiral, visibility: visibility)
         {
             return metal
         }
-        return CPUThermalMarch(occluders: occluders, spiral: spiral)
+        return CPUThermalMarch(occluders: occluders, terrain: terrain, spiral: spiral)
     }
 
     /// The GPU's time on the volume's march so far, in seconds; nil if it is not marched there.

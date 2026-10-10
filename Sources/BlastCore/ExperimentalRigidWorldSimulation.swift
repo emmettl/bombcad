@@ -30,6 +30,12 @@ public final class ExperimentalRigidWorldSimulation {
         public var tilt: Double {
             acos(min(1, max(-1, simd_quatd(vector: orientation).act(SIMD3<Double>(0, 0, 1)).z))) * 180 / .pi
         }
+
+        /// Angle between the body's up axis and `up`, a unit vector (degrees).
+        public func tilt(from up: SIMD3<Double>) -> Double {
+            acos(min(1, max(-1, simd_dot(simd_quatd(vector: orientation).act(SIMD3<Double>(0, 0, 1)), up))))
+                * 180 / .pi
+        }
     }
 
     public let air: BlastSolver

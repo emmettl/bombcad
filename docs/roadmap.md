@@ -245,12 +245,13 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    their first two minutes, then spread as a gravity current and a Pasquill–Gifford puff
    drifting downwind, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
    manuals' one-dimensional estimate or a layered soil column that loads and unloads at different
-   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, and burning in flame sheets rather than through the fireball's volume (sub-grid mixing and an extinction limit, now options, change little), the measured growth
+   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. The fireball's radiation is paused: gravity fixed its rise, but sub-grid mixing and an extinction limit left Dial Pack at about 21% radiated against 5.1%; the next candidates, if it resumes, are flame sheets round a fuel-rich core and the missing hot shock layer. Next: the measured growth
    of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from
-   shapes or a DEM, solid in the air's mask on every level; see [Terrain](terrain.md). Next: cut
-   cells for its slopes, and terrain in thermal visibility and rigid contact.)
+   shapes or a DEM, solid in the air's mask on every level; it hides the fireball, carries ground
+   points, objects and the thermal paint; see [Terrain](terrain.md). Next: cut cells for its
+   slopes, and footings and the ground's connection on a slope.)
 16. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
    at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
    closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting

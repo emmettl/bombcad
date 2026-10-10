@@ -118,10 +118,12 @@ extension SimulationModel {
             placementCentre - SIMD3(4, 0, 0), SIMD3(1, 1, 0), simd_max(domain - 1, SIMD3(1, 1, 0)))
         let count = (settings.scenario.rigidObjects ?? []).count
         do {
-            let object = try RigidObjectDefinition(
-                name: "Box \(count + 1)", shape: .box(size: size),
-                position: SIMD3(centre.x, centre.y, size.z / 2),
-                mass: 200)
+            // On the ground under it, a terrain's included.
+            let object = try settings.scenario.resting(
+                RigidObjectDefinition(
+                    name: "Box \(count + 1)", shape: .box(size: size),
+                    position: SIMD3(centre.x, centre.y, size.z / 2),
+                    mass: 200))
             settings.scenario.rigidObjects = (settings.scenario.rigidObjects ?? []) + [object]
         } catch { freestanding.errorMessage = error.localizedDescription }
     }
@@ -132,8 +134,10 @@ extension SimulationModel {
         let existing = (settings.scenario.rigidCars ?? []).count
         do {
             let cars = try (0..<count).map { n in
-                try RigidCarDefinition.saloon(
-                    name: "Car \(existing + n + 1)", position: SIMD3(centre.x, centre.y + 2.4 * Double(n), 0))
+                try settings.scenario.resting(
+                    RigidCarDefinition.saloon(
+                        name: "Car \(existing + n + 1)",
+                        position: SIMD3(centre.x, centre.y + 2.4 * Double(n), 0)))
             }
             settings.scenario.rigidCars = (settings.scenario.rigidCars ?? []) + cars
         } catch { freestanding.errorMessage = error.localizedDescription }
@@ -143,14 +147,17 @@ extension SimulationModel {
         do {
             if let object = settings.scenario.rigidObjects?.first(where: { $0.id == id }) {
                 guard case .box(let size) = object.shape else { return }
-                let copy = try object.edited(
-                    id: UUID(), name: object.name + " copy",
-                    position: object.position + SIMD3(size.x + 0.5, 0, 0))
+                let copy = try settings.scenario.resting(
+                    object.edited(
+                        id: UUID(), name: object.name + " copy",
+                        position: object.position + SIMD3(size.x + 0.5, 0, 0)))
                 settings.scenario.rigidObjects?.append(copy)
             } else if let car = settings.scenario.rigidCars?.first(where: { $0.id == id }) {
                 let pose = simd_quatd(vector: car.orientation)
-                let copy = try car.edited(
-                    id: UUID(), name: car.name + " copy", position: car.position + pose.act(SIMD3(0, 2.4, 0)))
+                let copy = try settings.scenario.resting(
+                    car.edited(
+                        id: UUID(), name: car.name + " copy",
+                        position: car.position + pose.act(SIMD3(0, 2.4, 0))))
                 settings.scenario.rigidCars?.append(copy)
             }
         } catch { freestanding.errorMessage = error.localizedDescription }
@@ -363,18 +370,20 @@ private struct FreestandingRow: View {
             if let object,
                 let index = model.settings.scenario.rigidObjects?.firstIndex(where: { $0.id == id })
             {
-                model.settings.scenario.rigidObjects?[index] = try object.edited(
-                    position: SIMD3(edited.position.x, edited.position.y, edited.size.z / 2),
-                    orientation: orientation,
-                    mass: edited.mass, size: edited.size, staticFriction: edited.staticFriction,
-                    slidingFriction: edited.slidingFriction)
+                model.settings.scenario.rigidObjects?[index] = try model.settings.scenario.resting(
+                    object.edited(
+                        position: SIMD3(edited.position.x, edited.position.y, edited.size.z / 2),
+                        orientation: orientation,
+                        mass: edited.mass, size: edited.size, staticFriction: edited.staticFriction,
+                        slidingFriction: edited.slidingFriction))
             } else if let car,
                 let index = model.settings.scenario.rigidCars?.firstIndex(where: { $0.id == id })
             {
-                model.settings.scenario.rigidCars?[index] = try car.edited(
-                    position: SIMD3(edited.position.x, edited.position.y, 0), orientation: orientation,
-                    mass: edited.mass,
-                    staticFriction: edited.staticFriction, slidingFriction: edited.slidingFriction)
+                model.settings.scenario.rigidCars?[index] = try model.settings.scenario.resting(
+                    car.edited(
+                        position: SIMD3(edited.position.x, edited.position.y, 0), orientation: orientation,
+                        mass: edited.mass,
+                        staticFriction: edited.staticFriction, slidingFriction: edited.slidingFriction))
             }
         } catch {
             model.freestanding.errorMessage = error.localizedDescription

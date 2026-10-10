@@ -2,8 +2,21 @@ import Foundation
 import simd
 
 /// What the blast did to the ground at one point, and the soil's response under it.
+///
+/// Over a terrain the point is on its surface, the overpressure is the first cell of air above it
+/// (`GroundSlice`), and the soil column runs along the surface's normal there, not straight
+/// down: the air presses square on the surface, and a column is a plane wave sent into a
+/// half-space from its loaded face, which travels along the face's normal. So on a slope the
+/// column's depths, stress, "vertical" velocity and displacement are along that normal into the
+/// ground, its layers lie parallel to the surface, and its answer is the level ground's under
+/// the same load; `normal` gives the direction to resolve them. On flat ground the normal is
+/// vertical and nothing differs.
 public struct GroundPointResult: Codable, Sendable, Equatable {
     public var position: SIMD2<Float>
+    /// Over a terrain, the surface's height at the point, m, and its upward unit normal there,
+    /// the column's axis (out of the ground); nil on flat ground.
+    public var elevation: Float?
+    public var normal: SIMD3<Float>?
     /// Whether a block or the structure stood on the point at every frame, leaving no open
     /// ground for the air to press on; such a point has no response.
     public var covered: Bool
@@ -78,6 +91,13 @@ extension GroundPointResult {
     }
 }
 
+extension GroundPointResult {
+    /// Where the point is drawn: 5 cm off the ground, along its normal over a terrain.
+    public var marker: SIMD3<Float> {
+        SIMD3(position.x, position.y, elevation ?? 0) + 0.05 * (normal ?? SIMD3(0, 0, 1))
+    }
+}
+
 extension GroundShockResult {
     /// The points as dots to draw just above the ground: grey until the blast reaches them, then
     /// coloured by how fast the ground's surface moved, from 1 mm/s to 10 m/s on a log scale.
@@ -88,7 +108,16 @@ extension GroundShockResult {
             guard !point.covered else { return nil }
             let speed = point.surfaceVelocity(in: soil)
             let value = point.arrival == nil ? 0 : min(max(log10(max(speed, 1e-3) / 1e-3) / 4, 0.001), 0.999)
-            return SIMD4(point.position.x, point.position.y, 0.05, 3 + value)
+            return SIMD4(point.marker, 3 + value)
+        }
+    }
+
+    /// Sets each point's place on `terrain`: its height and normal, or none on flat ground.
+    public mutating func place(on terrain: Terrain?) {
+        let terrain = terrain.flatMap { $0.isFlat ? nil : $0 }
+        for n in points.indices {
+            points[n].elevation = terrain?.height(at: points[n].position)
+            points[n].normal = terrain?.normal(at: points[n].position)
         }
     }
 }
@@ -102,8 +131,13 @@ extension GroundShockSpec {
         return (low - cellSize, high + cellSize)
     }
 
-    /// The points as grey dots, before a run reaches them.
-    public var dots: [SIMD4<Float>] { allPoints.map { SIMD4($0.x, $0.y, 0.05, 3) } }
+    /// The points as grey dots, before a run reaches them, on `terrain` if there is one.
+    public func dots(on terrain: Terrain? = nil) -> [SIMD4<Float>] {
+        allPoints.map { point in
+            let normal = terrain?.normal(at: point) ?? SIMD3(0, 0, 1)
+            return SIMD4(SIMD3(point.x, point.y, terrain?.height(at: point) ?? 0) + 0.05 * normal, 3)
+        }
+    }
 }
 
 /// What a ground shock consumer found.
