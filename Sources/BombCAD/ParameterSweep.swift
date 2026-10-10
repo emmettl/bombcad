@@ -12,6 +12,8 @@ struct SimulationInputs: Equatable, Sendable {
     var groundShock: GroundShockSpec? = nil
     /// The thermal radiation reckoned alongside, likewise.
     var thermal: ThermalSpec? = nil
+    /// The cloud followed after, likewise.
+    var cloud: CloudSpec? = nil
 
     func validate() throws {
         try ProjectDocument.validate(scenario)

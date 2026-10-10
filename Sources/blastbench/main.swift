@@ -27,12 +27,13 @@ import simd
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
-//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
+//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
+//                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn]
-//                       [--stationary-walls]
+//                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 
@@ -751,6 +752,8 @@ func runSnapshot() throws {
     switch option("mode") {
     case "now": renderer.settings.mode = .overpressure
     case "impulse": renderer.settings.mode = .impulse
+    case "fluence": renderer.settings.thermal = .fluence
+    case "irradiance": renderer.settings.thermal = .peakIrradiance
     default: renderer.settings.mode = .peakOverpressure
     }
     renderer.settings.showWave = !flag("no-wave")
@@ -767,14 +770,14 @@ func runSnapshot() throws {
         print("  " + result.summary)
     }
     if let thermal {
-        // Coloured by fluence over six decades from 1 J/m², lifted off their surface, as the app
-        // draws them.
-        for (receiver, fluence) in zip(thermal.receivers, thermal.fluence) {
-            dots.append(
-                SIMD4(
-                    receiver.position + 0.05 * receiver.normal,
-                    4 + min(max(log10(max(Float(fluence), 1)) / 6, 0), 0.999)))
-        }
+        // Painted onto the surfaces with --mode fluence or irradiance, as the app paints them.
+        let values =
+            renderer.settings.thermal == .peakIrradiance
+            ? thermal.peakIrradiance : thermal.fluence.map { Float($0) }
+        renderer.setSurfacePaint(
+            SurfacePaint(
+                grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
+                shades: values.map(ThermalQuantity.shade)))
         print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
         // What it had radiated by each of a few moments.
@@ -888,6 +891,20 @@ func runSnapshot() throws {
     if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
     if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
     if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+    // The fireball's cloud, handed over at the end and followed, drawn as the app draws it, and
+    // with --frame-cloud seen as its button frames it.
+    if let path = option("cloud") {
+        let spec = try JSONDecoder().decode(
+            CloudSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        let cloud = CloudResult(
+            spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
+        for line in cloud.summary { print(line) }
+        if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
+        if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
+        if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
+        if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+        renderer.setLines(CloudOverlay.lines(cloud, eye: camera.eye))
+    }
 
     guard
         let frame = renderer.snapshot(

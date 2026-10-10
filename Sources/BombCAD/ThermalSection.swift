@@ -2,8 +2,8 @@ import BlastCore
 import SwiftUI
 
 /// The Run tab's Thermal radiation section: the fireball's radiant heat on the ground and the
-/// scene's faces, reckoned alongside each run, here or on a Mac set for sweeps, and drawn over
-/// the blast.
+/// scene's faces, reckoned alongside each run, here or on a Mac set for sweeps, and painted onto
+/// them under Display.
 struct ThermalSection: View {
     @Bindable var model: SimulationModel
 
@@ -11,10 +11,11 @@ struct ThermalSection: View {
         Section("Thermal radiation") {
             Toggle("Fireball's radiant heat", isOn: enabled)
                 .help(
-                    "Finds the fireball as the air's luminous gas at each moment, reduced to a sphere, and "
-                        + "reckons its grey-body radiation on the ground and the faces of the scene, with what "
-                        + "lies in the way. Illustrative: no comparison with measurements, and the air between "
-                        + "is taken as transparent.")
+                    "Finds the fireball as the air's luminous gas at each moment, cell by cell, and "
+                        + "reckons what it emits and absorbs on the ground and the faces of the scene, with what "
+                        + "lies in the way. Illustrative: it radiates three to five times what a TNT fireball "
+                        + "was measured to, as the gas never loses the heat, and the air between is taken as "
+                        + "transparent.")
             if let spec = model.thermalSpec {
                 if spec.fireball == .volume {
                     // On a log scale, a tenth of a decade at a time.
@@ -55,7 +56,8 @@ struct ThermalSection: View {
                 )
                 Text(
                     model.thermalStatus.isEmpty
-                        ? "Changes take effect from the next run. Afterburning makes a larger, longer fireball."
+                        ? "Changes take effect from the next run. Afterburning makes a larger, longer fireball. "
+                            + "Display › Surfaces paints its fluence or peak irradiance."
                         : model.thermalStatus
                 )
                 .font(.caption)
@@ -69,18 +71,5 @@ struct ThermalSection: View {
         Binding(
             get: { model.thermalSpec != nil },
             set: { model.thermalSpec = $0 ? ThermalSpec() : nil })
-    }
-}
-
-/// The Display section's thermal setting, when the project reckons the radiation.
-struct ThermalDisplaySettings: View {
-    @Bindable var model: SimulationModel
-
-    var body: some View {
-        if model.thermalSpec != nil {
-            Toggle("Thermal fluence", isOn: $model.renderSettings.showThermal)
-                .help(
-                    "Receivers coloured by their fluence so far: grey with none, to pale yellow at 1 MJ/m².")
-        }
     }
 }

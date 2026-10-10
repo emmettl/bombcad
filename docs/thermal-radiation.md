@@ -54,17 +54,23 @@ their defaults. A project whose description names the shape or the sphere shows 
 a connection kept open between runs and shared with any other model run there, such as the
 [fragments](fragments.md#in-the-app); should that Mac drop, it carries on here.
 
-During a run the view draws every receiver as a dot, coloured by its fluence so far on a log
-scale: slate grey with none, through dark red and orange, to pale yellow at 1 MJ/m² (1 J/m² at
-the bottom of the scale). Under Display, **Thermal fluence** hides them. A line under the section
-gives the largest fireball so far, its temperature now, the highest fluence and the number of
-receivers, and any frames still to reckon; Reset clears it all.
+During a run, **Surfaces** under Display offers **Thermal fluence** and **Peak irradiance** beside
+the blast's fields, and paints the one chosen onto the ground and every face that has receivers,
+interpolated between them: each surface's receivers are a grid, and the colour at a point is
+bilinear between the four nearest, on a log scale (a receiver under another solid takes the mean
+of its neighbours, so a surface has no holes at its edges). The scale runs over four decades,
+0.1 to 1,000 kJ/m² or kW/m², from dark red through orange to pale yellow, as metal glows hotter;
+below its bottom the surface keeps its own grey, as for the blast's fields, and the legend gives
+the units. It is painted as it stands after each frame reckoned, also when those come in after
+the run has ended. A line under the section gives the largest fireball so far, its temperature
+now, the highest fluence and the number of receivers, and any frames still to reckon; Reset
+clears it all.
 
-![The street canyon's receivers at 60 ms, 100 kg with afterburning and hot air, coloured by fluence as the app draws them: the faces turned to the fireball orange, the roofs and the faces turned away grey](street-thermal-60ms.png)
+![The street canyon at 60 ms, 100 kg with afterburning and hot air, painted with the fluence as the app paints it: the street, the faces turned to the fireball and the alleys orange and red, the roofs and the faces turned away grey](street-thermal-60ms.png)
 
-`blastbench snapshot --thermal thermal.json` reckons it alongside an offscreen snapshot, a frame a
-millisecond, and draws the receivers as the view does (the figure above, with `--preset street
---air thermal --afterburn --time 0.06 --mode now --no-wave --dot 7`).
+`blastbench snapshot --thermal thermal.json --mode fluence` (or `--mode irradiance`) reckons it
+alongside an offscreen snapshot, a frame a millisecond, and paints it as the view does (the figure
+above, with `--preset street --air thermal --afterburn --time 0.06 --no-wave`).
 
 **Keep Run** keeps the result with the run: the description, every receiver with its peak
 irradiance and fluence, and the fireball at each frame, as `--thermal-results` writes them.
@@ -387,8 +393,10 @@ frame with the GPU (8 ms of it the GPU's) and 540 ms on the cores, the two agree
   runs in software and may be slower.
 - For the shape and the sphere only the visibility test is on the GPU; laying out the rays and
   summing them, and following each ray to where it meets the shape, stay on the CPU.
-- The receivers are drawn as dots, not painted onto the surfaces.
-- Receivers on the structure's starting outline do not follow it as it moves or fails.
+- The paint is interpolated between receivers, a metre apart on the faces and two on the ground
+  by default, so what varies over less than that is smoothed; it shows no shadows of the sun.
+- Receivers on the structure's starting outline, and their paint, do not follow it as it moves
+  or fails.
 
 ## Sources
 

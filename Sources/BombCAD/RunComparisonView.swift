@@ -217,6 +217,7 @@ struct RunComparisonView: View {
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
                     if let thermal = run.thermal { Text(thermal.comparison).font(.callout) }
+                    if let cloud = run.cloud { Text(cloud.comparison).font(.callout) }
                     if plotsStructure {
                         if let response = run.structure {
                             metric("Peak recorded deflection", response.peak, baseline?.structure?.peak, "mm")

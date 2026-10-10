@@ -810,7 +810,7 @@ public enum CloudRise {
 }
 
 /// The cloud after a run: what was handed over and how it rose.
-public struct CloudResult: Codable, Sendable {
+public struct CloudResult: Codable, Sendable, Equatable {
     public var spec: CloudSpec
     public var handOver: CloudHandOver
     /// From the hand-over, closer together early on when the cloud changes fastest.
