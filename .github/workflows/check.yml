@@ -9,15 +9,17 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: Full application checks or the bounded adiabatic source benchmark
+        description: Full application checks, adiabatic benchmark or wall adoption comparison
         type: choice
-        options: [all, adiabatic]
+        options: [all, adiabatic, wall-adoption, packet-adoption]
         default: all
 
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
 # left no run complete. GitHub keeps only the newest waiting push queued behind it.
 concurrency:
-  group: check
+  # A bounded manual comparison must survive unrelated pushes to main. The
+  # physical runner still serializes jobs; ordinary app checks keep their group.
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.suite != 'all' && inputs.suite || 'check' }}
   cancel-in-progress: false
 
 permissions:
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   check:
-    if: github.event_name != 'workflow_dispatch' || inputs.suite != 'adiabatic'
+    if: github.event_name != 'workflow_dispatch' || (inputs.suite != 'adiabatic' && inputs.suite != 'wall-adoption' && inputs.suite != 'packet-adoption')
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 60
     steps:
@@ -55,6 +57,10 @@ jobs:
           path: ${{ runner.temp }}/check-${{ github.run_id }}-${{ github.run_attempt }}/tests.log
           if-no-files-found: warn
           retention-days: 14
+      - name: Verify packaged application and signature
+        run: |
+          bash Scripts/build-app.sh release
+          codesign --verify --deep --strict dist/BombCAD.app
 
   adiabatic:
     runs-on: [self-hosted, macOS, ARM64, metal]
@@ -73,5 +79,45 @@ jobs:
         with:
           name: adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  wall-adoption:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'wall-adoption'
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact-tag application wall and coupled histories
+        run: bash Scripts/check-wall-adoption.sh "${{ runner.temp }}/wall-adoption-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Retain complete original/shared fields and load intervals
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wall-adoption-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/wall-adoption-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  packet-adoption:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'packet-adoption'
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify released packet operator through complete application histories
+        run: bash Scripts/check-packet-adoption.sh "${{ runner.temp }}/packet-adoption-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Retain complete native remap, moving-reservoir, wall and piston reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packet-adoption-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/packet-adoption-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: warn
           retention-days: 14

@@ -22,9 +22,11 @@ import simd
 //   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
-//   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
+//   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
+//                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
+//   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
@@ -40,7 +42,7 @@ import simd
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
-//                       [--air thermal] [--afterburn]
+//                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
@@ -388,6 +390,8 @@ func runChamber() throws {
     if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
     if var structure = scenario.structure {
         applyRateOptions(&structure)
+        // `--bond pullout`: bars that slip, of the 16 mm bars' diameter.
+        if let bond = chosenBondSlip(diameter: 0.016) { structure.bondSlip = bond }
         scenario.structure = structure
     }
     let result = try ChamberTest.run(
@@ -450,9 +454,25 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     }
 }
 
+/// With `--radiate`, the luminous gas loses the heat it radiates: as `--thermal`'s description
+/// absorbs, when one is given, else by `--absorption` (1/m) and `--soot-yield`, or their defaults.
+func chosenCooling() throws -> RadiativeCooling? {
+    guard flag("radiate") else { return nil }
+    if let path = option("thermal") {
+        return RadiativeCooling(
+            spec: try JSONDecoder().decode(
+                ThermalSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path))))
+    }
+    var cooling = RadiativeCooling()
+    if let value = option("absorption").flatMap({ Float($0) }) { cooling.absorption = value }
+    if let value = option("soot-yield").flatMap({ Float($0) }) { cooling.sootYield = value }
+    return cooling
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
+    configuration.radiativeCooling = try chosenCooling()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if let air = chosenAirModel() {
@@ -486,7 +506,7 @@ func runGasPressure() throws {
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
             + pad("UFC 2-152", 12)
-            + pad("model/UFC", 11) + pad("burnt", 8))
+            + pad("model/UFC", 11) + pad("burnt", 8) + (flag("radiate") ? pad("radiated", 9) : ""))
     // `--per-volume 0.1415` runs other ratios (that one is Cooper's closed-vessel example).
     let ratios =
         option("per-volume").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [
@@ -530,7 +550,10 @@ func runGasPressure() throws {
                 + pad("\(format(mean / 1e6, 2)) MPa", 12) + pad("\(format(ideal / 1e6, 2)) MPa", 12)
                 + pad("\(format(reference / 1e6, 2)) MPa", 12)
                 + pad("\(format(100 * mean / reference, 0))%", 11)
-                + pad(solver.configuration.afterburning ? "\(format(100 * burnt, 0))%" : "-", 8))
+                + pad(solver.configuration.afterburning ? "\(format(100 * burnt, 0))%" : "-", 8)
+                + (flag("radiate")
+                    ? pad("\(format(100 * solver.radiatedEnergy / Double(scenario.charge.energy), 1))%", 9)
+                    : ""))
     }
 }
 
@@ -553,6 +576,7 @@ func runValidation() throws {
             solver.configuration.afterburnTime = time / 1000
         }
         configureRefinement(&solver.configuration)
+        solver.configuration.radiativeCooling = try? chosenCooling()
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -818,6 +842,8 @@ func runSnapshot() throws {
     case "impulse": renderer.settings.mode = .impulse
     case "fluence": renderer.settings.thermal = .fluence
     case "irradiance": renderer.settings.thermal = .peakIrradiance
+    case "temperature": renderer.settings.thermal = .surfaceTemperature
+    case "ignition": renderer.settings.thermal = .ignition
     default: renderer.settings.mode = .peakOverpressure
     }
     renderer.settings.showWave = !flag("no-wave")
@@ -834,14 +860,21 @@ func runSnapshot() throws {
         print("  " + result.summary)
     }
     if let thermal {
-        // Painted onto the surfaces with --mode fluence or irradiance, as the app paints them.
-        let values =
-            renderer.settings.thermal == .peakIrradiance
-            ? thermal.peakIrradiance : thermal.fluence.map { Float($0) }
+        // Painted onto the surfaces with --mode fluence, irradiance, temperature or ignition, as
+        // the app paints them.
+        let quantity = renderer.settings.thermal ?? .fluence
+        let heating = thermal.result.heating
+        let values: [Float] =
+            switch quantity {
+            case .fluence: thermal.fluence.map { Float($0) }
+            case .peakIrradiance: thermal.peakIrradiance
+            case .surfaceTemperature: heating.map { h in h.peakTemperature.map { $0 - h.ambient } } ?? []
+            case .ignition: heating?.ignition.map(Float.init) ?? []
+            }
         renderer.setSurfacePaint(
             SurfacePaint(
                 grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
-                shades: values.map(ThermalQuantity.shade)))
+                shades: values.map(quantity.shade)))
         print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
         // What it had radiated by each of a few moments.
@@ -859,6 +892,14 @@ func runSnapshot() throws {
             }
             print(line)
         }
+        // How large and hot it was at each of a few moments.
+        var across = "  across, and its temperature, at"
+        for moment in [0.01, 0.02, 0.05, 0.1, 0.17, 0.3, 0.5] where moment <= time + 1e-9 {
+            guard let frame = result.fireball.last(where: { $0.time <= moment + 1e-9 }) else { continue }
+            across += String(
+                format: " %.0f ms: %.1f m, %.0f K;", moment * 1000, 2 * frame.radius, frame.temperature)
+        }
+        print(across)
         if let other {
             print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
             for line in other.result.summary { print(line) }
@@ -922,6 +963,20 @@ func runSnapshot() throws {
                     largestCells.counts.x,
                     largestCells.counts.y, largestCells.counts.z, largestCells.voxelSize,
                     Double(largestCells.binary.count) / 1e6))
+        }
+        if solver.configuration.radiativeCooling != nil {
+            // What the gas lost to its radiation by each of the same moments.
+            var line = String(
+                format: "The gas lost %.1f MJ to its radiation, %.1f%% of the charge's energy; by",
+                solver.radiatedEnergy / 1e6, 100 * solver.radiatedEnergy / max(thermal.result.chargeEnergy, 1)
+            )
+            for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
+                let lost = solver.radiationHistory.last { $0.time <= moment + 1e-9 }?.energy ?? 0
+                line += String(
+                    format: " %.0f ms: %.1f%%;", moment * 1000,
+                    100 * lost / max(thermal.result.chargeEnergy, 1))
+            }
+            print(line)
         }
         let unburnt = solver.speciesTotals()
         if unburnt.fuel > 0 {
@@ -1499,6 +1554,8 @@ func runCloseIn() throws {
                 }
                 if var structure = scenario.structure {
                     applyRateOptions(&structure)
+                    // `--bond pullout`: bars that slip, of the 12 mm bars' diameter.
+                    if let bond = chosenBondSlip(diameter: 0.012) { structure.bondSlip = bond }
                     scenario.structure = structure
                 }
             },
@@ -1979,6 +2036,199 @@ func printSlabCrackPlan(_ solver: StructureSolver) {
             + "\(format(Double(total * h) * 1000, 1)) mm in all")
 }
 
+/// The bars' share of element (i, j, k)'s Cauchy stress along x, times h²: from their force with
+/// bars that slip (per unit reference area, so times the element's stretch), else E_s (λ − 1 −
+/// ε_p) ρ, exact while they are loaded one way.
+func barShare(_ solver: StructureSolver, _ i: Int, _ j: Int, _ k: Int, steelModulus: Float) -> Float {
+    let h = solver.model.elementSize
+    var stretch: Float = 0
+    for (b, c) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+        stretch +=
+            (simd_length(solver.position(i + 1, j + b, k + c) - solver.position(i, j + b, k + c)) / h - 1) / 4
+    }
+    if let force = solver.barForce(i, j, k) { return force.x * (1 + stretch) }
+    let plastic = solver.barPlasticStrain(i, j, k).x
+    return abs(plastic) < 1e8 ? steelModulus * (stretch - plastic) * solver.steelRatio(i, j, k).x * h * h : 0
+}
+
+/// `--stiffening`: where the tension along the span is carried, over the columns of elements
+/// `columns` (along x), summed over each column and averaged over them, in kN: the bars, and the
+/// concrete in tension by its crack across x (opened by its strain past the cracking strain
+/// over its band): never cracked, cracked under 0.02 mm, 0.02 to 0.1 mm and wider. With
+/// `profile`, column by column too. Bars that slip report their force; bonded bars' force is E_s (ε − ε_p), from the
+/// element's stretch along x.
+func tensionStiffening(_ solver: StructureSolver, columns: Range<Int>, label: String, profile: Bool) {
+    let h = solver.model.elementSize
+    let material = solver.model.material
+    let band = solver.model.bondSlip != nil ? h : max(h, material.crackSpacing)
+    let steelModulus = material.steel?.youngsModulus ?? 200e9
+    var parts = [Double](repeating: 0, count: 5)  // bars, uncracked, <0.02, 0.02-0.1, wider
+    var rows: [String] = []
+    var layers = [[Double]](repeating: [Double](repeating: 0, count: 5), count: solver.ez)
+    var net = [Double](repeating: 0, count: solver.ez)
+    for i in columns {
+        var column = [Double](repeating: 0, count: 5)
+        var widest: Float = 0
+        for j in 0..<solver.ey {
+            for k in 0..<solver.ez where solver.flag(i, j, k) == .active {
+                let ratio = solver.steelRatio(i, j, k).x
+                let bar = ratio > 0 ? barShare(solver, i, j, k, steelModulus: steelModulus) : 0
+                column[0] += Double(bar)
+                let concrete = solver.stress(i, j, k)[0] * h * h - bar
+                if k < solver.ez - 2 { net[k] += Double(concrete) / Double(columns.count) }
+                guard concrete > 0 else { continue }
+                let planes = solver.crackPlanes(i, j, k)
+                // The plane whose normal lies nearest x.
+                let plane = (0..<3).max { abs(planes.normals[$0].x) < abs(planes.normals[$1].x) } ?? 0
+                let factor = solver.crackingFactor(i, j, k)
+                let onset =
+                    material.tensileStrength * material.concreteRateFactor * max(factor, 1)
+                    / material.youngsModulus
+                let opening = factor > 0 ? max(planes.history[plane] - onset, 0) * band : 0
+                widest = max(widest, k == 0 ? opening : 0)
+                let bin = factor == 0 ? 1 : opening < 2e-5 ? 2 : opening < 1e-4 ? 3 : 4
+                column[bin] += Double(concrete)
+                layers[k][bin] += Double(concrete) / Double(columns.count)
+            }
+        }
+        for n in 0..<5 { parts[n] += column[n] / Double(columns.count) }
+        if profile {
+            let concrete = column[1...4].reduce(0, +)
+            rows.append(
+                "    \(pad(format(Double((Float(i) + 0.5 - Float(solver.ex) / 2) * h) * 1000, 0), 6)) mm: bars "
+                    + "\(pad(format(column[0] / 1000, 1), 6)), concrete \(pad(format(concrete / 1000, 1), 6)) kN "
+                    + "(uncracked \(pad(format(column[1] / 1000, 1), 5)), <0.02 mm \(pad(format(column[2] / 1000, 1), 5)), "
+                    + "0.02-0.1 \(pad(format(column[3] / 1000, 1), 5)), wider \(pad(format(column[4] / 1000, 1), 5))); "
+                    + "face crack \(format(Double(widest) * 1000, 2)) mm")
+        }
+    }
+    if profile, flag("line") {
+        // `--line`: along the span at mid-width, in the two layers of elements the bars run
+        // through: the bars' force and the concrete's stress along x, the crack across x, and the
+        // bars' slip at the node between the layers.
+        let j = solver.ey / 2
+        let bottom = (0..<solver.ez).first { solver.steelRatio(columns.lowerBound, j, $0).x > 0 } ?? 1
+        print("    along the span at mid-width, bars in layers \(bottom) and \(bottom + 1):")
+        print("        x mm   bars kN   concrete MPa     crack mm      slip mm  largest")
+        for i in columns {
+            var bars: Float = 0
+            var concrete: [Float] = []
+            var cracks: [Float] = []
+            for k in bottom...(bottom + 1) {
+                let bar = barShare(solver, i, j, k, steelModulus: steelModulus)
+                bars += bar
+                concrete.append((solver.stress(i, j, k)[0] * h * h - bar) / (h * h))
+                let planes = solver.crackPlanes(i, j, k)
+                let nearest = (0..<3).max { abs(planes.normals[$0].x) < abs(planes.normals[$1].x) } ?? 0
+                let factor = solver.crackingFactor(i, j, k)
+                let onset = material.tensileStrength * max(factor, 1) / material.youngsModulus
+                cracks.append(factor > 0 ? max(planes.history[nearest] - onset, 0) * band : 0)
+            }
+            let slip = solver.barSlip(i, j, bottom + 1)
+            var line = "    " + pad(format(Double((Float(i) + 0.5 - Float(solver.ex) / 2) * h) * 1000, 0), 8)
+            line += pad(format(Double(bars) / 1000, 2), 10)
+            line += concrete.map { pad(format(Double($0) / 1e6, 2), 7) }.joined()
+            line += cracks.map { pad(format(Double($0) * 1000, 3), 7) }.joined()
+            line +=
+                pad(format(Double(slip?.slip.x ?? 0) * 1000, 3), 9)
+                + pad(format(Double(slip?.largest.x ?? 0) * 1000, 3), 9)
+            print(line)
+        }
+    }
+    if profile, let column = option("column").flatMap({ Float($0) }) {
+        // `--column -44`: that column (mm from mid-span) element by element, at mid-width.
+        let i = Int((column / 1000 / h + Float(solver.ex) / 2).rounded(.down))
+        let j = solver.ey / 2
+        print(
+            "    column \(i), mid-width, bottom first: concrete and bar stress (MPa), crack history, rate factor"
+        )
+        for k in 0..<solver.ez {
+            let planes = solver.crackPlanes(i, j, k)
+            let bar: Float = barShare(solver, i, j, k, steelModulus: steelModulus)
+            let sigma = solver.stress(i, j, k)
+            let total: Double = Double(sigma[0]) / 1e6
+            let barStress: Double = Double(bar / (h * h)) / 1e6
+            // The concrete's stress across the crack nearest x, and the shear on it.
+            let tensor = simd_float3x3(
+                SIMD3(sigma[0] - bar / (h * h), sigma[3], sigma[5]), SIMD3(sigma[3], sigma[1], sigma[4]),
+                SIMD3(sigma[5], sigma[4], sigma[2]))
+            let nearest = (0..<3).max { abs(planes.normals[$0].x) < abs(planes.normals[$1].x) } ?? 0
+            let traction = tensor * planes.normals[nearest]
+            let across = simd_dot(traction, planes.normals[nearest])
+            let along = simd_length(traction - across * planes.normals[nearest])
+            let history: [String] = (0..<3).map { format(Double(planes.history[$0]) * 1e3, 3) }
+            let normals: [String] = planes.normals.map { n -> String in
+                let parts: [String] = [n.x, n.y, n.z].map { format(Double($0), 2) }
+                return "(" + parts.joined(separator: ",") + ")"
+            }
+            var line =
+                "      k \(k): total \(format(total, 2)), bars \(format(barStress, 2)), concrete across the crack "
+            line +=
+                "\(format(Double(across) / 1e6, 2)), shear on it \(format(Double(along) / 1e6, 2)), history "
+            line += history.joined(separator: " ") + " e-3, normals " + normals.joined(separator: " ")
+            line +=
+                ", factor \(format(Double(solver.crackingFactor(i, j, k)), 2)), ratio \(solver.steelRatio(i, j, k).x)"
+            line += ", stress " + sigma.map { format(Double($0) / 1e6, 2) }.joined(separator: " ")
+            print(line)
+        }
+    }
+    let concrete = parts[1...4].reduce(0, +)
+    print(
+        "  \(label): bars \(format(parts[0] / 1000, 1)) kN, concrete in tension \(format(concrete / 1000, 1)) kN "
+            + "(\(format(100 * concrete / max(parts[0] + concrete, 1), 0))% of the tension): uncracked "
+            + "\(format(parts[1] / 1000, 1)), under 0.02 mm \(format(parts[2] / 1000, 1)), 0.02-0.1 mm "
+            + "\(format(parts[3] / 1000, 1)), wider \(format(parts[4] / 1000, 1))")
+    for row in rows { print(row) }
+    if profile {
+        print("    by layer, bottom first (kN): uncracked, under 0.02 mm, 0.02-0.1, wider")
+        for (k, layer) in layers.enumerated() {
+            print(
+                "      k \(k): " + layer[1...4].map { pad(format($0 / 1000, 1), 6) }.joined()
+                    + "   net, tension and compression: \(format(net[k] / 1000, 1))")
+        }
+    }
+}
+
+/// A reinforced tie pulled to a mean strain of 1.5e-3 (`TieBenchmark`), its cracks and pull against
+/// the Model Code's spacing and tension stiffening. `--h 0.02,0.01` the meshes, `--bond none` bonded
+/// bars, `--factor 1.25` the concrete's strengths raised by that factor as at blast rates (its
+/// fracture energy by the factor's square root, as the tensile rate law raises it), the bond not.
+func runTie() throws {
+    let sizes = (option("h") ?? "0.02,0.01").split(separator: ",").compactMap { Float($0) }
+    let factor = option("factor").flatMap { Float($0) } ?? 1
+    let strain = option("strain").flatMap { Float($0) } ?? 1.5e-3
+    let bond =
+        option("bond") == nil
+        ? BondSlip(condition: .pullOut, barDiameter: TieBenchmark.diameter)
+        : chosenBondSlip(diameter: TieBenchmark.diameter)
+    let strength = TieBenchmark.material.tensileStrength * factor
+    print(
+        "Tie 1 m x 100 mm x 100 mm, 2% of 12 mm bars, pulled to \(format(Double(strain) * 1000, 2))e-3; "
+            + "strengths x\(format(Double(factor), 2))")
+    let transfer = TieBenchmark.transferLength(raised: factor)
+    print(
+        "Model Code, the bond kept static: cracks \(format(Double(transfer) * 1000, 0)) to \(format(Double(2 * transfer) * 1000, 0)) mm apart; pull "
+            + "\(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0.4, strength: strength)) / 1000, 1)) kN "
+            + "(beta 0.4) to \(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0.6, strength: strength)) / 1000, 1)) kN (0.6); "
+            + "bare bars \(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0, strength: strength)) / 1000, 1)) kN"
+    )
+    for h in sizes {
+        let result = try TieBenchmark.run(device: device, elementSize: h, bond: bond, strain: strain) {
+            material in
+            material.concreteRateFactor = factor
+            material.fractureEnergy *= factor.squareRoot()
+            applyRateOptions(&material)
+        }
+        let spacings = result.spacings
+        let mean = spacings.isEmpty ? 0 : spacings.reduce(0, +) / Float(spacings.count)
+        print(
+            "  \(format(Double(h) * 1000, 1)) mm elements: \(spacings.count + 1) cracks, "
+                + "\(format(Double(spacings.min() ?? 0) * 1000, 0))-\(format(Double(spacings.max() ?? 0) * 1000, 0)) mm apart "
+                + "(mean \(format(Double(mean) * 1000, 0))); pull \(format(Double(result.load) / 1000, 1)) kN"
+        )
+    }
+}
+
 func runSlab() throws {
     if flag("unload") {
         // `--unload`: pushed slowly at mid-span to the test's peak, then released.
@@ -2103,26 +2353,40 @@ func runSlab() throws {
                 if flag("pressed-interlock") { $0.pressedInterlock = true }
             },
             prepare: prepareTrace,
-            sample: flag("work")
+            sample: flag("stiffening")
                 ? { solver in
+                    // `--stiffening`: where the tension is carried over the 600 mm about mid-span,
+                    // every 20 mm on the way down.
                     let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
                     let step = 0.02 * Float(milestones.count + 1)
-                    let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
-                    let peak = deflection > (atPeak?.deflection ?? 0)
-                    let end = solver.time >= 0.08
-                    guard crossed || peak || end else { return }
-                    let totals = solver.workTotals()
-                    if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
-                    if peak {
-                        atPeak = (
-                            deflection, totals,
-                            regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
-                        )
-                    }
-                    if end {
-                        milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
-                    }
-                } : nil,
+                    guard deflection >= step, solver.time < 0.03 else { return }
+                    milestones.append(("", []))
+                    let reach = Int((0.3 / solver.model.elementSize).rounded())
+                    tensionStiffening(
+                        solver, columns: (solver.ex / 2 - reach)..<(solver.ex / 2 + reach),
+                        label: "\(Int((step * 1000).rounded())) mm, \(format(solver.time * 1000, 1)) ms",
+                        profile: flag("profile") && step >= 0.08)
+                }
+                : flag("work")
+                    ? { solver in
+                        let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                        let step = 0.02 * Float(milestones.count + 1)
+                        let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
+                        let peak = deflection > (atPeak?.deflection ?? 0)
+                        let end = solver.time >= 0.08
+                        guard crossed || peak || end else { return }
+                        let totals = solver.workTotals()
+                        if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
+                        if peak {
+                            atPeak = (
+                                deflection, totals,
+                                regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
+                            )
+                        }
+                        if end {
+                            milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
+                        }
+                    } : nil,
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
@@ -2630,10 +2894,95 @@ func runDigest() throws {
     }
 }
 
+/// The layered soil column under ground points: its peak stress against the characteristics'
+/// closed form for bilinear soil at several steps, and its cost a frame for a line of points fed
+/// a frame a millisecond, as `GroundShockConsumer` runs it.
+func runSoilColumn() throws {
+    let ratio = Double(option("ratio") ?? "2") ?? 2
+    let points = Int(option("points") ?? "31") ?? 31
+    let deepest = Float(option("depth") ?? "3") ?? 3
+    let (peak, duration) = (100e3, 0.004)
+    let surface = { (t: Double) in t >= 0 && t <= duration ? peak * (1 - t / duration) : 0 }
+    let depths = [0.5, 1.2, 3, 5]
+    print(
+        "Bilinear soil, 1,600 kg/m³ loading at 300 m/s, unloading at \(300 * ratio) m/s; 100 kPa over 4 ms:")
+    print(
+        "step (s)   element (m)   peak stress against the closed form at "
+            + depths.map { "\($0) m" }.joined(separator: ", "))
+    for step in [2e-4, 1e-4, 5e-5, 2.5e-5, 1.25e-5] {
+        let profile = SoilProfile(
+            layers: [
+                SoilLayer(thickness: 1, density: 1600, waveSpeed: 300, unloadingWaveSpeed: Float(300 * ratio))
+            ],
+            timeStep: Float(step))
+        var column = SoilColumn(profile: profile, depth: 5)
+        while column.time < 0.03 {
+            let t = column.time
+            let mean = { (t: Double) -> Double in
+                let s = min(max(t, 0), duration)
+                return peak * (s - s * s / (2 * duration))
+            }
+            column.step(load: (mean(t + step / 2) - mean(t - step / 2)) / column.timeStep)
+        }
+        let mids = column.elementDepths
+        let ratios = depths.map { depth -> String in
+            let e = mids.indices.min { abs(mids[$0] - depth) < abs(mids[$1] - depth) }!
+            let exact = HystereticAttenuation.peakStress(
+                depth: mids[e], loadingSpeed: 300, unloadingSpeed: 300 * ratio, surface: surface)
+            return String(format: "%.3f", column.peakStress[e] / exact)
+        }
+        print(String(format: "%-10g %-13.4f ", step, column.depths[1]) + ratios.joined(separator: "  "))
+    }
+    // The cost: a line of points, 170 frames a millisecond apart, a triangle arriving later
+    // further out.
+    print("\nCost, \(points) points to \(deepest) m, 170 frames of 1 ms:")
+    for step in [1e-4, 5e-5, 2.5e-5] {
+        var spec = GroundShockSpec()
+        spec.model = .column
+        spec.depths = [0, 1, deepest]
+        spec.points = (0..<points).map { SIMD2(Float($0) + 0.5, 0.5) }
+        spec.profile = SoilProfile(
+            layers: [
+                SoilLayer(thickness: 1, density: 1600, waveSpeed: 300, unloadingWaveSpeed: Float(300 * ratio))
+            ],
+            timeStep: Float(step))
+        var consumer = GroundShockConsumer(spec: spec)
+        let nx = Int32(points + 1)
+        let start = Date()
+        for frame in 0..<170 {
+            let t = Double(frame) * 1e-3
+            var values: [Float] = []
+            for _ in 0..<2 {
+                for i in 0..<Int(nx) {
+                    let s = t - Double(i) * 0.002
+                    let p = s >= 0 && s <= duration ? peak * (1 - s / duration) : 0
+                    let kept = s >= 0 ? peak : 0
+                    let impulse =
+                        peak * (min(max(s, 0), duration) - pow(min(max(s, 0), duration), 2) / (2 * duration))
+                    values += [Float(p), Float(kept), Float(impulse)]
+                }
+            }
+            consumer.consume(
+                GroundSlice(
+                    time: t, cellSize: 1, grid: SIMD3(nx, 2, 4), first: .zero, counts: SIMD2(nx, 2),
+                    values: values,
+                    ambientDensity: 1.225, ambientPressure: 101_325, gamma: 1.4))
+        }
+        let seconds = Date().timeIntervalSince(start)
+        let column = SoilColumn(profile: spec.columnProfile, depth: deepest)
+        print(
+            String(
+                format: "step %-8g %4d elements a column: %.3f ms a frame, %.1f ns an element-step", step,
+                column.elementCount, seconds / 170 * 1000,
+                seconds / (170 * 1e-3 / column.timeStep * Double(column.elementCount * points)) * 1e9))
+    }
+}
+
 do {
     switch command {
     case "digest": try runDigest()
     case "slab": try runSlab()
+    case "tie": try runTie()
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
@@ -2651,6 +3000,8 @@ do {
     case "seat": try runSeat()
     case "precast": try runPrecast()
     case "thermal": try runThermal()
+    case "soilcolumn": try runSoilColumn()
+    case "heating": try runHeating()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

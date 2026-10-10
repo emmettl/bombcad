@@ -16,10 +16,12 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case protectedBuilding
     case glassFacade
     case carPark
+    case populatedCarPark
     case underpass
     case blockHouse
     case blockWall
     case internalExplosion
+    case furnishedRoom
 
     public var id: String { rawValue }
 
@@ -40,10 +42,12 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .protectedBuilding: "Wall in front of a building"
         case .glassFacade: "Glass façade"
         case .carPark: "Car park"
+        case .populatedCarPark: "Car park with parked cars (freestanding)"
         case .underpass: "Underpass"
         case .blockHouse: "Block-built house"
         case .blockWall: "Blockwork wall"
         case .internalExplosion: "Internal explosion (test)"
+        case .furnishedRoom: "Furnished room (freestanding)"
         }
     }
 
@@ -423,6 +427,14 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .internalExplosion:
             // The reinforced concrete chamber of Shang et al. (2026), half of it: see ChamberTest.
             return ChamberTest.scenario()
+
+        case .populatedCarPark:
+            // The car park held rigid, with rows of freestanding cars: see PopulatedScene.
+            return PopulatedScene.carPark.scenario
+
+        case .furnishedRoom:
+            // Freestanding furniture in a rigid room under an internal explosion: see PopulatedScene.
+            return PopulatedScene.furnishedRoom.scenario
 
         case .tallFrame:
             // An eight-storey concrete frame, 28 m high: three bays by two of 6 m, 3.5 m storeys,

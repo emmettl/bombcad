@@ -124,6 +124,42 @@ struct GroundShockOverlayTests {
         #expect(throws: ProjectFileError.self) { try broken.validate() }
     }
 
+    @Test("A soil column runs alongside, its motion at depth charted live and its peaks kept with the run")
+    func column() async throws {
+        var column = spec()
+        column.model = .column
+        column.profile = GroundShockSection.defaultProfile(column.soil)
+        column.profile?.base = GroundShockSection.Beneath.stiffSoil.base
+        let (model, kept) = try await run(airOnly(), groundShock: column)
+        let live = try #require(model.groundShockLive)
+        let times = try #require(live.frameTimes)
+        #expect(live.model == .column && times.count == live.frames && times.first == 0)
+        let line = live.points.dropFirst()
+        for point in line {
+            let profile = try #require(point.profile)
+            #expect(profile.depths.last == 1 && profile.velocity.allSatisfy { $0 >= 0 })
+            #expect(point.responses.allSatisfy { $0.history?.count == live.frames })
+            // Bilinear soil: less at a metre down than at the top, some left compacted.
+            #expect(point.responses[1].verticalVelocity < point.responses[0].verticalVelocity)
+            #expect(point.responses[0].residualDisplacement! > 0)
+        }
+        let speeds = line.map { $0.surfaceVelocity(in: live.soil) }
+        #expect(zip(speeds, speeds.dropFirst()).allSatisfy { $0 > $1 })
+        // Kept without the histories or the frames' times, and through saving and reopening.
+        let ground = try #require(kept.groundShock)
+        #expect(ground.result.frameTimes == nil && ground.result.profile == column.profile)
+        #expect(ground.result.points.allSatisfy { $0.responses.allSatisfy { $0.history == nil } })
+        #expect(ground.summary.hasPrefix("Ground shock in a soil column: 5 points"))
+        let reopened = try ProjectDocument(archive: ProjectDocument(model: model).makeArchive())
+        #expect(reopened.savedRuns.last?.groundShock == ground && reopened.groundShock == column)
+        var broken = kept
+        broken.groundShock?.result.points[1].responses[0].history = [1]
+        #expect(throws: ProjectFileError.self) { try broken.validate() }
+        broken = kept
+        broken.groundShock?.result.profile = nil
+        #expect(throws: ProjectFileError.self) { try broken.validate() }
+    }
+
     @Test("Points outside the domain are not estimated, and the line says so")
     func outside() async throws {
         var outside = spec()
@@ -142,6 +178,9 @@ struct GroundShockOverlayTests {
     @Test("The Run tab's starting line lies in the domain, out from the charge the longest way")
     func defaults() throws {
         let spec = GroundShockSection.defaultSpec(for: airOnly().scenario)
+        // A soil column of the dry soil, unloading at twice its loading wave speed.
+        #expect(
+            spec.model == .column && spec.profile?.layers.first?.unloadingSpeed == 2 * spec.soil.waveSpeed)
         try spec.validate(domain: SIMD3(8, 8, 4))
         let line = try #require(spec.line)
         // The charge is at x = 2: the ground runs furthest towards +x.
