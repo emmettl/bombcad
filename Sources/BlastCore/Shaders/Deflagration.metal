@@ -38,8 +38,8 @@ struct DeflagrationUniforms {
     float speedFactor;             // constant turbulence factor
     float wrinklingRadius;         // 0: no wrinkling with radius
     float wrinklingPower;
-    float subgridCoefficient;      // 0: no sub-grid turbulence
-    float turbulentSlope;          // b3
+    float turbulenceScale;         // 1.48 a in Bradley's correlation; 0: no sub-grid turbulence
+    float velocityPerViscosity;    // u' over the eddy viscosity: sqrt(2/3) / (C_k dx)
     float ignitionX;
     float ignitionY;
     float ignitionZ;
@@ -51,6 +51,7 @@ struct DeflagrationUniforms {
     float unburntDensity;          // the unburnt gas's density and ratio of specific heats, ambient
     float unburntGamma;
     float expansionRatio;          // the burnt gas's volume over the unburnt's, at constant pressure
+    float kinematicViscosity;      // the unburnt mixture's, ambient
 };
 
 static inline float laminarBurningSpeed(float fraction, constant DeflagrationUniforms &d) {
@@ -88,6 +89,7 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
                          const device float2 *species [[buffer(1)]],
                          const device uchar *mask [[buffer(2)]],
                          device float *burning [[buffer(3)]],
+                         const device float *eddyViscosity [[buffer(4)]],
                          const device StepControl &control [[buffer(5)]],
                          constant DeflagrationUniforms &d [[buffer(6)]],
                          uint3 tid [[thread_position_in_grid]]) {
@@ -108,18 +110,13 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
     float b = regress(own);
 
     // Godunov's upwind gradient of b for a front moving towards larger b (the unburnt side), from
-    // second-order ENO differences (Osher and Fedkiw, Level Set Methods, ch. 3 and 6), and the
-    // neighbours' velocities for the vorticity. A solid neighbour or the domain's edge repeats
-    // the nearer value.
+    // second-order ENO differences (Osher and Fedkiw, Level Set Methods, ch. 3 and 6). A solid
+    // neighbour or the domain's edge repeats the nearer value.
     float3 velocity = float3(c.mx, c.my, c.mz) / rho;
     float gradient = 0.0f;
-    float3 low[3];
-    float3 high[3];
     for (int axis = 0; axis < 3; ++axis) {
         float v[5];
         v[2] = b;
-        low[axis] = velocity;
-        high[axis] = velocity;
         for (int side = -1; side <= 1; side += 2) {
             float previous = b;
             bool open = true;
@@ -127,13 +124,7 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
                 int3 n = cell;
                 n[axis] += side * k;
                 if (open && fluidAt(n, mask, d)) {
-                    int other = cellIndex(n, d);
-                    previous = regress(species[other]);
-                    if (k == 1 && d.subgridCoefficient > 0.0f) {
-                        Cell nc = state[other];
-                        float3 nv = float3(nc.mx, nc.my, nc.mz) / max(nc.rho, d.densityFloor);
-                        if (side < 0) { low[axis] = nv; } else { high[axis] = nv; }
-                    }
+                    previous = regress(species[cellIndex(n, d)]);
                 } else {
                     open = false;
                 }
@@ -165,29 +156,32 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
 
     // The burning velocity, at the fuel fraction the cell's share of cloud gas gives it.
     float cloud = clamp(own.y / rho, 0.0f, 1.0f);
-    float speed = laminarBurningSpeed(cloud * d.cloudFraction, d);
-    if (speed <= 0.0f) {
+    float laminar = laminarBurningSpeed(cloud * d.cloudFraction, d);
+    if (laminar <= 0.0f) {
         return;
     }
+    // The unburnt gas's compression: adiabatic from the ambient mixture to the cell's pressure.
+    float kinetic = 0.5f * dot(velocity, velocity) * rho;
+    float pressure = gasPressure(rho, c.energy - kinetic, d.airModel, d.gamma);
+    float compression = pow(max(pressure / d.ambientPressure, 1e-3f), 1.0f / d.unburntGamma);
+    float speed = laminar * d.speedFactor;
     if (d.wrinklingRadius > 0.0f) {
         float radius = length(centreOfCell - ignition);
         speed *= max(pow(radius / d.wrinklingRadius, d.wrinklingPower), 1.0f);
     }
-    speed *= d.speedFactor;
-    if (d.subgridCoefficient > 0.0f) {
-        // Central differences of the neighbours' velocities (one-sided where one is solid).
-        float3 dUdx = (high[0] - low[0]) / (2.0f * dx);
-        float3 dUdy = (high[1] - low[1]) / (2.0f * dx);
-        float3 dUdz = (high[2] - low[2]) / (2.0f * dx);
-        float3 vorticity = float3(dUdy.z - dUdz.y, dUdz.x - dUdx.z, dUdx.y - dUdy.x);
-        speed += d.turbulentSlope * d.subgridCoefficient * dx * length(vorticity);
+    if (d.turbulenceScale > 0.0f) {
+        // Wrinkling by sub-grid turbulence (Bauwens et al. 2008, eq. 5, after Bradley, Lau and
+        // Lawes 1992): max(1, 1.48 a (u'/S_L)^(1/2) (dx/delta)^(1/6)), u' the sub-grid velocity the
+        // air's mixing gives this cell, delta = nu/S_L the laminar flame's thickness, nu the unburnt
+        // gas's kinematic viscosity, falling as it is compressed.
+        float turbulent = eddyViscosity[index] * d.velocityPerViscosity;
+        float thickness = d.kinematicViscosity / (compression * laminar);
+        float wrinkling = d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
+        speed *= max(wrinkling, 1.0f);
     }
 
-    // The unburnt gas's density: the ambient mixture's, compressed adiabatically to the cell's
-    // pressure, and only the cloud's share of it.
-    float kinetic = 0.5f * dot(velocity, velocity) * rho;
-    float pressure = gasPressure(rho, c.energy - kinetic, d.airModel, d.gamma);
-    float unburnt = cloud * d.unburntDensity * pow(max(pressure / d.ambientPressure, 1e-3f), 1.0f / d.unburntGamma);
+    // The unburnt gas's density: the ambient mixture's, compressed, and only the cloud's share of it.
+    float unburnt = cloud * d.unburntDensity * compression;
     burning[index] = min(unburnt * speed * gradient * dt, own.x);
 }
 
