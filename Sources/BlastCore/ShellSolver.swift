@@ -470,6 +470,10 @@ public final class ShellSolver {
         var fibreStarts: [UInt32] = [0]
         var fibreGeometry: [SIMD4<Float>] = []
         try model.validateAnchorages()
+        guard !model.supportAnchorages.contains(where: { $0?.betweenParts == true }) else {
+            throw ImportedMesh.ImportError.invalid(
+                "Connections between two parts are for solid elements only.")
+        }
         var fibreLaws: [AnchorageParameters] = []
         var slots: [Int] = []
         if let stiffness = model.connectionStiffness {

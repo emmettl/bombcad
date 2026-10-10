@@ -230,6 +230,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
    of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
+15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from
+   shapes or a DEM, solid in the air's mask on every level; see [Terrain](terrain.md). Next: cut
+   cells for its slopes, and terrain in thermal visibility and rigid contact.)
 
 ### Freestanding objects and supports
 
@@ -1990,8 +1993,12 @@ for its mass and radiation damping and a layer's echoes, checked against statics
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
 sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
 the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
-tenth as much. Still open: settlement under cyclic rocking; joints at angles to the lattice, and
-on shells; connections between moving components other than a footing; embedment. Loaded by the air instead of a pulse
+tenth as much. Joints can lie at any angle, on solids and shells, and tie two moving parts of a
+body (a beam seated on a corbel slides off and drops its span: `blastbench seat`); footings can
+be set into the soil, as stiff as Gazetas's embedded footing; and a seat resting with Eurocode
+2's 0.7 dissipates within 4% of three measured precast seats' energy over their whole cycling
+(`blastbench precast`; neoprene pads and dowels are not followed). Still open: settlement under
+cyclic rocking; pads' and dowels' laws; a measured embedded footing. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.

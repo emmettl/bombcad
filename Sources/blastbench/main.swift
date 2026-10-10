@@ -30,8 +30,12 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
-//                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
+//   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
+//                   (a precast beam on corbels of two columns, one column struck away from the span)
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
@@ -44,7 +48,8 @@ import simd
 //                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
+//   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -124,6 +129,8 @@ func chosenScenario() -> Scenario {
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
         scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
     }
+    // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
+    if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     return scenario
 }
 
@@ -2500,6 +2507,73 @@ func runSlab() throws {
     }
 }
 
+/// A precast beam's seat cycled along its corbel against Batalha et al.'s tests (`PrecastSeatTest`).
+func runPrecast() throws {
+    let tests = (option("tests") ?? "i0_50,i0_100,i0_150").split(separator: ",").map { "spc_" + $0 }
+    let friction = option("friction").flatMap { Float($0) } ?? 0.7
+    let limit = option("reversals").flatMap { Int($0) }
+    let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
+    print(
+        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+            + (limit.map { ", first \($0) reversals" } ?? ""))
+    print(
+        pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
+            + pad("energy, model", 15)
+            + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
+    for test in tests {
+        var law = Anchorage.resting(friction: friction)
+        // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
+        law.shearStiffness = option("pad").flatMap { Float($0) }
+        // `--normal 1e9` the joint's stiffness across, in Pa/m.
+        law.normalStiffness = option("normal").flatMap { Float($0) }
+        let r = try PrecastSeatTest.run(
+            device: device, test: test, samples: folder, law: law, reversals: limit)
+        if let out = option("history") {
+            try r.history.map { "\($0.x),\($0.y)" }.joined(separator: "\n").write(
+                toFile: out.replacingOccurrences(of: "%", with: test), atomically: true, encoding: .utf8)
+        }
+        print(
+            pad(test, 13) + pad("\(format(Double(PrecastSeatTest.axialLoad(of: test)) / 1000, 0)) kN", 8)
+                + pad("\(format(Double(r.sliding) / 1000, 1)) kN", 16)
+                + pad("\(format(Double(r.measuredSliding) / 1000, 1)) kN", 10)
+                + pad("\(format(Double(r.energy) / 1000, 1)) kJ", 15)
+                + pad("\(format(Double(r.measuredEnergy) / 1000, 1)) kJ", 10)
+                + pad("\(format(Double(r.lag) * 1000, 2)) mm", 9) + pad("\(format(r.wallSeconds)) s", 9))
+    }
+}
+
+/// A precast beam seated on corbels, one of its columns struck away from the span
+/// (`DroppedSpanStudy`).
+func runSeat() throws {
+    let speeds = (option("speeds") ?? "4,8,12").split(separator: ",").compactMap { Float($0) }
+    let seats = (option("seats") ?? "0.1,0.2").split(separator: ",").compactMap { Float($0) }
+    let duration = option("time").flatMap { Float($0) } ?? 1.5
+    let h = option("h").flatMap { Float($0) } ?? 0.1
+    // `--dowels` ties the beam to its corbels by starter bars through the pad instead of resting.
+    let law: Anchorage = flag("dowels") ? .dowelled(ratio: 0.004) : .resting(friction: 0.5)
+    print(
+        "Precast beam 0.5 m deep on corbels of two columns 6 m apart, "
+            + (flag("dowels") ? "dowelled to them" : "resting with friction 0.5")
+            + "; the right column struck away from the span; \(format(Double(duration), 1)) s")
+    print(
+        pad("seat", 8) + pad("speed", 9) + pad("column sway", 13) + pad("slide", 10) + pad("off seat", 10)
+            + pad("end fell", 10) + pad("eroded", 8) + pad("run time", 9))
+    for seat in seats {
+        for speed in speeds {
+            let r = try DroppedSpanStudy.run(
+                device: device, seat: seat, speed: speed, law: law, duration: duration, elementSize: h)
+            print(
+                pad("\(format(Double(seat) * 1000, 0)) mm", 8) + pad("\(format(Double(speed), 1)) m/s", 9)
+                    + pad("\(format(Double(r.peakSway) * 1000, 0)) mm", 13)
+                    + pad("\(format(Double(r.peakSlide) * 1000, 0)) mm", 10)
+                    + pad("\(format(Double(r.unseated) * 100, 0))%", 10)
+                    + pad("\(format(Double(r.drop) * 1000, 0)) mm", 10)
+                    + pad("\(r.summary.erodedElements)", 8)
+                    + pad("\(format(r.wallSeconds)) s", 9))
+        }
+    }
+}
+
 /// A freestanding wall under a blast on each kind of base connection (`AnchorageStudy`).
 func runAnchorage() throws {
     let mass = option("mass").flatMap { Float($0) } ?? 50
@@ -2571,7 +2645,8 @@ func runAnchorage() throws {
                     : try AnchorageStudy.run(
                         device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                         elementSize: h,
-                        shells: shells, soil: soil)
+                        shells: shells, soil: soil,
+                        embedment: option("embed").flatMap { Float($0) }.map { Embedment(depth: $0) })
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
@@ -2911,8 +2986,13 @@ func runDigest() throws {
         var configuration = SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning
+        var scenario = preset.scenario
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        if option("terrain") == "flat" {
+            scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        }
         let solver = try BlastSolver(
-            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         let result = solver.advance(steps: steps)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         solver.withState { cells in
@@ -3046,10 +3126,13 @@ do {
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
+    case "seat": try runSeat()
+    case "precast": try runPrecast()
     case "thermal": try runThermal()
     case "dialpack": try runDialPack()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
+    case "terrain": try runTerrain(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)
