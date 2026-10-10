@@ -272,6 +272,11 @@ public final class BlastSolver {
     var refinementLevels: [AirRefinement] { [refinement, finerRefinement].compactMap { $0 } }
     /// Bound in place of the refinement's buffers while the air is not refined.
     private let refinementPlaceholder: MTLBuffer
+    /// The radiative cooling's kernels and buffers while it is on, what the gas has radiated since
+    /// the restart, J, and that total at the end of each batch (see `RadiativeCooling`).
+    var radiativeCoolingStage: RadiativeCoolingStage?
+    public internal(set) var radiatedEnergy = 0.0
+    public internal(set) var radiationHistory: [(time: Double, energy: Double)] = []
     /// Per gauge: the finest cell of its cell that holds its point, as x + R (y + R z) for R
     /// finest cells along a coarse cell's edge, or `UInt32.max` to read the coarse cell.
     private let gaugeChildBuffer: MTLBuffer
@@ -1039,6 +1044,7 @@ public final class BlastSolver {
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
+        setUpRadiativeCooling()
         for body in bodies { body.reset() }
         if let plan = tiledCoupling {
             let header = wallVelocityBuffer.contents().bindMemory(to: UInt32.self, capacity: 2)
@@ -1456,6 +1462,29 @@ public final class BlastSolver {
                 refinement.encodeRefluxAndRestrict(
                     encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms)
             }
+            if let radiativeCoolingStage, !asleep {
+                // Every few steps, and at the batch's end, the luminous gas loses what it has
+                // radiated since, in the coarse cells; the fine cells under them each lose as much a
+                // volume, as they gain what debris trades with the air.
+                let take =
+                    step == steps - 1
+                    || (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
+                radiativeCoolingStage.encode(
+                    encoder, take: take, state: stateBuffers[current], mask: maskBuffer,
+                    species: hasSpecies && configuration.afterburning ? speciesBuffers[current] : nil,
+                    placeholder: noSpecies,
+                    control: controlBuffer, uniforms: uniforms,
+                    tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil)
+                if take, let refinement, refining {
+                    refinement.encodeSync(
+                        encoder, parent: coarseView(species: currentSpecies), control: controlBuffer,
+                        uniforms: uniforms)
+                    if let finerRefinement, let deep = finerUniforms(uniforms) {
+                        finerRefinement.encodeSync(
+                            encoder, parent: refinement.view(), control: controlBuffer, uniforms: deep)
+                    }
+                }
+            }
 
             phase("mechanics")
             if hasBody {
@@ -1595,6 +1624,10 @@ public final class BlastSolver {
             }
         }
         stepCount += Int(control.activeSteps)
+        if let radiativeCoolingStage {
+            radiatedEnergy += radiativeCoolingStage.collect(rows: Int(control.stepIndex))
+            radiationHistory.append((time, radiatedEnergy))
+        }
         // Once the blast has left and the air is close to ambient everywhere, stop advancing it.
         // This is decided only at a checkpoint, from the step before it.
         if hasBody, !airIsAsleep, control.activeSteps > 0, stepCount % Self.checkpointInterval == 0 {
