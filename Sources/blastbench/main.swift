@@ -202,6 +202,14 @@ func applyRateOptions(_ material: inout StructureMaterial) {
     if let factor = option("tensile-strength").flatMap({ Float($0) }) { material.tensileStrength *= factor }
 }
 
+/// `--hourglass-secant` and `--hourglass-no-steel`: hourglass control that softens with cracking,
+/// and a cap on it without the bars' strength (`StructureModel.hourglassFollowsCracking` and
+/// `hourglassCapsSteel`).
+func applyHourglassOptions(_ model: inout StructureModel) {
+    if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
+    if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+}
+
 /// `--work`: the work trace (`StructureSolver.tracesWork`), and `--hourglass 0.5` scales the
 /// hourglass control, for any bench that builds a solid body.
 /// The structure of the last run, kept for a report after it.
@@ -217,19 +225,71 @@ func prepareTrace(_ solver: StructureSolver) {
     }
 }
 
+/// Where hourglass control's work goes (with `--work`): through the whole body, by layer up its
+/// depth (z), and by the elements' state, each part's hourglass work (held below the cap, and at
+/// it) against all the work done in it. `centre` picks out elements near a charge, if given.
+func printHourglassBreakdown(_ s: StructureSolver, label: String, near: ((Int, Int, Int) -> Bool)? = nil) {
+    let hourglass = StructureSolver.WorkChannel.hourglass.rawValue
+    let capped = StructureSolver.WorkChannel.hourglassCapped.rawValue
+    let all = s.workTotals()
+    let allHourglass = all[hourglass] + all[capped]
+    var parts: [(String, (Int, Int, Int) -> Bool)] = [("all", { _, _, _ in true })]
+    // Layers through the depth, among the layers the body has elements in.
+    let layers = (0..<s.ez).filter { k in (0..<s.ex).contains { i in s.flag(i, s.ey / 2, k) != .empty } }
+    for k in layers { parts.append(("layer \(k - (layers.first ?? 0) + 1)", { _, _, kk in kk == k })) }
+    parts += [
+        ("uncracked", { i, j, k in s.crackStrain(i, j, k) < 2e-4 }),
+        ("cracked < 0.2%", { i, j, k in s.crackStrain(i, j, k) >= 2e-4 && s.crackStrain(i, j, k) < 2e-3 }),
+        ("cracked >= 0.2%", { i, j, k in s.crackStrain(i, j, k) >= 2e-3 }),
+        ("crushed", { i, j, k in s.plasticStrain(i, j, k) > 0.003 }),
+        ("with bars", { i, j, k in simd_reduce_max(s.steelRatio(i, j, k)) > 0 }),
+        ("without bars", { i, j, k in simd_reduce_max(s.steelRatio(i, j, k)) <= 0 }),
+    ]
+    // Fifths of the body's length (x), the end ones holding any supports.
+    let occupied = (0..<s.ex).filter { i in (0..<s.ez).contains { k in s.flag(i, s.ey / 2, k) != .empty } }
+    if let first = occupied.first, let last = occupied.last {
+        for f in 0..<5 {
+            let from = first + (last - first + 1) * f / 5
+            let to = first + (last - first + 1) * (f + 1) / 5
+            parts.append(("length \(f + 1)/5", { i, _, _ in i >= from && i < to }))
+        }
+    }
+    if let near {
+        parts.append(("near the charge", near))
+        parts.append(("away from it", { !near($0, $1, $2) }))
+    }
+    print(
+        "  hourglass control's work, \(label) (J): held below its cap, at it, all work there, its share there, of all hourglass work; the bars' and bond's work there"
+    )
+    for (name, include) in parts {
+        let t = s.workTotals(where: include)
+        let mine = t[hourglass] + t[capped]
+        let total = t.reduce(0, +)
+        print(
+            "    " + pad(name, 18) + pad(format(t[hourglass], 1), 10) + pad(format(t[capped], 1), 10)
+                + pad(format(total, 1), 10) + pad("\(format(total != 0 ? 100 * mine / total : 0, 1))%", 9)
+                + pad("\(format(allHourglass != 0 ? 100 * mine / allHourglass : 0, 1))%", 9)
+                + pad(
+                    format(
+                        t[StructureSolver.WorkChannel.bars.rawValue]
+                            + t[StructureSolver.WorkChannel.bond.rawValue], 1), 10))
+    }
+}
+
 /// The work trace's channels in the order printed.
 let workOrder: [StructureSolver.WorkChannel] = [
     .tensionNormal, .tensionHairline, .tensionCracked, .compressionNormal, .compressionCrushed,
     .uncrackedShear, .crackShear,
-    .crackShearPressed, .interlock, .interlockPressed, .dowel, .kink, .bars, .bond, .hourglass, .other,
-    .viscosity,
+    .crackShearPressed, .interlock, .interlockPressed, .dowel, .kink, .bars, .bond, .hourglass,
+    .hourglassCapped,
+    .other, .viscosity,
 ]
 
 func workHeader(_ first: String, _ width: Int) -> String {
     let short = [
         "tension", "hairline", "cracked", "compr.", "crushed", "uncr. sh.", "crack sh.", "pressed",
         "interlock", "pressed",
-        "dowel", "kinking", "bars", "bond", "hourglass", "other", "viscous",
+        "dowel", "kinking", "bars", "bond", "hourglass", "capped", "other", "viscous",
     ]
     return pad(first, width) + short.map { pad($0, 10) }.joined() + pad("total", 10)
 }
@@ -251,6 +311,7 @@ func applyRateOptions(_ model: inout StructureModel) {
     if flag("slide-apart") { model.slipWidensCracks = false }
     // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.
     if flag("pressed-interlock") { model.pressedInterlock = true }
+    applyHourglassOptions(&model)
     applyRateOptions(&model.material)
     model.solidMaterial = model.solidMaterial.map {
         $0.map {
@@ -1196,6 +1257,7 @@ func runBeam() throws {
     print(
         pad("layers", 8) + pad("elements", 10) + pad("peak", 12) + pad("vs test", 9) + pad("fails at", 10)
             + pad("rms", 10) + pad("failed", 8) + pad("run time", 10))
+    var shownBreakdown = false
     for layers in meshes {
         // `--crack-spacing 25` sets the distance, in millimetres, a crack's energy is spread over.
         let spacing = option("crack-spacing").flatMap { Float($0) }
@@ -1205,12 +1267,27 @@ func runBeam() throws {
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
             unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
             bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear"),
-            slipWidensCracks: !flag("slide-apart"), pressedInterlock: flag("pressed-interlock")
-        ) { material in
-            applyRateOptions(&material)
-            if let spacing { material.crackSpacing = spacing / 1000 }
-            if let dowel { material.dowelFactor = dowel }
-        }
+            slipWidensCracks: !flag("slide-apart"), pressedInterlock: flag("pressed-interlock"),
+            adjustModel: applyHourglassOptions,
+            adjust: { material in
+                applyRateOptions(&material)
+                if let spacing { material.crackSpacing = spacing / 1000 }
+                if let dowel { material.dowelFactor = dowel }
+            },
+            prepare: prepareTrace,
+            sample: { solver, deflection, _ in
+                // `--work --breakdown 40`: where hourglass control's work has gone by 40 mm.
+                guard solver.tracesWork,
+                    let at = option("breakdown").flatMap({ Float($0) }).map({ $0 / 1000 }),
+                    deflection >= at, !shownBreakdown
+                else { return }
+                shownBreakdown = true
+                printHourglassBreakdown(
+                    solver, label: "\(layers) layers at \(format(Double(deflection) * 1000, 1)) mm")
+                print("  " + workHeader("", 8))
+                print("  " + workRow("", 8, solver.workTotals()))
+            })
+        shownBreakdown = false
         results.append((layers, result))
         if let residual = result.residual {
             print(
@@ -1845,6 +1922,17 @@ func runContact() throws {
 /// otherwise than fixed (see `TwoFaceSlabTests.WangEdges`), and `--afterburn` lets the products
 /// burn on.
 func runTwoFace() throws {
+    let breakdownAt = option("breakdown").flatMap { Double($0) }.map { $0 / 1000 }
+    var shownBreakdown = false
+    /// Elements within 0.3 m of the centre of Wu's slab, in plan.
+    func wuNear(_ solver: StructureSolver) -> (Int, Int, Int) -> Bool {
+        let h = solver.model.elementSize
+        let c = TwoFaceSlabTests.wuCentre
+        return { i, j, _ in
+            let p = solver.origin + SIMD3(Float(i) + 0.5, Float(j) + 0.5, 0) * h
+            return simd_length(SIMD2(p.x - c.x, p.y - c.y)) < 0.3
+        }
+    }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.025
     let elementSize = option("h").flatMap { Float($0) } ?? 0.0125
     let duration = option("time").flatMap { Double($0) } ?? 0.1
@@ -1911,7 +1999,18 @@ func runTwoFace() throws {
                     ? {
                         print("  " + $0)
                         fflush(stdout)
-                    } : nil)
+                    } : nil,
+                inspect: { solver, time in
+                    // `--work --breakdown 6`: where hourglass control's work has gone by 6 ms.
+                    guard solver.tracesWork, let at = breakdownAt, !shownBreakdown, time >= at else { return }
+                    shownBreakdown = true
+                    printHourglassBreakdown(
+                        solver, label: "\(test.name) at \(format(time * 1000, 1)) ms", near: wuNear(solver))
+                })
+            shownBreakdown = false
+            if let structure = lastStructure, structure.tracesWork, breakdownAt != nil {
+                printHourglassBreakdown(structure, label: "\(test.name) at the end", near: wuNear(structure))
+            }
             let charge =
                 "\(format(Double(test.charge), 1)) kg "
                 + (test.standoff.map { "@\(format(Double($0), 2))" } ?? "contact")
@@ -2306,6 +2405,7 @@ func runShearBeam() throws {
         // `--work`: the work each mechanism has done at every millimetre and at the peak, through
         // the whole beam, and at the peak by part of the beam. Scaled to the whole beam.
         var milestones: [(deflection: Float, load: Float, external: Double, totals: [Double])] = []
+        var shownBreakdown = false
         var atPeak: (deflection: Float, load: Float, external: Double, totals: [Double], parts: [[Double]])?
         var external = 0.0
         var last = SIMD2<Float>.zero
@@ -2330,6 +2430,7 @@ func runShearBeam() throws {
             mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 },
             slipWidensCracks: !flag("slide-apart"),
             pressedInterlock: flag("pressed-interlock"),
+            adjustModel: applyHourglassOptions,
             adjust: { material in
                 applyRateOptions(&material)
                 if let dowel { material.dowelFactor = dowel }
@@ -2344,6 +2445,14 @@ func runShearBeam() throws {
             prepare: prepareTrace,
             sample: flag("work")
                 ? { solver, deflection, load in
+                    if let at = option("breakdown").flatMap({ Float($0) }).map({ $0 / 1000 }),
+                        deflection >= at,
+                        !shownBreakdown
+                    {
+                        shownBreakdown = true
+                        printHourglassBreakdown(
+                            solver, label: "\(layers) layers at \(format(Double(deflection) * 1000, 1)) mm")
+                    }
                     external += Double(0.5 * (load + last.y) * (deflection - last.x))
                     last = SIMD2(deflection, load)
                     let crossed =
@@ -2824,6 +2933,7 @@ func runSlab() throws {
         // at the end, through the whole slab, and at the peak by part of it.
         var milestones: [(label: String, totals: [Double])] = []
         var atPeak: (deflection: Float, totals: [Double], parts: [[Double]])?
+        var shownBreakdown = false
         let regions: [(String, (Int, Int, Int, StructureSolver) -> Bool)] = [
             ("loaded half", { _, _, k, s in 2 * k >= s.ez }),
             ("unloaded half", { _, _, k, s in 2 * k < s.ez }),
@@ -2851,6 +2961,7 @@ func runSlab() throws {
                 if flag("element-bar-rate") { $0.barRateAlongBars = false }
                 if flag("slide-apart") { $0.slipWidensCracks = false }
                 if flag("pressed-interlock") { $0.pressedInterlock = true }
+                applyHourglassOptions(&$0)
             },
             prepare: prepareTrace,
             sample: flag("stiffening")
@@ -2874,6 +2985,15 @@ func runSlab() throws {
                         let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
                         let peak = deflection > (atPeak?.deflection ?? 0)
                         let end = solver.time >= 0.08
+                        if let at = option("breakdown").flatMap({ Double($0) }).map({ $0 / 1000 }),
+                            solver.time >= at, !shownBreakdown
+                        {
+                            shownBreakdown = true
+                            printHourglassBreakdown(solver, label: "at \(format(solver.time * 1000, 1)) ms")
+                        }
+                        if end, option("breakdown") != nil {
+                            printHourglassBreakdown(solver, label: "at 80 ms")
+                        }
                         guard crossed || peak || end else { return }
                         let totals = solver.workTotals()
                         if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }

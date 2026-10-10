@@ -131,7 +131,7 @@ float3 gravityPull(constant StructureUniforms &u) {
 // each mechanism has done on the element's deformation. Concrete's stresses are split in its
 // crack axes. Matches `StructureSolver.WorkChannel`. The trace is compiled in only into the
 // pipeline built for it (`workTraced`), so that without it the element kernel is unchanged.
-constant uint workChannels = 17;
+constant uint workChannels = 18;
 constant uint workTensionNormal = 0;     // concrete's normal stresses, where tensile
 constant uint workCompressionNormal = 1; // where compressive
 constant uint workUncrackedShear = 2;    // shear on planes no crack has opened
@@ -148,6 +148,7 @@ constant uint workInterlockPressed = 12; // interlock's share, where the crack i
 constant uint workCrackShearPressed = 13; // shear below the cap, where the crack is pressed shut
 constant uint workTensionCracked = 14;   // concrete's normal stresses in tension, on planes cracked 0.1 mm or more
 constant uint workTensionHairline = 16;  // on planes cracked less than 0.1 mm open
+constant uint workHourglassCapped = 17;  // hourglass control held at its cap (dissipated), not in workHourglass
 constant uint workCompressionCrushed = 15; // in compression, on axes crushed past their peak
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -273,6 +274,10 @@ constant uint maxMaterials = 8;
 constant bool singleMaterial [[function_constant(0)]];
 constant bool finiteConnections [[function_constant(1)]];
 constant bool workTraced [[function_constant(3)]];
+// Hourglass control's options (`StructureModel.hourglassFollowsCracking`, `hourglassCapsSteel`),
+// compiled in only when chosen, so that without them the element kernel is unchanged.
+constant bool hourglassSecant [[function_constant(8)]];
+constant bool hourglassWithoutSteel [[function_constant(9)]];
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
@@ -980,6 +985,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float szx;
     // Tensile stress the element can still carry, which caps its hourglass (bending) forces.
     float capacity;
+    // With `hourglassSecant`, the share of the elastic stiffness the hourglass control keeps.
+    float hourglassScale = 1.0f;
     // The work trace: each mechanism's power per unit reference volume (see `workChannels`).
     float power[workChannels];
     for (uint c = 0; c < workChannels; ++c) {
@@ -1923,7 +1930,13 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                                            planeSoftening[j], m));
             }
         }
-        capacity = max(max(tension + steelCapacity, bending), 0.02f * m.tensileStrength);
+        capacity = max(max(tension + (hourglassWithoutSteel ? 0.0f : steelCapacity), bending), 0.02f * m.tensileStrength);
+        // A cracked element bends as softly as its most opened crack carries tension: its
+        // hourglass stiffness takes that crack's secant share of the elastic, as the Poisson
+        // coupling above does, instead of the uncracked element's.
+        if (hourglassSecant && crack > onset) {
+            hourglassScale = max(tension / (m.youngsModulus * crack), 0.02f);
+        }
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
         if (bare) {
             capacity = max(steelCapacity, 1.0f);
@@ -1993,12 +2006,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // The hourglass forces act as the element's bending moments, so they are capped at its
     // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
     float limit = 0.125f * capacity * u.h * u.h;
+    bool atCap[4] = {false, false, false, false};
     for (uint mode = 0; mode < 4; ++mode) {
         float3 q = state.hourglass[mode];
-        q += dt * (m.hourglassStiffness * rate[mode] + spin * q);
+        q += dt * ((hourglassSecant ? m.hourglassStiffness * hourglassScale : m.hourglassStiffness) * rate[mode] + spin * q);
         float magnitude = length(q);
         if (magnitude > limit) {
             q *= limit / magnitude;
+            atCap[mode] = true;
         }
         state.hourglass[mode] = q;
     }
@@ -2012,14 +2027,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     }
     if (workTraced) {
         float hourglassPower = 0.0f;
+        float cappedPower = 0.0f;
         for (uint mode = 0; mode < 4; ++mode) {
-            hourglassPower += dot(float3(state.hourglass[mode]), rate[mode]);
+            float modePower = dot(float3(state.hourglass[mode]), rate[mode]);
+            if (atCap[mode]) {
+                cappedPower += modePower;
+            } else {
+                hourglassPower += modePower;
+            }
         }
         device float *own = work + workChannels * compact;
         for (uint c = 0; c < workChannels; ++c) {
             own[c] += power[c] * referenceVolume * dt;
         }
         own[workHourglass] += hourglassPower * dt;
+        own[workHourglassCapped] += cappedPower * dt;
         own[workViscosity] -= viscous * trace * volume * dt;
     }
 

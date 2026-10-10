@@ -282,7 +282,8 @@ public enum TwoFaceSlabTests {
         probes: [(String, SIMD3<Float>)],
         cellSize: Float, refinement: Int, duration: Double, chargeTowardsLow: Bool, afterburning: Bool,
         hold: (StructureSolver, UnsafeMutableBufferPointer<StructureNode>, (Float, Int) -> Int) -> Void,
-        prepare: ((StructureSolver) -> Void)?, progress: ((String) -> Void)?
+        prepare: ((StructureSolver) -> Void)?, progress: ((String) -> Void)?,
+        inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
@@ -316,6 +317,7 @@ public enum TwoFaceSlabTests {
                     ? structure.displacement(node.0, node.1, node.2)[thicknessAxis] : 0
                 histories[n].append(SIMD2(Float(solver.time), sign * u))
             }
+            inspect?(structure, solver.time)
             if structure.tracesWork, let first = histories[0].last?.y, first > highest {
                 highest = first
                 workAtPeak = structure.workTotals()
@@ -407,7 +409,8 @@ public enum TwoFaceSlabTests {
         device: MTLDevice, test: WuTest, cellSize: Float = 0.025, refinement: Int = 2,
         elementSize: Float = 0.0125,
         duration: Double = 0.1, heldLengthwise: Bool = false, adjust: (inout Scenario) -> Void = { _ in },
-        prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil
+        prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
+        inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
         adjust(&scenario)
@@ -444,7 +447,7 @@ public enum TwoFaceSlabTests {
                         }
                     }
                 }
-            }, prepare: prepare, progress: progress)
+            }, prepare: prepare, progress: progress, inspect: inspect)
     }
 
     /// How Wang's slabs are held at their edges.
@@ -467,7 +470,8 @@ public enum TwoFaceSlabTests {
         elementSize: Float = 0.0125, duration: Double = 0.1, edges: WangEdges = .fixed,
         afterburning: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in },
-        prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil
+        prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
+        inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
         adjust(&scenario)
@@ -516,6 +520,6 @@ public enum TwoFaceSlabTests {
                         }
                     }
                 }
-            }, prepare: prepare, progress: progress)
+            }, prepare: prepare, progress: progress, inspect: inspect)
     }
 }
