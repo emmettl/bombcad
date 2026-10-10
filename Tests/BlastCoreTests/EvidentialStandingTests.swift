@@ -20,6 +20,7 @@ private var inputSamples: [Any] {
         FragmentSpec(),
         GroundShockSpec(),
         GroundSoil(),
+        Terrain(spacing: 1, columns: 2, rows: 2, heights: [0, 0, 0, 1]),
     ]
 }
 
@@ -182,6 +183,16 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         scenario = ScenarioPreset.blastWall.scenario
         scenario.structure?.elementKind = .shell
         #expect(standing(scenario)[.structuralResponse]?.level == .measured)
+
+        scenario = ScenarioPreset.openGround.scenario
+        let flat = standing(scenario)
+        scenario.terrain = Terrain.hill(
+            domain: scenario.domainSize, spacing: 1, centre: SIMD2(20, 32), height: 4, radius: 6)
+        let hilly = standing(scenario)
+        #expect(flat[.impulse]?.level == .measured && hilly[.impulse]?.level == .approximation)
+        #expect(hilly[.impulse]?.evidence.contains { $0.document.hasPrefix("terrain.md") } == true)
+        scenario.terrain = Terrain.flat(domain: scenario.domainSize, spacing: 1)
+        #expect(standing(scenario) == flat)
 
         scenario = ScenarioPreset.openGround.scenario
         scenario.rigidCars = [try RigidCarDefinition.saloon(position: SIMD3(10, 10, 0))]

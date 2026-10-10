@@ -222,6 +222,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case structureFixedInAir
     case stationaryWalls
     case closedBoundaries
+    case terrain
     // The structure.
     case shellElements
     case shellSectionShear
@@ -281,6 +282,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .structureFixedInAir: return !structures.isEmpty && !config.twoWayCoupling
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
         case .closedBoundaries: return inputs.scenario.reflectiveFaces != .ground
+        case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -422,6 +424,15 @@ public enum StandingTable {
                 title: "Reflecting domain faces", affects: air, limit: nil,
                 note: "Faces of the domain other than the ground reflect, as walls of a closed room.",
                 document: "validation.md#gas-pressure-in-a-closed-room")
+        case .terrain:
+            return Entry(
+                title: "Terrain", affects: air + structure + [.envelopeExposure], limit: .approximation,
+                note:
+                    "A staircase of whole cells: it delays Mach reflection off a slope by 3–11° and under-reads "
+                    + "the triple point's angle by 20–75% on 100–400 cells along the run; shielding behind "
+                    + "ridges is consistency-checked only, and peaks focused far behind a round hill do not "
+                    + "converge.",
+                document: "terrain.md#limitations")
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
@@ -628,6 +639,13 @@ public enum StandingTable {
         "Scenario.gauges": .input,
         "Scenario.atmosphere": .input,
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
+        "Scenario.terrain": .option([.terrain]),
+        "Terrain.origin": .input,
+        "Terrain.spacing": .input,
+        "Terrain.columns": .input,
+        "Terrain.rows": .input,
+        "Terrain.heights": .input,
+        "Terrain.source": .input,
         "Charge.mass": .input,
         "Charge.position": .input,
         // The air solver.
@@ -1047,6 +1065,26 @@ private struct StandingScene {
         return lines
     }
 
+    /// The terrain's checks, when the scene has one.
+    private var terrainEvidence: [StandingEvidence] {
+        guard has(.terrain) else { return [] }
+        return [
+            StandingEvidence(
+                "Reflection off a smooth slope against three-shock theory",
+                "Triple point within 0.4°; transition between 50 and 51° against 50.6–50.8° for Mach 2 "
+                    + "(verified); on the staircase, Mach reflection 3–11° late",
+                "terrain.md#a-slope-regular-and-mach-reflection"),
+            StandingEvidence(
+                "Shielding behind a ridge",
+                "Arrival within 1–5% of the taut path over the crest; no measured "
+                    + "shielding compared", "terrain.md#shielding-behind-a-ridge"),
+            StandingEvidence(
+                "A hill on 0.5 to 0.125 m cells",
+                "The lee impulse within 6%; peaks focused far behind it not "
+                    + "converged", "terrain.md#a-hills-resolution-sensitivity"),
+        ]
+    }
+
     func peakOverpressure() -> ResultStanding {
         let incident = ["0.125": "86–97%", "0.25": "76–82%", "0.5": "57–69%"]
         let reflected = ["0.125": "67–92%", "0.25": "37–82%", "0.5": "20–69%"]
@@ -1101,6 +1139,7 @@ private struct StandingScene {
             "Air: \(cellDescription); the comparison's 0.5, 0.25 and 0.125 m cells for 100 kg were 0.108, 0.054 "
                 + "and 0.027 m/kg^(1/3).")
         if let range = gaugeRange { resolution.append("Gauges lie \(range) from the charge.") }
+        evidence += terrainEvidence
         return result(
             .peakOverpressure, level, summary, evidence: evidence, assumptions: sourceAssumptions,
             resolution: resolution, documents: ["validation.md#blast-loads-against-empirical-references"])
@@ -1182,6 +1221,7 @@ private struct StandingScene {
                         + "impulse; these are coarser.")
             }
         }
+        evidence += terrainEvidence
         var assumptions = sourceAssumptions
         assumptions.append("Real ground is not rigid: the ground here reflects perfectly.")
         return result(
@@ -1525,6 +1565,11 @@ private struct StandingScene {
                 ? "Fire: ignition is flagged against test thresholds, but nothing burns or spreads."
                 : "Ignition, material heating and fire.")
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
+        if has(.terrain) {
+            effects.append(
+                "The terrain is unseen by the thermal radiation, freestanding objects, footings and fragments "
+                    + "crossing a ridge within a step.")
+        }
         if !(inputs.scenario.rigidObjects ?? []).isEmpty || !(inputs.scenario.rigidCars ?? []).isEmpty {
             effects.append("Freestanding objects in the ordinary run: they move only in Compute Motion.")
         }
