@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/emmettl/ContinuumKit.git",
-            exact: "0.1.0-alpha.13")
+            exact: "0.1.0-alpha.16")
     ],
     targets: [
         // Shaders are copied verbatim and compiled at runtime so that `swift build`,

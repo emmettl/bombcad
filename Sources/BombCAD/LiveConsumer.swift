@@ -115,6 +115,7 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
     private var count = 0
     private var total = 0
     private var spent = 0.0
+    private var spentOnGPU: Double?
     private var current: ConsumerLive?
     private var failure: Error?
 
@@ -136,6 +137,9 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
     var sent: Int { lock.withLock { count } }
     var bytes: Int { lock.withLock { total } }
     var seconds: Double { lock.withLock { spent } }
+    /// The GPU's part of `seconds`, for a model that uses this Mac's GPU, which the blast's
+    /// solver shares.
+    var gpuSeconds: Double? { lock.withLock { spentOnGPU } }
     var report: ConsumerReport { lock.withLock { latest } }
     var live: ConsumerLive? { lock.withLock { current } }
 
@@ -156,8 +160,10 @@ final class LocalFrameConsumer: FrameConsumer, @unchecked Sendable {
             let report = engine.report
             let live = engine.live(time: input.time)
             let took = start.duration(to: .now)
+            let onGPU = engine.gpuSeconds
             lock.withLock {
                 spent += Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
+                spentOnGPU = onGPU
                 latest = report
                 history.append(report)
                 if let live { current = live }

@@ -23,10 +23,14 @@ public enum DisplayMode: Int, CaseIterable, Identifiable, Sendable {
 }
 
 /// What of the fireball's thermal radiation is painted onto the surfaces in place of the blast's
-/// field: both on a log scale over four decades, 0.1 to 1,000 kJ/m² and kW/m².
+/// field: the fluence and the peak irradiance on a log scale over four decades, 0.1 to 1,000 kJ/m²
+/// and kW/m²; the peak surface temperature's rise on one over three, 1 to 1,000 K; and the
+/// receivers past a test threshold for igniting their material, illustratively.
 public enum ThermalQuantity: Int, CaseIterable, Identifiable, Sendable {
     case fluence = 0
     case peakIrradiance = 1
+    case surfaceTemperature = 2
+    case ignition = 3
 
     public var id: Int { rawValue }
 
@@ -34,10 +38,47 @@ public enum ThermalQuantity: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .fluence: "Thermal fluence"
         case .peakIrradiance: "Peak irradiance"
+        case .surfaceTemperature: "Peak surface temperature"
+        case .ignition: "Ignition (illustrative)"
         }
     }
 
-    public var unit: String { self == .fluence ? "kJ/m²" : "kW/m²" }
+    public var unit: String {
+        switch self {
+        case .fluence: "kJ/m²"
+        case .peakIrradiance: "kW/m²"
+        case .surfaceTemperature: "K above ambient"
+        case .ignition: ""
+        }
+    }
+
+    /// The labels at each decade of the scale, lowest first, in `unit`; none for the ignition.
+    public var ticks: [String] {
+        switch self {
+        case .fluence, .peakIrradiance:
+            (0...Int(Self.decades)).map { step in
+                let value = Double(Self.scaleBottom) / 1000 * pow(10, Double(step))
+                return value >= 1 ? String(format: "%.0f", value) : String(format: "%.1f", value)
+            }
+        case .surfaceTemperature: ["1", "10", "100", "1000"]
+        case .ignition: []
+        }
+    }
+
+    /// A value on this quantity's scale, from 0 at its bottom to 1 at its top: J/m² or W/m², a
+    /// rise in kelvin, or `IgnitionFlags`' raw value.
+    public func shade(_ value: Float) -> Float {
+        switch self {
+        case .fluence, .peakIrradiance: Self.shade(value)
+        case .surfaceTemperature: min(max(log10(max(value, 1e-6)) / 3, 0), 1)
+        case .ignition: Self.ignitionShade(UInt8(max(0, min(value, 255))))
+        }
+    }
+
+    /// Past the short-pulse fluence, the top of the scale; hot enough alone, part of the way.
+    public static func ignitionShade(_ flags: UInt8) -> Float {
+        flags & 2 != 0 ? 1 : (flags & 1 != 0 ? 0.55 : 0)
+    }
 
     /// The scale's bottom and top in SI units, J/m² or W/m², and its decades.
     public static let scaleBottom: Float = 100
@@ -149,6 +190,12 @@ private struct MeshUniforms {
     var sun: SIMD4<Float>
 }
 
+/// Layout matches `TerrainMesh` in `Render.metal`.
+private struct TerrainMesh {
+    var grid: SIMD4<Float>
+    var dims: SIMD4<UInt32>
+}
+
 /// Draws a scenario, its deformable structure and the solver's visualisation volume.
 ///
 /// A frame takes two passes: the scene and the structure's mesh go into an offscreen colour and
@@ -180,6 +227,9 @@ public final class SceneRenderer {
     private var dotBuffer: MTLBuffer?
     private var dotCount = 0
     private let freestandingPipeline: MTLRenderPipelineState
+    private let terrainPipeline: MTLRenderPipelineState
+    private var terrainHeights: MTLBuffer?
+    private var terrainMesh: TerrainMesh?
     private var freestandingBuffer: MTLBuffer?
     private var freestandingCount = 0
     private let compositePipeline: MTLRenderPipelineState
@@ -238,6 +288,7 @@ public final class SceneRenderer {
         freestandingPipeline = try pipeline(
             vertex: "freestandingVertex", fragment: "freestandingFragment", depth: true)
         paintPipeline = try pipeline(vertex: "paintVertex", fragment: "paintFragment", depth: true)
+        terrainPipeline = try pipeline(vertex: "terrainVertex", fragment: "terrainFragment", depth: true)
         linePipeline = try pipeline(vertex: "lineVertex", fragment: "lineFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
@@ -282,11 +333,31 @@ public final class SceneRenderer {
             boxes[2 * n] = SIMD4(box.min, 0)
             boxes[2 * n + 1] = SIMD4(box.max, 0)
         }
+        setTerrain(scenario.terrain)
         gaugeCount = min(scenario.gauges.count, BlastSolver.maxGauges)
         let gauges = gaugeBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: BlastSolver.maxGauges)
         for (n, gauge) in scenario.gauges.prefix(gaugeCount).enumerated() {
             gauges[n] = SIMD4(gauge.position, 0.35)
         }
+    }
+
+    /// The terrain's mesh, from its heights; none for flat ground, which the ground plane draws.
+    private func setTerrain(_ terrain: Terrain?) {
+        guard let terrain, !terrain.isFlat else {
+            terrainMesh = nil
+            terrainHeights = nil
+            return
+        }
+        terrainHeights = terrain.heights.withUnsafeBytes { bytes in
+            bytes.baseAddress.flatMap {
+                device.makeBuffer(bytes: $0, length: bytes.count, options: .storageModeShared)
+            }
+        }
+        // Lifted a couple of centimetres, so that where it lies on the floor it is drawn over the
+        // ground plane rather than fighting it.
+        terrainMesh = TerrainMesh(
+            grid: SIMD4(terrain.origin.x, terrain.origin.y, terrain.spacing, 0.02),
+            dims: SIMD4(UInt32(terrain.columns), UInt32(terrain.rows), 1, 0))
     }
 
     /// Pixels to a point on the screen drawn to, for dots of a size in points.
@@ -442,6 +513,29 @@ public final class SceneRenderer {
         sceneEncoder.setFragmentBuffer(gaugeBuffer, offset: 0, index: 2)
         sceneEncoder.setFragmentTexture(field, index: 0)
         sceneEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+
+        if var terrain = terrainMesh, let terrainHeights {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            // The thermal radiation's paint is for the flat ground; over a terrain the blast's field
+            // is not painted while it is shown.
+            terrain.dims.z = settings.thermal == nil ? 1 : 0
+            sceneEncoder.setRenderPipelineState(terrainPipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setCullMode(.none)
+            sceneEncoder.setVertexBuffer(terrainHeights, offset: 0, index: 0)
+            sceneEncoder.setVertexBytes(&terrain, length: MemoryLayout<TerrainMesh>.stride, index: 1)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 2)
+            sceneEncoder.setFragmentBytes(&uniforms, length: MemoryLayout<RenderUniforms>.stride, index: 0)
+            sceneEncoder.setFragmentBytes(&terrain, length: MemoryLayout<TerrainMesh>.stride, index: 1)
+            sceneEncoder.setFragmentTexture(field, index: 0)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 6,
+                instanceCount: (Int(terrain.dims.x) - 1) * (Int(terrain.dims.y) - 1))
+        }
 
         var transparentBodies: [ShellSolver] = []
         for body in bodies {

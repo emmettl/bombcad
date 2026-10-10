@@ -16,3 +16,12 @@ material response. The 1 s sample clock is a case label, not an acoustic/piston 
 The existing Check workflow runs this source benchmark on main pushes. Manual dispatch
 with `suite=adiabatic` verifies only this bounded case; `suite=all` retains the application
 checks as well. Trusted triggers and the repository-scoped Mac mini runner remain in use.
+
+## Packet extraction checkpoint
+
+The historical framework revision and original numerical operator are now frozen
+inside this verification-only fixture. SourceTransport.swift is unmodified from
+pre-adoption e5ead4b; packet-source.json and the source guard protect its bytes/blob.
+It is no longer copied from the production alias. The same script additionally
+runs SharedAdiabaticBenchmark at exact alpha.14 with the actual current alias,
+using these same cases, and requires complete sample histories to match.

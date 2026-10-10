@@ -8,8 +8,8 @@ deformable structure. It lives in `Sources/BlastCore/BlastSolver.swift` and
 
 The three-dimensional compressible Euler equations for an ideal gas with a constant ratio of
 specific heats γ = 1.4, on a uniform Cartesian grid of cubic cells. There is no viscosity, heat
-conduction, gravity or chemistry, and no radiation unless [radiative cooling](#radiative-cooling)
-is on. The conserved variables per cell are density, three momentum
+conduction or chemistry, no gravity unless [gravity](#gravity) is on, and no radiation unless
+[radiative cooling](#radiative-cooling) is. The conserved variables per cell are density, three momentum
 components and total energy, stored as five single-precision numbers.
 
 ## Numerical scheme
@@ -49,6 +49,9 @@ the app paints on the ground and on rigid blocks.
 - At a solid cell or a reflecting domain face, the stencil is filled with mirrored ghost states
   (normal velocity reversed). The Riemann problem at the wall then has zero mass flux, so walls
   are exactly conservative and can be one cell thick.
+- The ground can have a shape, a heightfield [terrain](terrain.md): a cell below its surface is
+  solid, on the coarse grid and every refinement level, as for a block. The floor beneath it stays
+  a reflecting face.
 - The ground (z = 0) is a reflecting face. The other five faces of the domain are open: the
   stencil copies the last interior cell (zero-gradient extrapolation).
 
@@ -184,6 +187,64 @@ With afterburning and hot air it moves every Kingery–Bulmash incident and refl
 2% to 4%, the heat the walls take; the street's fireball then radiates 12.8% of the charge's
 energy by 170 ms rather than 21%. It costs about 5% more a step, and saves about as much in
 steps, the cooler gas allowing longer ones.
+
+### Gravity
+
+`SolverConfiguration.gravity` (`--gravity [--lapse 6.5]` in `blastbench`; off by default) pulls
+the air down at 9.81 m/s². The air then starts at rest in a hydrostatic atmosphere, its pressure
+and density falling with height as the temperature does, at the standard atmosphere's 6.5 K/km
+(as the [cloud's rise](fireball-rise.md) assumes) or, with a lapse rate of 0, isothermally. For a
+blast it changes nothing; it lets hot gas rise.
+
+**Well balanced.** Gravity's pull on air at rest is balanced by a pressure gradient that a scheme
+of this kind reproduces only to its truncation error, so a plain source term would set the
+resting atmosphere moving at millimetres a second. As atmospheric codes do (Botta, Klein and
+others; Käppeli and Mishra; and the perturbation form of Giraldo and Restelli), the vertical sweep
+works on each cell's deviation from the background:
+- the slopes and the Hancock predictor are the deviations', with the background's own gradient,
+  and gravity's pull on the deviation, in the predictor;
+- each face carries the background at the face plus the reconstructed deviation;
+- the background's pressure at the face is left out of the momentum flux, and gravity's pull on
+  the background out of the source, which is −g(ρ − ρ_b);
+- the energy gains −g times the mean of the cell's two faces' mass fluxes, so the gas's energy
+  and its potential energy are conserved together, and refluxing corrects that term where the
+  refined levels' fluxes replace the coarse one.
+
+Air at rest in the background has no deviation, so its fluxes and its sources are zero exactly.
+Getting that to the bit took three things:
+- the background is worked out once for each level into a table, since the same expressions
+  compiled into two kernels can differ in their last bit;
+- a face whose two sides are identical takes the physical flux, which HLLC gives only to
+  rounding;
+- refined cells and their ghosts are filled with the coarse cells' deviations plus their own
+  background.
+
+Fine air under solid coarse cells, as over [terrain](terrain.md), takes the background at its
+height. Gravity is compiled into the kernels only when on, so with it off they are unchanged:
+`blastbench digest` gives the same hashes as before, with and without refinement.
+
+**Checked** (`GravityTests`):
+- Air at rest stays at rest to the bit for 200 steps: isothermal or cooling with height, ideal
+  or thermally perfect, refined in two levels everywhere, and in a closed box over a hill.
+- Its pressure 63.5 m up is the barometric formula's to 10⁻⁵.
+- In a closed box a hot bubble's rise conserves the gas's energy and potential energy together
+  to 10⁻⁶.
+- A sphere of air twice as hot as its surroundings first accelerates at 90% of potential flow's
+  g Δρ / (ρ + ρₐ/2), a sphere 8 cells in radius.
+
+Followed for 20 s (`blastbench bubble`, a 4 m bubble at 576 K on 0.5 m cells), the bubble rises
+as the cloud's integral model of a turbulent thermal says: its warm gas's centre is 13.2 m up at
+2 s against 13.0, and 54.5 m at 20 s against 49.7, rising at 1.55 m/s against 1.41. Against
+Kingery–Bulmash (0.5 m cells refined) every incident and reflected peak and impulse moves by
+0.1% or less: on a blast's time scale gravity is nothing.
+
+**Not done:**
+- Still air is not skipped with gravity on, since air at rest is no longer uniform.
+- Overpressures, peaks and impulses are still against the ground's ambient pressure, so they
+  read the hydrostatic −12 Pa a metre at height.
+- The HLL solver balances only to rounding.
+- The experimental moving boxes, and a deflagration, have not been tried with it.
+- The cloud's hand-over still relaxes the gas to the ground's pressure.
 
 ## Skipping still air
 
@@ -411,6 +472,9 @@ UFC 3-340-02, lowest for light charges.
   (`refinementFinerThreshold`), are untried.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
+- **Mixing below the grid's scale**, for a fireball's late cooling: with gravity it rises, but
+  only the grid's own mixing draws cold air into it, too little on metre cells (see
+  [Dial Pack](thermal-radiation.md#against-dial-pack)).
 
 ## Sources
 
@@ -425,6 +489,13 @@ UFC 3-340-02, lowest for light charges.
   combustion prediction procedures", *18th Symposium (International) on Combustion*, 1981,
   1405–1414. The discrete transfer method behind the radiative cooling; M. F. Modest,
   *Radiative Heat Transfer*, Academic Press, for the radiation's term in the energy equation.
+- N. Botta, R. Klein, S. Langenberg and S. Lützenkirchen, "Well balanced finite volume methods
+  for nearly hydrostatic flows", *Journal of Computational Physics* 196 (2004) 539–565; R. Käppeli
+  and S. Mishra, "Well-balanced schemes for the Euler equations with gravitation", *Journal of
+  Computational Physics* 259 (2014) 199–219; F. X. Giraldo and M. Restelli, "A study of spectral
+  element and discontinuous Galerkin methods for the Navier–Stokes equations in nonhydrostatic
+  mesoscale atmospheric modeling", *Journal of Computational Physics* 227 (2008) 3849–3877. Gravity
+  balanced against a hydrostatic background, and the deviations from it.
 - E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer,
   2009. The MUSCL–Hancock scheme, slope limiting and the HLL and HLLC solvers.
 - E. F. Toro, M. Spruce and W. Speares, "Restoration of the contact surface in the HLL-Riemann

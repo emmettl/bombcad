@@ -114,6 +114,38 @@ struct GroundShockRunTests {
         }
     }
 
+    @Test("A layered soil column runs alongside a headless run and writes its profile out")
+    func column() async throws {
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "ground.bombcad")
+        try document().makeArchive().fileWrapper().write(to: project, originalContentsURL: nil)
+        let json = #"""
+            {"model": "column", "line": {"from": [2.5, 4], "to": [5.5, 4], "count": 4}, "depths": [0, 0.5, 2],
+             "profile": {"layers": [{"thickness": 1, "unloadingWaveSpeed": 600},
+                                    {"thickness": 3, "density": 1900, "waveSpeed": 900}], "base": "rigid"}}
+            """#
+        let file = folder.appending(path: "ground.json")
+        try Data(json.utf8).write(to: file)
+        let out = folder.appending(path: "results.json")
+        let result = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([
+                project.path, "--ground-shock", file.path, "--ground-results", out.path,
+            ]))
+        let ground = try #require(result.ground)
+        #expect(try JSONDecoder().decode(GroundShockResult.self, from: Data(contentsOf: out)) == ground)
+        #expect(ground.model == .column && ground.profile?.layers.count == 2 && ground.frameTimes?.count == 7)
+        for point in ground.points {
+            #expect(point.profile?.depths.last == 2 && point.responses.map(\.depth) == [0, 0.5, 2])
+            #expect(point.responses[0].verticalVelocity > point.responses[1].verticalVelocity)
+            // The surface moves at the plane-wave relation of the top layer, give or take the
+            // load's rebuilding between frames.
+            let plane = point.peakOverpressure / (1600 * 300)
+            #expect(abs(point.responses[0].verticalVelocity / plane - 1) < 0.1)
+        }
+        #expect(ground.summary.contains("a column of 2 layers"))
+    }
+
     @Test("Estimating ground shock leaves the air as a run with the same frames gives it")
     func untouched() async throws {
         var options = HeadlessRun.Options(project: URL(filePath: "/dev/null"))

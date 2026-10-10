@@ -25,6 +25,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     public var sootYield: Float = 0.185
     /// The volume's step through the gas, as a share of its voxels' edge.
     public var marchStep: Float = 0.5
+    /// How the receivers' surfaces heat up (see `SurfaceHeating`); on unless turned off.
+    public var heating = SurfaceHeatingSpec()
 
     public init() {}
 
@@ -44,6 +46,7 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
         absorption = try values.decodeIfPresent(Float.self, forKey: .absorption) ?? defaults.absorption
         sootYield = try values.decodeIfPresent(Float.self, forKey: .sootYield) ?? defaults.sootYield
         marchStep = try values.decodeIfPresent(Float.self, forKey: .marchStep) ?? defaults.marchStep
+        heating = try values.decodeIfPresent(SurfaceHeatingSpec.self, forKey: .heating) ?? defaults.heating
     }
 
     public func validate() throws {
@@ -57,6 +60,7 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
                 .coderInvalidValue,
                 userInfo: [NSLocalizedDescriptionKey: "The thermal radiation description is out of range."])
         }
+        try heating.validate()
     }
 }
 
@@ -181,6 +185,8 @@ public struct ThermalSurfaceGrid: Sendable, Equatable {
     public var normal: SIMD3<Float>
     public var columns: Int
     public var rows: Int
+    /// The face's solid, as an index into the scene's blocks then its structure; nil for the ground.
+    public var solid: Int?
     /// The receiver at each cell, row by row, as an index into the scene's receivers; nil where
     /// the cell's centre is inside a solid or out of the domain, and left out.
     public var indices: [Int?]
@@ -189,8 +195,9 @@ public struct ThermalSurfaceGrid: Sendable, Equatable {
 
     init(
         surface: String, origin: SIMD3<Float>, u: SIMD3<Float>, v: SIMD3<Float>, normal: SIMD3<Float>,
-        columns: Int, rows: Int
+        columns: Int, rows: Int, solid: Int? = nil
     ) {
+        self.solid = solid
         self.surface = surface
         self.origin = origin
         self.u = u
@@ -202,14 +209,17 @@ public struct ThermalSurfaceGrid: Sendable, Equatable {
         indices.reserveCapacity(columns * rows)
     }
 
-    mutating func add(_ point: SIMD3<Float>, column: Int, row: Int, buried: Bool, first: inout Int) {
+    mutating func add(
+        _ point: SIMD3<Float>, column: Int, row: Int, buried: Bool, first: inout Int,
+        normal: SIMD3<Float>? = nil
+    ) {
         guard !buried else {
             indices.append(nil)
             return
         }
         indices.append(first)
         first += 1
-        receivers.append(ThermalReceiver(position: point, normal: normal, surface: surface))
+        receivers.append(ThermalReceiver(position: point, normal: normal ?? self.normal, surface: surface))
     }
 
     /// Values at its cells, row by row, from values at the scene's receivers, each cell with no
@@ -257,6 +267,8 @@ public struct ThermalExposure: Sendable {
     /// In joules a square metre.
     public private(set) var fluence: [Double]
     public private(set) var frames: [FireballFrame] = []
+    /// The receivers' surfaces heating up, unless the spec turns it off.
+    public private(set) var heating: SurfaceHeating?
     /// What stands between the receivers and the fireball.
     let visibility: any ThermalVisibility
     /// The volume model's march through the fireball, and the receivers as it takes them.
@@ -281,7 +293,9 @@ public struct ThermalExposure: Sendable {
         march: (any ThermalMarch)?
     ) {
         self.spec = spec
-        receivers = Self.receivers(scene: scene, spec: spec)
+        let grids = Self.surfaceGrids(scene: scene, spec: spec)
+        receivers = grids.flatMap(\.receivers)
+        heating = spec.heating.enabled ? SurfaceHeating(spec: spec.heating, grids: grids, scene: scene) : nil
         let occluders = Self.occluders(scene)
         let visibility = visibility ?? Self.defaultVisibility(occluders: occluders)
         self.visibility = visibility
@@ -309,6 +323,7 @@ public struct ThermalExposure: Sendable {
             for n in receivers.indices { fluence[n] += 0.5 * Double(before[n] + now[n]) * step }
         }
         for n in receivers.indices { peakIrradiance[n] = max(peakIrradiance[n], now[n]) }
+        heating?.advance(to: frame.time, irradiance: now)
         var kept = frame.withoutShape
         // Measured only for the volume; the opaque models keep their equivalent sphere's.
         kept.radiatedPower = medium.map { radiatedPower(frame, medium: $0) }
@@ -508,16 +523,19 @@ public struct ThermalExposure: Sendable {
             normal: SIMD3(0, 0, 1), columns: columns, rows: rows)
         for j in 0..<rows {
             for i in 0..<columns {
-                let point = SIMD3<Float>(
+                // Over a terrain, on its surface and facing out of it.
+                let at = SIMD2<Float>(
                     (Float(i) + 0.5) * scene.domain.x / Float(columns),
-                    (Float(j) + 0.5) * scene.domain.y / Float(rows), lift)
-                ground.add(point, column: i, row: j, buried: buried(point), first: &first)
+                    (Float(j) + 0.5) * scene.domain.y / Float(rows))
+                let normal = scene.terrain?.normal(at: at) ?? SIMD3(0, 0, 1)
+                let point = SIMD3(at.x, at.y, scene.terrain?.height(at: at) ?? 0) + lift * normal
+                ground.add(point, column: i, row: j, buried: buried(point), first: &first, normal: normal)
             }
         }
         grids.append(ground)
         let labelled =
             scene.blocks.enumerated().map { ($1, "block \($0)") } + scene.structure.map { ($0, "structure") }
-        for (box, label) in labelled {
+        for (solid, (box, label)) in labelled.enumerated() {
             for axis in 0..<3 {
                 for side in [-1, 1] as [Float] {
                     // The underside rests on the ground or faces down into the air, which the
@@ -535,7 +553,7 @@ public struct ThermalExposure: Sendable {
                     vEdge[v] = box.size[v]
                     var face = ThermalSurfaceGrid(
                         surface: label, origin: origin, u: uEdge, v: vEdge, normal: normal, columns: nu,
-                        rows: nv)
+                        rows: nv, solid: solid)
                     for b in 0..<nv {
                         for a in 0..<nu {
                             var point = SIMD3<Float>.zero
@@ -561,7 +579,8 @@ public struct ThermalExposure: Sendable {
         ThermalResult(
             spec: spec, receivers: receivers, peakIrradiance: peakIrradiance,
             fluence: fluence.map { Float($0) },
-            fireball: frames, chargeEnergy: chargeEnergy)
+            fireball: frames, chargeEnergy: chargeEnergy,
+            heating: heating?.result(fluence: fluence.map { Float($0) }))
     }
 }
 
@@ -576,11 +595,14 @@ public struct ThermalResult: Codable, Sendable, Equatable {
     public var fireball: [FireballFrame]
     /// The charge's energy, in joules.
     public var chargeEnergy: Double
+    /// The receivers' surfaces heated by it; nil where that was not reckoned, as before it was.
+    public var heating: SurfaceHeatingResult?
 
     public init(
         spec: ThermalSpec, receivers: [ThermalReceiver], peakIrradiance: [Float], fluence: [Float],
-        fireball: [FireballFrame], chargeEnergy: Double
+        fireball: [FireballFrame], chargeEnergy: Double, heating: SurfaceHeatingResult? = nil
     ) {
+        self.heating = heating
         self.spec = spec
         self.receivers = receivers
         self.peakIrradiance = peakIrradiance
@@ -658,6 +680,7 @@ public struct ThermalResult: Codable, Sendable, Equatable {
                     indices.count,
                     peak / 1e6, dose / 1e3))
         }
+        if let heating { lines += heating.summary(receivers: receivers) }
         return lines
     }
 }

@@ -15,15 +15,17 @@ enum ImportedSceneCodec {
             self.imports = imports
             // Older readers must not silently discard durable object/component ownership, nor
             // stand a base on the ground that stands on a footing, nor turn a joint face down, nor
-            // read a joint at an angle as one under the body.
+            // read a joint at an angle as one under the body, nor lay flat ground over a terrain.
             encodingVersion =
-                scenario.hasLaterConnections
-                ? 7
-                : !scenario.envelopeObjects.isEmpty
-                    ? 6
-                    : scenario.hasFootingsOrTurnedJoints
-                        ? 5
-                        : scenario.structuralObjects.count > 1 ? 4 : 3
+                scenario.terrain != nil
+                ? 8
+                : scenario.hasLaterConnections
+                    ? 7
+                    : !scenario.envelopeObjects.isEmpty
+                        ? 6
+                        : scenario.hasFootingsOrTurnedJoints
+                            ? 5
+                            : scenario.structuralObjects.count > 1 ? 4 : 3
         }
     }
 
@@ -168,7 +170,7 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", (1...7).contains(header.encodingVersion) else {
+        guard header.format == "dev.bombcad.scene", (1...8).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
@@ -181,13 +183,16 @@ enum ImportedSceneCodec {
         let hasEnvelopes = !payload.scenario.envelopeObjects.isEmpty
         let hasFootings = payload.scenario.hasFootingsOrTurnedJoints
         let expected =
-            payload.scenario.hasLaterConnections
-            ? 7 : hasEnvelopes ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
+            payload.scenario.terrain != nil
+            ? 8
+            : payload.scenario.hasLaterConnections
+                ? 7
+                : hasEnvelopes ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
         // The unmerged envelope prototype also wrote v5 before footing support landed on main.
         // Its geometry is explicit and can migrate to v6 without discarding either feature.
         let prototypeEnvelope = header.encodingVersion == 5 && hasEnvelopes
         let legacy =
-            header.encodingVersion < 3 && !hasEnvelopes && !hasFootings
+            header.encodingVersion < 3 && !hasEnvelopes && !hasFootings && payload.scenario.terrain == nil
             && !payload.scenario.hasLaterConnections
             && payload.scenario.structuralObjects.count <= 1
         guard header.encodingVersion == expected || prototypeEnvelope || legacy else {
@@ -291,11 +296,17 @@ extension Scenario {
         }
     }
 
-    /// Whether any support's joint lies at an angle of its own (`Anchorage.jointNormal`), which
-    /// readers before scene version 7 would take for a joint under the body.
+    /// Whether any support's joint lies at an angle of its own (`Anchorage.jointNormal`), or ties
+    /// two parts of the body (`Anchorage.betweenParts`), or any footing is set into the soil
+    /// (`Embedment`), which readers before scene version 7 would take for a joint to the ground
+    /// under the body or a footing on the surface.
     var hasLaterConnections: Bool {
         structuralObjects.contains { object in
-            object.structure?.supportAnchorages.contains { $0?.jointNormal != nil } ?? false
+            guard let body = object.structure else { return false }
+            return body.baseAnchorage?.footing?.embedment != nil
+                || body.supportAnchorages.contains {
+                    $0?.jointNormal != nil || $0?.betweenParts != nil || $0?.footing?.embedment != nil
+                }
         }
     }
 }

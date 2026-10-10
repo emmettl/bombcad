@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// Interval-local aggregation of time-averaged geometry. Active members include cells

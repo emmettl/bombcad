@@ -96,6 +96,52 @@ struct InterfaceSnapshotTests {
         #expect(ProjectDocument(model: model) == original)
     }
 
+    @Test("Render the standing of results beside them and in detail", arguments: ["light", "dark"])
+    func standing(style: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let model = SimulationModel(document: ProjectDocument(scenario: ScenarioPreset.blastWall.scenario))
+        model.thermalSpec = ThermalSpec()
+        model.cloudSpec = CloudSpec()
+        model.groundShockSpec = GroundShockSection.defaultSpec(for: model.settings.scenario)
+        let original = ProjectDocument(model: model)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        try snapshot(
+            SidebarView(model: model).frame(width: 340), size: CGSize(width: 340, height: 900),
+            appearance: appearance, to: folder.appending(path: "standing-sidebar.png"))
+        try snapshot(
+            Form { SceneStandingSection(model: model) }.formStyle(.grouped).frame(width: 340),
+            size: CGSize(width: 340, height: 420), appearance: appearance,
+            to: folder.appending(path: "standing-summary.png"))
+        try snapshot(
+            StandingDetail(standing: model.standing, kinds: [.structuralResponse, .structuralDamage]),
+            size: CGSize(width: 380, height: 520), appearance: appearance,
+            to: folder.appending(path: "standing-detail.png"))
+        try snapshot(
+            HStack(spacing: 8) { ForEach(EvidenceLevel.allCases, id: \.self) { StandingLabel(level: $0) } }
+                .padding(12),
+            size: CGSize(width: 380, height: 40), appearance: appearance,
+            to: folder.appending(path: "standing-labels.png"))
+        #expect(ProjectDocument(model: model) == original)
+
+        var document = ProjectDocument(scenario: ScenarioPreset.openGround.scenario)
+        var reference = try SavedRunTests().fixture()
+        reference.standing = reference.derivedStanding()
+        var burning = try SavedRunTests().fixture(name: "Afterburning")
+        burning.settings.detailedCharge = true
+        burning.inputSHA256 = try SavedSimulationRun.fingerprint(burning.scenario, settings: burning.settings)
+        burning.standing = burning.derivedStanding()
+        document.savedRuns = [reference, burning]
+        for index in document.savedRuns.indices {
+            document.savedRuns[index].capturedAt = Date(timeIntervalSince1970: 1_791_546_000)
+        }
+        try snapshot(
+            RunComparisonView(model: SimulationModel(document: document)),
+            size: CGSize(width: 920, height: 640),
+            appearance: appearance, to: folder.appending(path: "standing-comparison.png"))
+    }
+
     private func snapshot<V: View>(
         _ view: V, size: CGSize, appearance: NSAppearance.Name, to file: URL,
         expandToFit: Bool = true

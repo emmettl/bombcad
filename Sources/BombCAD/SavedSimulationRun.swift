@@ -87,7 +87,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
 
         var summary: String {
             let open = result.points.filter { !$0.covered && $0.peakOverpressure > 0 }
-            var text = "Ground shock: \(result.points.count) points"
+            var text =
+                "Ground shock\(result.model == .column ? " in a soil column" : ""): \(result.points.count) points"
             let soil = result.soil
             if let top = open.max(by: { $0.surfaceVelocity(in: soil) < $1.surfaceVelocity(in: soil) }) {
                 text += String(
@@ -122,6 +123,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     /// The fireball's rise and cloud, followed from the hot gas left at the run's end. It does
     /// not act on the air either.
     var cloud: CloudResult? = nil
+    /// The standing of its results when it was kept (see docs/standing.md); nil for runs kept
+    /// before standing was recorded, which open as "standing not recorded". Not an input, so no
+    /// part of the fingerprint.
+    var standing: SceneStanding? = nil
 
     static let maximumThermalReceivers = 1_000_000
 
@@ -212,6 +217,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 result.points.count == groundShock.spec.allPoints.count,
                 result.depths == groundShock.spec.depths,
                 result.soil == groundShock.spec.soil,
+                (result.model ?? .estimate) == groundShock.spec.model, result.frameTimes == nil,
+                result.profile == (groundShock.spec.model == .column ? groundShock.spec.columnProfile : nil),
                 result.points.allSatisfy({ point in
                     finite(point.peakOverpressure) && finite(point.impulse) && finite(point.duration)
                         && finite(point.frontSpeed) && point.history.isEmpty
@@ -222,7 +229,19 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                                 && finite(response.verticalDisplacement)
                                 && (response.horizontalVelocity.map { finite($0) } ?? true)
                                 && (response.arrival.map(\.isFinite) ?? true)
+                                && (response.residualDisplacement?.isFinite ?? true)
+                                && response.history == nil
                         }
+                        && (point.profile.map { profile in
+                            let count = profile.depths.count
+                            return count <= 64
+                                && [
+                                    profile.stress, profile.velocity, profile.displacement,
+                                    profile.residualDisplacement,
+                                ]
+                                .allSatisfy { $0.count == count && $0.allSatisfy(\.isFinite) }
+                                && profile.depths.allSatisfy { finite($0) }
+                        } ?? true)
                 })
             else { throw ProjectFileError.invalid("Invalid saved ground shock.") }
         }
@@ -249,7 +268,14 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         && frame.centre.x.isFinite && frame.centre.y.isFinite && frame.centre.z.isFinite
                         && frame.temperature.isFinite && frame.temperature >= 0 && frame.hottest.isFinite
                         && frame.hottest >= 0
-                })
+                }),
+                thermal.heating.map({ heating in
+                    heating.material.count == count && heating.peakTemperature.count == count
+                        && heating.ignition.count == count && heating.ambient.isFinite && heating.ambient > 0
+                        && !heating.materials.isEmpty && heating.materials.allSatisfy({ !$0.layers.isEmpty })
+                        && heating.material.allSatisfy({ heating.materials.indices.contains($0) })
+                        && heating.peakTemperature.allSatisfy({ $0.isFinite && $0 > 0 })
+                }) ?? true
             else { throw ProjectFileError.invalid("Invalid saved thermal radiation.") }
         }
         if let cloud {
@@ -280,6 +306,12 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 }),
                 cloud.stabilised.map(valid) ?? true
             else { throw ProjectFileError.invalid("Invalid saved cloud.") }
+        }
+        if let standing {
+            guard !standing.table.isEmpty, standing.table.count <= 64,
+                Set(standing.results.map(\.kind)).count == standing.results.count,
+                standing.results.allSatisfy({ !$0.summary.isEmpty })
+            else { throw ProjectFileError.invalid("Invalid saved standing.") }
         }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,
@@ -407,10 +439,14 @@ extension ThermalResult {
             return "Thermal: no luminous fireball"
         }
         let lasting = fireball.last { $0.volume > 0 }?.time ?? 0
-        return String(
+        let line = String(
             format:
                 "Thermal: fireball up to %.1f m across, luminous until %.0f ms; fluence up to %.1f kJ/m² (ε %.2f)",
             2 * largest.radius, lasting * 1000, dose, spec.emissivity)
+        guard let heating, let hottest = heating.peakTemperature.max() else { return line }
+        let flagged = heating.ignition.filter { $0 != 0 }.count
+        return line + String(format: "; surfaces up to %.0f K", hottest)
+            + (flagged > 0 ? ", \(flagged) points past ignition thresholds (illustrative)" : "")
     }
 }
 

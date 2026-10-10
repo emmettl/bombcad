@@ -65,6 +65,8 @@ struct OpenVDBWriterTests {
         var matrix: [Double] = []
         var end = 0
         var size = 0
+        /// The file's own metadata, by name: its type and value.
+        var metadata: [String: (type: String, value: String)] = [:]
     }
 
     /// Every active voxel of the file's only grid, by index coordinate.
@@ -74,7 +76,11 @@ struct OpenVDBWriterTests {
         #expect(r.int64() == 0x5644_4220)
         #expect(r.uint32() == 224)
         _ = r.take(8 + 1 + 36)
-        #expect(r.uint32() == 0)
+        for _ in 0..<r.uint32() {
+            let name = r.string()
+            let type = r.string()
+            file.metadata[name] = (type, String(decoding: r.take(Int(r.uint32())), as: UTF8.self))
+        }
         #expect(r.int32() == 1)
         file.name = r.string()
         #expect(r.string() == "Tree_float_5_4_3")
@@ -158,6 +164,16 @@ struct OpenVDBWriterTests {
         }
         let zipped = OpenVDBWriter.data([grid], compress: true).count
         #expect(zipped < OpenVDBWriter.data([grid], compress: false).count / 2)
+
+        // The file's own metadata, as OpenVDB's MetaMap: the grid reads back the same after it.
+        let tagged = read(
+            OpenVDBWriter.data(
+                [grid], metadata: [("bombcad_standing", "impulse=measured"), ("table", "t-1")]))
+        #expect(tagged.voxels == expected && tagged.end == tagged.size)
+        #expect(tagged.metadata["bombcad_standing"]?.type == "string")
+        #expect(tagged.metadata["bombcad_standing"]?.value == "impulse=measured")
+        #expect(tagged.metadata["table"]?.value == "t-1")
+        #expect(read(OpenVDBWriter.data([grid])).metadata.isEmpty)
     }
 
     @Test("A grid with nothing active is its descriptor and an empty root")

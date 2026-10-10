@@ -146,3 +146,24 @@ negative-control gates. It uploads complete reports and dependency pins for four
 days. It has a separate concurrency group so unrelated main pushes cannot replace
 its pending run; the physical runner still serializes its jobs. The normal app check
 also packages the optimized application and verifies its deep strict signature.
+
+Manual suite `packet-adoption` additionally retains complete native remap and moving
+reservoir states/loads with the wall/piston comparison and independent corruption
+controls. All bounded manual suites now have separate concurrency groups, including
+adiabatic, so unrelated main pushes cannot replace a queued comparison. The adiabatic
+job checks both its protected historical operator and the actual current shared alias,
+requiring complete sample continuity at the exact released dependency.
+
+The bounded `euler-adoption` manual suite compares an immutable pre-adoption app
+against the current source with an identical optimized fixture. It retains full
+wall/piston/packet/moving and new Euler/SSPRK2 stage/trace/scatter reports, independent
+scalar and composed-budget checks, exact pins and rejection controls. Its manual
+concurrency group survives unrelated main pushes; full app tests/package/signature
+checks remain a separate `all` run.
+
+The Euler adoption's complete mini comparison and full app/package runs pass.
+Original/shared/cross-host wall, packet and staged reports remain byte-identical.
+The public aggregate records separate measured and integrated revisions; package
+and affected peer checks supplement the earlier full-run source rather than
+relabeling its measurements. One local playback timing failure passes an isolated
+unchanged-limit rerun, with its initial log retained.

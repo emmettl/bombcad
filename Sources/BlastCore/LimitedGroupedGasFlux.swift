@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// Positive-volume reconstruction and stationary time stepping. Moving drivers reuse traces

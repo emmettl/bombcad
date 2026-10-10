@@ -38,7 +38,7 @@ USD in its text form (`.usda`), Z up, in metres, written without any USD library
 | `/Scene/Camera` | The project's saved view, in a 16:9 frame |
 | `/Scene/Structure` | The body's surface, frame by frame |
 | `/Scene/Fragments`, `/Scene/Tracers` | With `--fragments`, Points that follow the frames ([Fragments](fragments.md)) |
-| `/Scene/Thermal` | With `--thermal`, Points at the receivers, with their fluence and peak irradiance ([Thermal radiation](thermal-radiation.md)) |
+| `/Scene/Thermal` | With `--thermal`, Points at the receivers, with their fluence and peak irradiance ([Thermal radiation](thermal-radiation.md)), and their peak surface temperature and illustrative ignition flags ([Surfaces heated by the fireball](surface-heating.md)) |
 | `/Scene/GroundShock` | With `--ground-shock`, Points at the ground points, with their peak overpressure, impulse, surface velocity, settlement and arrival ([Ground shock](ground-shock.md#output)) |
 | `/Scene/Cloud` | With `--cloud`, a sphere rising and drifting after the run, on frames of its own that follow the run's ([The fireball's rise and cloud](fireball-rise.md)) |
 
@@ -65,7 +65,8 @@ Those tables preserve persistent scene ownership independently of vertex and fac
 The points and damage change every frame; the faces, and with them `material` and `rubble`, are
 written only on the frames where elements fail. Time codes count frames, played
 at 24 a second; `simulatedSecondsPerFrame` in the layer's `customLayerData` gives the simulated
-time between them.
+time between them. Its `standing` dictionary gives each result's [standing](standing.md), its
+notes on resolution and what the scene does not model.
 
 ## The air
 
@@ -89,6 +90,9 @@ cell values of the coarse grid (averaged from refined patches where there are an
 are centred on the cells, in metres from the domain's corner, and solid cells are left out. Still
 air below the thresholds is not written, so early frames are small; the region behind a front
 that has fallen back towards ambient shows as a hole.
+
+Each file's own metadata holds `bombcad_standing`, each result's [standing](standing.md) in one
+line, and `bombcad_standing_table`, the table it was judged by.
 
 With `--usd` as well, the scene gains a `Volume` prim, `/Scene/Blast`, with a field for each
 grid reading the frames' files through relative paths. Blender also opens

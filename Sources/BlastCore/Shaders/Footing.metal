@@ -21,6 +21,15 @@ struct BedPoint {
     float4 shearAndDamping;
 };
 
+// A point of an embedded footing's side: where it is from the base centre and its area; the
+// side's outward normal (x, y), the soil's stiffness across and along it per unit area (Pa/m);
+// the soil's pressure there at rest, active and passive (Pa), and the side's friction.
+struct SidePoint {
+    float4 placeAndArea;
+    float4 normalAndStiffness;
+    float4 pressures;
+};
+
 constant uint footingThreads = 256;
 // Samples of the echoes' history per round trip of a wave through the layer.
 constant uint footingSamples = 32;
@@ -63,6 +72,8 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
                         const device float *echoes [[buffer(7)]],
                         const device StepControl &control [[buffer(8)]],
                         constant FootingUniforms &u [[buffer(9)]],
+                        const device SidePoint *sides [[buffer(10)]],
+                        device float4 *sideState [[buffer(11)]],
                         uint footing [[threadgroup_position_in_grid]],
                         uint worker [[thread_index_in_threadgroup]],
                         uint lane [[thread_index_in_simdgroup]],
@@ -148,14 +159,62 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
         soilMoment += cross(arm, force);
     }
 
+    // An embedded footing's sides: the soil bears across each as a spring from its pressure at
+    // rest, giving way past the passive pressure and following past the active, and grips along
+    // it by friction on that pressure.
+    float3 sideForce = float3(0.0f);
+    float sideSet = 0.0f;
+    for (uint p = c.sides.x + worker; p < c.sides.x + c.sides.y; p += footingThreads) {
+        SidePoint point = sides[p];
+        float4 state = sideState[p];  // the soil's give across, slip vertically, slip along
+        float3 rest = c.base.xyz + point.placeAndArea.xyz;
+        float area = point.placeAndArea.w;
+        float3 arm = footingRotate(s.rotation, rest);
+        float3 displacement = s.centre.xyz + arm - rest;
+        float3 outward = footingRotate(s.rotation, float3(point.normalAndStiffness.xy, 0.0f));
+        float3 up = footingRotate(s.rotation, float3(0.0f, 0.0f, 1.0f));
+        float3 along = cross(up, outward);
+        float into = dot(displacement, outward);
+        float kn = point.normalAndStiffness.z * area;
+        float kt = point.normalAndStiffness.w * area;
+        float rest0 = point.pressures.x * area;
+        float low = (point.pressures.y - point.pressures.x) * area;
+        float high = (point.pressures.z - point.pressures.x) * area;
+        float push = kn * (into - state.x);
+        if (push > high) {
+            state.x = into - high / kn;  // passive: the soil gives way for good
+            push = high;
+        } else if (push < low) {
+            state.x = into - low / kn;  // active: the soil follows the side
+            push = low;
+        }
+        float pressure = max(rest0 + push, 0.0f);
+        float2 slide = float2(dot(displacement, up), dot(displacement, along));
+        float2 grip = -kt * (slide - state.yz);
+        float limit = point.pressures.w * pressure;
+        float size = length(grip);
+        if (size > limit) {
+            grip *= limit / size;
+            state.yz = slide + grip / kt;
+        }
+        // At rest the pressures on opposite sides balance; only the change pushes the footing.
+        float3 force = -push * outward + grip.x * up + grip.y * along;
+        sideState[p] = state;
+        sideForce += force;
+        soilForce += force;
+        soilMoment += cross(arm, force);
+        sideSet = max(sideSet, abs(state.x));
+    }
+
     // Add up over the threadgroup: sums, then greatest and least.
-    threadgroup float sums[8][16];
+    threadgroup float sums[8][19];
     threadgroup float4 bounds[8];
-    threadgroup float greatest[8][2];
-    float values[16] = {jointForce.x, jointForce.y, jointForce.z, jointMoment.x, jointMoment.y, jointMoment.z,
+    threadgroup float greatest[8][3];
+    float values[19] = {jointForce.x, jointForce.y, jointForce.z, jointMoment.x, jointMoment.y, jointMoment.z,
                         soilForce.x,  soilForce.y,  soilForce.z,  soilMoment.x, soilMoment.y, soilMoment.z,
-                        bearing,      springs.x,    springs.y,    springs.z};
-    for (uint i = 0; i < 16; ++i) {
+                        bearing,      springs.x,    springs.y,    springs.z,    sideForce.x,  sideForce.y,
+                        sideForce.z};
+    for (uint i = 0; i < 19; ++i) {
         float total = simd_sum(values[i]);
         if (lane == 0) {
             sums[group][i] = total;
@@ -165,11 +224,13 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     float4 groupExtent = float4(simd_min(extent.x), simd_max(extent.y), simd_min(extent.z), simd_max(extent.w));
     float groupLift = simd_max(lift);
     float groupSunk = simd_max(sunk);
+    float groupSet = simd_max(sideSet);
     threadgroup float2 seconds[8];
     if (lane == 0) {
         bounds[group] = groupExtent;
         greatest[group][0] = groupLift;
         greatest[group][1] = groupSunk;
+        greatest[group][2] = groupSet;
         seconds[group] = partial;
     }
     threadgroup_barrier(mem_flags::mem_threadgroup);
@@ -177,8 +238,8 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
         return;
     }
     uint groups = (footingThreads + 31) / 32;
-    float total[16];
-    for (uint i = 0; i < 16; ++i) {
+    float total[19];
+    for (uint i = 0; i < 19; ++i) {
         total[i] = 0.0f;
         for (uint g = 0; g < groups; ++g) {
             total[i] += sums[g][i];
@@ -194,7 +255,9 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
                         max(extent.w, bounds[g].w));
         lift = max(lift, greatest[g][0]);
         sunk = max(sunk, greatest[g][1]);
+        sideSet = max(sideSet, greatest[g][2]);
     }
+    sideForce = float3(total[16], total[17], total[18]);
     jointForce = float3(total[0], total[1], total[2]);
     jointMoment = float3(total[3], total[4], total[5]);
     soilForce = float3(total[6], total[7], total[8]);
@@ -211,6 +274,12 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     float2 tilt = 2.0f * s.rotation.xy * (s.rotation.w < 0.0f ? -1.0f : 1.0f);
     float2 tiltRate = s.spin.xy;
     float4 cone = s.cone;
+    // An embedded footing turns more stiffly than its base and sides' springs alone can make it
+    // (Gazetas's embedded rocking stiffness): the rest, as the cones are, on the share bearing,
+    // and no more than the passive pressure on a side can resist.
+    if (c.sides.y > 0) {
+        lumpedMoment -= clamp(c.embedded.xy * bearingShare.yz * tilt, -c.embedded.zw, c.embedded.zw);
+    }
     // Rocking cones: a dashpot to an internal rotary mass, moving it exactly over the step.
     for (uint axis = 0; axis < 2; ++axis) {
         float dashpot = c.rocking[axis] * bearingShare[axis + 1];
@@ -350,5 +419,6 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     s.soilMoment = float4(soilMoment - cross(baseArm, soilForce) + float3(lumpedMoment, 0.0f), lift);
     s.jointForce = float4(jointForce, sunk);
     s.contact = extent;
+    s.sideForce = float4(sideForce, sideSet);
     states[footing] = s;
 }

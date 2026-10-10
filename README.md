@@ -686,14 +686,17 @@ Collapse and debris have not been compared with anything.
 | [Concrete model](docs/concrete-model.md)    | Cracking, crushing, shear, reinforcement, strain-rate effects   |
 | [Shell model](docs/shell-model.md)          | Shells for walls and slabs, beams for columns                   |
 | [Validation](docs/validation.md)            | The slab test, empirical blast curves, verification tests       |
+| [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |
 | [Building envelopes](docs/building-envelopes.md) | Stationary exposure-only buildings, surface loading, matched detailed references and scaling through 64 buildings |
 | [Distributed computing](docs/distributed-computing.md) | Whether one run could use several Macs' GPUs, and when it would pay |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas, drawn over the blast, here or on another Mac |
+| [Surfaces heated by the fireball](docs/surface-heating.md) | Each receiver's absorbed radiation conducted into its material for its peak surface temperature, with illustrative ignition thresholds from tests |
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud that spreads once it stops, carried by the wind, for minutes after |
-| [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, fed the overpressure on the ground |
+| [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, or a layered soil column, fed the overpressure on the ground |
+| [Terrain](docs/terrain.md) | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
 | [Ray tracing](docs/ray-tracing.md) | Notes for other projects: adopting Metal ray tracing for precomputed simulations |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |

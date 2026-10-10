@@ -43,7 +43,8 @@ content-derived IDs stay stable across repeated saves, and existing asset IDs ar
 `scene.json` has format `dev.bombcad.scene`. Single-body saves use encoding version 3, which requires
 durable object/component ownership; multiple-body saves use version 4 and scenes containing
 stationary building envelopes use version 6. Version 5 supports footings and turned support
-joints; prototype envelope version-5 packages migrate on save. Versions 1 and 2 remain readable; version 2 originally
+joints; prototype envelope version-5 packages migrate on save. Scenes with a [terrain](terrain.md) use
+version 8, so that older readers refuse them rather than open them on flat ground. Versions 1 and 2 remain readable; version 2 originally
 introduced finite support-region laws. Older readers reject version 3 rather than discard
 ownership; readers predating multi-body support reject version 4. Its `scenario` contains
 structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`
@@ -70,6 +71,10 @@ local coupling. Historical `blast-solver-3` records remain readable without rela
 `bodyResponses` entries carry object IDs, names and individual histories alongside the
 overall structural history. Missing/duplicate response owners and incompatible record
 versions are rejected. Existing single-body records retain their encoding and provenance.
+
+A saved run may hold `standing`, the [standing](standing.md) of its results when it was kept. It
+is optional, outside the fingerprint and leaves the record's encoding version alone; runs kept
+before it open as "standing not recorded".
 
 Saved runs containing compact `envelopeExposure` summaries use record encoding version 3,
 with owner IDs/names, window, air spacing, resolved surface area, peak pressure, positive
@@ -111,7 +116,8 @@ opening a document never silently regenerates them from the source.
 `fragments.json`, when present, holds the Run tab's fragment description (see
 [Fragments](fragments.md#in-the-app)); fields left out take their defaults. `groundShock.json`,
 when present, holds the Run tab's ground points and soil (see
-[Ground shock](ground-shock.md#in-the-app)), likewise.
+[Ground shock](ground-shock.md#in-the-app)), likewise; one saved before the soil column has no
+`model` and opens with the manuals' estimate.
 
 `settings.json` stores resolution (`coarse`, `medium`, `fine`), `detailedCharge`, `sharpShocks`,
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`
