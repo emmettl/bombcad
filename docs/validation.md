@@ -2220,6 +2220,7 @@ each axis's cracks for the modes that stretch it (directional, kept as the optio
 | Saatci's heavy drops | 40.5, 37.1, 33.6 mm | 50.6, 42.3, 36.4 mm | 44.9, 40.7, 35.7 mm | 39.5, 37.9, 35.3 mm |
 | Saatci's SS0a-1, light drop | 17.0 mm, 246 removed | 22.7 mm, 584 removed | 21.4 mm, 640 removed | 9.3 mm, whole |
 | Ando's A24 at 4 m/s; B48 at 5 m/s | 22.9; 54.0 mm | 50.3; 151 mm | 38.5; 160 mm | 16; 55 mm |
+| Peterson's beams, near reaction at 0.4 / 1 / 2 depths (no stirrups) | 335 / 171 / 80 kN | | 330 / 170 / 70 kN | 206–220 / 161–179 / 107–140 kN |
 | Wu's S8 / D8, peak | 14.4 / 14.9 mm | 15.0 / 15.6 mm | 14.7 / 15.2 mm | 18.0 / 13.9 mm |
 | Wu's S4 in contact, hole | 27 cm | the whole slab torn up | the whole slab torn up | 27.5 cm |
 | Hupfauf's SN174, tip velocity; breach | 101 m/s; none | 155 m/s; holed | | 81–84 m/s; holed |
@@ -2238,7 +2239,7 @@ agreement leans on it. Neither form is the default. A remedy needs an element th
 strain gradient through its own depth in cracked concrete (selective full integration of
 cracked elements, or an assumed-strain element of Belytschko and Bindeman's kind), so that the
 struck beams' resistance comes from the concrete and not from the stabilisation. Peterson et
-al.'s struck beams were not yet set up to run.
+al.'s short struck beams, whose reactions peak within the first 1.5 ms, barely move with it.
 
 ## Bars that slip, across the tests
 
