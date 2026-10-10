@@ -39,12 +39,17 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Worker to app, for a live session after each frame: its model's state (see
     /// `ConsumerLive`), any bulk of it in the payload.
     case live(UUID, ConsumerLive.Header)
+    /// App to worker: run one sample of a validation case's ensemble (see `ValidationEnsemble`),
+    /// as a sweep case, one at a time.
+    case ensemble(EnsembleJob)
+    /// Worker to app: what the sample came to.
+    case ensembleFinished(UUID, EnsembleOutcome)
 
     static let cancelled = "cancelled"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 8
+    static let protocolVersion = 9
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
@@ -55,6 +60,11 @@ struct SweepWorkerJob: Codable, Equatable, Sendable {
     var id: UUID
     var name: String
     var project: SweepWorkerArchive
+}
+
+struct EnsembleJob: Codable, Equatable, Sendable {
+    var id: UUID
+    var sample: EnsembleSample
 }
 
 struct ConsumerSession: Codable, Equatable, Sendable {

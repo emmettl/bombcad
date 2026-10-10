@@ -21,6 +21,7 @@ final class SweepWorkerClient {
     private var reader: Task<Void, Never>?
     private var helloWaiter: CheckedContinuation<SweepWorkerHello, Error>?
     private var waiting: [UUID: CheckedContinuation<SweepWorkerArchive, Error>] = [:]
+    private var ensembleWaiters: [UUID: CheckedContinuation<EnsembleOutcome, Error>] = [:]
     private var progress: [UUID: (Double) -> Void] = [:]
     private var closedError: Error?
     /// Why the worker stopped, for messages: what it last wrote to standard error, if anything.
@@ -118,6 +119,30 @@ final class SweepWorkerClient {
         return run
     }
 
+    /// Runs one sample of a validation case's ensemble on the worker, and returns what it came to.
+    func run(_ sample: EnsembleSample) async throws -> EnsembleOutcome {
+        let job = EnsembleJob(id: UUID(), sample: sample)
+        let writer = self.writer
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<EnsembleOutcome, Error>) in
+                if let closedError {
+                    continuation.resume(throwing: closedError)
+                    return
+                }
+                ensembleWaiters[job.id] = continuation
+                do {
+                    try writer.send(.ensemble(job))
+                } catch {
+                    ensembleWaiters[job.id] = nil
+                    continuation.resume(throwing: error)
+                }
+            }
+        } onCancel: {
+            try? writer.send(.cancel(job.id))
+        }
+    }
+
     /// Tells the worker to finish, and lets it go.
     func close() {
         try? writer.send(.shutdown)
@@ -176,6 +201,8 @@ final class SweepWorkerClient {
             helloWaiter = nil
         case .progress(let id, let fraction):
             progress[id]?(fraction)
+        case .ensembleFinished(let id, let outcome):
+            ensembleWaiters.removeValue(forKey: id)?.resume(returning: outcome)
         case .finished(let id, let archive):
             progress[id] = nil
             waiting.removeValue(forKey: id)?.resume(returning: archive)
@@ -186,6 +213,9 @@ final class SweepWorkerClient {
             outcomeWaiters.removeValue(forKey: id)?.resume(
                 throwing: ProjectFileError.invalid("On \(name): \(reason)"))
             progress[id] = nil
+            ensembleWaiters.removeValue(forKey: id)?.resume(
+                throwing: reason == SweepWorkerMessage.cancelled
+                    ? CancellationError() : ProjectFileError.invalid("On \(name): \(reason)"))
             waiting.removeValue(forKey: id)?.resume(
                 throwing: reason == SweepWorkerMessage.cancelled
                     ? CancellationError() : ProjectFileError.invalid("On \(name): \(reason)"))
@@ -205,6 +235,8 @@ final class SweepWorkerClient {
         helloWaiter = nil
         for continuation in waiting.values { continuation.resume(throwing: error) }
         waiting = [:]
+        for continuation in ensembleWaiters.values { continuation.resume(throwing: error) }
+        ensembleWaiters = [:]
         for continuation in outcomeWaiters.values { continuation.resume(throwing: error) }
         outcomeWaiters = [:]
         progress = [:]
