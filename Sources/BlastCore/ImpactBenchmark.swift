@@ -111,9 +111,6 @@ public enum ImpactBenchmark {
         /// holds the beam's own faces over the bearing length instead, which resists its ends'
         /// turning.
         public var supportPlates: Float?
-        /// Each bar's steel spread through the concrete about it, out to the nearest face and as
-        /// far the other way, rather than through the one row of elements at its height.
-        public var spreadBars = false
         /// An elastic pad between the weight and the plate, of this stiffness per unit area
         /// (Pa/m): the compliance of the weight's contact with a plate seated loose on the beam.
         /// It is one element thick, its modulus the stiffness times the element size. Nil strikes
@@ -187,7 +184,7 @@ public enum ImpactBenchmark {
         }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
-            let reach = s.spreadBars ? max(min(bar.height, s.depth - bar.height), h / 2) : h / 2
+            let reach = h / 2
             var band = beam
             band.min.z = base + bar.height - reach
             band.max.z = base + bar.height + reach
@@ -233,11 +230,10 @@ public enum ImpactBenchmark {
     /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
-        spreadBars: Bool = false, specimen change: (inout Specimen) -> Void = { _ in },
+        specimen change: (inout Specimen) -> Void = { _ in },
         adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
-        specimen.spreadBars = spreadBars
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: test.weight, speed: impactSpeed,
@@ -632,11 +628,10 @@ public enum ImpactBenchmark {
 
     public static func run(
         device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
-        spreadBars: Bool = false, specimen change: (inout Specimen) -> Void = { _ in },
+        specimen change: (inout Specimen) -> Void = { _ in },
         adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
-        specimen.spreadBars = spreadBars
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: 300, speed: test.speed,

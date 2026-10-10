@@ -305,7 +305,7 @@ the widest at mid-span, and the same on 8 and 16 elements through. So the slab's
 few or over too short a zone, as was suspected from the slice through its thickness: there are
 as many as the test had, where they were. It must come from what lies between and under them:
 the concrete between cracks still carrying tension, the bars' bond, or the compression zone.
-Keeping a crack's slide out of its opening (`--slide-apart`; see
+Keeping a crack's slide out of its opening (`--slide-apart`, since retired; see
 [one crack sheared along its measured path](#one-crack-sheared-along-its-measured-path))
 changes neither.
 
@@ -658,7 +658,7 @@ it: the crack's opening is read from the principal strains of the element's whol
 which the slide stored by `crackSlip` is part, so a crack 1.05 mm open and slid by 2 mm on
 50 mm elements read as about 1.9 mm open, and carried 57% of its cap at the measured width; it
 also opened the plane across the slide, a crack across the crack. Taking the stored slide out,
-as a second crack's opening already is (`StructureModel.slipWidensCracks`, `--slide-apart`),
+as a second crack's opening already is (`StructureModel.slipWidensCracks`, `--slide-apart`, since retired),
 gives the cap at the measured width within 5%.
 
 It is an option, not the default, because every test it moves it moves the wrong way. Kept
@@ -940,7 +940,7 @@ back. That led to the CEB's law for the bars (see the
 simply supported beam; on plates that turn freely (`--plates 0.02`), 92 kN, or 74 kN without
 the strain-rate laws.
 
-**Bars spread through the concrete about them** (`blastbench impact --spread`). Smeared, each
+**Bars spread through the concrete about them** (`blastbench impact --spread`, since retired). Smeared, each
 bar's steel sits in the one row of elements at its height, so the row that carries it, and the
 row of plain concrete above that splits, thin as the mesh is refined. Spread instead from the
 bar's nearest face to as far the other side (106 mm for Saatci's bars, 80 mm for Ando's, much
@@ -1990,7 +1990,7 @@ peaks at 46 to 48 mm; the diagonal bars take it to 37 mm; the ties make no diffe
 0.1 m elements.
 
 **The crack model, the residual opening and the air grid matter little now.** Cracks on the
-lattice planes (`--cracks lattice`), which mishandle an inclined crack (see the
+lattice planes (`--cracks lattice`, since retired), which mishandle an inclined crack (see the
 [concrete model](concrete-model.md#cracking)), give 59 mm and 10 mm; cracks fixed at first
 cracking 39 and 7 mm; turning cracks without the second crack 36 and 6 mm. A residual crack
 opening of 0, 0.3 and 0.5 of the opening (`--crack-residual`) leaves the edge 5, 13 and 19 mm
