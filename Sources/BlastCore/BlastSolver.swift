@@ -1471,7 +1471,8 @@ public final class BlastSolver {
                     || (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
                 radiativeCoolingStage.encode(
                     encoder, take: take, state: stateBuffers[current], mask: maskBuffer,
-                    species: hasSpecies ? speciesBuffers[current] : nil, placeholder: noSpecies,
+                    species: hasSpecies && configuration.afterburning ? speciesBuffers[current] : nil,
+                    placeholder: noSpecies,
                     control: controlBuffer, uniforms: uniforms,
                     tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil)
                 if take, let refinement, refining {
