@@ -289,28 +289,54 @@ extension Scenario {
             additionalCharges = extra
         }
         for n in gauges.indices { shift(&gauges[n].position) }
-        /// How far to raise a body whose lowest points are `points`.
-        func lift(_ points: [SIMD3<Double>]) -> Double {
-            func clearance(_ ground: Terrain?) -> Double {
-                points.map { $0.z - Double(ground?.height(at: SIMD3<Float>($0)) ?? 0) }.min() ?? 0
-            }
-            let lowest = points.map(\.z).min() ?? 0
-            return max(clearance(old) - clearance(terrain), -lowest)
-        }
         rigidObjects = rigidObjects?.map { object in
-            guard let body = try? object.makeBody(),
-                let moved = try? object.edited(position: object.position + SIMD3(0, 0, lift(body.corners)))
+            guard let points = try? Self.lowestPoints(object),
+                let moved = try? object.edited(
+                    position: object.position + SIMD3(0, 0, Self.lift(points, from: old, to: terrain)))
             else { return object }
             return moved
         }
         rigidCars = rigidCars?.map { car in
-            guard let made = try? car.makeBody(),
+            guard let points = try? Self.lowestPoints(car),
                 let moved = try? car.moved(
-                    to: car.position
-                        + SIMD3(0, 0, lift(made.body.corners + made.tyres.map(made.body.worldPoint))))
+                    to: car.position + SIMD3(0, 0, Self.lift(points, from: old, to: terrain)))
             else { return car }
             return moved
         }
         self.terrain = terrain
+    }
+
+    /// `object` raised or lowered to rest on the ground, its lowest corner on it, as placed; its
+    /// orientation kept.
+    public func resting(_ object: RigidObjectDefinition) throws -> RigidObjectDefinition {
+        let points = try Self.lowestPoints(object)
+        return try object.edited(position: object.position + SIMD3(0, 0, Self.lift(points, to: terrain)))
+    }
+
+    /// `car` raised or lowered to rest on the ground, its lowest tyre or corner on it.
+    public func resting(_ car: RigidCarDefinition) throws -> RigidCarDefinition {
+        try car.moved(to: car.position + SIMD3(0, 0, Self.lift(try Self.lowestPoints(car), to: terrain)))
+    }
+
+    private static func lowestPoints(_ object: RigidObjectDefinition) throws -> [SIMD3<Double>] {
+        try object.makeBody().corners
+    }
+
+    private static func lowestPoints(_ car: RigidCarDefinition) throws -> [SIMD3<Double>] {
+        let made = try car.makeBody()
+        return made.body.corners + made.tyres.map(made.body.worldPoint)
+    }
+
+    /// How far to raise a body whose lowest points are `points` so that it stands as far off the
+    /// `new` ground as it stood off the `old` (on the `new`, with no `old` given), never below
+    /// the floor.
+    private static func lift(_ points: [SIMD3<Double>], from old: Terrain?? = nil, to new: Terrain?) -> Double
+    {
+        func clearance(_ ground: Terrain?) -> Double {
+            points.map { $0.z - Double(ground?.height(at: SIMD3<Float>($0)) ?? 0) }.min() ?? 0
+        }
+        let lowest = points.map(\.z).min() ?? 0
+        let kept = old.map { clearance($0) } ?? 0
+        return max(kept - clearance(new), -lowest)
     }
 }

@@ -562,6 +562,21 @@ static inline float3 glow(float t) {
     return mix(stops[i], stops[i + 1], x - float(i));
 }
 
+// A patch's value at `uv` across it: bilinear between its cells' centres, constant beyond the
+// outermost.
+static float paintValue(const device float4 *patch, const device float *values, float2 uv) {
+    int columns = int(patch[0].w);
+    int rows = int(patch[1].w);
+    int first = int(patch[2].w);
+    float2 cell = clamp(uv * float2(columns, rows) - 0.5f, float2(0.0f), float2(columns - 1, rows - 1));
+    int2 low = int2(floor(cell));
+    int2 high = min(low + 1, int2(columns - 1, rows - 1));
+    float2 f = cell - float2(low);
+    float bottom = mix(values[first + low.y * columns + low.x], values[first + low.y * columns + high.x], f.x);
+    float top = mix(values[first + high.y * columns + low.x], values[first + high.y * columns + high.x], f.x);
+    return mix(bottom, top, f.y);
+}
+
 vertex PaintOut paintVertex(uint vertexID [[vertex_id]],
                             uint instanceID [[instance_id]],
                             const device float4 *patches [[buffer(0)]],
@@ -584,8 +599,9 @@ vertex PaintOut paintVertex(uint vertexID [[vertex_id]],
     PaintOut out;
     out.position = float4(view.x * u.projection.x, view.y * u.projection.y,
                           far / (far - near) * (view.z - near), view.z);
-    // A face turned away from the eye is hidden by its own block, but for its margin.
-    if (dot(patch[3].xyz, u.eye.xyz - patch[0].xyz) <= 0.0f) {
+    // A face turned away from the eye is hidden by its own block, but for its margin; the ground's
+    // patch is left to a terrain that wears it (`dims.x` 1).
+    if (dot(patch[3].xyz, u.eye.xyz - patch[0].xyz) <= 0.0f || (u.dims.x > 0.5f && patch[3].w > 0.5f)) {
         out.position = float4(0.0f, 0.0f, 2.0f, 1.0f);
     }
     out.uv = corner;
@@ -598,17 +614,7 @@ fragment float4 paintFragment(PaintOut in [[stage_in]],
                               const device float *values [[buffer(1)]],
                               constant MeshUniforms &u [[buffer(2)]]) {
     const device float4 *patch = patches + 4 * in.patch;
-    int columns = int(patch[0].w);
-    int rows = int(patch[1].w);
-    int first = int(patch[2].w);
-    // Bilinear between the cells' centres, constant beyond the outermost.
-    float2 cell = clamp(in.uv * float2(columns, rows) - 0.5f, float2(0.0f), float2(columns - 1, rows - 1));
-    int2 low = int2(floor(cell));
-    int2 high = min(low + 1, int2(columns - 1, rows - 1));
-    float2 f = cell - float2(low);
-    float bottom = mix(values[first + low.y * columns + low.x], values[first + low.y * columns + high.x], f.x);
-    float top = mix(values[first + high.y * columns + low.x], values[first + high.y * columns + high.x], f.x);
-    float t = mix(bottom, top, f.y);
+    float t = paintValue(patch, values, in.uv);
 
     // Shaded as the surface beneath is, without its shadows, and tinted as `fieldTint` tints it.
     float3 normal = patch[3].xyz;
@@ -690,7 +696,8 @@ fragment float4 lineFragment(LineOut in [[stage_in]]) {
 // Matches `TerrainMesh` in `SceneRenderer.swift`.
 struct TerrainMesh {
     float4 grid;   // xy = first node, z = spacing, w = lift off the surface
-    uint4 dims;    // x = columns, y = rows, z = 1 to tint by the blast's field
+    uint4 dims;    // x = columns, y = rows, z = 1 to tint by the blast's field, w = 1 + the
+                   // ground's paint patch to wear, 0 for none
 };
 
 struct TerrainOut {
@@ -732,10 +739,13 @@ vertex TerrainOut terrainVertex(uint vertexID [[vertex_id]],
 }
 
 // Shaded as the ground is, lit along its own normal, and tinted by the blast's field in the air
-// half a cell above it, inside the domain.
+// half a cell above it, inside the domain; or painted, as the ground's patch is painted, with the
+// thermal radiation of the ground's receivers, which lie on the terrain.
 fragment float4 terrainFragment(TerrainOut in [[stage_in]],
                                 constant RenderUniforms &u [[buffer(0)]],
                                 constant TerrainMesh &t [[buffer(1)]],
+                                const device float4 *patches [[buffer(2)]],
+                                const device float *values [[buffer(3)]],
                                 texture3d<float> field [[texture(0)]]) {
     constexpr sampler linearSampler(filter::linear, address::clamp_to_edge);
     float3 domain = u.domain.xyz;
@@ -752,6 +762,16 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     if (inside && t.dims.z != 0) {
         float3 uvw = (p + float3(0.0f, 0.0f, 0.5f * u.domain.w)) / domain;
         colour = fieldTint(base, light, field.sample(linearSampler, uvw), u);
+    }
+    if (inside && t.dims.w != 0) {
+        const device float4 *patch = patches + 4 * (t.dims.w - 1);
+        // Where the point lies across the ground's patch, seen from above.
+        float2 offset = p.xy - patch[0].xy;
+        float2 uv = float2(dot(offset, patch[1].xy) / dot(patch[1].xy, patch[1].xy),
+                           dot(offset, patch[2].xy) / dot(patch[2].xy, patch[2].xy));
+        float value = paintValue(patch, values, uv);
+        float dataLight = 0.78f + 0.22f * light;
+        colour = mix(base * light, glow(value) * dataLight, smoothstep(0.0f, 0.12f, value) * 0.92f);
     }
     return float4(colour, 1.0f);
 }

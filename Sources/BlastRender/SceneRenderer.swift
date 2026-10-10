@@ -224,6 +224,10 @@ public final class SceneRenderer {
     private var paintPatches: MTLBuffer?
     private var paintValues: MTLBuffer?
     private var paintCount = 0
+    /// The ground's patch among them, which a terrain wears.
+    private var paintGround: Int?
+    /// Whether the terrain's nodes cover the domain's floor, so that it alone shows the ground.
+    private var terrainCoversFloor = false
     private var dotBuffer: MTLBuffer?
     private var dotCount = 0
     private let freestandingPipeline: MTLRenderPipelineState
@@ -360,6 +364,7 @@ public final class SceneRenderer {
         guard let terrain, !terrain.isFlat else {
             terrainMesh = nil
             terrainHeights = nil
+            terrainCoversFloor = false
             return
         }
         terrainHeights = terrain.heights.withUnsafeBytes { bytes in
@@ -372,6 +377,10 @@ public final class SceneRenderer {
         terrainMesh = TerrainMesh(
             grid: SIMD4(terrain.origin.x, terrain.origin.y, terrain.spacing, 0.02),
             dims: SIMD4(UInt32(terrain.columns), UInt32(terrain.rows), 1, 0))
+        let domain = scenario?.domainSize ?? .zero
+        terrainCoversFloor =
+            terrain.origin.x <= 0 && terrain.origin.y <= 0 && terrain.extent.x >= domain.x
+            && terrain.extent.y >= domain.y
     }
 
     /// Pixels to a point on the screen drawn to, for dots of a size in points.
@@ -451,7 +460,9 @@ public final class SceneRenderer {
     /// Values to paint onto the surfaces while `settings.thermal` is set; nil for none.
     public func setSurfacePaint(_ paint: SurfacePaint?) {
         paintCount = 0
+        paintGround = nil
         guard let paint, !paint.patches.isEmpty else { return }
+        paintGround = paint.patches.firstIndex { $0.ground }
         // Four vectors a patch: the origin and its columns, the u edge and its rows, the v edge
         // and where its values start, and the normal and whether it is on the ground.
         let patches = paint.patches.flatMap { patch in
@@ -534,9 +545,11 @@ public final class SceneRenderer {
                 projection: SIMD4(
                     1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
                 lattice: .zero, dims: .zero, sun: sun)
-            // The thermal radiation's paint is for the flat ground; over a terrain the blast's field
-            // is not painted while it is shown.
+            // Tinted by the blast's field, or, while the thermal radiation is shown, painted with the
+            // ground's receivers' values (`dims.w` one more than their patch).
             terrain.dims.z = settings.thermal == nil ? 1 : 0
+            let groundPaint = settings.thermal != nil && paintCount > 0 ? paintGround : nil
+            terrain.dims.w = groundPaint.map { UInt32($0 + 1) } ?? 0
             sceneEncoder.setRenderPipelineState(terrainPipeline)
             sceneEncoder.setDepthStencilState(meshDepthState)
             sceneEncoder.setCullMode(.none)
@@ -546,6 +559,14 @@ public final class SceneRenderer {
             sceneEncoder.setFragmentBytes(&uniforms, length: MemoryLayout<RenderUniforms>.stride, index: 0)
             sceneEncoder.setFragmentBytes(&terrain, length: MemoryLayout<TerrainMesh>.stride, index: 1)
             sceneEncoder.setFragmentTexture(field, index: 0)
+            if groundPaint != nil, let paintPatches, let paintValues {
+                sceneEncoder.setFragmentBuffer(paintPatches, offset: 0, index: 2)
+                sceneEncoder.setFragmentBuffer(paintValues, offset: 0, index: 3)
+            } else {
+                // Unread, but bound.
+                sceneEncoder.setFragmentBytes([Float](repeating: 0, count: 16), length: 64, index: 2)
+                sceneEncoder.setFragmentBytes([Float](repeating: 0, count: 4), length: 16, index: 3)
+            }
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 6,
                 instanceCount: (Int(terrain.dims.x) - 1) * (Int(terrain.dims.y) - 1))
@@ -631,11 +652,13 @@ public final class SceneRenderer {
                 type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: freestandingCount)
         }
         if settings.thermal != nil, paintCount > 0, let paintPatches, let paintValues {
+            // Over a terrain that covers the floor, the terrain wears the ground's paint (above).
+            let groundOnTerrain: Float = terrainMesh != nil && terrainCoversFloor ? 1 : 0
             var mesh = MeshUniforms(
                 eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
                 projection: SIMD4(
                     1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
-                lattice: .zero, dims: .zero, sun: sun)
+                lattice: .zero, dims: SIMD4(groundOnTerrain, 0, 0, 0), sun: sun)
             sceneEncoder.setRenderPipelineState(paintPipeline)
             sceneEncoder.setDepthStencilState(meshDepthState)
             sceneEncoder.setCullMode(.none)
