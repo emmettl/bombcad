@@ -264,4 +264,301 @@ public enum PerimeterWallTests {
             readings: readings, histories: solver.gaugeHistories,
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
     }
+
+    // MARK: - The walls' own response
+
+    /// The walls whose response was observed.
+    public enum Wall: String, CaseIterable, Sendable {
+        /// Chapter 5's half-scale plane wall PWS, 2 m long, 1 m high and 0.2 m thick, 10 mm bars at
+        /// 200 mm in both faces, on a footing in backfill.
+        case halfScale
+        /// Chapter 7's full-scale wall with a canopy, 4 m long, its stem 2 m high and 0.4 m thick,
+        /// 20 mm bars at 200 mm in both faces, on a footing 2.2 m wide and 0.6 m deep in backfill.
+        case canopied
+        /// Chapter 8's double-leaf blockwork, 4 m long, 2 m high and 0.4 m thick, a 20 mm bar in
+        /// every cell; its base is not described.
+        case masonry
+
+        public var layout: Layout {
+            switch self {
+            case .halfScale: PerimeterWallTests.halfScale
+            case .canopied, .masonry:
+                {
+                    var layout = PerimeterWallTests.canopied
+                    if self == .masonry {
+                        layout.name = "Full-scale blockwork, charge 4 m in front"
+                        layout.canopyReach = 0
+                        layout.canopyDepth = 0
+                    }
+                    return layout
+                }()
+            }
+        }
+
+        /// Along the wall, in metres; the wing walls carry on beyond.
+        public var length: Float { self == .halfScale ? 2 : 4 }
+    }
+
+    /// How the wall's base is held.
+    public enum Base: String, CaseIterable, Sendable {
+        /// Cast on starter bars (as many as the wall's vertical bars, at their yield) onto a footing
+        /// set flush into the ground, a medium dense sand bearing on its base and sides: the
+        /// thesis's construction for the concrete walls.
+        case footing
+        /// Clamped.
+        case clamped
+        /// Cast on the same starter bars onto ground that does not move.
+        case dowelled
+        /// A mortar bed or construction joint without bars, on ground that does not move.
+        case joint
+    }
+
+    /// Grade 60 bars: 420 MPa yield, 620 MPa ultimate (ASTM A615's minima).
+    public static let grade60 = SteelProperties(
+        yieldStress: 420e6, ultimateStress: 620e6, ultimateStrain: 0.08, ruptureStrain: 0.12)
+
+    /// The thesis's 40 MPa concrete with Grade 60 bars, strengthening with strain rate.
+    public static let concrete: StructureMaterial = {
+        var material = StructureMaterial.concrete(
+            name: "40 MPa reinforced concrete", compressiveStrength: 40e6, steel: grade60)
+        material.rateDependent = true
+        return material
+    }()
+
+    /// Hollow concrete blockwork as the model's own (`StructureMaterial.concreteBlock`), laid in
+    /// the thesis's 400 × 200 mm units, with Grade 60 bars where `bars`.
+    public static func blockwork(bars: Bool) -> StructureMaterial {
+        var material = StructureMaterial.concreteBlock
+        material.name = bars ? "Reinforced blockwork" : "Blockwork"
+        material.units?.length = 0.4
+        material.units?.courseHeight = 0.2
+        material.steel = bars ? grade60 : nil
+        return material
+    }
+
+    /// What the wall did, at the middle of its length.
+    public struct WallResult: Sendable {
+        public var wall: Wall
+        public var base: Base
+        public var anfo: Float
+        /// Displacement away from the charge of the back face's top and of its middle height (the
+        /// stem's, for the canopied wall): the largest, and where each is at the end.
+        public var peakTop: Float = 0
+        public var finalTop: Float = 0
+        public var peakMiddle: Float = 0
+        public var finalMiddle: Float = 0
+        /// The face's peak overpressure and positive impulse at mid-height (Pa, Pa s), and the back
+        /// face's impulse over 50 ms from the wave's arrival at the face, both phases, positive
+        /// pushing towards the charge.
+        public var facePeak: Float = 0
+        public var faceImpulse: Float = 0
+        public var backImpulse: Float = 0
+        /// Crack openings (m) across each element row up the front and back faces, the widest
+        /// along the wall's length and the fraction of its length open past `crackWidth`.
+        public var frontWidest: [Float] = []
+        public var frontSpread: [Float] = []
+        public var backWidest: [Float] = []
+        public var backSpread: [Float] = []
+        public var crackWidth: Float = 0
+        /// The element size, and the base's largest opening and the share of its ties broken.
+        public var elementSize: Float = 0
+        public var baseOpening: Float = 0
+        public var baseSeparated: Float = 0
+        /// On a footing: its largest rotation (radians, away from the charge) and where it ends.
+        public var footingRotation: Float = 0
+        public var footingSlide: Float = 0
+        /// The share of elements removed, and the fastest node at the end (m/s): pieces thrown.
+        public var erodedFraction: Double = 0
+        public var fastest: Float = 0
+        public var summary = StructureSummary()
+        public var wallSeconds: Double = 0
+    }
+
+    /// Runs `wall` on `base` under `anfo` kg of ANFO at its layout's place, loaded by the air on
+    /// cells of `cellSize`, meshed with elements of `elementSize`, for `duration` seconds. The wing
+    /// walls either side are rigid, `gap` clear of its ends. For the blockwork, `bars` puts the
+    /// thesis's bars in it as though bonded (its cells were filled with foam, though the text also
+    /// calls them grouted).
+    public static func runWall(
+        device: MTLDevice, wall: Wall, base: Base, anfo: Float, cellSize: Float = 0.05,
+        elementSize: Float = 0.05, duration: Double = 0.2, gap: Float = 0.05, bars: Bool = true,
+        crackWidth: Float = 0.1e-3, progress: ((String) -> Void)? = nil
+    ) throws -> WallResult {
+        let started = ContinuousClock.now
+        let layout = wall.layout
+        let t = layout.wallThickness
+        let height = layout.wallHeight
+        let behind = max(3 * layout.top, 3)
+        let size = SIMD3(
+            2 * layout.margin + layout.chargeToWall + t + behind, layout.width,
+            max(3 * layout.top, layout.top + 3))
+        let charge = SIMD3(layout.margin, layout.width / 2, layout.heightOfBurst)
+        let front = charge.x + layout.chargeToWall
+        let y0 = (layout.width - wall.length) / 2
+        let y1 = y0 + wall.length
+        let stem = Box(min: SIMD3(front, y0, 0), max: SIMD3(front + t, y1, height))
+        var solids = [stem]
+        if layout.canopyDepth > 0 {
+            solids.append(
+                Box(
+                    min: SIMD3(front - layout.canopyReach, y0, height),
+                    max: SIMD3(front + t + layout.canopyReach, y1, layout.top)))
+        }
+        var model: StructureModel
+        var verticalRatio: Float
+        switch wall {
+        case .halfScale:
+            model = StructureModel(solids: solids, material: concrete, elementSize: elementSize)
+            // 10 mm at 200 mm, 20 mm cover.
+            let area: Float = 78.5e-6 / 0.2
+            model.addMat(to: stem, thicknessAxis: 0, areaPerMetre: area, depth: 0.03)
+            verticalRatio = 2 * area / t
+        case .canopied:
+            model = StructureModel(solids: solids, material: concrete, elementSize: elementSize)
+            // 20 mm at 200 mm in the stem, 40 mm cover and 10 mm links; 12 mm at 200 mm in the canopy.
+            let area: Float = 314e-6 / 0.2
+            model.addMat(to: stem, thicknessAxis: 0, areaPerMetre: area, depth: 0.06)
+            model.addMat(to: solids[1], thicknessAxis: 2, areaPerMetre: 113e-6 / 0.2, depth: 0.05)
+            verticalRatio = 2 * area / t
+        case .masonry:
+            model = StructureModel(solids: solids, material: blockwork(bars: bars), elementSize: elementSize)
+            // A 20 mm bar in each cell, the cells 200 mm apart along the middle of each leaf; 12 mm
+            // in the bed joints, taken as one bar a course in each leaf.
+            let area: Float = 314e-6 / 0.2
+            if bars {
+                model.addMat(
+                    to: stem, thicknessAxis: 0, areaPerMetre: area, transverseAreaPerMetre: 113e-6 / 0.2,
+                    longitudinalAxis: 2, depth: 0.1)
+            }
+            verticalRatio = bars ? 2 * area / t : 0
+        }
+        switch base {
+        case .clamped: model.baseAnchorage = nil
+        case .joint: model.baseAnchorage = .constructionJoint
+        case .dowelled, .footing:
+            var law =
+                verticalRatio > 0
+                ? Anchorage.dowelled(ratio: verticalRatio, yieldStrength: grade60.yieldStress)
+                : .constructionJoint
+            if base == .footing {
+                // The footing's width across the wall (the canopied wall's 2.2 m, the half-scale's
+                // taken as half that), centred under it, flush with the ground.
+                let width: Float = wall == .halfScale ? 1.1 : 2.2
+                let depth: Float = wall == .halfScale ? 0.3 : 0.6
+                law.footing = Footing(
+                    overhang: SIMD2((width - t) / 2, 0), thickness: depth, embedment: Embedment(depth: depth))
+            }
+            model.baseAnchorage = law
+        }
+        // The wing walls, rigid, either side.
+        var boxes: [Box] = []
+        for (a, b) in [(Float(0), y0 - gap), (y1 + gap, layout.width)] where b > a {
+            boxes.append(Box(min: SIMD3(front, a, 0), max: SIMD3(front + t, b, height)))
+            if layout.canopyDepth > 0 {
+                boxes.append(
+                    Box(
+                        min: SIMD3(front - layout.canopyReach, a, height),
+                        max: SIMD3(front + t + layout.canopyReach, b, layout.top)))
+            }
+        }
+        let middle = layout.width / 2
+        let scenario = Scenario(
+            name: layout.name, domainSize: size, boxes: boxes,
+            charge: Charge(mass: anfo * tntFactor, position: charge),
+            gauges: [
+                Gauge("Face, mid-height", at: SIMD3(front - 0.5 * cellSize, middle, height / 2)),
+                Gauge("Back, mid-height", at: SIMD3(front + t + 0.5 * cellSize, middle, height / 2)),
+            ],
+            structure: model)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        solver.configuration.mappedCharge = true
+        try solver.load(scenario)
+        guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
+        let h = structure.model.elementSize
+        func index(_ value: Float, _ axis: Int) -> Int {
+            Int(((value - structure.origin[axis]) / h).rounded())
+        }
+        let iBack = index(front + t, 0)
+        let iFront = index(front, 0)
+        let jMiddle = index(middle, 1)
+        let kTop = index(height, 2)
+        let kMiddle = index(height / 2, 2)
+        func sway(_ k: Int) -> Float { structure.displacement(iBack, jMiddle, k).x }
+
+        var result = WallResult(wall: wall, base: base, anfo: anfo)
+        result.crackWidth = crackWidth
+        result.elementSize = h
+        var nextReport = 0.01
+        while solver.time < duration {
+            let batch = solver.advance(steps: 16, timeLimit: duration)
+            if batch.steps == 0 && !solver.airIsAsleep { break }
+            result.peakTop = max(result.peakTop, sway(kTop))
+            result.peakMiddle = max(result.peakMiddle, sway(kMiddle))
+            if let anchors = structure.anchorSummary() {
+                result.baseOpening = max(result.baseOpening, anchors.maxOpening)
+            }
+            if let footing = structure.footingSummaries().first {
+                result.footingRotation = max(result.footingRotation, footing.rotation.y)
+            }
+            if let progress, solver.time >= nextReport {
+                nextReport += 0.01
+                progress(
+                    String(
+                        format: "%4.0f ms: top %6.1f mm, middle %6.1f mm", solver.time * 1000,
+                        sway(kTop) * 1000,
+                        sway(kMiddle) * 1000))
+            }
+        }
+        result.finalTop = sway(kTop)
+        result.finalMiddle = sway(kMiddle)
+        if let anchors = structure.anchorSummary() {
+            result.baseSeparated = Float(anchors.separated) / Float(max(anchors.nodes, 1))
+        }
+        if let footing = structure.footingSummaries().first { result.footingSlide = footing.displacement.x }
+
+        // Cracks up each face: the elements next to it, row by row.
+        let jRange = index(y0, 1)..<index(y1, 1)
+        for (column, faceIndex) in [(iFront, true), (iBack - 1, false)] {
+            var widest: [Float] = []
+            var spread: [Float] = []
+            for k in 0..<kTop {
+                let openings = jRange.map { structure.crackOpening(column, $0, k) * h }
+                widest.append(openings.max() ?? 0)
+                spread.append(
+                    Float(openings.filter { $0 > crackWidth }.count) / Float(max(openings.count, 1)))
+            }
+            if faceIndex {
+                result.frontWidest = widest
+                result.frontSpread = spread
+            } else {
+                result.backWidest = widest
+                result.backSpread = spread
+            }
+        }
+        var fastest: Float = 0
+        structure.mutateNodes { nodes in
+            for node in nodes where node.mass > 0 {
+                fastest = max(fastest, simd_length(SIMD3(node.vx, node.vy, node.vz)))
+            }
+        }
+        result.fastest = fastest
+        result.summary = structure.summary()
+        result.erodedFraction = result.summary.erodedFraction
+
+        let ambient = scenario.atmosphere.pressure
+        let face = solver.gaugeHistories[0]
+        let back = solver.gaugeHistories[1]
+        result.facePeak = (face.map(\.pressure).max() ?? ambient) - ambient
+        for (a, b) in zip(face, face.dropFirst()) {
+            result.faceImpulse += Float(b.time - a.time) * max(0.5 * (a.pressure + b.pressure) - ambient, 0)
+        }
+        let arrival = face.first { $0.pressure > ambient + 0.01 * result.facePeak }?.time ?? 0
+        for (a, b) in zip(back, back.dropFirst()) where a.time >= arrival && b.time <= arrival + 0.05 {
+            result.backImpulse += Float(b.time - a.time) * (0.5 * (a.pressure + b.pressure) - ambient)
+        }
+        let elapsed = ContinuousClock.now - started
+        result.wallSeconds =
+            Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+        return result
+    }
 }

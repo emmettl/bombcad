@@ -15,10 +15,20 @@ import Metal
 ///   --wing 6                            the wall this long instead of across the whole domain
 ///   --charges 6.46,10.05                ANFO masses to run instead of the measured ones
 ///   --out dir                           each run's gauge histories as CSV
+///
+/// `--study wall` runs the walls themselves, loaded by the air, against what was seen of them:
+///
+///   --wall half|canopied|masonry        the wall (all by default)
+///   --bases footing,clamped             its base (footing by default for the concrete walls,
+///                                       dowelled and joint for the blockwork)
+///   --charges 25,125                    ANFO masses (the tests' by default)
+///   --dx 0.05 --h 0.05 --time 0.2       air cells, elements, and how long
+///   --no-bars                           blockwork without its bars
 func runPerimeter(device: MTLDevice) throws {
     switch option("study") ?? "air" {
     case "air": try runPerimeterAir(device: device)
-    default: print("Unknown study; use --study air")
+    case "wall": try runPerimeterWall(device: device)
+    default: print("Unknown study; use --study air or wall")
     }
 }
 
@@ -63,8 +73,9 @@ private func runPerimeterAir(device: MTLDevice) throws {
                 csv += "\n"
             }
             let name = String(
-                format: "%@-%.2fkg-%@-dx%.0fmm%@.csv", layout.name.prefix(4).lowercased(), anfo,
-                wall ? "wall" : "open", dx * 1000, columns == nil ? "" : "-columns")
+                format: "%@%.0fm-%.2fkg-%@-dx%.0fmm%@%@.csv", layout.name.prefix(4).lowercased(),
+                layout.chargeToWall, anfo, wall ? "wall" : "open", dx * 1000, refine > 1 ? "-refined" : "",
+                columns == nil ? "" : "-columns")
             try csv.write(
                 toFile: (out as NSString).appendingPathComponent(name), atomically: true, encoding: .utf8)
         }
@@ -190,5 +201,81 @@ private func runPerimeterAir(device: MTLDevice) throws {
         try compare(
             T.canopied, noWall: [], factors: [], absoluteBehind: T.canopiedBehind,
             absoluteNoWall: T.canopiedNoWall)
+    }
+}
+
+private func runPerimeterWall(device: MTLDevice) throws {
+    typealias T = PerimeterWallTests
+    let dx = option("dx").flatMap { Float($0) } ?? 0.05
+    let h = option("h").flatMap { Float($0) } ?? 0.05
+    let duration = option("time").flatMap { Double($0) }
+    let walls =
+        option("wall").map {
+            $0.split(separator: ",").compactMap { name -> T.Wall? in
+                name == "half" ? .halfScale : T.Wall(rawValue: String(name))
+            }
+        } ?? T.Wall.allCases
+    let bars = !flag("no-bars")
+    for wall in walls {
+        let layout = wall.layout
+        let charges: [Float] =
+            option("charges").map { $0.split(separator: ",").compactMap { Float($0) } }
+            ?? (wall == .halfScale ? [14] : wall == .canopied ? [125] : [25, 125])
+        let bases: [T.Base] =
+            option("bases").map { $0.split(separator: ",").compactMap { T.Base(rawValue: String($0)) } }
+            ?? (wall == .masonry ? [.dowelled, .joint] : [.footing])
+        print(
+            "\n\(layout.name): \(format(Double(wall.length), 0)) m long, rigid wing walls beyond; cells of "
+                + "\(format(Double(dx) * 1000, 0)) mm, elements of \(format(Double(h) * 1000, 0)) mm"
+                + (wall == .masonry ? (bars ? ", bars bonded" : ", no bars") : ""))
+        switch wall {
+        case .halfScale:
+            print(
+                "Seen: after twelve shots rising to 14 kg, light shear cracking at the foot of the front face, "
+                    + "no significant deformation; no deflection measured.")
+        case .canopied:
+            print(
+                "Seen (T-RC-W1, no foam): a crack along the foot of the front face, three flexural cracks across "
+                    + "the back at mid-height, no significant deformation. The foam-faced walls' mid-height deflection, "
+                    + "double-integrated: 7.3, 12.3 and 34.8 mm.")
+        case .masonry:
+            print(
+                "Seen: at 25 kg the top 28 mm out (double-integrated), bed joints cracked on the front at courses "
+                    + "1, 4–6 and 10 and on the back at 4–6, the top course slid; at 125 kg collapse, debris to about 15 m."
+            )
+        }
+        for anfo in charges {
+            for base in bases {
+                let r = try T.runWall(
+                    device: device, wall: wall, base: base, anfo: anfo, cellSize: dx, elementSize: h,
+                    duration: duration
+                        ?? (wall == .halfScale ? 0.15 : anfo > 50 && wall == .masonry ? 1.0 : 0.3),
+                    bars: bars, progress: flag("progress") ? { print("    " + $0) } : nil)
+                print(
+                    "  \(format(Double(anfo), 0)) kg, \(base.rawValue): top \(format(Double(r.peakTop) * 1000, 1)) mm "
+                        + "peak, \(format(Double(r.finalTop) * 1000, 1)) left; mid-height "
+                        + "\(format(Double(r.peakMiddle) * 1000, 1)) / \(format(Double(r.finalMiddle) * 1000, 1)) mm; face "
+                        + "\(format(Double(r.facePeak) / 1000, 0)) kPa, \(format(Double(r.faceImpulse), 0)) Pa s; back "
+                        + "\(format(Double(r.backImpulse), 0)) Pa s; base opened \(format(Double(r.baseOpening) * 1000, 2)) mm, "
+                        + "\(format(Double(r.baseSeparated) * 100, 0))% of ties broken"
+                        + (base == .footing
+                            ? "; footing turned \(format(Double(r.footingRotation) * 1000, 2)) mrad, slid "
+                                + "\(format(Double(r.footingSlide) * 1000, 1)) mm" : "")
+                        + "; \(format(r.erodedFraction * 100, 1))% removed, fastest \(format(Double(r.fastest), 1)) m/s; "
+                        + "\(format(r.wallSeconds, 0)) s")
+                print(
+                    "    Cracks up the faces, widest (mm) and share of the length open past "
+                        + "\(format(Double(r.crackWidth) * 1000, 1)) mm, front | back:")
+                for k in r.frontWidest.indices.reversed() {
+                    let z = (Double(k) + 0.5) * Double(r.elementSize)
+                    print(
+                        "    " + pad("\(format(z, 2)) m", 8)
+                            + pad(format(Double(r.frontWidest[k]) * 1000, 2), 7)
+                            + pad("\(format(Double(r.frontSpread[k]) * 100, 0))%", 6)
+                            + "| " + pad(format(Double(r.backWidest[k]) * 1000, 2), 7)
+                            + "\(format(Double(r.backSpread[k]) * 100, 0))%")
+                }
+            }
+        }
     }
 }
