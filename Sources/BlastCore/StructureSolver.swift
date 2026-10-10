@@ -34,6 +34,9 @@ public final class StructureSolver {
         /// the ratio and the grid of blocks' size. Faces then read the fine cells beside them.
         var refinement:
             (patchOfTile: MTLBuffer, fine: MTLBuffer, mask: MTLBuffer, ratio: Int, blocks: SIMD3<Int>)?
+        /// Where the air has a second level: its cells along a coarse cell's edge, its grid of
+        /// blocks, and where its patches' list and cells start in the first level's buffers.
+        var deepRefinement: (ratio: Int, blocks: SIMD3<Int>, patchOffset: Int, cellOffset: Int)?
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
@@ -1328,6 +1331,13 @@ public final class StructureSolver {
                 uniforms.fluidRefine = UInt32(refinement.ratio)
                 uniforms.fluidBlocksX = UInt32(refinement.blocks.x)
                 uniforms.fluidBlocksY = UInt32(refinement.blocks.y)
+            }
+            if let deep = fluid.deepRefinement {
+                uniforms.fluidDeepRatio = UInt32(deep.ratio)
+                uniforms.fluidDeepBlocksX = UInt32(deep.blocks.x)
+                uniforms.fluidDeepBlocksY = UInt32(deep.blocks.y)
+                uniforms.fluidDeepPatchOffset = UInt32(deep.patchOffset)
+                uniforms.fluidDeepCellOffset = UInt32(deep.cellOffset)
             }
             uniforms.fluidCell = fluid.grid.cellSize
             uniforms.fluidNx = UInt32(fluid.grid.nx)

@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
-//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full]
+//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
@@ -18,7 +18,7 @@ import simd
 //               [--bond pullout|splitting|confined] [--crack-shear] [--slide-apart]   (also on beam and slab)
 //   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
-//   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
+//   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
@@ -28,11 +28,16 @@ import simd
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
-//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mode peak]
+//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
+//                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
-//                       [--thermal spec.json [--thermal-compare]] [--air thermal] [--afterburn]
-//                       [--stationary-walls]
-//   blastbench thermal [--preset street] [--frames 60] [--samples 128]   (the receivers' visibility, CPU and GPU)
+//                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
+//                        [--thermal-variants a.json,b.json]]
+//                       [--air thermal] [--afterburn]
+//                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
+//                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -207,7 +212,9 @@ func runThroughput() throws {
 
     var stepsPerMetre = 0.0
     var lastSwept = 1.0
-    for cellSize in [Float(0.5), 0.25, 0.125] {
+    let cellSizes =
+        option("dx").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [0.5, 0.25, 0.125]
+    for cellSize in cellSizes {
         let solver = try makeAirSolver(scenario, cellSize: cellSize)
         let cells = solver.grid.cellCount
         // Run the whole event unless it would take minutes; then time a sample and extrapolate
@@ -225,6 +232,8 @@ func runThroughput() throws {
         if runWholeEvent && solver.configuration.refinement > 1 {
             // Batch by batch, to follow how much of the air is refined.
             var refined = 0.0
+            var finer = 0.0
+            var (most, finerMost) = (0, 0)
             var batches = 0
             while solver.time < event {
                 let result = solver.advance(steps: 64, timeLimit: event)
@@ -234,13 +243,19 @@ func runThroughput() throws {
                     / Double(steps + result.steps)
                 steps += result.steps
                 refined += Double(result.refinedTiles)
+                finer += Double(result.finerRefinedTiles)
+                most = max(most, result.refinedTiles)
+                finerMost = max(finerMost, result.finerRefinedTiles)
                 batches += 1
             }
             let blocks = Double(
                 ((solver.grid.nx + 3) / 4) * ((solver.grid.ny + 3) / 4) * ((solver.grid.nz + 3) / 4))
             print(
                 "  refined blocks of 4 x 4 x 4 cells: \(format(refined / Double(max(batches, 1)), 0)) on average, "
-                    + "of \(Int(blocks))")
+                    + "at most \(most) (room for \(solver.refinementPatchCapacity)), of \(Int(blocks))"
+                    + (solver.configuration.refinementLevels > 1
+                        ? "; at the second level \(format(finer / Double(max(batches, 1)), 0)) on average, "
+                            + "at most \(finerMost) (room for \(solver.finerRefinementPatchCapacity))" : ""))
         } else if runWholeEvent {
             let result = solver.advance(until: event)
             (steps, swept) = (result.steps, result.sweptFraction)
@@ -372,11 +387,16 @@ func runChamber() throws {
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
-/// The air's refinement from `--refine 2|4`, `--refine-threshold` and `--refine-memory` (MB).
+/// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-threshold`,
+/// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }
     if let threshold = option("refine-threshold").flatMap({ Float($0) }) {
         configuration.refinementThreshold = threshold
+    }
+    if let levels = option("refine-levels").flatMap({ Int($0) }) { configuration.refinementLevels = levels }
+    if let threshold = option("refine-finer-threshold").flatMap({ Float($0) }) {
+        configuration.refinementFinerThreshold = threshold
     }
     if let memory = option("refine-memory").flatMap({ Int($0) }) {
         configuration.refinementMemory = memory << 20
@@ -676,23 +696,41 @@ func runSnapshot() throws {
         try spec.validate()
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
-    // With --thermal-compare, the same frames reckoned with the other fireball model too, and
+    // With --thermal-compare, the same frames reckoned with another fireball model too (the
+    // shape against the volume, the sphere against the shape, or --thermal-compare-with's), and
     // each timed.
     var other = thermal.map { exposure in
         var spec = exposure.spec
-        spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        if let model = option("thermal-compare-with").flatMap(FireballModel.init(rawValue:)) {
+            spec.fireball = model
+        } else {
+            spec.fireball = spec.fireball == .shape ? .sphere : .shape
+        }
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
     if !flag("thermal-compare") { other = nil }
+    // With --thermal-variants a.json,b.json, the same frames reckoned under each description too.
+    var variants = try (option("thermal-variants")?.split(separator: ",") ?? []).map { path in
+        let spec = try JSONDecoder().decode(
+            ThermalSpec.self, from: Data(contentsOf: URL(fileURLWithPath: String(path))))
+        try spec.validate()
+        return (name: String(path), exposure: ThermalExposure(spec: spec, scene: FragmentScene(scenario)))
+    }
     var thermalSeconds = (0.0, 0.0)
     var fireballSeconds = 0.0
+    // What the compared model's fireball radiated, measured round it as the volume's is.
+    var otherRadiated: [(time: Double, power: Double)] = []
     var largestShape: FireballShape?
+    var largestCells: LuminousCells?
     func feedThermal() {
         guard var exposure = thermal else { return }
         let extracting = ContinuousClock.now
-        let frame = solver.fireball(luminousTemperature: exposure.spec.luminousTemperature)
+        let frame = solver.fireball(for: exposure.spec)
         fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
         if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
+        if let cells = frame.cells, cells.fills.count > largestCells?.fills.count ?? 0 {
+            largestCells = cells
+        }
         var started = ContinuousClock.now
         exposure.add(frame)
         thermalSeconds.0 += (ContinuousClock.now - started) / .seconds(1)
@@ -701,15 +739,17 @@ func runSnapshot() throws {
             started = ContinuousClock.now
             compared.add(frame)
             thermalSeconds.1 += (ContinuousClock.now - started) / .seconds(1)
+            otherRadiated.append((frame.time, compared.radiatedPower(frame)))
             other = compared
         }
+        for n in variants.indices { variants[n].exposure.add(frame) }
     }
     feedFragments()
     feedGround()
     feedThermal()
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
-    if let thermal { solver.frameRequest.fireball = thermal.spec.luminousTemperature }
+    if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -729,6 +769,8 @@ func runSnapshot() throws {
     switch option("mode") {
     case "now": renderer.settings.mode = .overpressure
     case "impulse": renderer.settings.mode = .impulse
+    case "fluence": renderer.settings.thermal = .fluence
+    case "irradiance": renderer.settings.thermal = .peakIrradiance
     default: renderer.settings.mode = .peakOverpressure
     }
     renderer.settings.showWave = !flag("no-wave")
@@ -745,16 +787,31 @@ func runSnapshot() throws {
         print("  " + result.summary)
     }
     if let thermal {
-        // Coloured by fluence over six decades from 1 J/m², lifted off their surface, as the app
-        // draws them.
-        for (receiver, fluence) in zip(thermal.receivers, thermal.fluence) {
-            dots.append(
-                SIMD4(
-                    receiver.position + 0.05 * receiver.normal,
-                    4 + min(max(log10(max(Float(fluence), 1)) / 6, 0), 0.999)))
-        }
+        // Painted onto the surfaces with --mode fluence or irradiance, as the app paints them.
+        let values =
+            renderer.settings.thermal == .peakIrradiance
+            ? thermal.peakIrradiance : thermal.fluence.map { Float($0) }
+        renderer.setSurfacePaint(
+            SurfacePaint(
+                grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
+                shades: values.map(ThermalQuantity.shade)))
         print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
+        // What it had radiated by each of a few moments.
+        let result = thermal.result
+        if result.isRadiationMeasured {
+            var line = "  radiated by"
+            for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
+                var sum = 0.0
+                for (a, b) in zip(result.fireball, result.fireball.dropFirst()) where b.time <= moment + 1e-9
+                {
+                    sum += 0.5 * ((a.radiatedPower ?? 0) + (b.radiatedPower ?? 0)) * (b.time - a.time)
+                }
+                line += String(
+                    format: " %.0f ms: %.1f%%;", moment * 1000, 100 * sum / max(result.chargeEnergy, 1))
+            }
+            print(line)
+        }
         if let other {
             print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
             for line in other.result.summary { print(line) }
@@ -765,8 +822,26 @@ func runSnapshot() throws {
                     thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
                     other.spec.fireball.rawValue,
                     thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
-            // Each receiver's fluence by the shape against the sphere's, by surface.
-            let (shape, sphere) = thermal.spec.fireball == .shape ? (thermal, other) : (other, thermal)
+            for exposure in [thermal, other] {
+                if let gpu = exposure.marchGPUSeconds {
+                    print(
+                        String(
+                            format: "  The %@'s march: %.2f ms of GPU time a frame",
+                            exposure.spec.fireball.rawValue,
+                            1000 * gpu / Double(max(exposure.frames.count, 1))))
+                }
+            }
+            let measured = zip(otherRadiated, otherRadiated.dropFirst()).reduce(0.0) {
+                $0 + 0.5 * ($1.0.power + $1.1.power) * ($1.1.time - $1.0.time)
+            }
+            print(
+                String(
+                    format:
+                        "As its %@, measured round it as the volume is: radiated %.1f MJ, %.1f%% of the charge's energy",
+                    other.spec.fireball.rawValue, measured / 1e6,
+                    100 * measured / max(other.result.chargeEnergy, 1)))
+            // Each receiver's fluence by the first model against the second, by surface.
+            let (shape, sphere) = (thermal, other)
             var surfaces: [String] = []
             for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
                 surfaces.append(receiver.surface)
@@ -783,10 +858,29 @@ func runSnapshot() throws {
                 print(
                     String(
                         format:
-                            "  %@: mean fluence %.1f kJ/m² as the shape, %.1f as the sphere (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d shape, %d sphere",
-                        surface, a / Double(indices.count) / 1000, b / Double(indices.count) / 1000,
+                            "  %@: mean fluence %.1f kJ/m² as the %@, %.1f as the %@ (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d, %d",
+                        surface, a / Double(indices.count) / 1000, shape.spec.fireball.rawValue,
+                        b / Double(indices.count) / 1000, sphere.spec.fireball.rawValue,
                         100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
             }
+        }
+        for variant in variants {
+            print("The same frames, as \(variant.name) describes them:")
+            for line in variant.exposure.result.summary { print(line) }
+        }
+        if let largestCells {
+            print(
+                String(
+                    format: "Largest cells: %d by %d by %d voxels %.3f m a side, %.2f MB a frame",
+                    largestCells.counts.x,
+                    largestCells.counts.y, largestCells.counts.z, largestCells.voxelSize,
+                    Double(largestCells.binary.count) / 1e6))
+        }
+        let unburnt = solver.speciesTotals()
+        if unburnt.fuel > 0 {
+            print(
+                String(
+                    format: "Unburnt products left: %.1f kg of %.1f kg", unburnt.fuel, scenario.charge.mass))
         }
         if let largestShape {
             print(
@@ -814,6 +908,20 @@ func runSnapshot() throws {
     if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
     if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
     if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+    // The fireball's cloud, handed over at the end and followed, drawn as the app draws it, and
+    // with --frame-cloud seen as its button frames it.
+    if let path = option("cloud") {
+        let spec = try JSONDecoder().decode(
+            CloudSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        let cloud = CloudResult(
+            spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
+        for line in cloud.summary { print(line) }
+        if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
+        if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
+        if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
+        if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+        renderer.setLines(CloudOverlay.lines(cloud, eye: camera.eye))
+    }
 
     guard
         let frame = renderer.snapshot(
@@ -975,6 +1083,11 @@ func runCloseAir() throws {
         "1 kg TNT burst in the air above rigid ground, reflected square on below it; cells \(format(Double(cellSize), 3)) m"
     )
     print(pad("Z", 6) + pad("K-B peak", 12) + pad("model", 14) + pad("K-B impulse", 14) + pad("model", 16))
+    var refinement = SolverConfiguration()
+    configureRefinement(&refinement)
+    let finest =
+        refinement.refinement > 1
+        ? Int(pow(Double(refinement.refinement), Double(refinement.refinementLevels))) : 1
     for z in distances {
         let height = z
         let size = max(3 * height, 1.2)
@@ -984,10 +1097,12 @@ func runCloseAir() throws {
             gauges: [
                 Gauge(
                     "ground",
-                    // In the air cell against the ground, refined or not: a cell further up misses
-                    // the momentum the gas still carries towards it.
+                    // In the air cell against the ground, refined or not (a quarter of the finest
+                    // cell up): a cell further up misses the momentum the gas still carries
+                    // towards it.
                     at: SIMD3(
-                        size / 2, size / 2, (option("gauge-cells").flatMap { Float($0) } ?? 0.25) * cellSize))
+                        size / 2, size / 2,
+                        (option("gauge-cells").flatMap { Float($0) } ?? 0.25 / Float(finest)) * cellSize))
             ])
         scenario.reflectiveFaces = .ground
         let solver = try makeAirSolver(scenario, cellSize: cellSize)
@@ -2086,14 +2201,41 @@ func runThermal() throws {
     var spec = ThermalSpec()
     if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
     try spec.validate()
+    if let model = option("model").flatMap(FireballModel.init(rawValue:)) { spec.fireball = model }
+    if let absorption = option("absorption").flatMap({ Float($0) }) { spec.absorption = absorption }
+    try spec.validate()
     let count = option("frames").flatMap { Int($0) } ?? 60
     let frames = (0..<count).map { n -> FireballFrame in
         let s = Float(n) / Float(max(count - 1, 1))
         let radius = 0.5 + 7 * s
-        return FireballFrame(
+        let centre = scenario.charge.position + SIMD3(0, 0, radius * 0.5)
+        var frame = FireballFrame(
             time: Double(n) * 0.001, volume: 4 / 3 * Double.pi * pow(Double(radius), 3),
-            centre: scenario.charge.position + SIMD3(0, 0, radius * 0.5), temperature: 2200 - 400 * s,
-            hottest: 2500)
+            centre: centre, temperature: 2200 - 400 * s, hottest: 2500)
+        guard spec.fireball == .volume else { return frame }
+        // For the volume, the sphere in cells 0.25 m a side, above the ground, 2,500 K at its
+        // centre and cooler outwards.
+        let size: Float = 0.25
+        let low = simd_max(centre - radius - size, SIMD3(-1, -1, 0))
+        let first = SIMD3<Int32>((low / size).rounded(.down))
+        let last = SIMD3<Int32>(((centre + radius + size) / size).rounded(.up))
+        let counts = last &- first
+        var fills: [UInt8] = []
+        var temperatures: [UInt16] = []
+        for k in 0..<counts.z {
+            for j in 0..<counts.y {
+                for i in 0..<counts.x {
+                    let x = (SIMD3<Float>(first &+ SIMD3(i, j, k)) + 0.5) * size
+                    let d = simd_distance(x, centre)
+                    fills.append(d <= radius ? 255 : 0)
+                    temperatures.append(d <= radius ? UInt16(2500 - 600 * s * d / radius) : 0)
+                }
+            }
+        }
+        frame.cells = LuminousCells(
+            voxelSize: size, first: first, counts: counts, fills: fills, temperatures: temperatures,
+            products: nil)
+        return frame
     }
     /// Times the visibility test within each frame.
     final class Timed: ThermalVisibility, @unchecked Sendable {
@@ -2113,6 +2255,30 @@ func runThermal() throws {
     let occluders = ThermalExposure.occluders(scene)
     let metal = MetalThermalVisibility(occluders: occluders)
     print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
+    if spec.fireball == .volume {
+        // The march on the GPU, then on the CPU; each frame's irradiance and what it radiated.
+        var answers: [[Float]] = []
+        for name in ["GPU", "CPU"] {
+            if name == "CPU" { setenv("BOMBCAD_THERMAL_VISIBILITY", "cpu", 1) }
+            var exposure = ThermalExposure(spec: spec, scene: scene)
+            let started = ContinuousClock.now
+            for frame in frames { exposure.add(frame) }
+            let total = (ContinuousClock.now - started) / .seconds(1)
+            answers.append(exposure.peakIrradiance)
+            print(
+                "\(name): \(exposure.receivers.count) receivers, \(format(total / Double(count) * 1000, 1)) ms a frame"
+                    + (exposure.marchGPUSeconds.map {
+                        ", \(format($0 / Double(count) * 1000, 2)) ms of it the GPU's"
+                    } ?? ""))
+        }
+        unsetenv("BOMBCAD_THERMAL_VISIBILITY")
+        let largest = answers[1].max() ?? 0
+        let worst = zip(answers[0], answers[1]).map { abs($0 - $1) }.max() ?? 0
+        print(
+            "Largest difference in peak irradiance: \(format(Double(worst / max(largest, 1)) * 100, 3))% of the highest"
+        )
+        return
+    }
     var answers: [[Float]] = []
     for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
         + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
@@ -2188,8 +2354,56 @@ func runRocking() throws {
     }
 }
 
+/// Short runs of a few scenes, each summed up as a hash of the air's state, peaks and impulses
+/// and of the structure's summary: two builds that print the same hashes ran the same to the bit.
+func runDigest() throws {
+    func fnv(_ hash: inout UInt64, _ value: Float) {
+        hash = (hash ^ UInt64(value.bitPattern)) &* 0x100_0000_01b3
+    }
+    let steps = option("steps").flatMap { Int($0) } ?? 80
+    let cases: [(String, ScenarioPreset, Float, Bool)] = [
+        ("open", .openGround, 0.5, false), ("street", .streetCanyon, 0.5, false),
+        ("street, afterburning", .streetCanyon, 0.5, true), ("wall", .blastWall, 0.25, false),
+    ]
+    for (name, preset, cellSize, afterburning) in cases {
+        var configuration = SolverConfiguration()
+        configureRefinement(&configuration)
+        configuration.afterburning = afterburning
+        let solver = try BlastSolver(
+            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+        let result = solver.advance(steps: steps)
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        solver.withState { cells in
+            for cell in cells {
+                for value in [cell.density, cell.momentumX, cell.momentumY, cell.momentumZ, cell.energy] {
+                    fnv(&hash, value)
+                }
+            }
+        }
+        let grid = solver.grid
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    fnv(&hash, solver.peakOverpressure(i, j, k))
+                    fnv(&hash, solver.impulse(i, j, k))
+                }
+            }
+        }
+        if let summary = solver.bodySummary() {
+            fnv(&hash, summary.maxDisplacement)
+            fnv(&hash, summary.maxDamage)
+            fnv(&hash, Float(summary.erodedElements))
+        }
+        print(
+            "\(name), \(cellSize) m: \(String(hash, radix: 16)) after \(result.steps) steps, "
+                + "\(result.refinedTiles) refined blocks"
+                + (result.finerRefinedTiles > 0 ? ", \(result.finerRefinedTiles) at the second level" : ""))
+    }
+}
+
 do {
     switch command {
+    case "digest": try runDigest()
     case "slab": try runSlab()
     case "beam": try runBeam()
     case "shear": try runShearBeam()

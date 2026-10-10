@@ -7,6 +7,9 @@ public enum FireballModel: String, Codable, Sendable, CaseIterable {
     case shape
     /// One equivalent sphere: the luminous gas's volume, centroid and mean T⁴.
     case sphere
+    /// The luminous gas cell by cell, partly transparent: rays from each receiver gather its
+    /// emission and absorption (see `ThermalMedium`).
+    case volume
 }
 
 /// The fireball's luminous gas in blocks: a box of cubes `blockSize` a side, each with the share
@@ -256,8 +259,10 @@ public struct FireballShape: Sendable, Equatable {
     /// box twice as long as it is wide stays one tile; a street full of fire becomes a row of them.
     static let compactness: Float = 0.2
 
-    private static func tiles(
-        blockSize: Float, first: SIMD3<Int32>, counts n: SIMD3<Int>, fills: [UInt8]
+    /// The volume's tiles take every block with any luminous gas, `threshold` 1, as the surface's
+    /// take those at least half luminous.
+    static func tiles(
+        blockSize: Float, first: SIMD3<Int32>, counts n: SIMD3<Int>, fills: [UInt8], threshold: UInt8 = half
     ) -> [FireballTile] {
         let origin = SIMD3<Float>(first) * blockSize
         // The tile of the region from `low` up to `high`, if any block in or next to it is half
@@ -273,7 +278,7 @@ public struct FireballShape: Sendable, Equatable {
                         guard fill > 0 else { continue }
                         volume += Double(fill) / 255
                         sum += Double(fill) / 255 * (SIMD3(Double(i), Double(j), Double(k)) + 0.5)
-                        if fill >= half {
+                        if fill >= threshold {
                             tight.low = simd_min(tight.low, SIMD3(i, j, k))
                             tight.high = simd_max(tight.high, SIMD3(i + 1, j + 1, k + 1))
                         }
@@ -290,7 +295,7 @@ public struct FireballShape: Sendable, Equatable {
             let outer = (low: simd_max(low &- 1, .zero), high: simd_min(high &+ 1, n))
             for k in outer.low.z..<outer.high.z {
                 for j in outer.low.y..<outer.high.y {
-                    for i in outer.low.x..<outer.high.x where fills[i + n.x * (j + n.y * k)] >= half {
+                    for i in outer.low.x..<outer.high.x where fills[i + n.x * (j + n.y * k)] >= threshold {
                         let middle = SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5
                         let offset: SIMD3<Float> = abs(middle - centre)
                         reach = max(reach, simd_length(offset + 1))

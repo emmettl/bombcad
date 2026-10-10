@@ -102,13 +102,40 @@ building at 500 kg, 17.4 s against 22.4 s (149 mm of deflection against 148 mm).
 counted into them, and the wall fluxes at a patch's face) costs about a tenth. The first version, with larger blocks, was slower than
 the finer grid; the [air-blast model](air-blast-model.md#refining-near-the-shock) has the story.
 
+```bash
+swift run -c release blastbench throughput --refine 2 --refine-levels 2 --dx 0.5
+```
+
+In two levels by 2, 0.5 m cells give about the peaks of 0.125 m cells. Whole events, in one
+session, with the default 1 GB of patches and, in brackets, with 4 GB, which the patches never
+fill:
+
+| Event | Two levels by 2, 0.5 m | One level by 4, 0.5 m | One level by 2, 0.25 m | Uniform, 0.125 m |
+|---|---|---|---|---|
+| Street | 8.8 s (9.1 s) | 11.3 s (13.1 s) | 11.3 s | 46.3 s |
+| Open ground | 8.1 s (10.5 s) | 9.9 s (14.2 s) | 16.0 s | 96.2 s |
+
+So two levels are 5 to 12 times faster than the uniform grid they imitate, and 1.2 to 1.4 times
+faster than one level by 4, which gives the same peaks (see
+[Validation](validation.md#with-refinement)): their finest patches lie over blocks of 1 m rather
+than 2 m, so the shell of 0.125 m cells around a shock is about half as thick, and around it the
+first level's cells are 0.25 m across, an eighth as many in a given volume. They take less memory
+too: at most about 5,300 patches of
+the first level and 17,300 of the second, 1.4 GB, against 5,500 patches of 16³ cells, 2.0 GB, by
+4. With 1 GB both fill it near the charge, and the part of the shock left out stays at the coarser
+level; the peaks and impulses compared are with 1 GB. `blastbench validate` takes 80 s in two
+levels, against 111 s by 4, 104 s on 0.25 m cells by 2 and 302 s on 0.125 m cells unrefined.
+
 **What would not make it faster.** On `blastbench validate` the patches take about four fifths
 of a refined run (104 s on 0.25 m cells refined by 2, against 21 s for the same grid
 unrefined). Three ways to cut that were weighed:
 
-- **A second level** (0.5 m cells refined twice by 2) would put the finest patches over the
-  same 1 m blocks as 0.25 m cells refined by 2 do, so it could save only the coarse grid's work
-  away from the shock: about a fifth, for nesting every kernel. Not built.
+- **A second level** (0.5 m cells refined twice by 2) puts the finest patches over the same 1 m
+  blocks as 0.25 m cells refined by 2 do, so it could save only the coarse grid's work away from
+  the shock: about a fifth, it was reckoned. Built since (above), it gives the same peaks and
+  impulses 1.3 times faster on the street and on `blastbench validate`, and 2 times in the open,
+  where the 0.25 m grid's pool is full and its coarse grid, eight times the cells, is swept
+  throughout; and 1.2 to 1.4 times faster than one level by 4.
 - **Smaller blocks** (2 × 2 × 2 cells): over the open-ground event on 0.25 m cells they would
   cut the refined cells by about a quarter but add half again to the ghost cells filled at the
   patches' faces, about 5% in all. Not built.

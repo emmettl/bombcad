@@ -39,6 +39,29 @@ struct ExperimentalRigidCarTests {
         #expect(abs(simulation.air.totals().mass / before.mass - 1) < 1e-7)
     }
 
+    @Test(
+        "With patches over the car, still air stays at ambient: the shell's faces inside coarse cells start with no packed gas",
+        arguments: [2, 4])
+    func refinedAmbientBalance(ratio: Int) throws {
+        var config = SolverConfiguration()
+        config.refinement = ratio
+        config.refinementMemory = 256 << 20
+        let simulation = try ExperimentalRigidCarSimulation(
+            device: device, scenario: scenario(), cellSize: 0.2, configuration: config)
+        let start = simulation.position
+        let before = simulation.air.totals()
+        var impulse = SIMD3<Double>.zero
+        for _ in 0..<20 {
+            try simulation.advance(steps: 1)
+            impulse += simulation.lastImpulse
+        }
+        // Without the correction the gap and the roof start at 4/3 to 2 times ambient pressure
+        // and push the resting car up by hundreds of newton seconds a second.
+        #expect(simd_length(impulse) < 1e-6 * weight * simulation.air.time)
+        #expect(simd_distance(simulation.position, start) < 1e-7)
+        #expect(abs(simulation.air.totals().mass / before.mass - 1) < 1e-6)
+    }
+
     @Test("Ground and air impulse records account for the coupled car's momentum")
     func impulseBudget() throws {
         let simulation = try ExperimentalRigidCarSimulation(
@@ -137,7 +160,7 @@ struct ExperimentalRigidCarTests {
             #expect((frame.corners + (frame.tyres ?? [])).allSatisfy { $0.z >= -1e-5 })
         }
         #expect(recording.frames.dropFirst().allSatisfy { $0.tyreLoads?.count == 4 })
-        #expect(recording.description.contains("0.2 m air cells"))
+        #expect(recording.description.contains("0.20 m uniform air"))
     }
 
     @Test("The car driver needs exactly one car and nothing else that moves")

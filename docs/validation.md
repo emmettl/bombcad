@@ -813,7 +813,13 @@ elements). SS0a-1 still loses 430–890 elements, now along the top of the sprea
 one-row bars' agreement on 16 elements owes something to the split along the bars, which
 softens a beam and holds its deflection; without it the beams spring back. Either way the
 shear such a beam carries across its cracks, and what keeps a struck beam bent, are not yet
-right, and the spread is not the default.
+right, and the spread is not the default. Rerun on the present defaults (the CEB's law for the bars, over their debonded
+length), the spread still trades one for the other: Ando's fourteen faster peaks are 20% off on
+16 elements and 26% on 24 (15% and 53% with the bars in one row), but nearly all short, the
+heavily reinforced 1.0 m beams by half (A24 at 6 m/s 31 mm against 54), keeping half the
+residuals measured; Saatci's heavy drops with stirrups come within 6% on 16 elements, their
+residuals within 27% (41.7 / 22.5, 38.1 / 19.8 and 34.5 / 16.7 mm), and within −5% to −12% on
+24; and SS0a-1 still loses 520–640 elements.
 
 How the jig held the beams decides much of this. Held as pins at both ends (the paper's "turning
 and nothing else"), the 1.0 m beams came within 15% at every speed and B36 broke at 5 m/s, but
@@ -1182,6 +1188,14 @@ coarse grid's from 7 m out and up to 6% higher closer in. `blastbench validate` 
 about 290 s on 0.125 m cells. Refined by 4, 0.5 m cells give the 0.125 m grid's peaks and
 impulses, within 5% (incident peaks 85% to 97%, reflected 66% to 93%), in 116 s, about as long
 as 0.25 m cells refined by 2.
+
+In two levels by 2 (`--refine 2 --refine-levels 2`), 0.5 m cells give the 0.125 m grid's peaks
+and impulses too: incident peaks 85% to 97% (on 0.125 m cells, 86% to 97%), reflected peaks 66% to
+91% (67% to 92%) and reflected impulses 94% to 104% (94% to 105%), with arrival times within 2%
+of the 0.125 m grid's; refined by 4 in one level, the same cells agree with these within 3%. Their
+incident impulse reads 2% to 4% above the 0.125 m grid's from 4.6 m out, as refined by 4: a coarse
+cell's impulse is the largest its finest cells have gathered. `blastbench validate` takes 80 s
+so, against 111 s refined by 4, 104 s on 0.25 m cells refined by 2 and 302 s on 0.125 m cells.
 The charge is laid on the fine cells (see the
 [air-blast model](air-blast-model.md#refining-near-the-shock)); laid on the coarse ones, its
 blocky sphere ran the peaks close to the charge up to 30% above those of the finer grid.
@@ -1194,20 +1208,25 @@ structure. `blastbench closeair` bursts 1 kg in the air at each scaled distance 
 ground and records the reflection square on below it, against the surface-burst curves at the
 mass divided by 1.8, which stands for a burst in the air:
 
-| Z (free air) | Reference peak | 40 mm | 20 mm | 10 mm | Reference impulse | 40 mm | 20 mm | 10 mm |
-|--------------|----------------|-------|-------|-------|-------------------|-------|-------|-------|
-| 0.3          | 70.0 MPa       | 25%   | 45%   | 78%   | 3,168 Pa s        | 65%   | 79%   | 93%   |
-| 0.5          | 26.6 MPa       | 30%   | 62%   | 83%   | 1,459 Pa s        | 75%   | 86%   | 98%   |
-| 0.75         | 10.4 MPa       | 40%   | 66%   | 98%   | 824 Pa s          | 83%   | 93%   | 106%  |
-| 1            | 4.7 MPa        | 49%   | 72%   | 91%   | 561 Pa s          | 89%   | 94%   | 92%   |
+| Z (free air) | Reference peak | 40 mm | 20 mm | 10 mm | 5 mm | Reference impulse | 40 mm | 20 mm | 10 mm | 5 mm |
+|--------------|----------------|-------|-------|-------|------|-------------------|-------|-------|-------|------|
+| 0.3          | 70.0 MPa       | 25%   | 45%   | 78%   | 92%  | 3,168 Pa s        | 65%   | 79%   | 93%   | 99%  |
+| 0.5          | 26.6 MPa       | 30%   | 62%   | 83%   | 93%  | 1,459 Pa s        | 75%   | 86%   | 98%   | 103% |
+| 0.75         | 10.4 MPa       | 40%   | 66%   | 98%   | 100% | 824 Pa s          | 83%   | 93%   | 106%  | 97%  |
+| 1            | 4.7 MPa        | 49%   | 72%   | 91%   | 104% | 561 Pa s          | 89%   | 94%   | 92%   | 94%  |
 
-The impulse converges to the curves' within 8% as the cells shrink, from 0.3 m/kg^(1/3) out,
+The 5 mm column is 20 mm cells refined in two levels by 2, which are 5 mm across near the shock;
+40 mm cells refined so give the 10 mm column, the impulse within 1% and the peaks within 3%.
+The impulse converges to the curves' within 8% as the cells shrink, from 0.3 m/kg^(1/3) out
+(within 6% on the finest cells),
 with the charge started as a ball of hot air: the detonation products' own equation of state
 (JWL), which differs from air's only while they are dense, is not needed for the load. Cells of
 about a hundredth of the charge's cube root are needed close in; refined by 2, cells twice
 that size give the same answers to within 1%. The gauge must be in the cell against the
 surface: close in, much of the load arrives as momentum, which becomes pressure only where the
-gas is brought to rest, so that two cells out the record is a third of the surface's.
+gas is brought to rest, so that two cells out the record is a third of the surface's
+(`blastbench closeair` puts it a quarter of the finest cell up; a quarter of a coarse cell up,
+40 mm cells refined to 10 mm read a third low).
 
 ### Afterburning
 

@@ -76,6 +76,12 @@ struct ShellUniforms {
     float anchorFriction;
     uint couplingMapCount;
     uint footings;  // as in `StructureUniforms`
+    // The air's second level, as in `StructureUniforms`.
+    uint fluidDeepRatio;
+    uint fluidDeepBlocksX;
+    uint fluidDeepBlocksY;
+    uint fluidDeepPatchOffset;
+    uint fluidDeepCellOffset;
 };
 
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
@@ -310,7 +316,9 @@ static inline float shellOverpressure(float3 point, float3 normal, float halfThi
     return overpressureAlong(point, normal, halfThickness, 3, fluid, fluidMask, patchOfTile, fine, fineMask,
                              u.fluidRefine,
                              u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
-                             u.fluidAirModel, u.fluidGamma, u.ambientPressure);
+                             u.fluidAirModel, u.fluidGamma, u.ambientPressure, patchOfTile + u.fluidDeepPatchOffset,
+                             fine + u.fluidDeepCellOffset, fineMask + u.fluidDeepCellOffset, u.fluidDeepRatio,
+                             u.fluidDeepBlocksX, u.fluidDeepBlocksY);
 }
 
 // What a layer reports besides its stresses.
@@ -1823,9 +1831,10 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
         v[c] = float3(node.velocity);
         d[c] = normal + rotationOffset(node.rotation, normal);
     }
-    // Points no more than half a cell apart, or half a fine cell where the air is refined.
-    float spacing = 0.5f * u.fluidCell / float(max(u.refineRatio, 1u));
-    uint most = u.refineRatio != 0 ? 33u : 17u;
+    // Points no more than half a cell apart, or half a cell of the finest level where the air is
+    // refined.
+    float spacing = 0.5f * u.fluidCell / float(max(max(u.refineRatio, u.deepRatio), 1u));
+    uint most = u.deepRatio != 0 ? 65u : (u.refineRatio != 0 ? 33u : 17u);
     uint along = clamp(uint(ceil(max(el.a, el.b) / spacing)) + 1u, 2u, most);
     uint through = clamp(uint(ceil(el.thickness / spacing)), 1u, most / 2u);
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
@@ -1841,7 +1850,7 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
             for (uint l = 0; l < through; ++l) {
                 float zeta = -1.0f + (2.0f * float(l) + 1.0f) / float(through);
                 float3 sample = point + 0.5f * zeta * el.thickness * director;
-                splatFine(sample, fixed, u.fineThreshold, patchOfTile, fineOccupancy, u);
+                splatFine(sample, fixed, u.fineThreshold, u.deepThreshold, patchOfTile, fineOccupancy, u);
                 int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
                 if (any(target < 0) || any(target >= dims)) {
                     continue;
@@ -1889,8 +1898,8 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
         d2[c] = e2 + rotationOffset(node.rotation, e2);
         d3[c] = e3 + rotationOffset(node.rotation, e3);
     }
-    float spacing = 0.5f * u.fluidCell / float(max(u.refineRatio, 1u));
-    uint most = u.refineRatio != 0 ? 33u : 17u;
+    float spacing = 0.5f * u.fluidCell / float(max(max(u.refineRatio, u.deepRatio), 1u));
+    uint most = u.deepRatio != 0 ? 65u : (u.refineRatio != 0 ? 33u : 17u);
     uint along = clamp(uint(ceil(beam.length / spacing)) + 1u, 2u, most);
     uint across2 = clamp(uint(ceil(beam.width / spacing)), 1u, most / 2u);
     uint across3 = clamp(uint(ceil(beam.depth / spacing)), 1u, most / 2u);
@@ -1908,7 +1917,7 @@ kernel void beamSplat(const device BeamElement *beams [[buffer(0)]],
             for (uint b = 0; b < across3; ++b) {
                 float zeta = -1.0f + (2.0f * float(b) + 1.0f) / float(across3);
                 float3 sample = centre + 0.5f * eta * beam.width * side2 + 0.5f * zeta * beam.depth * side3;
-                splatFine(sample, fixed, u.fineThreshold, patchOfTile, fineOccupancy, u);
+                splatFine(sample, fixed, u.fineThreshold, u.deepThreshold, patchOfTile, fineOccupancy, u);
                 int3 target = int3(floor(sample / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
                 if (any(target < 0) || any(target >= dims)) {
                     continue;

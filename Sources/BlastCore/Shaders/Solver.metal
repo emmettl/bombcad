@@ -85,6 +85,18 @@ struct SolverUniforms {
     float boxMinX; float boxMinY; float boxMinZ;
     float boxMaxX; float boxMaxY; float boxMaxZ;
     uint couplingMapCount;
+    // Refinement in several levels (see Refine.metal). For a level refining another: the side
+    // of its parent's patches (0 when the parent is the coarse grid, as for the first level), its
+    // parent's grid of blocks, and its parent's cells along a coarse cell's edge (1 for the first
+    // level); and, for any grid with a finer level beneath it, that level's grid of blocks (0
+    // when there is none).
+    uint parentSide;
+    uint parentTileNx;
+    uint parentTileNy;
+    uint parentScale;
+    uint childTileNx;
+    uint childTileNy;
+    uint childTileNz;
 };
 
 // Definition vectors: quaternion, half-size, local centre-of-mass offset, velocity, spin.
@@ -943,21 +955,43 @@ kernel void collectTiles(device uchar *tileFlags [[buffer(0)]],
 static inline void logGauges(device float *gaugeLog, uint row, float dt, const device Cell *state,
                              const device uint *gaugeCells, constant SolverUniforms &u,
                              const device int *patchOfTile, const device Cell *fine,
-                             const device uint *gaugeChildren, const device uchar *fineMask) {
+                             const device uint *gaugeChildren, const device uchar *fineMask,
+                             const device int *childPatches, const device Cell *childFine,
+                             const device uchar *childMask) {
     row *= u.gaugeCount + 1;
     gaugeLog[row] = dt;
     for (uint g = 0; g < u.gaugeCount; ++g) {
         Cell c = state[gaugeCells[g]];
-        // Where the gauge's cell is refined, the fine cell holding the gauge's point.
+        // Where the gauge's cell is refined, the finest cell holding the gauge's point: `child`
+        // numbers the finest cells of its coarse cell.
         uint child = gaugeChildren[g];
         if (u.refineRatio != 0 && child != 0xFFFFFFFFu) {
             uint index = gaugeCells[g];
             int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
-            int patch = patchAt(cell, patchOfTile, u);
+            int r = int(u.refineRatio);
+            int side = patchSize * r;
+            int3 within = int3(child % uint(r), (child / uint(r)) % uint(r), child / uint(r * r));
+            bool found = false;
+            if (u.childTileNx != 0) {
+                // Two levels: the cell of the second level, where it is refined.
+                int deep = r * r;
+                int3 finest = int3(child % uint(deep), (child / uint(deep)) % uint(deep), child / uint(deep * deep));
+                int3 global = cell * deep + finest;
+                int3 block = global / side;
+                int patch = childPatches[block.x + int(u.childTileNx) * (block.y + int(u.childTileNy) * block.z)];
+                if (patch >= 0) {
+                    int3 local = global - block * side;
+                    uint at = uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
+                    if ((childMask[at] & 1) == 0) {
+                        c = childFine[at];
+                        found = true;
+                    }
+                }
+                within = finest / r;
+            }
+            int patch = found ? -1 : patchAt(cell, patchOfTile, u);
             if (patch >= 0) {
-                int r = int(u.refineRatio);
-                int side = patchSize * r;
-                int3 local = (cell % patchSize) * r + int3(child % uint(r), (child / uint(r)) % uint(r), child / uint(r * r));
+                int3 local = (cell % patchSize) * r + within;
                 uint at = uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
                 if ((fineMask[at] & 1) == 0) {
                     c = fine[at];
@@ -983,6 +1017,9 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                         const device Cell *fine [[buffer(9)]],
                         const device uint *gaugeChildren [[buffer(10)]],
                         const device uchar *fineMask [[buffer(11)]],
+                        const device int *childPatches [[buffer(12)]],
+                        const device Cell *childFine [[buffer(13)]],
+                        const device uchar *childMask [[buffer(14)]],
                         uint tid [[thread_position_in_grid]]) {
     if (tid != 0) {
         return;
@@ -1031,7 +1068,8 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
         }
     }
 
-    logGauges(gaugeLog, control.stepIndex, dt, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask);
+    logGauges(gaugeLog, control.stepIndex, dt, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask,
+              childPatches, childFine, childMask);
 
     control.dt = dt;
     control.batchTime += dt;
@@ -1050,9 +1088,13 @@ kernel void sampleGauges(const device StepControl &control [[buffer(0)]],
                          const device Cell *fine [[buffer(9)]],
                          const device uint *gaugeChildren [[buffer(10)]],
                          const device uchar *fineMask [[buffer(11)]],
+                         const device int *childPatches [[buffer(12)]],
+                         const device Cell *childFine [[buffer(13)]],
+                         const device uchar *childMask [[buffer(14)]],
                          uint tid [[thread_position_in_grid]]) {
     if (tid == 0) {
-        logGauges(gaugeLog, control.stepIndex, 0.0f, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask);
+        logGauges(gaugeLog, control.stepIndex, 0.0f, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask,
+                  childPatches, childFine, childMask);
     }
 }
 

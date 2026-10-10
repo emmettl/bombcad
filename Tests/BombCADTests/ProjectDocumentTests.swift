@@ -41,6 +41,28 @@ struct ProjectDocumentTests {
         #expect(model.projectDocumentID == snapshot.documentID)
     }
 
+    @Test("Shock refinement in two levels is saved, and one level is saved as before it existed")
+    func shockLevels() throws {
+        let model = SimulationModel()
+        model.settings.resolution = .coarse
+        model.settings.sharpShocks = true
+        model.settings.shockLevels = 2
+        let snapshot = ProjectDocument(model: model)
+        #expect(snapshot.runSettings?.shockLevels == 2)
+        let restored = try ProjectDocument(fileWrapper: snapshot.makeArchive().fileWrapper())
+        model.settings.shockLevels = 1
+        model.open(restored)
+        #expect(model.settings.sharpShocks && model.settings.shockLevels == 2)
+        // One level writes no key, so settings saved before levels existed, and the fingerprints
+        // of runs saved with them, are unchanged; and settings without the key read as one level.
+        model.settings.shockLevels = 1
+        let one = try #require(ProjectDocument(model: model).runSettings)
+        let encoded = try JSONEncoder().encode(one)
+        #expect(!String(decoding: encoded, as: UTF8.self).contains("shockLevels"))
+        let decoded = try JSONDecoder().decode(ProjectRunSettings.self, from: encoded)
+        #expect(decoded.shockLevels == nil && decoded == one)
+    }
+
     @Test("Re-saving and replacing the scene preserve embedded assets and document identity")
     func assetPreservation() throws {
         let model = SimulationModel()

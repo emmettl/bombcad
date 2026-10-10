@@ -183,7 +183,7 @@ struct RunComparisonView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(run.name + (run.id == baseline?.id ? " · Reference" : "")).font(.headline)
                     Text(
-                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? "on" : "off")"
+                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")"
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     DisclosureGroup("Run inputs") {
@@ -217,6 +217,7 @@ struct RunComparisonView: View {
                         Text(run.deviceName + " · " + run.operatingSystem)
                     }.font(.caption)
                     if let thermal = run.thermal { Text(thermal.comparison).font(.callout) }
+                    if let cloud = run.cloud { Text(cloud.comparison).font(.callout) }
                     if plotsStructure {
                         if let response = run.structure {
                             metric("Peak recorded deflection", response.peak, baseline?.structure?.peak, "mm")

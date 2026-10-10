@@ -32,7 +32,7 @@ it should be used to judge the safety of a real structure.
 | 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
-| 4 | Peak pressure is under-resolved near the charge                         | Close-in spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
+| 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
@@ -186,11 +186,13 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    as units and mortar joints in running bond, which open at the bond and slide by friction,
    on solid elements no more than half a course high: see the
    [concrete model](concrete-model.md#masonry-as-units-and-mortar-joints).)
-12. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
-   blocks of 4 × 4 × 4 cells that follow the shock, conservative across its edge, with its own
+12. **Adaptive resolution in the air**: several levels. (Done: one or two finer levels, by 2 or 4, in
+   blocks of 4 × 4 × 4 cells that follow the shock, the second nested in the first, conservative
+   across each level's edge, each with its own
    outline of blocks and structure, loading a deformable structure from the fine cells beside
    its faces, and carrying afterburning's fuel and oxygen; refined by 2, a grid gives the peaks of one twice as
-   fine three to five times faster in the open. See the
+   fine three to five times faster in the open, and in two levels those of one four times as fine,
+   1.2 to 1.4 times faster than one level by 4. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
    Stationary [building envelopes](building-envelopes.md) now retain walls, roofs and openings
@@ -207,18 +209,17 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
-   size, shown in the app as it goes and reckoned there or on another Mac, on the GPU's
-   ray-tracing hardware; the fireball's [rise and
+   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
+   its luminous cells marched on the GPU as a partly transparent volume; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
-   their first two minutes; and [ground shock](ground-shock.md) away from the charge, the
+   their first two minutes, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
    manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: following the fireball's shape on the GPU too, the cloud's growth once
-   it stops rising, a layered soil column and a comparison with measured
-   ground motion, and the app painting the fluence onto the surfaces and showing where the cloud
-   went. The crater and the ground shock near the charge act back on the blast and remain
+   drawn in the app. Next: taking the radiated heat out of the gas, the cloud's growth once
+   it stops rising, and a layered soil column and a comparison with measured
+   ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 
 ### Freestanding objects and supports
@@ -1876,7 +1877,10 @@ times the preceding limited reference in these runs (including shared-machine lo
 It remains opt-in through `--conserved-quadratic`. Ordinary transport defaults are retained;
 improved initial traces do not establish superior evolved loads in every orientation.
 `Scripts/check-grouped-gas-reference.py --release` provides optimized verification of the
-complete reference suite. All 126 CPU reference tests in 25 suites pass on the final
+complete reference suite. The three conserved refinement comparisons (stationary shock on
+0.1/0.05 m, density advection on 0.2/0.1 m, moving piston on 0.2/0.1 m) run only in such
+optimized builds: they take seconds to minutes there, but in a debug `swift test` the piston
+alone needs hours. Debug runs instead check every budget on one coarse grid. All 126 CPU reference tests in 25 suites pass on the final
 source, including moving-shock work, exact density advection and the preceding default
 transport regressions; the repository release CLI also builds successfully. The reports
 and summary commands in the README reproduce
@@ -1924,18 +1928,27 @@ extraction.
    tyres are contact points only. Tests check ambient balance on the static tyre loads, the
    momentum budget, the force and torque of a pressure gradient about the low centre of mass,
    and a blast loading the far tyres. `swift run -c release rigidboxdemo --car-blast` replays
-   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.1 m air cells). These are not
+   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.05 m cells around the car). These are not
    converged: the 0.15 m gap under the shell spans at most one cell, and from 0.2 to 0.1 m
    cells the 10 kg air impulse goes from 6.4 to 9.0 kN s sideways and from 8.2 to 3.7 kN s
-   up, and the car rocks to 25° and back instead of overturning. Next: resolve the gap
-   (refinement there, or a cut-cell floor), then the car on finer grids.)
+   up, and the car rocks to 25° and back instead of overturning. Resolved: whole-cell masks made
+   the gap 0.2 m on 0.2 m cells and 0.1 m on 0.1 m ones, and patches started with gas packed
+   under the shell. With patches resolving the gap exactly, 10 kg overturns on near-car cells
+   from 0.075 to 0.025 m, the blast's load converging (passing the balance angle at 0.41 s on
+   the two finest); 5 kg rocks to 10° and 1 kg barely moves. Flow after the blast, with the car
+   steeply tilted, is not converged. See [freestanding objects](freestanding-objects.md).)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress
    from a row of cars to a populated car park and a furnished room, with explicit friction
    and support assumptions. Benchmark each against identical geometry held stationary,
    reporting air-grid cost separately from motion, coupling and contact; include a crowded
-   collision case. Do not promise a throughput target before these measurements.
+   collision case. Do not promise a throughput target before these measurements. (Started:
+   contact between bodies, blocks and the ground with a sweep over grown bounds, tested for
+   momentum, energy and resting stacks; the app places, duplicates and edits boxes and cars and
+   shows their motion, displacement, speed and tipping, with the nearest one in the air and the
+   rest moving through contact; a row of cars, held and free, and a 256-box crowded case. See
+   [freestanding objects](freestanding-objects.md#several-objects).)
 
 Structural anchorage is a separate extension: retain ideal fixed supports as an explicit
 option, then add connections that can deform, open and fail under tension or shear, with

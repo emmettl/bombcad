@@ -14,6 +14,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     var resolution: String
     var detailedCharge: Bool
     var sharpShocks: Bool
+    /// Levels of the shocks' refinement when more than one; nil, and left out of the file (and of
+    /// a saved run's fingerprint, so that runs saved before it existed still match theirs), for one.
+    var shockLevels: Int?
     var solidElementSize: Float
     var duration: Double
 
@@ -21,6 +24,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         resolution = settings.resolution.rawValue
         detailedCharge = settings.detailedCharge
         sharpShocks = settings.sharpShocks
+        shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -32,7 +36,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
 
     func validate() throws {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
-            duration.isFinite, duration > 0
+            duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }
     }
 }
@@ -118,6 +122,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var groundShock: GroundShockSpec?
     /// The fireball's thermal radiation to reckon alongside each run, saved as `thermal.json`.
     var thermal: ThermalSpec?
+    /// The fireball's rise and cloud to follow after each run, saved as `cloud.json`.
+    var cloud: CloudSpec?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -154,6 +160,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         fragments = model.fragmentSpec
         groundShock = model.groundShockSpec
         thermal = model.thermalSpec
+        cloud = model.cloudSpec
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -262,6 +269,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try spec.validate()
             thermal = spec
         }
+        if let data = archive.files["cloud.json"] {
+            let spec = try JSONDecoder().decode(CloudSpec.self, from: data)
+            try spec.validate()
+            cloud = spec
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -314,6 +326,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["thermal.json"] = try ProjectArchive.encodeJSON(thermal)
         } else {
             files.removeValue(forKey: "thermal.json")
+        }
+        if let cloud {
+            try cloud.validate()
+            files["cloud.json"] = try ProjectArchive.encodeJSON(cloud)
+        } else {
+            files.removeValue(forKey: "cloud.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

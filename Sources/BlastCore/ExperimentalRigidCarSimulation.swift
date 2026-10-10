@@ -1,3 +1,4 @@
+import Foundation
 import Metal
 import simd
 
@@ -14,6 +15,15 @@ public final class ExperimentalRigidCarSimulation {
     public let definition: RigidCarDefinition
     public let motion: Motion
     public var gravity = SIMD3<Double>(0, 0, -9.81)
+    /// Scales the air's impulse and torque before they act on the car (the records stay
+    /// unscaled): a study knob for how far an outcome is from its threshold.
+    public var airLoadScale = 1.0
+    public var remapMode: ExperimentalBoxRemap = .redistribution {
+        didSet {
+            air.experimentalBoxRemapMode = remapMode
+            air.refinement?.boxRemapMode = remapMode
+        }
+    }
     private var car: RigidCarBody
     /// World position of the centre of mass.
     public var position: SIMD3<Double> { car.position }
@@ -35,6 +45,14 @@ public final class ExperimentalRigidCarSimulation {
     public private(set) var lastGroundAngularImpulse = SIMD3<Double>.zero
     /// Mean normal force on each tyre over the last step (N): FL, FR, RL, RR.
     public private(set) var lastTyreLoads = [Double](repeating: 0, count: 4)
+    /// Wall-clock seconds so far in the air solver's steps, in moving the shell through the air
+    /// (masks, remapping, gathering impulses) and in the car's contact mechanics.
+    public private(set) var timings = Timings()
+    public struct Timings: Codable, Sendable {
+        public var air = 0.0
+        public var coupling = 0.0
+        public var mechanics = 0.0
+    }
 
     public init(
         device: MTLDevice, scenario: Scenario, cellSize: Float,
@@ -61,6 +79,7 @@ public final class ExperimentalRigidCarSimulation {
         for charge in scenario.additionalCharges ?? [] { air.deposit(charge) }
         air.restart()
         try air.checkExperimentalBoxRefinement()
+        air.removeExperimentalBoxPackedGas()
     }
 
     public func applyImpulse(_ impulse: SIMD3<Double>, at point: SIMD3<Double>? = nil) throws {
@@ -69,13 +88,52 @@ public final class ExperimentalRigidCarSimulation {
         try air.updateExperimentalBox(car.body)
     }
 
+    public func applyAngularImpulse(_ impulse: SIMD3<Double>) throws {
+        guard motion == .free else { throw Failure.unsupportedConfiguration }
+        car.applyAngularImpulse(impulse)
+        try air.updateExperimentalBox(car.body)
+    }
+
+    /// Mechanics time stepped by `advanceWithoutAir` after the air was left behind.
+    public private(set) var detachedTime = 0.0
+    /// The air's time plus any time stepped without it.
+    public var time: Double { air.time + detachedTime }
+
+    /// Steps the car alone, as if the air had stopped acting on it: the air stays where it was,
+    /// and the shell no longer moves through it. For separating the blast's load from later flow.
+    public func advanceWithoutAir(by dt: Double) {
+        guard motion == .free else { return }
+        lastImpulse = .zero
+        lastAngularImpulse = .zero
+        let centre = car.position
+        let contacts = car.advanceWithGround(by: dt, ground: definition.ground, gravity: gravity)
+        lastGroundImpulse = .zero
+        lastGroundAngularImpulse = .zero
+        lastTyreLoads = [0, 0, 0, 0]
+        for contact in contacts {
+            let impulse = SIMD3(contact.tangent.x, contact.tangent.y, contact.normal)
+            lastGroundImpulse += impulse
+            lastGroundAngularImpulse += simd_cross(contact.point - centre, impulse)
+            if case .tyre(let n) = contact.location { lastTyreLoads[n] += contact.normal / dt }
+        }
+        detachedTime += dt
+    }
+
     /// Always step through this driver, not air.advance: each GPU step is followed by a car step.
     public func advance(steps: Int, timeLimit: Double? = nil) throws {
         precondition(steps >= 0)
+        var clock = Date.timeIntervalSinceReferenceDate
+        func lap(_ phase: WritableKeyPath<Timings, Double>) {
+            let now = Date.timeIntervalSinceReferenceDate
+            timings[keyPath: phase] += now - clock
+            clock = now
+        }
         for _ in 0..<steps {
             try air.checkExperimentalBoxRefinement()
             try air.clearExperimentalBoxImpulse()
+            lap(\.coupling)
             let result = air.advance(steps: 1, timeLimit: timeLimit)
+            lap(\.air)
             if let timeLimit, result.elapsed == 0, air.time >= timeLimit - 1e-8 { return }
             guard result.isStable, result.elapsed > 0 else { throw Failure.unstable }
             let impulses = air.experimentalBoxImpulses()
@@ -84,14 +142,17 @@ public final class ExperimentalRigidCarSimulation {
             lastGroundImpulse = .zero
             lastGroundAngularImpulse = .zero
             lastTyreLoads = [0, 0, 0, 0]
+            lap(\.coupling)
             guard motion == .free else { continue }
             var next = car
-            next.applyImpulse(impulses.linear)
-            next.applyAngularImpulse(impulses.angular)
+            next.applyImpulse(airLoadScale * impulses.linear)
+            next.applyAngularImpulse(airLoadScale * impulses.angular)
             let centre = next.position
             let contacts = next.advanceWithGround(
                 by: result.elapsed, ground: definition.ground, gravity: gravity)
+            lap(\.mechanics)
             try air.updateExperimentalBox(next.body)
+            lap(\.coupling)
             for contact in contacts {
                 let impulse = SIMD3(contact.tangent.x, contact.tangent.y, contact.normal)
                 lastGroundImpulse += impulse

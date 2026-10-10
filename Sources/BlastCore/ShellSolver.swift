@@ -64,6 +64,11 @@ struct ShellUniforms {
     var anchorFriction: Float = 0
     var couplingMapCount: UInt32 = 0
     var footings: UInt32 = 0
+    var fluidDeepRatio: UInt32 = 0
+    var fluidDeepBlocksX: UInt32 = 0
+    var fluidDeepBlocksY: UInt32 = 0
+    var fluidDeepPatchOffset: UInt32 = 0
+    var fluidDeepCellOffset: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -1210,6 +1215,13 @@ public final class ShellSolver {
                 uniforms.fluidRefine = UInt32(refinement.ratio)
                 uniforms.fluidBlocksX = UInt32(refinement.blocks.x)
                 uniforms.fluidBlocksY = UInt32(refinement.blocks.y)
+            }
+            if let deep = fluid.deepRefinement {
+                uniforms.fluidDeepRatio = UInt32(deep.ratio)
+                uniforms.fluidDeepBlocksX = UInt32(deep.blocks.x)
+                uniforms.fluidDeepBlocksY = UInt32(deep.blocks.y)
+                uniforms.fluidDeepPatchOffset = UInt32(deep.patchOffset)
+                uniforms.fluidDeepCellOffset = UInt32(deep.cellOffset)
             }
             uniforms.fluidCell = fluid.grid.cellSize
             uniforms.fluidNx = UInt32(fluid.grid.nx)

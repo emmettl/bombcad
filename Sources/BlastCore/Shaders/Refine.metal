@@ -37,11 +37,78 @@
 // off steeply, the cell reads the wall's value, as a coarse cell beside a wall does. Everything is
 // done on the GPU, so stepping still needs no round trip to the CPU, and every sum runs in a
 // fixed order, so runs repeat exactly.
+//
+// A second level refines the first in the same way: its patches refine blocks of 4 x 4 x 4 cells
+// of the first level, and it sees the first level as the first level sees the coarse grid, its
+// "parent", whose cells are then found through the first level's patches (`parentIndex`). Its
+// uniforms give its parent's grid as theirs (`nx`, `dx`), so that the kernels below serve both
+// levels. It takes r substeps within each substep of the first level, between that substep's
+// sweeps and the next (steps 1 to 5 above, with the first level's substep as the coarse step),
+// and its patches are placed only where the first level's patches cover the cells within two of
+// its own (see `refineNest`), so that it never meets the coarse grid: it is properly nested.
 
 constant int haloDepth = 2;
 constant int haloSide = 8;  // patchSize + 2 haloDepth
 constant uint haloCells = 512;
 constant uint freePatch = 0xFFFFFFFFu;
+
+// Index of the parent's cell `cell` in its state, its mask and the rest of its fields: on the
+// coarse grid, the cell's own; under a level that refines another, the cell of that level's patch
+// holding it, or -1 where none does.
+static inline int parentIndex(int3 cell, const device int *parentPatches, constant SolverUniforms &u) {
+    if (u.parentSide == 0u) {
+        return cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
+    }
+    int side = int(u.parentSide);
+    int3 block = cell / side;
+    int patch = parentPatches[block.x + int(u.parentTileNx) * (block.y + int(u.parentTileNy) * block.z)];
+    if (patch < 0) {
+        return -1;
+    }
+    int3 local = cell - block * side;
+    return patch * side * side * side + local.x + side * (local.y + side * local.z);
+}
+
+// Whether the parent's cell at `index` is solid: on the coarse grid any mark, in a level's
+// patches bit 0 of its own outline; a cell no patch holds counts as solid.
+static inline bool parentSolid(const device uchar *mask, int index, constant SolverUniforms &u) {
+    return index < 0 || (u.parentSide == 0u ? mask[index] != 0 : (mask[index] & 1) != 0);
+}
+
+// Whether it is a rigid block (bit 1 of a level's outline).
+static inline bool parentRigid(const device uchar *rigidMask, int index, constant SolverUniforms &u) {
+    return index >= 0 && (u.parentSide == 0u ? rigidMask[index] != 0 : (rigidMask[index] & 2) != 0);
+}
+
+// The parent's cell at `index`, or still air where no patch holds it.
+static inline Cell parentCell(const device Cell *parent, int index, constant SolverUniforms &u) {
+    if (index >= 0) {
+        return parent[index];
+    }
+    Cell still;
+    still.rho = u.stillRho;
+    still.mx = u.stillMx;
+    still.my = u.stillMy;
+    still.mz = u.stillMz;
+    still.energy = u.stillEnergy;
+    return still;
+}
+
+// The velocity of a solid parent cell: on the coarse grid the moving solids' (zero outside the
+// region where they move), in a level's patches the speed its outline holds (`fineWall`).
+static inline float3 parentWallVelocity(const device float *wallVelocity, int3 cell, int index,
+                                        constant SolverUniforms &u) {
+    if (u.parentSide == 0u) {
+        return movingWallVelocity(wallVelocity, cell, u);
+    }
+    return index < 0 ? float3(0.0f)
+                     : float3(wallVelocity[3 * index], wallVelocity[3 * index + 1], wallVelocity[3 * index + 2]);
+}
+
+// The time step of a level: the coarse step over its ratio and its parent's.
+static inline float levelStep(const device StepControl &control, constant SolverUniforms &u) {
+    return control.dt / float(int(u.refineRatio) * int(max(u.parentScale, 1u)));
+}
 
 static inline uint tileIndex(int3 tile, constant SolverUniforms &u) {
     return uint(tile.x) + u.refineTileNx * (uint(tile.y) + u.refineTileNy * uint(tile.z));
@@ -73,8 +140,8 @@ static inline Cell blend(Cell a, Cell b, float alpha) {
 // halo of `patch`, saved at the step's start, and its state now, at the step's end. With alpha
 // one, or outside the halo, just now.
 static inline Cell coarseAt(int3 cell, int3 tile, uint patch, const device Cell *coarse, const device Cell *halo,
-                            float alpha, constant SolverUniforms &u) {
-    Cell now = coarse[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)];
+                            float alpha, constant SolverUniforms &u, const device int *parentPatches) {
+    Cell now = parentCell(coarse, parentIndex(cell, parentPatches, u), u);
     int3 h = cell - (tile * patchSize - haloDepth);
     if (alpha >= 1.0f || any(h < 0) || any(h >= haloSide)) {
         return now;
@@ -94,11 +161,12 @@ static inline float cellPressureOf(Cell c, constant SolverUniforms &u) {
 // coarse cell's fine cells, so their mean is the coarse cell. Where that would leave density or
 // pressure below the floors, the coarse cell alone.
 static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *coarse, const device Cell *halo,
-                           const device uchar *mask, float alpha, constant SolverUniforms &u) {
+                           const device uchar *mask, float alpha, constant SolverUniforms &u,
+                           const device int *parentPatches) {
     int r = int(u.refineRatio);
     int3 cell = fine / r;
     int3 dims = int3(u.nx, u.ny, u.nz);
-    Cell c = coarseAt(cell, tile, patch, coarse, halo, alpha, u);
+    Cell c = coarseAt(cell, tile, patch, coarse, halo, alpha, u, parentPatches);
     float3 offset = (float3(fine - cell * r) + 0.5f) / float(r) - 0.5f;
     Cell result = c;
     for (int axis = 0; axis < 3; ++axis) {
@@ -111,11 +179,11 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
         above[axis] += 1;
         Cell lo = c;
         Cell hi = c;
-        if (below[axis] >= 0 && mask[below.x + dims.x * (below.y + dims.y * below.z)] == 0) {
-            lo = coarseAt(below, tile, patch, coarse, halo, alpha, u);
+        if (below[axis] >= 0 && !parentSolid(mask, parentIndex(below, parentPatches, u), u)) {
+            lo = coarseAt(below, tile, patch, coarse, halo, alpha, u, parentPatches);
         }
-        if (above[axis] < dims[axis] && mask[above.x + dims.x * (above.y + dims.y * above.z)] == 0) {
-            hi = coarseAt(above, tile, patch, coarse, halo, alpha, u);
+        if (above[axis] < dims[axis] && !parentSolid(mask, parentIndex(above, parentPatches, u), u)) {
+            hi = coarseAt(above, tile, patch, coarse, halo, alpha, u, parentPatches);
         }
         float o = offset[axis];
         result.rho += o * limitedSlope(c.rho - lo.rho, hi.rho - c.rho, 1.0f);
@@ -142,7 +210,8 @@ static inline Prim primOf(Cell c, constant SolverUniforms &u) {
 }
 
 // Fluid, wall or open, for fine cell `fine` reached along the sweep.
-static inline int fineKind(int3 fine, int n, const device uchar *mask, constant SolverUniforms &u) {
+static inline int fineKind(int3 fine, int n, const device uchar *mask, constant SolverUniforms &u,
+                           const device int *parentPatches) {
     uint axis = u.axis;
     if (fine[axis] < 0) {
         return ((u.boundaryFlags >> (2 * axis)) & 1u) != 0 ? kindWall : kindOpen;
@@ -151,7 +220,7 @@ static inline int fineKind(int3 fine, int n, const device uchar *mask, constant 
         return ((u.boundaryFlags >> (2 * axis + 1)) & 1u) != 0 ? kindWall : kindOpen;
     }
     int3 cell = fine / int(u.refineRatio);
-    return mask[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)] != 0 ? kindWall : kindFluid;
+    return parentSolid(mask, parentIndex(cell, parentPatches, u), u) ? kindWall : kindFluid;
 }
 
 static inline void addFlux(device float *registers, uint slot, Flux f, uint axis, float dt) {
@@ -205,6 +274,7 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device float2 *fineSpecies [[buffer(15)]],
                          device float2 *ghostSpecies [[buffer(16)]],
                          const device float2 *coarseSpecies [[buffer(17)]],
+                         const device int *parentPatches [[buffer(18)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -228,7 +298,7 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         return;
     }
     int n = dims[axis] * int(u.refineRatio);
-    int kind = fineKind(fine, n, mask, u);
+    int kind = fineKind(fine, n, mask, u, parentPatches);
     bool inDomain = fine[axis] >= 0 && fine[axis] < n;
     // Inside the domain, a cell a neighbouring patch holds is solid or fluid by that patch's own
     // outline, whatever its coarse cell is; asking the coarse cell would make the two patches
@@ -240,7 +310,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         ghostKinds[index] = kind == kindWall ? ghostWall : ghostOpen;
         if (kind == kindWall) {
             // A solid cell inside the domain may be moving; a reflecting face of the domain is not.
-            ghosts[index].mx = inDomain ? wallSpeedOf(wallVelocity, cell, u) : 0.0f;
+            ghosts[index].mx =
+                inDomain ? parentWallVelocity(wallVelocity, cell, parentIndex(cell, parentPatches, u), u)[axis] : 0.0f;
         }
         return;
     }
@@ -259,13 +330,14 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         }
         return;
     }
-    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u);
+    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches);
     ghosts[index] = outside;
     ghostKinds[index] = ghostCoarse;
     if (u.afterburnEnergy > 0.0f) {
         // At the coarse cell's mass fractions, as they are at the step's end.
-        int at = cell.x + dims.x * (cell.y + dims.y * cell.z);
-        ghostSpecies[index] = coarseSpecies[at] / max(coarse[at].rho, u.densityFloor) * outside.rho;
+        int at = parentIndex(cell, parentPatches, u);
+        ghostSpecies[index] = at < 0 ? float2(0.0f, u.stillOxygen) / u.stillRho * outside.rho
+                                     : coarseSpecies[at] / max(coarse[at].rho, u.densityFloor) * outside.rho;
     }
     // Unrefined fluid beside a patch's face, where the fine cell inside is solid: the coarse cell
     // used a flux through that face, which refluxing must replace with what the fine level has
@@ -279,7 +351,7 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
             uint face = 2u * axis + (layer == 1u ? 0u : 1u);
-            addFlux(fineFlux, registerSlot(patch, face, a, b, side), f, axis, control.dt / float(u.refineRatio));
+            addFlux(fineFlux, registerSlot(patch, face, a, b, side), f, axis, levelStep(control, u));
         }
     }
 }
@@ -293,7 +365,8 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
                                  device float *fineImpulse, const device uchar *fineMask,
                                  const device packed_float3 *fineWall, const device float2 *speciesSrc,
                                  device float2 *speciesDst, const device float2 *ghostSpecies,
-                                 device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch) {
+                                 device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch,
+                                 const device int *childPatches, device float *childFlux, device float *childSpeciesFlux) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -303,7 +376,11 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     if (any(cell >= dims)) {
         return;
     }
-    int coarseIndex = cell.x + dims.x * (cell.y + dims.y * cell.z);
+    // The coarse cell, whose peak overpressure this fine cell's counts towards.
+    int scale = int(max(u.parentScale, 1u));
+    int3 coarseDims = dims / scale;
+    int3 coarseCell = cell / scale;
+    int coarseIndex = coarseCell.x + coarseDims.x * (coarseCell.y + coarseDims.y * coarseCell.z);
     uint axis = u.axis;
     int n = dims[axis] << shift;
     uint a = uint(local[(axis + 1) % 3]);
@@ -392,7 +469,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         }
     }
 
-    float dt = control.dt / float(r);
+    float dt = levelStep(control, u);
     float lambda = dt / (u.dx / float(r));
     Flux fluxLow;
     Flux fluxHigh;
@@ -423,6 +500,37 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             received += impulse; moment += cross(face-centre,impulse);
         }
         for (uint a=0; a<3; ++a) { boxImpulse[6*index+a] += received[a]; boxImpulse[6*index+3+a] += moment[a]; }
+    }
+
+    // Where a finer level lies beneath this one: a cell of this level beside a patch of that
+    // level records the flux it used through the face they share, as an unrefined coarse cell
+    // does (see `sweepCell`), for that level's fluxes to replace.
+    int childSpecies = -1;
+    bool childLow = false;
+    if (u.childTileNx != 0u) {
+        int i = fine[axis];
+        int edge = i % patchSize;
+        bool lowEdge = edge == 0 && i > 0;
+        bool highEdge = edge == patchSize - 1 && i < n - 1;
+        auto childAt = [&](int3 at) {
+            int3 block = at / patchSize;
+            return childPatches[block.x + int(u.childTileNx) * (block.y + int(u.childTileNy) * block.z)];
+        };
+        if ((lowEdge || highEdge) && childAt(fine) < 0) {
+            int3 across = fine;
+            across[axis] += lowEdge ? -1 : 1;
+            int child = childAt(across);
+            if (child >= 0) {
+                int3 inPatch = fine % patchSize;
+                uint face = 2u * axis + (lowEdge ? 1u : 0u);
+                uint ca = uint(inPatch[(axis + 1) % 3]);
+                uint cb = uint(inPatch[(axis + 2) % 3]);
+                storeFlux(childFlux, registerSlot(uint(child), face, ca, cb, uint(patchSize)), lowEdge ? fluxLow : fluxHigh,
+                          axis, dt);
+                childSpecies = int(speciesSlot(uint(child), face, ca, cb, uint(patchSize)));
+                childLow = lowEdge;
+            }
+        }
     }
 
     // A fine cell on the patch's face, beside unrefined fluid, adds up the flux through it.
@@ -465,6 +573,11 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             uint slot = speciesSlot(patch, 2u * axis + 1u, a, b, uint(side));
             speciesFluxSums[slot] += outflow.x * dt;
             speciesFluxSums[slot + 1] += outflow.y * dt;
+        }
+        if (childSpecies >= 0) {
+            float2 through = (childLow ? inflow : outflow) * dt;
+            childSpeciesFlux[childSpecies] = through.x;
+            childSpeciesFlux[childSpecies + 1] = through.y;
         }
         float2 species = max(own - lambda * (outflow - inflow), 0.0f);
         if (u.finalSweep != 0) {
@@ -524,6 +637,9 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         device float *speciesFluxSums [[buffer(19)]],
                         const device int *boxPatches [[buffer(20)]],
                         device float *boxImpulse [[buffer(21)]],
+                        const device int *childPatches [[buffer(22)]],
+                        device float *childFlux [[buffer(23)]],
+                        device float *childSpeciesFlux [[buffer(24)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -537,7 +653,8 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
     for (uint z = local.z; z < 8u; z += groupSize.z) {
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
-                      speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch);
+                      speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
+                      childFlux, childSpeciesFlux);
     }
 }
 
@@ -548,6 +665,7 @@ kernel void refineSaveHalo(const device Cell *coarse [[buffer(0)]],
                            const device uint *tileOfPatch [[buffer(3)]],
                            const device uint *patchList [[buffer(4)]],
                            const device StepControl &control [[buffer(5)]],
+                           const device int *parentPatches [[buffer(6)]],
                            uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -559,7 +677,7 @@ kernel void refineSaveHalo(const device Cell *coarse [[buffer(0)]],
     if (any(cell < 0) || any(cell >= int3(u.nx, u.ny, u.nz))) {
         return;
     }
-    halo[patch * haloCells + h] = coarse[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)];
+    halo[patch * haloCells + h] = parentCell(coarse, parentIndex(cell, parentPatches, u), u);
 }
 
 // Step 4, along `u.axis`: puts right each unrefined coarse cell beside a patch for the difference
@@ -577,6 +695,7 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
                          device float *fineSpeciesFlux [[buffer(9)]],
                          const device float *coarseSpeciesFlux [[buffer(10)]],
                          device float2 *coarseSpecies [[buffer(11)]],
+                         const device int *parentPatches [[buffer(12)]],
                          uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -626,11 +745,11 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
     if (any(inside >= dims) || outside[axis] < 0 || outside[axis] >= dims[axis]) {
         return;
     }
-    int outsideIndex = outside.x + dims.x * (outside.y + dims.y * outside.z);
+    int outsideIndex = parentIndex(outside, parentPatches, u);
     // Whatever the coarse cell inside is, the outside cell recorded the flux it used, fluid or
     // wall, and the fine level has a flux for every fine face (the wall's where the fine cell is
     // solid), so the two always correspond.
-    if (mask[outsideIndex] != 0 || patchAt(outside, patchOfTile, u) >= 0) {
+    if (parentSolid(mask, outsideIndex, u) || patchAt(outside, patchOfTile, u) >= 0) {
         return;
     }
     uint slot = registerSlot(patch, face, uint(a), uint(b), uint(patchSize));
@@ -779,6 +898,7 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
                            const device uchar *fineMask [[buffer(10)]],
                            const device float2 *fineSpecies [[buffer(11)]],
                            device float2 *coarseSpecies [[buffer(12)]],
+                           const device int *parentPatches [[buffer(13)]],
                            uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -793,7 +913,10 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
     if (any(cell >= dims)) {
         return;
     }
-    int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
+    int index = parentIndex(cell, parentPatches, u);
+    if (index < 0) {
+        return;
+    }
     int r = int(u.refineRatio);
     float largest = 0.0f;
     for (int n = 0; n < r * r * r; ++n) {
@@ -827,6 +950,7 @@ kernel void refineSync(device Cell *fine [[buffer(0)]],
                        device uchar *seenMask [[buffer(6)]],
                        const device StepControl &control [[buffer(7)]],
                        const device uchar *fineMask [[buffer(8)]],
+                       const device int *parentPatches [[buffer(9)]],
                        uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -841,8 +965,11 @@ kernel void refineSync(device Cell *fine [[buffer(0)]],
     if (any(cell >= dims)) {
         return;
     }
-    int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-    uchar solid = mask[index] != 0 ? 1 : 0;
+    int index = parentIndex(cell, parentPatches, u);
+    if (index < 0) {
+        return;
+    }
+    uchar solid = parentSolid(mask, index, u) ? 1 : 0;
     uchar was = seenMask[patch * perPatch + position];
     seenMask[patch * perPatch + position] = solid;
     if (solid != 0 || was != 0) {
@@ -970,6 +1097,112 @@ kernel void refineFlagTiles(const device Cell *coarse [[buffer(0)]],
     }
 }
 
+// Step 7a for a level beneath another, per cell of its parent's patches: as `flagCell`, from the
+// parent level's cells. A jump between a parent cell and one no patch of the parent holds is not
+// looked at; the coarse grid's flags cover it.
+kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
+                           const device uchar *parentMask [[buffer(1)]],
+                           device uchar *wanted [[buffer(2)]],
+                           constant SolverUniforms &u [[buffer(3)]],
+                           const device StepControl &control [[buffer(4)]],
+                           const device int *parentPatches [[buffer(5)]],
+                           const device uint *parentTileOfPatch [[buffer(6)]],
+                           const device uint *parentList [[buffer(7)]],
+                           uint gid [[thread_position_in_grid]]) {
+    if (control.dt <= 0.0f) {
+        return;
+    }
+    int side = int(u.parentSide);
+    uint cells = uint(side * side * side);
+    uint patch = parentList[gid / cells];
+    uint position = gid % cells;
+    uint block = parentTileOfPatch[patch];
+    int3 origin = int3(block % u.parentTileNx, (block / u.parentTileNx) % u.parentTileNy,
+                       block / (u.parentTileNx * u.parentTileNy)) * side;
+    int3 cell = origin + int3(position % uint(side), (position / uint(side)) % uint(side), position / uint(side * side));
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    uint index = patch * cells + position;
+    if (any(cell >= dims) || (parentMask[index] & 1) != 0) {
+        return;
+    }
+    float p = cellPressureOf(parent[index], u);
+    bool sharp = false;
+    for (int axis = 0; axis < 3; ++axis) {
+        int3 next = cell;
+        next[axis] += 1;
+        if (next[axis] >= dims[axis]) {
+            continue;
+        }
+        int nextIndex = parentIndex(next, parentPatches, u);
+        if (parentSolid(parentMask, nextIndex, u)) {
+            continue;
+        }
+        float q = cellPressureOf(parent[nextIndex], u);
+        if (fabs(q - p) > u.refineThreshold * min(p, q)) {
+            sharp = true;
+            flagAround(next, wanted, u);
+        }
+    }
+    if (sharp) {
+        flagAround(cell, wanted, u);
+    }
+}
+
+// How far beyond a patch of a level beneath another, in its parent's cells, the parent's patches
+// must reach: its ghost cells reach one parent cell out (half of one at ratio 4), and filling them
+// takes the parent's slopes from the cell beyond.
+constant int nestReach = 2;
+
+// Whether the parent's patches cover every cell within `nestReach` of block `tile` of this level.
+static inline bool nested(int3 tile, const device int *parentPatches, constant SolverUniforms &u) {
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    int side = int(u.parentSide);
+    int3 low = max(tile * patchSize - nestReach, 0) / side;
+    int3 high = min(tile * patchSize + patchSize - 1 + nestReach, dims - 1) / side;
+    for (int z = low.z; z <= high.z; ++z) {
+        for (int y = low.y; y <= high.y; ++y) {
+            for (int x = low.x; x <= high.x; ++x) {
+                if (parentPatches[x + int(u.parentTileNx) * (y + int(u.parentTileNy) * z)] < 0) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+// Step 7a', per block of a level beneath another, after both levels are flagged: the parent's
+// blocks around each block this level wants, or keeps as pinned, are wanted too, so that the
+// level stays nested in its parent (and the parent is not released from under it).
+kernel void refineNest(const device uchar *wanted [[buffer(0)]],
+                       const device int *patchOfTile [[buffer(1)]],
+                       const device uint *pinned [[buffer(2)]],
+                       device uchar *parentWanted [[buffer(3)]],
+                       constant SolverUniforms &u [[buffer(4)]],
+                       const device StepControl &control [[buffer(5)]],
+                       uint tid [[thread_position_in_grid]]) {
+    uint tiles = u.refineTileNx * u.refineTileNy * u.refineTileNz;
+    if (control.dt <= 0.0f || tid >= tiles) {
+        return;
+    }
+    int patch = patchOfTile[tid];
+    if (wanted[tid] == 0 && (patch < 0 || pinned[patch] == 0)) {
+        return;
+    }
+    int3 tile = tileCoordinates(tid, u);
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    int side = int(u.parentSide);
+    int3 low = max(tile * patchSize - nestReach, 0) / side;
+    int3 high = min(tile * patchSize + patchSize - 1 + nestReach, dims - 1) / side;
+    for (int z = low.z; z <= high.z; ++z) {
+        for (int y = low.y; y <= high.y; ++y) {
+            for (int x = low.x; x <= high.x; ++x) {
+                parentWanted[x + int(u.parentTileNx) * (y + int(u.parentTileNy) * z)] = 1;
+            }
+        }
+    }
+}
+
 // Step 7b, per block: releases the patches no longer wanted to the pool.
 kernel void refineRelease(device int *patchOfTile [[buffer(0)]],
                           device uint *tileOfPatch [[buffer(1)]],
@@ -995,37 +1228,130 @@ kernel void refineRelease(device int *patchOfTile [[buffer(0)]],
     }
 }
 
-// Step 7c, per block: gives each newly wanted block a patch from the pool while any are left, and
-// wakes the tiles of still air holding it and the coarse cells around it, which must record their
+// Blocks handled by each threadgroup of the allocation's kernels.
+constant uint allocationGroup = 256;
+
+// Whether block `tid` asks for a new patch: it is wanted and has none, and, for a level beneath
+// another, its parent's patches are around it.
+static inline bool requestsPatch(uint tid, const device int *patchOfTile, const device uchar *wanted,
+                                 const device int *parentPatches, constant SolverUniforms &u) {
+    uint tiles = u.refineTileNx * u.refineTileNy * u.refineTileNz;
+    if (tid >= tiles || wanted[tid] == 0 || patchOfTile[tid] >= 0) {
+        return false;
+    }
+    return u.parentSide == 0u || nested(tileCoordinates(tid, u), parentPatches, u);
+}
+
+// The sum of `value` over the threadgroup's threads before this one, and (in `total`) over all.
+static inline uint groupPrefix(uint value, uint lane, uint simd, uint simds, threadgroup uint *partial,
+                               thread uint &total) {
+    uint before = simd_prefix_exclusive_sum(value);
+    uint sum = simd_sum(value);
+    if (lane == 0) {
+        partial[simd] = sum;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    total = 0;
+    for (uint s = 0; s < simds; ++s) {
+        before += s < simd ? partial[s] : 0u;
+        total += partial[s];
+    }
+    return before;
+}
+
+// Step 7c, per group of `allocationGroup` blocks: how many of them ask for a new patch.
+kernel void refineRequest(const device int *patchOfTile [[buffer(0)]],
+                          const device uchar *wanted [[buffer(1)]],
+                          device uint *groupCounts [[buffer(2)]],
+                          constant SolverUniforms &u [[buffer(3)]],
+                          const device int *parentPatches [[buffer(4)]],
+                          uint tid [[thread_position_in_grid]],
+                          uint group [[threadgroup_position_in_grid]],
+                          uint lane [[thread_index_in_simdgroup]],
+                          uint simd [[simdgroup_index_in_threadgroup]],
+                          uint simds [[simdgroups_per_threadgroup]]) {
+    threadgroup uint partial[32];
+    uint total;
+    groupPrefix(requestsPatch(tid, patchOfTile, wanted, parentPatches, u) ? 1u : 0u, lane, simd, simds, partial,
+                total);
+    if (lane == 0 && simd == 0) {
+        groupCounts[group] = total;
+    }
+}
+
+// Step 7d, one thread: where each group's requests start among all of them, in block order, and
+// how many the pool can grant: the first that many requests, in block order, are granted, so that
+// which blocks are refined when the pool is used up does not depend on the order threads run in.
+// Counters: 0 the free stack's height, which falls by the patches granted; 1 the patches granted;
+// 3 the height before.
+kernel void refineGrant(device uint *groupCounts [[buffer(0)]],
+                        device int *counters [[buffer(1)]],
+                        constant SolverUniforms &u [[buffer(2)]],
+                        const device StepControl &control [[buffer(3)]],
+                        uint tid [[thread_position_in_grid]]) {
+    if (tid != 0 || control.dt <= 0.0f) {
+        return;
+    }
+    uint tiles = u.refineTileNx * u.refineTileNy * u.refineTileNz;
+    uint groups = (tiles + allocationGroup - 1) / allocationGroup;
+    uint running = 0;
+    for (uint g = 0; g < groups; ++g) {
+        uint count = groupCounts[g];
+        groupCounts[g] = running;
+        running += count;
+    }
+    int free = counters[0];
+    int granted = min(int(running), max(free, 0));
+    counters[3] = free;
+    counters[0] = free - granted;
+    counters[1] = granted;
+}
+
+// Step 7e, per block: gives each block granted a new patch one from the pool, and wakes the tiles
+// of still air holding each wanted block and the coarse cells around it, which must record their
 // fluxes through its faces. The flags are cleared for the next step.
 kernel void refineAllocate(device int *patchOfTile [[buffer(0)]],
                            device uint *tileOfPatch [[buffer(1)]],
                            const device uint *freeStack [[buffer(2)]],
-                           device atomic_int *counters [[buffer(3)]],
+                           const device int *counters [[buffer(3)]],
                            device uchar *wanted [[buffer(4)]],
                            device uint *newPatches [[buffer(5)]],
                            device uchar *tileFlags [[buffer(6)]],
                            constant SolverUniforms &u [[buffer(7)]],
                            const device StepControl &control [[buffer(8)]],
                            device uint *pinned [[buffer(9)]],
-                           uint tid [[thread_position_in_grid]]) {
+                           const device int *parentPatches [[buffer(10)]],
+                           const device uint *groupStarts [[buffer(11)]],
+                           uint tid [[thread_position_in_grid]],
+                           uint group [[threadgroup_position_in_grid]],
+                           uint lane [[thread_index_in_simdgroup]],
+                           uint simd [[simdgroup_index_in_threadgroup]],
+                           uint simds [[simdgroups_per_threadgroup]]) {
+    if (control.dt <= 0.0f) {
+        return;
+    }
+    // Every thread of the group takes part in the sum before any leaves.
+    bool request = requestsPatch(tid, patchOfTile, wanted, parentPatches, u);
+    threadgroup uint partial[32];
+    uint total;
+    uint rank = groupStarts[group] + groupPrefix(request ? 1u : 0u, lane, simd, simds, partial, total);
     uint tiles = u.refineTileNx * u.refineTileNy * u.refineTileNz;
-    if (control.dt <= 0.0f || tid >= tiles || wanted[tid] == 0) {
+    if (tid >= tiles || wanted[tid] == 0) {
         return;
     }
     wanted[tid] = 0;
     int3 tile = tileCoordinates(tid, u);
     if (patchOfTile[tid] < 0) {
-        int top = atomic_fetch_sub_explicit(&counters[0], 1, memory_order_relaxed);
-        if (top <= 0) {
-            atomic_fetch_add_explicit(&counters[0], 1, memory_order_relaxed);  // the pool is used up
+        // A level beneath another takes a new patch only where its parent's patches are around
+        // it; and none is left once the pool is used up.
+        if (!request || rank >= uint(counters[1])) {
             return;
         }
-        uint patch = freeStack[top - 1];
+        uint patch = freeStack[uint(counters[3]) - 1u - rank];
         patchOfTile[tid] = int(patch);
         tileOfPatch[patch] = tid;
         pinned[patch] = 0;
-        newPatches[atomic_fetch_add_explicit(&counters[1], 1, memory_order_relaxed)] = patch;
+        newPatches[rank] = patch;
     }
     if (u.tileNx == 0) {
         return;
@@ -1105,6 +1431,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device float2 *coarseSpecies [[buffer(16)]],
                        device float2 *fineSpecies [[buffer(17)]],
                        const device float4 *boxDefinition [[buffer(18)]],
+                       const device int *parentPatches [[buffer(19)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -1117,8 +1444,11 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     if (any(cell >= int3(u.nx, u.ny, u.nz))) {
         return;
     }
-    int3 dims = int3(u.nx, u.ny, u.nz);
-    int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
+    int index = parentIndex(cell, parentPatches, u);
+    if (index < 0) {
+        return;
+    }
+    bool parentIsSolid = parentSolid(mask, index, u);
     // The fine outline: rigid blocks by whether the fine cell's centre lies in one (or, without
     // a list of them, as the coarse cell is), and the structure as the coarse cell has it until
     // the structure's own fine pass (`refineRemaskPrepare`) refines it.
@@ -1129,17 +1459,17 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
         }
     } else {
-        rigid = rigidMask[index] != 0;
+        rigid = parentRigid(rigidMask, index, u);
     }
-    bool structure = u.experimentalBox == 0 && mask[index] != 0 && rigidMask[index] == 0;
+    bool structure = u.experimentalBox == 0 && parentIsSolid && !parentRigid(rigidMask, index, u);
     uint at = patch * cells + position;
     float3 point = (float3(fineCoordinates)+0.5f)*(u.dx/float(r));
     bool own = u.experimentalBox != 0 && experimentalBoxContains(point,u.dx/float(r),u,boxDefinition);
     fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0);
     fineWall[at] = own ? experimentalBoxVelocity(point,u,boxDefinition)
-                      : structure ? wallVelocityOf(wallVelocity,cell,u) : float3(0.0f);
-    if (mask[index] == 0) {
-        fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u);
+                      : structure ? parentWallVelocity(wallVelocity, cell, index, u) : float3(0.0f);
+    if (!parentIsSolid) {
+        fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches);
     } else {
         // A fine cell of air in a coarse cell that is solid: air the coarse cells could not see,
         // which has held the still air the domain was filled with. (The mean of the air beside it
@@ -1154,7 +1484,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     }
     if (u.afterburnEnergy > 0.0f) {
         // At the coarse cell's mass fractions, so that the fine cells' mean is the coarse cell's.
-        fineSpecies[at] = mask[index] == 0
+        fineSpecies[at] = !parentIsSolid
             ? coarseSpecies[index] / max(coarse[index].rho, u.densityFloor) * fine[at].rho
             : float2(0.0f, u.stillOxygen);
     }
@@ -1164,7 +1494,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         int3 inPatch = cell - tile * patchSize;
         uint coarseCell = uint(inPatch.x + patchSize * (inPatch.y + patchSize * inPatch.z));
         impulseBase[patch * uint(patchSize * patchSize * patchSize) + coarseCell] = impulse[index];
-        seenMask[patch * uint(patchSize * patchSize * patchSize) + coarseCell] = mask[index] != 0 ? 1 : 0;
+        seenMask[patch * uint(patchSize * patchSize * patchSize) + coarseCell] = parentIsSolid ? 1 : 0;
     }
 }
 
@@ -1179,6 +1509,7 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
                                const device uchar *fineMask [[buffer(5)]],
                                device uint *pinned [[buffer(6)]],
                                device float2 *fineSpecies [[buffer(7)]],
+                               const device int *parentPatches [[buffer(8)]],
                                uint gid [[thread_position_in_grid]]) {
     uint perPatch = uint(patchSize * patchSize * patchSize);
     uint patch = newPatches[gid / perPatch];
@@ -1192,7 +1523,7 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
     }
     int r = int(u.refineRatio);
     int all = r * r * r;
-    bool coarseSolid = mask[cell.x + dims.x * (cell.y + dims.y * cell.z)] != 0;
+    bool coarseSolid = parentSolid(mask, parentIndex(cell, parentPatches, u), u);
     int fluid = 0;
     Cell lost = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float2 lostSpecies = float2(0.0f);
@@ -1238,14 +1569,19 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
 // `cellSize`. Where the air is refined (`ratio` > 0, the patches of the blocks `blocksX` by
 // `blocksY` across in `patchOfTile`, their cells in `fine`), it walks the fine cells instead, so
 // a face is loaded by the fine cell beside it: against a wall the air's pressure changes too
-// steeply for the mean over a coarse cell to stand for it.
+// steeply for the mean over a coarse cell to stand for it. With a second level (`deepRatio`, its
+// cells per coarse cell's edge, > 0), it walks that level's cells, and reads each where the
+// finest level holding it does.
 static inline float overpressureAlong(float3 point, float3 normal, float offset, int reach, const device Cell *fluid,
                                       const device uchar *fluidMask, const device int *patchOfTile,
                                       const device Cell *fine, const device uchar *fineMask, uint ratio, uint blocksX,
                                       uint blocksY, float cellSize, int3 dims, uint airModel, float gamma,
-                                      float ambient) {
-    float step = ratio != 0 ? cellSize / float(ratio) : cellSize;
-    int steps = ratio != 0 ? reach * int(ratio) : reach;
+                                      float ambient, const device int *deepPatches, const device Cell *deepFine,
+                                      const device uchar *deepMask, uint deepRatio, uint deepBlocksX,
+                                      uint deepBlocksY) {
+    uint finest = deepRatio != 0 ? deepRatio : ratio;
+    float step = finest != 0 ? cellSize / float(finest) : cellSize;
+    int steps = finest != 0 ? reach * int(finest) : reach;
     float3 sample = point + normal * (offset + 0.5f * step);
     for (int attempt = 0; attempt < steps; ++attempt) {
         int3 cell = int3(floor(sample / cellSize));
@@ -1256,15 +1592,31 @@ static inline float overpressureAlong(float3 point, float3 normal, float offset,
         // Under a patch the fine cells' own outline says what is fluid.
         int patch = -1;
         uint at = 0;
-        if (ratio != 0) {
+        bool deep = false;
+        if (deepRatio != 0) {
+            // Blocks of the second level are 4 cells of the first across.
+            float deepCell = cellSize / float(deepRatio);
+            int side = patchSize * int(ratio);
+            int3 global = int3(floor(sample / deepCell));
+            int3 block = global / side;
+            int found = deepPatches[block.x + int(deepBlocksX) * (block.y + int(deepBlocksY) * block.z)];
+            if (found >= 0) {
+                int3 local = clamp(global - block * side, 0, side - 1);
+                patch = found;
+                at = uint(found) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
+                deep = true;
+            }
+        }
+        if (ratio != 0 && !deep) {
             int3 block = cell / patchSize;
             patch = patchOfTile[block.x + int(blocksX) * (block.y + int(blocksY) * block.z)];
             int side = patchSize * int(ratio);
-            int3 local = clamp(int3(floor(sample / step)) - block * side, 0, side - 1);
+            int3 local = clamp(int3(floor(sample / (cellSize / float(ratio)))) - block * side, 0, side - 1);
             at = uint(max(patch, 0)) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
         }
-        if (patch >= 0 ? (fineMask[at] & 1) == 0 : fluidMask[index] == 0) {
-            Cell c = patch >= 0 ? fine[at] : fluid[index];
+        bool open = deep ? (deepMask[at] & 1) == 0 : (patch >= 0 ? (fineMask[at] & 1) == 0 : fluidMask[index] == 0);
+        if (open) {
+            Cell c = deep ? deepFine[at] : (patch >= 0 ? fine[at] : fluid[index]);
             float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, 1e-6f);
             return gasPressure(max(c.rho, 1e-6f), c.energy - kinetic, airModel, gamma) - ambient;
         }

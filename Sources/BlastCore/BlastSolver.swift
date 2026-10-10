@@ -116,6 +116,8 @@ public final class BlastSolver {
     public var mixed: MixedStructure? { bodies.first?.mixed }
     public var hasBody: Bool { !bodies.isEmpty }
     public var refinementPatchCapacity: Int { refinement?.maxPatches ?? 0 }
+    /// The patches the second level's pool holds (0 without one).
+    public var finerRefinementPatchCapacity: Int { finerRefinement?.maxPatches ?? 0 }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
     public var couplingStatistics: CouplingStatistics {
@@ -264,10 +266,14 @@ public final class BlastSolver {
     private var checkpointSubsteps = 0
     /// The finer level of the air, while it is refined (see `SolverConfiguration.refinement`).
     private(set) var refinement: AirRefinement?
+    /// The second finer level, refining the first, with `SolverConfiguration.refinementLevels` 2.
+    private(set) var finerRefinement: AirRefinement?
+    /// The refined levels, finest last.
+    var refinementLevels: [AirRefinement] { [refinement, finerRefinement].compactMap { $0 } }
     /// Bound in place of the refinement's buffers while the air is not refined.
     private let refinementPlaceholder: MTLBuffer
-    /// Per gauge: the fine cell of its cell that holds its point, as x + r (y + r z), or
-    /// `UInt32.max` to read the coarse cell.
+    /// Per gauge: the finest cell of its cell that holds its point, as x + R (y + R z) for R
+    /// finest cells along a coarse cell's edge, or `UInt32.max` to read the coarse cell.
     private let gaugeChildBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
@@ -419,6 +425,16 @@ public final class BlastSolver {
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
+    /// The densities of unburnt detonation products (x) and oxygen (y) to read, or nil without
+    /// afterburning.
+    func readSpecies<R>(_ body: (UnsafeBufferPointer<SIMD2<Float>>?) throws -> R) rethrows -> R {
+        precondition(!batchInFlight, "Cannot read state while a batch is in flight")
+        guard hasSpecies else { return try body(nil) }
+        let pointer = speciesBuffers[current].contents().bindMemory(
+            to: SIMD2<Float>.self, capacity: grid.cellCount)
+        return try body(UnsafeBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
     /// Total unburnt detonation products (kg) and oxygen (kg) in the air.
     public func speciesTotals() -> (fuel: Double, oxygen: Double) {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
@@ -427,7 +443,7 @@ public final class BlastSolver {
         let species = speciesBuffers[current].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
-        let fine = refinement?.gas(in: grid)
+        let fine = refinedGas()
         var total = SIMD2<Double>.zero
         for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
             total += SIMD2(Double(species[index].x), Double(species[index].y))
@@ -514,7 +530,19 @@ public final class BlastSolver {
         updateGaugeChildren()
     }
 
-    /// Which fine cell of its cell each gauge reads, for the current refinement.
+    /// Binds the second level's patches, cells and outline for the gauges (any buffer without).
+    private func encodeFinerGaugeBuffers(_ encoder: MTLComputeCommandEncoder) {
+        if let deep = finerRefinement, let parent = deep.parent {
+            encoder.setBuffer(parent.patchOfTile, offset: deep.patchOffset * 4, index: 12)
+            encoder.setBuffer(
+                parent.fine[0], offset: deep.cellOffset * MemoryLayout<CellState>.stride, index: 13)
+            encoder.setBuffer(parent.fineMask, offset: deep.cellOffset, index: 14)
+        } else {
+            for index in 12...14 { encoder.setBuffer(refinementPlaceholder, offset: 0, index: index) }
+        }
+    }
+
+    /// Which finest cell of its cell each gauge reads, for the current refinement.
     private func updateGaugeChildren() {
         let pointer = gaugeChildBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
         let cells = gaugeCellBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
@@ -523,7 +551,7 @@ public final class BlastSolver {
             guard let refinement, n < gaugePoints.count, let point = gaugePoints[n] else { continue }
             let index = Int(cells[n])
             let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
-            let r = refinement.ratio
+            let r = refinementLevels.reduce(1) { $0 * $1.ratio }
             let within = simd_clamp(
                 point / grid.cellSize - SIMD3<Float>(cell), .zero, SIMD3(repeating: 0.999))
             let child = SIMD3<Int>((within * Float(r)).rounded(.down))
@@ -660,6 +688,13 @@ public final class BlastSolver {
             uniforms.blocksX = UInt32(refinement.tileDims.x)
             uniforms.blocksY = UInt32(refinement.tileDims.y)
         }
+        if let deep = finerRefinement {
+            uniforms.deepRatio = UInt32(deep.parentScale * deep.ratio)
+            uniforms.deepBlocksX = UInt32(deep.tileDims.x)
+            uniforms.deepBlocksY = UInt32(deep.tileDims.y)
+            uniforms.deepPatchOffset = UInt32(deep.patchOffset)
+            uniforms.deepCellOffset = UInt32(deep.cellOffset)
+        }
         if let structure = body?.solids ?? (bodies.count == 1 ? structure : nil) {
             let h = structure.model.elementSize
             // A cell is solid when at least a third of it is filled with intact elements. Elements
@@ -670,12 +705,16 @@ public final class BlastSolver {
             uniforms.threshold = UInt32(max(1, (perCell / 3).rounded(.up)))
             if let refinement {
                 // For the fine cells, each element is sampled at points no further apart than a
-                // fine cell, and a fine cell is solid when a third of it is covered.
-                let fineCell = grid.cellSize / Float(refinement.ratio)
-                let samples = max(1, Int((h / fineCell - 1e-3).rounded(.up)))
+                // cell of the finest level, and a fine cell of each level is solid when a third
+                // of it is covered.
+                let finest = grid.cellSize / Float(refinementLevels.reduce(1) { $0 * $1.ratio })
+                let samples = max(1, Int((h / finest - 1e-3).rounded(.up)))
+                func threshold(_ cell: Float) -> UInt32 {
+                    UInt32(max(1, (pow(cell * Float(samples) / h, 3) / 3).rounded(.up)))
+                }
                 uniforms.fineSamples = UInt32(samples)
-                uniforms.fineThreshold = UInt32(
-                    max(1, (pow(fineCell * Float(samples) / h, 3) / 3).rounded(.up)))
+                uniforms.fineThreshold = threshold(grid.cellSize / Float(refinement.ratio))
+                if finerRefinement != nil { uniforms.deepThreshold = threshold(finest) }
             }
             uniforms.ex = UInt32(structure.ex)
             uniforms.ey = UInt32(structure.ey)
@@ -830,14 +869,14 @@ public final class BlastSolver {
         guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
         encodeAllocateCoupling(encoder)
         var uniforms = couplingUniforms(region)
-        if !fine { uniforms.refineRatio = 0 }
+        if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let length = MemoryLayout<CouplingUniforms>.stride
         let patches = refinement?.patchOfTile ?? refinementPlaceholder
         let fineOccupancy = refinement?.fineOccupancy ?? refinementPlaceholder
 
         for body in bodies {
             uniforms = couplingUniforms(region, body: body)
-            if !fine { uniforms.refineRatio = 0 }
+            if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
             if let structure = body.solids {
                 encoder.setComputePipelineState(splatPipeline)
                 encoder.setBuffer(structure.instanceBuffer, offset: 0, index: 0)
@@ -912,13 +951,23 @@ public final class BlastSolver {
                     refinement?.encodeComposeBody(
                         encoder, threshold: uniforms.fineThreshold,
                         interaction: interactionBuffer, uniforms: makeUniforms())
+                    if let deep = finerUniforms(makeUniforms()) {
+                        finerRefinement?.encodeComposeBody(
+                            encoder, threshold: uniforms.deepThreshold, interaction: interactionBuffer,
+                            uniforms: deep)
+                    }
                 }
             }
         }
         uniforms = couplingUniforms(region)
-        if !fine { uniforms.refineRatio = 0 }
+        if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let composed = combinedOccupancyBuffer ?? occupancyBuffer
-        if fine, bodies.count > 1 { refinement?.encodePublishBodies(encoder, uniforms: makeUniforms()) }
+        if fine, bodies.count > 1 {
+            refinement?.encodePublishBodies(encoder, uniforms: makeUniforms())
+            if let deep = finerUniforms(makeUniforms()) {
+                finerRefinement?.encodePublishBodies(encoder, uniforms: deep)
+            }
+        }
 
         let size = couplingSize(region)
         let width = remaskPreparePipeline.threadExecutionWidth
@@ -946,8 +995,12 @@ public final class BlastSolver {
 
         if fine, let refinement {
             refinement.encodeRemask(
-                encoder, coarse: stateBuffers[current], mask: maskBuffer, threshold: uniforms.fineThreshold,
+                encoder, parent: coarseView(species: currentSpecies), threshold: uniforms.fineThreshold,
                 uniforms: makeUniforms())
+            if let finerRefinement, let deep = finerUniforms(makeUniforms()) {
+                finerRefinement.encodeRemask(
+                    encoder, parent: refinement.view(), threshold: uniforms.deepThreshold, uniforms: deep)
+            }
         }
     }
 
@@ -1064,75 +1117,173 @@ public final class BlastSolver {
             encoder.setBuffer(hasSpecies ? speciesBuffers[current] : noSpecies, offset: 0, index: 4)
             dispatchGrid(encoder, pipeline: wakeTilesPipeline)
         }
-        if let refinement {
+        var placed = 0
+        if refinement != nil {
             // Refine around the charge from the start; the regrid acts only on a step that
             // advances, so the clock is given one.
             var control = StepControl()
             control.dt = 1
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
-            refinement.encodeRegrid(
-                encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
-                rigidMask: (hasBody || experimentalBoxCentre != nil) ? rigidMaskBuffer : maskBuffer,
-                wallVelocity: wallVelocityBuffer,
-                control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer, tiles: nil,
-                grid: grid,
-                uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
+            encodeRegrid(encoder, species: currentSpecies, uniforms: uniforms, tiles: nil)
             // The structure's own outline in the new patches.
             encodeRemask(encoder)
+            placed = 1
         }
         encodeVisualization(encoder)
         encoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        if let refinement, !fineDeposit.isEmpty {
-            // The charges' fine cells, and every other fine cell of the coarse cells they touch,
-            // whose mean the coarse cells already hold.
-            // With afterburning, the products are all unburnt fuel, and the air keeps its oxygen.
-            let r = refinement.ratio
-            let stillOxygen = Self.oxygenInAir * stillCell.density
-            var cells: [SIMD3<Int>: (state: CellState, species: SIMD2<Float>)] = [:]
-            for coarse in Set(fineDeposit.keys.map { $0 / r }) {
-                for n in 0..<(r * r * r) {
-                    let fine = coarse &* r &+ SIMD3(n % r, (n / r) % r, n / (r * r))
-                    var cell = stillCell
-                    var species = SIMD2<Float>(0, stillOxygen)
-                    if let added = fineDeposit[fine] {
-                        cell.density += added.x
-                        cell.energy += added.y
-                        species.x += added.x
-                    }
-                    cells[fine] = (cell, species)
-                }
-            }
-            refinement.setFine(cells)
+        depositFine(level: 0)
+        // A level beneath another is placed from its parent's cells, once they hold the charge,
+        // and the first level is kept around it.
+        while placed < refinementLevels.count {
+            guard let commandBuffer = commandQueue.makeCommandBuffer(),
+                let encoder = commandBuffer.makeComputeCommandEncoder()
+            else { return }
+            encodeRegrid(encoder, species: currentSpecies, uniforms: uniforms, tiles: nil)
+            encodeRemask(encoder)
+            encoder.endEncoding()
+            commandBuffer.commit()
+            commandBuffer.waitUntilCompleted()
+            depositFine(level: placed)
+            placed += 1
         }
     }
 
-    /// Makes, keeps or drops the finer level for the configuration, and releases its patches.
+    /// Gives the cells of refinement level `level` (0 the first) their share of the charges laid
+    /// down in the finest cells (`fineDeposit`): every cell of the coarse cells they touch, each
+    /// the mean of the finest cells in it, whose mean the coarse cells already hold. With
+    /// afterburning, the products are all unburnt fuel, and the air keeps its oxygen.
+    private func depositFine(level: Int) {
+        guard level < refinementLevels.count, !fineDeposit.isEmpty else { return }
+        let target = refinementLevels[level]
+        let finest = refinementLevels.reduce(1) { $0 * $1.ratio }
+        let r = target.parentScale * target.ratio
+        let below = finest / r
+        let stillOxygen = Self.oxygenInAir * stillCell.density
+        var cells: [SIMD3<Int>: (state: CellState, species: SIMD2<Float>)] = [:]
+        for coarse in Set(fineDeposit.keys.map { $0 / finest }) {
+            for n in 0..<(r * r * r) {
+                let fine = coarse &* r &+ SIMD3(n % r, (n / r) % r, n / (r * r))
+                var cell = stillCell
+                var species = SIMD2<Float>(0, stillOxygen)
+                // The mean of its finest cells, summed in double precision, so that it does not
+                // depend on their order.
+                var added = SIMD2<Double>.zero
+                for m in 0..<(below * below * below) {
+                    let finer = fine &* below &+ SIMD3(m % below, (m / below) % below, m / (below * below))
+                    added += SIMD2<Double>(fineDeposit[finer] ?? .zero)
+                }
+                if added != .zero {
+                    let mean = SIMD2<Float>(added / Double(below * below * below))
+                    cell.density += mean.x
+                    cell.energy += mean.y
+                    species.x += mean.x
+                }
+                cells[fine] = (cell, species)
+            }
+        }
+        target.setFine(cells)
+    }
+
+    /// Of the refinement's memory, the share each level takes when there are two: the second
+    /// level's blocks are an eighth the volume of the first's, so the shell of them around a
+    /// shock takes several times as many.
+    static let levelMemoryShares: [Double] = [1.0 / 3, 2.0 / 3]
+
+    /// Makes, keeps or drops the finer levels for the configuration, and releases their patches.
     private func setUpRefinement() {
         let ratio = configuration.refinement
         guard ratio > 1 else {
             refinement = nil
+            finerRefinement = nil
             updateGaugeChildren()
             return
         }
-        let memory = configuration.refinementMemory
-        let patches =
-            memory
-            / AirRefinement.bytesPerPatch(
-                ratio: ratio, species: hasSpecies, bodyComposition: bodies.count > 1)
-        if refinement?.ratio != ratio || refinement?.species != hasSpecies
-            || refinement?.bodyComposition != (bodies.count > 1)
-            || refinement?.maxPatches != max(1, patches)
-        {
+        let levels = configuration.refinementLevels > 1 && experimentalBoxCentre == nil ? 2 : 1
+        let total = configuration.refinementMemory
+        let memory =
+            levels == 1 ? [total] : Self.levelMemoryShares.map { Int(Double(total) * $0) }
+        let composition = bodies.count > 1
+        let first = AirRefinement.layout(
+            grid: grid, ratio: ratio, parentScale: 1, memory: memory[0], species: hasSpecies,
+            bodyComposition: composition)
+        let second =
+            levels > 1
+            ? AirRefinement.layout(
+                grid: grid, ratio: ratio, parentScale: ratio, memory: memory[1], species: hasSpecies,
+                bodyComposition: composition) : nil
+        let side = AirRefinement.patchSize * ratio
+        let reserve =
+            second.map { ($0.tileDims.x * $0.tileDims.y * $0.tileDims.z, $0.maxPatches * side * side * side) }
+            ?? (0, 0)
+        let layoutChanged =
+            refinement?.ratio != ratio || refinement?.species != hasSpecies
+            || refinement?.bodyComposition != composition || refinement?.maxPatches != first.maxPatches
+            || finerRefinement?.maxPatches != second?.maxPatches
+            || (refinement?.patchOfTile.length ?? 0)
+                != max(16, (first.tileDims.x * first.tileDims.y * first.tileDims.z + reserve.0) * 4)
+        if layoutChanged {
             refinement = nil
+            finerRefinement = nil
             refinement = try? AirRefinement(
-                device: device, library: library, grid: grid, ratio: ratio, memory: memory,
-                species: hasSpecies, bodyComposition: bodies.count > 1)
+                device: device, library: library, grid: grid, ratio: ratio, memory: memory[0],
+                species: hasSpecies, bodyComposition: composition, reserve: (reserve.0, reserve.1))
+            if levels > 1, let refinement {
+                finerRefinement = try? AirRefinement(
+                    device: device, library: library, grid: grid, ratio: ratio, memory: memory[1],
+                    species: hasSpecies, bodyComposition: composition, parent: refinement)
+            }
         }
-        refinement?.reset()
-        refinement?.setBoxes(rigidBoxes)
+        for level in refinementLevels {
+            level.reset()
+            level.setBoxes(rigidBoxes)
+        }
         updateGaugeChildren()
+    }
+
+    /// The uniforms of the second level, from the coarse grid's.
+    private func finerUniforms(_ base: SolverUniforms) -> SolverUniforms? {
+        finerRefinement?.levelUniforms(
+            from: base,
+            threshold: configuration.refinementFinerThreshold ?? configuration.refinementThreshold,
+            grid: grid)
+    }
+
+    /// The coarse grid as the first level sees it.
+    private func coarseView(species: MTLBuffer) -> AirRefinement.ParentView {
+        AirRefinement.ParentView(
+            state: stateBuffers[current], species: species, mask: maskBuffer,
+            rigid: (hasBody || experimentalBoxCentre != nil) ? rigidMaskBuffer : maskBuffer,
+            wallVelocity: wallVelocityBuffer, impulse: impulseBuffer, placeholder: refinementPlaceholder)
+    }
+
+    /// Step 7 for every level: flags each level's blocks (the second level's from the first
+    /// level's cells, before the first is placed afresh), keeps the first level around the
+    /// second, and places each level's patches, coarsest first.
+    private func encodeRegrid(
+        _ encoder: MTLComputeCommandEncoder, species: MTLBuffer, uniforms: SolverUniforms,
+        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?
+    ) {
+        guard let refinement else { return }
+        let deep = finerUniforms(uniforms)
+        if let finerRefinement, let deep {
+            finerRefinement.encodeFlagFromParent(encoder, control: controlBuffer, uniforms: deep)
+        }
+        refinement.encodeFlag(
+            encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer, tiles: tiles,
+            grid: grid, uniforms: uniforms)
+        if let finerRefinement, let deep {
+            finerRefinement.encodeNest(encoder, control: controlBuffer, uniforms: deep)
+        }
+        refinement.encodePlace(
+            encoder, parent: coarseView(species: species), control: controlBuffer, tileFlags: tileFlagBuffer,
+            uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
+        if let finerRefinement, let deep {
+            finerRefinement.encodePlace(
+                encoder, parent: refinement.view(), control: controlBuffer, tileFlags: tileFlagBuffer,
+                uniforms: deep)
+        }
     }
 
     // MARK: - Stepping
@@ -1246,6 +1397,7 @@ public final class BlastSolver {
             encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 9)
             encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
             encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
+            encodeFinerGaugeBuffers(encoder)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -1253,7 +1405,8 @@ public final class BlastSolver {
             let refining = refinement != nil && !asleep
             if let refinement, refining {
                 refinement.encodeSaveHalo(
-                    encoder, coarse: stateBuffers[current], uniforms: uniforms, control: controlBuffer)
+                    encoder, parent: coarseView(species: currentSpecies), uniforms: uniforms,
+                    control: controlBuffer)
             }
 
             // Alternate the sweep order each step so the splitting error stays second order.
@@ -1295,13 +1448,13 @@ public final class BlastSolver {
                 current = 1 - current
             }
             if let refinement, refining {
+                let coarse = coarseView(species: currentSpecies)
                 refinement.encodeSubsteps(
-                    encoder, axes: axes, coarse: stateBuffers[current], coarseSpecies: currentSpecies,
-                    mask: maskBuffer, peak: peakBuffer, control: controlBuffer, maxSpeed: maxSpeedBuffer,
-                    wallVelocity: wallVelocityBuffer, uniforms: uniforms)
+                    encoder, axes: axes, parent: coarse, peak: peakBuffer, control: controlBuffer,
+                    maxSpeed: maxSpeedBuffer, uniforms: uniforms,
+                    child: finerRefinement.flatMap { level in finerUniforms(uniforms).map { (level, $0) } })
                 refinement.encodeRefluxAndRestrict(
-                    encoder, axes: axes, coarse: stateBuffers[current], coarseSpecies: currentSpecies,
-                    mask: maskBuffer, control: controlBuffer, impulse: impulseBuffer, uniforms: uniforms)
+                    encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms)
             }
 
             phase("mechanics")
@@ -1322,6 +1475,11 @@ public final class BlastSolver {
                     binding.refinement = (
                         refinement.patchOfTile, refinement.fine[0], refinement.fineMask, refinement.ratio,
                         refinement.tileDims
+                    )
+                }
+                if let deep = finerRefinement {
+                    binding.deepRefinement = (
+                        deep.parentScale * deep.ratio, deep.tileDims, deep.patchOffset, deep.cellOffset
                     )
                 }
                 let count = asleep ? structureSubsteps : substeps
@@ -1352,19 +1510,19 @@ public final class BlastSolver {
                 }
                 if let refinement, refining {
                     refinement.encodeSync(
-                        encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer,
+                        encoder, parent: coarseView(species: currentSpecies), control: controlBuffer,
                         uniforms: uniforms)
+                    if let finerRefinement, let deep = finerUniforms(uniforms) {
+                        finerRefinement.encodeSync(
+                            encoder, parent: refinement.view(), control: controlBuffer, uniforms: deep)
+                    }
                 }
             }
             phase("air")
-            if let refinement, refining {
-                refinement.encodeRegrid(
-                    encoder, coarse: stateBuffers[current], coarseSpecies: currentSpecies, mask: maskBuffer,
-                    rigidMask: (hasBody || experimentalBoxCentre != nil) ? rigidMaskBuffer : maskBuffer,
-                    wallVelocity: wallVelocityBuffer,
-                    control: controlBuffer, impulse: impulseBuffer, tileFlags: tileFlagBuffer,
-                    tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil, grid: grid,
-                    uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
+            if refining {
+                encodeRegrid(
+                    encoder, species: currentSpecies, uniforms: uniforms,
+                    tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil)
             }
             phase("observation")
             encodeExposure(encoder, initial: false)
@@ -1382,6 +1540,7 @@ public final class BlastSolver {
             encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 9)
             encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
             encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
+            encodeFinerGaugeBuffers(encoder)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -1391,7 +1550,7 @@ public final class BlastSolver {
         }
         frameExtractor?.encode(
             encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
-            control: controlBuffer, uniforms: makeUniforms())
+            species: currentSpecies, hasSpecies: hasSpecies, control: controlBuffer, uniforms: makeUniforms())
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -1461,7 +1620,8 @@ public final class BlastSolver {
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
-            refinedTiles: refinement?.patchCount ?? 0, stoppedShort: control.stopped == 1,
+            refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
+            stoppedShort: control.stopped == 1,
             reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected,
             couplingCapacityExceeded: couplingCapacityExceeded)
     }
@@ -1486,6 +1646,7 @@ public final class BlastSolver {
             total.maxOverpressure = result.maxOverpressure
             total.isStable = total.isStable && result.isStable && commandBuffer.error == nil
             total.refinedTiles = result.refinedTiles
+            total.finerRefinedTiles = result.finerRefinedTiles
             remaining -= result.steps
             stoppedShort = result.stoppedShort
             if result.steps == 0 || result.reachedLimit || (result.steps < count && !result.stoppedShort)
@@ -1512,6 +1673,7 @@ public final class BlastSolver {
             total.maxOverpressure = result.maxOverpressure
             total.isStable = total.isStable && result.isStable
             total.refinedTiles = result.refinedTiles
+            total.finerRefinedTiles = result.finerRefinedTiles
             if result.steps == 0 || !result.isStable { break }
         }
         total.unsupportedInteraction = interObjectContactDetected
@@ -1608,12 +1770,27 @@ public final class BlastSolver {
             fromByteOffset: grid.index(i, j, k) * MemoryLayout<Float>.stride, as: Float.self)
     }
 
+    /// The gas the refined levels hold, each cell counted at the finest level that holds it: the
+    /// coarse cells the first level covers, and the mass, energy, momentum and fuel and oxygen.
+    private func refinedGas() -> (
+        covered: Set<Int>, mass: Double, energy: Double, momentum: SIMD3<Double>, species: SIMD2<Double>
+    )? {
+        guard let refinement else { return nil }
+        guard let finerRefinement else { return refinement.gas(in: grid) }
+        let deep = finerRefinement.gas(in: grid)
+        let first = refinement.gas(in: grid, excluding: deep.covered)
+        return (
+            first.covered, first.mass + deep.mass, first.energy + deep.energy, first.momentum + deep.momentum,
+            first.species + deep.species
+        )
+    }
+
     /// Total mass (kg) and energy (J) of the gas, summed over fluid cells; under the patches of
     /// refined air, over their fluid fine cells.
     public func totals() -> (mass: Double, energy: Double) {
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
-        let fine = refinement?.gas(in: grid)
+        let fine = refinedGas()
         return withState { cells in
             var mass = 0.0
             var energy = 0.0
@@ -1629,7 +1806,7 @@ public final class BlastSolver {
     public func momentum() -> SIMD3<Double> {
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
-        let fine = refinement?.gas(in: grid)
+        let fine = refinedGas()
         return withState { cells in
             var total = SIMD3<Double>.zero
             for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
@@ -1661,7 +1838,8 @@ public final class BlastSolver {
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
             + (exposurePlane?.buffer.length ?? 0)
             + (envelopeExposure?.memoryFootprint ?? 0)
-            + bodies.reduce(0) { $0 + $1.memoryFootprint } + (refinement?.memoryFootprint ?? 0)
+            + bodies.reduce(0) { $0 + $1.memoryFootprint }
+            + refinementLevels.reduce(0) { $0 + $1.memoryFootprint }
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
             + (experimentalBoxImpulse?.length ?? 0)
             + (hasBody
@@ -1708,6 +1886,11 @@ public final class BlastSolver {
         uniforms.stillEnergy = stillCell.energy
         uniforms.airModel = configuration.airModel.rawValue
         refinement?.configure(&uniforms, threshold: configuration.refinementThreshold)
+        if let finerRefinement {
+            uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
+            uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)
+            uniforms.childTileNz = UInt32(finerRefinement.tileDims.z)
+        }
         if hasSpecies {
             uniforms.afterburnEnergy = configuration.afterburnEnergy
             uniforms.oxygenPerFuel = Self.oxygenPerFuel
@@ -1849,6 +2032,10 @@ extension BlastSolver {
         }
         guard own.contains(1) || configuration.refinement > 1 else {
             throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
+        }
+        // The experimental box is resolved by one finer level only.
+        guard finerRefinement == nil else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
         let fineCommit =
             !initial

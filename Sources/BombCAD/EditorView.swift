@@ -102,6 +102,8 @@ struct EditorView: View {
                 Text("Blocks reflect the blast but never move or break.")
             }
 
+            FreestandingObjectsSection(model: model)
+
             if !model.settings.scenario.envelopeObjects.isEmpty {
                 Section {
                     ForEach(model.settings.scenario.envelopeObjects) { object in

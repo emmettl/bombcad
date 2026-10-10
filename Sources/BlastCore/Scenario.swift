@@ -352,9 +352,11 @@ extension BlastSolver {
         return radius >= 3 * dx ? (radius, onGround) : nil
     }
 
-    /// The ratio the air will be refined by at the next `restart()`, or 1.
+    /// The ratio the air's finest level will be refined by at the next `restart()`, or 1.
     var refinementAtRestart: Int {
-        configuration.refinement > 1 ? configuration.refinement : 1
+        guard configuration.refinement > 1 else { return 1 }
+        return configuration.refinementLevels > 1
+            ? configuration.refinement * configuration.refinement : configuration.refinement
     }
 
     /// Radius of the sphere the charge's energy is spread over: the physical charge size,
