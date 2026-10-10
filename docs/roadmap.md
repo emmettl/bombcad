@@ -37,7 +37,7 @@ it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
-| 9 | Supports and freestanding objects are checked against statics and theory, and footings against one centrifuge test only | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; but only the nearest object takes the air's load, its late flow is not converged, and the cars are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | Supports and freestanding objects are checked against statics and theory, and footings against one centrifuge test only | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -1952,12 +1952,13 @@ extraction.
    from a row of cars to a populated car park and a furnished room, with explicit friction
    and support assumptions. Benchmark each against identical geometry held stationary,
    reporting air-grid cost separately from motion, coupling and contact; include a crowded
-   collision case. Do not promise a throughput target before these measurements. (Started:
-   contact between bodies, blocks and the ground with a sweep over grown bounds, tested for
-   momentum, energy and resting stacks; the app places, duplicates and edits boxes and cars and
-   shows their motion, displacement, speed and tipping, with the nearest one in the air and the
-   rest moving through contact; a row of cars, held and free, and a 256-box crowded case. See
-   [freestanding objects](freestanding-objects.md#several-objects).)
+   collision case. Do not promise a throughput target before these measurements. (Done:
+   contact between bodies, blocks and the ground with a sweep over grown bounds; every object
+   in the air with its own moving boundary and patches, tested against one box of the same
+   size, a sheltered box and the gas's budget; objects striking solids and shells, with
+   momentum and energy budgets; a populated car park, a furnished room and a crowded pen in
+   the app or the study, each against the same geometry held, the coupling costing more than
+   the air. See [freestanding objects](freestanding-objects.md#several-objects).)
 
 Structural anchorage is a separate extension: retain ideal fixed supports as an explicit
 option, then add connections that can deform, open and fail under tension or shear, with

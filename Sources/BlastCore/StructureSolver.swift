@@ -926,6 +926,24 @@ public final class StructureSolver {
         SIMD3((0..<3).map { stateValue(i, j, k, offset: 92 + 4 * $0) })
     }
 
+    /// With bars that slip, the slip of node (i, j, k)'s bars along each lattice axis relative to
+    /// the concrete, in metres, and the largest slip each has reached; nil when perfectly bonded.
+    public func barSlip(_ i: Int, _ j: Int, _ k: Int) -> (slip: SIMD3<Float>, largest: SIMD3<Float>)? {
+        guard model.bondSlip != nil, let n = storedNode(i, j, k) else { return nil }
+        let states = (0..<3).map {
+            slipBuffer.contents().load(fromByteOffset: (3 * n + $0) * 16, as: SIMD4<Float>.self)
+        }
+        return (SIMD3(states.map(\.x)), SIMD3(states.map(\.w)))
+    }
+
+    /// With bars that slip (`StructureModel.bondSlip`), the force (N) the bars along each lattice
+    /// axis carry through element (i, j, k) in the last step; nil when they are perfectly bonded.
+    public func barForce(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float>? {
+        guard model.bondSlip != nil, let n = compactIndex(i, j, k) else { return nil }
+        let value = barForceBuffer.contents().load(fromByteOffset: n * 32, as: SIMD4<Float>.self)
+        return SIMD3(value.x, value.y, value.z)
+    }
+
     /// The state of the base's connection to the ground, when it has one (`Anchorage`).
     public struct AnchorSummary: Sendable {
         /// Nodes tied to the ground (for shells, points of their footprint), and those whose tie

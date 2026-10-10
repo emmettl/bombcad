@@ -187,7 +187,7 @@ struct FreestandingObjectsSection: View {
             Text("Freestanding objects (experimental)")
         } footer: {
             Text(
-                "Rigid boxes and simplified cars (locked wheels, rigid suspension) that slide, tip and strike each other and the blocks. They do not take part in the ordinary run. Motion couples the object nearest the charge to the air, on 0.05 m cells around it; the others move only when struck, take no air load and do not obstruct the blast."
+                "Rigid boxes and simplified cars (locked wheels, rigid suspension) that slide, tip and strike each other and the blocks. They do not take part in the ordinary run. Motion puts every object in the air, on 0.05 m cells around each (0.075 m beyond four objects), so they shield and reflect onto each other, and moves them through the air's load and contact; one nearing the edge of the air leaves it."
             )
         }
     }
@@ -235,7 +235,10 @@ struct FreestandingObjectsSection: View {
                 .font(.caption.bold())
                 ForEach(Array(result.objects.enumerated()), id: \.offset) { n, object in
                     GridRow {
-                        Text(object.name + (n == result.coupled ? " (in air)" : ""))
+                        Text(
+                            object.name
+                                + (!result.coupled.contains(n)
+                                    ? " (contact only)" : object.leftAir != nil ? " (left the air)" : ""))
                         Text(String(format: "%.2f m", simd_length(object.displacement)))
                         Text(String(format: "%.2f m/s", object.peakSpeed))
                         Text(String(format: "%.0f°", object.peakTilt))
@@ -264,7 +267,7 @@ struct FreestandingObjectsSection: View {
             Text(
                 String(
                     format:
-                        "%.2g m air, ×%d at the coupled object; %.0f s in the air, %.0f s coupling, %.1f s motion and contact.",
+                        "%.2g m air, ×%d at the objects; %.0f s in the air, %.0f s coupling, %.1f s motion and contact.",
                     result.cellSize, result.refinement, result.timings.air, result.timings.coupling,
                     result.timings.mechanics)
             )
