@@ -698,8 +698,10 @@ Ten values in the code were written from memory and should be checked against th
     and settled to about 0.1 m/s. Four pressure gauges in the chamber (back wall, vent wall,
     two on a side wall), two outside at 1.17 and 3.45 m from the vent, twenty thermocouples
     for the flame's arrival, sampled at 25 kHz. The peaks are not tabulated: the back wall's
-    pressure histories are plotted (Figures 3 and 6 to 9) and would be digitised. The first
-    choice. Their propane work (*Combustion Science and Technology*, 2010) and
+    pressure histories are plotted (Figures 3 and 6 to 9). The first choice. **Digitised
+    10 October 2026** from the PDF's vector paths, the pressures and the flame speeds, with the
+    script and its checks (`Bauwens2008/digitised/`), and compared in
+    [Gas deflagrations](deflagration.md#bauwens-chaffee-and-dorofeev-2008). Their propane work (*Combustion Science and Technology*, 2010) and
     *International Journal of Hydrogen Energy* paper (2011) are paywalled.
   - Mercx (1992), IChemE Symposium Series 130, paper 29 (a PDF on icheme.org, title not
     confirmed): by search summaries, methane-air vented from a 38.5 m³ enclosure the size of a
@@ -735,7 +737,7 @@ their licence, as `Samples/FoRCy` does.
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
 | `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
-| `Bauwens2008` | The *Fire Safety Science* 9 paper and a text extract | 1.3 MB | Free to read (IAFSS) |
+| `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
 
 PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not

@@ -6,17 +6,34 @@ import Foundation
 /// and the products and oxygen across the cells' faces as the turbulence the grid cannot resolve
 /// would. Off by default (nil in `SolverConfiguration`).
 public struct SubgridMixing: Sendable, Hashable, Codable {
-    /// Smagorinsky's coefficient C: 0.17 from Lilly's estimate for the inertial range; smaller
-    /// values are often used where the scheme itself dissipates.
+    /// How the eddy viscosity is worked out from the resolved flow.
+    public enum Model: String, Sendable, Hashable, Codable {
+        /// Smagorinsky's (C Δ)² |S|.
+        case smagorinsky
+        /// Nicoud et al.'s (2011) σ-model, (C Δ)² σ₃(σ₁ − σ₂)(σ₂ − σ₃)/σ₁² from the velocity
+        /// gradient's singular values: zero in one- and two-dimensional, axisymmetric, purely
+        /// sheared and rigidly rotating flow, such as the laminar flow round a growing flame.
+        case sigma
+    }
+
+    /// The model's coefficient C: for Smagorinsky's, 0.17 from Lilly's estimate for the inertial
+    /// range (smaller values are often used where the scheme itself dissipates); for the σ-model,
+    /// 1.35, which Nicoud et al. found gives the same dissipation in isotropic turbulence.
     public var coefficient: Float = 0.17
     /// The turbulent Prandtl and Schmidt numbers, the ratio of the eddy viscosity to the eddy
     /// diffusivities of heat and of the products and oxygen.
     public var prandtl: Float = 0.7
+    /// Smagorinsky's unless set (saves made before the σ-model open unchanged).
+    public var model: Model?
 
-    public init(coefficient: Float = 0.17, prandtl: Float = 0.7) {
+    public init(coefficient: Float = 0.17, prandtl: Float = 0.7, model: Model? = nil) {
         self.coefficient = coefficient
         self.prandtl = prandtl
+        self.model = model
     }
+
+    /// The σ-model with Nicoud et al.'s coefficient, as a deflagration's turbulent flame uses it.
+    public static let sigma = SubgridMixing(coefficient: 1.35, model: .sigma)
 }
 
 /// An extinction limit for afterburning (see `afterburntHere` in Solver.metal and

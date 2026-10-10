@@ -64,7 +64,7 @@ swift run -c release blastbench chamber
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), 40–70% under 0.2–0.8 kg where the tests spalled; contact charges hole them, not to size. Wang et al. (2022): an aluminised charge's impulse 75% as its stated 10 kg of TNT, 94% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges; low for one layer against two, spall and holes |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Low: illustrative; afterburning keeps the fireball near the flame temperature |
-| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to an eighth with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a sixtieth of Molkov's correlation. FM Global's six tests (digitised): lit at the back wall, 55–60% of the measured peaks, with the measured flame speeds; lit in the middle, a fifth to a seventh, the flame stalling towards the back wall | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation, 5–16% low beyond; settlement 1.7–2.2 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, peak rotation within 22% where the test did not lurch one way, a sixth to a half of the energy dissipated | Moderate for rocking moment and settlement; low for energy and for a footing that lurches |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
@@ -2095,16 +2095,23 @@ A premixed methane or propane cloud lit at a point (see [Gas deflagrations](defl
   conserved to 10⁻⁵; the times to half and nine tenths of the rise converge on the model's,
   within 1% and 3% at 48 cells across the radius; the deflagration index converges slowly from
   below (51 bar m/s against 76 at 48 cells), the last unburnt gas being far thinner than a cell.
-- **A tube**: a laminar flame lit at the closed end runs at the expansion ratio times the
-  burning velocity to within 10%.
-- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a fiftieth of
-  Molkov's correlation, and far below Bartknecht's and NFPA 68's, with the default flame; a fifth
-  to a seventh with its burning velocity tripled. Against Bauwens et al.'s six tests in that
-  chamber, whose peaks are only plotted, the model reaches a tenth (lit in the middle) to a half
-  (lit at the back wall) of the plots' axes, with the measured trends' directions. The flame's
-  acceleration by turbulence and instabilities, which these tests and correlations include, is a
-  factor in the model, not a model. The vented peak does not converge (0.56, 0.35 and 0.57 kPa on
-  0.2, 0.1 and 0.05 m cells). Illustrative.
+- **A tube**: a flame lit at the closed end runs at the expansion ratio times the burning
+  velocity to within 10%, laminar or turbulent.
+- **The turbulent flame** (the default) is wrinkled by sub-grid turbulence after Bauwens et al.'s
+  LES, Bradley's correlation fed by the air's σ-model eddy viscosity. In the closed sphere it runs
+  4–8% ahead of the laminar flame, from the grid's own flow at the front.
+- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a
+  sixtieth of Molkov's correlation, and far below Bartknecht's and NFPA 68's. Against Bauwens et
+  al.'s six tests in that chamber, digitised from the paper's plots:
+  - Lit at the back wall, the model reaches 55–60% of the measured peaks (their LES 30–60%), with
+    flame speeds within a fifth of the measured beyond 3 m.
+  - Lit in the middle it reaches a fifth to a seventh, its flame stalling towards the back wall
+    where the tests' ran at 3 m/s.
+
+  Obstacles the grid resolves now speed the flame (posts in the room: 0.55 kPa against 0.30). The
+  vented peak does not converge (0.64, 0.30 and 0.42 kPa on 0.2, 0.1 and 0.05 m cells); the flame
+  speed towards the vent roughly does. A young flame burns short of its speed until it is about
+  seventeen cells across. Illustrative.
 
 ## A footing rocked on dry sand
 

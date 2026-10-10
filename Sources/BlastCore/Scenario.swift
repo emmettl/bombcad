@@ -31,6 +31,45 @@ public struct Gauge: Sendable, Hashable, Identifiable, Codable {
     public var id: String { name }
 }
 
+extension Scenario {
+    /// The scaled distances (m/kg^(1/3)) a line of gauges stands at unless told otherwise: the span
+    /// of the Kingery-Bulmash curves, from close in to where the overpressure is a few kPa.
+    public static let gaugeLineScaledDistances: [Double] = [1, 1.5, 2, 3, 4, 5, 7, 10, 14, 20, 28, 40]
+
+    /// Gauges `height` above the ground (or the terrain) on a line from the charge along the
+    /// horizontal `direction`, one at each of `scaledDistances` (m/kg^(1/3) of the charge) that
+    /// falls inside the domain, named by scaled distance and range.
+    public func gaugeLine(
+        direction: SIMD2<Float>, scaledDistances: [Double] = gaugeLineScaledDistances, height: Float = 1.5
+    ) -> [Gauge] {
+        let length = simd_length(direction)
+        guard length > 0, charge.mass > 0 else { return [] }
+        let unit = direction / length
+        let scale = Float(cbrt(Double(charge.mass)))
+        let start = SIMD2(charge.position.x, charge.position.y)
+        return scaledDistances.compactMap { z in
+            let range = Float(z) * scale
+            let p = start + range * unit
+            guard p.x >= 0, p.y >= 0, p.x <= domainSize.x, p.y <= domainSize.y else { return nil }
+            let ground = terrain?.height(at: p) ?? 0
+            guard ground + height < domainSize.z else { return nil }
+            let distance = range >= 10 ? String(format: "%.0f m", range) : String(format: "%.1f m", range)
+            return Gauge("Z \(String(format: "%g", z)) · \(distance)", at: SIMD3(p.x, p.y, ground + height))
+        }
+    }
+
+    /// The horizontal direction along a domain axis in which the charge has the most room, for a
+    /// line of gauges.
+    public var roomiestGaugeLineDirection: SIMD2<Float> {
+        let c = charge.position
+        let room: [(SIMD2<Float>, Float)] = [
+            (SIMD2(1, 0), domainSize.x - c.x), (SIMD2(-1, 0), c.x), (SIMD2(0, 1), domainSize.y - c.y),
+            (SIMD2(0, -1), c.y),
+        ]
+        return room.max { $0.1 < $1.1 }!.0
+    }
+}
+
 public struct Atmosphere: Sendable, Hashable, Codable {
     public var pressure: Float = 101_325
     public var density: Float = 1.225

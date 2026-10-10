@@ -20,8 +20,8 @@ struct DeflagrationUniforms {
     var speedFactor: Float = 1
     var wrinklingRadius: Float = 0
     var wrinklingPower: Float = 0
-    var subgridCoefficient: Float = 0
-    var turbulentSlope: Float = 0
+    var turbulenceScale: Float = 0
+    var velocityPerViscosity: Float = 0
     var ignitionX: Float = 0
     var ignitionY: Float = 0
     var ignitionZ: Float = 0
@@ -33,13 +33,12 @@ struct DeflagrationUniforms {
     var unburntDensity: Float = 0
     var unburntGamma: Float = 0
     var expansionRatio: Float = 0
+    var kinematicViscosity: Float = 0
 }
 
 /// The GPU side of a deflagration: the flame, if there is one, and the vent panels, which also
 /// serve a charge (see `Deflagration.metal`).
 final class DeflagrationStage {
-    /// Peters' b3, the sub-grid turbulence's share of the burning velocity.
-    static let turbulentSlope: Float = 1
     /// Exponent of the burning velocity's growth with radius (Gostintsev et al. 1988).
     static let wrinklingPower: Float = 1.0 / 3
 
@@ -160,8 +159,11 @@ final class DeflagrationStage {
             u.speedFactor = max(acceleration.factor, 0)
             u.wrinklingRadius = max(acceleration.wrinklingRadius ?? 0, 0)
             u.wrinklingPower = Self.wrinklingPower
-            u.subgridCoefficient = max(acceleration.subgridCoefficient ?? 0, 0)
-            u.turbulentSlope = Self.turbulentSlope
+            if let turbulence = acceleration.turbulence {
+                u.turbulenceScale = FlameTurbulence.bradleyCoefficient * max(turbulence.scale, 0)
+                u.velocityPerViscosity = (2.0 / 3).squareRoot() / (FlameTurbulence.energyCoefficient * dx)
+                u.kinematicViscosity = FlameTurbulence.kinematicViscosity
+            }
             u.ignitionX = deflagration.ignition.x
             u.ignitionY = deflagration.ignition.y
             u.ignitionZ = deflagration.ignition.z
@@ -172,13 +174,16 @@ final class DeflagrationStage {
         uniforms = u
     }
 
-    /// One step's flame and vents, after the air's sweeps. `species` holds the unburnt mixture.
+    /// One step's flame and vents, after the air's sweeps. `species` holds the unburnt mixture,
+    /// `viscosity` the air's eddy viscosity while it has sub-grid mixing.
     func encodeStep(
         _ encoder: MTLComputeCommandEncoder, state: MTLBuffer, species: MTLBuffer?, mask: MTLBuffer,
-        rigidMask: MTLBuffer, control: MTLBuffer
+        rigidMask: MTLBuffer, viscosity: MTLBuffer?, control: MTLBuffer
     ) {
         if deflagration != nil, let species {
-            encodeFlame(encoder, state: state, species: species, mask: mask, control: control)
+            encodeFlame(
+                encoder, state: state, species: species, mask: mask, viscosity: viscosity ?? burningBuffer,
+                control: control)
         }
         if uniforms.panelCellCount > 0 {
             encodeVents(encoder, state: state, mask: mask, rigidMask: rigidMask, control: control)
@@ -187,12 +192,14 @@ final class DeflagrationStage {
 
     private func encodeFlame(
         _ encoder: MTLComputeCommandEncoder, state: MTLBuffer, species: MTLBuffer, mask: MTLBuffer,
-        control: MTLBuffer
+        viscosity: MTLBuffer, control: MTLBuffer
     ) {
         encoder.setBuffer(state, offset: 0, index: 0)
         encoder.setBuffer(species, offset: 0, index: 1)
         encoder.setBuffer(mask, offset: 0, index: 2)
         encoder.setBuffer(burningBuffer, offset: 0, index: 3)
+        // Read only with flame turbulence, which turns the air's mixing on (see `loadDeflagration`).
+        encoder.setBuffer(viscosity, offset: 0, index: 4)
         encoder.setBuffer(control, offset: 0, index: 5)
         dispatchCells(encoder, advancePipeline)
         dispatchCells(encoder, applyPipeline)
@@ -297,13 +304,17 @@ extension BlastSolver {
     /// Sets up the scenario's deflagration and vent panels, if any, before the air is filled:
     /// places the panels in the mask and makes the stage that advances the flame and opens them.
     /// A deflagration takes the species for its unburnt mixture, so afterburning is turned off;
-    /// neither works with refined air, which is turned off too.
+    /// neither works with refined air, which is turned off too. A flame wrinkled by sub-grid
+    /// turbulence takes it from the air's sub-grid mixing, which is turned on if it is not already.
     func loadDeflagration(_ scenario: Scenario) throws {
         deflagrationStage = nil
         let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
         let panelCells = placeVentPanels(panels)
         guard scenario.deflagration != nil || !panels.isEmpty else { return }
         if scenario.deflagration != nil { configuration.afterburning = false }
+        if scenario.deflagration?.acceleration.turbulence != nil, configuration.mixing == nil {
+            configuration.mixing = .sigma
+        }
         configuration.refinement = 1
         let heat =
             scenario.deflagration?.heatPerKilogram(
@@ -317,6 +328,14 @@ extension BlastSolver {
             device: device, library: library, grid: grid, deflagration: scenario.deflagration, panels: panels,
             panelCells: panelCells, heat: heat, unburntDensity: scenario.atmosphere.density,
             expansionRatio: expansion, configuration: configuration)
+    }
+
+    /// The air's eddy viscosity in each cell (m²/s) as the last step worked it out, or nil without
+    /// sub-grid mixing.
+    public func eddyViscosities() -> [Float]? {
+        guard let buffer = mixingViscosity() else { return nil }
+        let values = buffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        return Array(UnsafeBufferPointer(start: values, count: grid.cellCount))
     }
 
     /// When each vent panel with a release pressure opened (s), in scenario order, or nil while it
