@@ -232,7 +232,7 @@ The correlations, for the same room, vent and gas:
   It is an envelope, meant to be conservative.
 
 - **The model's pressures are far below the correlations'**: the default flame's are a thirtieth
-  to a fiftieth of Molkov's best fit, and with the burning velocity tripled, a fifth to a seventh.
+  to a fiftieth of Molkov's best fit, and with the burning velocity tripled, a fifth to an eighth.
   Molkov's χ/μ, the turbulence his fit attributes to such rooms, is about 10. The pressure grows
   as about the 1.7th power of the factor (6.2 times for 3), so a factor near 10 would be needed
   to reach his fit. The flame's acceleration, which the correlations fold in, is what the model
@@ -285,7 +285,18 @@ With the burning velocity tripled, test 1 gives 1.9 kPa.
 
 ### Grid convergence
 
-{{CONVERGENCE}}
+- **The flame and a closed vessel's pressure converge**: the rise times on 12, 24 and 48 cells
+  across the sphere's radius close in on the thin-flame model's, within 1–3% on the finest; K_G
+  converges more slowly, from below (35, 41, 51 against 76). A laminar flame in a tube runs at its
+  expansion ratio times its burning velocity on 2 cm cells. A free sphere comes within 3% of that
+  speed once its radius is fifteen cells, slower while smaller, the front being four cells thick.
+- **A vented room's peak does not converge**: the default flame in FM Global's chamber (test 1's
+  geometry, stoichiometric) gives 0.56, 0.35 and 0.57 kPa on 0.2, 0.1 and 0.05 m cells, peaking at
+  1.0, 0.66 and 0.86 s. At these amplitudes the peak is whichever of several weak transients is
+  largest: the vent's first outflow, the burnt gas reaching it, the flame meeting the walls. Which
+  one that is changes with the grid, as the sub-grid term (Δ|ω|) and the flame's thickness do.
+  Every resolution gives a thirtieth to a fiftieth of Molkov's 19 kPa, so the comparison above
+  does not depend on it, but a single run's peak is uncertain by about ±30%.
 
 ## Limitations
 

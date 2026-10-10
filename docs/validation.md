@@ -63,7 +63,7 @@ swift run -c release blastbench chamber
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4% | Low: illustrative; the fireball neither rises nor mixes with cold air |
-| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to a seventh with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to an eighth with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
@@ -1800,7 +1800,8 @@ A premixed methane or propane cloud lit at a point (see [Gas deflagrations](defl
   chamber, whose peaks are only plotted, the model reaches a tenth (lit in the middle) to a half
   (lit at the back wall) of the plots' axes, with the measured trends' directions. The flame's
   acceleration by turbulence and instabilities, which these tests and correlations include, is a
-  factor in the model, not a model. Illustrative.
+  factor in the model, not a model. The vented peak does not converge (0.56, 0.35 and 0.57 kPa on
+  0.2, 0.1 and 0.05 m cells). Illustrative.
 
 ## A footing rocked on dry sand
 

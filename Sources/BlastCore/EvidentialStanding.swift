@@ -1144,7 +1144,7 @@ private struct StandingScene {
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A thirtieth to a fiftieth of Molkov's best fit with the default flame, a fifth to a seventh "
+                "A thirtieth to a fiftieth of Molkov's best fit with the default flame, a fifth to an eighth "
                     + "with the burning velocity tripled",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
