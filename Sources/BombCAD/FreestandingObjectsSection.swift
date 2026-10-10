@@ -187,7 +187,7 @@ struct FreestandingObjectsSection: View {
             Text("Freestanding objects (experimental)")
         } footer: {
             Text(
-                "Rigid boxes and simplified cars (locked wheels, rigid suspension) that slide, tip and strike each other and the blocks. They do not take part in the ordinary run. Motion puts every object in the air, on 0.05 m cells around each, so they shield and reflect onto each other, and moves them through the air's load and contact."
+                "Rigid boxes and simplified cars (locked wheels, rigid suspension) that slide, tip and strike each other and the blocks. They do not take part in the ordinary run. Motion puts every object in the air, on 0.05 m cells around each (0.075 m beyond four objects), so they shield and reflect onto each other, and moves them through the air's load and contact; one nearing the edge of the air leaves it."
             )
         }
     }

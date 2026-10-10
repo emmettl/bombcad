@@ -4,10 +4,8 @@ import simd
 
 /// How a scene's freestanding objects move after the blast: displacement, speed and tipping, and
 /// their poses over time, from `ExperimentalRigidWorldSimulation` on a domain cropped around the
-/// objects and the charge. Every object is in the air, on 0.2 m cells with patches four times
-/// finer over each, as the car's resolution study supports (0.05 m cells resolve its 0.15 m gap;
-/// the early impulse is within about a tenth of 0.025 m cells'), and they strike each other and
-/// the scene's blocks.
+/// objects and the charge. Every object is in the air, with finer patches over each (see
+/// `defaultResolution`), and they strike each other and the scene's blocks.
 public struct FreestandingMotion: Codable, Sendable {
     public struct Object: Codable, Sendable {
         public let id: UUID
@@ -39,14 +37,14 @@ public struct FreestandingMotion: Codable, Sendable {
 
     public enum Failure: Error, LocalizedError {
         case noObjects, structure
-        case tooLarge(cells: Int)
+        case tooLarge(cells: Int, cellSize: Double)
 
         public var errorDescription: String? {
             switch self {
             case .noObjects: "The scene has no freestanding objects."
             case .structure: "Freestanding motion needs a scene without a deformable structure."
-            case .tooLarge(let cells):
-                "The objects and the charge span \(cells) air cells of 0.2 m; place them closer together (at most 3 million)."
+            case .tooLarge(let cells, let cellSize):
+                "The objects and the charge span \(cells) air cells of \(cellSize) m; place them closer together (at most 3 million)."
             }
         }
     }
@@ -72,6 +70,15 @@ public struct FreestandingMotion: Codable, Sendable {
 
     public static let maximumCells = 3_000_000
 
+    /// Up to four objects, 0.2 m air with patches four times finer over them, as the car's
+    /// resolution study supports (0.05 m cells resolve its 0.15 m gap; the early impulse is
+    /// within about a tenth of 0.025 m cells'); more, 0.15 m air twice finer, 0.075 m cells
+    /// that also resolve the gap exactly (the study's 10 kg car overturns on them too) at a
+    /// fraction of the coupling's cost.
+    public static func defaultResolution(objects: Int) -> (cellSize: Float, refinement: Int) {
+        objects <= 4 ? (0.2, 4) : (0.15, 2)
+    }
+
     /// The scene cropped to the objects and the charge with `margin` metres around them (and
     /// above), shifted so the crop starts at the origin; blocks inside it are kept, clipped.
     static func cropped(_ scenario: Scenario, margin: Double = 2.4, cellSize: Double = 0.2) throws -> (
@@ -96,7 +103,7 @@ public struct FreestandingMotion: Codable, Sendable {
         let size = high - low
         let cells = Int(
             (size.x / cellSize).rounded() * (size.y / cellSize).rounded() * (size.z / cellSize).rounded())
-        guard cells <= maximumCells else { throw Failure.tooLarge(cells: cells) }
+        guard cells <= maximumCells else { throw Failure.tooLarge(cells: cells, cellSize: cellSize) }
         var scene = scenario
         scene.domainSize = SIMD3<Float>(size)
         let shift = SIMD3<Float>(-low)
@@ -126,13 +133,19 @@ public struct FreestandingMotion: Codable, Sendable {
 
     /// Runs `duration` seconds, recording every `frameInterval`. `progress` gets the simulated
     /// time; returning false from `shouldContinue` stops early with what has been recorded.
-    /// `cellSize` and `refinement` default to the resolution the car study supports.
+    /// `cellSize` and `refinement` default to `defaultResolution`, and the patches' memory to
+    /// 64 MB an object, at least 512 MB.
     public static func compute(
         device: MTLDevice, scenario: Scenario, duration: Double = 1.5, frameInterval: Double = 0.02,
-        cellSize: Float = 0.2, refinement: Int = 4, coupled: [Int]? = nil, held: Bool = false,
-        refinementMemory: Int = 512 << 20, progress: ((Double) -> Void)? = nil,
+        cellSize: Float? = nil, refinement: Int? = nil, coupled: [Int]? = nil, held: Bool = false,
+        refinementMemory: Int? = nil, progress: ((Double) -> Void)? = nil,
         shouldContinue: (() -> Bool)? = nil
     ) throws -> FreestandingMotion {
+        let count = (scenario.rigidObjects?.count ?? 0) + (scenario.rigidCars?.count ?? 0)
+        let resolution = defaultResolution(objects: count)
+        let cellSize = cellSize ?? resolution.cellSize
+        let refinement = refinement ?? resolution.refinement
+        let refinementMemory = refinementMemory ?? max(512 << 20, count * (64 << 20))
         let (scene, offset) = try cropped(scenario, cellSize: Double(cellSize))
         var configuration = SolverConfiguration()
         configuration.refinement = refinement
