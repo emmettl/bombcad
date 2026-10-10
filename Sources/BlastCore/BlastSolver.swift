@@ -118,6 +118,8 @@ public final class BlastSolver {
     public var refinementPatchCapacity: Int { refinement?.maxPatches ?? 0 }
     /// The patches the second level's pool holds (0 without one).
     public var finerRefinementPatchCapacity: Int { finerRefinement?.maxPatches ?? 0 }
+    /// The patches each refined level holds after the last regrid, the first level first.
+    public var refinementPatchesInUse: [Int] { refinementLevels.map(\.patchCount) }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
     public var couplingStatistics: CouplingStatistics {
