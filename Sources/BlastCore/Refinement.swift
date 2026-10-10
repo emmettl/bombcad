@@ -55,6 +55,9 @@ final class AirRefinement {
     private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
     let fineOccupancy: MTLBuffer
+    /// Gravity's background at this level's resolution (see `gravityCellOf` in Solver.metal),
+    /// while the air has gravity.
+    var gravityTable: MTLBuffer?
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -676,6 +679,8 @@ final class AirRefinement {
                     encoder.setBuffer(fineFlux, offset: 0, index: 23)
                     encoder.setBuffer(fineFlux, offset: 0, index: 24)
                 }
+                // Not read without gravity.
+                encoder.setBuffer(gravityTable ?? fineFlux, offset: 0, index: 25)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))

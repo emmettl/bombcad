@@ -366,7 +366,8 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
                                  const device packed_float3 *fineWall, const device float2 *speciesSrc,
                                  device float2 *speciesDst, const device float2 *ghostSpecies,
                                  device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch,
-                                 const device int *childPatches, device float *childFlux, device float *childSpeciesFlux) {
+                                 const device int *childPatches, device float *childFlux, device float *childSpeciesFlux,
+                                 const device float4 *gravityTable) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -426,25 +427,36 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
 
     Cell c = fineSrc[index];
     Prim w0 = primOf(c, u);
+    // With gravity, the cell each state came from and -1 for a mirror, as in `sweepCell`.
+    int4 from = int4(-2, -1, 1, 2);
+    float4 mirror = float4(1.0f);
     Prim wP1 = w0;
     float speedP1;
     int kindP1 = look(1, wP1, speedP1);
     if (kindP1 == kindWall) {
         wP1 = mirrored(w0, speedP1);
+        from.z = 0;
+        mirror.z = -1.0f;
     } else if (kindP1 == kindOpen) {
         wP1 = w0;
+        from.z = 0;
     }
     Prim wM1 = w0;
     float speedM1;
     int kindM1 = look(-1, wM1, speedM1);
     if (kindM1 == kindWall) {
         wM1 = mirrored(w0, speedM1);
+        from.y = 0;
+        mirror.y = -1.0f;
     } else if (kindM1 == kindOpen) {
         wM1 = w0;
+        from.y = 0;
     }
     Prim wP2 = wP1;
     if (kindP1 == kindWall) {
         wP2 = mirrored(wM1, speedP1);
+        from.w = from.y;
+        mirror.w = -mirror.y;
     } else if (kindP1 == kindFluid) {
         Prim w = wP1;
         float speed;
@@ -453,11 +465,19 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             wP2 = w;
         } else if (kind == kindWall) {
             wP2 = mirrored(wP1, speed);
+            from.w = 1;
+            mirror.w = -1.0f;
+        } else {
+            from.w = 1;
         }
+    } else {
+        from.w = from.z;
     }
     Prim wM2 = wM1;
     if (kindM1 == kindWall) {
         wM2 = mirrored(wP1, speedM1);
+        from.x = from.z;
+        mirror.x = -mirror.z;
     } else if (kindM1 == kindFluid) {
         Prim w = wM1;
         float speed;
@@ -466,14 +486,26 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             wM2 = w;
         } else if (kind == kindWall) {
             wM2 = mirrored(wM1, speed);
+            from.x = -1;
+            mirror.x = -1.0f;
+        } else {
+            from.x = -1;
         }
+    } else {
+        from.x = from.y;
     }
 
     float dt = levelStep(control, u);
     float lambda = dt / (u.dx / float(r));
     Flux fluxLow;
     Flux fluxHigh;
-    stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+    bool gravityHere = u.gravity != 0.0f && axis == 2u;
+    if (gravityHere) {
+        stencilFluxesGravity(wM2, wM1, w0, wP1, wP2, from, mirror, fine.z, gravityTable, lambda, dt, u, fluxLow,
+                             fluxHigh);
+    } else {
+        stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+    }
 
     // Experimental moving boxes: finest-level tractions and impermeable moving-wall work, one
     // scalar for each face as on the coarse grid.
@@ -540,6 +572,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     float rho = c.rho - lambda * (fluxHigh.mass - fluxLow.mass);
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
+    if (gravityHere) {
+        gravitySources(momentum, energy, w0.rho, fluxLow, fluxHigh, fine.z, gravityTable, dt, u);
+    }
 
     // Fuel and oxygen, as in `sweepCell`: at the mass fraction of the cell they leave, burnt
     // after the substep's final sweep.
@@ -635,6 +670,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         const device int *childPatches [[buffer(22)]],
                         device float *childFlux [[buffer(23)]],
                         device float *childSpeciesFlux [[buffer(24)]],
+                        const device float4 *gravityTable [[buffer(25)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -649,7 +685,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
                       speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
-                      childFlux, childSpeciesFlux);
+                      childFlux, childSpeciesFlux, gravityTable);
     }
 }
 
@@ -758,6 +794,11 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
     c.my += scale * (area * sums[2] - coarseFlux[slot + 2]);
     c.mz += scale * (area * sums[3] - coarseFlux[slot + 3]);
     c.energy += scale * (area * sums[4] - coarseFlux[slot + 4]);
+    if (u.gravity != 0.0f && axis == 2u) {
+        // The coarse cell's energy took -g times its faces' mean mass flux (see `gravitySources`);
+        // this face's has changed.
+        c.energy -= 0.5f * u.gravity * (area * sums[0] - coarseFlux[slot]);
+    }
     c.rho = max(c.rho, u.densityFloor);
     float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / c.rho;
     if (gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma) < u.pressureFloor) {
