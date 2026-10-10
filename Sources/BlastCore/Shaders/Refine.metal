@@ -395,7 +395,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
                                  device float2 *speciesDst, const device float2 *ghostSpecies,
                                  device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch,
                                  const device int *childPatches, device float *childFlux, device float *childSpeciesFlux,
-                                 const device float4 *gravityTable) {
+                                 const device float4 *gravityTable, const device float *viscosity) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -534,6 +534,32 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     } else {
         stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
     }
+    // Sub-grid mixing's fluxes, each fine cell taking its coarse cell's eddy viscosity scaled to
+    // its own size as an inertial range's is, (dx_fine / dx_coarse)^(4/3).
+    float carrierLow = 0.0f;
+    float carrierHigh = 0.0f;
+    if (airMixing) {
+        int levels = r * scale;
+        float shrink = pow(1.0f / float(levels), 4.0f / 3.0f);
+        auto nuAt = [&](int offset) {
+            int3 g = fine;
+            g[axis] += offset;
+            int3 at = clamp(g / levels, int3(0), coarseDims - 1);
+            return shrink * viscosity[at.x + coarseDims.x * (at.y + coarseDims.y * at.z)];
+        };
+        float dxFine = u.dx / float(r);
+        float nu0 = nuAt(0);
+        if (kindM1 == kindFluid) {
+            MixingFace face = mixingFace(wM1, w0, nuAt(-1), nu0, dxFine, dt, u);
+            fluxLow = sumOf(fluxLow, face.flux);
+            carrierLow = face.carrier;
+        }
+        if (kindP1 == kindFluid) {
+            MixingFace face = mixingFace(w0, wP1, nu0, nuAt(1), dxFine, dt, u);
+            fluxHigh = sumOf(fluxHigh, face.flux);
+            carrierHigh = face.carrier;
+        }
+    }
 
     // Experimental moving boxes: finest-level tractions and impermeable moving-wall work, one
     // scalar for each face as on the coarse grid.
@@ -622,6 +648,11 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         };
         float2 inflow = speciesFlux(fluxLow.mass, speciesAt(-1, kindM1, wM1), fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, speciesAt(1, kindP1, wP1));
+        if (airMixing) {
+            // Sub-grid mixing carries the species down their gradients in mass fraction.
+            inflow -= carrierLow * (fraction - speciesAt(-1, kindM1, wM1));
+            outflow -= carrierHigh * (speciesAt(1, kindP1, wP1) - fraction);
+        }
         if (local[axis] == 0 && ghostKinds[ghostIndex(patch, 1u, a, b, uint(side))] == ghostCoarse) {
             uint slot = speciesSlot(patch, 2u * axis, a, b, uint(side));
             speciesFluxSums[slot] += inflow.x * dt;
@@ -664,8 +695,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     fineDst[index] = result;
 
     if (u.finalSweep != 0) {
-        recordCell(maxSpeed, momentum, rho, pressure, u);
-        float overpressure = pressure - u.ambientPressure;
+        // Under gravity, against the ambient pressure at the fine cell's height.
+        float ambient = airGravity ? gravityAmbientOf(gravityTable, fine.z, u) : u.ambientPressure;
+        recordCell(maxSpeed, momentum, rho, pressure, u, ambient);
+        float overpressure = pressure - ambient;
         if (overpressure > 0.0f) {
             // Positive floats order like their bit patterns.
             atomic_fetch_max_explicit(&peakBits[coarseIndex], as_type<uint>(overpressure), memory_order_relaxed);
@@ -699,6 +732,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         device float *childFlux [[buffer(23)]],
                         device float *childSpeciesFlux [[buffer(24)]],
                         const device float4 *gravityTable [[buffer(25)]],
+                        const device float *viscosity [[buffer(26)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -713,7 +747,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
                       speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
-                      childFlux, childSpeciesFlux, gravityTable);
+                      childFlux, childSpeciesFlux, gravityTable, viscosity);
     }
 }
 

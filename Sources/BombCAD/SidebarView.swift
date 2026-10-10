@@ -226,6 +226,11 @@ struct SidebarView: View {
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
                         + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                         + "about twice as slow.")
+            Toggle("Gravity in the air", isOn: $model.settings.gravity)
+                .help(
+                    "Lets hot gas rise: the air starts at rest in a standard atmosphere and the fireball "
+                        + "lifts off the ground over the seconds after the blast. Leaves the blast's loads as "
+                        + "they are; runs that long need a tall domain.")
             Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
                 .help(
                     "Refines the air twice over where the shock is, so that peak pressures and the loads "

@@ -164,4 +164,68 @@ struct GravityTests {
         let expected = 9.80665 * 0.5 / (0.5 + 0.5) * time
         #expect(abs(speed / expected - 1) < 0.15, "\(speed) m/s against \(expected)")
     }
+
+    @Test("Under gravity, skipping still air gives the same answer to the bit, with afterburning")
+    func stillAirSkipped() throws {
+        func run(skip: Bool) throws -> (state: [CellState], peak: [Float]) {
+            var configuration = SolverConfiguration()
+            configuration.gravity = AirGravity()
+            configuration.afterburning = true
+            configuration.skipStillAir = skip
+            let solver = try BlastSolver(
+                device: device, scenario: ScenarioPreset.streetCanyon.scenario, cellSize: 0.5,
+                configuration: configuration)
+            solver.advance(steps: 60)
+            let grid = solver.grid
+            var peak: [Float] = []
+            for k in stride(from: 0, to: grid.nz, by: 3) {
+                for j in stride(from: 0, to: grid.ny, by: 3) {
+                    for i in stride(from: 0, to: grid.nx, by: 3) {
+                        peak.append(solver.peakOverpressure(i, j, k))
+                    }
+                }
+            }
+            return (solver.withState { Array($0) }, peak)
+        }
+        let skipped = try run(skip: true)
+        let swept = try run(skip: false)
+        #expect(skipped.state == swept.state)
+        #expect(skipped.peak == swept.peak)
+    }
+
+    @Test("Under gravity, overpressure is against the ambient pressure at its height")
+    func localOverpressure() throws {
+        var configuration = SolverConfiguration()
+        configuration.gravity = AirGravity()
+        configuration.reflectiveFaces = .ground
+        let solver = try BlastSolver(
+            device: device, grid: Grid(nx: 8, ny: 8, nz: 64, cellSize: 1), configuration: configuration)
+        solver.fill(uniform: Primitive(density: 1.225, pressure: 101_325))
+        solver.setGauges(cells: [(4, 4, 0), (4, 4, 60)])
+        solver.advance(steps: 50)
+        var largest: Float = 0
+        for k in 0..<64 { largest = max(largest, abs(solver.peakOverpressure(4, 4, k))) }
+        #expect(largest == 0, "peak overpressure in air at rest \(largest) Pa")
+        for history in solver.gaugeHistories {
+            let worst = history.map { abs($0.pressure - 101_325) }.max() ?? 0
+            #expect(worst < 0.01, "a gauge in air at rest read \(worst) Pa")
+        }
+    }
+
+    @Test(
+        "Under gravity the cloud's hand-over finds no warm gas in air at rest, and a bubble's at its height")
+    func handOverAtHeight() throws {
+        let solver = try column(AirGravity(), cells: SIMD3(8, 8, 64), cellSize: 2)
+        let still = solver.cloudHandOver(hotterThan: 300)
+        #expect(
+            still.mass == 0 && still.warmBuoyancy == 0, "warm gas in air at rest: \(still.warmBuoyancy) N")
+        // A hot cell 100 m up, at the pressure around it.
+        solver.mutateState { cells in cells[solver.grid.index(4, 4, 50)].density *= 0.5 }
+        let bubble = solver.cloudHandOver(hotterThan: 300)
+        let around = AirGravity().atmosphere(at: 101, ground: Primitive(density: 1.225, pressure: 101_325))
+        let expected = Double(around.pressure / (around.density * 287.05)) * 2
+        #expect(
+            abs(bubble.temperature / expected - 1) < 1e-3, "\(bubble.temperature) K against \(expected) K")
+        #expect(abs(bubble.centre.z - 101) < 1e-3)
+    }
 }

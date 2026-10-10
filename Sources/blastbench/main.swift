@@ -49,6 +49,8 @@ import simd
 //                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench bubble [--dx 0.5] [--radius 4] [--hot 2] [--time 20] [--lapse 6.5] [--csv out.csv]
 //                     (a hot bubble rising under gravity, against the cloud's integral model)
+//   blastbench mixinglayer [--dx 0.5] [--speed 50] [--time 8] [--length 128] [--mixing] [--csv out.csv]
+//                          (a temporal mixing layer's growth, against dθ/dt = 0.014 ΔU)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
@@ -499,11 +501,20 @@ func chosenGravity() -> AirGravity? {
     return AirGravity(lapseRate: (option("lapse").flatMap { Float($0) } ?? 6.5) / 1000)
 }
 
+/// With `--mixing`, sub-grid turbulent mixing in the air, of Smagorinsky coefficient `--smagorinsky`.
+func chosenMixing() -> SubgridMixing? {
+    guard flag("mixing") else { return nil }
+    var mixing = SubgridMixing()
+    if let value = option("smagorinsky").flatMap({ Float($0) }) { mixing.coefficient = value }
+    return mixing
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
+    configuration.mixing = chosenMixing()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if let air = chosenAirModel() {
@@ -609,6 +620,7 @@ func runValidation() throws {
         configureRefinement(&solver.configuration)
         solver.configuration.radiativeCooling = try? chosenCooling()
         solver.configuration.gravity = chosenGravity()
+        solver.configuration.mixing = chosenMixing()
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -3185,8 +3197,10 @@ func runDialPack() throws {
     configureRefinement(&configuration)
     configuration.afterburning = true
     configuration.airModel = .thermallyPerfect
+    if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
+    configuration.mixing = chosenMixing()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
@@ -3220,7 +3234,8 @@ func runDialPack() throws {
                 "Dial Pack: %.0f t of TNT (%.0f short tons), a sphere %.2f m in radius on the ground, %.0f m cells, %.0f by %.0f by %.0f m, to %.2f s%@",
             mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
             (configuration.radiativeCooling == nil ? "" : ", the gas cooling")
-                + (configuration.gravity == nil ? "" : ", with gravity")))
+                + (configuration.gravity == nil ? "" : ", with gravity")
+                + (configuration.mixing == nil ? "" : ", sub-grid mixing")))
     var lines = [
         "time_s,diameter_m,temperature_K,hottest_K,centre_m,radiated_W,gas_lost_J,"
             + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(
@@ -3338,6 +3353,7 @@ func runBubble() throws {
     let height = 20 * radius
     var configuration = SolverConfiguration()
     configuration.gravity = AirGravity(lapseRate: lapse)
+    configuration.mixing = chosenMixing()
     configureRefinement(&configuration)
     let solver = try BlastSolver(
         device: device,
@@ -3413,6 +3429,107 @@ func runBubble() throws {
     if let path = option("csv") {
         try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
     }
+}
+
+/// A temporal mixing layer: two streams of air at ±`--speed`/2 m/s along x, across a tanh profile
+/// of momentum thickness two cells in z, with small random velocities to set it off, in a box 128
+/// by 64 by 128 cells, periodic in x and y (`SolverConfiguration.periodicSides`, two cells of halo
+/// a side), whose z faces copy the air beyond them. Its momentum thickness from the planes'
+/// mean velocity, θ = ∫ (1/4 - (u/ΔU)²) dz, through time; self-similar layers grow at
+/// dθ/dt ≈ 0.014 ΔU (Rogers and Moser 1994). `--mixing` turns on the sub-grid mixing.
+func runMixingLayer() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.5
+    let speed = option("speed").flatMap { Float($0) } ?? 50
+    let duration = option("time").flatMap { Double($0) } ?? 8
+    let length = option("length").flatMap { Int($0) } ?? 128
+    let (nx, ny, nz) = (length + 4, length / 2 + 4, 128)
+    var configuration = SolverConfiguration()
+    configuration.reflectiveFaces = []
+    configuration.periodicSides = true
+    configuration.mixing = chosenMixing()
+    let solver = try BlastSolver(
+        device: device, grid: Grid(nx: nx, ny: ny, nz: nz, cellSize: cellSize), configuration: configuration)
+    let theta0 = 2 * cellSize
+    var random = SplitMix64(seed: 1994)
+    solver.fill { i, j, k in
+        let z = (Float(k) + 0.5 - Float(nz) / 2) * cellSize
+        let mean = 0.5 * speed * tanh(z / (2 * theta0))
+        // Perturbations a twentieth of the speed difference, where the layer is.
+        let envelope = exp(-z * z / (8 * theta0 * theta0)) * 0.05 * speed
+        let noise = SIMD3<Float>(random.unit(), random.unit(), random.unit()) * 2 - 1
+        return Primitive(density: 1.225, velocity: SIMD3(mean, 0, 0) + envelope * noise, pressure: 101_325)
+    }
+    func thickness() -> Double {
+        solver.withState { cells in
+            var total = 0.0
+            for k in 0..<nz {
+                var sum = 0.0
+                for j in 2..<(ny - 2) {
+                    for i in 2..<(nx - 2) {
+                        let c = cells[i + nx * (j + ny * k)]
+                        sum += Double(c.momentumX / c.density)
+                    }
+                }
+                let mean = sum / Double((nx - 4) * (ny - 4)) / Double(speed)
+                total += (0.25 - mean * mean) * Double(cellSize)
+            }
+            return total
+        }
+    }
+    print(
+        String(
+            format: "A temporal mixing layer, ΔU %.0f m/s, θ0 %.2f m, on %.2f m cells%@", speed, theta0,
+            cellSize,
+            configuration.mixing == nil ? "" : ", sub-grid mixing"))
+    var lines = ["time_s,theta_m"]
+    var samples: [(Double, Double)] = [(0, thickness())]
+    let started = ContinuousClock.now
+    var t = 0.0
+    while t < duration - 1e-9 {
+        t = min(t + 0.25, duration)
+        while solver.time < t - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: t)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        samples.append((solver.time, thickness()))
+    }
+    for (time, theta) in samples {
+        lines.append(String(format: "%.3f,%.4f", time, theta))
+    }
+    // The growth over the second half, against ΔU.
+    let half = samples.filter { $0.0 >= duration / 2 }
+    let n = Double(half.count)
+    let mt = half.reduce(0.0) { $0 + $1.0 } / n
+    let meanTheta = half.reduce(0.0) { $0 + $1.1 } / n
+    let slope =
+        half.reduce(0.0) { $0 + ($1.0 - mt) * ($1.1 - meanTheta) }
+        / max(half.reduce(0.0) { $0 + ($1.0 - mt) * ($1.0 - mt) }, 1e-12)
+    for (time, theta) in samples where time.truncatingRemainder(dividingBy: 1) < 0.01 {
+        print(String(format: "  %5.2f s: θ %.3f m", time, theta))
+    }
+    print(
+        String(
+            format:
+                "  dθ/dt over the second half %.3f m/s, %.4f ΔU (self-similar layers: about 0.014); %d steps, %.0f s",
+            slope, slope / Double(speed), solver.stepCount, (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// A small deterministic random generator, for repeatable perturbations.
+struct SplitMix64 {
+    var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+    /// Uniform in [0, 1).
+    mutating func unit() -> Float { Float(next() >> 40) / Float(1 << 24) }
 }
 
 func runThermal() throws {
@@ -3736,6 +3853,7 @@ do {
     case "thermal": try runThermal()
     case "dialpack": try runDialPack()
     case "bubble": try runBubble()
+    case "mixinglayer": try runMixingLayer()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)

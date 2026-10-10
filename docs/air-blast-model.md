@@ -238,13 +238,64 @@ as the cloud's integral model of a turbulent thermal says: its warm gas's centre
 Kingery–Bulmash (0.5 m cells refined) every incident and reflected peak and impulse moves by
 0.1% or less: on a blast's time scale gravity is nothing.
 
-**Not done:**
-- Still air is not skipped with gravity on, since air at rest is no longer uniform.
-- Overpressures, peaks and impulses are still against the ground's ambient pressure, so they
-  read the hydrostatic −12 Pa a metre at height.
-- The HLL solver balances only to rounding.
-- The experimental moving boxes, and a deflagration, have not been tried with it.
-- The cloud's hand-over still relaxes the gas to the ground's pressure.
+**Around it:**
+- *Still air is skipped* as without gravity: still air is air at rest in the background at its
+  height, which a sweep leaves to the bit, so the answer is the same as sweeping everything
+  (`GravityTests` checks the street with afterburning). Skipped air counts towards the time step
+  at the ground's sound speed, the column's fastest, which sets the step only while nothing
+  moves.
+- *Overpressure* (peaks, impulses, gauges and the air's sleep test) is measured against the
+  ambient pressure at its own height, so air at rest records none anywhere. Exposure planes and
+  envelopes still take the ground's.
+- *In the app*, **Gravity in the air** in the Run tab's charge settings turns it on; it is saved
+  with the project only when on, so projects and runs saved before it are unchanged.
+- *The cloud's hand-over* relaxes each plane's gas to the ambient pressure at its height and
+  judges its warmth against the air there, so gas the air model has lifted is handed over as it
+  stands, and the hand-over can come later, after the air model itself has carried the
+  fireball's first rise.
+- *Not done*: the HLL solver balances only to rounding, and the experimental moving boxes have
+  not been tried with it.
+
+It costs about a fifth more a step (the street with afterburning to 170 ms: 11.2–11.4 s against
+9.5 s).
+
+### Sub-grid mixing
+
+`SolverConfiguration.mixing` (`--mixing [--smagorinsky 0.17]` in `blastbench`; off by default)
+lets the turbulence the grid cannot resolve carry momentum, heat and the products and oxygen.
+Before each step every cell gets an eddy viscosity after Smagorinsky, ν = (C Δ)² |S|:
+- |S| is the resolved rate of strain, and C = 0.17 is Lilly's value for the inertial range;
+- Ducros's sensor, (∇·u)² / ((∇·u)² + |∇×u|²), switches it off where the flow is compression
+  without rotation, so a shock keeps the scheme's own dissipation.
+
+In each sweep, conservative face fluxes add −ρν ∂v/∂x of momentum, its work, and −ρ(ν/Pr) ∂h/∂x
+of heat and ∂Y/∂x of each species, with Pr = Sc = 0.7. The face's ν is held under a quarter of
+Δx²/Δt, so the explicit diffusion stays stable. Refined cells take their coarse cell's ν scaled
+as an inertial range's, (Δ_fine/Δ_coarse)^(4/3). Like gravity, it is compiled in only when on.
+
+**Checked** (`MixingTests`):
+- In a closed box a swirling hot bubble keeps its mass and energy to 10⁻⁶.
+- A planar shock passes with its pressures changed by under 10⁻⁴.
+- A shear layer spreads faster with it than without.
+- Against Kingery–Bulmash (0.5 m cells refined), peaks move by 0.3% or less and impulses by
+  0.3% or less, with afterburning and hot air 0.45% and 0.2%.
+
+It costs about 28% more a step (the street to 170 ms: 13.6–13.8 s against 10.5–10.9 s).
+
+**It changes little that the grid resolves.**
+- *A temporal mixing layer* (`blastbench mixinglayer`: ΔU 50 m/s, momentum thickness θ₀ two
+  0.5 m cells, a box periodic in x and y) grows at 0.030 ΔU with it or without it, while θ goes
+  from 2.5 to 10 m. Rogers and Moser's self-similar layer grows at 0.014 ΔU; layers measured
+  in experiments, at 0.016 to 0.018. Over the first transition the model slows the growth a
+  little (0.015 against 0.021 ΔU in a shorter box), as Smagorinsky models are known to.
+- *The 4 m hot bubble* above rises to 55.2 m at 20 s against 54.4 m without it, both within 11%
+  of the integral model of a thermal that entrains at Morton, Taylor and Turner's α = 0.25.
+
+So on these cells the large eddies the grid resolves, and the scheme's own dissipation, do the
+mixing. A [deflagration](deflagration.md)'s burning velocity has its own sub-grid term; with both
+on, sub-grid turbulence is partly counted twice.
+
+## Skipping still air
 
 ## Skipping still air
 
@@ -472,8 +523,9 @@ UFC 3-340-02, lowest for light charges.
   (`refinementFinerThreshold`), are untried.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
-- **Mixing below the grid's scale**, for a fireball's late cooling: with gravity it rises, but
-  only the grid's own mixing draws cold air into it, too little on metre cells (see
+- **Afterburning that stops when the mixture is too cool**: it now burns products wherever they
+  meet oxygen, at any temperature, which keeps a large fireball near the flame temperature for
+  seconds. Sub-grid mixing, tried for this, changes little (see
   [Dial Pack](thermal-radiation.md#against-dial-pack)).
 
 ## Sources
@@ -489,6 +541,16 @@ UFC 3-340-02, lowest for light charges.
   combustion prediction procedures", *18th Symposium (International) on Combustion*, 1981,
   1405–1414. The discrete transfer method behind the radiative cooling; M. F. Modest,
   *Radiative Heat Transfer*, Academic Press, for the radiation's term in the energy equation.
+- J. Smagorinsky, "General circulation experiments with the primitive equations", *Monthly Weather
+  Review* 91 (1963) 99–164; D. K. Lilly, "The representation of small-scale turbulence in
+  numerical simulation experiments", IBM Scientific Computing Symposium on Environmental
+  Sciences, 1967; F. Ducros and others, "Large-eddy simulation of the shock/turbulence
+  interaction", *Journal of Computational Physics* 152 (1999) 517–549. The eddy viscosity, its
+  coefficient, and the sensor that keeps it out of shocks.
+- M. M. Rogers and R. D. Moser, "Direct simulation of a self-similar turbulent mixing layer",
+  *Physics of Fluids* 6 (1994) 903–923; B. R. Morton, G. I. Taylor and J. S. Turner, "Turbulent
+  gravitational convection from maintained and instantaneous sources", *Proceedings of the Royal
+  Society A* 234 (1956) 1–23. The mixing layer's growth and a thermal's entrainment.
 - N. Botta, R. Klein, S. Langenberg and S. Lützenkirchen, "Well balanced finite volume methods
   for nearly hydrostatic flows", *Journal of Computational Physics* 196 (2004) 539–565; R. Käppeli
   and S. Mishra, "Well-balanced schemes for the Euler equations with gravitation", *Journal of

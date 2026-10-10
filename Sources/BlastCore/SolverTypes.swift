@@ -107,6 +107,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Gravity acting on the air, which then starts at rest in a hydrostatic atmosphere (see
     /// `AirGravity`); nil, the default, for none. Read when the air is filled.
     public var gravity: AirGravity?
+    /// Sub-grid turbulent mixing in the air (see `SubgridMixing`); nil, the default, for none.
+    public var mixing: SubgridMixing?
+    /// For benchmarks: the two outermost cells on each x and y side copy the far side's before
+    /// every sweep, so that the rest of the grid is periodic in x and y. Not for scenes.
+    public var periodicSides = false
 
     public init() {}
 }
@@ -211,6 +216,8 @@ struct SolverUniforms {
     var gravityP0: Float = 0
     /// 1 when the air carries a deflagration's unburnt mixture (see `Deflagration.metal`).
     var deflagration: UInt32 = 0
+    var mixingCoefficient: Float = 0
+    var mixingPrandtl: Float = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

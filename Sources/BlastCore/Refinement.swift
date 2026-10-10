@@ -60,6 +60,8 @@ final class AirRefinement {
     var gravityTable: MTLBuffer?
     /// And at the resolution of the level it refines.
     var parentGravityTable: MTLBuffer?
+    /// The coarse cells' eddy viscosity while the air has sub-grid mixing.
+    var viscosity: MTLBuffer?
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -635,14 +637,17 @@ final class AirRefinement {
     private func withGravity(_ base: MTLComputePipelineState, _ name: String, model: AirModel? = nil)
         -> MTLComputePipelineState
     {
-        guard gravityTable != nil else { return base }
-        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-")"
+        let gravity = gravityTable != nil
+        let mixing = viscosity != nil && name == "refineSweep"
+        guard gravity || mixing else { return base }
+        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing)"
         if let pipeline = gravityPipelines[key] { return pipeline }
         var constants = MTLFunctionConstantValues()
         if var value = model?.rawValue {
             constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
         }
-        constants = ShaderLibrary.withGravity(constants)
+        if gravity { constants = ShaderLibrary.withGravity(constants) }
+        if mixing { constants = ShaderLibrary.withMixing(constants) }
         guard let pipeline = try? ShaderLibrary.pipeline(name, in: library, constants: constants) else {
             return base
         }
@@ -652,7 +657,9 @@ final class AirRefinement {
 
     private func sweepPipeline(for model: AirModel?) -> MTLComputePipelineState {
         guard let model else { return withGravity(sweepPipeline, "refineSweep") }
-        if gravityTable != nil { return withGravity(sweepPipeline, "refineSweep", model: model) }
+        if gravityTable != nil || viscosity != nil {
+            return withGravity(sweepPipeline, "refineSweep", model: model)
+        }
         if let pipeline = sweepPipelines[model] { return pipeline }
         let constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -759,6 +766,7 @@ final class AirRefinement {
                 }
                 // Not read without gravity.
                 encoder.setBuffer(gravityTable ?? fineFlux, offset: 0, index: 25)
+                encoder.setBuffer(viscosity ?? fineFlux, offset: 0, index: 26)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))

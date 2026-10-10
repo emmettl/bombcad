@@ -30,7 +30,8 @@ kernel void gravityTable(device float4 *table [[buffer(0)]],
 }
 
 // The air filled at rest in the background, every cell as the coarse grid's table holds it, so
-// that the sweeps see no deviation from it; with afterburning, oxygen at `oxygen` of its density.
+// that the sweeps see no deviation from it; with afterburning (`oxygen` above 0), oxygen at still
+// air's share of its density.
 kernel void fillHydrostatic(device Cell *state [[buffer(0)]],
                             device float2 *species [[buffer(1)]],
                             constant float &oxygen [[buffer(2)]],
@@ -50,6 +51,7 @@ kernel void fillHydrostatic(device Cell *state [[buffer(0)]],
     c.energy = b.y;
     state[index] = c;
     if (oxygen > 0.0f) {
-        species[index] = float2(0.0f, oxygen * c.rho);
+        // As `isStillAt` expects it, at still air's share of oxygen.
+        species[index] = float2(0.0f, u.stillOxygen / u.stillRho * c.rho);
     }
 }
