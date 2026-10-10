@@ -87,7 +87,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
 
         var summary: String {
             let open = result.points.filter { !$0.covered && $0.peakOverpressure > 0 }
-            var text = "Ground shock: \(result.points.count) points"
+            var text =
+                "Ground shock\(result.model == .column ? " in a soil column" : ""): \(result.points.count) points"
             let soil = result.soil
             if let top = open.max(by: { $0.surfaceVelocity(in: soil) < $1.surfaceVelocity(in: soil) }) {
                 text += String(
@@ -216,6 +217,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 result.points.count == groundShock.spec.allPoints.count,
                 result.depths == groundShock.spec.depths,
                 result.soil == groundShock.spec.soil,
+                (result.model ?? .estimate) == groundShock.spec.model, result.frameTimes == nil,
+                result.profile == (groundShock.spec.model == .column ? groundShock.spec.columnProfile : nil),
                 result.points.allSatisfy({ point in
                     finite(point.peakOverpressure) && finite(point.impulse) && finite(point.duration)
                         && finite(point.frontSpeed) && point.history.isEmpty
@@ -226,7 +229,19 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                                 && finite(response.verticalDisplacement)
                                 && (response.horizontalVelocity.map { finite($0) } ?? true)
                                 && (response.arrival.map(\.isFinite) ?? true)
+                                && (response.residualDisplacement?.isFinite ?? true)
+                                && response.history == nil
                         }
+                        && (point.profile.map { profile in
+                            let count = profile.depths.count
+                            return count <= 64
+                                && [
+                                    profile.stress, profile.velocity, profile.displacement,
+                                    profile.residualDisplacement,
+                                ]
+                                .allSatisfy { $0.count == count && $0.allSatisfy(\.isFinite) }
+                                && profile.depths.allSatisfy { finite($0) }
+                        } ?? true)
                 })
             else { throw ProjectFileError.invalid("Invalid saved ground shock.") }
         }

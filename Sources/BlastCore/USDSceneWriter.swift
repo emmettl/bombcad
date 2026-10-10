@@ -204,16 +204,24 @@ public final class USDSceneWriter {
         }
         width = min(max(width, 0.1), 2)
         let soil = result.soil
+        var values: [(String, [Float])] = [
+            ("peakOverpressure", open.map { $0.peakOverpressure / 1000 }),
+            ("impulse", open.map(\.impulse)),
+            ("verticalVelocity", open.map { $0.surfaceVelocity(in: soil) * 1000 }),
+            (
+                "verticalDisplacement",
+                open.map { ($0.profile?.displacement.first ?? $0.impulse / soil.impedance) * 1000 }
+            ),
+            ("arrival", open.map { $0.arrival.map { Float($0 * 1000) } ?? -1 }),
+        ]
+        // The column's: how far down the ground was left, mm.
+        if result.model == .column {
+            values.append(("settlement", open.map { ($0.profile?.residualDisplacement.first ?? 0) * 1000 }))
+        }
         addPoints(
             "GroundShock", frames: [open.map { SIMD3($0.position.x, $0.position.y, 0.05) }],
             widths: [Float](repeating: width, count: open.count), colour: SIMD3(0.6, 0.35, 0.9),
-            values: [
-                ("peakOverpressure", open.map { $0.peakOverpressure / 1000 }),
-                ("impulse", open.map(\.impulse)),
-                ("verticalVelocity", open.map { $0.surfaceVelocity(in: soil) * 1000 }),
-                ("verticalDisplacement", open.map { $0.impulse / soil.impedance * 1000 }),
-                ("arrival", open.map { $0.arrival.map { Float($0 * 1000) } ?? -1 }),
-            ])
+            values: values)
     }
 
     /// Adds the cloud after the run, a sphere rising and drifting with one frame every

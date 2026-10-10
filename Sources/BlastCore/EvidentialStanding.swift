@@ -255,6 +255,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case surfaceHeating
     case measuredSounding
     case cloudSpread
+    case soilColumn
     case freestandingBoxes
     case freestandingCars
 
@@ -326,6 +327,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .surfaceHeating: return inputs.thermal?.heating.enabled == true
         case .measuredSounding: return inputs.cloud?.sounding != nil
         case .cloudSpread: return inputs.cloud?.spread == true
+        case .soilColumn: return inputs.groundShock?.model == .column
         case .freestandingBoxes: return !(inputs.scenario.rigidObjects ?? []).isEmpty
         case .freestandingCars: return !(inputs.scenario.rigidCars ?? []).isEmpty
         }
@@ -590,6 +592,12 @@ public enum StandingTable {
                 note: "Once it stops rising the cloud spreads as a gravity current and a Pasquill–Gifford "
                     + "puff; no measured width of a high-explosive cloud has been found to check it.",
                 document: "fireball-rise.md#limitations")
+        case .soilColumn:
+            return Entry(
+                title: "Layered soil column", affects: [.groundShock], limit: .illustrative,
+                note: "A layered soil column under each point, solved through the ground's overpressure "
+                    + "history; checked against closed-form solutions, not against a measurement.",
+                document: "ground-shock.md#the-soil-column")
         case .freestandingBoxes:
             return Entry(
                 title: "Freestanding boxes", affects: [.freestandingMotion], limit: .verified,
@@ -794,6 +802,8 @@ public enum StandingTable {
         "GroundShockSpec.line": .input,
         "GroundShockSpec.depths": .input,
         "GroundShockSpec.arrivalThreshold": .input,
+        "GroundShockSpec.model": .option([.soilColumn]),
+        "GroundShockSpec.profile": .input,
         "GroundSoil.density": .input,
         "GroundSoil.waveSpeed": .input,
     ]
@@ -1474,9 +1484,21 @@ private struct StandingScene {
     }
 
     func groundShock() -> ResultStanding {
-        result(
+        let column = has(.soilColumn)
+        return result(
             .groundShock, .illustrative,
-            "The design manuals' one-dimensional air-induced ground shock; nothing compared with a measurement.",
+            column
+                ? "A layered soil column under each point, checked against closed-form solutions; nothing "
+                    + "compared with a ground shock measurement."
+                : "The design manuals' one-dimensional air-induced ground shock; nothing compared with a "
+                    + "measurement.",
+            evidence: column
+                ? [
+                    StandingEvidence(
+                        "Uniform, layered and bilinear soil columns against closed-form solutions",
+                        "Within 1% for pulses, reflections and resonance; 3–8% for bilinear unloading",
+                        "ground-shock.md#checks")
+                ] : [],
             assumptions: [
                 "Away from the charge only; no direct-induced shock or crater.",
                 "The ground stays rigid for the air.",
