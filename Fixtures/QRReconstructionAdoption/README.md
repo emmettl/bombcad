@@ -126,3 +126,28 @@ and all three capacity/covariance/surface-moment corruption controls. The same
 checker must replay the committed producer and physical-mini capture in the final
 durable evidence; the pressure-mode aggregate and per-cut-cell limitations above
 remain explicit.
+
+`Scripts/verify-qr-pressure-loads.py` now verifies every selected full/half-duration
+pressure-load output, including all nine decomposition modes, five connected
+volume-fit modes, supplied/constant/limited wall-Riemann loads, force, torque,
+power, errors, extrema, fallback/stencil counts and sampled limiter diagnostics.
+Both committed M4 Max native variants pass all 102 mode records across the three
+stencil-ring cases, plus six coherent reported-output/control corruptions each.
+The captured source and states remain unchanged.
+
+The Gaussian whole-face reference uses an analytic error-function integral in one
+face coordinate and a separately refined adaptive Simpson integral in the other.
+It invokes no production Gauss rule, clipping or reconstruction. Complete face
+integrals, estimated errors, evaluation counts, refinement and rounding scales are
+retained. The selected whole-face comparison uses a declared `1e-10` absolute
+error relative to the unsigned surface-pressure integral; load aggregation uses
+cancellation-aware primitive/traction scales. These are bounded numerical
+reference checks, not universal error certificates or evolved/empirical pressure
+accuracy claims. The original moment-residual acceptance bound remains explicit;
+this output checker does not invent missing neighbour quadrature evidence.
+
+Both auxiliary geometry checkers have now also replayed the committed M4 Max
+producer `6b0b96e1c9471e61de84fe7b2293bf21a063170f`, rather than relying on preliminary
+captures. The standard coupled wrapper retains and runs both auxiliary verifiers
+on future captures; the already-dispatched physical-mini capture will be replayed
+with these exact verifier sources after its existing run finishes.
