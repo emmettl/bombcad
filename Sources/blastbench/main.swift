@@ -40,6 +40,7 @@ import simd
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
+//   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -2624,6 +2625,7 @@ do {
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "thermal": try runThermal()
+    case "terrain": try runTerrain(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

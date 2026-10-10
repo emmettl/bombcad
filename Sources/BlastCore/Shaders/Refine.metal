@@ -1480,15 +1480,18 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     // The fine outline: rigid blocks by whether the fine cell's centre lies in one (or, without
     // a list of them, as the coarse cell is), and the structure as the coarse cell has it until
     // the structure's own fine pass (`refineRemaskPrepare`) refines it.
-    // The terrain likewise: by whether the fine cell's centre lies below its surface.
+    // The terrain likewise: by whether the fine cell's centre lies below its surface. (Marked 16
+    // for `refineFillConserve`, which runs next; the structure's remask clears the mark.)
     bool rigid = false;
+    bool byTerrain = false;
     if (boxCount > 0 || terrain.enabled != 0) {
         float3 centre = (float3(fineCoordinates) + 0.5f) * (u.dx / float(r));
         for (uint n = 0; n < boxCount && !rigid; ++n) {
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
         }
         if (!rigid && terrain.enabled != 0) {
-            rigid = centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
+            byTerrain = centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
+            rigid = byTerrain;
         }
     } else {
         rigid = parentRigid(rigidMask, index, u);
@@ -1497,7 +1500,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     uint at = patch * cells + position;
     float3 point = (float3(fineCoordinates)+0.5f)*(u.dx/float(r));
     bool own = u.experimentalBox != 0 && experimentalBoxContains(point,u.dx/float(r),u,boxDefinition);
-    fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0);
+    fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0) | (byTerrain ? 16 : 0);
     fineWall[at] = own ? experimentalBoxVelocity(point,u,boxDefinition)
                       : structure ? parentWallVelocity(wallVelocity, cell, index, u) : float3(0.0f);
     if (!parentIsSolid) {
@@ -1533,6 +1536,11 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
 // After `refineFill`, per coarse cell of each new patch: where its fine outline differs from its
 // own, the gas the coarse cell held over the fine cells that are solid is shared among those that
 // are fluid, so that placing the patch neither loses nor gains gas, and the patch is pinned.
+// Not under the terrain: there it is given up, since shared it would raise the fluid cells'
+// pressure by the solid share (an eighth of a cell solid, 14%), which would flag the blocks beside
+// and refine its way along a sloping surface ahead of the blast. What is given up there balances,
+// on average over the surface, the still air gained where a fine cell is fluid in a solid coarse
+// cell.
 kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
                                const device uchar *mask [[buffer(1)]],
                                constant SolverUniforms &u [[buffer(2)]],
@@ -1564,7 +1572,7 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
         if ((fineMask[child] & 1) == 0) {
             fluid += 1;
-        } else if (!coarseSolid) {
+        } else if (!coarseSolid && (fineMask[child] & 16) == 0) {
             lost = addCells(lost, fine[child]);
             if (species) {
                 lostSpecies += fineSpecies[child];

@@ -151,11 +151,11 @@ struct TerrainTests {
         let result = solver.advance(steps: 120)
         let after = solver.totals()
         #expect(result.refinedTiles > 0)
-        // Where the coarse and fine outlines differ, a new patch gains still air once (as beside a
-        // block that does not follow the coarse cells); from then on the gas is conserved.
-        // 0.2% gained over 120 steps.
-        #expect(abs(after.mass / before.mass - 1) < 5e-3)
-        #expect(abs(after.energy / before.energy - 1) < 5e-3)
+        // Where the coarse and fine outlines differ, a new patch gains still air in fine cells of air
+        // under solid coarse cells and gives up the gas over fine cells of terrain under coarse cells
+        // of air; the two nearly balance over the surface: 0.08% in 120 steps.
+        #expect(abs(after.mass / before.mass - 1) < 2e-3)
+        #expect(abs(after.energy / before.energy - 1) < 2e-3)
     }
 
     @Test("The ground slice reads the first cell of air above the terrain")
