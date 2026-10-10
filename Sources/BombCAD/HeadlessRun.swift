@@ -661,7 +661,9 @@ enum HeadlessRun {
             }
         }
         if let thermalResult {
-            let spacing = min(thermalResult.spec.surfaceSpacing, thermalResult.spec.groundSpacing)
+            let spacing = min(
+                thermalResult.spec.surfaceSpacing,
+                thermalResult.spec.groundSpacing(over: inputs.scenario.domainSize))
             scene?.addPoints(
                 "Thermal", frames: [thermalResult.receivers.map(\.position)],
                 widths: [Float](repeating: spacing / 2, count: thermalResult.receivers.count),

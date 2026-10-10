@@ -70,4 +70,15 @@ struct SceneExtentTests {
         var built = ScenarioPreset.singleBuilding.scenario
         #expect(throws: SceneExtentError.self) { try built.fitOpenScene(scaledReach: 10) }
     }
+
+    @Test("The thermal ground receivers stand further apart over a floor larger than a square kilometre")
+    func groundReceivers() {
+        let spec = ThermalSpec()
+        #expect(spec.groundSpacing(over: SIMD3(64, 64, 32)) == spec.groundSpacing)
+        var scenario = ScenarioPreset.openGround.scenario
+        scenario.domainSize = SIMD3(3334, 3334, 833)
+        let ground = ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: spec)[0]
+        #expect(ground.columns * ground.rows <= ThermalSpec.maximumGroundReceivers + 2 * ground.columns + 1)
+        #expect(abs(spec.groundSpacing(over: scenario.domainSize) - 3334 / 500) < 0.01)
+    }
 }
