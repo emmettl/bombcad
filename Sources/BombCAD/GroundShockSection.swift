@@ -42,6 +42,7 @@ struct GroundShockSection: View {
                         + "air-induced ground shock, away from the charge; the ground stays rigid for the air."
                 )
             if let spec = model.groundShockSpec {
+                StandingRow(model: model, kinds: [.groundShock])
                 Picker("Model", selection: modelChoice) {
                     Text("Soil column").tag(GroundShockModel.column)
                     Text("Manual estimate").tag(GroundShockModel.estimate)

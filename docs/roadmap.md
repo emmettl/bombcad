@@ -2070,6 +2070,9 @@ two collapsing over several seconds.
      street grid. See [Exporting a run for rendering](usd-export.md#the-air).)
   3. **In the app**: File ▸ Export for Rendering… runs a copy of the project in the background
      and writes both, with peak overpressure and impulse as further grids. (Done.)
+- **Show each result's standing** (done): a badge beside each result, from measured agreement to
+  illustrative, derived from the scene's settings, with its evidence a click away, and carried
+  with kept runs, comparisons and exports. See [Standing of results](standing.md).
 
 ## Things tried and set aside
 

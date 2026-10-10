@@ -182,7 +182,10 @@ struct FreestandingObjectsSection: View {
                 Button("Add Car", systemImage: "car") { model.addCars() }
                 Button("Add Row of Cars", systemImage: "car.2") { model.addCars(4) }
             }
-            if hasObjects { motion }
+            if hasObjects {
+                StandingRow(model: model, kinds: [.freestandingMotion])
+                motion
+            }
         } header: {
             Text("Freestanding objects (experimental)")
         } footer: {

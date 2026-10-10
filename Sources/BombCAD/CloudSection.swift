@@ -18,6 +18,7 @@ struct CloudSection: View {
                         + "its top is within 4% on average of those measured over 22 TNT detonations for "
                         + "their first two minutes, with afterburning.")
             if let spec = model.cloudSpec {
+                StandingRow(model: model, kinds: [.cloud])
                 if spec.sounding == nil {
                     LabeledSlider(
                         title: "Wind 10 m up",

@@ -72,6 +72,10 @@ local coupling. Historical `blast-solver-3` records remain readable without rela
 overall structural history. Missing/duplicate response owners and incompatible record
 versions are rejected. Existing single-body records retain their encoding and provenance.
 
+A saved run may hold `standing`, the [standing](standing.md) of its results when it was kept. It
+is optional, outside the fingerprint and leaves the record's encoding version alone; runs kept
+before it open as "standing not recorded".
+
 Saved runs containing compact `envelopeExposure` summaries use record encoding version 3,
 with owner IDs/names, window, air spacing, resolved surface area, peak pressure, positive
 loading and signed vector loads. Validation checks ownership, units/grid, finite values,
