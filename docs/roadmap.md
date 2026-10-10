@@ -278,7 +278,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
 17. **Large scenes**: surface bursts of hundreds of tonnes to kilotonnes over kilometres. (Started:
    checked against Kingery–Bulmash to 40 m/kg^(1/3) and over terrain at 500 t; refined twice at a low
    threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large
-   scenes](large-scenes.md). Next: cell sizes and domains chosen by the scene in the app.)
+   scenes](large-scenes.md); the app sets cells, domains and charges of that scale. Next: a refinement
+   criterion that follows weak shocks.)
 
 ### Freestanding objects and supports
 

@@ -41,7 +41,7 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
-//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
+//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
@@ -787,6 +787,13 @@ func runValidation() throws {
 func runSnapshot() throws {
     var scenario = chosenScenario()
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
+    // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
+    // `--terrain` is laid again over the domain it fits.
+    if let reach = option("fit-reach").flatMap({ Float($0) }) {
+        scenario.terrain = nil
+        try scenario.fitOpenScene(scaledReach: reach)
+        if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
+    }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
     let time = option("time").flatMap { Double($0) } ?? 0.03
     let output = option("out") ?? "snapshot.png"

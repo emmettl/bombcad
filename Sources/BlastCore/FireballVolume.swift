@@ -219,6 +219,12 @@ extension BlastSolver {
         if let packed = frameExtractor?.luminousCells(
             luminous: luminousTemperature, time: time, steps: stepCount, count: grid.cellCount)
         {
+            if let refined = refinedLuminousCells(
+                low: low, counts: counts, luminousTemperature: luminousTemperature,
+                coarse: { packed[grid.index($0.x, $0.y, $0.z)] })
+            {
+                return refined
+            }
             return LuminousCells(
                 cellSize: grid.cellSize, low: low, counts: counts, hasProducts: hasProducts
             ) { n in
@@ -229,9 +235,83 @@ extension BlastSolver {
             }
         }
         let packed = cpuLuminousCells(low: low, counts: counts, luminousTemperature: luminousTemperature)
+        if let refined = refinedLuminousCells(
+            low: low, counts: counts, luminousTemperature: luminousTemperature,
+            coarse: { c in
+                let l = c &- low
+                return packed[l.x + counts.x * (l.y + counts.y * l.z)]
+            })
+        {
+            return refined
+        }
         return LuminousCells(cellSize: grid.cellSize, low: low, counts: counts, hasProducts: hasProducts) {
             packed[$0]
         }
+    }
+
+    /// Where the air is refined over the box of `counts` coarse cells from `low`, its luminous gas
+    /// at the finest level whose box of cells stays within `LuminousCells.maximumVoxels`: each of
+    /// those cells taken from the finest patch that holds it, and from its coarse cell, through
+    /// `coarse` (packed as `extractLuminousCells` writes it), where none does. Nil where no patch
+    /// holds any of the box, which then goes as the coarse cells have it.
+    func refinedLuminousCells(
+        low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float, coarse: (SIMD3<Int>) -> UInt32
+    ) -> LuminousCells? {
+        let levels = refinementLevels
+        guard let first = levels.first, first.holdsAny(from: low, through: low &+ counts &- 1),
+            let top = levels.indices.last(where: {
+                let n = counts &* (levels[$0].parentScale * levels[$0].ratio)
+                return n.x * n.y * n.z <= LuminousCells.maximumVoxels
+            })
+        else { return nil }
+        // Finest first: each level's cells along a coarse cell's edge, and its reader.
+        let readers = levels[0...top].reversed().map { ($0.parentScale * $0.ratio, $0.fineReader()) }
+        let scale = readers[0].0
+        let fineLow = low &* scale
+        let fineCounts = counts &* scale
+        let gamma = configuration.gamma
+        let airModel = configuration.airModel
+        let hasProducts = speciesHoldDetonationProducts
+        var packed = [UInt32](repeating: 0, count: fineCounts.x * fineCounts.y * fineCounts.z)
+        packed.withUnsafeMutableBufferPointer { packed in
+            DispatchQueue.concurrentPerform(iterations: fineCounts.z) { k in
+                for j in 0..<fineCounts.y {
+                    for i in 0..<fineCounts.x {
+                        let at = fineLow &+ SIMD3(i, j, k)
+                        var value: UInt32?
+                        for (cells, read) in readers {
+                            guard let cell = read(at / (scale / cells)) else { continue }
+                            value = Self.packedLuminous(
+                                cell.state, products: hasProducts ? cell.products : 0, gamma: gamma,
+                                airModel: airModel, luminousTemperature: luminousTemperature)
+                            break
+                        }
+                        packed[i + fineCounts.x * (j + fineCounts.y * k)] = value ?? coarse(at / scale)
+                    }
+                }
+            }
+        }
+        return LuminousCells(
+            cellSize: grid.cellSize / Float(scale), low: fineLow, counts: fineCounts, hasProducts: hasProducts
+        ) { packed[$0] }
+    }
+
+    /// A cell of air packed as `extractLuminousCells` writes it: its temperature in kelvin in the
+    /// low 16 bits and its unburnt products' density as a half float in the high, or zero if it
+    /// is cooler than `luminousTemperature`.
+    static func packedLuminous(
+        _ cell: CellState, products held: Float, gamma: Float, airModel: AirModel, luminousTemperature: Float
+    ) -> UInt32 {
+        let air = primitive(of: cell, gamma: gamma, airModel: airModel)
+        let bound = air.pressure / (air.density * AirModel.gasConstant)
+        guard bound >= luminousTemperature, bound.isFinite else { return 0 }
+        let t =
+            airModel == .dissociating
+            ? airModel.temperature(density: air.density, pressure: air.pressure) : bound
+        guard t >= luminousTemperature, t.isFinite else { return 0 }
+        let kelvin = UInt32(min(max(t.rounded(), 1), 65535))
+        let products = Float16(min(max(held, 0), 65504))
+        return kelvin | UInt32(products.bitPattern) << 16
     }
 
     /// The cells of the box of `counts` from `low` packed as `extractLuminousCells` writes them,
@@ -250,19 +330,10 @@ extension BlastSolver {
                             for i in 0..<counts.x {
                                 let index = grid.index(low.x + i, low.y + j, low.z + k)
                                 guard mask[index] == 0 else { continue }
-                                let air = Self.primitive(of: cells[index], gamma: gamma, airModel: airModel)
-                                let bound = air.pressure / (air.density * AirModel.gasConstant)
-                                guard bound >= luminousTemperature, bound.isFinite else { continue }
-                                let t =
-                                    airModel == .dissociating
-                                    ? airModel.temperature(density: air.density, pressure: air.pressure)
-                                    : bound
-                                guard t >= luminousTemperature, t.isFinite else { continue }
-                                let kelvin = UInt32(min(max(t.rounded(), 1), 65535))
-                                let held = hasProducts ? species?[index].x ?? 0 : 0
-                                let products = Float16(min(max(held, 0), 65504))
-                                packed[i + counts.x * (j + counts.y * k)] =
-                                    kelvin | UInt32(products.bitPattern) << 16
+                                packed[i + counts.x * (j + counts.y * k)] = Self.packedLuminous(
+                                    cells[index], products: hasProducts ? species?[index].x ?? 0 : 0,
+                                    gamma: gamma, airModel: airModel, luminousTemperature: luminousTemperature
+                                )
                             }
                         }
                     }

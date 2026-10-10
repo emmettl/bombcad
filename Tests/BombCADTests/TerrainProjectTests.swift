@@ -1,5 +1,6 @@
 import AppKit
 import BlastCore
+import DocumentKit
 import Foundation
 import SwiftUI
 import Testing
@@ -38,6 +39,53 @@ struct TerrainProjectTests {
         let flatPayload = try JSONDecoder().decode(
             ImportedSceneCodec.ScenePayload.self, from: flat.files["scene.json"]!)
         #expect(flatPayload.encodingVersion == 3)
+    }
+
+    private func run(_ scene: Scenario, name: String) throws -> SavedSimulationRun {
+        var settings = ProjectDocument(scenario: scene).runSettings!
+        settings.duration = 0.01
+        return SavedSimulationRun(
+            name: name, appVersion: "test", deviceName: "test device", scenario: scene, settings: settings,
+            inputSHA256: try SavedSimulationRun.fingerprint(scene, settings: settings), elapsedTime: 0.01,
+            stepCount: 20,
+            gauges: SavedSimulationRun.Gauge.keys(scene.gauges).map {
+                .init(key: $0, points: [.init(time: 0.001, value: 0), .init(time: 0.005, value: 10)])
+            })
+    }
+
+    @Test("Runs over the same ground keep its terrain once, by reference; inline runs still read")
+    func runsShareTerrain() throws {
+        let scene = hilly()
+        var heavier = scene
+        heavier.charge.mass *= 2
+        var document = ProjectDocument(scenario: scene)
+        document.savedRuns = [try run(scene, name: "One"), try run(heavier, name: "Two")]
+        let archive = try document.makeArchive()
+        let terrains = archive.files.keys.filter { $0.hasPrefix("results/terrain/") }
+        #expect(terrains.count == 1)
+        for path in archive.files.keys where path.hasPrefix("results/runs/") {
+            let json = try #require(
+                try JSONSerialization.jsonObject(with: archive.files[path]!) as? [String: Any])
+            #expect(json["encodingVersion"] as? Int == 4 && json["terrain"] is String)
+            #expect(!String(decoding: archive.files[path]!, as: UTF8.self).contains("\"heights\""))
+        }
+        let restored = try ProjectDocument(archive: archive)
+        #expect(restored.savedRuns == document.savedRuns)
+        #expect(restored.savedRuns.allSatisfy { $0.scenario.terrain == scene.terrain })
+
+        // A damaged terrain file is refused, not read as flat ground.
+        var damaged = archive
+        damaged.files[terrains[0]] = Data("{}".utf8)
+        #expect(throws: (any Error).self) { try ProjectDocument(archive: damaged) }
+
+        // Runs saved before, with the terrain inline in each, read as they did.
+        var manifest = archive.manifest
+        var files = archive.files
+        try SavedRunStore.write(
+            document.savedRuns, manifest: &manifest, files: &files, terrainByReference: false)
+        #expect(!files.keys.contains { $0.hasPrefix("results/terrain/") })
+        let inline = try ProjectArchive(manifest: manifest, files: files)
+        #expect(try ProjectDocument(archive: inline).savedRuns == document.savedRuns)
     }
 
     @Test("Laying a terrain carries the charge and gauges with the ground under them")
