@@ -63,7 +63,7 @@ swift run -c release blastbench chamber
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), 40–70% under 0.2–0.8 kg where the tests spalled; contact charges hole them, not to size. Wang et al. (2022): an aluminised charge's impulse 75% as its stated 10 kg of TNT, 94% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges; low for one layer against two, spall and holes |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
-| Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4% | Low: illustrative; the fireball neither rises nor mixes with cold air |
+| Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot | Low: illustrative; the fireball barely mixes with cold air |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
@@ -1923,7 +1923,10 @@ as bright as measured at the pulse's first maximum, too cool at the start for wa
 very hot shock layer. It has no luminous gas from 40 to 350 ms on 4 and 2 m cells, and after a
 second it is two to five times too bright and still brightening, its products burning in a
 fireball that neither rises nor draws in cold air. By 2 s it has radiated 3.9% (3.3% with the gas
-losing its radiated heat) against 2.4%. Details, the opaque shapes' answers, the resolution's
+losing its radiated heat) against 2.4%. With gravity in the air the fireball rises, as the
+cloud's integral model has it to a tenth to a fifth, but stays 600 to 900 K too hot, so by 3 s it
+has radiated 8.6% against 3.2%, and by 6 s 32% against 5.1%: the missing cooling is mixing with
+cold air, not the rise. Details, the opaque shapes' answers, the resolution's
 effect and the assumptions:
 [thermal radiation](thermal-radiation.md#against-dial-pack).
 

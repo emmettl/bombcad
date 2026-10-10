@@ -55,6 +55,11 @@ final class AirRefinement {
     private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
     let fineOccupancy: MTLBuffer
+    /// Gravity's background at this level's resolution (see `gravityCellOf` in Solver.metal),
+    /// while the air has gravity.
+    var gravityTable: MTLBuffer?
+    /// And at the resolution of the level it refines.
+    var parentGravityTable: MTLBuffer?
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -92,6 +97,9 @@ final class AirRefinement {
     /// far, the sweep compiled for that model alone, which leaves the others' code out of it.
     private let sweepPipeline: MTLComputePipelineState
     private var sweepPipelines: [AirModel: MTLComputePipelineState] = [:]
+    /// The sweep for each gas model, and the ghosts, refluxing and filling, with gravity in the air
+    /// compiled in (see `airGravityConstant` in Solver.metal), made when first needed.
+    private var gravityPipelines: [String: MTLComputePipelineState] = [:]
     private let ghostPipeline: MTLComputePipelineState
     private let haloPipeline: MTLComputePipelineState
     private let refluxPipeline: MTLComputePipelineState
@@ -622,8 +630,29 @@ final class AirRefinement {
 
     /// The fine sweep compiled for `model`, made the first time it is used; the general one if
     /// that fails.
+    /// `base`, kernel `name`, or with gravity compiled in while the air has gravity (`model` for the
+    /// gas model's specialisation, if any).
+    private func withGravity(_ base: MTLComputePipelineState, _ name: String, model: AirModel? = nil)
+        -> MTLComputePipelineState
+    {
+        guard gravityTable != nil else { return base }
+        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-")"
+        if let pipeline = gravityPipelines[key] { return pipeline }
+        var constants = MTLFunctionConstantValues()
+        if var value = model?.rawValue {
+            constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        }
+        constants = ShaderLibrary.withGravity(constants)
+        guard let pipeline = try? ShaderLibrary.pipeline(name, in: library, constants: constants) else {
+            return base
+        }
+        gravityPipelines[key] = pipeline
+        return pipeline
+    }
+
     private func sweepPipeline(for model: AirModel?) -> MTLComputePipelineState {
-        guard let model else { return sweepPipeline }
+        guard let model else { return withGravity(sweepPipeline, "refineSweep") }
+        if gravityTable != nil { return withGravity(sweepPipeline, "refineSweep", model: model) }
         if let pipeline = sweepPipelines[model] { return pipeline }
         let constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -667,7 +696,7 @@ final class AirRefinement {
                 let source = fine[sweep % 2]
                 let sourceOffset = sweep % 2 == 0 ? offset(of: fine[0]) : 0
 
-                encoder.setComputePipelineState(ghostPipeline)
+                encoder.setComputePipelineState(withGravity(ghostPipeline, "refineGhosts"))
                 encoder.setBuffer(source, offset: sourceOffset, index: 0)
                 encoder.setBuffer(ghosts, offset: 0, index: 1)
                 encoder.setBuffer(ghostKinds, offset: 0, index: 2)
@@ -687,6 +716,9 @@ final class AirRefinement {
                 encoder.setBuffer(ghostSpecies, offset: 0, index: 16)
                 set(encoder, parent.species, 17)
                 set(encoder, parent.patches, 18)
+                // Not read without gravity.
+                encoder.setBuffer(parentGravityTable ?? ghosts, offset: 0, index: 19)
+                encoder.setBuffer(gravityTable ?? ghosts, offset: 0, index: 20)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -725,6 +757,8 @@ final class AirRefinement {
                     encoder.setBuffer(fineFlux, offset: 0, index: 23)
                     encoder.setBuffer(fineFlux, offset: 0, index: 24)
                 }
+                // Not read without gravity.
+                encoder.setBuffer(gravityTable ?? fineFlux, offset: 0, index: 25)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
@@ -748,7 +782,7 @@ final class AirRefinement {
         uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
-        encoder.setComputePipelineState(refluxPipeline)
+        encoder.setComputePipelineState(withGravity(refluxPipeline, "refineReflux"))
         set(encoder, parent.state, 0)
         set(encoder, parent.mask, 1)
         bind(encoder, patchOfTile, 3)
@@ -997,7 +1031,7 @@ final class AirRefinement {
             MTLSize(width: 1, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
-        encoder.setComputePipelineState(fillPipeline)
+        encoder.setComputePipelineState(withGravity(fillPipeline, "refineFill"))
         bind(encoder, fine[0], 0)
         set(encoder, parent.state, 1)
         set(encoder, parent.mask, 2)
@@ -1022,6 +1056,9 @@ final class AirRefinement {
         encoder.setBuffer(terrainHeights, offset: 0, index: 20)
         var terrain = terrainUniforms
         encoder.setBytes(&terrain, length: MemoryLayout<TerrainUniforms>.stride, index: 21)
+        // Not read without gravity.
+        encoder.setBuffer(gravityTable ?? fine[0], offset: 0, index: 22)
+        encoder.setBuffer(parentGravityTable ?? fine[0], offset: 0, index: 23)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))

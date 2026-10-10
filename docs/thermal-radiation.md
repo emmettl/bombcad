@@ -548,6 +548,35 @@ all 15 s, and its intensity, 144 (103 cooling) against 28, is still rising.
   only a little at this size: an opaque fireball radiates its share of its heat in a time that
   grows with its size, as the blast's times do, and 2 s at 500 t is 120 ms at 100 kg.
 
+**With gravity the fireball rises, but stays as bright.** With [gravity in the
+air](air-blast-model.md#gravity) (`--gravity`, the standard atmosphere's 6.5 K/km), in a domain
+tall enough to hold the rise:
+
+| | Measured | No gravity | Gravity | Gravity, the gas cooling |
+|---|---|---|---|---|
+| 4 m cells, by 3 s: radiated, by the report's reckoning | 3.2% | 8.4% | 8.6% | 6.6% |
+| Intensity toward 1,700 m at 3 s, cal/sr/s × 10⁷ | 28 | 204 | 197 | 137 |
+| The luminous gas's centre at 3 s; its temperature | | 43 m; 2,360 K | 61 m; 2,370 K | 59 m; 2,150 K |
+| 8 m cells, by 6 s: radiated | 5.1% | 26% | 32% | 22% |
+| Intensity at 5 s | 26 | 285 | 371 | 218 |
+| The luminous gas's centre at 6 s; its temperature | | 48 m; 2,490 K | 184 m; 2,580 K | 183 m; 2,140 K |
+
+The fireball rises once its products have stopped expanding, its luminous centre 61 m up at 3 s
+against 43 m without gravity, and 184 m at 6 s. The gas the cloud's rise would take over (all of
+it at least 500 K) is 80 m up at 3 s, rising at 12 m/s, where the cloud's integral model,
+handed it at 1 s, puts it at 91 m and 19 m/s; at 6 s, on 8 m cells, 136 m and 26 m/s against
+165 m and 24 m/s. So the air model's rising fireball and the cloud's model agree to about a
+tenth to a fifth, and the hand-over could be moved later, or checked against the air model, with
+gravity on.
+
+But rising does not cool it. Its products go on burning, and on metre cells only the grid's own
+mixing draws in cold air, so it stays at 2,400 to 2,600 K where Dial Pack's fell to 1,600 to
+1,800 K. At T⁴ that is four to five times the radiance, and the late fluence does not come down:
+lifted off the ground, the fireball shows the instruments more of itself, and radiates a little
+more. The gas cooling brings it down by a quarter to a third. What is missing is turbulent
+mixing below the grid's scale. Treating the products as air may matter too, since CO₂ and water
+hold more heat for their temperature.
+
 Over the first second the errors offset: the fluence at 600 m by 1 s is 4.9 kJ/m² (4.5 cooling;
 4 m cells refined), against 6.7 measured. **The opaque shapes are no better.** The shape at
 emissivity 1 is a tenth to a third brighter than the volume, and the equivalent sphere, a ball of
