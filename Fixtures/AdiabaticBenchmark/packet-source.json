@@ -1,0 +1,9 @@
+{
+  "path": "Sources/BlastCore/FractionalGasTransport.swift",
+  "repository": "https://github.com/emmettl/bombcad",
+  "revision": "e5ead4b55ad20684fde635ca2c56d830fefd4037",
+  "schemaVersion": 1,
+  "scope": "verification-only immutable packet operator; historical benchmark core pin unchanged",
+  "sourceGitBlob": "af65c142dbd6dfaffe8ccbb516c0b846d62c4086",
+  "sourceSHA256": "9a3bccd54cd6448bb468ccd71e6d0f391ccd6f6f19f9661f6c250f2c9daa02a7"
+}

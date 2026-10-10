@@ -395,8 +395,16 @@ Nine values in the code were written from memory and should be checked against t
 - **Also needed:** any measurement of air-induced ground motion under a surface burst of high
   explosive, with the overpressure on the ground recorded beside a velocity gauge at or just
   below the surface.
-- **Use:** to check `GroundShock.swift` and [Ground shock](ground-shock.md), whose relations
-  were re-derived rather than taken from the page.
+- **Needed for the layered column** (`SoilColumn.swift`): for each shot, the charge; the
+  overpressure history on the ground beside each gauge; velocity or acceleration histories at
+  known depths below it; and the site's profile: each layer's thickness, density and seismic
+  compression wave speed, its loading and unloading moduli from uniaxial-strain tests if
+  possible, and the depth of the water table. Prairie Flat with the Watching Hill soil data,
+  and Middle Gust's wet and dry sites (below), come closest. The HEST tests (High Explosive
+  Simulation Technique, the air blast simulated over a site) and Misers Bluff are still to be
+  looked for. Nothing has been downloaded.
+- **Use:** to check `GroundShock.swift`, `SoilColumn.swift` and [Ground shock](ground-shock.md),
+  whose relations were re-derived rather than taken from the page.
 - **Searched for measurements, 10 October 2026.** A comparison needs the overpressure on the
   ground beside velocity or acceleration gauges at and below the surface, at known ranges, and
   the soil's layers. No open, machine-readable set has all three. The best are the reports of
