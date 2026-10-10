@@ -264,8 +264,9 @@ struct GroundShockTests {
             #expect(
                 abs(response.verticalDisplacement / (Float(peak * duration / 2) / soil.impedance) - 1) < 0.01)
             #expect(response.history?.count == 41)
+            // The shock rises over a dozen of the column's steps, 0.6 ms, centred on its arrival.
             let expected = arrival + Double(response.depth) / 300
-            #expect(abs(response.arrival! - expected) < 2e-4 || response.depth == 0)
+            #expect(abs(response.arrival! - expected) < 3.5e-4 || response.depth == 0)
         }
         #expect(point.surfaceVelocity(in: soil) == profile.velocity[0])
         // Below the surface the estimate wears the peak down; the elastic column does not.

@@ -196,6 +196,9 @@ public struct GroundShockConsumer: Sendable {
     private var columns: [SoilColumn] = []
     private var motions: [[[Float]]] = []
 
+    /// The fewest of the column's steps a shock rises over.
+    public static let riseSteps = 12.0
+
     public init(spec: GroundShockSpec) {
         self.spec = spec
         points = spec.allPoints
@@ -236,13 +239,16 @@ public struct GroundShockConsumer: Sendable {
             // Nothing for a point never yet open; one under a block or the structure for a frame
             // carries nothing then.
             guard let sample = latest[n] else { continue }
-            // A shock rises over the time its front takes to cross a cell.
+            // A shock rises over the time its front takes to cross a cell, and over no fewer than
+            // a dozen of the column's steps: faster, and the surface's node rings, up to two
+            // fifths too fast in soil that unloads stiffly.
             let speed = AirInducedGroundShock.frontSpeed(
                 overpressure: peaks[n], ambientPressure: air.pressure, ambientDensity: air.density,
                 gamma: air.gamma)
+            let rise = max(Double(slice.cellSize / speed), Self.riseSteps * columns[n].timeStep)
             loads[n].append(
                 time: slice.time, overpressure: histories[n].last ?? 0, peak: peaks[n],
-                impulse: max(sample.impulse, 0), rise: Double(slice.cellSize / speed))
+                impulse: max(sample.impulse, 0), rise: rise)
             columns[n].advance(to: slice.time, load: loads[n])
             loads[n].forget(before: columns[n].time - columns[n].timeStep)
             let velocity = columns[n].velocities
