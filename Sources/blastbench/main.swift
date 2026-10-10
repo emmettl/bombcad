@@ -136,11 +136,13 @@ func chosenScenario() -> Scenario {
     }
     // `--no-units` gives masonry its wall's strength throughout, without units and joints.
     if flag("no-units") { scenario.structure?.unitJoints = false }
-    // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
-    if flag("bond"), var structure = scenario.structure {
+    // `--bond` (or `--bond mortar`) lets masonry come away from concrete at the bond of mortar
+    // to concrete; `--bond pullout` and the like make the bars slip instead.
+    if chosenBond == .mortar, var structure = scenario.structure {
         structure.interfaceBond = StructureModel.masonryBond
         scenario.structure = structure
     }
+    if let bond = chosenBondSlip(diameter: 0.016) { scenario.structure?.bondSlip = bond }
     // `--solid-near 4` meshes the pieces within 4 m of the charge with solid elements and the
     // rest with shells.
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
@@ -166,14 +168,12 @@ func chosenCrackAxes() -> CrackAxes {
 func chosenBondSlip(diameter: Float) -> BondSlip? {
     let bar = option("bar").flatMap { Float($0) }.map { $0 / 1000 } ?? diameter
     // `--keep-yielded-bond`: bars hold as well after yielding as before.
-    let loss = !flag("keep-yielded-bond")
-    switch option("bond") {
-    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar, yieldedBondLoss: loss)
-    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar, yieldedBondLoss: loss)
-    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar, yieldedBondLoss: loss)
-    default: return nil
-    }
+    return chosenBond.bondSlip(diameter: bar, yieldedBondLoss: !flag("keep-yielded-bond"))
 }
+
+/// What `--bond` asks for: bars that slip (`pullout`, `splitting`, `confined`), perfect bond
+/// (`none`), or, alone or as `--bond mortar`, the joint where masonry meets concrete.
+let chosenBond = BondArgument(present: flag("bond"), value: option("bond"))
 
 /// The air model `--air thermal` or `--air dissociating` asks for, or nil for the default.
 func chosenAirModel() -> AirModel? {
