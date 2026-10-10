@@ -58,7 +58,8 @@ interactive review.
 ### Validation first
 
 More evidence is worth more than more features. The sources each step needs, and what is
-needed from them, are listed in [Data wanted](data-wanted.md).
+needed from them, are listed in [Data wanted](data-wanted.md); the open sources found for
+them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#where-to-start-the-open-leads-ranked).
 
 1. **The chamber's joints.** In the test they were cut through within milliseconds and the
    roof was left 95 mm up; the model's stay whole, carry an arching thrust that outlasts the
