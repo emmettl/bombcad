@@ -21,6 +21,8 @@ public struct FreestandingMotion: Codable, Sendable {
         public let finalTilt: Double
         /// Tipped past the angle it balances at, on its side or roof.
         public let overturned: Bool
+        /// When it left the air, nearing the cropped domain's edge, to carry on without its load.
+        public let leftAir: Double?
     }
 
     public struct Pose: Codable, Sendable {
@@ -60,6 +62,11 @@ public struct FreestandingMotion: Codable, Sendable {
     public let timings: ExperimentalRigidCarSimulation.Timings
     public let cellSize: Float
     public let refinement: Int
+    /// Air steps taken, and cells of the cropped air grid.
+    public let steps: Int
+    public let cells: Int
+    /// Every object was held still: the same geometry, for the air's own cost.
+    public let held: Bool
     /// The scene this was computed for, to tell when it is out of date.
     public let scenario: Scenario
 
@@ -122,16 +129,17 @@ public struct FreestandingMotion: Codable, Sendable {
     /// `cellSize` and `refinement` default to the resolution the car study supports.
     public static func compute(
         device: MTLDevice, scenario: Scenario, duration: Double = 1.5, frameInterval: Double = 0.02,
-        cellSize: Float = 0.2, refinement: Int = 4, coupled: [Int]? = nil,
-        progress: ((Double) -> Void)? = nil, shouldContinue: (() -> Bool)? = nil
+        cellSize: Float = 0.2, refinement: Int = 4, coupled: [Int]? = nil, held: Bool = false,
+        refinementMemory: Int = 512 << 20, progress: ((Double) -> Void)? = nil,
+        shouldContinue: (() -> Bool)? = nil
     ) throws -> FreestandingMotion {
         let (scene, offset) = try cropped(scenario, cellSize: Double(cellSize))
         var configuration = SolverConfiguration()
         configuration.refinement = refinement
-        if refinement > 1 { configuration.refinementMemory = 512 << 20 }
+        if refinement > 1 { configuration.refinementMemory = refinementMemory }
         let simulation = try ExperimentalRigidWorldSimulation(
             device: device, scenario: scene, cellSize: cellSize, configuration: configuration,
-            coupled: coupled)
+            motion: held ? .held : .free, coupled: coupled)
         let ids = (scenario.rigidObjects ?? []).map(\.id) + (scenario.rigidCars ?? []).map(\.id)
         let start = simulation.members
         var peakSpeed = [Double](repeating: 0, count: start.count)
@@ -182,11 +190,13 @@ public struct FreestandingMotion: Codable, Sendable {
             return Object(
                 id: ids[n], name: last.name, isCar: last.isCar, size: size,
                 displacement: last.centreOfMass - first.centreOfMass, peakSpeed: peakSpeed[n],
-                peakTilt: peakTilt[n], finalTilt: last.tilt, overturned: last.tilt > balance * 180 / .pi)
+                peakTilt: peakTilt[n], finalTilt: last.tilt, overturned: last.tilt > balance * 180 / .pi,
+                leftAir: simulation.leftAir[n])
         }
         return FreestandingMotion(
             objects: objects, coupled: simulation.coupled, frames: frames, duration: simulation.air.time,
             failure: failure, timings: simulation.timings, cellSize: cellSize, refinement: refinement,
+            steps: simulation.air.stepCount, cells: simulation.air.grid.cellCount, held: held,
             scenario: scenario)
     }
 

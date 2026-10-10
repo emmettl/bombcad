@@ -540,6 +540,137 @@ do {
         print("Wrote \(output.path)")
         exit(0)
     }
+    if arguments.contains("--box-wall") {
+        // A box thrown into a reinforced concrete wall, of solids and of shells: --speed=10 --mass=100
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        func option(_ name: String) -> String? {
+            arguments.first(where: { $0.hasPrefix("--\(name)=") }).map {
+                String($0.dropFirst(name.count + 3))
+            }
+        }
+        let speed = option("speed").flatMap(Double.init) ?? 10
+        let mass = option("mass").flatMap(Double.init) ?? 100
+        for shells in [false, true] {
+            // 0.2 m thick, 3 m wide and 2.5 m high, clamped at its base; the 0.5 m box 5 mm from it.
+            let wall = Box(min: SIMD3(2, 0, 0), max: SIMD3(2.2, 3, 2.5))
+            var model = StructureModel(solids: [wall], elementSize: 0.1, fixedBase: true)
+            model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: 565e-6, depth: 0.04)
+            if shells { model.elementKind = .shell }
+            let scene = Scenario(
+                name: "Box and wall", domainSize: SIMD3(4, 3, 3), boxes: [],
+                charge: Charge(mass: 0, position: SIMD3(0.5, 1.5, 0.3)), structure: model,
+                rigidObjects: [
+                    try RigidObjectDefinition(
+                        name: "Box", shape: .box(size: SIMD3(repeating: 0.5)),
+                        position: SIMD3(1.745, 1.5, 1.4),
+                        mass: mass)
+                ])
+            let simulation = try ExperimentalRigidStructureSimulation(device: device, scenario: scene)
+            simulation.applyImpulse(SIMD3(mass * speed, 0, 0), to: 0)
+            let start = simulation.linearMomentum
+            let energy = simulation.kineticEnergy
+            let window = max(1, Int((0.0005 / simulation.timeStep).rounded()))
+            var recent: [Double] = []
+            var peakForce = 0.0
+            var peakDisplacement = 0.0
+            var deepest = -Double.infinity
+            let started = Date.timeIntervalSinceReferenceDate
+            while simulation.time < 0.05 {
+                simulation.advance(steps: 1)
+                recent.append(simulation.lastReaction.x / simulation.timeStep)
+                if recent.count > window { recent.removeFirst() }
+                peakForce = max(peakForce, recent.reduce(0, +) / Double(recent.count))
+                deepest = max(deepest, simulation.members[0].corners.map(\.x).max()! - 2)
+                if simulation.stepCount % 20 == 0 {
+                    peakDisplacement = max(peakDisplacement, simulation.largestDisplacement)
+                }
+            }
+            let box = simulation.members[0]
+            let gravity = mass * simulation.time * simulation.gravity
+            print(
+                String(
+                    format:
+                        "%@: %d steps of %.2g s in %.0f s (structure %.0f, contact and motion %.1f). Reaction %.0f N s (box's momentum change less gravity's %.0f), peak %.0f kN over 0.5 ms; box leaves at %.2f m/s, %.1f mm into the wall's face; wall moves at most %.2f mm. Contact took %.0f J from the box and gave the wall %.0f J of %.0f J.",
+                    shells ? "Shell wall" : "Solid wall", simulation.stepCount, simulation.timeStep,
+                    Date.timeIntervalSinceReferenceDate - started, simulation.timings.structure,
+                    simulation.timings.mechanics, simulation.reaction.x,
+                    -(simulation.linearMomentum - start - gravity).x, peakForce / 1000, box.velocity.x,
+                    1000 * deepest, 1000 * peakDisplacement, -simulation.contactWork.members,
+                    simulation.contactWork.structure, energy))
+            fflush(stdout)
+        }
+        exit(0)
+    }
+    if let populated = arguments.first(where: { $0.hasPrefix("--populated") }) {
+        // --populated[=carPark,furnishedRoom,crowdedPen] --duration=0.2 [--free-only] [--cases=0.15x2]
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        func option(_ name: String) -> String? {
+            arguments.first(where: { $0.hasPrefix("--\(name)=") }).map {
+                String($0.dropFirst(name.count + 3))
+            }
+        }
+        let names = populated.split(separator: "=").dropFirst().first.map {
+            $0.split(separator: ",").map(String.init)
+        }
+        let scenes = try (names ?? PopulatedScene.allCases.map(\.rawValue)).map {
+            guard let scene = PopulatedScene(rawValue: $0) else {
+                throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+            }
+            return scene
+        }
+        let duration = option("duration").flatMap(Double.init) ?? 0.2
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var results: [FreestandingMotion] = []
+        for scene in scenes {
+            var resolution = scene.resolution
+            if let parts = option("cases")?.split(separator: "x") {
+                resolution = (
+                    Float(parts[0]) ?? resolution.cellSize, parts.count > 1 ? Int(parts[1]) ?? 1 : 1
+                )
+            }
+            for held in arguments.contains("--free-only") ? [false] : [false, true] {
+                let started = Date.timeIntervalSinceReferenceDate
+                let r = try FreestandingMotion.compute(
+                    device: device, scenario: scene.scenario, duration: duration, frameInterval: 0.01,
+                    cellSize: resolution.cellSize, refinement: resolution.refinement, held: held,
+                    refinementMemory: 2 << 30
+                ) { time in
+                    print(String(format: "  %@ %@: %.3f s", scene.rawValue, held ? "held" : "free", time))
+                    fflush(stdout)
+                }
+                results.append(r)
+                print(
+                    String(
+                        format:
+                            "%@, %@, %d objects, %.2g m x%d, %d cells: %.3f s in %d steps, %.0f s (air %.0f, coupling %.0f, motion and contact %.1f)%@",
+                        scene.title, held ? "held" : "free", r.objects.count, r.cellSize, r.refinement,
+                        r.cells,
+                        r.duration, r.steps, Date.timeIntervalSinceReferenceDate - started, r.timings.air,
+                        r.timings.coupling, r.timings.mechanics, r.failure.map { "; stopped: \($0)" } ?? ""))
+                for object in r.objects where !held {
+                    print(
+                        String(
+                            format: "  %@: moved %.2f m, peak speed %.2f m/s, peak tilt %.1f°%@%@",
+                            object.name,
+                            simd_length(object.displacement), object.peakSpeed, object.peakTilt,
+                            object.overturned ? ", overturned" : "",
+                            object.leftAir.map { String(format: ", left the air at %.3f s", $0) } ?? ""))
+                }
+                fflush(stdout)
+            }
+        }
+        let output = URL(
+            fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") }) ?? ".build/populated-scenes.json"
+        )
+        try encoder.encode(results).write(to: output, options: .atomic)
+        print("Wrote \(output.path)")
+        exit(0)
+    }
     if arguments.contains("--contact-benchmark") {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

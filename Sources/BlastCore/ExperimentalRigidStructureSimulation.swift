@@ -146,6 +146,22 @@ public final class ExperimentalRigidStructureSimulation {
         }
     }
 
+    /// The largest displacement of any node of the structure (m).
+    public var largestDisplacement: Double {
+        var largest: Float = 0
+        switch structure {
+        case .solid(let solver):
+            solver.mutateNodes { nodes in
+                for node in nodes { largest = max(largest, simd_length(node.displacement)) }
+            }
+        case .shell(let solver):
+            solver.mutateNodes { nodes in
+                for node in nodes { largest = max(largest, simd_length(node.displacement)) }
+            }
+        }
+        return Double(largest)
+    }
+
     public func applyImpulse(_ impulse: SIMD3<Double>, to member: Int, at point: SIMD3<Double>? = nil) {
         world.applyImpulse(impulse, to: member, at: point)
     }

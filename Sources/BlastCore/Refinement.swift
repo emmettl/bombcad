@@ -462,17 +462,29 @@ final class AirRefinement {
         }
     }
 
-    /// Releases every patch.
-    var hasBoxCells: Bool {
+    /// The pool slots of the patches in use whose block passes `near` (block coordinates).
+    func patches(near: (SIMD3<Int>) -> Bool) -> [Int] {
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        return (0..<maxPatches).filter { patch in
+            guard owners[patch] != .max else { return false }
+            let tile = Int(owners[patch])
+            return near(
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y)))
+        }
+    }
+
+    /// Whether any of these patches has a fine cell of an experimental box.
+    func hasBoxCells(in patches: [Int]) -> Bool {
         let mask = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * side * side * side)
         let cells = side * side * side
-        for patch in 0..<maxPatches where owners[patch] != .max {
+        for patch in patches {
             for n in 0..<cells where mask[patch * cells + n] & 8 != 0 { return true }
         }
         return false
     }
 
+    /// Makes sure the fine impulses can be recorded. Only cells beside a box's record, and
+    /// `takeBoxFaceImpulses` zeroes what it reads, so the rest stay zero.
     func clearBoxImpulse() throws {
         let cells = side * side * side
         let length = maxPatches * cells * 6 * MemoryLayout<Float>.stride
@@ -480,25 +492,20 @@ final class AirRefinement {
             experimentalBoxImpulse = device.makeBuffer(length: length, options: .storageModeShared)
             if let buffer = experimentalBoxImpulse { memset(buffer.contents(), 0, buffer.length) }
         }
-        guard let buffer = experimentalBoxImpulse else {
+        guard experimentalBoxImpulse != nil else {
             throw BlastError.allocationFailed("fine rigid-box impulses")
-        }
-        // Only patches in use record; `boxImpulses` zeroes what it reads, so a free slot stays zero.
-        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
-        for patch in 0..<maxPatches where owners[patch] != .max {
-            memset(buffer.contents() + patch * cells * 6 * MemoryLayout<Float>.stride, 0, cells * 6 * 4)
         }
     }
 
-    /// Passes each fine face's impulse recorded on the patches in use to `face`, with the fine
-    /// cell's coordinates and the face's axis and side (0 low, 1 high), and zeroes them; free
-    /// slots hold zeros.
-    func takeBoxFaceImpulses(_ face: (SIMD3<Int>, Int, Int, Double) -> Void) {
+    /// Passes each fine face's impulse recorded on `patches` (which must hold every patch beside
+    /// a box) to `face`, with the fine cell's coordinates and the face's axis and side (0 low,
+    /// 1 high), and zeroes them.
+    func takeBoxFaceImpulses(in patches: [Int], _ face: (SIMD3<Int>, Int, Int, Double) -> Void) {
         guard let buffer = experimentalBoxImpulse else { return }
         let values = buffer.contents().bindMemory(to: Float.self, capacity: buffer.length / 4)
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
         let cells = side * side * side
-        for patch in 0..<maxPatches where owners[patch] != .max {
+        for patch in patches {
             let tile = Int(owners[patch])
             let origin =
                 SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
@@ -1033,7 +1040,7 @@ extension AirRefinement {
     /// Prepare without writes so a coverage/collision/remap failure cannot half-change the gas.
     /// Commit the fine state and its coarse proxy only after the driver validates the whole step.
     /// `boxes` are those whose cells lie within `low`...`high` (m), before and after, and no
-    /// others' do; each must keep a fine cell.
+    /// others' do; each in the air must keep a fine cell.
     func prepareBoxRemap(
         _ boxes: [ExperimentalBoxGeometry], low unionLow: SIMD3<Float>, high unionHigh: SIMD3<Float>,
         grid: Grid
@@ -1116,7 +1123,7 @@ extension AirRefinement {
             initial.append(states[at])
         }
         phase("snapshot")
-        guard !held.contains(false) else {
+        guard boxes.indices.allSatisfy({ held[$0] || boxes[$0].isAbsent }) else {
             throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
         }
         phase("ordering")

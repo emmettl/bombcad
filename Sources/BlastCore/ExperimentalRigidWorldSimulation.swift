@@ -10,7 +10,8 @@ import simd
 /// load of the faces it owns.
 ///
 /// Any left out of the air take no load from it and do not obstruct it: the blast passes through
-/// them and their own motion comes only from contact.
+/// them and their own motion comes only from contact. So does one about to leave the air's
+/// domain: it leaves the air for good (`leftAir`) and carries on under gravity and contact.
 public final class ExperimentalRigidWorldSimulation {
     public typealias Failure = ExperimentalRigidBoxSimulation.Failure
     public typealias Motion = ExperimentalRigidBoxSimulation.Motion
@@ -33,8 +34,10 @@ public final class ExperimentalRigidWorldSimulation {
 
     public let air: BlastSolver
     public let motion: Motion
-    /// The members in the air, in order.
+    /// The members put in the air, in order.
     public let coupled: [Int]
+    /// When each member that left the air did so (s).
+    public private(set) var leftAir: [Int: Double] = [:]
     public let names: [String]
     public var gravity = SIMD3<Double>(0, 0, -9.81)
     private var world: RigidBodyWorld
@@ -125,6 +128,25 @@ public final class ExperimentalRigidWorldSimulation {
     }
     public var kineticEnergy: Double { world.kineticEnergy }
 
+    /// The coupled members' bodies for the air, nil for those out of it: a member whose corners
+    /// come within two cells of the domain's sides or top leaves the air.
+    private func inAir(_ world: RigidBodyWorld) -> [RigidBoxBody?] {
+        let domain = SIMD3<Double>(air.grid.size)
+        let margin = 2 * Double(air.grid.cellSize)
+        return coupled.map { n in
+            let body = world.members[n].body
+            if leftAir[n] == nil,
+                body.corners.contains(where: {
+                    $0.x < margin || $0.y < margin || $0.x > domain.x - margin || $0.y > domain.y - margin
+                        || $0.z > domain.z - margin
+                })
+            {
+                leftAir[n] = air.time
+            }
+            return leftAir[n] == nil ? body : nil
+        }
+    }
+
     /// Always step through this driver: each air step is followed by a world step.
     public func advance(steps: Int, timeLimit: Double? = nil) throws {
         precondition(steps >= 0)
@@ -160,7 +182,7 @@ public final class ExperimentalRigidWorldSimulation {
             }
             let contacts = next.advance(by: result.elapsed, gravity: gravity)
             lap(\.mechanics)
-            try air.updateExperimentalBoxes(coupled.map { next.members[$0].body })
+            try air.updateExperimentalBoxes(inAir(next))
             lap(\.coupling)
             var contactImpulses = [SIMD3<Double>](repeating: .zero, count: next.members.count)
             for contact in contacts {

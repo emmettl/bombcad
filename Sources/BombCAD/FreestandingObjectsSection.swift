@@ -235,7 +235,10 @@ struct FreestandingObjectsSection: View {
                 .font(.caption.bold())
                 ForEach(Array(result.objects.enumerated()), id: \.offset) { n, object in
                     GridRow {
-                        Text(object.name + (result.coupled.contains(n) ? "" : " (contact only)"))
+                        Text(
+                            object.name
+                                + (!result.coupled.contains(n)
+                                    ? " (contact only)" : object.leftAir != nil ? " (left the air)" : ""))
                         Text(String(format: "%.2f m", simd_length(object.displacement)))
                         Text(String(format: "%.2f m/s", object.peakSpeed))
                         Text(String(format: "%.0f°", object.peakTilt))
