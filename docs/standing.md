@@ -82,6 +82,50 @@ level and summary, the resolution notes and what is not modelled), and each Open
 The headless standing covers the models fed alongside the run; the run it keeps covers what that
 run keeps, which does not include those models' results.
 
+## Error bands
+
+Where the validation record supports it, a result also carries a numeric band: model over
+measured (or over the reference), the way the model errs and whether that is the safe or the
+unsafe side, where the band holds, and the section it comes from (`ErrorBand` in
+`Sources/BlastCore/ErrorBands.swift`). Outside what was compared there is no band, and the
+standing says why.
+
+- **Each gauge** has its own band, from its scaled distance and whether it sits on a face (the
+  reflected comparison) or in the open (the incident one). Kingery–Bulmash's tables give the
+  ratio per distance and grid; the band spans the compared distances either side of the gauge,
+  and between grids it is interpolated in the logarithm of the scene's scaled cell, refinement
+  counted as the finer grid. Close in (0.3 to 0.75 m/kg^(1/3)) the close-in table is used, for
+  gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
+  6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
+  any compared grid get none.
+- **Structures** take the slab test's 105–115% on 4 to 32 solid elements through (125% on
+  shells) in the far field; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
+  2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
+  wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
+  11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
+  removes the band. Footings, debris under contact charges, a closed room's gas, the fireball's
+  radiated energy and the cloud's top have bands of their own.
+- **In the app** the popover gives each band and, for the value shown, where the measurement
+  would lie; under each gauge's peak and the structure's largest deflection a line says what to
+  expect, rounded to two figures: "68 mm: expect 59–65 mm (model reads high: too flexible)".
+  Comparison marks a difference narrower than the band, which cannot be told apart against
+  measurement. Kept runs, `BombCAD run --standing` and the USD layer carry the bands; standings
+  recorded before them open with "not recorded".
+
+**Regimes.** The scene is placed as in contact (under 0.15 m/kg^(1/3) from a structure), close
+in (under 0.75), far field, or confined (a closed room or a charge inside a structure), and the
+options the record shows to be right in one regime and wrong in another are checked against it:
+bars that slip (right only for a beam split under a light drop), pressed interlock (right only for
+the chamber), fragment removal (holes slabs that held as well as those that did not), elements
+through (8 enough for bending, about 24 for shear, 6 for the close-in slab), afterburning and hot
+air (needed in a closed room), the shells' shear check and other rate laws. Each gives a
+suggestion; no default changes.
+
+**Kept in step.** `ErrorBandTests` parses the record's Kingery–Bulmash, afterburning and close-in
+tables and checks them cell for cell against the code's; every other figure is hand-mirrored with
+the quote it is read from, which must lie under its heading and hold the figure's numbers. A
+change to the record fails the test until the table follows.
+
 ## The table and keeping it current
 
 The content is one reviewed table in code, `StandingTable` in
@@ -101,8 +145,10 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
 
 ## Limitations
 
-- **A summary, not the evidence.** The standing quotes the validation record's ranges; it does
-  not rerun or interpolate them, and the documents remain the authority.
+- **A summary, not the evidence.** The standing quotes the validation record's ranges and
+  interpolates only between its compared grids; the documents remain the authority.
+- **Bands from few tests.** Most bands rest on one test or one series; a band is where the model
+  has been, not a confidence interval.
 - **Scaled by the primary charge.** Resolution is judged against the comparisons' grids by the
   first charge's mass; several charges are noted, not judged separately.
 - **One standing per result per scene,** not per gauge or per element. A gauge close in and one

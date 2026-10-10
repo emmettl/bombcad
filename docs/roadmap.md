@@ -2099,6 +2099,9 @@ two collapsing over several seconds.
 - **Show each result's standing** (done): a badge beside each result, from measured agreement to
   illustrative, derived from the scene's settings, with its evidence a click away, and carried
   with kept runs, comparisons and exports. See [Standing of results](standing.md).
+- **Give standings numeric error bands** (done): model/measured bands from the validation record,
+  scaled to the scene's resolution, with which options suit its regime. See
+  [Error bands](standing.md#error-bands).
 
 ## Things tried and set aside
 
