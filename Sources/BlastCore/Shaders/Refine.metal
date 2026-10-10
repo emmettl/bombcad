@@ -664,8 +664,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     fineDst[index] = result;
 
     if (u.finalSweep != 0) {
-        recordCell(maxSpeed, momentum, rho, pressure, u);
-        float overpressure = pressure - u.ambientPressure;
+        // Under gravity, against the ambient pressure at the fine cell's height.
+        float ambient = airGravity ? gravityAmbientOf(gravityTable, fine.z, u) : u.ambientPressure;
+        recordCell(maxSpeed, momentum, rho, pressure, u, ambient);
+        float overpressure = pressure - ambient;
         if (overpressure > 0.0f) {
             // Positive floats order like their bit patterns.
             atomic_fetch_max_explicit(&peakBits[coarseIndex], as_type<uint>(overpressure), memory_order_relaxed);
