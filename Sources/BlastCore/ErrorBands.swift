@@ -623,7 +623,9 @@ extension StandingScene {
                     figure(
                         "slabSolid", .peakDeflection, "Peak deflection", low: "too stiff",
                         high: "too flexible",
-                        validity: "one slab under a blast, 4 to 32 solid elements through (\(through) here)",
+                        validity:
+                            "one slab under a blast, 4 to 32 solid elements through (\(through) here); not "
+                            + "converged (113, 121, 124 mm on 8, 16, 32), and 93–99% under the earlier rate laws",
                         check: "A reinforced slab under a blast"))
             } else {
                 unbanded.append(
@@ -802,12 +804,10 @@ extension StandingScene {
             {
                 if place == "close in" || place == "in contact" {
                     add(
-                        "Elements through", through == 6 || through >= 12 ? true : nil,
-                        "Close in, 6 elements through held the slab where 8 broke its hinge, and a spall needs 12 "
-                            + "(\(through) here).",
-                        through == 6 || through >= 12
-                            ? nil : "Use 6 through for the slab's bending, or 12 for spall.",
-                        "validation.md#slabs-under-close-in-charges")
+                        "Elements through", nil,
+                        "Close in, 6 elements through held the slab where 8 broke its hinge: a mesh chosen by its "
+                            + "agreement, not converged. A spall needs 12 (\(through) here).",
+                        nil, "validation.md#slabs-under-close-in-charges")
                 } else if through < 24 {
                     add(
                         "Elements through", kind == .structuralResponse ? true : false,
