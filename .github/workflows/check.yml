@@ -11,7 +11,7 @@ on:
       suite:
         description: Full application checks or the bounded adiabatic source benchmark
         type: choice
-        options: [all, adiabatic]
+        options: [all, adiabatic, wall-adoption]
         default: all
 
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   check:
-    if: github.event_name != 'workflow_dispatch' || inputs.suite != 'adiabatic'
+    if: github.event_name != 'workflow_dispatch' || (inputs.suite != 'adiabatic' && inputs.suite != 'wall-adoption')
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 60
     steps:
@@ -73,5 +73,25 @@ jobs:
         with:
           name: adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/adiabatic-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  wall-adoption:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'wall-adoption'
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact-tag application wall and coupled histories
+        run: bash Scripts/check-wall-adoption.sh "${{ runner.temp }}/wall-adoption-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Retain complete original/shared fields and load intervals
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wall-adoption-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/wall-adoption-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: warn
           retention-days: 14
