@@ -216,6 +216,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case hotAir
     case dissociatingAir
     case radiativeCooling
+    case gravity
     case shockRefinement
     case twoLevelRefinement
     case mappedCharge
@@ -277,6 +278,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .hotAir: return config.airModel == .thermallyPerfect
         case .dissociatingAir: return config.airModel == .dissociating
         case .radiativeCooling: return config.radiativeCooling != nil
+        case .gravity: return config.gravity != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
         case .mappedCharge: return config.mappedCharge
@@ -396,6 +398,13 @@ public enum StandingTable {
                 note: "The luminous gas cools as the fireball's volume radiates; the cloud's comparison with "
                     + "Church's was made without it, and its tops come down a few per cent.",
                 document: "thermal-radiation.md#the-gas-losing-what-it-radiates")
+        case .gravity:
+            return Entry(
+                title: "Gravity in the air", affects: air + [.thermal, .cloud], limit: nil,
+                note: "The air rests in a hydrostatic atmosphere, still to the bit, its energy kept to 1e-6; "
+                    + "a hot bubble rises within 10% of the cloud's integral model and blast loads move by "
+                    + "under 0.1%. Dial Pack's fireball rises under it but stays 600 to 900 K too hot.",
+                document: "air-blast-model.md#gravity")
         case .shockRefinement:
             return Entry(
                 title: "Shock refinement", affects: air + structure + [.envelopeExposure], limit: nil,
@@ -690,6 +699,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
         "SolverConfiguration.radiativeCooling": .option([.radiativeCooling]),
+        "SolverConfiguration.gravity": .option([.gravity]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
