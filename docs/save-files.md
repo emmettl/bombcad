@@ -43,7 +43,8 @@ content-derived IDs stay stable across repeated saves, and existing asset IDs ar
 `scene.json` has format `dev.bombcad.scene`. Single-body saves use encoding version 3, which requires
 durable object/component ownership; multiple-body saves use version 4 and scenes containing
 stationary building envelopes use version 6. Version 5 supports footings and turned support
-joints; prototype envelope version-5 packages migrate on save. Versions 1 and 2 remain readable; version 2 originally
+joints; prototype envelope version-5 packages migrate on save. Scenes with a [terrain](terrain.md) use
+version 8, so that older readers refuse them rather than open them on flat ground. Versions 1 and 2 remain readable; version 2 originally
 introduced finite support-region laws. Older readers reject version 3 rather than discard
 ownership; readers predating multi-body support reject version 4. Its `scenario` contains
 structural geometry, openings, materials and reinforcement in metres, z up. Its `imports`

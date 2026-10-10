@@ -48,7 +48,8 @@ import simd
 //                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
+//   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -128,6 +129,8 @@ func chosenScenario() -> Scenario {
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
         scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
     }
+    // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
+    if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     return scenario
 }
 
@@ -2983,8 +2986,13 @@ func runDigest() throws {
         var configuration = SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning
+        var scenario = preset.scenario
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        if option("terrain") == "flat" {
+            scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        }
         let solver = try BlastSolver(
-            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         let result = solver.advance(steps: steps)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         solver.withState { cells in
@@ -3124,6 +3132,7 @@ do {
     case "dialpack": try runDialPack()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
+    case "terrain": try runTerrain(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)
