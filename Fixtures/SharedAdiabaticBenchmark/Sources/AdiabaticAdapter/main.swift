@@ -1,10 +1,9 @@
 import BenchmarkSupport
 import simd
 
-// SourceTransport.swift is the protected pre-extraction operator. The current
-// shared production alias is checked separately by SharedAdiabaticBenchmark.
+// SourceTransport.swift is copied from the current production reference when the script runs.
 try AdiabaticCommand.run(
-    model: "BombCAD.FractionalGasTransport+frozen-pressure-work",
+    model: "BombCAD.SharedPrescribedGasTransport+frozen-pressure-work",
     refinementMetric: "pressure", expectedOrder: 0.85...1.15
 ) { specification, steps in
     guard specification.heatCapacityRatio == 1.4 else {
