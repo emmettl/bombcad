@@ -28,8 +28,10 @@ for variant in original shared; do
   test -z "$(git -C "$scratch/$variant" status --porcelain -- Sources Package.swift Package.resolved)"
   mkdir -p "$output/$variant"
   export BOMBCAD_WALL_OUTPUT="$output/$variant"
+  # Preserve the frozen baseline, including its existing compiler warnings. Both
+  # variants use identical build flags; application lint/build gates run separately.
   swift run --package-path "$scratch/$variant/Fixtures/WallAdoptionBenchmark" -c release \
-    -Xswiftc -enable-testing -Xswiftc -warnings-as-errors WallAdoptionAdapter
+    -Xswiftc -enable-testing WallAdoptionAdapter
   cp "$scratch/$variant/Fixtures/WallAdoptionBenchmark/Package.resolved" "$output/$variant/consumer-Package.resolved"
 done
 python3 Scripts/verify-wall-adoption-output.py "$output"

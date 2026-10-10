@@ -55,6 +55,10 @@ jobs:
           path: ${{ runner.temp }}/check-${{ github.run_id }}-${{ github.run_attempt }}/tests.log
           if-no-files-found: warn
           retention-days: 14
+      - name: Verify packaged application and signature
+        run: |
+          bash Scripts/build-app.sh release
+          codesign --verify --deep --strict dist/BombCAD.app
 
   adiabatic:
     runs-on: [self-hosted, macOS, ARM64, metal]
