@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: Full application checks or the bounded adiabatic source benchmark
+        description: Full application checks, adiabatic benchmark or wall adoption comparison
         type: choice
         options: [all, adiabatic, wall-adoption]
         default: all
@@ -17,7 +17,9 @@ on:
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
 # left no run complete. GitHub keeps only the newest waiting push queued behind it.
 concurrency:
-  group: check
+  # A bounded manual comparison must survive unrelated pushes to main. The
+  # physical runner still serializes jobs; ordinary app checks keep their group.
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'wall-adoption' && 'wall-adoption' || 'check' }}
   cancel-in-progress: false
 
 permissions:
