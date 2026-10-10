@@ -985,8 +985,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float szx;
     // Tensile stress the element can still carry, which caps its hourglass (bending) forces.
     float capacity;
-    // With `hourglassSecant`, the share of the elastic stiffness the hourglass control keeps.
-    float hourglassScale = 1.0f;
+    // With `hourglassSecant`, the share of the elastic stiffness the hourglass control keeps,
+    // along each lattice axis (the displacement components of its modes).
+    float3 hourglassScale = float3(1.0f);
     // The work trace: each mechanism's power per unit reference volume (see `workChannels`).
     float power[workChannels];
     for (uint c = 0; c < workChannels; ++c) {
@@ -1931,11 +1932,23 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
         }
         capacity = max(max(tension + (hourglassWithoutSteel ? 0.0f : steelCapacity), bending), 0.02f * m.tensileStrength);
-        // A cracked element bends as softly as its most opened crack carries tension: its
-        // hourglass stiffness takes that crack's secant share of the elastic, as the Poisson
-        // coupling above does, instead of the uncracked element's.
-        if (hourglassSecant && crack > onset) {
-            hourglassScale = max(tension / (m.youngsModulus * crack), 0.02f);
+        // A cracked element bends as softly as its cracks carry tension: along each lattice axis
+        // its hourglass stiffness takes the secant share of the elastic of the crack planes
+        // across that axis, weighted by how squarely they cross it, instead of the uncracked
+        // element's. (A crack across x softens the modes that stretch x, not the others.)
+        if (hourglassSecant) {
+            float3 secant = float3(1.0f);
+            for (int p = 0; p < 3; ++p) {
+                if (history[p] > planeOnset[p]) {
+                    secant[p] = max(tensionEnvelopeOver(history[p], planeFactor[p], planeSoftening[p], m)
+                                        / (m.youngsModulus * history[p]),
+                                    0.02f);
+                }
+            }
+            for (int i = 0; i < 3; ++i) {
+                float3 across = float3(frame[0][i], frame[1][i], frame[2][i]);
+                hourglassScale[i] = dot(across * across, secant);
+            }
         }
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
         if (bare) {
@@ -2009,7 +2022,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     bool atCap[4] = {false, false, false, false};
     for (uint mode = 0; mode < 4; ++mode) {
         float3 q = state.hourglass[mode];
-        q += dt * ((hourglassSecant ? m.hourglassStiffness * hourglassScale : m.hourglassStiffness) * rate[mode] + spin * q);
+        q += dt * (m.hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
         float magnitude = length(q);
         if (magnitude > limit) {
             q *= limit / magnitude;
