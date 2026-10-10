@@ -1549,6 +1549,7 @@ public final class StructureSolver {
         uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
+        uniforms.removesFragments = model.removesFragments ? 1 : 0
         uniforms.crackSlip = model.crackSlip ? (model.slipWidensCracks ? 1 : 2) : 0
         uniforms.barAxes = barAxes
         uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0

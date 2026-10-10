@@ -204,9 +204,17 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 
 /// `--work`: the work trace (`StructureSolver.tracesWork`), and `--hourglass 0.5` scales the
 /// hourglass control, for any bench that builds a solid body.
+/// The structure of the last run, kept for a report after it.
+nonisolated(unsafe) var lastStructure: StructureSolver?
+
 func prepareTrace(_ solver: StructureSolver) {
     solver.tracesWork = flag("work")
     if let factor = option("hourglass").flatMap({ Float($0) }) { solver.hourglassCoefficient = factor }
+    // `--step-divisor 4`: the structure's step a quarter of its elastic limit, which concrete
+    // compacted under a contact charge needs (see `ContactSlabTest`).
+    if let divisor = option("step-divisor").flatMap({ Float($0) }) {
+        solver.stepOverride = solver.stableTimeStep / divisor
+    }
 }
 
 /// The work trace's channels in the order printed.
@@ -233,6 +241,8 @@ func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
 }
 
 func applyRateOptions(_ model: inout StructureModel) {
+    // `--fragments`: concrete broken into fragments is removed (`removesFragments`).
+    if flag("fragments") { model.removesFragments = true }
     // `--element-bar-rate`: bars take the strain rate of the element they run through.
     if flag("element-bar-rate") { model.barRateAlongBars = false }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
@@ -1606,6 +1616,109 @@ func axisColumn() -> (StructureSolver, Double) -> Void {
     }
 }
 
+/// Prints the elements of the column under `point` (a lattice index i, j through the
+/// thickness) and of columns `offsets` elements out along x: each element's state, its crack
+/// planes' openings (mm, with the plane's tilt from the slab's: | across, - parallel to the
+/// face), its largest compressive strain, compaction, confinement gain, the bars' plastic strain
+/// and damage; and why it is kept, against the removal rules.
+func columnReport(_ structure: StructureSolver, i i0: Int, j: Int, offsets: [Int] = [0, 2, 4, 8]) {
+    let h = structure.model.elementSize
+    let erosion = structure.model.material.erosionOpening
+    print(
+        "  column under the charge, from the protective face up (opening mm: |vertical plane, -face-parallel):"
+    )
+    for offset in offsets {
+        let i = i0 + offset
+        print("    \(format(Double(Float(offset) * h) * 100, 1)) cm out:")
+        for k in 0..<structure.ez {
+            let flag = structure.flag(i, j, k)
+            let planes = structure.crackPlanes(i, j, k)
+            let openings = planes.history.indices.map { p -> String in
+                let tilt = abs(planes.normals.isEmpty ? 0 : planes.normals[p].z) > 0.7 ? "-" : "|"
+                return tilt + format(Double(planes.history[p] * h) * 1000, 2)
+            }
+            let bars = structure.barPlasticStrain(i, j, k)
+            let barText = [bars.x, bars.y].map { abs($0) > 1e8 ? "cut" : format(Double($0) * 100, 1) }
+            let widest = planes.history.max() ?? 0
+            let note: String
+            if flag != .active {
+                note = ""
+            } else if widest * h >= 3 * erosion {
+                note = "crack past 3x removal width"
+            } else if widest * h >= erosion {
+                note = "crack past removal width, bridged"
+            } else {
+                note = "crack \(format(Double(widest * h / erosion) * 100, 0))% of removal width"
+            }
+            print(
+                "      k\(k) " + pad("\(flag)", 7) + openings.joined(separator: " ")
+                    + "  crush \(format(Double(structure.plasticStrain(i, j, k)) * 100, 2))%"
+                    + " compaction \(format(Double(structure.compaction(i, j, k)) * 100, 2))%"
+                    + " gain \(structure.confinement(i, j, k).map { format(Double($0), 2) }.joined(separator: "/"))"
+                    + " bars \(barText.joined(separator: "/"))%  damage \(format(Double(structure.damage(i, j, k)), 2))  \(note)"
+            )
+        }
+    }
+}
+
+/// For candidate removal rules, applied after the fact to the state at the end: the hole each
+/// would leave about `(i0, j0)` (the equivalent diameter of the columns whose concrete is gone
+/// through the thickness, already or by the rule) and how many more elements it would remove,
+/// within 0.3 m of the axis and beyond. Openings are each crack plane's strain times the
+/// element size; "softened" is past the end of tension softening's tail (1% of the strength).
+func removalCensus(_ structure: StructureSolver, i i0: Int, j j0: Int) {
+    let h = structure.model.elementSize
+    struct Rule {
+        var name: String
+        var removes: (_ openings: [Float], _ crush: Float, _ compaction: Float) -> Bool
+    }
+    func planesOpen(_ w: [Float], _ limit: Float) -> Int { w.filter { $0 >= limit }.count }
+    let rules = [
+        Rule(name: "now") { _, _, _ in false },
+        Rule(name: "2 planes >= 1 mm") { w, _, _ in planesOpen(w, 1e-3) >= 2 },
+        Rule(name: "3 planes >= 0.5 mm") { w, _, _ in planesOpen(w, 0.5e-3) >= 3 },
+        Rule(name: "any plane >= 5% strain") { w, _, _ in (w.max() ?? 0) >= 0.05 * h },
+        Rule(name: "any plane >= 5% & 2 open >= 0.5 mm") { w, _, _ in
+            (w.max() ?? 0) >= 0.05 * h && planesOpen(w, 0.5e-3) >= 2
+        },
+        Rule(name: "compacted & 2 planes >= 0.5 mm") { w, _, m in m > 0 && planesOpen(w, 0.5e-3) >= 2 },
+        Rule(name: "compacted & 2 planes >= 1 mm") { w, _, m in m > 0 && planesOpen(w, 1e-3) >= 2 },
+        Rule(name: "compacted or crushed 1%, 2 >= 1 mm") { w, c, m in
+            (m > 0 || c > 0.01) && planesOpen(w, 1e-3) >= 2
+        },
+        Rule(name: "compacted or crushed 1%, 1 >= 1 mm") { w, c, m in
+            (m > 0 || c > 0.01) && planesOpen(w, 1e-3) >= 1
+        },
+        Rule(name: "crushed >= 5%") { _, c, _ in c >= 0.05 },
+    ]
+    print("  removal rules tried after the fact: hole (cm), elements more within 0.3 m / beyond")
+    for rule in rules {
+        var through = 0
+        var near = 0
+        var far = 0
+        for j in 0..<structure.ey {
+            for i in 0..<structure.ex where structure.flag(i, j, 0) != .empty {
+                let r = Float(simd_length(SIMD2<Float>(Float(i - i0), Float(j - j0)))) * h
+                var all = true
+                for k in 0..<structure.ez {
+                    let flag = structure.flag(i, j, k)
+                    if flag == .eroded || flag == .bare { continue }
+                    let planes = structure.crackPlanes(i, j, k)
+                    let w = (0..<3).map { planes.history[$0] * h }
+                    if rule.removes(w, structure.plasticStrain(i, j, k), structure.compaction(i, j, k)) {
+                        if r <= 0.3 { near += 1 } else { far += 1 }
+                    } else {
+                        all = false
+                    }
+                }
+                if all { through += 1 }
+            }
+        }
+        let diameter = (4 * Float(through) * h * h / .pi).squareRoot()
+        print("    " + pad(rule.name, 38) + pad(format(Double(diameter) * 100, 1), 8) + "\(near) / \(far)")
+    }
+}
+
 /// Hupfauf's slabs under contact charges: the debris's velocity off the protective face, the
 /// spall crater and the breach, against the thesis's measurements and fits.
 func runContact() throws {
@@ -1626,6 +1739,7 @@ func runContact() throws {
     for test in ContactSlabTest.tests where names?.contains(test.name) ?? true {
         let fastest = fastestNodes()
         let column = axisColumn()
+        var reported = false
         let result = try ContactSlabTest.run(
             device: device, test: test, cellSize: cellSize, elementSize: test.thickness / Float(layers),
             refinement: refinement, levels: levels, duration: duration,
@@ -1654,6 +1768,11 @@ func runContact() throws {
             inspect: { structure, time in
                 if flag("no-debris-drag") { structure.debrisDrag = false }
                 if flag("no-contact") { structure.contactMode = .off }
+                if flag("report") || flag("census"), time >= duration * 0.995, !reported {
+                    reported = true
+                    if flag("report") { columnReport(structure, i: structure.ex / 2, j: structure.ey / 2) }
+                    if flag("census") { removalCensus(structure, i: structure.ex / 2, j: structure.ey / 2) }
+                }
                 if flag("fastest") { fastest(structure, time) }
                 if flag("column") { column(structure, time) }
             })
@@ -1782,7 +1901,11 @@ func runTwoFace() throws {
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
-                heldLengthwise: flag("held"), adjust: adjust, prepare: prepareTrace,
+                heldLengthwise: flag("held"), adjust: adjust,
+                prepare: { solver in
+                    prepareTrace(solver)
+                    lastStructure = solver
+                },
                 progress: flag("progress")
                     ? {
                         print("  " + $0)
@@ -1803,6 +1926,14 @@ func runTwoFace() throws {
                         11)
                     + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
             try report(result, label: "wu-\(test.name)")
+            if let structure = lastStructure {
+                let h = structure.model.elementSize
+                let c = TwoFaceSlabTests.wuCentre
+                let i = Int(((c.x - structure.origin.x) / h).rounded(.down))
+                let j = Int(((c.y - structure.origin.y) / h).rounded(.down))
+                if flag("report") { columnReport(structure, i: i, j: j) }
+                if flag("census") { removalCensus(structure, i: i, j: j) }
+            }
         }
     }
     if let names = option("wang").map({ $0.split(separator: ",").map(String.init) }) {
@@ -1869,6 +2000,18 @@ func runCloseIn() throws {
         var inspect: ((StructureSolver, Double) -> Void)? =
             flag("spall") ? spallProbe() : flag("where") ? failureProbe(at: duration * 0.99) : nil
         if flag("faces") { inspect = faceProbe(at: duration * 0.99) }
+        if flag("census") {
+            var done = false
+            inspect = { structure, time in
+                guard !done, time >= duration * 0.99 else { return }
+                done = true
+                let h = structure.model.elementSize
+                let c = CloseInSlabTest.centre
+                removalCensus(
+                    structure, i: Int(((c.x - structure.origin.x) / h).rounded(.down)),
+                    j: Int(((c.y - structure.origin.y) / h).rounded(.down)))
+            }
+        }
         if flag("energy") { inspect = energyProbe() }
         if let path = option("trace") {
             let until = option("trace-until").flatMap { Double($0) } ?? 0.001
