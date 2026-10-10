@@ -37,7 +37,7 @@ it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
-| 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | Supports and freestanding objects are checked against statics and theory, and footings against one centrifuge test only | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; but only the nearest object takes the air's load, its late flow is not converged, and the cars are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -227,11 +227,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
 
 ### Freestanding objects and supports
 
-The current fixed base represents an intact attachment to a rigid foundation. Disabling it
-does not supply a realistic friction model: ground contact prevents penetration and damps
-horizontal velocity. Cars and furniture need independent motion and contact forces limited
-by their actual ground reactions. This is planned work, not an implemented or validated
-vehicle model.
+A fixed base, the default, represents an intact attachment to a rigid foundation. A base can
+instead stand on connections that deform, open, slide and fail, or on a footing on soil
+(below). Independent rigid objects, boxes and a simplified car, move under gravity, friction
+and contact, coupled to the air (see [freestanding objects](freestanding-objects.md)). These
+are mechanics checked against theory, not validated vehicle or furniture models.
 
 Started: a standalone CPU reference for a rigid box, with analytical uniform-box mass properties,
 linear and angular impulses, gravity, force/torque integration and orientation updates, plus
