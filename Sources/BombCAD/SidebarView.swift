@@ -72,6 +72,7 @@ struct SidebarView: View {
             }
 
             domainSection
+            AdvisorSection(model: model)
 
             if let imports = model.settings.scenario.importedModels, !imports.isEmpty {
                 Section("Imported geometry") {

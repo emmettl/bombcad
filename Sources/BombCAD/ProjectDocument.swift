@@ -406,8 +406,10 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     }
 
     /// Check before Grid performs Float-to-Int conversion and allocation-size arithmetic.
+    /// The most cells a project's air grid may have.
+    static let maximumCells = 128_000_000
+
     static func validateGrid(_ scenario: Scenario, resolution: Resolution) throws {
-        let maximumCells = 128_000_000
         var cells = 1
         for extent in [scenario.domainSize.x, scenario.domainSize.y, scenario.domainSize.z] {
             let dimension = max(1, (Double(extent) / Double(resolution.cellSize)).rounded())
