@@ -40,7 +40,7 @@ import simd
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -2526,8 +2526,13 @@ func runDigest() throws {
         var configuration = SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning
+        var scenario = preset.scenario
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        if option("terrain") == "flat" {
+            scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        }
         let solver = try BlastSolver(
-            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         let result = solver.advance(steps: steps)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         solver.withState { cells in

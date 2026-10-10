@@ -1411,6 +1411,32 @@ kernel void refineArguments(device atomic_int *counters [[buffer(0)]],
     arguments[24] = patches;
 }
 
+// Matches `TerrainUniforms` in Refinement.swift.
+struct TerrainUniforms {
+    float2 origin;
+    float spacing;
+    uint columns;
+    uint rows;
+    uint enabled;
+};
+
+// The terrain's elevation at `p`: bilinear between the nodes round it, the edge carried outward,
+// as `Terrain.height(at:)` computes it.
+static inline float terrainHeight(float2 p, constant TerrainUniforms &t, const device float *heights) {
+    float2 last = float2(float(t.columns - 1), float(t.rows - 1));
+    float2 position = clamp((p - t.origin) / t.spacing, float2(0.0f), last);
+    int2 low = min(int2(floor(position)), int2(int(t.columns) - 2, int(t.rows) - 2));
+    float2 f = position - float2(low);
+    uint base = uint(low.x) + t.columns * uint(low.y);
+    float h00 = heights[base];
+    float h10 = heights[base + 1];
+    float h01 = heights[base + t.columns];
+    float h11 = heights[base + t.columns + 1];
+    float bottom = h00 + f.x * (h10 - h00);
+    float top = h01 + f.x * (h11 - h01);
+    return bottom + f.y * (top - bottom);
+}
+
 // Step 7f: fills each new patch from the coarse air (at the step's end).
 kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device Cell *coarse [[buffer(1)]],
@@ -1432,6 +1458,8 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        device float2 *fineSpecies [[buffer(17)]],
                        const device float4 *boxDefinition [[buffer(18)]],
                        const device int *parentPatches [[buffer(19)]],
+                       const device float *terrainHeights [[buffer(20)]],
+                       constant TerrainUniforms &terrain [[buffer(21)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -1452,11 +1480,15 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     // The fine outline: rigid blocks by whether the fine cell's centre lies in one (or, without
     // a list of them, as the coarse cell is), and the structure as the coarse cell has it until
     // the structure's own fine pass (`refineRemaskPrepare`) refines it.
+    // The terrain likewise: by whether the fine cell's centre lies below its surface.
     bool rigid = false;
-    if (boxCount > 0) {
+    if (boxCount > 0 || terrain.enabled != 0) {
         float3 centre = (float3(fineCoordinates) + 0.5f) * (u.dx / float(r));
         for (uint n = 0; n < boxCount && !rigid; ++n) {
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
+        }
+        if (!rigid && terrain.enabled != 0) {
+            rigid = centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
         }
     } else {
         rigid = parentRigid(rigidMask, index, u);

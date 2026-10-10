@@ -62,6 +62,10 @@ final class AirRefinement {
     /// coarse cells' rigid mask instead.
     private var boxes: MTLBuffer
     private var boxCount: UInt32 = 0
+    /// The terrain's heights and grid for the fine outline (`TerrainUniforms` in Refine.metal);
+    /// `enabled` 0 without one.
+    private var terrainHeights: MTLBuffer
+    private var terrainUniforms = TerrainUniforms()
     /// The fine state, twice for the sweeps to alternate between; the first is current between
     /// coarse steps, since a step takes an even number of fine sweeps.
     let fine: [MTLBuffer]
@@ -239,6 +243,7 @@ final class AirRefinement {
         pinned = try buffer(maxPatches * 4, "pinned patches")
         fineWall = try buffer(fineCells * 12, "fine wall velocity")
         boxes = try buffer(32, "rigid blocks")
+        terrainHeights = try buffer(16, "terrain heights")
         self.device = device
         self.library = library
         halo = try buffer(maxPatches * 512 * cell, "halo")
@@ -460,6 +465,50 @@ final class AirRefinement {
                 boxes.contents().copyMemory(from: base, byteCount: bytes.count)
             }
         }
+    }
+
+    /// Every fine cell the patches hold, by its coordinates at this level, and whether its outline
+    /// marks it rigid. For tests.
+    func rigidOutline(_ grid: Grid) -> [(cell: SIMD3<Int>, rigid: Bool)] {
+        let cells = side * side * side
+        let dims = cellDims(grid)
+        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let mask = (fineMask.contents() + offset(of: fineMask)).bindMemory(
+            to: UInt8.self, capacity: maxPatches * cells)
+        var outline: [(cell: SIMD3<Int>, rigid: Bool)] = []
+        for patch in 0..<maxPatches where owners[patch] != .max {
+            let tile = Int(owners[patch])
+            let origin =
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* side
+            for n in 0..<cells {
+                let cell = origin &+ SIMD3(n % side, (n / side) % side, n / (side * side))
+                guard all(cell .< dims) else { continue }
+                outline.append((cell, mask[patch * cells + n] & 2 != 0))
+            }
+        }
+        return outline
+    }
+
+    /// Sets the terrain whose outline the fine cells follow, besides the blocks'; nil for none.
+    func setTerrain(_ terrain: Terrain?) {
+        guard let terrain else {
+            terrainUniforms = TerrainUniforms()
+            return
+        }
+        if terrain.heights.count * 4 > terrainHeights.length,
+            let bigger = device.makeBuffer(length: terrain.heights.count * 4, options: .storageModeShared)
+        {
+            terrainHeights = bigger
+        }
+        terrain.heights.withUnsafeBytes { bytes in
+            if let base = bytes.baseAddress {
+                terrainHeights.contents().copyMemory(from: base, byteCount: bytes.count)
+            }
+        }
+        terrainUniforms = TerrainUniforms(
+            origin: terrain.origin, spacing: terrain.spacing, columns: UInt32(terrain.columns),
+            rows: UInt32(terrain.rows), enabled: 1)
     }
 
     /// Releases every patch.
@@ -955,6 +1004,9 @@ final class AirRefinement {
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 17)
         encoder.setBuffer(boxDefinition ?? fine[0], offset: 0, index: 18)
         set(encoder, parent.patches, 19)
+        encoder.setBuffer(terrainHeights, offset: 0, index: 20)
+        var terrain = terrainUniforms
+        encoder.setBytes(&terrain, length: MemoryLayout<TerrainUniforms>.stride, index: 21)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -1179,4 +1231,13 @@ extension AirRefinement {
             }
         }
     }
+}
+
+/// Matches `TerrainUniforms` in Refine.metal.
+struct TerrainUniforms {
+    var origin: SIMD2<Float> = .zero
+    var spacing: Float = 1
+    var columns: UInt32 = 0
+    var rows: UInt32 = 0
+    var enabled: UInt32 = 0
 }
