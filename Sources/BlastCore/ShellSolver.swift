@@ -69,6 +69,9 @@ struct ShellUniforms {
     var fluidDeepBlocksY: UInt32 = 0
     var fluidDeepPatchOffset: UInt32 = 0
     var fluidDeepCellOffset: UInt32 = 0
+    var gravityX: Float = 0
+    var gravityY: Float = 0
+    var gravityZ: Float = -1
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -191,6 +194,8 @@ public final class ShellSolver {
 
     /// Acceleration of gravity in m/s², acting along -z.
     public var gravity: Float = 9.81
+    /// The way gravity pulls, as `StructureSolver.gravityDirection`.
+    public var gravityDirection = SIMD3<Float>(0, 0, -1)
     /// Mass-proportional damping rate in 1/s.
     public var damping: Float = 0
     /// Fraction of the element transit time used as the stable time step.
@@ -1187,6 +1192,8 @@ public final class ShellSolver {
         uniforms.barSlots = UInt32(barSlots)
         uniforms.criticalStep = criticalTimeStep
         uniforms.gravity = gravity
+        let down = simd_normalize(gravityDirection)
+        (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         uniforms.damping = damping
         uniforms.groundFriction = groundContact ? 8 : -1
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)

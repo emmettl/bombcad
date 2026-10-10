@@ -82,7 +82,12 @@ struct ShellUniforms {
     uint fluidDeepBlocksY;
     uint fluidDeepPatchOffset;
     uint fluidDeepCellOffset;
+    float gravityX;  // the way gravity pulls, as in `StructureUniforms`
+    float gravityY;
+    float gravityZ;
 };
+
+float3 gravityDirection(constant ShellUniforms &u) { return float3(u.gravityX, u.gravityY, u.gravityZ); }
 
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
@@ -1753,7 +1758,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         force += airForce;
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
-    float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
+    float3 velocity = float3(node.velocity) + dt * (force / node.mass + u.gravity * gravityDirection(u));
     velocity *= decay;
     float3 spin = (float3(node.spin) + dt * moment / node.inertia) * decay;
     if ((node.flags & 8u) != 0) {

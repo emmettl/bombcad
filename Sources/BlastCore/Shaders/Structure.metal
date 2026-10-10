@@ -112,7 +112,12 @@ struct StructureUniforms {
     uint fluidDeepBlocksY;
     uint fluidDeepPatchOffset;
     uint fluidDeepCellOffset;
+    float gravityX;  // the way gravity pulls (unit length); down unless turned
+    float gravityY;
+    float gravityZ;
 };
+
+float3 gravityDirection(constant StructureUniforms &u) { return float3(u.gravityX, u.gravityY, u.gravityZ); }
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
 // the shell's thickness where its midsurface meets the solid. The node moves as the line does
@@ -2638,7 +2643,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         }
     }
 
-    float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
+    float3 velocity = float3(node.velocity) + dt * (force / node.mass + u.gravity * gravityDirection(u));
     velocity *= max(0.0f, 1.0f - u.damping * dt);
     if ((node.flags & 8u) != 0) {
         velocity = float3(node.velocity);  // prescribed motion

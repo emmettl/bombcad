@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 /// A connection of finite stiffness and strength between a body's base and the ground, in place
 /// of the ideal clamp that `StructureModel.fixedBase` otherwise applies.
@@ -53,15 +54,20 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// Which side of the body the joint is on, for a support region's connection; nil (or
     /// `below`) for a horizontal joint under it.
     public var side: JointSide?
+    /// The joint's normal at any angle, across it from the support into the body, for a support
+    /// region's connection; it takes the place of `side`. Need not be of unit length.
+    public var jointNormal: SIMD3<Float>?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,
         tensionPlateau: Float = 0, tensionOpening: Float, cohesion: Float, cohesionSlip: Float,
-        friction: Float, bearingCapacity: Float? = nil, footing: Footing? = nil, side: JointSide? = nil
+        friction: Float, bearingCapacity: Float? = nil, footing: Footing? = nil, side: JointSide? = nil,
+        jointNormal: SIMD3<Float>? = nil
     ) {
         self.bearingCapacity = bearingCapacity
         self.footing = footing
         self.side = side
+        self.jointNormal = jointNormal
         self.normalStiffness = normalStiffness
         self.shearStiffness = shearStiffness
         self.tensileStrength = tensileStrength
@@ -125,6 +131,22 @@ public struct Anchorage: Sendable, Hashable, Codable {
         joint.cohesion += bars * joint.friction
         joint.cohesionSlip = ductileOpening
         return joint
+    }
+
+    /// The unit vector across the joint from the support into the body, the way it opens: the
+    /// `jointNormal`, else the `side`'s.
+    public var across: SIMD3<Float> {
+        if let jointNormal, simd_length(jointNormal) > 0 { return simd_normalize(jointNormal) }
+        return (side ?? .below).normal
+    }
+
+    /// Whether the joint is under the body, horizontal: the ground's and a footing's only way.
+    public var isUnder: Bool { simd_distance(across, SIMD3(0, 0, 1)) < 1e-5 }
+
+    /// The normal of a joint whose support lies `tilt` radians from straight below the body (0
+    /// under it, π/2 beside it, π over it), towards `azimuth` radians round from x in plan.
+    public static func normal(tilt: Float, azimuth: Float) -> SIMD3<Float> {
+        SIMD3(-sin(tilt) * cos(azimuth), -sin(tilt) * sin(azimuth), cos(tilt))
     }
 
     /// The fraction of the tensile strength left once the joint has opened by `peak` metres:
@@ -270,7 +292,7 @@ struct AnchorageParameters {
             stiffness.normal, stiffness.shear, law.tensileStrength, law.tensionPlateau)
         failureAndFriction = SIMD4(law.tensionOpening, law.cohesion, law.cohesionSlip, law.friction)
         // A joint that is not under the body carries its normal; zero is up.
-        let normal = (law.side ?? .below) == .below ? SIMD3<Float>.zero : law.side!.normal
+        let normal = law.isUnder ? SIMD3<Float>.zero : law.across
         bearing = SIMD4(law.bearingCapacity ?? 0, normal.x, normal.y, normal.z)
     }
 }
@@ -292,7 +314,13 @@ extension Anchorage {
             )
         }
         try footing?.validate()
-        guard footing == nil || (side ?? .below) == .below else {
+        guard
+            jointNormal.map({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite && simd_length($0) > 1e-6 })
+                ?? true
+        else {
+            throw ImportedMesh.ImportError.invalid("A joint's normal must be finite and not zero.")
+        }
+        guard footing == nil || isUnder else {
             throw ImportedMesh.ImportError.invalid("A footing can only stand under the body.")
         }
     }
@@ -353,14 +381,14 @@ extension StructureModel {
             throw ImportedMesh.ImportError.invalid("A connection references a missing support region.")
         }
         try baseAnchorage?.validate()
-        guard (baseAnchorage?.side ?? .below) == .below else {
+        guard baseAnchorage?.isUnder ?? true else {
             throw ImportedMesh.ImportError.invalid("The ground's connection can only be under the body.")
         }
         for law in supportAnchorages.compactMap({ $0 }) { try law.validate() }
     }
 
     /// Whether any support region's connection faces another way than down.
-    var hasTurnedJoints: Bool { supportAnchorages.contains { ($0?.side ?? .below) != .below } }
+    var hasTurnedJoints: Bool { supportAnchorages.contains { $0.map { !$0.isUnder } ?? false } }
 
     var connectionStiffness: (normal: Float, shear: Float)? {
         let laws = (fixedBase ? [baseAnchorage].compactMap { $0 } : []) + supportAnchorages.compactMap { $0 }

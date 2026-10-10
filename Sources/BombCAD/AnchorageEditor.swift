@@ -1,5 +1,6 @@
 import BlastCore
 import SwiftUI
+import simd
 
 /// Exact preset matching keeps a custom law visible without replacing it with a nearby preset.
 struct AnchorageEditor: View {
@@ -34,16 +35,31 @@ struct AnchorageEditor: View {
             Picker(
                 "Joint faces",
                 selection: Binding(
-                    get: { law?.side ?? .below },
-                    set: { side in
+                    get: { law?.jointNormal != nil ? "angle" : (law?.side ?? .below).rawValue },
+                    set: { value in
                         guard var candidate = law else { return }
-                        candidate.side = side == .below ? nil : side
+                        if let side = JointSide(rawValue: value) {
+                            candidate.side = side == .below ? nil : side
+                            candidate.jointNormal = nil
+                        } else {
+                            candidate.jointNormal = candidate.across
+                            candidate.side = nil
+                        }
                         law = candidate
                     })
             ) {
-                ForEach(JointSide.allCases, id: \.self) { Text($0.title).tag($0) }
+                ForEach(JointSide.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                Text("At an angle").tag("angle")
             }
             .accessibilityLabel("Joint faces")
+            if law?.jointNormal != nil {
+                angle("Support from below", \.tilt, range: 0...180)
+                angle("Support towards", \.azimuth, range: -180...360)
+                Text(
+                    "The support lies at this angle from straight below the body (90° beside it, 180° over it), towards this bearing in plan from +x. Its joint ties the faces of the staircase that stands for it, each over its share projected on the joint."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
         }
         if law != nil {
             DisclosureGroup("Connection properties") {
@@ -205,6 +221,33 @@ struct AnchorageEditor: View {
         }
     }
 
+    /// One of the angles of a joint at an angle, in degrees: from straight below to the support,
+    /// or its bearing in plan.
+    private func angle(
+        _ title: String, _ key: WritableKeyPath<JointAngles, Float>, range: ClosedRange<Double>
+    )
+        -> some View
+    {
+        LabeledContent(title) {
+            HStack {
+                TextField(
+                    title,
+                    value: Binding(
+                        get: { Double(JointAngles(law?.across ?? SIMD3(0, 0, 1))[keyPath: key]) },
+                        set: { value in
+                            guard value.isFinite, range.contains(value), var candidate = law else { return }
+                            var angles = JointAngles(candidate.across)
+                            angles[keyPath: key] = Float(value)
+                            candidate.jointNormal = angles.normal
+                            law = candidate
+                        }), format: .number.precision(.fractionLength(0...2))
+                )
+                .labelsHidden().textFieldStyle(.roundedBorder).frame(width: 85)
+                Text("°").foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private func number(
         _ title: String, _ unit: String, _ key: WritableKeyPath<Anchorage, Float>, scale: Float
     ) -> some View {
@@ -300,4 +343,20 @@ struct AnchorageEditor: View {
             }
         }
     }
+}
+
+/// A joint's normal as the angles the editor shows, in degrees: the support's angle from straight
+/// below the body, and its bearing in plan from +x.
+struct JointAngles: Equatable {
+    var tilt: Float
+    var azimuth: Float
+
+    init(_ normal: SIMD3<Float>) {
+        let unit = normal / max(simd_length(normal), 1e-12)
+        tilt = acos(max(-1, min(1, unit.z))) * 180 / .pi
+        let plan = SIMD2(-unit.x, -unit.y)
+        azimuth = simd_length(plan) < 1e-6 ? 0 : atan2(plan.y, plan.x) * 180 / .pi
+    }
+
+    var normal: SIMD3<Float> { Anchorage.normal(tilt: tilt * .pi / 180, azimuth: azimuth * .pi / 180) }
 }

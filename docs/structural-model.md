@@ -155,6 +155,25 @@ with 1/1.3 of it, without friction; with friction 0.6 the lower third, pressed b
 moment with about 0.75 W, holds it at 1/1.3 too; and a block under a soffit joint holds with a
 tensile strength of 1/0.7 of its weight and falls away with 1/1.3.
 
+**Joints at an angle** (`Anchorage.jointNormal`, set from the support's angle from straight
+below and its bearing in plan by `Anchorage.normal(tilt:azimuth:)`). A joint need not lie along
+the lattice: its normal can point any way, and the law then acts in its frame as above. The
+body's surface there is a staircase of lattice faces, and each exposed face that faces the
+support carries its quarter shares weighted by the cosine between the two, its area projected
+on the joint, so that a staircase's treads and risers add up to the joint's own area. Each node
+bears on, slides along and lifts off a plane through its own place at rest, parallel to the
+joint. Checks (`InclinedJointTests`): a block on a joint at 30° or 45° with no cohesion holds
+with friction a quarter above tan α, the joint bearing W cos α across and W sin α along within
+3%, and with a quarter below slides down it at g (sin α − μ cos α) within 1%, its friction μ
+times its bearing; a staircase of eight steps standing for a 45° joint is tied over 2.74 m² per
+metre against the joint's 2.83, and holds and slides by its cohesion at 0.7 and 1.3 of W sin 45°;
+an axis-aligned normal gives the named side's answer to the bit; and a wall 0.5 m thick and
+1.5 m high resting on its base, pushed by gravity turned towards its face, holds at 0.8 and tips
+at 1.2 of the push that tips it, upright and turned 30° and 45° against the lattice with its
+joint and gravity (`StructureSolver.gravityDirection`). Turned 45° it sways within 3% of the
+upright wall; turned 30° on 125 mm elements the staircase's corners stand out at its toe and it
+takes 30% more push to tip than b / H.
+
 `blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
 ground between two columns that do not move, its vertical edges tied to them by each connection
 in turn, under the same pulse (sway at the top's middle):

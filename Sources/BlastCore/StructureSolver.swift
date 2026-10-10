@@ -57,6 +57,9 @@ public final class StructureSolver {
 
     /// Downward acceleration in m/s².
     public var gravity: Float = 9.81
+    /// The way gravity pulls, down unless turned (to turn a whole problem against the lattice); a
+    /// footing's own weight always acts down.
+    public var gravityDirection = SIMD3<Float>(0, 0, -1)
     /// Mass-proportional damping rate in 1/s.
     public var damping: Float = 0
     /// Hourglass stiffness as a multiple of the element's physical bending stiffness.
@@ -583,13 +586,21 @@ public final class StructureSolver {
         let laws = anchorLawBuffer.contents().bindMemory(
             to: AnchorageParameters.self, capacity: max(nodeCount, 1))
         let turned = model.hasTurnedJoints
-        // Whether `corner` of the element at `element` lies on its face on `side` with no element
-        // beyond it.
-        func exposed(_ side: JointSide, corner: Int, element: (Int, Int, Int)) -> Bool {
-            guard (corner >> side.axis) & 1 == (side.direction < 0 ? 0 : 1) else { return false }
-            var beyond = [element.0, element.1, element.2]
-            beyond[side.axis] += side.direction
-            return compactIndex(beyond[0], beyond[1], beyond[2]) == nil
+        // The share of a quarter face that `corner` of the element at `element` carries for a joint
+        // whose normal is `across`: of each face it lies on that faces the support with no element
+        // beyond it, the cosine between them. A joint at an angle to the lattice is tied over the
+        // staircase of faces that stands for it, whose shares add up to the joint's own area.
+        func tributary(_ across: SIMD3<Float>, corner: Int, element: (Int, Int, Int)) -> Float {
+            var share: Float = 0
+            for axis in 0..<3 {
+                let positive = (corner >> axis) & 1 == 1
+                let weight = positive ? -across[axis] : across[axis]
+                guard weight > 1e-4 else { continue }
+                var beyond = [element.0, element.1, element.2]
+                beyond[axis] += positive ? 1 : -1
+                if compactIndex(beyond[0], beyond[1], beyond[2]) == nil { share += weight }
+            }
+            return share
         }
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
@@ -606,9 +617,9 @@ public final class StructureSolver {
                     // support's joint faces another way); finite supports never pin interior nodes.
                     if anchored && (turned || corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil)),
                         let law = model.connection(at: point),
-                        exposed(law.side ?? .below, corner: corner, element: (i, j, k))
+                        case let share = tributary(law.across, corner: corner, element: (i, j, k)), share > 0
                     {
-                        anchors[3 * index].x += h * h / 4
+                        anchors[3 * index].x += h * h / 4 * share
                         laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
                     } else if onGround && nk == 0 && model.baseAnchorage == nil {
                         nodes[index].isFixed = true
@@ -855,7 +866,7 @@ public final class StructureSolver {
                 let ground = footings?.footing(ofEntity: n).map {
                     footings!.displacement(ofPointAt: position, footing: $0).z
                 }
-                let across = (anchorage.side ?? .below).normal
+                let across = anchorage.across
                 summary.maxOpening = max(
                     summary.maxOpening, simd_dot(nodes[n].displacement, across) - (ground ?? 0))
                 area += state.x
@@ -868,6 +879,20 @@ public final class StructureSolver {
         centre /= area
         summary.moment = points.reduce(.zero) { $0 + simd_cross($1.0 - centre, $1.1) }
         return summary
+    }
+
+    /// The nodes a connection ties, at rest, with the area each is tied over.
+    func tiedPoints() -> [(position: SIMD3<Float>, area: Float)] {
+        guard anchorStiffness != nil else { return [] }
+        let anchors = anchorBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * nodeCount)
+        let lattice = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
+        return (0..<nodeCount).compactMap { n in
+            guard anchors[3 * n].x > 0 else { return nil }
+            let index = Int(lattice[n])
+            let position = referencePosition(
+                index % (ex + 1), (index / (ex + 1)) % (ey + 1), index / ((ex + 1) * (ey + 1)))
+            return (position, anchors[3 * n].x)
+        }
     }
 
     /// Actual un-clamped bearing area assigned to a finite support, in square metres.
@@ -1265,6 +1290,8 @@ public final class StructureSolver {
             contactStiffness: contactStiffness / (criticalTimeStep * criticalTimeStep),
             contactDamping: contactDamping,
             contactFriction: contactFriction)
+        let down = simd_normalize(gravityDirection)
+        (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
         uniforms.orientedCracks = model.crackAxes.uniform
