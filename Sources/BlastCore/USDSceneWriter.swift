@@ -432,7 +432,7 @@ public final class USDSceneWriter {
 
     /// The cloud: a sphere whose centre, radius, temperature (the `temperature` primvar, in
     /// kelvin), liquid water and ice (`liquidWater` and `ice`, in grams a kilogram) are sampled
-    /// from the frame after the run's last.
+    /// from the frame after the run's last, scaled vertically to its depth once it spreads.
     private func appendCloud(_ samples: [CloudSample], to text: inout Text) {
         let first = frames
         text.append("    def Sphere \"Cloud\"\n    {\n")
@@ -461,7 +461,15 @@ public final class USDSceneWriter {
             text.append(SIMD3(Float(sample.position.x), Float(sample.position.y), Float(sample.height)))
             text.append(",\n")
         }
-        text.append("        }\n        uniform token[] xformOpOrder = [\"xformOp:translate\"]\n")
+        // Flattened once it spreads, its depth against its width.
+        text.append("        }\n        float3 xformOp:scale.timeSamples = {\n")
+        for (n, sample) in samples.enumerated() {
+            text.append("            \(first + n): ")
+            text.append(SIMD3(1, 1, Float(sample.halfDepth / max(sample.radius, 1e-9))))
+            text.append(",\n")
+        }
+        text.append(
+            "        }\n        uniform token[] xformOpOrder = [\"xformOp:translate\", \"xformOp:scale\"]\n")
         text.append("        color3f[] primvars:displayColor = [")
         text.append(SIMD3<Float>(0.55, 0.52, 0.5))
         text.append("]\n        float primvars:temperature.timeSamples = {\n")

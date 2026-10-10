@@ -539,6 +539,8 @@ struct FireballRiseTests {
         #expect(text.contains("def Sphere \"Cloud\"") && text.contains("            3: \"inherited\""))
         #expect(text.contains("float primvars:temperature.timeSamples"))
         #expect(
+            text.contains("float3 xformOp:scale.timeSamples") && text.contains("            3: (1, 1, 1),"))
+        #expect(
             text.contains("float primvars:liquidWater.timeSamples")
                 && text.contains("float primvars:ice.timeSamples"))
 

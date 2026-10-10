@@ -9,6 +9,7 @@ geometric mean and spread of their ratio at each time (shot P3, which Church lef
 
     swift build -c release --product BombCAD
     python3 Scripts/compare-church-cloud.py .build/release/BombCAD [--gas default] [--turbulent]
+        [--no-spread] [--stability-class A-F]
 
 See docs/fireball-rise.md#against-churchs-measured-clouds.
 """
@@ -61,7 +62,8 @@ def top_at(samples, time):
     for a, b in zip(samples, samples[1:]):
         if a["time"] <= time <= b["time"]:
             share = (time - a["time"]) / (b["time"] - a["time"])
-            low, high = a["height"] + a["radius"], b["height"] + b["radius"]
+            # Once it spreads, its half-depth is no longer its radius.
+            low, high = (s["height"] + (s.get("thickness") or s["radius"]) for s in (a, b))
             return low + share * (high - low)
     return None
 
@@ -81,6 +83,9 @@ def main():
     parser.add_argument("bombcad")
     parser.add_argument("--gas", choices=["afterburning", "default"], default="afterburning")
     parser.add_argument("--turbulent", action="store_true", help="add a guess at the lake bed's turbulence")
+    parser.add_argument("--no-spread", action="store_true", help="follow the rising thermal on once it stops")
+    parser.add_argument("--stability-class", help="the puff's Pasquill class, A to F, instead of the air's")
+    parser.add_argument("--spec", default="{}", help="more of the cloud's description, as JSON")
     arguments = parser.parse_args()
     data = json.load(open(os.path.join(ROOT, "Samples/Church1969/church-1969.json")))
     hand_overs = data["handOvers"][arguments.gas]
@@ -94,7 +99,10 @@ def main():
             hour = int(shot["localTime"][:2])
             afternoon = 12 <= hour < 20
             wind = shot["meanWind"] or 2
-            spec = {"duration": 330}
+            spec = {"duration": 330, "spread": not arguments.no_spread}
+            if arguments.stability_class:
+                spec["stabilityClass"] = arguments.stability_class
+            spec.update(json.loads(arguments.spec))
             if arguments.turbulent:
                 # Not measured: u* from the mean wind over a smooth lake bed (z0 about 1 mm), a 2 km
                 # convective layer with w* 2 m/s in the afternoon, a 200 m layer at night.
