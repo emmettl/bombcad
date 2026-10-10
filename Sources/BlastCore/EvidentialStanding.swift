@@ -812,6 +812,13 @@ public enum StandingTable {
         "StructureModel.crackShearStiffness": .option([.crackShearStiffness]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.barRateAlongBars": .option([.barRateInElements]),
+        // The regime picks defaults for the options above (`StructuralRegime`); what it turns on
+        // is read through those options, so the regime itself is an input of the scene.
+        "StructureModel.regimeOverride": .input,
+        "StructureModel.loadingOverride": .input,
+        "StructureModel.regimeDefaults": .input,
+        "StructureModel.detectedRegime": .input,
+        "StructureModel.detectedLoading": .input,
         // Materials: properties are inputs; the switches between laws are options.
         "StructureMaterial.name": .input,
         "StructureMaterial.model": .input,

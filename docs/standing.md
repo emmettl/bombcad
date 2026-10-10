@@ -34,6 +34,11 @@ The standing is worked out from the scene's actual settings each time they chang
 - **Close in.** A gauge or structure within 0.75 m/kg^(1/3) of a charge brings in the close-in
   comparison and a note that close-in loading needs cells of about 0.01 W^(1/3), or twice that
   refined by 2, and that spall needs 0.005 W^(1/3) and 12 elements through a slab.
+- **Regime.** Each structure's regime (far field, close in, in contact or confined;
+  `StructuralRegime`) and its loading pick some of the concrete model's defaults (see the
+  [concrete model](concrete-model.md#defaults-by-regime)): pressed interlock in a confined scene,
+  and no sectional shear check in beams under a blast or a blow. An option the regime set is a
+  default, not the user's choice (`pressedInterlockFromRegime`).
 - **Afterburning.** Off, the incident impulse is 13–22% low; on, it is within 4% (6% with hot
   air), with the burning time fitted to it. Reflecting domain faces bring in the closed-room
   comparison, whose agreement depends on both options.

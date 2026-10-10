@@ -2244,7 +2244,7 @@ func runImpact() throws {
         for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
             let result = try ImpactBenchmark.runBeams(
                 device: device, test: test, size: size, duration: duration,
-                sectionShear: !flag("no-section-shear"))
+                sectionShear: flag("section-shear") ? true : flag("no-section-shear") ? false : nil)
             let measured =
                 test.peak.map {
                     "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm"

@@ -746,6 +746,31 @@ elements smaller than 10 mm both removed concrete at narrower cracks than intend
 3 mm elements, which made the finest meshes of the validation slab shed their cover and
 collapse.
 
+## Defaults by regime
+
+The validation cases fall into regimes that the options split along (see the
+[concrete strategy](concrete-strategy.md#selecting-by-regime-instead-of-waiting-for-agreement)), so
+an option can be the default within a regime when every case there agrees. `StructuralRegime`
+places a structure by the nearest charge's distance from the nearest point of its solids, over
+that charge's cube root: in contact within 0.15 m/kg^(1/3), close in within 0.75, far field
+beyond; confined when a charge lies inside its outline or the room is closed. A run in a scene
+detects it, with the loading impulsive; a model built outside a scene is quasi-static. The user
+can set either (`regimeOverride`, `loadingOverride`), or turn the regime's defaults off
+(`regimeDefaults`). Today the regimes set two things:
+
+- **Confined: interlock that grows with pressure** (`appliesPressedInterlock`). The chamber is
+  the one member it moves the right way: its roof's edge rises 49 mm and is left 25 mm up,
+  against 38 and 16 mm without it (95 mm left in the test). Every case it breaks, beams under a
+  blow, is in another regime.
+- **Impulsive loading: beams do not check each section's shear** (`appliesBeamSectionShear`).
+  Pushed slowly, beams with the check carry OA1 within 3%; under a blow it failed every beam
+  struck within half a millisecond. Without it, Saatci's beams as beam elements peak at 13.6–13.8 mm
+  under the light drops (9.3–12.1 measured) and 41 mm under the heavy ones (35–40), but SS0b-1,
+  which broke in the test, survives, and the reactions are two to three times those measured.
+
+Bending and shear in members are not told apart yet: no option is better in one than the other
+(see the strategy's stage 2).
+
 ## Default parameters
 
 `StructureMaterial.concrete(compressiveStrength:)` derives the other properties from the

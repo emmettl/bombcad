@@ -62,7 +62,7 @@ swift run -c release blastbench chamber
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: 11–15% strong on fine meshes, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 15% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), 40–70% under 0.2–0.8 kg where the tests spalled; contact charges hole them, not to size. Wang et al. (2022): an aluminised charge's impulse 75% as its stated 10 kg of TNT, 94% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges; low for one layer against two, spall and holes |
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 25 mm up against 95 mm, with the confined regime's pressed interlock (15 mm without) | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Low: illustrative; afterburning keeps the fireball near the flame temperature |
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a sixtieth of Molkov's correlation. FM Global's six tests (digitised): lit at the back wall, 55–60% of the measured peaks, with the measured flame speeds; lit in the middle, a fifth to a seventh, the flame stalling towards the back wall | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation, 5–16% low beyond; settlement 1.7–2.2 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, peak rotation within 22% where the test did not lurch one way, a sixth to a half of the energy dissipated | Moderate for rocking moment and settlement; low for energy and for a footing that lurches |
@@ -997,7 +997,11 @@ depth by a shear wave), takes it for a failure of the section. Averaging over fo
 long still broke all the heavy drops, the beams with stirrups too; ten times as long broke
 none, SS0b-1 included. The static strengths of SS0 and SS1 differ by 30%, while the demand
 is two to four times either: a check of each section's shear strength cannot tell which beam
-the stirrups save, which is a matter of whether they hold a shear plug in.
+the stirrups save, which is a matter of whether they hold a shear plug in. So under impulsive
+loading the regime's defaults now leave the check off (see the
+[concrete model](concrete-model.md#defaults-by-regime)): on 0.1 m beams the light drops peak at
+13.6–13.8 mm and the heavy ones at 41 mm, with reactions of 970–1,140 kN against 305–682 kN
+measured, and SS0b-1 survives (`--section-shear` puts the check back).
 
 ### What this does and does not show
 
@@ -1942,7 +1946,10 @@ scales the charges, `--pressures` fills the closed chamber with a steady overpre
 
 Since these runs, cracks slide for good and ride up when they do (see the
 [concrete model](concrete-model.md#shear-across-cracks)): the roof's edge is left 15 mm up,
-where the runs below leave it 7 mm, with its peak unchanged at 38 mm.
+where the runs below leave it 7 mm, with its peak unchanged at 38 mm. And the chamber is now a
+confined regime, whose defaults press cracks as they slide (see the
+[concrete model](concrete-model.md#defaults-by-regime)): the edge rises 49 mm and is left 25 mm
+up, with 9 of 116,760 elements removed.
 
 **Pressures.** At gauges placed near the sensors the model gives 4.2 and 6.8 MPa on the side
 walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positions are
