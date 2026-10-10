@@ -1493,6 +1493,140 @@ func energyProbe() -> (StructureSolver, Double) -> Void {
 }
 
 /// Chiquito et al.'s full-scale slabs under charges hung 0.5 and 1 m above them.
+/// Slabs with steel in one face or both (Wu et al. 2023, Wang et al. 2022): `--wu S5,D5` or
+/// `--wang A,B`, at `--dx` air cells refined by `--refine`, `--h` elements, for `--time`
+/// seconds; `--held` holds Wu's slabs lengthwise at both edges; `--bond pullout` and the other
+/// concrete options as elsewhere; `--work` prints the work by mechanism at the peak and the end;
+/// `--history` the first probe's displacement every millisecond; `--out dir` writes each
+/// record there as CSV; for Wang's, `--hinged` holds the edges on hinge lines instead of fixing
+/// them, and `--afterburn` lets the products burn on.
+func runTwoFace() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.025
+    let elementSize = option("h").flatMap { Float($0) } ?? 0.0125
+    let duration = option("time").flatMap { Double($0) } ?? 0.1
+    func mm(_ value: Float?) -> String { value.map { format(Double($0) * 1000, 1) } ?? "-" }
+    func cm2(_ value: Float?) -> String { value.map { format(Double($0) * 1e4, 0) } ?? "-" }
+    func adjust(_ scenario: inout Scenario) {
+        if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
+        if var structure = scenario.structure {
+            applyRateOptions(&structure)
+            // `--bond pullout`: bars that slip, of 8 mm bars (12 mm for Wang's B: see below).
+            if let bond = chosenBondSlip(diameter: 0.008) { structure.bondSlip = bond }
+            scenario.structure = structure
+        }
+    }
+    func report(_ result: TwoFaceSlabTests.Result, label: String) throws {
+        if flag("history") {
+            for sample in result.histories[0] where Int((sample.x * 1e4).rounded()) % 10 == 0 {
+                print("    \(format(Double(sample.x) * 1000, 1)) ms  \(mm(sample.y)) mm")
+            }
+        }
+        if let directory = option("out") {
+            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+            var text = "time," + result.probes.joined(separator: ",") + "\n"
+            for n in result.histories[0].indices {
+                text +=
+                    "\(result.histories[0][n].x),"
+                    + result.histories.map { "\($0[n].y)" }.joined(separator: ",") + "\n"
+            }
+            try text.write(toFile: "\(directory)/\(label).csv", atomically: true, encoding: .utf8)
+        }
+        if let work = result.work {
+            print("  work by mechanism (J), when the first probe peaked and at the end:")
+            print("  " + workHeader("", 8))
+            if let peak = result.workAtPeak { print("  " + workRow("peak", 8, peak)) }
+            print("  " + workRow("end", 8, work))
+        }
+    }
+    if let names = option("wu").map({ $0.split(separator: ",").map(String.init) }) {
+        print(
+            "Wu et al. (2023): 2 x 2 x 0.1 m slabs, one layer of steel (S) or two (D), TNT in contact or at 0.43 m/kg^1/3"
+        )
+        print(
+            "Air \(format(Double(cellSize), 3)) m refined by \(option("refine") ?? "2"), elements \(format(Double(elementSize), 4)) m, \(format(duration * 1000, 0)) ms"
+        )
+        print(
+            "Displacement 300 mm from the centre of the underside (mm, down positive); rebound up past the start; areas cm2\n"
+        )
+        print(
+            pad("test", 5) + pad("charge", 14) + pad("peak", 13) + pad("rebound", 13) + pad("residual", 13)
+                + pad("along/centre", 14) + pad("top", 11) + pad("bottom", 11) + pad("hole cm", 11)
+                + pad("failed", 8)
+                + pad("s", 6))
+        for test in TwoFaceSlabTests.wuTests where names.contains(test.name) {
+            let result = try TwoFaceSlabTests.run(
+                device: device, test: test, cellSize: cellSize,
+                refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
+                duration: duration,
+                heldLengthwise: flag("held"), adjust: adjust, prepare: prepareTrace,
+                progress: flag("progress")
+                    ? {
+                        print("  " + $0)
+                        fflush(stdout)
+                    } : nil)
+            let charge =
+                "\(format(Double(test.charge), 1)) kg "
+                + (test.standoff.map { "@\(format(Double($0), 2))" } ?? "contact")
+            print(
+                pad(test.name, 5) + pad(charge, 14) + pad("\(mm(test.peak))/\(mm(result.peaks[0]))", 13)
+                    + pad("\(mm(test.rebound))/\(mm(result.rebounds[0]))", 13)
+                    + pad("\(mm(test.residual))/\(mm(result.residuals[0]))", 13)
+                    + pad("\(mm(result.peaks[1]))/\(mm(result.peaks[2]))", 14)
+                    + pad("\(cm2(test.damagedTop))/\(cm2(result.damagedFront))", 11)
+                    + pad("\(cm2(test.damagedBottom))/\(cm2(result.damagedBack))", 11)
+                    + pad(
+                        "\(test.hole.map { format(Double($0) * 100, 1) } ?? "-")/\(format(Double(result.hole) * 100, 1))",
+                        11)
+                    + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
+            try report(result, label: "wu-\(test.name)")
+        }
+    }
+    if let names = option("wang").map({ $0.split(separator: ",").map(String.init) }) {
+        print(
+            "Wang et al. (2022): 1.2 x 0.5 x 0.1 m slabs, steel both ways in both faces, 10 kg (TNT equivalent, assumed) at 1.2 m"
+        )
+        print(
+            "Air \(format(Double(cellSize), 3)) m refined by \(option("refine") ?? "1"), elements \(format(Double(elementSize), 4)) m, \(format(duration * 1000, 0)) ms\n"
+        )
+        for test in TwoFaceSlabTests.wangTests where names.contains(test.name) {
+            let result = try TwoFaceSlabTests.run(
+                device: device, test: test, cellSize: cellSize,
+                refinement: option("refine").flatMap { Int($0) } ?? 1,
+                elementSize: elementSize, duration: duration, hinged: flag("hinged"),
+                afterburning: flag("afterburn"),
+                adjust: { scenario in
+                    adjust(&scenario)
+                    if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
+                }, prepare: prepareTrace,
+                progress: flag("progress")
+                    ? {
+                        print("  " + $0)
+                        fflush(stdout)
+                    } : nil)
+            print("Slab \(test.name), \(format(Double(test.bar) * 1000, 0)) mm bars: \(test.remark)")
+            print("  gauge   peak, measured/model (mm)   residual (mm)")
+            for n in result.probes.indices {
+                print(
+                    "  " + pad(result.probes[n], 5) + pad("\(mm(test.peaks[n]))/\(mm(result.peaks[n]))", 18)
+                        + pad("\(mm(test.residuals[n]))/\(mm(result.residuals[n]))", 22))
+            }
+            print("  reflected pressure: peak (MPa), arrival (ms), impulse (MPa ms), measured/model")
+            for (n, gauge) in TwoFaceSlabTests.wangGauges.enumerated() {
+                print(
+                    "  \(gauge.name)  \(format(Double(gauge.peak) / 1e6, 1))/\(format(Double(result.gaugePeaks[n]) / 1e6, 1))"
+                        + "   \(format(Double(gauge.arrival) * 1000, 2))/\(format(Double(result.gaugeArrivals[n]) * 1000, 2))"
+                        + "   \(format(Double(gauge.impulse) / 1000, 2))/\(format(Double(result.gaugeImpulses[n]) / 1000, 2))"
+                )
+            }
+            print(
+                "  back face damaged \(cm2(result.damagedBack)) cm2, front \(cm2(result.damagedFront)) cm2; "
+                    + "\(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s")
+            try report(result, label: "wang-\(test.name)")
+            print("")
+        }
+    }
+}
+
 func runCloseIn() throws {
     let names = option("tests").map { $0.split(separator: ",").map(String.init) }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.05
@@ -2916,6 +3050,7 @@ do {
     case "pushoff": try runPushOff()
     case "impact": try runImpact()
     case "closein": try runCloseIn()
+    case "twoface": try runTwoFace()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
