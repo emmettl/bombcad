@@ -58,6 +58,7 @@ swift run -c release blastbench chamber
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: 11–15% strong on fine meshes, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 15% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to a seventh with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
 | Collapse and debris  | Nothing                                              | None: plausible-looking only       |
 
@@ -1650,6 +1651,25 @@ suggest, and springs back far further; its peak wall pressures are within the lo
 the gauge positions allow. One test, one measured residual, and two pieces of detailing that
 had to be assumed: the chamber shows how the model behaves at a full-scale joint, not that it
 is right there.
+
+## Gas deflagrations
+
+A premixed methane or propane cloud lit at a point (see [Gas deflagrations](deflagration.md#checks)):
+
+- **A closed sphere** of stoichiometric methane, against the thin-flame model with the same
+  burning velocity: the peak is the AICC pressure the heat was fitted to, and the energy is
+  conserved to 10⁻⁵; the times to half and nine tenths of the rise converge on the model's,
+  within 1% and 3% at 48 cells across the radius; the deflagration index converges slowly from
+  below (51 bar m/s against 76 at 48 cells), the last unburnt gas being far thinner than a cell.
+- **A tube**: a laminar flame lit at the closed end runs at the expansion ratio times the
+  burning velocity to within 10%.
+- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a fiftieth of
+  Molkov's correlation, and far below Bartknecht's and NFPA 68's, with the default flame; a fifth
+  to a seventh with its burning velocity tripled. Against Bauwens et al.'s six tests in that
+  chamber, whose peaks are only plotted, the model reaches a tenth (lit in the middle) to a half
+  (lit at the back wall) of the plots' axes, with the measured trends' directions. The flame's
+  acceleration by turbulence and instabilities, which these tests and correlations include, is a
+  factor in the model, not a model. Illustrative.
 
 ## A footing rocked on dry sand
 

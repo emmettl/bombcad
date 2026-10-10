@@ -229,6 +229,11 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
    of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
+15. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
+   at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
+   closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
+   correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
+   [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
 
 ### Freestanding objects and supports
 
