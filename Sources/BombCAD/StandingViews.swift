@@ -42,6 +42,17 @@ extension SavedSimulationRun {
     }
 }
 
+extension [SavedSimulationRun] {
+    /// How each run's recorded standing differs from `reference`'s, a line a difference, named
+    /// by run; runs without a recorded standing are left out.
+    func standingDifferences(from reference: SavedSimulationRun) -> [String] {
+        guard let base = reference.standing else { return [] }
+        return filter { $0.id != reference.id }.flatMap { run in
+            (run.standing?.differences(from: base) ?? []).map { "\(run.name) · \($0)" }
+        }
+    }
+}
+
 extension SimulationModel {
     /// The standing of the results the current inputs produce.
     var standing: SceneStanding {

@@ -16,7 +16,7 @@ enum HeadlessRun {
                            [--thermal <spec.json> [--thermal-results <file.json>]]
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
-                           [--envelope-results <file.json>]
+                           [--envelope-results <file.json>] [--standing <file.json>]
                            [--consumer <ssh host> | fragments=<where>,thermal=<where>,ground=<where>]
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
@@ -41,7 +41,8 @@ enum HeadlessRun {
         unless --consumer places it on another Mac over SSH, <where> being local or an SSH host;
         models on one Mac share a connection to it, and a host alone places the fragments.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
-        never modified.
+        never modified. The summary ends with the standing of each result (docs/standing.md), which
+        --standing writes as JSON and the USD scene, the volumes and the results files carry too.
         """
 
     struct Options: Equatable {
@@ -73,6 +74,8 @@ enum HeadlessRun {
         var groundShock: GroundShockSpec?
         var envelopeResults: URL?
         var groundResults: URL?
+        /// Where the standing of the run's results goes, as JSON.
+        var standing: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
 
@@ -96,7 +99,7 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "frame-interval",
+                            "frame-interval", "standing",
                         ]
                         .contains(key)
                     else {
@@ -118,6 +121,7 @@ enum HeadlessRun {
             options.out = values["out"].map { URL(filePath: $0) }
             options.csv = values["csv"].map { URL(filePath: $0) }
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
+            options.standing = values["standing"].map { URL(filePath: $0) }
             if let text = values["resolution"] {
                 guard let resolution = Resolution(rawValue: text) else {
                     throw ProjectFileError.invalid("Resolution must be coarse, medium or fine.")
@@ -243,6 +247,7 @@ enum HeadlessRun {
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
                 options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
+                options.standing,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -289,7 +294,7 @@ enum HeadlessRun {
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
-        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
+        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?, standing: SceneStanding
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -301,26 +306,38 @@ enum HeadlessRun {
         if let csv = options.csv {
             try Data(result.run.csv().utf8).write(to: csv, options: .withoutOverwriting)
         }
+        // Each model's results carry its standing beside their own keys, which readers of the
+        // results alone pass over.
+        let standing = result.standing
         if let url = options.fragmentResults, let fragments = result.fragments {
-            try JSONEncoder().encode(fragments).write(to: url, options: .withoutOverwriting)
+            try JSONEncoder().encode(WithStanding(fragments, standing[.fragments])).write(
+                to: url, options: .withoutOverwriting)
         }
         if let url = options.thermalResults, let thermal = result.thermal {
-            try JSONEncoder().encode(thermal).write(to: url, options: .withoutOverwriting)
+            try JSONEncoder().encode(WithStanding(thermal, standing[.thermal])).write(
+                to: url, options: .withoutOverwriting)
         }
         if let url = options.cloudResults, let cloud = result.cloud {
-            try JSONEncoder().encode(cloud).write(to: url, options: .withoutOverwriting)
+            try JSONEncoder().encode(WithStanding(cloud, standing[.cloud])).write(
+                to: url, options: .withoutOverwriting)
         }
         if let url = options.groundResults, let ground = result.ground {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(ground).write(to: url, options: .withoutOverwriting)
+            try encoder.encode(WithStanding(ground, standing[.groundShock])).write(
+                to: url, options: .withoutOverwriting)
+        }
+        if let url = options.standing {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(standing).write(to: url, options: .withoutOverwriting)
         }
         if let url = options.envelopeResults, let data = result.envelopes {
             try data.write(to: url, options: .withoutOverwriting)
         }
         return (
             result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
-            result.envelopes
+            result.envelopes, result.standing
         )
     }
 
@@ -337,10 +354,20 @@ enum HeadlessRun {
         }
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
-        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?,
+        standing: SceneStanding
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
+        // The kept run records the standing of what it keeps; this is the standing of everything the
+        // command runs, the models fed alongside included.
+        let standing = SceneStanding(
+            inputs.settings.standingInputs(
+                inputs.scenario, thermal: options.thermal, cloud: options.cloud, fragments: options.fragments,
+                groundShock: options.groundShock))
+        let volumeMetadata = [
+            ("bombcad_standing", standing.compact), ("bombcad_standing_table", standing.table),
+        ]
         if options.envelopeResults != nil {
             guard !inputs.scenario.envelopeObjects.isEmpty, inputs.scenario.structuralObjects.isEmpty else {
                 throw ProjectFileError.invalid(
@@ -386,6 +413,7 @@ enum HeadlessRun {
                     verticalFieldOfView: model.camera.fieldOfView),
                 volumeFields: options.vdb == nil ? [] : options.vdbFields)
         }
+        scene?.standing = standing
         defer { scene?.discard() }
         var finished = false
         if let folder = options.vdb {
@@ -489,7 +517,8 @@ enum HeadlessRun {
                     var volume: String?
                     if let folder = options.vdb {
                         let file = folder.appending(path: String(format: "blast.%04d.vdb", frame))
-                        try OpenVDBWriter.write(solver.volumeGrids(fields: options.vdbFields), to: file)
+                        try OpenVDBWriter.write(
+                            solver.volumeGrids(fields: options.vdbFields), to: file, metadata: volumeMetadata)
                         volume = options.usd.map { assetPath(of: file, from: $0) }
                     }
                     try scene?.append(solver.structureSurface(), volume: volume)
@@ -605,7 +634,7 @@ enum HeadlessRun {
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
-        return (run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData)
+        return (run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData, standing)
     }
 
     /// A consumer the run feeds each frame, where it runs, and what it has cost the run: the time
@@ -692,11 +721,31 @@ enum HeadlessRun {
             for line in result.thermal?.summary ?? [] { print("  " + line) }
             for line in result.cloud?.summary ?? [] { print("  " + line) }
             if let ground = result.ground { print("  " + ground.summary) }
+            for line in result.standing.lines { print(line) }
             return 0
         } catch {
             FileHandle.standardError.write(Data("Run failed: \(error.localizedDescription)\n".utf8))
             return 1
         }
+    }
+}
+
+/// `value`'s JSON with the standing of its results beside its own keys.
+struct WithStanding<Value: Encodable>: Encodable {
+    var value: Value
+    var standing: ResultStanding?
+
+    init(_ value: Value, _ standing: ResultStanding?) {
+        self.value = value
+        self.standing = standing
+    }
+
+    private enum Key: String, CodingKey { case standing }
+
+    func encode(to encoder: any Encoder) throws {
+        try value.encode(to: encoder)
+        var container = encoder.container(keyedBy: Key.self)
+        try container.encodeIfPresent(standing, forKey: .standing)
     }
 }
 

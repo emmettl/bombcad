@@ -124,6 +124,22 @@ struct InterfaceSnapshotTests {
             size: CGSize(width: 380, height: 40), appearance: appearance,
             to: folder.appending(path: "standing-labels.png"))
         #expect(ProjectDocument(model: model) == original)
+
+        var document = ProjectDocument(scenario: ScenarioPreset.openGround.scenario)
+        var reference = try SavedRunTests().fixture()
+        reference.standing = reference.derivedStanding()
+        var burning = try SavedRunTests().fixture(name: "Afterburning")
+        burning.settings.detailedCharge = true
+        burning.inputSHA256 = try SavedSimulationRun.fingerprint(burning.scenario, settings: burning.settings)
+        burning.standing = burning.derivedStanding()
+        document.savedRuns = [reference, burning]
+        for index in document.savedRuns.indices {
+            document.savedRuns[index].capturedAt = Date(timeIntervalSince1970: 1_791_546_000)
+        }
+        try snapshot(
+            RunComparisonView(model: SimulationModel(document: document)),
+            size: CGSize(width: 920, height: 640),
+            appearance: appearance, to: folder.appending(path: "standing-comparison.png"))
     }
 
     private func snapshot<V: View>(

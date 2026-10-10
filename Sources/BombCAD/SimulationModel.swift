@@ -1382,6 +1382,7 @@ final class SimulationModel {
             throw ProjectFileError.invalid("The cloud is still being followed; keep the run in a moment.")
         }
         run.cloud = cloud
+        run.standing = run.derivedStanding()
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)

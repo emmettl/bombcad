@@ -35,6 +35,9 @@ public final class USDSceneWriter {
         )] = []
     private var cloud: (samples: [CloudSample], secondsPerFrame: Double)?
     public let frameInterval: Double
+    /// The standing of the run's results (see `SceneStanding`), written into the layer's
+    /// `customLayerData` when the scene is finished.
+    public var standing: SceneStanding?
     private let scenario: Scenario
     private let playbackRate: Double
     private let parts: URL
@@ -270,7 +273,7 @@ public final class USDSceneWriter {
                 customLayerData = {
                     string creator = "BombCAD"
                     string scenario = \(quoted(scenario.name))
-                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)
+                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)\(standingData)
                 }
                 defaultPrim = "Scene"
                 startTimeCode = 0
@@ -582,6 +585,25 @@ public final class USDSceneWriter {
             text.append(n == 3 ? ", 1)" : ", 0)")
         }
         text.append(" )\n        uniform token[] xformOpOrder = [\"xformOp:transform\"]\n    }\n\n")
+    }
+
+    /// The standing as a dictionary of the layer's metadata: each result's level and summary, the
+    /// notes on resolution and what the scene leaves out.
+    private var standingData: String {
+        guard let standing else { return "" }
+        func list(_ lines: [String]) -> String { "[" + lines.map(quoted).joined(separator: ", ") + "]" }
+        var lines = ["string table = \(quoted(standing.table))"]
+        for result in standing.results {
+            lines.append(
+                "string \(result.kind.rawValue) = \(quoted("\(result.level.rawValue): \(result.summary)"))")
+        }
+        lines.append(
+            "string[] resolution = \(list(standing.resolution + standing.results.flatMap(\.resolution)))")
+        lines.append("string[] notModelled = \(list(standing.unsupported))")
+        lines.append(
+            "string documentation = \"https://github.com/emmettl/bombcad/blob/main/docs/standing.md\"")
+        return "\n        dictionary standing = {\n" + lines.map { "            " + $0 + "\n" }.joined()
+            + "        }"
     }
 
     private func quoted(_ string: String) -> String {

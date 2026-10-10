@@ -149,7 +149,7 @@ public struct SceneStanding: Codable, Hashable, Sendable {
                     )
                 } else if mine.summary != theirs.summary || mine.options != theirs.options {
                     lines.append(
-                        "\(kind.title): \(mine.level.title.lowercased()) in both, on different evidence")
+                        "\(kind.title): \(mine.level.title.lowercased()) in both runs, on different evidence")
                 }
             }
         }
