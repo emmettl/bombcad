@@ -119,6 +119,7 @@ struct StructureUniforms {
     float gravityY;
     float gravityZ;
     uint pairs;  // connections between two parts of the body (`structurePairs`)
+    uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -1891,6 +1892,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // Whatever bridges it, an element stretched to three times the removal width (or by
         // 100%, on large elements) is gone. Bars bridging a single crack rupture before that.
         eroded = eroded || torn || pulverised || crack > max(1.0f, 3.0f * m.erosionStrain);
+        // Optionally, concrete broken into fragments, whatever bridges it: cracked open across two
+        // planes or more by 0.5 mm and across one by 5% of its size (`removesFragments`).
+        if (u.removesFragments != 0 && joints == 0u) {
+            int open = 0;
+            for (int j = 0; j < 3; ++j) {
+                open += history[j] * u.h >= 0.5e-3f ? 1 : 0;
+            }
+            eroded = eroded || (crack >= 0.05f && open >= 2);
+        }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
         // as those bars alone, from the next step, until they too have ruptured.
         if (bare) {

@@ -727,6 +727,20 @@ member broken through hangs on its bars instead of falling apart where its concr
 nodes keep the concrete's mass, which is not shed as debris. Bare elements are counted as
 removed, and not drawn.
 
+**Fragments, as an option** (`StructureModel.removesFragments`, off by default). Concrete broken
+into fragments is removed, left as its bars where they are intact, whatever bars cross it: an
+element cracked open across at least two planes by 0.5 mm and across one by 5% of its size, in
+solid elements and in shells' layers alike. It stands for the erosion of the continuous surface
+cap model, damage near one and principal strain past 5% (ERODE 1.05), with which M.
+Martínez-Almajano et al. (2021) holed slabs of Chiquito's campaign; "damaged" is read as cracked
+open in two directions, so that a hinge's single crack stays. Under close-in and contact charges
+it holes Hupfauf's 20 cm slabs and Wu's to about their size, but also Hupfauf's 30 cm slabs,
+which held, not Chiquito's, which were holed, and it damages beams struck by a falling weight
+(see [Validation](validation.md#holes-under-close-in-and-contact-charges)); so it is not the
+default. Without it, concrete broken under a charge stays: its cracks across the slab's
+thickness are bridged by the mats until 15 mm open, and crushing removes it only at about a
+third of its depth on 12.5 mm elements.
+
 The crack strain used to be capped at 0.5, and any element stretched past 100% removed. On
 elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on
 3 mm elements, which made the finest meshes of the validation slab shed their cover and
@@ -1210,9 +1224,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 - **Close-in damage.** Under the close-in slabs' charges the concrete beneath is left broken,
   cracked open across all three planes in the lower half and crushed in the upper, but nothing
   removes it, so no hole forms; removing concrete cracked open every way took half the slab's
-  depth over a circle 1.8 m across (see the roadmap's things set aside). A rule for rubble that
-  the slab drives out, and a strain rate for the tensile strength that follows a stress wave
-  (an average over a fixed time rather than 50 steps), are wanted; and how the slab's own
+  depth over a circle 1.8 m across (see the roadmap's things set aside), and removing fragments
+  (now an option, see Removal) holes slabs that held as well as those that were holed. A load
+  for charges in contact from the products' own equation of state, which gives about half the
+  impulse of the present ball of hot air, should come before any removal rule is judged; then a
+  rule for rubble the slab drives out, and a strain rate for the tensile strength that follows a
+  stress wave (an average over a fixed time rather than 50 steps); and how the slab's own
   bending, which the tests' damage follows, comes out a third to a half of the tests'.
 - **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
 - **Masonry on coarse elements and shells**: strengths that differ across and along the bed

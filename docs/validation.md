@@ -1299,14 +1299,15 @@ coarse element for its bending. Held lengthwise at both edges instead of one, bo
 | S4, one layer | 27.5 / 18.9 cm | 0.13 / 0.15 m² | 0.29 / 0.10 m² |
 | D4, two layers | 23.5 / 50.5 cm | 0.11 / 0.42 m² | 0.21 / 0.41 m² |
 
-For the first time the model holes a slab: under contact, elements are removed through the
-thickness beneath the charge. But it reverses the tests' order, holing the slab with two layers
-twice as wide as measured and the slab with one a third too narrow, which has not been traced
-further; the charge's shape (stacked blocks) and its contact are not modelled, and on 12.5 mm
-elements a hole is a few elements across. Under the contact charges of the
+These holes were mostly the step running away (see [holes](#holes-under-close-in-and-contact-charges)):
+concrete compacted under a contact charge is several times stiffer than the step allows, and
+at a quarter of it (`--step-divisor 4`) the holes are 14.0 and 8.3 cm, both too small, with a
+fifth to a half as many elements removed. The holes counted here are now the columns whose
+concrete is gone through the thickness, removed or left as its bars, as the tests' holes had
+bars across them. Under the contact charges of the
 [next section](#slabs-under-contact-charges), on slabs two to three times as thick, the model
 holes none, and there a charge in contact was found to load the slab with about twice the
-impulse a proper equation of state for its products gives, which may also widen these holes.
+impulse a proper equation of state for its products gives.
 
 **Wang's slabs.** Reflected pressure on the slab's face where the plate's gauges were, measured
 / model:
@@ -1462,6 +1463,78 @@ mass are a fraction of those measured, and no slab is holed where most were. The
 is the first error, about twice the impulse of a proper equation of state for the products;
 removal of loose and broken concrete is the second. The thesis's own simulations did not
 reproduce the debris's velocity either. Nothing here touches collapse.
+
+## Holes under close-in and contact charges
+
+Where the tests were holed the model was not: Chiquito's slabs at 0.5 m, Hupfauf's 20 and 25 cm
+slabs and, at a stable step, Wu's to only half the measured size. Each element under the
+charges was traced to see why its concrete stays (`--report` prints the column under the
+charge, `--census` the hole each candidate rule would leave), and one rule was tried in full.
+
+**Why the broken concrete stays.** On Wu's D4 (1.6 kg on 100 mm, two layers) at a stable step,
+the concrete within the measured hole's radius is cracked 2 to 7 mm across vertical planes
+(normal to the slab's faces), crushed by 1 to 8%, and in one element in five nearly whole.
+None of it meets a removal rule:
+
+- a crack across a vertical plane is crossed by the mats' bars somewhere in the section, so it
+  is bridged and the element stays until the crack is 15 mm open (three times the removal width);
+- crushing removes concrete only past the end of its softening by as much again, about 34% on
+  12.5 mm elements;
+- cracks parallel to the faces, which no bar crosses, are removed at 5 mm, and are;
+- neither confinement nor compaction holds it: taken from the stresses carried, the confinement
+  is gone once the shock has passed (the gain is zero), and compaction is under 1% at the rim
+  (11 to 18% only on the axis, where the concrete is removed in any case).
+
+**Rules tried after the fact.** The hole (cm) each rule would leave at the end, measured in
+brackets; Hupfauf's run 3 ms, Wu's 20 ms at a quarter step, Chiquito's 40 ms:
+
+| Rule | Wu S4 (27.5) | Wu D4 (23.5) | Wu S1, D1 (15, 14) | SN142, SN174 (holed) | SN147, SN131 (not) | P2 (holed), P7 (not) |
+|---|---|---|---|---|---|---|
+| As now | 14.0 | 8.3 | 0, 0 | 0, 0 | 0, 0 | 0, 0 |
+| Two planes open 1 mm | 21.7 | 11.9 | 0, 0 | 4.6, 16.2 | 6.9, 0 | 0, 0 |
+| Three planes open 0.5 mm | 17.4 | 10.8 | 0, 0 | 0, 10.5 | 0, 0 | 0, 0 |
+| A plane open 5% of the element | 35.0 | 18.6 | 0, 0 | 18.4, 24.4 | 8.0, 6.3 | 17.8, 0 |
+| That, with two planes open 0.5 mm | 28.3 | 13.7 | 0, 0 | 17.2, 23.4 | 8.0, 6.3 | 0, 0 |
+| Compacted, two planes open 1 mm | 17.5 | 11.8 | 0, 0 | 0, 0 | 0, 0 | 0, 0 |
+
+Every rule that holes Hupfauf's 20 cm slabs holes his 30 cm ones, which held, and none holes
+Wu's slabs under 0.2 kg, which the model barely damages: 3 elements fail on 12.5 mm air, 290 on
+6.25 mm air, against holes 14 and 15 cm across, so a charge 31 mm in radius is under-resolved
+there before any rule applies. A plane open 5% alone also removes 140 to 2,000 elements far from
+the charge, in hinges.
+
+**The rule tried in full** (`StructureModel.removesFragments`, `--fragments`): concrete cracked
+open across at least two planes by 0.5 mm, and across one by 5% of its size, is removed, left as
+its bars where they are intact, whatever bars cross it. It stands for the erosion of the
+continuous surface cap model that M. Martínez-Almajano et al. (2021) used to hole slabs of
+Chiquito's campaign (damage near one and principal strain past 5%), with "damaged" read as
+cracked open in two directions, so that a hinge's one crack is not removed. Shells' layers judge
+it the same way.
+
+| Case | Measured | As now | With the rule |
+|---|---|---|---|
+| Wu S4 (contact, 1.6 kg, one layer) | holed 27.5 cm | 14.0 cm | 43.2 cm, 12,800 elements removed |
+| Wu D4 (two layers) | holed 23.5 cm | 8.3 cm | 15.5 cm |
+| Wu S1, D1 (0.2 kg) | holed 15, 14 cm | none | none |
+| Hupfauf SN142, SN174 (20 cm) | holed | not | holed |
+| Hupfauf SN147, SN131 (30 cm) | not holed | not | holed |
+| Chiquito P1, P7 (1 m) | not holed | not | not |
+| Chiquito S5, P2 (0.5 m) | holed | not | not, on 50 mm and fine air |
+| Contest slab | | | unchanged |
+| Saatci's beams (16 elements) | | | the heavy drop with stirrups 25% further (49.4 mm against 39.5), the beam without stirrups losing five times the elements under the light drop |
+
+It holes slabs both where the tests did and where they did not, overshoots the slab with one
+layer and undershoots the slab with two, and damages struck beams; so it stays an option, and the
+default is unchanged. Removed concrete keeps its mass on its nodes, as bare bars or as loose
+debris, so momentum is kept and only the element's strain energy is lost; Hupfauf found the
+opposite failing in erosion by strain alone, which removed half the charge's energy during the
+detonation, and this rule, needing open cracks, acts only after the shock.
+
+What decides the holes is not removal alone. A charge in contact loads the slab with about
+twice the impulse of a proper equation of state for its products
+([contact charges](#slabs-under-contact-charges)), which holes the thick slabs that held; small
+charges are under-resolved on practical cells; and at 0.5 m Chiquito's slabs are neither
+crushed through nor spalled through by the model, whatever removes them.
 
 ## Blast loads against empirical references
 

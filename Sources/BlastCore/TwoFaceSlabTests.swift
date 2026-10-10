@@ -349,9 +349,11 @@ public enum TwoFaceSlabTests {
                 }
                 let lowCell = cell(low)
                 guard structure.flag(lowCell.0, lowCell.1, lowCell.2) != .empty else { continue }
+                // Concrete gone: removed, or left as its bars alone, which a hole's bars are.
                 let failed = (low...high).map { k -> Bool in
                     let c = cell(k)
-                    return structure.flag(c.0, c.1, c.2) == .eroded
+                    let flag = structure.flag(c.0, c.1, c.2)
+                    return flag == .eroded || flag == .bare
                 }
                 let lowFace = failed.first == true || structure.damage(lowCell.0, lowCell.1, lowCell.2) >= 1
                 let highCell = cell(high)

@@ -225,7 +225,7 @@ public enum CloseInSlabTest {
         let elapsed = ContinuousClock.now - start
         // Spalled area: on each face, surface elements removed or cracked open past the width at
         // which a loose one would be removed (the cover holds no bars to bridge it); perforation:
-        // a column removed through the thickness.
+        // a column whose concrete is gone through the thickness.
         var top = 0
         var bottom = 0
         var columns = 0
@@ -233,7 +233,11 @@ public enum CloseInSlabTest {
         for j in 0..<structure.ey {
             for i in 0..<structure.ex where structure.flag(i, j, 0) != .empty {
                 columns += 1
-                let failed = (0..<topLayer).map { structure.flag(i, j, $0) == .eroded }
+                // Concrete gone: removed, or left as its bars alone, which a hole's bars are.
+                let failed = (0..<topLayer).map { k -> Bool in
+                    let flag = structure.flag(i, j, k)
+                    return flag == .eroded || flag == .bare
+                }
                 if failed.first == true || structure.damage(i, j, 0) >= 1 { bottom += 1 }
                 if failed.last == true || structure.damage(i, j, topLayer - 1) >= 1 { top += 1 }
                 if failed.allSatisfy({ $0 }) { through = true }
