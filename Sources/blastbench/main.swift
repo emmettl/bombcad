@@ -40,6 +40,8 @@ import simd
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
+//   blastbench deflagration [vessel|vented|converge] [--gas methane|propane] [--percent 9.5] [--air thermal]
+//                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -2577,6 +2579,7 @@ do {
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "thermal": try runThermal()
+    case "deflagration": try runDeflagration()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

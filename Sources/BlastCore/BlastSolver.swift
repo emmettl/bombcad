@@ -254,6 +254,14 @@ public final class BlastSolver {
     /// The largest charge deposited since the air was last filled, kg, which sets how fast its
     /// products burn.
     var largestCharge: Float = 0
+    /// The deflagration laid down by `load`, if the scenario has one: its flame front and vent
+    /// panels (see `Deflagration.metal`). Its unburnt mixture is the species' x.
+    var deflagrationStage: DeflagrationStage?
+    /// Whether a deflagration's flame burns in the air (rather than only vent panels standing).
+    var hasFlame: Bool { deflagrationStage?.deflagration != nil }
+    /// Whether the species hold afterburning's detonation products and oxygen (rather than a
+    /// deflagration's unburnt mixture, or nothing).
+    public var speciesHoldDetonationProducts: Bool { hasSpecies && !hasFlame }
     /// The uniform state the air was last filled with: air still in it is not swept.
     private var stillCell = CellState(Primitive(density: 1.225, pressure: 101_325), gamma: 1.4)
     private var batchInFlight = false
@@ -398,17 +406,19 @@ public final class BlastSolver {
             buffer.contents().bindMemory(to: CellState.self, capacity: grid.cellCount)
                 .update(repeating: cell, count: grid.cellCount)
         }
-        if configuration.afterburning && !hasSpecies {
+        let wantsSpecies = configuration.afterburning || hasFlame
+        if wantsSpecies && !hasSpecies {
             let length = grid.cellCount * MemoryLayout<SIMD2<Float>>.stride
             if let first = device.makeBuffer(length: length, options: .storageModeShared),
                 let second = device.makeBuffer(length: length, options: .storageModeShared)
             {
                 speciesBuffers = [first, second]
             }
-        } else if !configuration.afterburning {
+        } else if !wantsSpecies {
             speciesBuffers = []
         }
-        let air = SIMD2<Float>(0, Self.oxygenInAir * primitive.density)
+        // A deflagration's cloud is laid down afterwards (see `depositCloud`).
+        let air = SIMD2<Float>(0, hasFlame ? 0 : Self.oxygenInAir * primitive.density)
         for buffer in speciesBuffers {
             buffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: grid.cellCount)
                 .update(repeating: air, count: grid.cellCount)
@@ -427,7 +437,7 @@ public final class BlastSolver {
 
     /// The densities of unburnt detonation products (x) and oxygen (y) to read, or nil without
     /// afterburning.
-    func readSpecies<R>(_ body: (UnsafeBufferPointer<SIMD2<Float>>?) throws -> R) rethrows -> R {
+    public func readSpecies<R>(_ body: (UnsafeBufferPointer<SIMD2<Float>>?) throws -> R) rethrows -> R {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
         guard hasSpecies else { return try body(nil) }
         let pointer = speciesBuffers[current].contents().bindMemory(
@@ -1076,7 +1086,9 @@ public final class BlastSolver {
                 speciesBuffers[1 - current].contents(), speciesBuffers[current].contents(),
                 speciesBuffers[current].length)
         }
-        tilesEnabled = configuration.skipStillAir
+        // A deflagration's flame front is advanced everywhere, its burning starts slowly, and vent
+        // panels open where the air may not yet be awake.
+        tilesEnabled = configuration.skipStillAir && deflagrationStage == nil
         memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
         tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         if tilesEnabled, tiledCoupling == nil, let region = couplingRegion {
@@ -1456,6 +1468,13 @@ public final class BlastSolver {
                 refinement.encodeRefluxAndRestrict(
                     encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms)
             }
+            if let deflagrationStage, !asleep {
+                deflagrationStage.encodeStep(
+                    encoder, state: stateBuffers[current],
+                    species: hasSpecies ? speciesBuffers[current] : nil,
+                    mask: maskBuffer,
+                    rigidMask: rigidMaskBuffer, control: controlBuffer)
+            }
 
             phase("mechanics")
             if hasBody {
@@ -1550,7 +1569,8 @@ public final class BlastSolver {
         }
         frameExtractor?.encode(
             encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
-            species: currentSpecies, hasSpecies: hasSpecies, control: controlBuffer, uniforms: makeUniforms())
+            species: currentSpecies, hasSpecies: speciesHoldDetonationProducts, control: controlBuffer,
+            uniforms: makeUniforms())
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -1587,6 +1607,7 @@ public final class BlastSolver {
             if step > 0 { lastStep = step }
         }
         let elapsed = time - start
+        deflagrationStage?.complete(batchStart: start)
         for body in bodies {
             body.time = time
             if bodies.count > 1 {
@@ -1605,7 +1626,8 @@ public final class BlastSolver {
             let late =
                 configuration.airSleepCrossings > 0
                 && time > Double(configuration.airSleepCrossings) * crossing
-            airIsAsleep = quiet || late
+            // A deflagration's pressure rises slowly from nothing, and lasts many crossings.
+            airIsAsleep = (quiet || late) && !hasFlame
         }
         if control.activeSteps > 0 { lastFluidStep = control.lastStep }
         var swept = 1.0
@@ -1891,7 +1913,9 @@ public final class BlastSolver {
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)
             uniforms.childTileNz = UInt32(finerRefinement.tileDims.z)
         }
-        if hasSpecies {
+        if hasFlame {
+            uniforms.deflagration = 1
+        } else if hasSpecies {
             uniforms.afterburnEnergy = configuration.afterburnEnergy
             uniforms.oxygenPerFuel = Self.oxygenPerFuel
             uniforms.stillOxygen = Self.oxygenInAir * stillCell.density

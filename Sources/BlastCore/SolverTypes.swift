@@ -207,6 +207,8 @@ struct SolverUniforms {
     var childTileNx: UInt32 = 0
     var childTileNy: UInt32 = 0
     var childTileNz: UInt32 = 0
+    /// 1 when the air carries a deflagration's unburnt mixture (see `Deflagration.metal`).
+    var deflagration: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

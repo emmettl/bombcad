@@ -88,6 +88,12 @@ public struct Scenario: Sendable, Hashable, Codable {
     }
     public var atmosphere = Atmosphere()
     public var reflectiveFaces: BoundaryFaces = .ground
+    /// A premixed gas cloud ignited at a point: when set, it is the scene's source and the
+    /// charges are not fired. (Optional so that layouts saved before it existed still open.)
+    public var deflagration: Deflagration?
+    /// Panels closing openings until the overpressure beside them reaches their release pressure,
+    /// for either kind of source. (Optional for older layouts.)
+    public var ventPanels: [VentPanel]?
 
     public init(
         name: String, domainSize: SIMD3<Float>, boxes: [Box], charge: Charge, gauges: [Gauge] = [],
@@ -131,7 +137,7 @@ extension Scenario {
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures, buildingEnvelopes
+            additionalStructures, buildingEnvelopes, deflagration, ventPanels
     }
 
     private struct Ownership: Codable {
@@ -167,6 +173,8 @@ extension Scenario {
         additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
         atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
         reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
+        deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
+        ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
         let additional =
             try c.decodeIfPresent([AdditionalStructure].self, forKey: .additionalStructures) ?? []
         guard additional.count < Self.maximumStructures, additional.isEmpty || structure != nil else {
@@ -220,6 +228,8 @@ extension Scenario {
         try c.encodeIfPresent(structure, forKey: .structure)
         try c.encode(atmosphere, forKey: .atmosphere)
         try c.encode(reflectiveFaces, forKey: .reflectiveFaces)
+        try c.encodeIfPresent(deflagration, forKey: .deflagration)
+        if let ventPanels, !ventPanels.isEmpty { try c.encode(ventPanels, forKey: .ventPanels) }
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
         if !envelopeObjects.isEmpty {
             try c.encode(
@@ -296,6 +306,7 @@ extension BlastSolver {
         try scenario.validateStructuralSeparation()
         try setStructures(scenario.structuralObjects)
 
+        try loadDeflagration(scenario)
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
         let mapping = mapping(for: scenario)
@@ -305,6 +316,8 @@ extension BlastSolver {
         if let mapping {
             mapped = depositMapped(
                 scenario.charge, radius: mapping.radius, onGround: mapping.onGround, probes: gaugeCentres)
+        } else if let deflagration = scenario.deflagration {
+            deflagrationStage?.initialUnburnt = depositCloud(deflagration)
         } else {
             deposit(scenario.charge)
             for charge in scenario.additionalCharges ?? [] { deposit(charge) }
@@ -329,6 +342,7 @@ extension BlastSolver {
     /// off or not possible, or would not reach 3 cells.
     func mapping(for scenario: Scenario) -> (radius: Float, onGround: Bool)? {
         guard configuration.mappedCharge, !configuration.afterburning, configuration.airModel == .idealGas,
+            scenario.deflagration == nil,
             (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
         else { return nil }
         let c = scenario.charge.position
@@ -337,6 +351,7 @@ extension BlastSolver {
         var nearest = Float.infinity
         var obstacles = scenario.rigidBoxes
         obstacles.append(contentsOf: scenario.structuralObjects.compactMap { $0.structure?.bounds })
+        obstacles.append(contentsOf: (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }.map(\.box))
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
         }
