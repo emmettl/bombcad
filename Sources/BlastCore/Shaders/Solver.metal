@@ -103,6 +103,10 @@ struct SolverUniforms {
     // 1 when the species carry a deflagration's unburnt mixture (x) instead of afterburning's fuel
     // and oxygen: they are carried as afterburning's are, and burnt by Deflagration.metal.
     uint deflagration;
+    // Sub-grid mixing (see `mixingFace`): Smagorinsky's coefficient, and the turbulent Prandtl
+    // and Schmidt numbers.
+    float mixingCoefficient;
+    float mixingPrandtl;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.
@@ -175,6 +179,9 @@ constant float airGasConstant = 287.05f;
 // its code is left out of the kernels, which then run exactly as they did before it.
 constant bool airGravityConstant [[function_constant(5)]];
 constant bool airGravity = is_function_constant_defined(airGravityConstant) && airGravityConstant;
+// Sub-grid mixing, when a kernel is compiled for it (see `mixingFace`), likewise.
+constant bool airMixingConstant [[function_constant(6)]];
+constant bool airMixing = is_function_constant_defined(airMixingConstant) && airMixingConstant;
 
 // Dissociating air: thermally perfect air whose N2 and O2 also split into atoms once hot, in
 // equilibrium, as Lighthill's ideal dissociating gas. For each, a mass fraction alpha of the
@@ -790,6 +797,39 @@ static inline void gravitySources(thread float3 &momentum, thread float &energy,
     energy -= dt * u.gravity * 0.5f * (low.mass + high.mass);
 }
 
+// Sub-grid mixing, as an option: the turbulence the grid cannot resolve carries momentum, heat and
+// the products and oxygen across each face as an eddy viscosity nu (see `eddyViscosity` in
+// Mixing.metal) and diffusivities nu / Pr would: -rho nu dv/dx of momentum, its work and
+// -rho (nu / Pr) dh/dx of heat (h the specific enthalpy), and -rho (nu / Pr) dY/dx of each of the
+// species' mass fractions. The face takes the mean of its two cells' nu, at most a quarter of
+// dx^2 / dt, which keeps the explicit diffusion stable, and both cells beside it work out the same
+// flux, so the gas stays conserved. Walls and open faces pass none.
+struct MixingFace {
+    Flux flux;
+    float carrier;  // rho nu / (Pr dx): what multiplies a species' difference in mass fraction
+};
+
+static inline MixingFace mixingFace(Prim a, Prim b, float nuA, float nuB, float dx, float dt,
+                                    constant SolverUniforms &u) {
+    float nu = min(0.5f * (nuA + nuB), 0.25f * dx * dx / dt);
+    float scale = 0.5f * (a.rho + b.rho) * nu / dx;
+    float ha = (gasEnergy(a.rho, a.p, u.airModel, u.gamma) + a.p) / a.rho;
+    float hb = (gasEnergy(b.rho, b.p, u.airModel, u.gamma) + b.p) / b.rho;
+    MixingFace face;
+    face.flux.mass = 0.0f;
+    face.flux.momentum = -scale * (b.v - a.v);
+    face.flux.energy = dot(face.flux.momentum, 0.5f * (a.v + b.v)) - scale / u.mixingPrandtl * (hb - ha);
+    face.carrier = scale / u.mixingPrandtl;
+    return face;
+}
+
+static inline Flux sumOf(Flux a, Flux b) {
+    a.mass += b.mass;
+    a.momentum += b.momentum;
+    a.energy += b.energy;
+    return a;
+}
+
 // The patch refining coarse cell `cell`, or -1.
 static inline int patchAt(int3 cell, const device int *patchOfTile, constant SolverUniforms &u) {
     int3 tile = cell / patchSize;
@@ -841,7 +881,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                              device float2 *speciesSrc, device float2 *speciesDst,
                              const device int *patchOfTile, device float *coarseFlux,
                              device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse,
-                             const device float4 *gravityTable) {
+                             const device float4 *gravityTable, const device float *viscosity) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (control.dt <= 0.0f) {
         // A step that does nothing (past the time limit) swaps the two buffers' cells, solid
@@ -950,6 +990,22 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     } else {
         stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
     }
+    // Sub-grid mixing's fluxes through the faces with fluid beyond them.
+    float carrierLow = 0.0f;
+    float carrierHigh = 0.0f;
+    if (airMixing) {
+        float nu0 = viscosity[index];
+        if (kindM1 == kindFluid) {
+            MixingFace face = mixingFace(wM1, w0, viscosity[index - stride], nu0, u.dx, dt, u);
+            fluxLow = sumOf(fluxLow, face.flux);
+            carrierLow = face.carrier;
+        }
+        if (kindP1 == kindFluid) {
+            MixingFace face = mixingFace(w0, wP1, nu0, viscosity[index + stride], u.dx, dt, u);
+            fluxHigh = sumOf(fluxHigh, face.flux);
+            carrierHigh = face.carrier;
+        }
+    }
 
     // Experimental rigid-box path: impermeable moving-wall traction, recorded from the
     // same numerical face flux used by the gas. Each fluid thread owns six output scalars, one
@@ -1042,6 +1098,11 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             inflow = fluxLow.mass * lowFace;
             outflow = fluxHigh.mass * highFace;
         }
+        if (airMixing) {
+            // Sub-grid mixing carries the species down their gradients in mass fraction.
+            inflow -= carrierLow * (fraction - below);
+            outflow -= carrierHigh * (above - fraction);
+        }
         species = max(own - lambda * (outflow - inflow), 0.0f);
         if (speciesRegister >= 0) {
             float2 through = (registerLow ? inflow : outflow) * dt;
@@ -1113,13 +1174,14 @@ kernel void sweep(device Cell *src [[buffer(0)]],
                   const device uchar *boxMask [[buffer(16)]],
                   device float *boxImpulse [[buffer(17)]],
                   const device float4 *gravityTable [[buffer(18)]],
+                  const device float *viscosity [[buffer(19)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
               speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-                      gravityTable);
+                      gravityTable, viscosity);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -1143,6 +1205,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
                   const device uchar *boxMask [[buffer(16)]],
                   device float *boxImpulse [[buffer(17)]],
                        const device float4 *gravityTable [[buffer(18)]],
+                  const device float *viscosity [[buffer(19)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1154,7 +1217,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
                       speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-                      gravityTable);
+                      gravityTable, viscosity);
         }
     }
 }

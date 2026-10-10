@@ -1121,7 +1121,7 @@ enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
         let files = [
             "Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation", "Gravity",
-            "Deflagration",
+            "Deflagration", "Mixing",
         ]
         let source = try files.map { name in
             guard
@@ -1141,6 +1141,17 @@ enum ShaderLibrary {
     /// Index of the optional function constant that compiles gravity in the air into a kernel
     /// (`airGravityConstant` in Solver.metal); without it, the kernel leaves gravity's code out.
     static let airGravityConstant = 5
+
+    /// Index of the optional function constant that compiles sub-grid mixing into a kernel
+    /// (`airMixingConstant` in Solver.metal).
+    static let airMixingConstant = 6
+
+    /// `constants` with sub-grid mixing compiled in.
+    static func withMixing(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: airMixingConstant)
+        return constants
+    }
 
     /// `constants` with gravity in the air compiled in.
     static func withGravity(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {

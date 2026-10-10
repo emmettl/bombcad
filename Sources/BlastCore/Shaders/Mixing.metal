@@ -57,3 +57,24 @@ kernel void eddyViscosity(const device Cell *state [[buffer(0)]],
     float length = u.mixingCoefficient * u.dx;
     viscosity[index] = length * length * rate * (1.0f - theta);
 }
+
+// For benchmarks (`SolverConfiguration.periodicSides`): the grid's two outermost cells on each x
+// and y side hold copies of the cells on the far side, refilled before every sweep, so that the
+// interior, two cells in from each side, is periodic in x and y.
+kernel void periodicHalo(device Cell *state [[buffer(0)]],
+                         constant SolverUniforms &u [[buffer(1)]],
+                         uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
+        return;
+    }
+    int i = int(tid.x);
+    int j = int(tid.y);
+    int nx = int(u.nx) - 4;
+    int ny = int(u.ny) - 4;
+    int si = i < 2 ? i + nx : (i >= int(u.nx) - 2 ? i - nx : i);
+    int sj = j < 2 ? j + ny : (j >= int(u.ny) - 2 ? j - ny : j);
+    if (si == i && sj == j) {
+        return;
+    }
+    state[uint(i) + u.nx * (uint(j) + u.ny * tid.z)] = state[uint(si) + u.nx * (uint(sj) + u.ny * tid.z)];
+}

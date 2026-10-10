@@ -217,6 +217,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case dissociatingAir
     case radiativeCooling
     case gravity
+    case subgridMixing
     case shockRefinement
     case twoLevelRefinement
     case mappedCharge
@@ -281,6 +282,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .dissociatingAir: return config.airModel == .dissociating
         case .radiativeCooling: return config.radiativeCooling != nil
         case .gravity: return config.gravity != nil
+        case .subgridMixing: return config.mixing != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
         case .mappedCharge: return config.mappedCharge
@@ -409,6 +411,11 @@ public enum StandingTable {
                     + "a hot bubble rises within 10% of the cloud's integral model and blast loads move by "
                     + "under 0.1%. Dial Pack's fireball rises under it but stays 600 to 900 K too hot.",
                 document: "air-blast-model.md#gravity")
+        case .subgridMixing:
+            return Entry(
+                title: "Sub-grid mixing", affects: air + [.thermal, .cloud], limit: nil,
+                note: "SUBGRID_NOTE",
+                document: "air-blast-model.md#sub-grid-mixing")
         case .shockRefinement:
             return Entry(
                 title: "Shock refinement", affects: air + structure + [.envelopeExposure], limit: nil,
@@ -729,6 +736,8 @@ public enum StandingTable {
         "SolverConfiguration.refinementMemory": .numerical,
         "SolverConfiguration.radiativeCooling": .option([.radiativeCooling]),
         "SolverConfiguration.gravity": .option([.gravity]),
+        "SolverConfiguration.mixing": .option([.subgridMixing]),
+        "SolverConfiguration.periodicSides": .numerical,
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
