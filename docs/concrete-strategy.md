@@ -108,11 +108,14 @@ It also drops the comparison tables that only exist to justify them. The evident
 list (`EvidentialStanding.swift`) shrinks with them. Fewer switches means fewer cases to rerun
 when the model changes.
 
-Two defects were found on the way:
+Two defects were found on the way, and are fixed:
 
-- `blastbench`'s `--bond` also turns on the masonry interface joint (`interfaceBond`) on preset
-  commands.
-- `pressedInterlock` and `slipWidensCracks` are not saved in a model file.
+- `blastbench`'s `--bond` turned on the masonry interface joint (`interfaceBond`) on preset
+  commands whatever followed it, and bars that slip were not set there at all. Now
+  `--bond pullout`, `splitting` or `confined` make bars slip everywhere, `--bond none` keeps them
+  bonded, and `--bond` alone or `--bond mortar` is the joint (`BondArgument`).
+- `pressedInterlock` and `slipWidensCracks` were not saved in a model file. They are now, only
+  where they differ from the standard, so older files read as before.
 
 ### Selecting by regime instead of waiting for agreement
 
@@ -224,7 +227,7 @@ a point to stop at.
 **Stage 0: clear the ground (days).**
 
 1. Retire what section 1 names.
-2. Fix the `--bond` clash, and save `pressedInterlock`.
+2. Fix the `--bond` clash, and save `pressedInterlock` (done).
 3. Make the beams' sectional shear check and pressed interlock regime-selected.
 4. Turn the sweep used for bars that slip (`/Volumes/StudioData/bombcad/tension-stiffening/sweep.sh`) into a checked-in case matrix that every concrete change runs. The matrix covers:
    - the slab on 4–16;
