@@ -10,14 +10,17 @@ struct ModelOptionPersistenceTests {
         try JSONDecoder().decode(StructureModel.self, from: JSONEncoder().encode(model))
     }
 
-    @Test("Interlock that grows with pressure, and cracks whose slide does not open them, are saved")
+    @Test("Pressed interlock, slide-apart and the hourglass options are saved")
     func crackOptions() throws {
         var model = StructureModel(solids: [Box(min: .zero, max: SIMD3(1, 1, 1))], elementSize: 0.25)
         model.pressedInterlock = true
         model.slipWidensCracks = false
+        model.hourglassFollowsCracking = true
+        model.hourglassCapsSteel = false
         let read = try roundTrip(model)
         #expect(read.pressedInterlock)
         #expect(!read.slipWidensCracks)
+        #expect(read.hourglassFollowsCracking && !read.hourglassCapsSteel)
         #expect(read == model)
     }
 
@@ -29,9 +32,11 @@ struct ModelOptionPersistenceTests {
         // At their standard values they are not written, so the file is as an older version wrote it.
         #expect(object["pressedInterlock"] == nil)
         #expect(object["slipWidensCracks"] == nil)
+        #expect(object["hourglassFollowsCracking"] == nil && object["hourglassCapsSteel"] == nil)
         let read = try JSONDecoder().decode(StructureModel.self, from: data)
         #expect(!read.pressedInterlock)
         #expect(read.slipWidensCracks)
+        #expect(!read.hourglassFollowsCracking && read.hourglassCapsSteel)
     }
 
     @Test("--bond names bars that slip or the mortar joint, never both")

@@ -140,7 +140,10 @@ Proposed instead:
 - `EvidentialStanding` reports which regime each result was judged in.
 
 Two candidates today: the beams' sectional shear check (static only), and pressed interlock
-(statically restrained cracks only).
+(statically restrained cracks only). Both are now done (see the
+[concrete model](concrete-model.md#defaults-by-regime)): `StructuralRegime` uses the standing's
+own placement by scaled distance and enclosure, with the loading static or impulsive. Bending and
+shear in members are not told apart yet, since no option differs between them.
 
 ## 2. The limits of the model class
 
@@ -228,7 +231,7 @@ a point to stop at.
 
 1. Retire what section 1 names.
 2. Fix the `--bond` clash, and save `pressedInterlock` (done).
-3. Make the beams' sectional shear check and pressed interlock regime-selected.
+3. Make the beams' sectional shear check and pressed interlock regime-selected (done).
 4. Turn the sweep used for bars that slip (`/Volumes/StudioData/bombcad/tension-stiffening/sweep.sh`) into a checked-in case matrix that every concrete change runs. The matrix covers:
    - the slab on 4–16;
    - Janney, OA1 and Saatci on two meshes;

@@ -97,6 +97,7 @@ public enum ShearBeamBenchmark {
         mapAt: Float? = nil,
         slipWidensCracks: Bool = true,
         pressedInterlock: Bool = false,
+        adjustModel: (inout StructureModel) -> Void = { _ in },
         adjust: (inout StructureMaterial) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil,
         sample: ((_ solver: StructureSolver, _ deflection: Float, _ load: Float) -> Void)? = nil
@@ -109,6 +110,7 @@ public enum ShearBeamBenchmark {
         adjust(&model.material)
         model.slipWidensCracks = slipWidensCracks
         model.pressedInterlock = pressedInterlock
+        adjustModel(&model)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false

@@ -13,9 +13,10 @@ explosions damaging is the flame speeding up through turbulence, instabilities a
 flame here is wrinkled by the turbulence the grid cannot resolve, through the correlation and
 sub-grid model of FM Global's own LES of these rooms, and by the flow round obstacles the grid
 does resolve. Its instabilities are not modelled.
-- Lit at the back wall of FM Global's chamber, the flame runs at the tests' measured speeds, and
-  the peak pressure is 55–60% of theirs.
-- Lit in the middle, the peak is a fifth to a seventh of theirs, and the half of the flame facing
+- Lit at the back wall of FM Global's chamber, the flame runs at about half the tests' measured
+  speeds over the first 2 m and within a fifth of them beyond 3 m, and the peak pressure is 55–60%
+  of theirs.
+- Lit in the middle, the peak is a sixth to a seventh of theirs, and the half of the flame facing
   the back wall stalls.
 - Every result is far below the venting correlations of EN 14994 and NFPA 68.
 
@@ -329,7 +330,7 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
   the first 2 m, and then come close: within a fifth at 3 m, and the largest, as the flame leaves
   through the vent, within a sixth (52 and 130 m/s against 45 and 125).
 - **Lit in the middle it is far low**, a seventh (tests 1, 2) and a sixth (test 5) of the measured
-  peaks, where their LES came within 20%. Towards the vent its flame runs at 55–75% of the measured
+  peaks, where their LES came within a third. Towards the vent its flame runs at 55–75% of the measured
   speed. Towards the back wall it stalls: it reaches 0.5 m and then barely moves for two seconds.
   The burnt gas drifts towards the vent (1.8–2.8 m/s by 0.55 s), and the unburnt gas behind it
   flows that way as fast as the flame burns into it. The tests and their LES show a flame running
@@ -388,8 +389,9 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
    oscillation), and the external explosion. The model now wrinkles the flame by its sub-grid
    turbulence, after Bauwens et al.'s LES, whose one constant they fitted in this chamber. The
    instabilities are not modelled (the wrinkling with radius is an option whose onset radius is a
-   guess). Lit at a back wall, the flame's speeds match FM Global's tests, but the peaks are
-   55–60% of theirs. Lit in the middle, the peaks are a fifth to a seventh of the tests', and the
+   guess). Lit at a back wall, the flame's speeds come within a fifth of FM Global's tests beyond
+   3 m (half over the first 2 m), but the peaks are 55–60% of theirs. Lit in the middle, the
+   peaks are a sixth to a seventh of the tests', and the
    flame stalls towards the back wall.
 2. **A young flame is slow**: until it is about seventeen cells across, a front four cells thick
    burns over too small an area (55–83% of it from three to ten cells). On 0.1 m cells that is most
