@@ -1,6 +1,6 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.5`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.5)
+BombCAD pins [ContinuumKit `0.1.0-alpha.13`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.13)
 and commits the resolved Git revision. Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
@@ -69,3 +69,42 @@ signature verification. Its bundled executable completes a headless two-structur
 scene, writes a version-4 project retaining both response histories, and exports CSV
 and USD with object attribution. These application checks preserve the documented
 model scope; they do not establish new physical validation.
+
+## Planar ideal-gas wall reference — 10 October 2026
+
+The exact alpha.13 dependency resolves to
+`b6ff3ca28eb96bbac23ec15d93a13afda99b2be9`. The public CompressibleFlow product
+now supplies the stateless wall-pressure relation through BombCAD's internal bridge.
+The bridge preserves the application's result shape and invalidState failure
+category. Geometry, signed wall-frame velocity, reconstruction, gas transport,
+timestep selection and accepted wall impulse/work integration remain app-owned.
+CAD foundation source is unchanged from alpha.5.
+
+Ordinary-state operation order and the incident-state signal estimate are preserved.
+Near gamma = 1, the shared rarefaction uses log1p/exp; invalid or unrepresentable
+intermediates and non-vacuum pressure underflow now fail explicitly. Two application
+bridge tests cover these deliberate numerical adaptations. The signal estimate is
+not an exact shock-front speed or a universal downstream-characteristic certificate.
+
+The reproducible comparison uses immutable pre-adoption commit
+`089d0a25475a3de8c541dd1a6531c7503e60163c`, with the identical benchmark fixture
+copied into its disposable build. The baseline retains its original source and
+existing compiler warnings. Both variants use the same release build flags.
+The benchmark requires byte-identical complete reports for 360 ordinary wall cases,
+twelve piston runs (three spacings, both wall directions, both reconstruction modes),
+33 native field clocks per piston and every accepted wall-load interval, plus eight
+public wall-reflection histories and the eight-case wall-pressure study. Reflection
+records expose their complete public history, rather than every interior field.
+Independent postconditions check clocks, case identity and mass/momentum/energy
+accounting; deliberate corruption controls test completeness and rejection.
+
+Run `bash Scripts/check-wall-adoption.sh /absolute/output/path` from a clean
+committed candidate, or dispatch Check with suite `wall-adoption` on the physical
+Mac mini. Reports retain original/shared values, resolved Git pins, source hashes
+and host/toolchain identity. Full app CI remains separate and verifies the packaged
+app signature after lint, script checks, build and tests.
+
+[Acceptance record](wall-adoption-verification.json) records the measured producers,
+application gates and source equivalence across the integration checkpoint. This
+adoption establishes numerical preservation for the declared cases. Measured blast
+accuracy and bulk gas/moving-geometry extraction remain separate tasks.
