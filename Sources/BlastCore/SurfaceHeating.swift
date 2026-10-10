@@ -242,7 +242,7 @@ public struct SurfaceHeatingSpec: Codable, Sendable, Equatable {
     /// cut there with no heat flowing through, as a semi-infinite solid.
     public var horizon: Float = 2
     /// The longest time step, in seconds; a frame's interval is cut into equal steps no longer.
-    public var maximumStep: Float = 2.5e-4
+    public var maximumStep: Float = 1e-3
 
     public init() {}
 
@@ -461,6 +461,9 @@ public struct SurfaceHeating: Sendable {
     private var lastTime: Double?
     private var lastIrradiance: [Float] = []
     let nodes: Int
+    /// Each column's capacities then conductances, `2 nodes − 1` a column, and its face.
+    private let coefficients: [Double]
+    private let faces: [Column.Face]
 
     public init(spec: SurfaceHeatingSpec, grids: [ThermalSurfaceGrid], scene: FragmentScene) {
         self.init(spec: spec, layout: Layout(spec: spec, grids: grids, scene: scene))
@@ -470,6 +473,8 @@ public struct SurfaceHeating: Sendable {
         self.spec = spec
         self.layout = layout
         nodes = spec.cells + 1
+        coefficients = layout.columns.flatMap { $0.capacity + $0.conductance }
+        faces = layout.columns.map(\.face)
         temperature = [Double](repeating: Double(spec.ambient), count: layout.material.count * nodes)
         heated = [Bool](repeating: false, count: layout.material.count)
         peakTemperature = [Float](repeating: spec.ambient, count: layout.material.count)
@@ -498,29 +503,45 @@ public struct SurfaceHeating: Sendable {
         let nodes = self.nodes
         let ambient = Double(spec.ambient)
         let convection = Double(spec.convection)
-        let layout = self.layout
-        temperature.withUnsafeMutableBufferPointer { temperature in
-            heated.withUnsafeMutableBufferPointer { heated in
-                peakTemperature.withUnsafeMutableBufferPointer { peak in
-                    DispatchQueue.concurrentPerform(iterations: (count + chunk - 1) / chunk) { c in
-                        var work = Column.Work(nodes: nodes)
-                        for n in c * chunk..<min((c + 1) * chunk, count) {
-                            let q0 = Double(before[n])
-                            let q1 = Double(irradiance[n])
-                            guard heated[n] || q0 > 0 || q1 > 0 else { continue }
-                            heated[n] = true
-                            let column = layout.columns[layout.column[n]]
-                            let t = temperature.baseAddress! + n * nodes
-                            var hottest = Double(peak[n])
-                            for s in 0..<steps {
-                                let a = Double(s) / Double(steps)
-                                let b = Double(s + 1) / Double(steps)
-                                column.step(
-                                    t, dt: dt, from: q0 + (q1 - q0) * a, to: q0 + (q1 - q0) * b,
-                                    ambient: ambient, convection: convection, work: &work)
-                                hottest = max(hottest, t[0])
+        let stride = 2 * nodes - 1
+        let columnOf = UnsafeMutableBufferPointer<Int32>.allocate(capacity: count)
+        defer { columnOf.deallocate() }
+        for n in 0..<count { columnOf[n] = Int32(layout.column[n]) }
+        let unchanged = before.count == count ? nil : [Float](repeating: 0, count: count)
+        (unchanged ?? before).withUnsafeBufferPointer { before in
+            irradiance.withUnsafeBufferPointer { irradiance in
+                coefficients.withUnsafeBufferPointer { coefficients in
+                    faces.withUnsafeBufferPointer { faces in
+                        temperature.withUnsafeMutableBufferPointer { temperature in
+                            heated.withUnsafeMutableBufferPointer { heated in
+                                peakTemperature.withUnsafeMutableBufferPointer { peak in
+                                    DispatchQueue.concurrentPerform(iterations: (count + chunk - 1) / chunk) {
+                                        c in
+                                        let work = Column.Work(nodes: nodes)
+                                        for n in c * chunk..<min((c + 1) * chunk, count) {
+                                            let q0 = Double(before[n])
+                                            let q1 = Double(irradiance[n])
+                                            guard heated[n] || q0 > 0 || q1 > 0 else { continue }
+                                            heated[n] = true
+                                            let k = Int(columnOf[n])
+                                            let cap = coefficients.baseAddress! + k * stride
+                                            let t = temperature.baseAddress! + n * nodes
+                                            var hottest = Double(peak[n])
+                                            for s in 0..<steps {
+                                                let a = Double(s) / Double(steps)
+                                                let b = Double(s + 1) / Double(steps)
+                                                Column.step(
+                                                    t, dt: dt, from: q0 + (q1 - q0) * a,
+                                                    to: q0 + (q1 - q0) * b,
+                                                    ambient: ambient, convection: convection, work: work,
+                                                    face: faces[k], c: cap, g: cap + nodes)
+                                                hottest = max(hottest, t[0])
+                                            }
+                                            peak[n] = Float(hottest)
+                                        }
+                                    }
+                                }
                             }
-                            peak[n] = Float(hottest)
                         }
                     }
                 }
@@ -548,6 +569,20 @@ struct Column: Sendable, Equatable {
     /// The back face's, where the material is thinner than the column would be; nil for a column
     /// cut off in a deeper solid, through which no heat flows.
     var back: Double?
+
+    /// What a step needs of a column besides its capacities and conductances, with no arrays to
+    /// count references to as the cores share it.
+    struct Face: Sendable {
+        var nodes: Int
+        var absorptivity: Double
+        var emissivity: Double
+        /// The back face's emissivity; negative where no heat flows through the back.
+        var back: Double
+    }
+
+    var face: Face {
+        Face(nodes: capacity.count, absorptivity: absorptivity, emissivity: emissivity, back: back ?? -1)
+    }
 
     static let stefanBoltzmann = 5.670_374e-8
     /// TR-BDF2's split, 2 − √2.
@@ -629,77 +664,83 @@ struct Column: Sendable, Equatable {
         return 0.5 * (low + high)
     }
 
-    /// Scratch space for one column's step.
-    struct Work {
-        var diagonal: [Double]
-        var rhs: [Double]
-        var flux: [Double]
-        var start: [Double]
-        var stage: [Double]
+    /// Scratch space for one column's step: five rows of `nodes`.
+    final class Work {
+        let nodes: Int
+        let buffer: UnsafeMutablePointer<Double>
 
         init(nodes: Int) {
-            diagonal = [Double](repeating: 0, count: nodes)
-            rhs = diagonal
-            flux = diagonal
-            start = diagonal
-            stage = diagonal
+            self.nodes = nodes
+            buffer = .allocate(capacity: 5 * nodes)
+            buffer.initialize(repeating: 0, count: 5 * nodes)
         }
+
+        deinit { buffer.deallocate() }
+
+        var diagonal: UnsafeMutablePointer<Double> { buffer }
+        var rhs: UnsafeMutablePointer<Double> { buffer + nodes }
+        var flux: UnsafeMutablePointer<Double> { buffer + 2 * nodes }
+        var start: UnsafeMutablePointer<Double> { buffer + 3 * nodes }
+        var stage: UnsafeMutablePointer<Double> { buffer + 4 * nodes }
     }
 
     /// The net heat into each node, in W/m², at temperatures `t` and absorbed-to-be irradiance `q`.
-    func heat(
-        _ t: UnsafeMutablePointer<Double>, q: Double, ambient: Double, convection: Double,
-        into out: inout [Double]
+    static func heat(
+        _ t: UnsafePointer<Double>, q: Double, ambient: Double, convection: Double, face: Face,
+        g: UnsafePointer<Double>, into out: UnsafeMutablePointer<Double>
     ) {
-        let n = capacity.count
+        let n = face.nodes
         let sigma = Self.stefanBoltzmann
         let a4 = ambient * ambient * ambient * ambient
-        for i in 0..<n { out[i] = 0 }
+        out.update(repeating: 0, count: n)
         for i in 0..<n - 1 {
-            let flow = conductance[i] * (t[i + 1] - t[i])
+            let flow = g[i] * (t[i + 1] - t[i])
             out[i] += flow
             out[i + 1] -= flow
         }
         let s = t[0]
-        out[0] += absorptivity * q - convection * (s - ambient) - emissivity * sigma * (s * s * s * s - a4)
-        if let back {
+        out[0] +=
+            face.absorptivity * q - convection * (s - ambient) - face.emissivity * sigma
+            * (s * s * s * s - a4)
+        if face.back >= 0 {
             let b = t[n - 1]
-            out[n - 1] += -convection * (b - ambient) - back * sigma * (b * b * b * b - a4)
+            out[n - 1] += -convection * (b - ambient) - face.back * sigma * (b * b * b * b - a4)
         }
     }
 
     /// Solves (scale·C + A) x = rhs, A the conduction between the nodes and the losses at the
     /// faces linearised about `about`, and adds the linearised losses' constant parts and the
-    /// absorbed irradiance `q` to `rhs` first. The answer goes into `x`.
-    func solve(
-        scale: Double, rhs: inout [Double], about: UnsafePointer<Double>, q: Double, ambient: Double,
-        convection: Double, diagonal: inout [Double], x: UnsafeMutablePointer<Double>
+    /// absorbed irradiance `q` to `rhs` first. The answer goes into `x`, which may be `about`.
+    static func solve(
+        scale: Double, rhs: UnsafeMutablePointer<Double>, about: UnsafePointer<Double>, q: Double,
+        ambient: Double, convection: Double, face: Face, c: UnsafePointer<Double>, g: UnsafePointer<Double>,
+        diagonal: UnsafeMutablePointer<Double>, x: UnsafeMutablePointer<Double>
     ) {
-        let n = capacity.count
+        let n = face.nodes
         let sigma = Self.stefanBoltzmann
         let a4 = ambient * ambient * ambient * ambient
-        for i in 0..<n {
-            diagonal[i] =
-                scale * capacity[i] + (i > 0 ? conductance[i - 1] : 0) + (i < n - 1 ? conductance[i] : 0)
-        }
+        diagonal[0] = scale * c[0] + g[0]
+        for i in 1..<n - 1 { diagonal[i] = scale * c[i] + g[i - 1] + g[i] }
+        diagonal[n - 1] = scale * c[n - 1] + g[n - 2]
         // σT⁴ ≈ 4T₀³T − 3T₀⁴ about T₀.
         let s = about[0]
-        diagonal[0] += convection + 4 * emissivity * sigma * s * s * s
-        rhs[0] += absorptivity * q + convection * ambient + emissivity * sigma * (3 * s * s * s * s + a4)
-        if let back {
+        diagonal[0] += convection + 4 * face.emissivity * sigma * s * s * s
+        rhs[0] +=
+            face.absorptivity * q + convection * ambient + face.emissivity * sigma * (3 * s * s * s * s + a4)
+        if face.back >= 0 {
             let b = about[n - 1]
-            diagonal[n - 1] += convection + 4 * back * sigma * b * b * b
-            rhs[n - 1] += convection * ambient + back * sigma * (3 * b * b * b * b + a4)
+            diagonal[n - 1] += convection + 4 * face.back * sigma * b * b * b
+            rhs[n - 1] += convection * ambient + face.back * sigma * (3 * b * b * b * b + a4)
         }
         // Thomas's algorithm; the off-diagonals are −conductance.
         for i in 1..<n {
-            let m = -conductance[i - 1] / diagonal[i - 1]
-            diagonal[i] += m * conductance[i - 1]
-            rhs[i] -= m * rhs[i - 1]
+            let m = g[i - 1] / diagonal[i - 1]
+            diagonal[i] -= m * g[i - 1]
+            rhs[i] += m * rhs[i - 1]
         }
         x[n - 1] = rhs[n - 1] / diagonal[n - 1]
         for i in stride(from: n - 2, through: 0, by: -1) {
-            x[i] = (rhs[i] + conductance[i] * x[i + 1]) / diagonal[i]
+            x[i] = (rhs[i] + g[i] * x[i + 1]) / diagonal[i]
         }
     }
 
@@ -709,34 +750,43 @@ struct Column: Sendable, Equatable {
     /// fine cells at the surface neither limit the step nor ring.
     func step(
         _ t: UnsafeMutablePointer<Double>, dt: Double, from: Double, to: Double, ambient: Double,
-        convection: Double, work: inout Work
+        convection: Double, work: Work
     ) {
-        let n = capacity.count
-        let g = Self.gamma
-        heat(t, q: from, ambient: ambient, convection: convection, into: &work.flux)
-        for i in 0..<n { work.start[i] = t[i] }
-        // The trapezium rule: 2C/(γΔt) (T* − Tₙ) = f(Tₙ) + f(T*).
-        let first = 2 / (g * dt)
-        for i in 0..<n { work.rhs[i] = first * capacity[i] * t[i] + work.flux[i] }
-        let mid = from + (to - from) * g
-        work.start.withUnsafeBufferPointer { start in
-            work.stage.withUnsafeMutableBufferPointer { stage in
-                solve(
-                    scale: first, rhs: &work.rhs, about: start.baseAddress!, q: mid, ambient: ambient,
-                    convection: convection, diagonal: &work.diagonal, x: stage.baseAddress!)
+        capacity.withUnsafeBufferPointer { c in
+            conductance.withUnsafeBufferPointer { g in
+                Self.step(
+                    t, dt: dt, from: from, to: to, ambient: ambient, convection: convection, work: work,
+                    face: face, c: c.baseAddress!, g: g.baseAddress!)
             }
         }
+    }
+
+    /// As `step`, given the column's face, capacities `c` and conductances `g`.
+    static func step(
+        _ t: UnsafeMutablePointer<Double>, dt: Double, from: Double, to: Double, ambient: Double,
+        convection: Double, work: Work, face: Face, c: UnsafePointer<Double>, g: UnsafePointer<Double>
+    ) {
+        let n = face.nodes
+        let gamma = Self.gamma
+        let (rhs, start, stage) = (work.rhs, work.start, work.stage)
+        heat(t, q: from, ambient: ambient, convection: convection, face: face, g: g, into: work.flux)
+        start.update(from: t, count: n)
+        // The trapezium rule: 2C/(γΔt) (T* − Tₙ) = f(Tₙ) + f(T*).
+        let first = 2 / (gamma * dt)
+        for i in 0..<n { rhs[i] = first * c[i] * t[i] + work.flux[i] }
+        solve(
+            scale: first, rhs: rhs, about: start, q: from + (to - from) * gamma, ambient: ambient,
+            convection: convection, face: face, c: c, g: g, diagonal: work.diagonal, x: stage)
         // The backward difference: C/(wΔt) Tₙ₊₁ − f(Tₙ₊₁) = C/(wΔt) (a T* − b Tₙ).
-        let w = (1 - g) / (2 - g)
-        let a = 1 / (g * (2 - g))
-        let b = (1 - g) * (1 - g) / (g * (2 - g))
+        let w = (1 - gamma) / (2 - gamma)
+        let a = 1 / (gamma * (2 - gamma))
+        let b = (1 - gamma) * (1 - gamma) / (gamma * (2 - gamma))
         let second = 1 / (w * dt)
-        for i in 0..<n { work.rhs[i] = second * capacity[i] * (a * work.stage[i] - b * work.start[i]) }
-        work.stage.withUnsafeBufferPointer { stage in
-            solve(
-                scale: second, rhs: &work.rhs, about: stage.baseAddress!, q: to, ambient: ambient,
-                convection: convection, diagonal: &work.diagonal, x: t)
-        }
+        for i in 0..<n { rhs[i] = second * c[i] * (a * stage[i] - b * start[i]) }
+        solve(
+            scale: second, rhs: rhs, about: stage, q: to, ambient: ambient, convection: convection,
+            face: face,
+            c: c, g: g, diagonal: work.diagonal, x: t)
     }
 }
 

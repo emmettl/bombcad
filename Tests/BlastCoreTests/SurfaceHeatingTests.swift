@@ -29,7 +29,7 @@ struct SurfaceHeatingTests {
         _ column: Column, q: (Double) -> Double, times: [Double], dt: Double, convection: Double = 0
     ) -> [(surface: Double, back: Double)] {
         var t = [Double](repeating: ambient, count: column.capacity.count)
-        var work = Column.Work(nodes: t.count)
+        let work = Column.Work(nodes: t.count)
         var now = 0.0
         var answers: [(Double, Double)] = []
         for time in times {
@@ -40,7 +40,7 @@ struct SurfaceHeatingTests {
                 t.withUnsafeMutableBufferPointer { t in
                     column.step(
                         t.baseAddress!, dt: step, from: q(a), to: q(a + step), ambient: ambient,
-                        convection: convection, work: &work)
+                        convection: convection, work: work)
                 }
             }
             now = time

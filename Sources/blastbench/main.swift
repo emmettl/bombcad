@@ -2577,6 +2577,7 @@ do {
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "thermal": try runThermal()
+    case "heating": try runHeating()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)
