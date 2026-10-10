@@ -284,5 +284,6 @@ populated scenes above.
   and first order in time; the stack test settles but does not prove stability of tall piles.
 - Locked wheels, rigid suspension, no crushing; the saloon is illustrative, and furniture is
   solid boxes.
-- Next: a fractional shell boundary, the air's gravity, objects and a deformable structure in
+- Next: a fractional shell boundary, the air's gravity with these objects (it is now an
+  [option](air-blast-model.md#gravity) for the air alone), objects and a deformable structure in
   the air together.

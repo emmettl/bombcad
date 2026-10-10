@@ -222,7 +222,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    by cost if asked,
    its luminous cells marched on the GPU as a partly transparent volume, and, as an option, the
    heat they radiate taken out of the gas, which halves the fluences, and compared with two TNT
-   shots, whose pulse it gets wrong in shape; the radiation [conducted into
+   shots, whose pulse it gets wrong in shape, and gravity in the air as an option, under which
+   the fireball rises but stays too hot; the radiation [conducted into
    the surfaces' materials](surface-heating.md) for their peak temperatures, with ignition
    thresholds from tests marked illustrative; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
@@ -232,7 +233,7 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    their first two minutes, then spread as a gravity current and a Pasquill–Gifford puff
    drifting downwind, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
    manuals' one-dimensional estimate or a layered soil column that loads and unloads at different
-   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
+   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's and that cools by mixing as it rises, the measured growth
    of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from

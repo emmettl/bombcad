@@ -104,6 +104,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// The luminous gas losing the heat it radiates (see `RadiativeCooling`); nil, the default,
     /// for none. Read at `restart()`.
     public var radiativeCooling: RadiativeCooling?
+    /// Gravity acting on the air, which then starts at rest in a hydrostatic atmosphere (see
+    /// `AirGravity`); nil, the default, for none. Read when the air is filled.
+    public var gravity: AirGravity?
 
     public init() {}
 }
@@ -202,6 +205,10 @@ struct SolverUniforms {
     var childTileNx: UInt32 = 0
     var childTileNy: UInt32 = 0
     var childTileNz: UInt32 = 0
+    var gravity: Float = 0
+    var gravityLapse: Float = 0
+    var gravityT0: Float = 0
+    var gravityP0: Float = 0
     /// 1 when the air carries a deflagration's unburnt mixture (see `Deflagration.metal`).
     var deflagration: UInt32 = 0
 }
