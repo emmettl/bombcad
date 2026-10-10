@@ -17,6 +17,7 @@ struct ThermalSection: View {
                         + "was measured to, as the gas never loses the heat, and the air between is taken as "
                         + "transparent.")
             if let spec = model.thermalSpec {
+                StandingRow(model: model, kinds: [.thermal])
                 if spec.fireball == .volume {
                     // On a log scale, a tenth of a decade at a time.
                     LabeledSlider(

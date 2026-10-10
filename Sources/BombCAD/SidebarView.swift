@@ -140,6 +140,7 @@ struct SidebarView: View {
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
                 {
+                    StandingRow(model: model, kinds: [.structuralResponse, .structuralDamage])
                     if model.settings.scenario.structuralObjects.count > 1 {
                         Picker(
                             "Editing structure",
@@ -184,6 +185,8 @@ struct SidebarView: View {
                 }
                 .monospacedDigit()
             }
+
+            SceneStandingSection(model: model)
 
             Section("Playback") {
                 Picker("Speed", selection: $model.speed) {
