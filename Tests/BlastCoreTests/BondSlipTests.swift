@@ -15,59 +15,18 @@ struct BondSlipTests {
         device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
     }
 
-    static let ratio: Float = 0.02
-    static let diameter: Float = 0.012
-    static let material = StructureMaterial.concrete(
-        name: "C30", compressiveStrength: 30e6, steel: .grade500)
-
-    /// A 1 m tie, 100 mm square, 2% steel of 12 mm bars, held at one end and pulled at the other
-    /// to 1.5 mm. Returns which elements along its middle have cracked open past 0.1% strain, and
-    /// the load, averaged over the last millisecond.
-    private func pull(elementSize h: Float, bond: BondSlip?) throws -> (cracks: [Int], load: Float) {
-        let tie = Box(min: SIMD3(0, 0, 1), max: SIMD3(1, 0.1, 1.1))
-        var model = StructureModel(solids: [tie], material: Self.material, elementSize: h, fixedBase: false)
-        model.reinforcement = [ReinforcementLayer(region: tie, ratio: SIMD3(Self.ratio, 0, 0))]
-        model.bondSlip = bond
-        let solver = try StructureSolver(device: device, model: model)
-        solver.gravity = 0
-        solver.groundContact = false
-        solver.damping = 200
-        let rate: Float = 0.05
-        solver.mutateNodes { nodes in
-            for k in 0...solver.ez {
-                for j in 0...solver.ey {
-                    nodes[solver.nodeIndex(0, j, k)].isFixed = true
-                    nodes[solver.nodeIndex(solver.ex, j, k)].isPrescribed = true
-                    nodes[solver.nodeIndex(solver.ex, j, k)].velocity = SIMD3(rate, 0, 0)
-                }
-            }
-        }
-        let end = 0.0015 / Double(rate)
-        solver.advance(steps: Int(((end - 0.001) / Double(solver.criticalTimeStep)).rounded()))
-        var load: Float = 0
-        let samples = 20
-        for _ in 0..<samples {
-            solver.advance(
-                steps: max(1, Int((0.001 / Double(samples) / Double(solver.criticalTimeStep)).rounded())))
-            var force: Float = 0
-            for k in 0...solver.ez {
-                for j in 0...solver.ey { force -= solver.nodalForce(solver.ex, j, k).x }
-            }
-            load += force / Float(samples)
-        }
-        let cracks = (0..<solver.ex).filter { solver.crackStrain($0, solver.ey / 2, solver.ez / 2) > 1e-3 }
-        return (cracks, load)
-    }
+    static let diameter = TieBenchmark.diameter
+    static let material = TieBenchmark.material
 
     @Test("A tie cracks at the Model Code's spacing, the same on two meshes, and stiffens as it says")
     func tie() throws {
         let bond = BondSlip(condition: .pullOut, barDiameter: Self.diameter)
-        let coarse = try pull(elementSize: 0.02, bond: bond)
-        let fine = try pull(elementSize: 0.01, bond: bond)
+        let coarse = try TieBenchmark.run(device: device, elementSize: 0.02, bond: bond)
+        let fine = try TieBenchmark.run(device: device, elementSize: 0.01, bond: bond)
         // Transfer length l_t = f_ctm d / (4 tau_bms rho), with the mean bond stress while
         // cracks form tau_bms = 1.8 f_ctm (MC2010 7.6.4): cracks l_t to 2 l_t apart, so between
         // 1 / (2 l_t) and 1 / l_t of them in the metre.
-        let transfer = Self.diameter / (4 * 1.8 * Self.ratio)
+        let transfer = TieBenchmark.transferLength()
         for cracks in [coarse.cracks.count, fine.cracks.count] {
             #expect(
                 Float(cracks) >= 1 / (2 * transfer) - 1 && Float(cracks) <= 1 / transfer + 1,
@@ -76,16 +35,40 @@ struct BondSlipTests {
         #expect(abs(coarse.cracks.count - fine.cracks.count) <= 1)
         // Tension stiffening (MC2010 7.6.5, beta = 0.4): at a mean strain of 1.5e-3 the bars at
         // the cracks carry E_s eps + beta f_ctm (1 + alpha_e rho) / rho.
-        let fctm = Self.material.tensileStrength
-        let modularRatio = 200e9 / Self.material.youngsModulus
-        let barStress = 200e9 * 1.5e-3 + 0.4 * fctm * (1 + modularRatio * Self.ratio) / Self.ratio
-        let expected = barStress * Self.ratio * 0.01
+        let expected = TieBenchmark.expectedLoad(
+            strain: 1.5e-3, beta: 0.4, strength: Self.material.tensileStrength)
         for load in [coarse.load, fine.load] {
             #expect(abs(load - expected) / expected < 0.1, "\(load / 1000) kN, expected \(expected / 1000)")
         }
         // Perfectly bonded, the same tie cracks along its whole length at once.
-        let bonded = try pull(elementSize: 0.02, bond: nil)
+        let bonded = try TieBenchmark.run(device: device, elementSize: 0.02, bond: nil)
         #expect(bonded.cracks.count > 40)
+    }
+
+    @Test(
+        "With the concrete's strengths raised as at blast rates and the bond not, the tie still stiffens as the Model Code says"
+    )
+    func raisedTie() throws {
+        // The tension the concrete between cracks carries comes only through the bond: raised
+        // by half, the tensile strength sets it, and the static bond spaces the cracks further.
+        let factor: Float = 1.5
+        let bond = BondSlip(condition: .pullOut, barDiameter: Self.diameter)
+        let transfer = TieBenchmark.transferLength(raised: factor)
+        let expected = TieBenchmark.expectedLoad(
+            strain: 1.5e-3, beta: 0.4, strength: Self.material.tensileStrength * factor)
+        for h: Float in [0.02, 0.01] {
+            let result = try TieBenchmark.run(device: device, elementSize: h, bond: bond) { material in
+                material.concreteRateFactor = factor
+                material.fractureEnergy *= factor.squareRoot()
+            }
+            let cracks = Float(result.cracks.count)
+            #expect(
+                cracks >= 1 / (2 * transfer) - 1 && cracks <= 1 / transfer + 1, "\(cracks) cracks on \(h) m")
+            // (82.6 and 74.0 kN on 20 and 10 mm elements when written, against 80.1 kN.)
+            #expect(
+                abs(result.load - expected) / expected < 0.1,
+                "\(result.load / 1000) kN, expected \(expected / 1000)")
+        }
     }
 
     @Test("Bars that lose bond where they yield yield over a longer length")

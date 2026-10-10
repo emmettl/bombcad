@@ -192,16 +192,8 @@ struct SolverUniforms {
     var refineAlpha: Float = 0
     var refineThreshold: Float = 0
     var refineMaxPatches: UInt32 = 0
+    /// The number of experimental rigid boxes in the air (see `ExperimentalBoxGeometry`).
     var experimentalBox: UInt32 = 0
-    var boxCentreX: Float = 0
-    var boxCentreY: Float = 0
-    var boxCentreZ: Float = 0
-    var boxMinX: Float = 0
-    var boxMinY: Float = 0
-    var boxMinZ: Float = 0
-    var boxMaxX: Float = 0
-    var boxMaxY: Float = 0
-    var boxMaxZ: Float = 0
     var couplingMapCount: UInt32 = 0
     var parentSide: UInt32 = 0
     var parentTileNx: UInt32 = 0
