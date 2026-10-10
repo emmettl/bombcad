@@ -703,22 +703,9 @@ enum HeadlessRun {
             }
         }
         let hosts = workers.filter { clients[$0] != nil }
-        let cellSize = Resolution(rawValue: inputs.settings.resolution)?.cellSize ?? 0.25
         for (name, kind) in kinds where places[name] == "auto" {
-            guard case .thermal = kind else { continue }
-            let frames = ConsumerProbe.fireballs(
-                scenario: inputs.scenario, cellSize: cellSize,
-                radius: ConsumerProbe.radius(scenario: inputs.scenario, costs: costs))
-            if let here = await ConsumerProbe.measure(LocalFrameConsumer(kind), frames: frames) {
-                costs.measured(name, kind: kind, place: "local", seconds: here.seconds, usesGPU: here.usesGPU)
-            }
-            for host in hosts {
-                let probe = RemoteFrameConsumer(client: clients[host]!, kind: kind, ownsClient: false)
-                defer { probe.cancel() }
-                if let there = await ConsumerProbe.measure(probe, frames: frames) {
-                    costs.measured(name, kind: kind, place: host, seconds: there.seconds)
-                }
-            }
+            await ConsumerProbe.probe(
+                name, kind: kind, inputs: inputs, workers: hosts.map { ($0, clients[$0]!) }, into: &costs)
         }
         let choices = places.mapValues { $0 == "auto" ? ["local"] + hosts : [$0] }
         let plan = ConsumerPlacement.plan(

@@ -64,6 +64,9 @@ struct ConsumerCosts: Codable, Sendable, Equatable {
 /// up. The plan is the placement whose slowest part is quickest, keeping models here unless
 /// moving them is estimated to save at least 3% of the run.
 enum ConsumerPlacement {
+    /// The app's setting for a companion placed by cost: no host is named so.
+    static let automatic = "(automatic)"
+
     /// The run's estimated seconds a frame with each model `places` puts it, `kinds` saying what
     /// each does; a model never measured somewhere counts as free there.
     static func frameSeconds(
@@ -220,6 +223,30 @@ enum ConsumerProbe {
     /// street canyon's 7.3 m for 100 kg with afterburning by the cube root of the charge.
     static func radius(scenario: Scenario, costs: ConsumerCosts) -> Float {
         costs.fireballRadius ?? 7.3 * cbrt(max(scenario.charge.mass, 0.001) / 100)
+    }
+
+    /// Probes the model `name` doing `kind`'s work, if it is the thermal radiation, here and on
+    /// each of `workers`, into `costs`; a Mac that does not answer is left unmeasured.
+    @MainActor
+    static func probe(
+        _ name: String, kind: ConsumerKind, inputs: SimulationInputs, workers: [(String, SweepWorkerClient)],
+        into costs: inout ConsumerCosts
+    ) async {
+        guard case .thermal = kind else { return }
+        let frames = fireballs(
+            scenario: inputs.scenario,
+            cellSize: Resolution(rawValue: inputs.settings.resolution)?.cellSize ?? 0.25,
+            radius: radius(scenario: inputs.scenario, costs: costs))
+        if let here = await measure(LocalFrameConsumer(kind), frames: frames) {
+            costs.measured(name, kind: kind, place: "local", seconds: here.seconds, usesGPU: here.usesGPU)
+        }
+        for (host, client) in workers {
+            let probe = RemoteFrameConsumer(client: client, kind: kind, ownsClient: false)
+            defer { probe.cancel() }
+            if let there = await measure(probe, frames: frames) {
+                costs.measured(name, kind: kind, place: host, seconds: there.seconds)
+            }
+        }
     }
 
     /// `consumer`'s seconds a frame over `frames` after the first, and whether it used this Mac's
