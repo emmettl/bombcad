@@ -286,9 +286,9 @@ public struct GroundLoad: Sendable, Equatable {
 /// undamped layer runs at a Courant number of one, where the scheme carries a wave, even a
 /// shock's jump, without error; just below one, a jump would ring up to a fifth higher. A
 /// layer's thickness is rounded to a whole number of elements. Soil loads along ρc² and unloads
-/// and reloads along ρc_u², a bilinear hysteresis (the model of soil under air blast in the
-/// manuals, after Seaman and Whitman): what it has carried before it carries stiffly again, and
-/// only beyond that does it give at its loading modulus. Damping is Rayleigh's, mass- and stiffness-proportional, the mass part
+/// and reloads along ρc_u², a bilinear hysteresis (the protective design literature's simplest
+/// model of soil under air blast, as in Newmark and Haltiwanger): what it has carried before it
+/// carries stiffly again, and only beyond that does it give at its loading modulus. Damping is Rayleigh's, mass- and stiffness-proportional, the mass part
 /// centred in time and the stiffness part from the last half-step's strain rate, the step
 /// shortened to keep it stable. Compression and downward motion are positive.
 public struct SoilColumn: Sendable {
