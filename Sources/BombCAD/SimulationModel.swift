@@ -1374,7 +1374,11 @@ final class SimulationModel {
             }
             // What is drawn, as what is kept.
             updateGroundShockStatus()
-            for n in result.points.indices { result.points[n].history = [] }
+            result.frameTimes = nil
+            for n in result.points.indices {
+                result.points[n].history = []
+                for d in result.points[n].responses.indices { result.points[n].responses[d].history = nil }
+            }
             run.groundShock = SavedSimulationRun.GroundShock(spec: spec, result: result)
         }
         run.thermal = reckoned
@@ -1494,7 +1498,7 @@ final class SimulationModel {
         guard last || solver.time >= next - 1e-9 else { return }
         groundShockTime = solver.time
         guard let groundShock, let spec = estimatedGroundSpec else { return }
-        let region = GroundShockConsumer(spec: spec).region(cellSize: solver.grid.cellSize)
+        let region = spec.region(cellSize: solver.grid.cellSize)
         groundShock.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
     }
 

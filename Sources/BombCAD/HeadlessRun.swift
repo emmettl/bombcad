@@ -511,8 +511,7 @@ enum HeadlessRun {
                             feed.consumer.send(
                                 .fireball(solver.fireball(for: spec)))
                         case .groundShock(let spec, _):
-                            let region = GroundShockConsumer(spec: spec).region(
-                                cellSize: solver.grid.cellSize)
+                            let region = spec.region(cellSize: solver.grid.cellSize)
                             feed.consumer.send(
                                 .ground(solver.groundSlice(low: region.low, high: region.high)))
                         }

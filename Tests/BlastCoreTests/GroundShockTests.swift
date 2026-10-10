@@ -7,10 +7,11 @@ import simd
 
 /// A ground slice of `nx` by `ny` cells from the grid's corner, every cell the same.
 private func uniformSlice(
-    time: Double, overpressure: Float, peak: Float, impulse: Float, nx: Int32 = 4, ny: Int32 = 4
+    time: Double, overpressure: Float, peak: Float, impulse: Float, nx: Int32 = 4, ny: Int32 = 4,
+    cellSize: Float = 1
 ) -> GroundSlice {
     GroundSlice(
-        time: time, cellSize: 1, grid: SIMD3(nx, ny, 4), first: .zero, counts: SIMD2(nx, ny),
+        time: time, cellSize: cellSize, grid: SIMD3(nx, ny, 4), first: .zero, counts: SIMD2(nx, ny),
         values: Array(repeating: [overpressure, peak, impulse], count: Int(nx * ny)).flatMap { $0 },
         ambientDensity: 1.225, ambientPressure: 101_325, gamma: 1.4)
 }
@@ -220,6 +221,104 @@ struct GroundShockTests {
         let decoded = try JSONDecoder().decode(GroundShockResult.self, from: JSONEncoder().encode(result))
         #expect(decoded == result)
         #expect(result.summary.contains("5 points") && !never.result(frameInterval: 0.001).summary.isEmpty)
+    }
+
+    @Test("The column consumer drives a soil column under each point through the frames")
+    func columnConsumer() throws {
+        var spec = GroundShockSpec()
+        spec.model = .column
+        spec.points = [SIMD2(1.5, 1.5)]
+        spec.depths = [0, 1, 3]
+        try spec.validate()
+        // A triangle arriving at 2.5 ms: 100 kPa falling to nothing over 4 ms, framed each
+        // millisecond with the peak and impulse kept between frames, on cells of 5 cm, which the
+        // shock crosses in 0.1 ms.
+        let (arrival, peak, duration) = (0.0025, 100e3, 0.004)
+        func pressure(_ t: Double) -> Double {
+            let s = t - arrival
+            return s < 0 || s > duration ? 0 : peak * (1 - s / duration)
+        }
+        func positive(_ t: Double) -> Double {
+            let s = min(max(t - arrival, 0), duration)
+            return peak * (s - s * s / (2 * duration))
+        }
+        var consumer = GroundShockConsumer(spec: spec)
+        for frame in 0...40 {
+            let t = Double(frame) * 1e-3
+            consumer.consume(
+                uniformSlice(
+                    time: t, overpressure: Float(pressure(t)), peak: t >= arrival ? Float(peak) : 0,
+                    impulse: Float(positive(t)), nx: 64, ny: 64, cellSize: 0.05))
+        }
+        let result = consumer.result(frameInterval: 1e-3)
+        #expect(result.model == .column && result.profile == spec.columnProfile)
+        let point = try #require(result.points.first)
+        let profile = try #require(point.profile)
+        #expect(profile.depths.count == GroundDepthProfile.levels && profile.depths.last == 3)
+        // Elastic uniform soil: the plane-wave relation at every depth, as the estimate gives at
+        // the surface; the impulse over ρc sinks every depth.
+        let soil = spec.soil
+        for response in point.responses {
+            #expect(abs(response.verticalVelocity / (Float(peak) / soil.impedance) - 1) < 0.03)
+            #expect(abs(response.stress / Float(peak) - 1) < 0.03)
+            #expect(
+                abs(response.verticalDisplacement / (Float(peak * duration / 2) / soil.impedance) - 1) < 0.01)
+            #expect(response.history?.count == 41)
+            let expected = arrival + Double(response.depth) / 300
+            #expect(abs(response.arrival! - expected) < 2e-4 || response.depth == 0)
+        }
+        #expect(point.surfaceVelocity(in: soil) == profile.velocity[0])
+        // Below the surface the estimate wears the peak down; the elastic column does not.
+        let estimate = AirInducedGroundShock.response(
+            peak: Float(peak), impulse: Float(peak * duration / 2), arrival: arrival, depth: 3, soil: soil,
+            frontSpeed: point.frontSpeed)
+        #expect(estimate.verticalVelocity < 0.5 * point.responses[2].verticalVelocity)
+        let decoded = try JSONDecoder().decode(GroundShockResult.self, from: JSONEncoder().encode(result))
+        #expect(decoded == result && result.summary.contains("column of 1 layer"))
+
+        // Bilinear soil sends less down, and leaves the ground lower once the wave has gone.
+        spec.profile = SoilProfile(
+            layers: [SoilLayer(thickness: 2, density: 1600, waveSpeed: 300, unloadingWaveSpeed: 600)])
+        var soft = GroundShockConsumer(spec: spec)
+        for frame in 0...40 {
+            let t = Double(frame) * 1e-3
+            soft.consume(
+                uniformSlice(
+                    time: t, overpressure: Float(pressure(t)), peak: t >= arrival ? Float(peak) : 0,
+                    impulse: Float(positive(t)), nx: 64, ny: 64, cellSize: 0.05))
+        }
+        let worn = try #require(soft.result(frameInterval: 1e-3).points.first)
+        let surface = { (t: Double) in pressure(t + arrival) }
+        let exact = HystereticAttenuation.peakStress(
+            depth: 3, loadingSpeed: 300, unloadingSpeed: 600, surface: surface)
+        #expect(abs(Double(worn.responses[2].stress) / exact - 1) < 0.06)
+        #expect(worn.responses[0].residualDisplacement! > 0.5 * worn.responses[0].verticalDisplacement)
+    }
+
+    @Test("Descriptions and results saved before the column read back as the estimate")
+    func olderFiles() throws {
+        let spec = try JSONDecoder().decode(GroundShockSpec.self, from: Data(#"{"points": [[1, 2]]}"#.utf8))
+        #expect(spec.model == .estimate && spec.profile == nil)
+        let json = #"""
+            {"soil": {"density": 1600, "waveSpeed": 300}, "depths": [0], "frameInterval": 0.001, "frames": 1,
+             "airBytes": 0, "seconds": 0, "points": [{"position": [1, 2], "covered": false,
+             "peakOverpressure": 1000, "impulse": 1, "duration": 0.002, "frontSpeed": 340, "regime": "outrunning",
+             "history": [], "responses": [{"depth": 0, "stress": 1000, "verticalVelocity": 0.002,
+             "verticalDisplacement": 0.000002}]}]}
+            """#
+        let result = try JSONDecoder().decode(GroundShockResult.self, from: Data(json.utf8))
+        #expect(
+            result.model == nil && result.points[0].profile == nil
+                && result.points[0].responses[0].history == nil)
+        var column = spec
+        column.model = .column
+        column.profile = SoilProfile(layers: [
+            SoilLayer(thickness: 1, density: 1600, waveSpeed: 300, damping: 2)
+        ])
+        #expect(throws: CocoaError.self) { try column.validate() }
+        column.profile = SoilProfile(
+            layers: [SoilLayer(thickness: 1, density: 1600, waveSpeed: 300)], timeStep: 1e-7)
+        #expect(throws: CocoaError.self) { try column.validate() }
     }
 
     @Test("Descriptions take defaults for fields left out and refuse what is out of range")
