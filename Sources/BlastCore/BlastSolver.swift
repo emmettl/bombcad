@@ -291,6 +291,11 @@ public final class BlastSolver {
     private(set) var frameExtractor: FrameExtractor?
     /// nil once the mask has been edited by hand.
     var rigidBoxes: [Box]?
+    /// The ground's shape the mask was made with; nil for flat ground or once the mask has been
+    /// edited by hand. The fine cells follow it as they follow `rigidBoxes`.
+    public internal(set) var terrain: Terrain?
+    /// The first cell of air above the terrain in each column, x fastest; nil for flat ground.
+    public internal(set) var terrainSurface: [Int32]?
     /// Charges laid down in fine cells for refined air (see `deposit`): what each fine cell gained,
     /// density and energy per volume, over the uniform state the air was filled with. Given to the
     /// fine cells at the next `restart()`; forgotten when the air is filled or edited by hand.
@@ -515,6 +520,8 @@ public final class BlastSolver {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
         frameExtractor?.invalidate()
         rigidBoxes = nil
+        terrain = nil
+        terrainSurface = nil
         needsRigidMaskCapture = true
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
@@ -1244,6 +1251,7 @@ public final class BlastSolver {
         for level in refinementLevels {
             level.reset()
             level.setBoxes(rigidBoxes)
+            level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
         updateGaugeChildren()
     }

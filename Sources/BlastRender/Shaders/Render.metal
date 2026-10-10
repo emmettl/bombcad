@@ -687,6 +687,75 @@ fragment float4 lineFragment(LineOut in [[stage_in]]) {
     return float4(mix(in.colour, float3(0.08f, 0.09f, 0.11f), rim * 0.7f), 1.0f);
 }
 
+// Matches `TerrainMesh` in `SceneRenderer.swift`.
+struct TerrainMesh {
+    float4 grid;   // xy = first node, z = spacing, w = lift off the surface
+    uint4 dims;    // x = columns, y = rows, z = 1 to tint by the blast's field
+};
+
+struct TerrainOut {
+    float4 position [[position]];
+    float3 world;
+    float3 normal;
+};
+
+// The terrain as a mesh of its nodes, two triangles a cell of them, pulled from its heights.
+vertex TerrainOut terrainVertex(uint vertexID [[vertex_id]],
+                                uint instanceID [[instance_id]],
+                                const device float *heights [[buffer(0)]],
+                                constant TerrainMesh &t [[buffer(1)]],
+                                constant MeshUniforms &u [[buffer(2)]]) {
+    int columns = int(t.dims.x);
+    int rows = int(t.dims.y);
+    int2 cell = int2(int(instanceID) % (columns - 1), int(instanceID) / (columns - 1));
+    const int2 quad[6] = {int2(0, 0), int2(1, 0), int2(1, 1), int2(0, 0), int2(1, 1), int2(0, 1)};
+    int2 node = cell + quad[vertexID];
+    float spacing = t.grid.z;
+    float h = heights[node.x + columns * node.y];
+    // The normal from the neighbouring nodes' heights.
+    int2 west = max(node - int2(1, 0), int2(0));
+    int2 east = min(node + int2(1, 0), int2(columns - 1, rows - 1));
+    int2 south = max(node - int2(0, 1), int2(0));
+    int2 north = min(node + int2(0, 1), int2(columns - 1, rows - 1));
+    float dx = (heights[east.x + columns * east.y] - heights[west.x + columns * west.y]) / (float(east.x - west.x) * spacing);
+    float dy = (heights[north.x + columns * north.y] - heights[south.x + columns * south.y]) / (float(north.y - south.y) * spacing);
+    TerrainOut out;
+    out.world = float3(t.grid.xy + float2(node) * spacing, h + t.grid.w);
+    out.normal = normalize(float3(-dx, -dy, 1.0f));
+    float3 relative = out.world - u.eye.xyz;
+    float3 view = float3(dot(relative, u.right.xyz), dot(relative, u.up.xyz), dot(relative, u.forward.xyz));
+    float near = u.projection.z;
+    float far = u.projection.w;
+    out.position = float4(view.x * u.projection.x, view.y * u.projection.y,
+                          far / (far - near) * (view.z - near), view.z);
+    return out;
+}
+
+// Shaded as the ground is, lit along its own normal, and tinted by the blast's field in the air
+// half a cell above it, inside the domain.
+fragment float4 terrainFragment(TerrainOut in [[stage_in]],
+                                constant RenderUniforms &u [[buffer(0)]],
+                                constant TerrainMesh &t [[buffer(1)]],
+                                texture3d<float> field [[texture(0)]]) {
+    constexpr sampler linearSampler(filter::linear, address::clamp_to_edge);
+    float3 domain = u.domain.xyz;
+    float3 p = in.world;
+    bool inside = p.x >= 0.0f && p.y >= 0.0f && p.x <= domain.x && p.y <= domain.y;
+    float3 base = inside ? float3(0.50f, 0.49f, 0.45f) : float3(0.36f, 0.35f, 0.33f);
+    // 10 m contour lines, antialiased with screen-space derivatives.
+    float level = p.z / 10.0f;
+    float line = abs(fract(level - 0.5f) - 0.5f) / max(fwidth(level), 1e-5f);
+    base = mix(base, base * 0.75f, (1.0f - clamp(line, 0.0f, 1.0f)) * 0.5f);
+    float3 normal = normalize(in.normal);
+    float light = 0.45f + 0.55f * max(dot(normal, u.sun.xyz), 0.0f);
+    float3 colour = base * light;
+    if (inside && t.dims.z != 0) {
+        float3 uvw = (p + float3(0.0f, 0.0f, 0.5f * u.domain.w)) / domain;
+        colour = fieldTint(base, light, field.sample(linearSampler, uvw), u);
+    }
+    return float4(colour, 1.0f);
+}
+
 fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms &u [[buffer(0)]]) {
     float3 normal = normalize(cross(dfdx(in.world), dfdy(in.world)));
     if (dot(normal, u.eye.xyz - in.world) < 0.0f) {

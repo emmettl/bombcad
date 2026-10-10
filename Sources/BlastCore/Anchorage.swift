@@ -57,13 +57,21 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// The joint's normal at any angle, across it from the support into the body, for a support
     /// region's connection; it takes the place of `side`. Need not be of unit length.
     public var jointNormal: SIMD3<Float>?
+    /// Whether the joint ties two parts of the body across a gap between them, both moving (a
+    /// beam seated on a corbel, a precast panel against its frame), rather than the body to fixed
+    /// ground: each node on the faces that face the joint is tied to the node of the other part
+    /// straight across the gap, which takes the opposite force. Its seat runs out half an element
+    /// past the other part's last node in the region, and a node that slides past it is off its
+    /// seat for good.
+    public var betweenParts: Bool?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,
         tensionPlateau: Float = 0, tensionOpening: Float, cohesion: Float, cohesionSlip: Float,
         friction: Float, bearingCapacity: Float? = nil, footing: Footing? = nil, side: JointSide? = nil,
-        jointNormal: SIMD3<Float>? = nil
+        jointNormal: SIMD3<Float>? = nil, betweenParts: Bool? = nil
     ) {
+        self.betweenParts = betweenParts
         self.bearingCapacity = bearingCapacity
         self.footing = footing
         self.side = side
@@ -138,6 +146,14 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var across: SIMD3<Float> {
         if let jointNormal, simd_length(jointNormal) > 0 { return simd_normalize(jointNormal) }
         return (side ?? .below).normal
+    }
+
+    /// The axes along a joint whose normal is `normal` (zero for one under the body: x and y), as
+    /// the GPU's law takes them (`jointAxes` in Structure.metal).
+    static func jointAxes(_ normal: SIMD3<Float>) -> (along: SIMD3<Float>, other: SIMD3<Float>) {
+        guard normal != .zero else { return (SIMD3(1, 0, 0), SIMD3(0, 1, 0)) }
+        let along = simd_normalize(simd_cross(abs(normal.z) < 0.9 ? SIMD3(0, 0, 1) : SIMD3(1, 0, 0), normal))
+        return (along, simd_cross(normal, along))
     }
 
     /// Whether the joint is under the body, horizontal: the ground's and a footing's only way.
@@ -320,6 +336,9 @@ extension Anchorage {
         else {
             throw ImportedMesh.ImportError.invalid("A joint's normal must be finite and not zero.")
         }
+        guard footing == nil || betweenParts != true else {
+            throw ImportedMesh.ImportError.invalid("A joint between two parts cannot stand on a footing.")
+        }
         guard footing == nil || isUnder else {
             throw ImportedMesh.ImportError.invalid("A footing can only stand under the body.")
         }
@@ -391,6 +410,9 @@ extension StructureModel {
             throw ImportedMesh.ImportError.invalid("A connection references a missing support region.")
         }
         try baseAnchorage?.validate()
+        guard baseAnchorage?.betweenParts != true else {
+            throw ImportedMesh.ImportError.invalid("The ground's connection ties the body to the ground.")
+        }
         guard baseAnchorage?.isUnder ?? true else {
             throw ImportedMesh.ImportError.invalid("The ground's connection can only be under the body.")
         }
