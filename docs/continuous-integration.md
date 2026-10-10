@@ -146,3 +146,10 @@ negative-control gates. It uploads complete reports and dependency pins for four
 days. It has a separate concurrency group so unrelated main pushes cannot replace
 its pending run; the physical runner still serializes its jobs. The normal app check
 also packages the optimized application and verifies its deep strict signature.
+
+Manual suite `packet-adoption` additionally retains complete native remap and moving
+reservoir states/loads with the wall/piston comparison and independent corruption
+controls. All bounded manual suites now have separate concurrency groups, including
+adiabatic, so unrelated main pushes cannot replace a queued comparison. The adiabatic
+job checks both its protected historical operator and the actual current shared alias,
+requiring complete sample continuity at the exact released dependency.
