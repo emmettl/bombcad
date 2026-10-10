@@ -235,8 +235,7 @@ the run slowing, rather than making any one model faster.
 
 The case the table above points to: one blast feeding several separable models at once, each on
 the machine that suits it, such as fragments on one Mac and thermal radiation on another. This is
-a plan, measured where it starts; built so far are the first four steps below, but for
-placing models by cost automatically.
+a plan, measured where it starts; built so far are the first four steps below.
 
 **What there is.** A headless run feeds three consumers each frame: the fireball's size and
 temperature to [thermal radiation](thermal-radiation.md), on a queue of its own on this Mac; the
@@ -339,7 +338,7 @@ this side.
    before the frame's report, so that a model reported caught up has its last frame's state in.
    The thermal radiation's own sessions, built alongside for its live view, are folded into
    these.
-4. **Placement and failure.** (Done, but for placing by cost, which waits on a model worth it.)
+4. **Placement and failure.** (Done.)
 
    *Failure.* A consumer whose Mac dropped stopped reporting, and since the run waits for one
    more than four frames behind, the run waited for ever. Now every model placed on another Mac
@@ -369,20 +368,81 @@ this side.
    | Ground shock (19 points) | 0.01 ms | 0.01 ms |
 
    against about 39 ms a frame for the run. Each takes a few per cent of one core while the GPU
-   runs the blast, so where it runs changes nothing. The rule for placing by cost follows: a
-   model is worth another Mac once its time a frame nears the run's, when the run would begin to
-   wait for it (the time each run waited is printed too), and then the fastest Mac free, as
-   sweeps measure them. Choosing so automatically waits for a model that costly; until then it
-   could only ever choose this Mac.
+   runs the blast, so where it ran changed nothing then.
+
+   *Measured again with the march.* Since then the thermal radiation marches the fireball's
+   luminous cells on the GPU, a ray per direction from each receiver ([Thermal
+   radiation](thermal-radiation.md)), which is not cheap, and shares this Mac's GPU with the
+   blast. Measured in October 2026 on two scenes, both 100 kg with afterburning and hot air,
+   0.17 s in 171 frames: the street canyon on the fine grid (67 million cells, about 10,500
+   receivers), and a city block of sixteen blocks 22 m square and 12 to 27 m tall in
+   128 × 128 × 32 m on the medium grid (34 million cells, about 35,000 receivers). Rounds
+   interleaved, medians; the Studio was shared throughout with other sessions' builds and an
+   iOS Simulator's and other apps' GPU work (load averages 13 to 210), which stretched runs up
+   to four times, so the times within a run say more than whole runs. The run now prints the
+   GPU's time on the blast, and on the march where it runs here.
+
+   | City block, thermal radiation only | Run | Blast's GPU time | March a frame | Of it this GPU's | Waited |
+   |---|---|---|---|---|---|
+   | No models | 20.9 s | 18.1 s | | | |
+   | Here | 37.4 s | 30.4 s | 51 ms | 26 ms | 0 s |
+   | On the mini, busy with tests | 43.9 s | 23.6 s | 188 ms | | 12.7 s |
+   | Later, all slower: here | 87.4 s | 67.0 s | 123 ms | 51 ms | 0 s |
+   | On the mini, quieter | 71.7 s | 60.9 s | 66 ms | | 0 s |
+
+   On the city block the march is the dearest model by far: here it lengthened the run by
+   about 80%, more than its own time on the GPU, since the blast's batches and the march's
+   take turns on it. The fragments (2,000 and 500 tracers) took 1.5 to 1.7 ms a frame and the
+   ground shock 0.02 ms, on the CPU, wherever they ran. On the mini the march took 54 to 66 ms
+   a frame when it was quiet and 150 to 280 ms while its own tests ran; it kept up with the run
+   in the first case and held it up by 5 to 22 s in the second. In the second set of rounds,
+   every round, the run with the march on the mini was the quickest (57 to 84 s against 68 to
+   114 s). On the street canyon's fine grid, frames of 1 to 4 s, the march took 90 to 330 ms a
+   frame on either Mac and about 20 ms of this GPU, about 2% of the blast's, so where it ran
+   was lost in the noise (a median of 297 s here against 494 s on the mini, both within
+   167 to 712 s, and 485 s with no models).
+
+   Feeding the march is a cost of its own that placing cannot move: its cells are packed on
+   this Mac's CPU between batches, with the GPU waiting, 8.5 ms a frame on the city block and
+   20 ms on the street's fine grid (1 to 7% of a run), wherever the march runs.
+
+   *Placing by cost.* So the march is worth moving when another Mac keeps up with the run, and
+   whether one does changes from minute to minute, as the mini's tests come and go. A model may
+   now be placed `auto`, by cost: `BombCAD run --consumer auto --worker <host>` (or
+   `thermal=auto` for one model; `--worker` once for each Mac it may use), and **Automatic** in
+   each model's **Run on** picker in the app, among the Macs set for sweeps. Each model goes
+   where the run is estimated to take least time a frame (`ConsumerPlacement`): the run takes
+   as long as its slowest part, which is the blast plus every model here that shares its GPU,
+   or any model, here or elsewhere, slower than that, models on the same Mac adding up. A model
+   stays here unless moving it saves at least 3%. What each costs comes from two places:
+
+   - **A probe**, just before the run (in the app, when the Macs connect): four fireballs like
+     the run's largest, half a sphere at 2,000 K on the ground under the charge, sent to a
+     session of the model on each Mac (`ConsumerProbe`). It catches each Mac's load at the
+     time. Only the thermal radiation is probed: its march costs about the same each frame,
+     while the fragments' and the ground's costs are small and follow the run.
+   - **The last run of the same inputs.** Every run now records, in the user's caches
+     (`ConsumerCostStore`, shared by the app and `BombCAD run`), the blast's own time a frame,
+     less any waiting and any model here on its GPU, and each model's time a frame where it
+     ran. A run's own time cannot be probed: the blast's frames grow from 25 ms to 150 to 290 ms
+     on the city block as the blast spreads, so its first frames do not foretell the rest.
+
+   Until a run of the same inputs has been measured, a model moves only to a Mac that is quicker
+   at it than this one. Tried on the city block, rounds interleaved with the march here and on
+   the mini: the first run, unmeasured, kept the march here; the next two put it on the mini,
+   which kept up (the run waited 0 and 0.3 s). Every choice depends only on the costs, so the
+   tests set them and check the plan, and check, with in-process workers, that a model placed by
+   cost gives the same result as here.
+
 5. **A direct data channel, only if measured to be needed.** A TCP connection over the
    Thunderbolt Bridge, opened with a one-time token passed over SSH, which keeps control and
    authentication. At 0.9 GB/s a connection, and with separate connections for separate Macs
    spreading the encryption across cores, nothing foreseen needs it.
 
-**What it will not do.** Today's consumers are cheap: one core keeps up with a few thousand
-fragments, and the fireball's radiation and the ground's shaking are lighter still. Moving them
-gains nothing until one is expensive, such as thermal radiation over a city or by ray tracing,
-fragments that collide, or many buildings' damage. What the plan buys is room for those without
+**What it will not do.** Most consumers are cheap: one core keeps up with a few thousand
+fragments, and the ground's shaking is lighter still. Moving them gains nothing until one is
+expensive. The thermal radiation's march over a city block of receivers is the first that is
+(above); fragments that collide, or many buildings' damage, would be others. What the plan buys is room for those without
 the run slowing, within the bound in [Adding machines](#the-long-term-visions-effects).
 
 ## Better first
