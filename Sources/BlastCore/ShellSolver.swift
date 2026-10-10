@@ -371,7 +371,8 @@ public final class ShellSolver {
         let neighbours = neighbourBuffer.contents().bindMemory(to: SIMD4<Int32>.self, capacity: elements)
         for (e, element) in mesh.elements.enumerated() { neighbours[e] = element.neighbours }
         punching = try MemberShearBuffers(
-            device: device, mesh: mesh, materials: materials, shells: model.shellSectionShear)
+            device: device, mesh: mesh, materials: materials, shells: model.shellSectionShear,
+            checksBeams: model.appliesBeamSectionShear)
         barPlasticBuffers = [
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, even"),
             try buffer(hasBars ? elements * barSlots * 2 * 4 : 16, "shell bar plastic, odd"),
@@ -1321,7 +1322,11 @@ struct MemberShearBuffers {
         return SIMD2(dv / depth, size)
     }
 
-    init(device: MTLDevice, mesh: ShellMesh, materials: [StructureMaterial], shells: Bool) throws {
+    /// `checksBeams` false leaves beams' sections unchecked, as the impulsive regime's defaults have it.
+    init(
+        device: MTLDevice, mesh: ShellMesh, materials: [StructureMaterial], shells: Bool,
+        checksBeams: Bool = true
+    ) throws {
         let elements = mesh.elements.count
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -1379,7 +1384,7 @@ struct MemberShearBuffers {
         }
         let beams = mesh.beams.count
         var beamSections = [SIMD4<Float>](repeating: .zero, count: 2 * beams)
-        for (b, beam) in mesh.beams.enumerated() {
+        for (b, beam) in mesh.beams.enumerated() where checksBeams {
             let material = materials[beam.material]
             guard material.model == .concrete else { continue }
             var factors = SIMD4<Float>.zero
