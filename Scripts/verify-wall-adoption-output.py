@@ -37,7 +37,9 @@ def verify(root):
             total+=len(f['cells'])
     env=json.loads((root/'environment.json').read_text());require(env['workingTreeDirty'] is False,'dirty producer')
     pins=json.loads((root/'shared/consumer-Package.resolved').read_text())['pins']
-    require(any(p['identity']=='continuumkit' and p['state']=={'version':'0.1.0-alpha.13','revision':'b6ff3ca28eb96bbac23ec15d93a13afda99b2be9'} for p in pins),'exact released shared dependency')
+    expected=env.get('corePin',{'version':'0.1.0-alpha.13','revision':'b6ff3ca28eb96bbac23ec15d93a13afda99b2be9'})
+    released={'0.1.0-alpha.13':'b6ff3ca28eb96bbac23ec15d93a13afda99b2be9','0.1.0-alpha.14':'f5543e3c336a80ec86868c3f0f245b688dfba148'}
+    require(expected.get('revision')==released.get(expected.get('version')) and any(p['identity']=='continuumkit' and p['state']==expected for p in pins),'exact released shared dependency')
     return {'schemaVersion':1,'status':'passed','candidate':env['candidate'],'wallCases':360,'pistonRuns':12,'reflectionHistories':8,'nativeFrameCells':total,'completeReports':'byte-identical','independentBudgets':'mass/momentum/energy and complete accepted wall loads'}
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('root',type=Path);a=p.parse_args();d=verify(a.root)

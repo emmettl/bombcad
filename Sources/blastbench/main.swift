@@ -40,6 +40,8 @@ import simd
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
+//   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
@@ -838,6 +840,8 @@ func runSnapshot() throws {
     case "impulse": renderer.settings.mode = .impulse
     case "fluence": renderer.settings.thermal = .fluence
     case "irradiance": renderer.settings.thermal = .peakIrradiance
+    case "temperature": renderer.settings.thermal = .surfaceTemperature
+    case "ignition": renderer.settings.thermal = .ignition
     default: renderer.settings.mode = .peakOverpressure
     }
     renderer.settings.showWave = !flag("no-wave")
@@ -854,14 +858,21 @@ func runSnapshot() throws {
         print("  " + result.summary)
     }
     if let thermal {
-        // Painted onto the surfaces with --mode fluence or irradiance, as the app paints them.
-        let values =
-            renderer.settings.thermal == .peakIrradiance
-            ? thermal.peakIrradiance : thermal.fluence.map { Float($0) }
+        // Painted onto the surfaces with --mode fluence, irradiance, temperature or ignition, as
+        // the app paints them.
+        let quantity = renderer.settings.thermal ?? .fluence
+        let heating = thermal.result.heating
+        let values: [Float] =
+            switch quantity {
+            case .fluence: thermal.fluence.map { Float($0) }
+            case .peakIrradiance: thermal.peakIrradiance
+            case .surfaceTemperature: heating.map { h in h.peakTemperature.map { $0 - h.ambient } } ?? []
+            case .ignition: heating?.ignition.map(Float.init) ?? []
+            }
         renderer.setSurfacePaint(
             SurfacePaint(
                 grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
-                shades: values.map(ThermalQuantity.shade)))
+                shades: values.map(quantity.shade)))
         print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
         // What it had radiated by each of a few moments.
@@ -2607,6 +2618,125 @@ func runAnchorage() throws {
 /// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
 /// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
 /// does with afterburning; and whether the two agree.
+/// Dial Pack, 500 tons of TNT as a sphere resting on the ground (Suffield, 1970), whose thermal
+/// radiation DREO Report 642 measured at 600 and 1,700 m: the fireball reckoned frame by frame as
+/// the volume, its opaque shape and its equivalent sphere (both at emissivity 1) radiate it to an
+/// instrument at each range aimed along the ground at it, and what it radiated, round it and as
+/// the gas lost it. `--csv` writes every frame; `Scripts/compare-dial-pack.py` sets it against the
+/// report (Samples/DialPack1970).
+func runDialPack() throws {
+    let tons = option("tons").flatMap { Float($0) } ?? 500
+    let mass = tons * 907.185  // short tons
+    let cellSize = option("dx").flatMap { Float($0) } ?? 4
+    let side = option("domain").flatMap { Float($0) } ?? 480
+    let duration = option("time").flatMap { Double($0) } ?? 1
+    // TNT at 1,600 kg/m³, its sphere's centre one radius up.
+    let radius = cbrt(3 * mass / (4 * .pi * 1600))
+    var scenario = Scenario(
+        name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
+    scenario.gauges = []
+    var configuration = SolverConfiguration()
+    configureRefinement(&configuration)
+    configuration.afterburning = true
+    configuration.airModel = .thermallyPerfect
+    configuration.radiativeCooling = try chosenCooling()
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+    var volume = ThermalSpec()
+    // A receiver or so on the ground: only the instruments are reckoned.
+    volume.groundSpacing = side
+    var shape = volume
+    shape.fireball = .shape
+    var sphere = volume
+    sphere.fireball = .sphere
+    let scene = FragmentScene(scenario)
+    let models = [("volume", volume), ("shape", shape), ("sphere", sphere)].map {
+        (name: $0.0, exposure: ThermalExposure(spec: $0.1, scene: scene))
+    }
+    let ranges: [Float] = [600, 1700]
+    // South of ground zero, 1.5 m up, facing it along the ground.
+    let points = ranges.map { range in
+        ThermalReceiver(
+            position: SIMD3(side / 2, side / 2 - range, 1.5), normal: SIMD3(0, 1, 0), surface: "instrument")
+    }
+    solver.frameRequest = FrameRequest(thermal: volume)
+    var frameTimes: [Double] = []
+    var t = 0.0005
+    while t < duration - 1e-9 {
+        frameTimes.append(t)
+        t += t < 0.01 ? 0.0005 : (t < 0.1 ? 0.0025 : (t < 0.3 ? 0.01 : 0.025))
+    }
+    frameTimes.append(duration)
+    print(
+        String(
+            format:
+                "Dial Pack: %.0f t of TNT (%.0f short tons), a sphere %.2f m in radius on the ground, %.0f m cells, %.0f by %.0f by %.0f m, to %.2f s%@",
+            mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
+            configuration.radiativeCooling == nil ? "" : ", the gas cooling"))
+    var lines = [
+        "time_s,diameter_m,temperature_K,hottest_K,radiated_W,gas_lost_J,"
+            + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(
+                separator: ",")
+    ]
+    var last: (time: Double, values: [Float])?
+    var fluence = [Double](repeating: 0, count: models.count * ranges.count)
+    var peak = [Float](repeating: 0, count: models.count * ranges.count)
+    var radiated = 0.0
+    var lastPower: (time: Double, power: Double)?
+    let started = ContinuousClock.now
+    for target in frameTimes {
+        while solver.time < target - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: target)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        let frame = solver.fireball(for: volume)
+        var values: [Float] = []
+        for model in models { values += model.exposure.irradiance(frame, at: points) }
+        let power = models[0].exposure.radiatedPower(frame)
+        if let last {
+            for n in values.indices {
+                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (solver.time - last.time)
+            }
+        }
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
+        for n in values.indices { peak[n] = max(peak[n], values[n]) }
+        last = (solver.time, values)
+        lastPower = (solver.time, power)
+        lines.append(
+            [
+                String(format: "%.5f", solver.time), String(format: "%.2f", 2 * frame.radius),
+                String(format: "%.0f", frame.temperature), String(format: "%.0f", frame.hottest),
+                String(format: "%.4g", power), String(format: "%.4g", solver.radiatedEnergy),
+            ].joined(separator: ",") + "," + values.map { String(format: "%.4g", $0) }.joined(separator: ","))
+    }
+    let charge = Double(scenario.charge.energy)
+    for (m, model) in models.enumerated() {
+        let text = ranges.enumerated().map { r, range in
+            String(
+                format: "%.0f m: %.2f kJ/m², peak %.2f kW/m²", range, fluence[m * ranges.count + r] / 1000,
+                peak[m * ranges.count + r] / 1000)
+        }.joined(separator: "; ")
+        print("  as its \(model.name): \(text)")
+    }
+    print(
+        String(
+            format: "  radiated round it, the volume: %.3g J, %.2f%% of the charge's energy%@", radiated,
+            100 * radiated / charge,
+            configuration.radiativeCooling == nil
+                ? ""
+                : String(
+                    format: "; the gas lost %.3g J, %.2f%%", solver.radiatedEnergy,
+                    100 * solver.radiatedEnergy / charge)))
+    print(
+        String(
+            format: "  %d steps, simulated in %.0f s", solver.stepCount,
+            (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 func runThermal() throws {
     let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
     let scene = FragmentScene(scenario)
@@ -2813,6 +2943,90 @@ func runDigest() throws {
     }
 }
 
+/// The layered soil column under ground points: its peak stress against the characteristics'
+/// closed form for bilinear soil at several steps, and its cost a frame for a line of points fed
+/// a frame a millisecond, as `GroundShockConsumer` runs it.
+func runSoilColumn() throws {
+    let ratio = Double(option("ratio") ?? "2") ?? 2
+    let points = Int(option("points") ?? "31") ?? 31
+    let deepest = Float(option("depth") ?? "3") ?? 3
+    let (peak, duration) = (100e3, 0.004)
+    let surface = { (t: Double) in t >= 0 && t <= duration ? peak * (1 - t / duration) : 0 }
+    let depths = [0.5, 1.2, 3, 5]
+    print(
+        "Bilinear soil, 1,600 kg/m³ loading at 300 m/s, unloading at \(300 * ratio) m/s; 100 kPa over 4 ms:")
+    print(
+        "step (s)   element (m)   peak stress against the closed form at "
+            + depths.map { "\($0) m" }.joined(separator: ", "))
+    for step in [2e-4, 1e-4, 5e-5, 2.5e-5, 1.25e-5] {
+        let profile = SoilProfile(
+            layers: [
+                SoilLayer(thickness: 1, density: 1600, waveSpeed: 300, unloadingWaveSpeed: Float(300 * ratio))
+            ],
+            timeStep: Float(step))
+        var column = SoilColumn(profile: profile, depth: 5)
+        while column.time < 0.03 {
+            let t = column.time
+            let mean = { (t: Double) -> Double in
+                let s = min(max(t, 0), duration)
+                return peak * (s - s * s / (2 * duration))
+            }
+            column.step(load: (mean(t + step / 2) - mean(t - step / 2)) / column.timeStep)
+        }
+        let mids = column.elementDepths
+        let ratios = depths.map { depth -> String in
+            let e = mids.indices.min { abs(mids[$0] - depth) < abs(mids[$1] - depth) }!
+            let exact = HystereticAttenuation.peakStress(
+                depth: mids[e], loadingSpeed: 300, unloadingSpeed: 300 * ratio, surface: surface)
+            return String(format: "%.3f", column.peakStress[e] / exact)
+        }
+        print(String(format: "%-10g %-13.4f ", step, column.depths[1]) + ratios.joined(separator: "  "))
+    }
+    // The cost: a line of points, 170 frames a millisecond apart, a triangle arriving later
+    // further out.
+    print("\nCost, \(points) points to \(deepest) m, 170 frames of 1 ms:")
+    for step in [1e-4, 5e-5, 2.5e-5] {
+        var spec = GroundShockSpec()
+        spec.model = .column
+        spec.depths = [0, 1, deepest]
+        spec.points = (0..<points).map { SIMD2(Float($0) + 0.5, 0.5) }
+        spec.profile = SoilProfile(
+            layers: [
+                SoilLayer(thickness: 1, density: 1600, waveSpeed: 300, unloadingWaveSpeed: Float(300 * ratio))
+            ],
+            timeStep: Float(step))
+        var consumer = GroundShockConsumer(spec: spec)
+        let nx = Int32(points + 1)
+        let start = Date()
+        for frame in 0..<170 {
+            let t = Double(frame) * 1e-3
+            var values: [Float] = []
+            for _ in 0..<2 {
+                for i in 0..<Int(nx) {
+                    let s = t - Double(i) * 0.002
+                    let p = s >= 0 && s <= duration ? peak * (1 - s / duration) : 0
+                    let kept = s >= 0 ? peak : 0
+                    let impulse =
+                        peak * (min(max(s, 0), duration) - pow(min(max(s, 0), duration), 2) / (2 * duration))
+                    values += [Float(p), Float(kept), Float(impulse)]
+                }
+            }
+            consumer.consume(
+                GroundSlice(
+                    time: t, cellSize: 1, grid: SIMD3(nx, 2, 4), first: .zero, counts: SIMD2(nx, 2),
+                    values: values,
+                    ambientDensity: 1.225, ambientPressure: 101_325, gamma: 1.4))
+        }
+        let seconds = Date().timeIntervalSince(start)
+        let column = SoilColumn(profile: spec.columnProfile, depth: deepest)
+        print(
+            String(
+                format: "step %-8g %4d elements a column: %.3f ms a frame, %.1f ns an element-step", step,
+                column.elementCount, seconds / 170 * 1000,
+                seconds / (170 * 1e-3 / column.timeStep * Double(column.elementCount * points)) * 1e9))
+    }
+}
+
 do {
     switch command {
     case "digest": try runDigest()
@@ -2833,6 +3047,9 @@ do {
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "thermal": try runThermal()
+    case "dialpack": try runDialPack()
+    case "soilcolumn": try runSoilColumn()
+    case "heating": try runHeating()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

@@ -1,6 +1,6 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.13`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.13)
+BombCAD pins [ContinuumKit `0.1.0-alpha.14`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.14)
 and commits the resolved Git revision. Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
@@ -108,3 +108,38 @@ app signature after lint, script checks, build and tests.
 application gates and source equivalence across the integration checkpoint. This
 adoption establishes numerical preservation for the declared cases. Measured blast
 accuracy and bulk gas/moving-geometry extraction remain separate tasks.
+
+## Prescribed gas packet adoption — 10 October 2026
+
+Exact alpha.14 resolves to f5543e3c336a80ec86868c3f0f245b688dfba148. The internal
+FractionalGasTransport name now aliases public PrescribedGasTransport; its local
+104-line numerical implementation is retired. Caller transfer graphs, geometry,
+volume trajectories, reconstruction, Euler fluxes, reservoirs, timesteps and body
+integration stay app-owned. Unchecked construction/views, checked extensive-state
+advance, failure categories and the dry cleanup budget retain the source contract.
+
+The new packet comparison freezes pre-adoption main e5ead4b55ad20684fde635ca2c56d830fefd4037
+and copies the identical fixture into its disposable build. It retains two accepted
+remap replays (all 32 intervals and native cells per profile), 32 moving histories
+covering two spacings, aligned/rotated bodies, Euler/Heun, linear/conserved-quadratic
+reconstruction and uniform/nonuniform gas. Every one of their 128 declared physical
+intervals retains full native cells, partitions, reservoir packets and wall impulse,
+moment/work arrays. Actual opening and closing transitions occur in these histories.
+The sealed-work, geometry-remap, static-connected and crossing studies retain their
+complete public records; those records do not expose every internal field. The
+existing complete wall/piston benchmark is also required.
+
+Independent validators check completeness, physical clocks, native state/bit identity,
+positive gas, partition support and gas/reservoir/wall mass/momentum/energy budgets.
+Corruption controls alter both copies to test beyond paired equality. Run
+`bash Scripts/check-packet-adoption.sh /absolute/output/path` from a clean committed
+candidate or dispatch suite `packet-adoption` on the physical mini. Full app/package
+checks remain separate; [acceptance](packet-adoption-verification.json) records exact
+measured source scopes, failures, repairs and integration.
+
+The earlier adiabatic framework pin remains frozen. Its original packet source is
+now canonical verification-only data with a protected Git blob/hash. A separate
+SharedAdiabaticBenchmark resolves exact alpha.14 and copies the actual production
+alias. Both adapters use identical cases and compare every recorded sample, while
+retaining independent conformance/refinement gates and correct source metadata.
+This preserves historical evidence and checks the current reusable implementation.

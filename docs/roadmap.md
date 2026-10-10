@@ -213,19 +213,22 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
-   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
+   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac, chosen
+   by cost if asked,
    its luminous cells marched on the GPU as a partly transparent volume, and, as an option, the
-   heat they radiate taken out of the gas, which halves the fluences; the fireball's [rise and
+   heat they radiate taken out of the gas, which halves the fluences, and compared with two TNT
+   shots, whose pulse it gets wrong in shape; the radiation [conducted into
+   the surfaces' materials](surface-heating.md) for their peak temperatures, with ignition
+   thresholds from tests marked illustrative; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
    their first two minutes, then spread as a gravity current and a Pasquill–Gifford puff
    drifting downwind, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
-   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
-   of the cloud's top after two minutes, and a layered soil column and a comparison with measured
-   ground motion. The crater and the ground shock near the charge act back on the blast and remain
+   manuals' one-dimensional estimate or a layered soil column that loads and unloads at different
+   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
+   of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 
 ### Freestanding objects and supports
