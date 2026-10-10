@@ -15,7 +15,7 @@ public final class BlastSolver {
     /// contact and debris). Batches end at these checkpoints, so that the decisions depend only
     /// on the step count, never on how the steps were batched.
     public static let checkpointInterval = 64
-    public static let maxGauges = 16
+    public static let maxGauges = 64
 
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
