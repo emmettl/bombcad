@@ -1,0 +1,32 @@
+{
+  "repository": "https://github.com/emmettl/bombcad",
+  "revision": "b7d86c445d7aa40ed63bab1562e9c956b1c5c31e",
+  "schemaVersion": 1,
+  "sources": {
+    "Sources/BlastCore/ConservedGasReconstruction.swift": {
+      "gitBlob": "3e2b5dffd343f26dd0957ac76fdbe3841fcc444a",
+      "sha256": "55ccef8419142735965d7b19b7f961f903546f3bc1d4a0684893b6fd6df59d72",
+      "snapshot": "ConservedGasReconstruction.swift.txt"
+    },
+    "Sources/BlastCore/FiniteVolumePressureFit.swift": {
+      "gitBlob": "31e58a31f681d81b8379fc7e81a000f75ba8df8d",
+      "sha256": "8120e41b29cd28d68c731a96b637bd8db56f6b08c3871241a3f51e5c9c95f7f2",
+      "snapshot": "FiniteVolumePressureFit.swift.txt"
+    },
+    "Sources/BlastCore/FractionalGasTransport.swift": {
+      "gitBlob": "b36245da657648a3bbd7b9cab5737c4a5f0c6772",
+      "sha256": "37f728e2cec03fbf543973701dda65d480148571833a5232137af4df99a0f937",
+      "snapshot": "FractionalGasTransport.swift.txt"
+    },
+    "Tests/BlastCoreTests/ConservedGasReconstructionTests.swift": {
+      "gitBlob": "6304357a742b6b6c73cd8ee977b04304234b31d4",
+      "sha256": "327c85b49ad7ec7d4fa8f4122ba60e202cb987097736b137f56f1826d80e28b5",
+      "snapshot": "ConservedGasReconstructionTests.swift.txt"
+    },
+    "Tests/BlastCoreTests/FiniteVolumePressureFitTests.swift": {
+      "gitBlob": "12edbd8f5298a3a77d0a0a471e69d9229d2e6e52",
+      "sha256": "ca1fbf9ea3afe5db2823d1e07aa90ce6bbc737b51df885daf11c50225375fddb",
+      "snapshot": "FiniteVolumePressureFitTests.swift.txt"
+    }
+  }
+}
