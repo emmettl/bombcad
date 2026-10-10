@@ -250,8 +250,8 @@ enum ConsumerLive: Sendable, Equatable {
     }
 }
 
-/// Every receiver's fluence and peak irradiance as of the last frame consumed, for drawing and
-/// for keeping the run.
+/// Every receiver's fluence, peak irradiance and peak surface temperature as of the last frame
+/// consumed, for drawing and for keeping the run.
 struct ThermalLive: Sendable, Equatable {
     /// Frames consumed so far.
     var frames = 0
@@ -260,6 +260,8 @@ struct ThermalLive: Sendable, Equatable {
     var fluence: [Float] = []
     /// In watts a square metre, one a receiver.
     var peakIrradiance: [Float] = []
+    /// In kelvin, one a receiver; empty where the surfaces' heating is not reckoned.
+    var peakTemperature: [Float] = []
 
     init(receivers: Int) {
         fluence = [Float](repeating: 0, count: receivers)
@@ -272,22 +274,29 @@ struct ThermalLive: Sendable, Equatable {
         // As `ThermalExposure.result` rounds them, so a run kept from these is the same.
         fluence = exposure.fluence.map { Float($0) }
         peakIrradiance = exposure.peakIrradiance
+        peakTemperature = exposure.heating?.peakTemperature ?? []
     }
 
-    /// The fluences then the peak irradiances, as little-endian floats.
+    /// The fluences, the peak irradiances and any peak surface temperatures, as little-endian floats.
     var payload: Data {
-        (fluence + peakIrradiance).withUnsafeBytes { Data($0) }
+        (fluence + peakIrradiance + peakTemperature).withUnsafeBytes { Data($0) }
     }
 
     mutating func read(_ payload: Data, header: ThermalLiveHeader) throws {
         let count = fluence.count
-        guard payload.count == 8 * count else {
+        guard payload.count == 8 * count || payload.count == 12 * count else {
             throw ProjectFileError.invalid("The thermal radiation arrived cut short.")
         }
+        let heated = payload.count == 12 * count
+        if heated && peakTemperature.count != count { peakTemperature = [Float](repeating: 0, count: count) }
         payload.withUnsafeBytes { raw in
             for n in 0..<count {
                 fluence[n] = raw.loadUnaligned(fromByteOffset: 4 * n, as: Float.self)
                 peakIrradiance[n] = raw.loadUnaligned(fromByteOffset: 4 * (count + n), as: Float.self)
+                if heated {
+                    peakTemperature[n] = raw.loadUnaligned(
+                        fromByteOffset: 4 * (2 * count + n), as: Float.self)
+                }
             }
         }
         frames = header.frames

@@ -244,10 +244,16 @@ struct HeadlessRunTests {
             "\(thermal.fireball.map { ($0.time, $0.volume, $0.temperature) })")
         #expect(thermal.receivers.contains { $0.surface == "block 0" })
         #expect(thermal.fluence.contains { $0 > 0 } && thermal.fluence.count == thermal.receivers.count)
+        let heating = try #require(thermal.heating)
+        #expect(heating.peakTemperature.count == thermal.receivers.count)
+        #expect(heating.peakTemperature.contains { $0 > heating.ambient })
         let saved = try JSONDecoder().decode(ThermalResult.self, from: Data(contentsOf: results))
         #expect(saved == thermal)
         let text = try String(contentsOf: usd, encoding: .utf8)
         #expect(text.contains("def Points \"Thermal\"") && text.contains("float[] primvars:fluence = ["))
+        #expect(
+            text.contains("float[] primvars:peakSurfaceTemperature = [") && text.contains("primvars:ignition")
+        )
     }
 
     @Test("The hot gas left at the end is handed over to the cloud, into the scene and a JSON file")

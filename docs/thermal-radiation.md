@@ -16,6 +16,10 @@ radiates](#the-gas-losing-what-it-radiates), an option (see [Measured](#the-volu
 surfaces see the fireball and how that compares between layouts, not for burn, ignition or damage
 thresholds.
 
+What the radiation does to the surfaces, conducted into their materials for each one's peak
+temperature, with ignition thresholds from tests marked illustrative, is [Surfaces heated by the
+fireball](surface-heating.md).
+
 ```bash
 swift run -c release BombCAD run street.bombcad --thermal thermal.json --thermal-results thermal-results.json --usd street.usda
 ```
@@ -488,6 +492,8 @@ afterburning and hot air.
   its peak irradiance (W/m²) and fluence (J/m²), and the fireball at every frame, as JSON.
 - **The USD scene** (`--usd`) gains `/Scene/Thermal`, a Points prim of the receivers with float
   primvars `fluence` (kJ/m²) and `peakIrradiance` (kW/m²), for colouring in Blender.
+- **The surfaces' heating**, each receiver's material, peak surface temperature and illustrative
+  ignition flags, joins all three ([Surfaces heated by the fireball](surface-heating.md#output)).
 
 ## Limitations
 
