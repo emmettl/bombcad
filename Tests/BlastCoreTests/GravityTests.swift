@@ -39,7 +39,10 @@ struct GravityTests {
 
     @Test(
         "Air at rest in its hydrostatic atmosphere stays at rest, to the bit",
-        arguments: [(AirGravity(), AirModel.idealGas), (AirGravity(lapseRate: 0), .idealGas), (AirGravity(), .thermallyPerfect)])
+        arguments: [
+            (AirGravity(), AirModel.idealGas), (AirGravity(lapseRate: 0), .idealGas),
+            (AirGravity(), .thermallyPerfect),
+        ])
     func restingColumn(gravity: AirGravity, airModel: AirModel) throws {
         let solver = try column(gravity, airModel: airModel)
         let start = solver.withState { Array($0) }
@@ -87,7 +90,8 @@ struct GravityTests {
 
     @Test("In a closed box the gas's energy and its potential energy are conserved together")
     func energyWithPotential() throws {
-        let solver = try column(AirGravity(lapseRate: 0), cells: SIMD3(16, 16, 32), cellSize: 0.5, faces: .all)
+        let solver = try column(
+            AirGravity(lapseRate: 0), cells: SIMD3(16, 16, 32), cellSize: 0.5, faces: .all)
         // A hot bubble at the surrounding pressure, which rises.
         solver.mutateState { cells in
             for k in 0..<32 {
@@ -119,7 +123,8 @@ struct GravityTests {
         let before = total()
         let kinetic = { () -> Double in
             solver.withState { cells in
-                cells.reduce(0.0) { $0 + 0.5 * Double($1.momentumZ * $1.momentumZ) / Double($1.density) } * 0.125
+                cells.reduce(0.0) { $0 + 0.5 * Double($1.momentumZ * $1.momentumZ) / Double($1.density) }
+                    * 0.125
             }
         }
         solver.advance(until: 0.5)

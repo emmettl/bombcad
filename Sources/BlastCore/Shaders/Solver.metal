@@ -163,6 +163,10 @@ static inline uint airModelOf(uint model) {
     return is_function_constant_defined(airModelConstant) ? airModelConstant : model;
 }
 constant float airGasConstant = 287.05f;
+// Gravity in the air, when a kernel is compiled for it (see `stencilFluxesGravity`): without it,
+// its code is left out of the kernels, which then run exactly as they did before it.
+constant bool airGravityConstant [[function_constant(5)]];
+constant bool airGravity = is_function_constant_defined(airGravityConstant) && airGravityConstant;
 
 // Dissociating air: thermally perfect air whose N2 and O2 also split into atoms once hot, in
 // equilibrium, as Lighthill's ideal dissociating gas. For each, a mass fraction alpha of the
@@ -897,7 +901,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     float lambda = dt / u.dx;
     Flux fluxLow;
     Flux fluxHigh;
-    bool gravityHere = u.gravity != 0.0f && axis == 2u;
+    bool gravityHere = airGravity && axis == 2u;
     if (gravityHere) {
         stencilFluxesGravity(wM2, wM1, w0, wP1, wP2, from, mirror, cell.z, gravityTable, lambda, dt, u, fluxLow,
                              fluxHigh);

@@ -1119,7 +1119,9 @@ public enum ContactMode: UInt32, Sendable {
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
-        let source = try ["Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation", "Gravity"].map {
+        let source = try [
+            "Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation", "Gravity",
+        ].map {
             name in
             guard
                 let url = Bundle.module.url(
@@ -1135,6 +1137,16 @@ enum ShaderLibrary {
     /// Index of the optional function constant that compiles a kernel for one gas model
     /// (`airModelConstant` in Solver.metal).
     static let airModelConstant = 2
+    /// Index of the optional function constant that compiles gravity in the air into a kernel
+    /// (`airGravityConstant` in Solver.metal); without it, the kernel leaves gravity's code out.
+    static let airGravityConstant = 5
+
+    /// `constants` with gravity in the air compiled in.
+    static func withGravity(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: airGravityConstant)
+        return constants
+    }
 
     /// A compute pipeline for kernel `name`, specialised with `constants` (none by default).
     /// Every kernel is specialised: many read the optional gas-model constant through the gas

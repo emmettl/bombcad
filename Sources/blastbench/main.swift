@@ -46,6 +46,8 @@ import simd
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
 //                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
+//   blastbench bubble [--dx 0.5] [--radius 4] [--hot 2] [--time 20] [--lapse 6.5] [--csv out.csv]
+//                     (a hot bubble rising under gravity, against the cloud's integral model)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
@@ -474,10 +476,18 @@ func chosenCooling() throws -> RadiativeCooling? {
     return cooling
 }
 
+/// With `--gravity`, gravity acts on the air, which starts in a hydrostatic atmosphere cooling
+/// with height at `--lapse` K/km (6.5, the standard atmosphere's, by default; 0 for isothermal).
+func chosenGravity() -> AirGravity? {
+    guard flag("gravity") else { return nil }
+    return AirGravity(lapseRate: (option("lapse").flatMap { Float($0) } ?? 6.5) / 1000)
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
     configuration.radiativeCooling = try chosenCooling()
+    configuration.gravity = chosenGravity()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if let air = chosenAirModel() {
@@ -582,6 +592,7 @@ func runValidation() throws {
         }
         configureRefinement(&solver.configuration)
         solver.configuration.radiativeCooling = try? chosenCooling()
+        solver.configuration.gravity = chosenGravity()
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -2716,6 +2727,7 @@ func runDialPack() throws {
     configuration.afterburning = true
     configuration.airModel = .thermallyPerfect
     configuration.radiativeCooling = try chosenCooling()
+    configuration.gravity = chosenGravity()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
@@ -2748,7 +2760,8 @@ func runDialPack() throws {
             format:
                 "Dial Pack: %.0f t of TNT (%.0f short tons), a sphere %.2f m in radius on the ground, %.0f m cells, %.0f by %.0f by %.0f m, to %.2f s%@",
             mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
-            configuration.radiativeCooling == nil ? "" : ", the gas cooling"))
+            (configuration.radiativeCooling == nil ? "" : ", the gas cooling")
+                + (configuration.gravity == nil ? "" : ", with gravity")))
     var lines = [
         "time_s,diameter_m,temperature_K,hottest_K,radiated_W,gas_lost_J,"
             + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(
@@ -2807,6 +2820,97 @@ func runDialPack() throws {
         String(
             format: "  %d steps, simulated in %.0f s", solver.stepCount,
             (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// A sphere of hot air at the surrounding pressure, `--hot` times the surrounding temperature,
+/// released at rest one diameter above the ground under gravity, in a box 12 radii wide and 20
+/// high: where its warm gas is through time (the cloud's hand-over's centre, everything 1% warmer
+/// than the air), against the cloud's integral model (FireballRise) started from the same gas.
+func runBubble() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.5
+    let radius = option("radius").flatMap { Float($0) } ?? 4
+    let hot = option("hot").flatMap { Float($0) } ?? 2
+    let duration = option("time").flatMap { Double($0) } ?? 20
+    let lapse = (option("lapse").flatMap { Float($0) } ?? 6.5) / 1000
+    let side = 12 * radius
+    let height = 20 * radius
+    var configuration = SolverConfiguration()
+    configuration.gravity = AirGravity(lapseRate: lapse)
+    configureRefinement(&configuration)
+    let solver = try BlastSolver(
+        device: device,
+        grid: Grid(
+            nx: Int(side / cellSize), ny: Int(side / cellSize), nz: Int(height / cellSize), cellSize: cellSize
+        ),
+        configuration: configuration)
+    let ground = Primitive(density: 1.225, pressure: 101_325)
+    solver.fill(uniform: ground)
+    let centre = SIMD3<Float>(side / 2, side / 2, 2 * radius)
+    let grid = solver.grid
+    solver.mutateState { cells in
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let x = (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5) * cellSize
+                    guard simd_distance(x, centre) < radius else { continue }
+                    let n = grid.index(i, j, k)
+                    // Hotter at the same pressure: lighter in proportion, the same internal energy a volume.
+                    cells[n].density /= hot
+                }
+            }
+        }
+    }
+    solver.restart()
+    let ambient = Float(ground.pressure / (ground.density * 287.05))
+    let threshold = ambient * 1.01
+    let start = solver.cloudHandOver(hotterThan: threshold)
+    var spec = CloudSpec()
+    spec.handOverTemperature = threshold
+    spec.lapseRate = Double(lapse)
+    spec.productWater = 0
+    spec.spread = false
+    spec.duration = duration
+    let cloud = CloudResult(spec: spec, handOver: start)
+    print(
+        String(
+            format:
+                "A bubble %.1f m in radius at %.0f K in air at %.0f K, its centre %.1f m up, on %.2f m cells, gravity, lapse %.1f K/km",
+            radius, Double(ambient * hot), Double(ambient), Double(centre.z), cellSize, Double(lapse * 1000)))
+    print("   time   air model: centre, rise speed, mass   integral model: centre, rise speed, mass")
+    var lines = [
+        "time_s,model_centre_m,model_speed_m_s,model_mass_kg,cloud_centre_m,cloud_speed_m_s,cloud_mass_kg"
+    ]
+    var times: [Double] = []
+    var t = 0.0
+    while t < duration - 1e-9 {
+        t += t < 2 ? 0.25 : 1
+        times.append(min(t, duration))
+    }
+    let started = ContinuousClock.now
+    for target in times {
+        while solver.time < target - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: target)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        let now = solver.cloudHandOver(hotterThan: threshold)
+        let sample = cloud.samples.last { $0.time <= target + 1e-9 } ?? cloud.samples[0]
+        print(
+            String(
+                format: "  %5.2f s   %6.1f m %5.2f m/s %8.1f kg        %6.1f m %5.2f m/s %8.1f kg", target,
+                Double(now.centre.z), now.riseSpeed, now.mass, sample.height, sample.riseSpeed, sample.mass))
+        lines.append(
+            String(
+                format: "%.3f,%.3f,%.4f,%.2f,%.3f,%.4f,%.2f", target, Double(now.centre.z), now.riseSpeed,
+                now.mass,
+                sample.height, sample.riseSpeed, sample.mass))
+    }
+    print(
+        String(
+            format: "  %d steps, %.0f s, on %d by %d by %d cells", solver.stepCount,
+            (ContinuousClock.now - started) / .seconds(1), grid.nx, grid.ny, grid.nz))
     if let path = option("csv") {
         try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
     }
@@ -3130,6 +3234,7 @@ do {
     case "precast": try runPrecast()
     case "thermal": try runThermal()
     case "dialpack": try runDialPack()
+    case "bubble": try runBubble()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)

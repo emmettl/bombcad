@@ -201,8 +201,8 @@ public final class BlastSolver {
         var sweepTiles: MTLComputePipelineState
         var collectTiles: MTLComputePipelineState
     }
-    /// `CellKernels` for each gas model used so far.
-    private var cellKernelsByModel: [AirModel: CellKernels] = [:]
+    /// `CellKernels` for each gas model used so far, with gravity compiled in or not.
+    private var cellKernelsByModel: [Int: CellKernels] = [:]
     private let wakeTilesPipeline: MTLComputePipelineState
     private let preparePipeline: MTLComputePipelineState
     private let sampleGaugesPipeline: MTLComputePipelineState
@@ -2054,17 +2054,20 @@ public final class BlastSolver {
     /// The per-cell kernels for the configured gas model, compiled the first time it is used.
     private func cellKernels() throws -> CellKernels {
         let model = configuration.airModel
-        if let kernels = cellKernelsByModel[model] { return kernels }
-        let constants = MTLFunctionConstantValues()
+        let gravity = configuration.gravity != nil
+        let key = 2 * Int(model.rawValue) + (gravity ? 1 : 0)
+        if let kernels = cellKernelsByModel[key] { return kernels }
+        var constants = MTLFunctionConstantValues()
         var value = model.rawValue
         constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        if gravity { constants = ShaderLibrary.withGravity(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
         let kernels = CellKernels(
             sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
             collectTiles: try pipeline("collectTiles"))
-        cellKernelsByModel[model] = kernels
+        cellKernelsByModel[key] = kernels
         return kernels
     }
 

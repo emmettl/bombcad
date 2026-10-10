@@ -177,7 +177,7 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
     int r = int(u.refineRatio);
     int3 cell = fine / r;
     int3 dims = int3(u.nx, u.ny, u.nz);
-    bool gravity = u.gravity != 0.0f;
+    bool gravity = airGravity;
     Cell c = coarseAt(cell, tile, patch, coarse, halo, alpha, u, parentPatches);
     if (gravity) {
         c = gravityDeviation(c, parentTable, cell.z, -1.0f);
@@ -527,7 +527,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     float lambda = dt / (u.dx / float(r));
     Flux fluxLow;
     Flux fluxHigh;
-    bool gravityHere = u.gravity != 0.0f && axis == 2u;
+    bool gravityHere = airGravity && axis == 2u;
     if (gravityHere) {
         stencilFluxesGravity(wM2, wM1, w0, wP1, wP2, from, mirror, fine.z, gravityTable, lambda, dt, u, fluxLow,
                              fluxHigh);
@@ -822,7 +822,7 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
     c.my += scale * (area * sums[2] - coarseFlux[slot + 2]);
     c.mz += scale * (area * sums[3] - coarseFlux[slot + 3]);
     c.energy += scale * (area * sums[4] - coarseFlux[slot + 4]);
-    if (u.gravity != 0.0f && axis == 2u) {
+    if (airGravity && axis == 2u) {
         // The coarse cell's energy took -g times its faces' mean mass flux (see `gravitySources`);
         // this face's has changed.
         c.energy -= 0.5f * u.gravity * (area * sums[0] - coarseFlux[slot]);
@@ -1587,7 +1587,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         still.my = u.stillMy;
         still.mz = u.stillMz;
         still.energy = u.stillEnergy;
-        if (u.gravity != 0.0f) {
+        if (airGravity) {
             float4 b = gravityCellOf(gravityTable, fineCoordinates.z);
             still.rho = b.x;
             still.mx = 0.0f;
@@ -1601,7 +1601,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         // At the coarse cell's mass fractions, so that the fine cells' mean is the coarse cell's.
         fineSpecies[at] = !parentIsSolid
             ? coarseSpecies[index] / max(coarse[index].rho, u.densityFloor) * fine[at].rho
-            : float2(0.0f, u.gravity != 0.0f ? u.stillOxygen / u.stillRho * fine[at].rho : u.stillOxygen);
+            : float2(0.0f, airGravity ? u.stillOxygen / u.stillRho * fine[at].rho : u.stillOxygen);
     }
     fineImpulse[at] = 0.0f;
     // The first fine cell of each coarse cell keeps the impulse the coarse cell had so far.
