@@ -330,8 +330,8 @@ Ten values in the code were written from memory and should be checked against th
   G. Gazetas, *Soil Dynamics and Earthquake Engineering* 26 (2006), Table 1): the trench and
   sidewall factors for vertical and horizontal stiffness, the rocking factors, and which side
   of the footing his horizontal factors' (h A_w / B L²) and (h A_w / L B²) belong to. Used in
-  `Embedment.gazetasFactors`. And a measured embedded footing: FoRCy's TRISEE series (1 g,
-  embedded on Gabbia sand) is in the database already obtained, not yet downloaded.
+  `Embedment.gazetasFactors`. And a measured embedded footing: TRISEE's (1 g, embedded on
+  Gabbia sand; whether FoRCy or FoRDy holds them is open, see 3b).
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
