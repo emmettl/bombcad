@@ -13,6 +13,8 @@ public enum RigidObjectDemo {
         /// Car tyre contact points and their loads (N), FL, FR, RL, RR; absent for boxes.
         public var tyres: [SIMD3<Double>]? = nil
         public var tyreLoads: [Double]? = nil
+        /// Corners of further bodies in the scene, drawn without readouts; absent for one body.
+        public var others: [[SIMD3<Double>]]? = nil
     }
 
     public struct Recording: Codable, Sendable {
@@ -21,6 +23,13 @@ public enum RigidObjectDemo {
         public let frames: [Frame]
         /// "front" looks along the x axis; absent means the side view along y.
         public var view: String? = nil
+
+        public init(name: String, description: String, frames: [Frame], view: String? = nil) {
+            self.name = name
+            self.description = description
+            self.frames = frames
+            self.view = view
+        }
     }
 
     /// Two seconds at 1 ms mechanics steps, sampled every 20 ms. Each case is independent.

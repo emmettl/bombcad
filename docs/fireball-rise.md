@@ -59,6 +59,41 @@ The description is JSON; any field left out takes its default, so `{}` will do:
 }
 ```
 
+## In the app
+
+Turn on **Fireball's rise and cloud** in the Run tab's Rise and cloud section, and set the wind
+10 m up and where it blows towards, the relative humidity and how long the cloud is followed; the
+rest of the description keeps its defaults, and a project's `cloud.json` may bring a measured
+sounding, which then sets the air. The description is saved with the project, takes effect from
+the next run, and is undone and redone with the layout's edits (⌘Z). Once a run reaches its end,
+the hot gas left in the air is handed over and the cloud followed, away from the main thread, in
+a few milliseconds; a run paused before its end has no cloud.
+
+The view then draws where the cloud went: the track of its centre in white, its outline (the
+sphere's silhouette from the eye) at round intervals until it stopped rising, at most eight, the
+cloud where it stopped in orange, with a ring at its height and a line down to the ground, and
+the track of its centre across the ground in dark grey, which shows how far it drifted. Under
+Display, **Cloud's path** hides it. The section gives what was handed over, when the cloud stopped
+rising (or that it had not by the end), its centre and top then, how wide it was and how far
+downwind, and charts its height against time, or against its distance downwind when the wind
+carries it: its centre as a line, the band from its bottom to its top, and where it stopped.
+**Frame the Cloud** turns the view to the path up to where it stopped, from the side and a little
+above the ground; the view's controls zoom out to 600 m, so when the wind has carried the cloud
+farther than that it frames the cloud where it stopped, and the chart shows the whole path.
+**Frame the Scene** turns it back.
+
+![The street canyon's cloud, 100 kg with afterburning and hot air, in still air: the white track rising from the street, the outlines a minute apart growing as it rises, and the cloud where it stopped rising, 355 m up after six minutes, in orange](street-cloud.png)
+
+`blastbench snapshot --cloud cloud.json --frame-cloud` hands over at the snapshot's time and draws
+the path as the view does (the figure, with `--preset street --air thermal --afterburn --time 0.17
+--no-wave`).
+
+**Keep Run** keeps the cloud with the run, as `--cloud-results` writes it: the description, the
+hand-over, the samples and where it stopped. Compare gives a line for each run that followed it,
+and **Use this run's inputs** brings the description back. A sweep's cases on this Mac follow it
+too before they are kept. It does not act on the air, so it is no part of the run's input
+fingerprint.
+
 ## The model
 
 - **The hand-over** is every cell of air in the domain at least `handOverTemperature` kelvin
@@ -523,7 +558,9 @@ and which ADMS describes otherwise.
   cools, and the products' different heat capacity are left out.
 - Only the hot gas still in the domain at the end of the run is handed over, and only the
   coarse grid's cells, also where refinement sharpens the blast.
-- Headless only; the app does not show it yet.
+- In the app, only the wind's speed and direction, the humidity and the duration can be set; the
+  rest of the description, a sounding and the turbulence come from a project's `cloud.json`. The
+  view's controls zoom out to 600 m, nearer than a cloud carried kilometres downwind.
 
 ## Future work
 

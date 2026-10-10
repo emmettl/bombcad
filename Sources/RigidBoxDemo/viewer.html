@@ -27,6 +27,7 @@ input[type=range]{width:100%;margin:16px 0}.readout{display:flex;flex-wrap:wrap;
 <title>Rigid box side view</title>
 <g id="grid"></g>
 <line x1="48" y1="275" x2="805" y2="275" stroke="var(--line)"/>
+<g id="others"></g>
 <polygon id="box" fill="var(--box)" fill-opacity="0.28" stroke="var(--box)" stroke-width="2"/>
 <g id="tyres"></g>
 <circle id="com" r="4" fill="var(--dot)"/>
@@ -35,7 +36,7 @@ input[type=range]{width:100%;margin:16px 0}.readout{display:flex;flex-wrap:wrap;
 </svg>
 <label for="time">Simulation time</label><input id="time" type="range" min="0" max="2" step="0.02" value="0">
 <div class="readout" id="readout" aria-live="off"></div>
-<p class="note"><span id="view-note">Side view along the y axis.</span> <span id="case-note">Box cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.</span> The model uses small positional corrections and needs timestep convergence checks. Suspension, rolling wheels, crushing and object-to-object collisions are not represented.</p>
+<p class="note"><span id="view-note">Side view along the y axis.</span> <span id="case-note">Box cases: mass 2 kg, static friction 0.6, sliding friction 0.5; impacts have no rebound.</span> The model uses small positional corrections and needs timestep convergence checks. Suspension, rolling wheels and crushing are not represented; collisions between bodies are inelastic, found from corners.</p>
 </main>
 <script>
 const recordings = __RECORDINGS__;
@@ -55,7 +56,7 @@ function layout(){
  // Boxes keep their original frame, widened if a recording leaves it; cars fit their own.
  const car=Boolean(recordings[current].frames[0].tyres);
  let lo=car?Infinity:-1.5, hi=car?-Infinity:5, top=car?2:2.5;
- for (const f of recordings[current].frames) for (const p of f.corners.concat(f.tyres||[])) { lo=Math.min(lo,across(p)-0.5); hi=Math.max(hi,across(p)+0.5); top=Math.max(top,p[2]+0.3); }
+ for (const f of recordings[current].frames) for (const p of f.corners.concat(f.tyres||[], ...(f.others||[]))) { lo=Math.min(lo,across(p)-0.5); hi=Math.max(hi,across(p)+0.5); top=Math.max(top,p[2]+0.3); }
  if(hi-lo<6.5){const middle=(hi+lo)/2;lo=middle-3.25;hi=middle+3.25}
  const width=scene.clientWidth||840, height=Math.max(260,(width-70)/(hi-lo)*top+70);
  left=lo;scale=(width-70)/(hi-lo);bottom=height-45;scene.setAttribute('viewBox',`0 0 ${width} ${height}`);
@@ -75,6 +76,9 @@ function draw(){
  const recording=recordings[current], frame=recording.frames[recording.frames.reduce((best,f,i)=>Math.abs(f.time-time)<Math.abs(recording.frames[best].time-time)?i:best,0)];
  polygon.setAttribute('points',(front()?[0,2,6,4]:[0,1,5,4]).map(i=>`${px(across(frame.corners[i]))},${pz(frame.corners[i][2])}`).join(' '));
  com.setAttribute('cx',px(across(frame.centreOfMass)));com.setAttribute('cy',pz(frame.centreOfMass[2]));
+ const others=document.getElementById('others');others.innerHTML='';
+ // Further bodies (other cars in a row): outline only.
+ for (const c of frame.others||[]) others.insertAdjacentHTML('beforeend',`<polygon points="${(front()?[0,2,6,4]:[0,1,5,4]).map(i=>`${px(across(c[i]))},${pz(c[i][2])}`).join(' ')}" fill="var(--box)" fill-opacity="0.12" stroke="var(--box)" stroke-width="1.5"/>`);
  tyres.innerHTML='';
  if (frame.tyres) {
   // A 0.6 m wheel standing on each contact, along the body's own axes from the shell corners.

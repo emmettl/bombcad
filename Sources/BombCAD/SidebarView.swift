@@ -132,6 +132,7 @@ struct SidebarView: View {
 
             FragmentSection(model: model)
             ThermalSection(model: model)
+            CloudSection(model: model)
 
             GroundShockSection(model: model)
             EnvelopeExposureSection(model: model)
@@ -194,16 +195,25 @@ struct SidebarView: View {
             }
 
             Section("Display") {
-                Picker("Surfaces", selection: $model.renderSettings.mode) {
-                    ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
+                Picker("Surfaces", selection: surfaceField) {
+                    ForEach(DisplayMode.allCases) { Text($0.title).tag(SurfaceField.blast($0)) }
+                    if model.thermalSpec != nil {
+                        Divider()
+                        ForEach(ThermalQuantity.allCases) { Text($0.title).tag(SurfaceField.thermal($0)) }
+                    }
                 }
-                if model.renderSettings.mode == .impulse {
+                .help(
+                    "The field painted onto the ground and the faces: the blast's, or, when the project "
+                        + "reckons it, the fireball's thermal radiation so far.")
+                switch surfaceField.wrappedValue {
+                case .thermal: EmptyView()
+                case .blast(.impulse):
                     Picker("Scale maximum", selection: $model.renderSettings.impulseScale) {
                         ForEach([100, 300, 1000, 3000, 10000] as [Float], id: \.self) {
                             Text("\(Int($0)) kPa·ms").tag($0)
                         }
                     }
-                } else {
+                case .blast:
                     Picker("Scale maximum", selection: $model.renderSettings.pressureScale) {
                         ForEach([30, 100, 300, 1000, 3000] as [Float], id: \.self) {
                             Text("\(Int($0)) kPa").tag($0)
@@ -224,13 +234,45 @@ struct SidebarView: View {
                 if model.groundShockSpec != nil {
                     Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
                 }
-                ThermalDisplaySettings(model: model)
+                if model.cloudSpec != nil {
+                    Toggle("Cloud's path", isOn: $model.renderSettings.showCloud)
+                        .help(
+                            "After a run, the track of the cloud's centre, its outline at intervals until it "
+                                + "stopped rising, where it stopped in orange, and its track across the ground."
+                        )
+                }
             }
 
             Section("Solver") { SolverStats(model: model) }
                 .monospacedDigit()
         }
         .formStyle(.grouped)
+    }
+
+    /// The blast's field painted onto the surfaces, or the thermal radiation's while the project
+    /// reckons it.
+    private enum SurfaceField: Hashable {
+        case blast(DisplayMode)
+        case thermal(ThermalQuantity)
+    }
+
+    private var surfaceField: Binding<SurfaceField> {
+        Binding(
+            get: {
+                if model.thermalSpec != nil, let quantity = model.renderSettings.thermal {
+                    return .thermal(quantity)
+                }
+                return .blast(model.renderSettings.mode)
+            },
+            set: { field in
+                switch field {
+                case .blast(let mode):
+                    model.renderSettings.mode = mode
+                    model.renderSettings.thermal = nil
+                case .thermal(let quantity):
+                    model.renderSettings.thermal = quantity
+                }
+            })
     }
 
     private func axisBinding(_ axis: WritableKeyPath<SIMD3<Float>, Float>) -> Binding<Double> {

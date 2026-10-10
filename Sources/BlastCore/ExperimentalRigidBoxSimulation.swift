@@ -62,6 +62,7 @@ public final class ExperimentalRigidBoxSimulation {
         for charge in scenario.additionalCharges ?? [] { air.deposit(charge) }
         air.restart()
         try air.checkExperimentalBoxRefinement()
+        air.removeExperimentalBoxPackedGas()
     }
 
     public func applyImpulse(_ impulse: SIMD3<Double>, at point: SIMD3<Double>? = nil) throws {

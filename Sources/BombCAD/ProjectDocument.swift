@@ -122,6 +122,8 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var groundShock: GroundShockSpec?
     /// The fireball's thermal radiation to reckon alongside each run, saved as `thermal.json`.
     var thermal: ThermalSpec?
+    /// The fireball's rise and cloud to follow after each run, saved as `cloud.json`.
+    var cloud: CloudSpec?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -158,6 +160,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         fragments = model.fragmentSpec
         groundShock = model.groundShockSpec
         thermal = model.thermalSpec
+        cloud = model.cloudSpec
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -266,6 +269,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try spec.validate()
             thermal = spec
         }
+        if let data = archive.files["cloud.json"] {
+            let spec = try JSONDecoder().decode(CloudSpec.self, from: data)
+            try spec.validate()
+            cloud = spec
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -318,6 +326,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["thermal.json"] = try ProjectArchive.encodeJSON(thermal)
         } else {
             files.removeValue(forKey: "thermal.json")
+        }
+        if let cloud {
+            try cloud.validate()
+            files["cloud.json"] = try ProjectArchive.encodeJSON(cloud)
+        } else {
+            files.removeValue(forKey: "cloud.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

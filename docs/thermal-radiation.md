@@ -9,9 +9,11 @@ hundred kilobytes a frame, which is what makes it the best candidate in
 from the blast.
 
 **Standing: illustrative.** Each ingredient is a textbook approximation, the fireball is only as
-good as the gas model makes it (below), and nothing here has been compared with a measurement of
-a fireball's radiation. Use it to see where a scene's surfaces see the fireball and how that
-compares between layouts, not for burn, ignition or damage thresholds.
+good as the gas model makes it (below), its absorption coefficients are assumptions, and its
+total has been set against only one measurement of a TNT fireball's radiation, which it exceeds
+three to five times (see [Measured](#the-volume-against-the-shape)). Use it to see where a scene's
+surfaces see the fireball and how that compares between layouts, not for burn, ignition or damage
+thresholds.
 
 ```bash
 swift run -c release BombCAD run street.bombcad --thermal thermal.json --thermal-results thermal-results.json --usd street.usda
@@ -25,35 +27,50 @@ The description is JSON; any field left out takes its default, so `{}` will do:
 ```json
 {
   "luminousTemperature": 1500,
+  "fireball": "volume",
+  "absorption": 0.1,
+  "sootYield": 0.185,
+  "marchStep": 0.5,
   "emissivity": 1,
   "surfaceSpacing": 1,
   "groundSpacing": 2,
-  "samples": 128,
-  "fireball": "shape"
+  "samples": 128
 }
 ```
 
+`fireball` is `volume`, the luminous cells as a partly transparent gas, or `shape` or `sphere`, an
+opaque flame of the gas's shape or its equivalent sphere radiating at `emissivity`, which applies
+to those two only. A description saved before the volume names its model and keeps it.
+
 ## In the app
 
-Turn on **Fireball's radiant heat** in the Run tab's Thermal radiation section, and set the
-**emissivity** and the temperature the gas is **luminous above**; the receivers' spacing, the
-directions sampled and the fireball's shape (rather than its sphere) keep their defaults. The description is saved with the project (as
+Turn on **Fireball's radiant heat** in the Run tab's Thermal radiation section, and set how
+much the hot **gas absorbs** a metre and the temperature it is **luminous above**; the receivers'
+spacing, the directions sampled, the fireball model (its cells, as a volume) and its soot keep
+their defaults. A project whose description names the shape or the sphere shows their
+**emissivity** instead. The description is saved with the project (as
 `thermal.json`), takes effect from the next run, and is undone and redone with the layout's edits
 (⌘Z). With Macs set for sweeps in Settings, **Run on** reckons the radiation on the one chosen, over
 a connection kept open between runs and shared with any other model run there, such as the
 [fragments](fragments.md#in-the-app); should that Mac drop, it carries on here.
 
-During a run the view draws every receiver as a dot, coloured by its fluence so far on a log
-scale: slate grey with none, through dark red and orange, to pale yellow at 1 MJ/m² (1 J/m² at
-the bottom of the scale). Under Display, **Thermal fluence** hides them. A line under the section
-gives the largest fireball so far, its temperature now, the highest fluence and the number of
-receivers, and any frames still to reckon; Reset clears it all.
+During a run, **Surfaces** under Display offers **Thermal fluence** and **Peak irradiance** beside
+the blast's fields, and paints the one chosen onto the ground and every face that has receivers,
+interpolated between them: each surface's receivers are a grid, and the colour at a point is
+bilinear between the four nearest, on a log scale (a receiver under another solid takes the mean
+of its neighbours, so a surface has no holes at its edges). The scale runs over four decades,
+0.1 to 1,000 kJ/m² or kW/m², from dark red through orange to pale yellow, as metal glows hotter;
+below its bottom the surface keeps its own grey, as for the blast's fields, and the legend gives
+the units. It is painted as it stands after each frame reckoned, also when those come in after
+the run has ended. A line under the section gives the largest fireball so far, its temperature
+now, the highest fluence and the number of receivers, and any frames still to reckon; Reset
+clears it all.
 
-![The street canyon's receivers at 60 ms, 100 kg with afterburning and hot air, coloured by fluence as the app draws them: the faces turned to the fireball orange, the roofs and the faces turned away grey](street-thermal-60ms.png)
+![The street canyon at 60 ms, 100 kg with afterburning and hot air, painted with the fluence as the app paints it: the street, the faces turned to the fireball and the alleys orange and red, the roofs and the faces turned away grey](street-thermal-60ms.png)
 
-`blastbench snapshot --thermal thermal.json` reckons it alongside an offscreen snapshot, a frame a
-millisecond, and draws the receivers as the view does (the figure above, with `--preset street
---air thermal --afterburn --time 0.06 --mode now --no-wave --dot 7`).
+`blastbench snapshot --thermal thermal.json --mode fluence` (or `--mode irradiance`) reckons it
+alongside an offscreen snapshot, a frame a millisecond, and paints it as the view does (the figure
+above, with `--preset street --air thermal --afterburn --time 0.06 --no-wave`).
 
 **Keep Run** keeps the result with the run: the description, every receiver with its peak
 irradiance and fluence, and the fireball at each frame, as `--thermal-results` writes them.
@@ -71,19 +88,21 @@ of `BombCAD run --thermal`, which stops at each; for a study that repeats exactl
 
 The receivers are reckoned on a queue of their own, here or on the other Mac; the run may get up
 to four frames ahead of them, and then waits, as for the fragments. On the street's 10,500
-receivers that is about 80 ms a frame on the Mac Studio once the fireball fills the street,
-nearly all of it following the rays through the flame (a few milliseconds with its sphere; see
-[Measured](#measured)), so at the default playback speed of 100 times slower, about the same pace
-as the run. A sweep's cases on this Mac reckon it
+receivers that is about 29 ms a frame on the Mac Studio over the afterburning street's run, 12 ms of it the
+GPU's march (see [Measured](#the-volume-against-the-shape)), against about
+80 ms a frame on the CPU's cores for the shape, so well within the run's own pace. A sweep's cases on this Mac reckon it
 too, as they fly any fragments, and wait for the last frames before they are kept; cases sent to
 other Macs run the blast alone.
 
 On another Mac it is a session of `BombCAD worker`, of the kind any model fed by the blast uses
 (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)):
-the fireball goes out, its shape a few to a hundred kilobytes a frame, and in the app each receiver's fluence and peak
-irradiance so far come back after each frame, as raw floats, to draw. The receivers are laid out on both sides from the same
-scene and description, and the worker's result is the same as this Mac's for the same frames, to
-the last bit, whether either Mac tests the receivers' view on its GPU or its CPU.
+the fireball goes out, its shape a few to a hundred kilobytes a frame and its cells up to
+1.6 MB after it as raw bytes, and in the app each receiver's fluence and peak irradiance so far
+come back after each frame, as raw floats, to draw. The receivers are laid out on both sides from
+the same scene and description. The worker marches the volume on its GPU where it has one; for
+the shape and the sphere its result is the same as this Mac's to the last bit, whether either Mac
+tests the receivers' view on its GPU or its CPU, and for the volume the GPU's and the CPU's
+marches agree to a thousandth of the highest irradiance.
 
 ## The model
 
@@ -94,26 +113,56 @@ the last bit, whether either Mac tests the receivers' view on its GPU or its CPU
   until their box holds no more than 32,768 (a metre a side when the fireball fills the street
   on 0.25 m cells, half a metre while it is smaller). Each keeps the share of its air that is
   luminous and the fourth root of that gas's mean T⁴, the temperature of a black body that
-  radiates as it does on average.
-- **Its shape** is a solid flame: its surface is where that share, interpolated between the
-  blocks' centres, is one half, and it radiates from there at the temperature of the block it is
-  in. This "solid flame" treatment is the usual one for fireballs in hazard assessment, there
+  radiates as it does on average. For the volume, every cell in the blocks' box is cut out too,
+  in the same pass: its temperature to the kelvin, zero if it is not luminous, and with
+  afterburning the density of its unburnt detonation products. The cells are merged in twos,
+  fours and so on only if the box would hold more than a million; the street's fireball at
+  170 ms is 86 by 82 by 44 cells, 1.6 MB.
+- **The volume** (the default) is the luminous gas as a partly transparent medium. Each cell
+  absorbs κ a metre, `absorption` for the hot gas itself plus its soot (below), and emits κB, B =
+  σT⁴/π the radiance of a black body at its own temperature, so the emissivity is not set but
+  follows from the optical depth along each ray: an optically thin fireball gives each receiver
+  its cells' emission, 4κσT⁴ a cubic metre spread evenly in all directions, and a thick one σT⁴
+  of its outer cells, hiding its hotter core. Along each of a receiver's directions (below) the radiance
+  is gathered from the far side in: L = Σ B (1 − e^(−κs)) e^(−τ), τ the optical depth between
+  the receiver and each step s, until something is in the way or less than 10⁻⁴ of what lies
+  beyond could get through. The cells' luminous share, κ and κB are interpolated between their
+  centres, and the gas is where the share is at least one half, as the shape's surface is, so
+  that the opaque limit is the shape and not a staircase of cubes: seen at an angle, cubes show
+  their sides, and an opaque sphere of whole cubes 40 across came out 4% too bright from five
+  radii away. The ray steps through the cells it crosses, and within those where gas may be
+  found by steps of at most `marchStep` cells, each taking the gas at its two ends and, where the
+  share passes one half between them, only the part beyond that, which makes the step's error
+  second order.
+- **Its absorption** is the volume's assumption. The hot gas's own, water vapour and carbon
+  dioxide, is taken as grey, 0.1 a metre by default: the Planck means of the TNF workshop's
+  RADCAL fits at 2,000 K, 1.2 for water and 5.5 for carbon dioxide a metre and atmosphere, give
+  about 1.4 a metre for TNT's products burnt in air (23% carbon dioxide and 8% water), but that
+  is the limit for thin gas; over metres the bands saturate and a grey gas absorbs far less. The
+  soot follows the unburnt products, which only afterburning keeps track of: `sootYield` of
+  their mass, 0.185 for TNT, whose products by the H₂O–CO rule keep half its carbon as soot
+  (C₇H₅N₃O₆ → 2.5 H₂O + 3.5 CO + 3.5 C + 1.5 N₂), as particles small against the wavelength, as
+  explosives' soot is seen to be, absorbing 1817 f T a metre (f its volume fraction at
+  1,800 kg/m³; Williams, Shaddix and others). Neither has been checked against a TNT fireball's optical depth.
+- **The shape** (`"fireball": "shape"`) is a solid flame: its surface is where the blocks'
+  share, interpolated between their centres, is one half, and it radiates from there at the
+  temperature of the block it is in. This "solid flame" treatment is the usual one for fireballs in hazard assessment, there
   with an empirical sphere's diameter, duration and surface emissive power; here the air model
   supplies the shape and temperatures. Interpolating the share, rather than taking each block
   as a cube, keeps a ragged outline of cubes from catching grazing rays: as cubes, a ball 40
   blocks across came out 4% too bright from 10 m. With `"fireball": "sphere"` it is instead one
   equivalent sphere (the luminous volume, its centroid and the mean T⁴), as before, for
   comparison.
-- **Its surface radiates** a grey body's εσT⁴, ε the `emissivity`. The default of 1, a black
-  body, is the most it could radiate; real fireballs are partly transparent and cooler at their
-  surface than within, so set it to what is known for the explosive.
-- **Each receiver** sees the flame's surface at a radiance of εσT⁴ / π, so its irradiance is
-  that radiance times cos θ, integrated over the directions in which it sees the flame. Those are
-  sampled tile by tile: the luminous blocks are gathered into up to 16 compact tiles (the least
-  compact cut in two across its longest side, until each fills at least a fifth of the sphere
-  round it), and each tile's directions are spread evenly over the cone its sphere subtends,
+  The shape and the sphere radiate from their surface as a grey body, εσT⁴, ε the `emissivity`;
+  1, a black body, is the most they could.
+- **Each receiver** sees the gas or the flame's surface at some radiance, εσT⁴ / π for the
+  shape and the sphere, so its irradiance is that radiance times cos θ, integrated over the
+  directions in which it sees the fireball. Those are sampled tile by tile: the luminous blocks
+  (for the volume, the cells with any luminous gas) are gathered into up to 16 compact tiles
+  (the least compact cut in two across its longest side, until each fills at least a fifth of
+  the sphere round it), and each tile's directions are spread evenly over the cone its sphere subtends,
   `samples` in all, shared by each cone's solid angle and how much of it the tile fills, at least
-  four a tile. Each direction is followed through the blocks to where it first meets the
+  four a tile. Each direction is followed through the gas, or to where it first meets the
   surface, so the flame in front hides what is behind it; where the cones overlap, each ray
   counts over the density of samples there from every cone it lies in (the balance heuristic),
   so every ray that meets the flame counts and none twice. A ray counts where it is above the
@@ -121,10 +170,12 @@ the last bit, whether either Mac tests the receivers' view on its GPU or its CPU
   starting outline (tested together, see [Ray tracing](ray-tracing.md)). One compact fireball is
   one tile, sampled as the sphere is, and gives the sphere's answer; a receiver inside the flame
   gets all of εσT⁴.
-  Whether each ray is clear is tested on the GPU's ray-tracing hardware where the Mac has
-  it, and otherwise on the CPU's cores, with the same answer ([Ray
-  tracing](ray-tracing.md#in-bombcad-the-fireballs-radiation)); `BOMBCAD_THERMAL_VISIBILITY=cpu`
-  in the environment keeps it on the CPU.
+  The volume is marched on the GPU, one threadgroup a receiver, the first block or structure in
+  each ray's way found on the ray-tracing hardware; for the shape and the sphere, whether each
+  ray is clear is tested there, and the rest is on the CPU's cores. Where the Mac has no GPU with
+  ray tracing, all of it is on the CPU, with the same answer to a thousandth for the volume and
+  to the bit for the others ([Ray tracing](ray-tracing.md#in-bombcad-the-fireballs-radiation));
+  `BOMBCAD_THERMAL_VISIBILITY=cpu` in the environment keeps it on the CPU.
 - **The fluence** at each receiver is the irradiance integrated over the frames by the trapezium
   rule; the peak irradiance is the highest at any frame.
 - **The receivers** lie over the ground, `groundSpacing` apart, and over every face of the blocks
@@ -133,17 +184,22 @@ the last bit, whether either Mac tests the receivers' view on its GPU or its CPU
 - **The air between is transparent**: no absorption by water vapour or carbon dioxide, which
   over tens of metres takes a few per cent to a few tens of per cent, nor by smoke or dust.
 
-The run's summary also gives what the fireball **radiated in all**, εσT⁴ over the part of its
-equivalent sphere above the ground, as a share of the charge's energy; a flame drawn out along a
-street has more surface, so this is the least it radiated. Nothing takes that energy out of the
-gas, so a share beyond what fireballs of that explosive are seen to radiate shows the emissivity
-is too high.
+The run's summary also gives what the fireball **radiated in all**, as a share of the charge's
+energy. For the volume it is measured: each frame, 256 points on a dome over the fireball facing
+in and 256 on the ground within it facing up, with nothing in the way but the ground, sum what
+crosses them, all the gas sends into the air but what goes straight into the ground beneath it
+(for an opaque sphere, σT⁴ over its surface above the ground, to 3% in the tests). For the shape
+and the sphere it is εσT⁴ over the part of the equivalent sphere above the ground, which for the
+street's shape agrees with the same measurement to under 1%. Nothing takes that energy out of
+the gas, so a share beyond what fireballs of that explosive are seen to radiate shows the gas
+stays hot and luminous too long, or the absorption or emissivity is too high.
 
 ## Measured
 
 The street canyon on the medium grid (0.25 m cells, 100 kg, 0.17 s), frames every millisecond,
-defaults otherwise, on the Mac Studio (M4 Max), heavily loaded by other work at the time, so the
-times are rough:
+on the Mac Studio (M4 Max), heavily loaded by other work at the time, so the times are rough.
+These first tables are the shape and the sphere, as they were before the volume
+([below](#the-volume-against-the-shape)):
 
 | Gas | Largest fireball | Luminous until | Radiated (ε = 1) | Highest fluence | Run, without and with |
 |---|---|---|---|---|---|
@@ -218,6 +274,73 @@ on the thread that drives the GPU, went from 0.05 ms to 0.1 to 1.7 ms a frame as
 sorting its blocks and doubling them, under half a per cent of the 0.4 s each frame's blast
 took. A frame of the shape is 3 bytes a block, 15 to 90 KB, and as JSON a third more.
 
+### The volume against the shape
+
+The afterburning street with hot air again, 0.17 s, the same frames reckoned with the volume's
+defaults and with the shape (`blastbench snapshot --preset street --air thermal --afterburn
+--time 0.17 --thermal thermal.json --thermal-compare`), on the Mac Studio with load averages of
+150 to 240 from other sessions:
+
+| Surface | Highest fluence, volume | Highest fluence, shape | Peak irradiance, volume | Peak, shape | Mean fluence, volume against shape |
+|---|---|---|---|---|---|
+| Ground | 248 kJ/m² | 265 kJ/m² | 3.2 MW/m² | 2.7 MW/m² | −4% |
+| Block 1 | 269 kJ/m² | 264 kJ/m² | 3.0 MW/m² | 2.9 MW/m² | +18% |
+| Block 4 | 117 kJ/m² | 139 kJ/m² | 2.1 MW/m² | 2.7 MW/m² | +10% |
+| Block 0 | 130 kJ/m² | 98 kJ/m² | 1.8 MW/m² | 1.6 MW/m² | +40% |
+| Blocks 2, 3 and 5 | 15 to 26 kJ/m² | 10 to 21 kJ/m² | 0.2 to 0.4 MW/m² | 0.1 to 0.3 MW/m² | +43 to +56% |
+
+Most receivers get more from the volume (median ratios 1.1 to 1.6 by surface; 1.3 on the
+ground), the faces that see little of the flame most of all, while the nearest get about as much
+or less. Which of its differences does this is not settled: the volume follows the flame to its
+cells, a quarter of the shape's blocks, so flame thinner than a block radiates, and takes each
+cell's own temperature rather than its block's mean. With 512 directions instead of 128, each
+surface's highest fluence moves by under 1% and its peak irradiance by under 3%; with steps of a
+quarter of a cell instead of a half, by under 0.1%.
+
+**The soot decides it.** At 170 ms 30 kg of the 100 kg's products are still unburnt, and their
+soot makes the fireball opaque: with it, the gas's own absorption hardly matters. Without it, the
+grey coefficient for the hot gas, the assumption, sets the answer almost in proportion while the
+gas is thin:
+
+| Absorption | Radiated | Share of the charge's 418 MJ | Highest fluence, ground | Peak irradiance, ground |
+|---|---|---|---|---|
+| Default: 0.1/m and soot | 87.9 MJ | 21.0% | 248 kJ/m² | 3.2 MW/m² |
+| Soot alone | 89.8 MJ | 21.5% | 248 kJ/m² | 3.2 MW/m² |
+| 1/m, no soot | 86.0 MJ | 20.6% | 229 kJ/m² | 2.6 MW/m² |
+| 0.1/m, no soot | 47.9 MJ | 11.4% | 91 kJ/m² | 1.1 MW/m² |
+| 0.01/m, no soot | 6.9 MJ | 1.6% | 13 kJ/m² | 0.16 MW/m² |
+| The shape, ε = 1 | 77.8 MJ | 18.6% | 265 kJ/m² | 2.7 MW/m² |
+
+**Against a TNT fireball.** The thermal measurements of the 100-tonne TNT hemisphere fired at
+Suffield in 1961 (Tate and Pattmann) put what it radiated at 3.8% and 6.6% of its energy, by two
+kinds of instrument, its radiance peaking about 20 ms after the detonation; scaled by the cube
+root of the charge, 100 kg would peak at about 2 ms. The volume's 21% is three to five times as
+much, and its course is the wrong way round: 0.2% by 20 ms, 1.4% by 50 ms, 6.5% by 100 ms and
+21% by 170 ms, when its fireball is still at 2,400 K and growing. The volume is opaque here, so the
+excess is not the emissivity: the gas never loses the heat it radiates (21% of the charge's energy
+would cool it markedly), and stays hot and luminous far longer than a real fireball, while its
+first milliseconds, a fireball a few cells across, are faint. Taking the radiated heat out of the
+gas is the next step; until then, treat the volume's fluences, like the shape's, as an upper
+bound, and its timing as wrong.
+
+**Its cost.** Each binary run three times, interleaved, the branch before the volume (the shape,
+compared with the sphere) and after (the volume, compared with the shape), each model's time on
+the same 171 frames from the same blast:
+
+| Per frame, medians of three | Before | After |
+|---|---|---|
+| The shape, on the CPU's cores | 136 ms (133 to 147) | 163 ms (144 to 173) |
+| The volume, all of it | | 29 ms (28 to 30) |
+| Of which the GPU's march | | 12 ms (11.7 to 12.0) |
+| Finding the fireball, on the thread that drives the GPU | 2.3 ms | 6.7 ms |
+
+The volume costs a fifth of the shape: the GPU follows its 1.3 million rays a frame through the
+cells in 12 ms, and the rest is making the medium and its tiles from the cells and measuring what
+it radiates. Cutting the cells out adds about 4 ms a frame to finding the fireball, about 1% of
+the half second each frame's blast took here. On the CPU alone the same march is about thirty times slower:
+`blastbench thermal` on a sphere of cells growing to 15 m across over 30 frames takes 18 ms a
+frame with the GPU (8 ms of it the GPU's) and 540 ms on the cores, the two agreeing to 0.001%.
+
 ## Output
 
 - **The summary** printed gives the largest fireball, its temperature and how long it was
@@ -229,32 +352,51 @@ took. A frame of the shape is 3 bytes a block, 15 to 90 KB, and as JSON a third 
 
 ## Limitations
 
-- Illustrative, as above: no comparison with measurements of fireball radiation.
+- Illustrative, as above: one comparison with a measurement of a TNT fireball's radiation, which
+  the model exceeds three to five times.
+- The radiated energy is not taken from the gas, which therefore stays hot and luminous too
+  long; this, more than the absorption, is why the total is too high.
+- The volume's absorption is assumed: a grey coefficient for the hot gas, between the thin-gas
+  Planck mean and what saturated bands allow over metres, and Rayleigh soot as a fixed share of
+  the unburnt products. Real soot forms, burns and cools on its own course, not the products'.
+  Without afterburning there is no soot, and the fireball is as thin as the gas's coefficient
+  makes it. No optical depth of a TNT fireball has been compared.
+- Scattering is left out: the soot's particles are small enough to absorb far more than they
+  scatter, but dust the blast lifts is not taken into account.
+- The volume interpolates its cells, which are luminous or not: an opaque sphere of whole cells
+  comes out 3.7% too bright at 4 cells in radius and 1.7% at 32 (to 0.3% when the cells are
+  filled as much as they are inside it). Merged cells, in fireballs of over a million, count as
+  wholly luminous within the surface where their share is a half.
+- The volume's march waits for a busy GPU rather than racing the CPU, which would be over ten
+  times slower; the GPU's and the CPU's marches agree to a thousandth, not to the bit.
+- The app's kept runs keep their frames without the volume's measured radiation, so their
+  summary gives the equivalent sphere's instead; `BombCAD run` and `blastbench` give the measured.
+- In the app, which does not have the GPU cut the cells out at each frame, they are read from
+  the state on the CPU, on the thread that drives the GPU, over the fireball's box; that cost has
+  not been measured (cut out on the GPU, the cells add about 4 ms a frame).
 - The shape is resolved only to its blocks, a metre a side when it fills the street on the
   medium grid: its edges and corners are rounded within half a block (a long box's view factor
   came out 3% low on blocks an eighth of its width), and a flame thinner than a block is lost.
   A fireball so small that no block of two cells is half luminous is taken as its sphere.
-- The flame is opaque, at each block's mean temperature from its surface inwards. A partly
-  transparent flame, its emissivity growing with the path length through it, would need an
-  absorption coefficient for the explosive's hot products, for which no source was found.
-- A run keeps its frames without their shapes, so a kept run's radiation can be reckoned again
-  only from the sphere.
-- Each block's temperature is its luminous gas's mean; real fireballs are hotter within than at
-  their edge, and partly transparent.
-- The radiated energy is not taken from the gas, and the air between is transparent.
+- The shape's flame is opaque, at each block's mean temperature from its surface inwards.
+- A run keeps its frames without their shapes or cells, so a kept run's radiation can be
+  reckoned again only from the sphere.
+- The air between is transparent.
 - On coarse grids the charge's gas is spread over large cells and comes out cooler: on 0.5 m
   cells, 0.5 kg of TNT starts at under 800 K, below the default luminous temperature.
 - Only the coarse grid's cells, also where refinement sharpens the blast.
 - `BombCAD run --thermal` reckons it on this Mac only; the app can send it to another Mac.
+  Sent there, the volume's cells are a few megabytes a frame on the network, and kept in a
+  temporary file against that Mac dropping, a few hundred megabytes over a run.
 - The GPU's and the CPU's visibility tests have agreed to the bit on every scene tried, but only
-  the M4 Max's GPU has been tried; on an M1 or M2, ray tracing runs in software and may be slower
-  than the CPU.
-- Only the visibility test is on the GPU; laying out the rays and summing them take most of the
-  receivers' CPU time. Following each ray to where it meets the fireball's shape, about twenty
-  times the sphere's reckoning and tens of milliseconds a frame on the CPU, is the next candidate
-  for the GPU.
-- The receivers are drawn as dots, not painted onto the surfaces.
-- Receivers on the structure's starting outline do not follow it as it moves or fails.
+  the M4 Max's GPU has been tried, for both the test and the march; on an M1 or M2, ray tracing
+  runs in software and may be slower.
+- For the shape and the sphere only the visibility test is on the GPU; laying out the rays and
+  summing them, and following each ray to where it meets the shape, stay on the CPU.
+- The paint is interpolated between receivers, a metre apart on the faces and two on the ground
+  by default, so what varies over less than that is smoothed; it shows no shadows of the sun.
+- Receivers on the structure's starting outline, and their paint, do not follow it as it moves
+  or fails.
 
 ## Sources
 
@@ -268,5 +410,25 @@ took. A frame of the shape is 3 bytes a block, 15 to 90 KB, and as JSON a third 
   SIGGRAPH 1995: the balance heuristic, for the tiles' overlapping cones.
 - Committee for the Prevention of Disasters, *Methods for the calculation of physical effects*
   ("Yellow Book", CPR 14E), 3rd ed., 1997, chapter 6: the solid-flame model of fireballs.
+- M. F. Modest, *Radiative Heat Transfer*, Academic Press: the radiative transfer equation along
+  a ray in an absorbing, emitting medium, and mean absorption coefficients.
+- TNF Workshop, [Radiation models](https://tnfworkshop.org/radiation/) (RADCAL, after
+  Grosshandler, NIST): curve fits of the Planck-mean absorption coefficients of water and carbon
+  dioxide, 300 to 2,500 K, behind the gas's coefficient (an assumption, as above).
+- B. F. Williams, C. R. Shaddix and others, *International Journal of Heat and Mass Transfer* 50
+  (2007) 1616–1630, via [RadLib's Planck-mean
+  documentation](https://ignite.byu.edu/radlib_documentation/classrad__planck__mean.html): soot's
+  Planck-mean absorption, 3.72 C f T / C₂ = 1817 f T a metre (an assumption for explosives' soot).
+- A. J. Saltzman, A. D. Brown, K. Wan and others, "Extinction imaging diagnostics for in situ
+  quantification of soot within explosively generated fireballs", *Propellants, Explosives,
+  Pyrotechnics* 48 (2023), [Sandia](https://www.sandia.gov/research/publications/details/extinction-imaging-diagnostics-for-in-situ-quantification-of-soot-within-ex-2023-03-01/):
+  explosives' soot absorbs as particles in the Rayleigh limit.
+- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996: the H₂O–CO arbitrary rule for
+  detonation products, from which TNT's soot (an assumption: measured yields vary with
+  confinement).
+- P. A. Tate and J. D. R. Pattmann, *Surface burst of 100 ton TNT hemispherical charge (1961),
+  Project No. 4: Thermal measurements*, Defence Research Chemical Laboratories, Ottawa, 1962,
+  [OSTI 4786722](https://www.osti.gov/biblio/4786722): thermal yields of 3.8% and 6.6%, the
+  radiance peaking at about 20 ms.
 - Long-term scope: [Long-term vision](long-term-vision.md); where it can run:
   [Distributed computing](distributed-computing.md#the-long-term-visions-effects).

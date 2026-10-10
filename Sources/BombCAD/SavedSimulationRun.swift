@@ -2,6 +2,7 @@ import BlastCore
 import CryptoKit
 import DocumentKit
 import Foundation
+import simd
 
 struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     static let solverVersion = "blast-solver-2"
@@ -118,6 +119,9 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     /// The fireball's thermal radiation, reckoned alongside the run: every receiver's peak
     /// irradiance and fluence, and the fireball at each frame. It does not act on the air either.
     var thermal: ThermalResult? = nil
+    /// The fireball's rise and cloud, followed from the hot gas left at the run's end. It does
+    /// not act on the air either.
+    var cloud: CloudResult? = nil
 
     static let maximumThermalReceivers = 1_000_000
 
@@ -248,6 +252,33 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 })
             else { throw ProjectFileError.invalid("Invalid saved thermal radiation.") }
         }
+        if let cloud {
+            let handOver = cloud.handOver
+            var previous = -Double.infinity
+            func valid(_ sample: CloudSample) -> Bool {
+                [
+                    sample.time, sample.height, sample.radius, sample.temperature, sample.ambientTemperature,
+                    sample.riseSpeed, sample.mass, sample.position.x, sample.position.y, sample.velocity.x,
+                    sample.velocity.y, sample.water, sample.liquidWater, sample.ice, sample.precipitation,
+                    sample.snow,
+                ].allSatisfy(\.isFinite) && sample.radius >= 0 && sample.mass >= 0 && sample.temperature >= 0
+            }
+            guard (try? cloud.spec.validate()) != nil, cloud.samples.count <= Self.maximumSamples,
+                [
+                    handOver.time, handOver.mass, handOver.volume, handOver.temperature, handOver.riseSpeed,
+                    handOver.horizontalVelocity.x, handOver.horizontalVelocity.y, handOver.chargeMass,
+                    handOver.hottest, handOver.buoyancy, handOver.warmBuoyancy, handOver.ambientTemperature,
+                    handOver.ambientPressure,
+                ].allSatisfy(\.isFinite),
+                handOver.centre.x.isFinite && handOver.centre.y.isFinite && handOver.centre.z.isFinite,
+                handOver.mass >= 0, handOver.volume >= 0, handOver.time <= elapsedTime + 1e-6,
+                cloud.samples.allSatisfy({ sample in
+                    defer { previous = sample.time }
+                    return valid(sample) && sample.time >= previous
+                }),
+                cloud.stabilised.map(valid) ?? true
+            else { throw ProjectFileError.invalid("Invalid saved cloud.") }
+        }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,
                 valid(structure.points), structure.points.allSatisfy({ $0.value >= 0 }),
@@ -342,6 +373,26 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 "\(field(name)),\"Fireball temperature\",\(frame.time * 1000),\(frame.temperature),K")
         }
         return lines.joined(separator: "\n") + "\n"
+    }
+}
+
+extension CloudResult {
+    /// How far the cloud's centre has drifted across the ground from over the hand-over, in metres.
+    func drift(_ sample: CloudSample) -> Double {
+        simd_length(sample.position - SIMD2(Double(handOver.centre.x), Double(handOver.centre.y)))
+    }
+
+    /// One line for comparing runs: where the cloud stopped rising, or where it was at the end.
+    var comparison: String {
+        guard handOver.mass > 0 else {
+            return String(
+                format: "Cloud: no gas at least %.0f K to hand over", Double(spec.handOverTemperature))
+        }
+        guard let sample = stabilised ?? samples.last else { return "Cloud: not followed" }
+        return String(
+            format: "Cloud: %@ at %.0f s, centre %.0f m up, top %.0f m, %.0f m across, %.1f km downwind",
+            stabilised == nil ? "still rising" : "stopped rising", sample.time, sample.height, sample.top,
+            2 * sample.radius, drift(sample) / 1000)
     }
 }
 

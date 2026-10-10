@@ -154,6 +154,8 @@ struct SimulationStats {
 @Observable
 final class SimulationModel {
     var settings = SimulationSettings()
+    /// Freestanding objects' computed motion (see `FreestandingObjectsSection`).
+    let freestanding = FreestandingMotionState()
     @ObservationIgnored var projectArchive: ProjectArchive?
     var projectDocumentID = UUID()
     var renderSettings = RenderSettings()
@@ -406,6 +408,28 @@ final class SimulationModel {
             }
         }
     }
+    /// The fireball's rise and cloud, if the project follows it: the hot gas left at the end of a
+    /// run handed over to the cloud model and followed for minutes after, and drawn over the
+    /// scene. Saved with the project; changes take effect from the next run, and settle into a
+    /// step to undo.
+    var cloudSpec: CloudSpec? {
+        didSet {
+            guard cloudSpec != oldValue, !isApplyingInputs else { return }
+            cloudEdit?.cancel()
+            cloudEdit = Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                recordEdit()
+            }
+        }
+    }
+    @ObservationIgnored private var cloudEdit: Task<Void, Never>?
+    /// Where the cloud of the run just finished went, once followed.
+    private(set) var cloud: CloudResult?
+    /// The cloud being followed, after the run has reached its end.
+    @ObservationIgnored private var cloudTask: Task<Void, Never>?
+    /// Whether the cloud is being followed now.
+    private(set) var followingCloud = false
     @ObservationIgnored private var groundShockEdit: Task<Void, Never>?
     /// How the ground has moved so far in the run, at each point, and a line saying so.
     private(set) var groundShockLive: GroundShockResult?
@@ -444,18 +468,21 @@ final class SimulationModel {
     @ObservationIgnored private(set) var thermal: (any FrameConsumer)?
     /// Where the current run's thermal radiation is reckoned, laid out here as wherever it runs.
     @ObservationIgnored private(set) var thermalReceivers: [ThermalReceiver] = []
+    /// The same receivers by surface, the grids the view paints.
+    @ObservationIgnored private var thermalGrids: [ThermalSurfaceGrid] = []
     /// The thermal radiation the current run reckons, as it was when it started, and the
     /// fireball at each frame sent.
     @ObservationIgnored private var reckonedSpec: ThermalSpec?
     @ObservationIgnored private var fireballFrames: [FireballFrame] = []
     @ObservationIgnored private var nextFireballTime = 0.0
-    @ObservationIgnored private var thermalDotCache: (frames: Int, dots: [SIMD4<Float>])?
+    @ObservationIgnored private var thermalPaintCache:
+        (frames: Int, quantity: ThermalQuantity, paint: SurfacePaint)?
     /// The Macs the run's companions are set to run on.
     var wantedHosts: Set<String> { Set([fragmentsHost, thermalHost, groundShockHost].compactMap { $0 }) }
     /// Whether the run's companions, the fragments, the thermal radiation and the ground shock,
     /// have every frame sent, so that the run can be kept.
     var companionsCaughtUp: Bool {
-        [fragments, thermal, groundShock].allSatisfy { $0?.caughtUp ?? true }
+        [fragments, thermal, groundShock].allSatisfy { $0?.caughtUp ?? true } && !followingCloud
     }
     private static let undoLimit = 100
 
@@ -478,6 +505,7 @@ final class SimulationModel {
             fragmentSpec = document.fragments
             groundShockSpec = document.groundShock
             thermalSpec = document.thermal
+            cloudSpec = document.cloud
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -612,6 +640,7 @@ final class SimulationModel {
         fragmentSpec = document.fragments
         groundShockSpec = document.groundShock
         thermalSpec = document.thermal
+        cloudSpec = document.cloud
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -756,7 +785,7 @@ final class SimulationModel {
         SimulationInputs(
             scenario: settings.scenario, settings: ProjectRunSettings(model: self), fragments: fragmentSpec,
             groundShock: groundShockSpec,
-            thermal: thermalSpec)
+            thermal: thermalSpec, cloud: cloudSpec)
     }
 
     /// Inputs from the undo history, fragments and all.
@@ -764,10 +793,12 @@ final class SimulationModel {
         fragmentEdit?.cancel()
         groundShockEdit?.cancel()
         thermalEdit?.cancel()
+        cloudEdit?.cancel()
         isApplyingInputs = true
         fragmentSpec = inputs.fragments
         groundShockSpec = inputs.groundShock
         thermalSpec = inputs.thermal
+        cloudSpec = inputs.cloud
         isApplyingInputs = false
         applyExperimentInputs(inputs)
     }
@@ -790,7 +821,7 @@ final class SimulationModel {
         let inputs = SimulationInputs(
             scenario: run.scenario, settings: run.settings, fragments: run.fragments?.spec,
             groundShock: run.groundShock?.spec,
-            thermal: run.thermal?.spec)
+            thermal: run.thermal?.spec, cloud: run.cloud?.spec)
         try inputs.validate()
         recordEdit()
         if inputs != currentInputs {
@@ -1345,6 +1376,10 @@ final class SimulationModel {
             run.groundShock = SavedSimulationRun.GroundShock(spec: spec, result: result)
         }
         run.thermal = reckoned
+        if followingCloud {
+            throw ProjectFileError.invalid("The cloud is still being followed; keep the run in a moment.")
+        }
+        run.cloud = cloud
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1619,7 +1654,8 @@ final class SimulationModel {
         } else {
             thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
         }
-        thermalReceivers = ThermalExposure.receivers(scene: scene, spec: spec)
+        thermalGrids = ThermalExposure.surfaceGrids(scene: scene, spec: spec)
+        thermalReceivers = thermalGrids.flatMap(\.receivers)
         reckonedSpec = spec
         nextFireballTime = 0
         sendFireball(solver)
@@ -1630,9 +1666,10 @@ final class SimulationModel {
         thermal?.cancel()
         thermal = nil
         thermalReceivers = []
+        thermalGrids = []
         reckonedSpec = nil
         fireballFrames = []
-        thermalDotCache = nil
+        thermalPaintCache = nil
         thermalStatus = ""
         thermalReckoned = 0
     }
@@ -1644,7 +1681,7 @@ final class SimulationModel {
             solver.time >= nextFireballTime - 1e-9 || solver.time >= duration - 1e-9,
             solver.time > (fireballFrames.last?.time ?? -1) + 1e-9
         else { return }
-        let frame = solver.fireball(luminousTemperature: spec.luminousTemperature)
+        let frame = solver.fireball(for: spec)
         fireballFrames.append(frame.withoutShape)
         thermal.send(.fireball(frame))
         nextFireballTime = (floor(solver.time / 0.001 + 1e-6) + 1) * 0.001
@@ -1681,6 +1718,41 @@ final class SimulationModel {
         thermalStatus = text
     }
 
+    // MARK: - The cloud
+
+    /// Hands the hot gas left at the run's end over to the cloud model, if the project follows
+    /// it, and follows the cloud away from this thread; a few milliseconds for ten minutes.
+    private func followCloud(_ solver: BlastSolver) {
+        guard let spec = cloudSpec, (try? spec.validate()) != nil, cloud == nil, !followingCloud else {
+            return
+        }
+        let handOver = solver.cloudHandOver(hotterThan: spec.handOverTemperature)
+        followingCloud = true
+        cloudTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                CloudResult(spec: spec, handOver: handOver)
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            self.cloud = result
+            self.followingCloud = false
+            self.cloudTask = nil
+        }
+    }
+
+    private func stopCloud() {
+        cloudTask?.cancel()
+        cloudTask = nil
+        followingCloud = false
+        cloud = nil
+    }
+
+    /// Frames the view on the cloud: the whole of its path up to where it stopped rising, if that
+    /// is near enough to see whole, and otherwise the cloud where it stopped.
+    func frameCloud() {
+        guard let cloud, cloud.handOver.mass > 0 else { return }
+        camera = CloudOverlay.framing(cloud)
+    }
+
     // MARK: - Building
 
     private func requestRebuild() {
@@ -1712,6 +1784,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeExposureStatus = ""
         stopThermal()
+        stopCloud()
         completedRunSettings = nil
         loadedRunSettings = nil
         isRunning = false
@@ -1977,6 +2050,7 @@ final class SimulationModel {
             inputs.duration = duration
             completedRunSettings = inputs
         }
+        if errorMessage == nil, let solver, solver.time >= duration - 1e-9 { followCloud(solver) }
     }
 
     /// Records the structure's deflection, and hands the solver to `onSample`, if a sample falls
@@ -2107,23 +2181,17 @@ extension SimulationModel {
         groundShockLive?.dots ?? groundShockSpec?.dots ?? []
     }
 
-    /// Draws the thermal radiation's receivers, coloured by their fluence so far on a log scale
-    /// from 1 J/m² to 1 MJ/m²: a position, lifted off its surface to show over it, and a code of 4
-    /// plus the scale's value from 0 to 1.
-    func thermalDots() -> [SIMD4<Float>] {
-        guard let thermal, let live = thermal.thermalLive else { return [] }
-        if let cache = thermalDotCache, cache.frames == live.frames { return cache.dots }
-        let receivers = thermalReceivers
-        let dots = receivers.indices.map { n in
-            SIMD4(receivers[n].position + 0.05 * receivers[n].normal, 4 + Self.thermalShade(live.fluence[n]))
+    /// Paints the thermal radiation so far onto the ground and the faces, its fluence or its peak
+    /// irradiance on the view's scale, interpolated between the receivers.
+    func thermalPaint(_ quantity: ThermalQuantity) -> SurfacePaint? {
+        guard let thermal, let live = thermal.thermalLive else { return nil }
+        if let cache = thermalPaintCache, cache.frames == live.frames, cache.quantity == quantity {
+            return cache.paint
         }
-        thermalDotCache = (live.frames, dots)
-        return dots
-    }
-
-    /// A fluence in J/m² on the dots' scale, from 0 at 1 J/m² to just under 1 at 1 MJ/m².
-    nonisolated static func thermalShade(_ fluence: Float) -> Float {
-        min(max(log10(max(fluence, 1)) / 6, 0), 0.999)
+        let values = quantity == .fluence ? live.fluence : live.peakIrradiance
+        let paint = SurfacePaint(grids: thermalGrids, shades: values.map(ThermalQuantity.shade))
+        thermalPaintCache = (live.frames, quantity, paint)
+        return paint
     }
 }
 

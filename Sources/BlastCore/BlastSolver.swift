@@ -425,6 +425,16 @@ public final class BlastSolver {
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
+    /// The densities of unburnt detonation products (x) and oxygen (y) to read, or nil without
+    /// afterburning.
+    func readSpecies<R>(_ body: (UnsafeBufferPointer<SIMD2<Float>>?) throws -> R) rethrows -> R {
+        precondition(!batchInFlight, "Cannot read state while a batch is in flight")
+        guard hasSpecies else { return try body(nil) }
+        let pointer = speciesBuffers[current].contents().bindMemory(
+            to: SIMD2<Float>.self, capacity: grid.cellCount)
+        return try body(UnsafeBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
     /// Total unburnt detonation products (kg) and oxygen (kg) in the air.
     public func speciesTotals() -> (fuel: Double, oxygen: Double) {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
@@ -1540,7 +1550,7 @@ public final class BlastSolver {
         }
         frameExtractor?.encode(
             encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
-            control: controlBuffer, uniforms: makeUniforms())
+            species: currentSpecies, hasSpecies: hasSpecies, control: controlBuffer, uniforms: makeUniforms())
         if updateVisualization {
             encodeVisualization(encoder)
         }

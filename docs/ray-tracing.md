@@ -4,7 +4,8 @@ How hard it would be to adopt hardware ray tracing on the Mac, written in Octobe
 for other projects, ones that render simulations computed in advance. BombCAD's renderer does not
 need it: its GPU is busy with the simulation, and the renderer already ray-marches the blast over
 rasterized meshes ([Performance](performance.md#display)). It does use it for one thing, the
-thermal radiation's receivers' view of the fireball ([below](#in-bombcad-the-fireballs-radiation)).
+thermal radiation's receivers' view of the fireball, and marches the fireball's cells in the same
+kernels ([below](#in-bombcad-the-fireballs-radiation)).
 Effort figures are judgements, not measurements, except in that section.
 
 ## Short answer
@@ -84,6 +85,36 @@ outline. `MetalThermalVisibility` answers in one compute dispatch:
   receivers take 5 ms of the cores' time a frame instead of 12. Copying the rays is a real cost
   at this size. Rays went from 48 to 28 bytes, packed as seven floats, and are copied to the GPU
   across the cores; before that, the GPU's answer took longer to arrive than the CPU's.
+
+### The fireball as a volume
+
+The volume model ([Thermal radiation](thermal-radiation.md#the-model)) follows each receiver's
+rays through the fireball's luminous cells, gathering what they emit and absorb. As above, the
+hardware cannot help with the volume itself; `MetalThermalMarch` uses it only for what is in the
+way, and does the rest in ordinary shader code:
+
+- **One threadgroup a receiver.** Its 64 threads share out the receiver's directions, each
+  working out the receiver's cones from the fireball's tiles, which costs nothing beside the
+  march, and add their sums in order at the end, so the answer is the same from run to run.
+  Nothing is laid out or copied per ray: the receivers go to the GPU once, and each frame only the
+  cells (16 bytes each, a few megabytes) and up to 16 tiles.
+- **The nearest occluder, in the visibility's structure.** The same acceleration structure of
+  boxes serves: the ray is cut where it leaves the cells' box, and each candidate box the hardware
+  offers is tested exactly; one that is crossed shortens the ray
+  (`commit_bounding_box_intersection`), which lets the hardware skip farther boxes. A scene with
+  nothing in it but the ground gets a stand-in box far below it, since the kernel must be given a
+  structure.
+- **Skipping empty space.** The ray walks the cells it crosses (Amanatides and Woo) and steps
+  finely only through those next to luminous gas, taking the gas there trilinearly from eight
+  cells; it stops once the gas behind lets through less than 10⁻⁴.
+- **No race with the CPU.** The CPU's march, the same algorithm, is about thirty times slower (540 ms a frame on the street's receivers against 18 ms); where the
+  visibility test hands a slow frame to the CPU, the march waits for the GPU, and moves to the CPU
+  only if the GPU fails. The two agree to a thousandth of the highest irradiance, not to the bit:
+  their exponentials and order of summing differ.
+- **What it costs.** On the street's 10,456 receivers, 128 directions each, the afterburning
+  fireball takes the GPU 12 ms a frame on average over the run, and a whole frame, cells to
+  irradiance, 29 ms, against 136 ms on the CPU's cores for the opaque shape, whose rays only the
+  visibility test sends to the GPU.
 
 ## Pitfalls
 
