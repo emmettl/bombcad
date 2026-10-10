@@ -1921,18 +1921,27 @@ extraction.
    tyres are contact points only. Tests check ambient balance on the static tyre loads, the
    momentum budget, the force and torque of a pressure gradient about the low centre of mass,
    and a blast loading the far tyres. `swift run -c release rigidboxdemo --car-blast` replays
-   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.1 m air cells). These are not
+   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.05 m cells around the car). These are not
    converged: the 0.15 m gap under the shell spans at most one cell, and from 0.2 to 0.1 m
    cells the 10 kg air impulse goes from 6.4 to 9.0 kN s sideways and from 8.2 to 3.7 kN s
-   up, and the car rocks to 25° and back instead of overturning. Next: resolve the gap
-   (refinement there, or a cut-cell floor), then the car on finer grids.)
+   up, and the car rocks to 25° and back instead of overturning. Resolved: whole-cell masks made
+   the gap 0.2 m on 0.2 m cells and 0.1 m on 0.1 m ones, and patches started with gas packed
+   under the shell. With patches resolving the gap exactly, 10 kg overturns on near-car cells
+   from 0.075 to 0.025 m, the blast's load converging (passing the balance angle at 0.41 s on
+   the two finest); 5 kg rocks to 10° and 1 kg barely moves. Flow after the blast, with the car
+   steeply tilted, is not converged. See [freestanding objects](freestanding-objects.md).)
 4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
    structures and other objects, using spatial filtering. Expose placement, duplication,
    properties, animated poses and displacement/speed/tipping results in the app. Progress
    from a row of cars to a populated car park and a furnished room, with explicit friction
    and support assumptions. Benchmark each against identical geometry held stationary,
    reporting air-grid cost separately from motion, coupling and contact; include a crowded
-   collision case. Do not promise a throughput target before these measurements.
+   collision case. Do not promise a throughput target before these measurements. (Started:
+   contact between bodies, blocks and the ground with a sweep over grown bounds, tested for
+   momentum, energy and resting stacks; the app places, duplicates and edits boxes and cars and
+   shows their motion, displacement, speed and tipping, with the nearest one in the air and the
+   rest moving through contact; a row of cars, held and free, and a 256-box crowded case. See
+   [freestanding objects](freestanding-objects.md#several-objects).)
 
 Structural anchorage is a separate extension: retain ideal fixed supports as an explicit
 option, then add connections that can deform, open and fail under tension or shear, with

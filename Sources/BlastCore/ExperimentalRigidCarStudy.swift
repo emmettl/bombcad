@@ -12,6 +12,10 @@ public enum ExperimentalRigidCarStudy {
         public let refinement: Int
         /// The domain grown by half each way around the same car and charge (12.6 × 14.4 × 7.2 m).
         public var large = false
+        /// After this time the air no longer acts on the car, which carries on alone.
+        public var airUntil: Double?
+        /// Scales the air's load on the car (see `ExperimentalRigidCarSimulation.airLoadScale`).
+        public var airLoadScale = 1.0
         public var remapMode: ExperimentalBoxRemap = .redistribution
         public init(
             cellSize: Float, refinement: Int, large: Bool = false,
@@ -29,6 +33,8 @@ public enum ExperimentalRigidCarStudy {
                 ? String(format: "%.2f m, ×%d (%.3f m at the car)", cellSize, refinement, nearCellSize)
                 : String(format: "%.2f m uniform", cellSize)) + (large ? ", large domain" : "")
                 + (remapMode == .redistribution ? "" : ", connected transport")
+                + (airUntil.map { String(format: ", air for %.2f s", $0) } ?? "")
+                + (airLoadScale == 1 ? "" : String(format: ", air load × %.2f", airLoadScale))
         }
     }
 
@@ -113,6 +119,7 @@ public enum ExperimentalRigidCarStudy {
             scenario: scenario(chargeMass: chargeMass, standoff: standoff, large: study.large),
             cellSize: study.cellSize, configuration: configuration(for: study))
         simulation.remapMode = study.remapMode
+        simulation.airLoadScale = study.airLoadScale
         let before = simulation.air.totals()
         let start = simulation.position
         var impulse = SIMD3<Double>.zero
@@ -126,24 +133,30 @@ public enum ExperimentalRigidCarStudy {
         var settledSince: Double?
         let started = Date.timeIntervalSinceReferenceDate
         var failure: String?
-        while simulation.air.time < duration - 1e-8 {
-            do { try simulation.advance(steps: 1, timeLimit: duration) } catch {
-                failure = "\(error)"
-                break
+        while simulation.time < duration - 1e-8 {
+            if let until = study.airUntil, simulation.time >= until - 1e-8 {
+                simulation.advanceWithoutAir(by: 0.0005)
+            } else {
+                do {
+                    try simulation.advance(steps: 1, timeLimit: min(duration, study.airUntil ?? duration))
+                } catch {
+                    failure = "\(error)"
+                    break
+                }
             }
             impulse += simulation.lastImpulse
-            if simulation.air.time <= 0.05 + 1e-9 { early = impulse }
+            if simulation.time <= 0.05 + 1e-9 { early = impulse }
             ground += simulation.lastGroundImpulse
             let tilt = tiltDegrees(simulation.orientation)
             if tilt > peakTilt {
                 peakTilt = tilt
-                peakTiltTime = simulation.air.time
+                peakTiltTime = simulation.time
             }
             peakSpeed = max(peakSpeed, simd_length(simulation.velocity))
-            if simulation.air.time >= 0.01 * Double(history.count + 1) - 1e-9 {
+            if simulation.time >= 0.01 * Double(history.count + 1) - 1e-9 {
                 history.append(
                     Sample(
-                        time: simulation.air.time, airImpulse: impulse, height: simulation.position.z,
+                        time: simulation.time, airImpulse: impulse, height: simulation.position.z,
                         tilt: tilt))
             }
             // Decided: on its side, or back on its tyres and still for 0.1 s after the blast.
@@ -152,20 +165,20 @@ public enum ExperimentalRigidCarStudy {
                 let still =
                     tilt < 0.5 && simd_length(simulation.angularVelocity) < 0.02
                     && simd_length(simulation.velocity) < 0.02
-                settledSince = still ? settledSince ?? simulation.air.time : nil
-                if simulation.air.time > 0.2, let since = settledSince, simulation.air.time - since > 0.1 {
+                settledSince = still ? settledSince ?? simulation.time : nil
+                if simulation.time > 0.2, let since = settledSince, simulation.time - since > 0.1 {
                     break
                 }
             }
-            if simulation.air.time >= reported + 0.1 {
-                reported = simulation.air.time
+            if simulation.time >= reported + 0.1 {
+                reported = simulation.time
                 progress?(reported)
             }
         }
         let finalTilt = tiltDegrees(simulation.orientation)
         let balance = atan(simulation.definition.staticStabilityFactor) * 180 / .pi
         return Result(
-            study: study, chargeMass: chargeMass, standoff: standoff, time: simulation.air.time,
+            study: study, chargeMass: chargeMass, standoff: standoff, time: simulation.time,
             steps: simulation.air.stepCount, airImpulse: impulse, earlyAirImpulse: early,
             groundImpulse: ground, peakTilt: peakTilt, peakTiltTime: peakTiltTime, finalTilt: finalTilt,
             outcome: finalTilt > balance ? .overturned : finalTilt < 2 ? .upright : .tilted,

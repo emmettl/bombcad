@@ -697,9 +697,17 @@ do {
                 guard parts.count == 2, let cell = Float(parts[0]), let ratio = Int(parts[1]) else {
                     return nil
                 }
-                return ExperimentalRigidCarStudy.Case(
+                var study = ExperimentalRigidCarStudy.Case(
                     cellSize: cell, refinement: ratio, large: arguments.contains("--large"),
                     remapMode: arguments.contains("--transport") ? .connectedTransport : .redistribution)
+                study.airUntil = option("air-until")?.first.flatMap(Double.init)
+                return study
+            }.flatMap { study -> [ExperimentalRigidCarStudy.Case] in
+                (option("scale")?.compactMap(Double.init) ?? [1]).map { scale in
+                    var scaled = study
+                    scaled.airLoadScale = scale
+                    return scaled
+                }
             } ?? ExperimentalRigidCarStudy.defaultCases
         let output = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
@@ -742,7 +750,9 @@ do {
         let destination = URL(
             fileURLWithPath: arguments.first(where: { !$0.hasPrefix("--") })
                 ?? ".build/rigid-car-blast\(fine ? "-fine" : "")-demo.html")
-        let recordings = try RigidCarDemo.coupledRecordings(device: device, cellSize: fine ? 0.1 : 0.2)
+        // --fine: patches four times finer over the car, which resolve the gap under it.
+        let recordings = try RigidCarDemo.coupledRecordings(
+            device: device, cellSize: 0.2, refinement: fine ? 4 : 1)
         let source = Bundle.module.url(forResource: "viewer", withExtension: "html")!
         let html = try String(contentsOf: source, encoding: .utf8)
             .replacingOccurrences(
@@ -751,7 +761,9 @@ do {
             .replacingOccurrences(
                 of: "Recorded from the Swift reference solver; no blast loading.",
                 with:
-                    "Experimental blast coupling: the car's shell in uniform ideal-gas air. Not grid-converged: the 0.15 m gap under the shell spans at most one air cell, and on 0.1 m cells (--fine) the 10 kg car rocks back instead of overturning."
+                    fine
+                    ? "Experimental blast coupling: the car's shell in ideal-gas air, on 0.05 m cells around it, which resolve the 0.15 m gap under it. The blast's load converges; the flow after it, with the car steeply tilted, does not (see docs/freestanding-objects.md)."
+                    : "Experimental blast coupling: the car's shell in uniform 0.2 m ideal-gas air, which makes the 0.15 m gap under it 0.2 m. Use --fine for 0.05 m cells around the car (see docs/freestanding-objects.md)."
             )
             .replacingOccurrences(
                 of: "<option value=\"1\" selected>Real time</option>",

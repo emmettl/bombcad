@@ -272,8 +272,8 @@ in the app or with `BombCAD sweep`; see
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
 holding, sliding, lift-off, rocking and tipping, with playback and a time slider. It records
-the Swift reference mechanics; independent rigid objects are not yet simulated or displayed
-in the app.
+the Swift reference mechanics. The app's layout editor places freestanding boxes and cars and
+computes their motion after the blast; see [freestanding objects](docs/freestanding-objects.md).
 
 `swift run -c release rigidboxdemo --blast` generates `.build/rigid-box-blast-demo.html`, a
 slow-motion comparison of a held and free box under the same blast. This experimental path

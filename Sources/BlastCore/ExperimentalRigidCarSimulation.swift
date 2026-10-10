@@ -15,6 +15,9 @@ public final class ExperimentalRigidCarSimulation {
     public let definition: RigidCarDefinition
     public let motion: Motion
     public var gravity = SIMD3<Double>(0, 0, -9.81)
+    /// Scales the air's impulse and torque before they act on the car (the records stay
+    /// unscaled): a study knob for how far an outcome is from its threshold.
+    public var airLoadScale = 1.0
     public var remapMode: ExperimentalBoxRemap = .redistribution {
         didSet {
             air.experimentalBoxRemapMode = remapMode
@@ -91,6 +94,31 @@ public final class ExperimentalRigidCarSimulation {
         try air.updateExperimentalBox(car.body)
     }
 
+    /// Mechanics time stepped by `advanceWithoutAir` after the air was left behind.
+    public private(set) var detachedTime = 0.0
+    /// The air's time plus any time stepped without it.
+    public var time: Double { air.time + detachedTime }
+
+    /// Steps the car alone, as if the air had stopped acting on it: the air stays where it was,
+    /// and the shell no longer moves through it. For separating the blast's load from later flow.
+    public func advanceWithoutAir(by dt: Double) {
+        guard motion == .free else { return }
+        lastImpulse = .zero
+        lastAngularImpulse = .zero
+        let centre = car.position
+        let contacts = car.advanceWithGround(by: dt, ground: definition.ground, gravity: gravity)
+        lastGroundImpulse = .zero
+        lastGroundAngularImpulse = .zero
+        lastTyreLoads = [0, 0, 0, 0]
+        for contact in contacts {
+            let impulse = SIMD3(contact.tangent.x, contact.tangent.y, contact.normal)
+            lastGroundImpulse += impulse
+            lastGroundAngularImpulse += simd_cross(contact.point - centre, impulse)
+            if case .tyre(let n) = contact.location { lastTyreLoads[n] += contact.normal / dt }
+        }
+        detachedTime += dt
+    }
+
     /// Always step through this driver, not air.advance: each GPU step is followed by a car step.
     public func advance(steps: Int, timeLimit: Double? = nil) throws {
         precondition(steps >= 0)
@@ -117,8 +145,8 @@ public final class ExperimentalRigidCarSimulation {
             lap(\.coupling)
             guard motion == .free else { continue }
             var next = car
-            next.applyImpulse(impulses.linear)
-            next.applyAngularImpulse(impulses.angular)
+            next.applyImpulse(airLoadScale * impulses.linear)
+            next.applyAngularImpulse(airLoadScale * impulses.angular)
             let centre = next.position
             let contacts = next.advanceWithGround(
                 by: result.elapsed, ground: definition.ground, gravity: gravity)
