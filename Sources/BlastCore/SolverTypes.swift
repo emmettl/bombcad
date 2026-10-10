@@ -107,6 +107,8 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Gravity acting on the air, which then starts at rest in a hydrostatic atmosphere (see
     /// `AirGravity`); nil, the default, for none. Read when the air is filled.
     public var gravity: AirGravity?
+    /// Sub-grid turbulent mixing in the air (see `SubgridMixing`); nil, the default, for none.
+    public var mixing: SubgridMixing?
 
     public init() {}
 }
