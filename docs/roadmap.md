@@ -227,6 +227,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    of the cloud's top after two minutes, and a layered soil column and a comparison with measured
    ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
+15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from
+   shapes or a DEM, solid in the air's mask on every level; see [Terrain](terrain.md). Next: cut
+   cells for its slopes, and terrain in thermal visibility and rigid contact.)
 
 ### Freestanding objects and supports
 
