@@ -115,7 +115,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-1"
+    public static let currentTable = "standing-table-2"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -241,6 +241,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case bondSlip
     case crackShearStiffness
     case pressedInterlock
+    case hourglassSecant
+    case hourglassWithoutSteel
     case barRateInElements
     case interfaceBond
     case smearedMasonry
@@ -310,6 +312,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .bondSlip: return any { $0.bondSlip != nil }
         case .crackShearStiffness: return any { $0.crackShearStiffness }
         case .pressedInterlock: return any { $0.pressedInterlock }
+        case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
+        case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
         case .barRateInElements: return any { !$0.barRateAlongBars }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
@@ -568,6 +572,18 @@ public enum StandingTable {
                 note: "Brings the chamber's roof edge to 25 mm against 95 mm measured, but breaks beams "
                     + "under impact that the tests saw survive.",
                 document: "concrete-model.md#shear-across-cracks")
+        case .hourglassSecant:
+            return Entry(
+                title: "Hourglass control softening with cracking", affects: structure, limit: .approximation,
+                note: "Brings the shear beam OA1 within 4% and the contest slab's residual within 1%, but "
+                    + "makes struck beams go too far.",
+                document: "validation.md#hourglass-control")
+        case .hourglassWithoutSteel:
+            return Entry(
+                title: "Hourglass cap without the bars", affects: structure, limit: .approximation,
+                note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
+                    + "not run against the impact tests.",
+                document: "validation.md#hourglass-control")
         case .barRateInElements:
             return Entry(
                 title: "Bar strain rate in elements", affects: structure, limit: .approximation,
@@ -812,6 +828,8 @@ public enum StandingTable {
         "StructureModel.bondSlip": .option([.bondSlip]),
         "StructureModel.crackShearStiffness": .option([.crackShearStiffness]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
+        "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
+        "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
         "StructureModel.barRateAlongBars": .option([.barRateInElements]),
         // Materials: properties are inputs; the switches between laws are options.
         "StructureMaterial.name": .input,

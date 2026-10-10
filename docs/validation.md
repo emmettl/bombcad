@@ -2220,6 +2220,81 @@ under the toe, and by nothing else. The peak moment is up to 0.13 of P L / 2 abo
 on the lighter wall. The embedded footing's first event is the worst: it rocks a third as far
 as the test did, its sides as stiff as Gazetas's formulas say.
 
+## Hourglass control
+
+Not a test but a numerical check across the tests: how much of the work done on a structure
+goes into the hourglass control of its one-point elements (see the
+[structural model](structural-model.md#elements)), traced by the work trace with
+`--work --breakdown` (on `slab`, `shear`, `beam` and `twoface`: hourglass work held below its
+cap and at it, by layer through the depth, by fifth of the length, by the elements' cracking,
+crushing and bars, and near a charge).
+
+**How much, and where.** In pure elastic bending an element's own bending, which the hourglass
+control carries, is 1/(n² − 1) of the whole for n elements through the depth: 1.6% on 8. Before
+anything fails, the share is several times that:
+
+| Case | Through the depth | Hourglass share | Where |
+|---|---|---|---|
+| Contest slab, at its peak | 4 / 8 / 16 | 15.5 / 7.1 / 3.7% | Three quarters at the cap, two thirds in the cracked elements carrying bars |
+| Wu's S8 and D8, at their peak | 4 / 8 | 28 / 18% | Spread evenly through the layers and along the span, not near the charge or the bars; 60% below the cap |
+| The same, the tensile strength 100 times | 8 | 13% at 6 ms (4% at 0.5 ms, 8% at 3 ms) | The same |
+| OA1, at 8 mm | 12 / 24 | 3.4 / 3.8% | 61% in the cover below the bars, cracked, at the cap; a third of the work once the beam has failed |
+| Janney's beam, at 5 mm | 12 | 6.2% | Most in the top layer, under the loading plates |
+
+So it halves as the mesh is refined, not falling as 1/n², and it is of two kinds. In the slab
+it is mostly dissipated at the cap in cracked elements, whose cap counts the bars' strength as
+if they were spread through the element's depth and could bend it, and whose stiffness below
+the cap is an uncracked element's whatever its cracking. In Wu's slabs it is mostly stored,
+gathering over the first milliseconds even when the slab barely cracks, and decides little:
+halved or doubled, the hourglass stiffness moves S8's peak by 2–3% (14.7 and 14.1 mm against
+14.4) while its share goes from 15.5 to 21%.
+
+**One layer of steel or two.** At Wu's peak under 1.6 kg the bars do 22% of the work in S8 and
+28% in D8. D8's layer near the loaded face is fully engaged in compression, perfectly bonded
+and unbuckled: it does 362 J against the bottom layer's 459, and the bars together 821 J against
+S8's 612. With the slab barely cracked through at 14 mm on a 1.9 m span, the concrete carries
+three quarters of the work, and what D8 loses in tension steel its compression steel wins
+back, so the model finds the two alike where the tests did not (18.0 against 13.9 mm). Nothing
+here is mis-embedded: each mat sits at its depth, strained with its element's centre.
+
+**Options tried** (`--hourglass-secant`, `--hourglass-no-steel`; `StructureModel.hourglassFollowsCracking`
+and `hourglassCapsSteel`). The cap without the bars' strength halves the slab's hourglass work
+(3.1%), and leaves OA1 (452 and 376 kN) and Wu's slabs as they were. A cracked element's
+hourglass stiffness taking its cracks' secant share of the elastic, as its Poisson coupling
+already does, was tried two ways: by its most opened crack for every mode (isotropic), and by
+each axis's cracks for the modes that stretch it (directional, kept as the option):
+
+| Test | Default | Secant, isotropic | Secant, directional | Measured |
+|---|---|---|---|---|
+| Contest slab, 4 / 8 / 16 through: peak | 114 / 113 / 121 mm | 131 / 125 / 126 mm | 129 / 123 / – mm | 108 mm |
+| The same, left at 80 ms | 91 / 76 / 90 mm | 98 / 93 / 97 mm | 95 / 90 / – mm | 90 mm |
+| Hourglass share at the slab's peak, 8 through | 7.1% | 2.9% | | |
+| OA1, 12 / 24 through | 456 / 368 kN | 385 / 332 kN | 437 / 344 kN | 332 kN |
+| Janney's beam, 12 / 24 through | 101 / 99%, failing at 53 mm / holding | 102 / 98%, failing at 41 / 51 mm | 104 / 95%, failing at 40 mm / holding | 41.5 kN m, failing at 42 mm |
+| Saatci's heavy drops | 40.5, 37.1, 33.6 mm | 50.6, 42.3, 36.4 mm | 44.9, 40.7, 35.7 mm | 39.5, 37.9, 35.3 mm |
+| Saatci's SS0a-1, light drop | 17.0 mm, 246 removed | 22.7 mm, 584 removed | 21.4 mm, 640 removed | 9.3 mm, whole |
+| Ando's A24 at 4 m/s; B48 at 5 m/s | 22.9; 54.0 mm | 50.3; 151 mm | 38.5; 160 mm | 16; 55 mm |
+| Peterson's beams, near reaction at 0.4 / 1 / 2 depths (no stirrups) | 335 / 171 / 80 kN | | 330 / 170 / 70 kN | 206–220 / 161–179 / 107–140 kN |
+| Wu's S8 / D8, peak | 14.4 / 14.9 mm | 15.0 / 15.6 mm | 14.7 / 15.2 mm | 18.0 / 13.9 mm |
+| Wu's S4 in contact, hole | 27 cm | the whole slab torn up | the whole slab torn up | 27.5 cm |
+| Hupfauf's SN174, tip velocity; breach | 101 m/s; none | 155 m/s; holed | | 81–84 m/s; holed |
+| The chamber's roof edge, peak / left | 38 / 16 mm | 55 / 27 mm | 47 / 19 mm | 95 mm left |
+| Chiquito's P7 / P2, left (peak) | 113 (161) / 210 (262) mm | 121 (172) / 222 (278) mm | 116 (169) / 221 (274) mm | 340 / 510 mm |
+| Wang's A / B, centre | 3.1 / 2.8 mm | 3.5 / 3.3 mm | 3.4 / 3.2 mm | 19.7 / 14.1 mm |
+
+Softened with cracking, the hourglass control takes most of its work out of cracked members:
+the shear beam then fails within 4% of its measured load on the fine mesh (16–32% strong on the
+coarse), Janney's beam fails near where the test did on 12 elements, the slab's peak comes out
+within a few per cent on every mesh, near where the default converges on 32 elements, and is
+left where the test was left; the chamber and the close-in slabs go a little further, the right
+way. But the beams struck by a falling weight fold, and Wu's slab in contact is torn up: under impact their cracked elements have been held
+together by hourglass control as stiff as uncracked concrete, and the struck beams' present
+agreement leans on it. Neither form is the default. A remedy needs an element that feels the
+strain gradient through its own depth in cracked concrete (selective full integration of
+cracked elements, or an assumed-strain element of Belytschko and Bindeman's kind), so that the
+struck beams' resistance comes from the concrete and not from the stabilisation. Peterson et
+al.'s short struck beams, whose reactions peak within the first 1.5 ms, barely move with it.
+
 ## Bars that slip, across the tests
 
 Bars that slip (`StructureModel.bondSlip`; see the
