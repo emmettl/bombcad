@@ -143,6 +143,39 @@ switch) it brings the closed-room gas pressure within 8% of UFC 3-340-02's at ev
 density tested, with nothing fitted to it, and keeps the incident impulse in the open within
 6% of Kingery–Bulmash (see [Validation](validation.md#afterburning)).
 
+### An extinction limit for afterburning
+
+`SolverConfiguration.afterburnLimit` (`--burn-limit [--ignition 800] [--limit-flame 1500]` in
+`blastbench`; off by default) lets the products burn only where the mixture can keep a flame
+going. The burning rate above the limit stays as it was: mixing-limited, as in Kuhl, Ferguson and
+Oppenheim's account of TNT's afterburning. Two conditions:
+- **ignition:** the cell must be at least 800 K, where Dryer and Glassman's global rate for the
+  oxidation of carbon monoxide, the products' main fuel, becomes faster than the gas mixes;
+- **flammability:** burning all the fuel its oxygen allows must take the cell to 1,500 K, about
+  the flame temperature of mixtures at their flammability limits (Zabetakis). This is a lean
+  limit and a rich one at once, and it widens as the mixture warms, as real limits do.
+
+It is compiled in only when on, and changes nothing in a [deflagration](deflagration.md), which
+never shares a run with afterburning. `AfterburnLimitTests` checks it:
+- cold products in air do not burn, nor warm ones too dilute to reach the limit flame
+  temperature;
+- hot or rich ones do;
+- what burns is what the gas gains.
+
+**It moves the blast it was meant to leave alone, and does not cool the fireball.** With
+afterburning and hot air, on 0.25 m cells:
+- *Closed rooms* (UFC 3-340-02) are as before, 98–107% of the design curve: their gas is hot and
+  dense enough to burn anyway.
+- *In the open* the incident impulse beyond 1 m/kg^⅓ falls by 8–9%, from 94–100% of
+  Kingery–Bulmash to 86–91%, the reflected impulse by up to 8.5% and the peaks by about 2%. Part
+  of the burning that feeds the blast is in mixtures the limit calls too cool or too dilute.
+- *A shorter burning time* restores the open impulse but not the rooms: 6 ms × W^⅓ gives 92–99%
+  in the open and 104–114% in rooms, and 4 ms gives 98–109% and 107–117%.
+
+So no refit holds both, and the fitted 10 ms stays. The fireball's luminous gas is no cooler
+with it, because the fireball's hot core burns anyway (see
+[Dial Pack](thermal-radiation.md#against-dial-pack)).
+
 ### Dissociating air
 
 `SolverConfiguration.airModel = .dissociating` (`--air dissociating` in `blastbench`) is
@@ -523,10 +556,11 @@ UFC 3-340-02, lowest for light charges.
   (`refinementFinerThreshold`), are untried.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
-- **Afterburning that stops when the mixture is too cool**: it now burns products wherever they
-  meet oxygen, at any temperature, which keeps a large fireball near the flame temperature for
-  seconds. Sub-grid mixing, tried for this, changes little (see
-  [Dial Pack](thermal-radiation.md#against-dial-pack)).
+- **Burning in flame sheets rather than the bulk**: on metre cells the grid mixes a fireball's
+  products and air through its whole volume, so it burns throughout near the flame temperature,
+  where a real one burns in thin sheets round a fuel-rich core. Sub-grid mixing and an extinction
+  limit, tried for this, change it little (see [Dial Pack](thermal-radiation.md#against-dial-pack));
+  a mixture-fraction flame model might.
 
 ## Sources
 
@@ -541,6 +575,12 @@ UFC 3-340-02, lowest for light charges.
   combustion prediction procedures", *18th Symposium (International) on Combustion*, 1981,
   1405–1414. The discrete transfer method behind the radiative cooling; M. F. Modest,
   *Radiative Heat Transfer*, Academic Press, for the radiation's term in the energy equation.
+- A. L. Kuhl, R. E. Ferguson and A. K. Oppenheim, "Gasdynamics of combustion of TNT products
+  in air", *Archivum Combustionis* 19 (1999) 67–89: afterburning limited by mixing. F. L. Dryer
+  and I. Glassman, "High-temperature oxidation of CO and CH4", *Symposium (International) on
+  Combustion* 14 (1973) 987–1003: the global rate behind the ignition temperature. M. G.
+  Zabetakis, *Flammability characteristics of combustible gases and vapors*, US Bureau of Mines
+  Bulletin 627, 1965: flammability limits and the flame temperatures at them.
 - J. Smagorinsky, "General circulation experiments with the primitive equations", *Monthly Weather
   Review* 91 (1963) 99–164; D. K. Lilly, "The representation of small-scale turbulence in
   numerical simulation experiments", IBM Scientific Computing Symposium on Environmental

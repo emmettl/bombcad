@@ -596,11 +596,24 @@ So the diluted gas round the fireball keeps being reheated, where a real flame w
 its mixture was too cool. How fast it burns moves the radiated share by a factor of two or more,
 the mixing by a fifth.
 
+An extinction limit for afterburning makes no difference here either. With it, products burn
+only above 800 K and where they could reach 1,500 K
+([air-blast model](air-blast-model.md#an-extinction-limit-for-afterburning)). With gravity,
+mixing and the gas cooling, the radiated share by 6 s is 21.3% with it and without, and the
+fireball is 2,260 K at 6 s against 2,150 K; on 4 m cells by 3 s, 6.7% against 6.5%. In the
+street it leaves 53 kg of the products unburnt at 170 ms rather than 30, yet the fireball is
+2,450 K rather than 2,370 K and radiates 22.4% rather than 21.0% (13.2% with the gas cooling).
+It stops the burning only in cool, dilute gas that was never luminous, while the fireball's hot
+core, a mixture the grid has made all through its volume, burns as before. Shortening the
+burning time to restore the blast's open impulse makes the fireball hotter still (22.8% at
+6 ms × W^⅓, 24.3% at 4 ms).
+
 Treating the products as air matters less. CO₂ and water hold more heat for their temperature
 (JANAF), so with the products a fifth to a third of the gas's mass, the same energy would be
 60 to 100 K cooler, 10% to 15% less radiance. With gravity the fireball's own rise can be
 followed further, and the cloud's hand-over [made later](air-blast-model.md#gravity), but the
-radiation will not come right until the afterburning stops in cool mixtures.
+radiation will not come right while the grid burns the fireball through its whole volume rather
+than in thin flame sheets round a fuel-rich core.
 
 Over the first second the errors offset: the fluence at 600 m by 1 s is 4.9 kJ/m² (4.5 cooling;
 4 m cells refined), against 6.7 measured. **The opaque shapes are no better.** The shape at

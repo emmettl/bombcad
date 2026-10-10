@@ -2019,8 +2019,9 @@ fireball that neither rises nor draws in cold air. By 2 s it has radiated 3.9% (
 losing its radiated heat) against 2.4%. With gravity in the air the fireball rises, as the
 cloud's integral model has it to a tenth to a fifth, but stays 600 to 900 K too hot, so by 3 s it
 has radiated 8.6% against 3.2%, and by 6 s 32% against 5.1%. Sub-grid mixing changes that
-by under a fifth; how fast the products burn changes it by a factor of two, since afterburning
-burns them at any temperature and keeps the fireball near the flame temperature for seconds. Details, the opaque shapes' answers, the resolution's
+by under a fifth, and an extinction limit for afterburning not at all, while costing the open
+blast 8–9% of its incident impulse; how fast the products burn changes it by a factor of two. On
+these cells the grid burns the fireball through its whole volume near the flame temperature. Details, the opaque shapes' answers, the resolution's
 effect and the assumptions:
 [thermal radiation](thermal-radiation.md#against-dial-pack).
 

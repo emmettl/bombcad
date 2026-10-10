@@ -423,7 +423,9 @@ public enum StandingTable {
         case .afterburnLimit:
             return Entry(
                 title: "Afterburning's extinction limit", affects: air + [.thermal, .cloud], limit: nil,
-                note: "LIMIT_NOTE",
+                note: "Products burn only above 800 K and where they could reach 1,500 K; closed rooms are "
+                    + "unchanged but the open incident impulse falls 8 to 9% below Kingery-Bulmash's fit, and "
+                    + "Dial Pack's fireball is no cooler.",
                 document: "air-blast-model.md#an-extinction-limit-for-afterburning")
         case .shockRefinement:
             return Entry(
