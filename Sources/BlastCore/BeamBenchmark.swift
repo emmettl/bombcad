@@ -107,9 +107,11 @@ public enum BeamBenchmark {
         crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
         crackShearStiffness: Bool = false,
         slipWidensCracks: Bool = true,
+        pressedInterlock: Bool = false,
         adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth)
+        model.pressedInterlock = pressedInterlock
         model.crackAxes = crackAxes
         model.bondSlip = bondSlip
         model.crackShearStiffness = crackShearStiffness

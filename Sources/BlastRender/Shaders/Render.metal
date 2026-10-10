@@ -662,7 +662,7 @@ vertex LineOut lineVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(0, -1), float2(1, -1), float2(1, 1),
                                float2(0, -1), float2(1, 1), float2(0, 1)};
     float2 corner = corners[vertexID];
-    const float widths[4] = {3.0f, 1.6f, 3.0f, 1.6f};
+    const float widths[5] = {3.0f, 1.6f, 3.0f, 1.6f, 1.6f};
     // Half the width in pixels, and half a pixel more to smooth its edge.
     float halfWidth = 0.5f * widths[kind] * viewport.z + 0.5f;
     float4 clip = corner.x > 0.5f ? cb : ca;
@@ -670,8 +670,9 @@ vertex LineOut lineVertex(uint vertexID [[vertex_id]],
     out.position = clip;
     out.across = corner.y * halfWidth;
     out.edge = halfWidth;
-    const float3 colours[4] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
-                               float3(1.00f, 0.62f, 0.12f), float3(0.16f, 0.18f, 0.22f)};
+    const float3 colours[5] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
+                               float3(1.00f, 0.62f, 0.12f), float3(0.16f, 0.18f, 0.22f),
+                               float3(0.36f, 0.80f, 0.86f)};
     out.colour = colours[kind];
     return out;
 }

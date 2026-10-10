@@ -112,6 +112,9 @@ struct StructureUniforms {
     uint fluidDeepBlocksY;
     uint fluidDeepPatchOffset;
     uint fluidDeepCellOffset;
+    // 1: a crack's faces press as it slides, and pressed carry more shear (Walraven and
+    // Reinhardt's relations; see `StructureModel.pressedInterlock`).
+    uint pressedInterlock;
     float gravityX;  // the way gravity pulls (unit length); down unless turned
     float gravityY;
     float gravityZ;
@@ -121,6 +124,29 @@ struct StructureUniforms {
 float3 gravityPull(constant StructureUniforms &u) {
     return -u.gravity * float3(u.gravityX, u.gravityY, u.gravityZ);
 }
+
+// Channels of the work trace (`StructureSolver.tracesWork`), per element, in joules: the work
+// each mechanism has done on the element's deformation. Concrete's stresses are split in its
+// crack axes. Matches `StructureSolver.WorkChannel`. The trace is compiled in only into the
+// pipeline built for it (`workTraced`), so that without it the element kernel is unchanged.
+constant uint workChannels = 17;
+constant uint workTensionNormal = 0;     // concrete's normal stresses, where tensile
+constant uint workCompressionNormal = 1; // where compressive
+constant uint workUncrackedShear = 2;    // shear on planes no crack has opened
+constant uint workInterlock = 3;         // shear across cracks held at the cap: aggregate interlock's share
+constant uint workDowel = 4;             // dowel action's share of that cap
+constant uint workKink = 5;              // kinking's share of that cap
+constant uint workBars = 6;              // the bars' own stretching
+constant uint workBond = 7;              // bond, on the bars' slip
+constant uint workHourglass = 8;         // hourglass control
+constant uint workOther = 9;             // the rest: second cracks, compaction, large rotations, steel
+constant uint workViscosity = 10;        // bulk viscosity
+constant uint workCrackShear = 11;       // shear across cracks below the cap (the cracked plane's stiffness)
+constant uint workInterlockPressed = 12; // interlock's share, where the crack is pressed shut
+constant uint workCrackShearPressed = 13; // shear below the cap, where the crack is pressed shut
+constant uint workTensionCracked = 14;   // concrete's normal stresses in tension, on planes cracked 0.1 mm or more
+constant uint workTensionHairline = 16;  // on planes cracked less than 0.1 mm open
+constant uint workCompressionCrushed = 15; // in compression, on axes crushed past their peak
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
 // the shell's thickness where its midsurface meets the solid. The node moves as the line does
@@ -244,9 +270,10 @@ constant uint maxMaterials = 8;
 // fold the per-element lookup away.
 constant bool singleMaterial [[function_constant(0)]];
 constant bool finiteConnections [[function_constant(1)]];
+constant bool workTraced [[function_constant(3)]];
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
-constant bool turnedGravityConstant [[function_constant(3)]];
+constant bool turnedGravityConstant [[function_constant(4)]];
 constant bool turnedGravity = is_function_constant_defined(turnedGravityConstant) && turnedGravityConstant;
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
@@ -560,6 +587,15 @@ static inline float2 crushStrains(float increase, float confinement, constant Ma
     return float2(peak, peak + (m.crushEnd - m.crushPeak) * ductility);
 }
 
+// Walraven and Reinhardt's fit to their push-off tests (HERON 26(1A), 1981, eqs. 1a and 1b): for
+// a crack w mm wide in concrete of cube strength `cube` MPa, the rates (MPa per mm of slip) at
+// which the shear along it and the stress across it (compressive positive) grow as it slides,
+// the parts that fall with width kept from going negative past the widths they were fitted to.
+static inline float2 walravenSlopes(float w, float cube) {
+    return float2(1.8f * pow(w, -0.8f) + max(0.234f * pow(w, -0.707f) - 0.20f, 0.0f) * cube,
+                  1.35f * pow(w, -0.63f) + max(0.191f * pow(w, -0.552f) - 0.15f, 0.0f) * cube);
+}
+
 // Uniaxial compressive stress (negative) at compressive strain magnitude `strain`, having
 // previously reached `history`. The rising branch of the envelope keeps the elastic stiffness
 // at the origin whatever the confinement; unconfined, it is the usual parabola.
@@ -826,6 +862,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               device float4 *barForces [[buffer(25)]],
                               device float4 *barRateOut [[buffer(26)]],
                               const device float4 *barRateBefore [[buffer(27)]],
+                              device float *work [[buffer(28)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -860,8 +897,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float3 g0 = float3(0.0f);
     float3 g1 = float3(0.0f);
     float3 g2 = float3(0.0f);
-    // With bond slip, the change in the bars' slip across the element along each axis.
+    // With bond slip, the change in the bars' slip across the element along each axis, and in
+    // its rate.
     float3 slipChange = float3(0.0f);
+    float3 slipChangeRate = float3(0.0f);
     for (uint a = 0; a < 8; ++a) {
         uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
         uint cornerNode = nodeMap[corner.x + nodesX * (corner.y + nodesY * corner.z)];
@@ -870,6 +909,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float3 s = cornerSign(a);
             slipChange += 0.25f * s * float3(slips[3 * cornerNode].x, slips[3 * cornerNode + 1].x,
                                              slips[3 * cornerNode + 2].x);
+            slipChangeRate += 0.25f * s * float3(slips[3 * cornerNode].y, slips[3 * cornerNode + 1].y,
+                                                 slips[3 * cornerNode + 2].y);
         }
         float3 displacement = float3(node.displacement);
         x[a] = origin + float3(corner) * u.h + displacement;
@@ -937,6 +978,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float szx;
     // Tensile stress the element can still carry, which caps its hourglass (bending) forces.
     float capacity;
+    // The work trace: each mechanism's power per unit reference volume (see `workChannels`).
+    float power[workChannels];
+    for (uint c = 0; c < workChannels; ++c) {
+        power[c] = 0.0f;
+    }
 
     if (m.materialModel == 0) {
         // Jaumann rotation of the old stress, then the elastic trial increment.
@@ -976,10 +1022,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         eroded = eroded || state.plasticStrain >= m.failureStrain;
         capacity = m.yieldStress + m.hardening * state.plasticStrain;
         state.display = state.plasticStrain / m.failureStrain;
+        if (workTraced) {
+            power[workOther] = (sxx * dxx + syy * dyy + szz * dzz + 2.0f * (sxy * dxy + syz * dyz + szx * dzx))
+                * volume / referenceVolume;
+        }
     } else {
         // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
         float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
         float3x3 latticeStrain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
+        // Its rate, F^T D F, on which the stresses below (second Piola-Kirchhoff) do work.
+        float3x3 strainRate = float3x3(0.0f);
+        if (workTraced) {
+            float3x3 f = float3x3(1.0f) + gradient;
+            float3x3 d = float3x3(float3(dxx, dxy, dzx), float3(dxy, dyy, dyz), float3(dzx, dyz, dzz));
+            strainRate = transpose(f) * d * f;
+        }
         // The bars lie along the lattice axes and are strained along them, and by how far they
         // slip further at one face of the element than at the other.
         float3 barStrain = float3(latticeStrain[0][0], latticeStrain[1][1], latticeStrain[2][2]) + slipChange / u.h;
@@ -1299,10 +1356,45 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         state.confinementGain = gain;
 
+        // With `pressedInterlock`, a crack that slides rides up on its aggregate, and where it is
+        // held from opening, its faces press together: by Walraven and Reinhardt's fit (eq. 1b),
+        // sigma = C_sigma(w) delta - f_cc / 20 for a crack w mm open slid by delta mm. Only on open
+        // cracks: one whose faces already bear carries its compression by the law above. The
+        // opening is the plane's present one, from its normal strain alone, and the slide its
+        // two shear strains, each over the plane's band.
+        float cube = m.compressiveStrength / 0.8e6f;
+        float3 openNow = float3(0.01f);  // each cracked plane's present opening, mm
+        if (u.pressedInterlock != 0 && joints == 0u && !turning) {
+            for (int i = 0; i < 3; ++i) {
+                if (history[i] <= planeOnset[i]) {
+                    continue;
+                }
+                openNow[i] = max((uniaxial[i] - planeOnset[i]) * planeBand[i] * 1000.0f, 0.01f);
+                if (squeeze[i] > 0.0f) {
+                    continue;
+                }
+                float2 slide = 2.0f * float2(strain[(i + 1) % 3][i], strain[i][(i + 2) % 3]);
+                float delta = length(slide) * planeBand[i] * 1000.0f;
+                float2 slopes = walravenSlopes(openNow[i], cube);
+                normalStress[i] -= max(slopes.y * delta - cube / 20.0f, 0.0f) * 1e6f;
+            }
+        }
+
         // Shear across cracked planes is carried by aggregate interlock, which weakens as the
         // crack widens (Vecchio and Collins, modified compression field theory), and by the
         // bars that cross the crack.
         float3 barRatio = float3(steel[compact].ratio);
+        float3x3 crackRate = workTraced ? transpose(frame) * strainRate * frame : float3x3(0.0f);
+        if (workTraced) {
+            for (int j = 0; j < 3; ++j) {
+                float2 limits = crushStrains(compressionFactor, confinement[j], m);
+                float cracked = (history[j] - planeOnset[j]) * planeBand[j];
+                uint channel = normalStress[j] >= 0.0f
+                    ? (cracked >= 1e-4f ? workTensionCracked : cracked > 0.0f ? workTensionHairline : workTensionNormal)
+                    : (crush[j] > limits.x ? workCompressionCrushed : workCompressionNormal);
+                power[channel] += normalStress[j] * crackRate[j][j];
+            }
+        }
         float3 shearStress;  // xy, yz, zx
         for (int pair = 0; pair < 3; ++pair) {
             int a = pair;
@@ -1316,12 +1408,26 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float stress = m.mu * (engineering - slip);
             float3 opening = history - planeOnset;
             float opened = max(opening[a], opening[b]);
+            // The cap's parts, for the work trace: interlock, dowel action and kinking.
+            float3 capParts = float3(0.0f);
+            bool capped = false;
             if (opened > 0.0f) {
                 // Its width as the crack's own: one gathered in a row of elements is as wide as
                 // its opening over that row, not over the crack spacing.
                 float band = opening[a] >= opening[b] ? planeBand[a] : planeBand[b];
                 float width = opened * band;
                 float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+                // Pressed, a crack carries more: eqs. 1a and 1b together give C_tau / C_sigma more
+                // shear for each unit of stress across it, up to half the concrete's compressive
+                // strength. (The modified compression field theory's v_max, the cap over 0.18,
+                // held the most restrained push-off specimen to 6.3 MPa where it carried 9.9.)
+                if (u.pressedInterlock != 0 && joints == 0u) {
+                    int pressedPlane = opening[a] >= opening[b] ? a : b;
+                    float pressure = max(-normalStress[pressedPlane], 0.0f);
+                    float2 slopes = walravenSlopes(openNow[pressedPlane], cube);
+                    interlock = min(interlock + slopes.x / slopes.y * pressure, max(interlock, 0.5f * unconfined));
+                }
+                capParts.x = interlock;
                 // The crack's shear stiffness: a fixed share of the concrete's, or, measured on
                 // cracks in plain concrete by Walraven and Reinhardt (1981), k = 1.8 w^-0.8 +
                 // (0.234 w^-0.707 - 0.20) f_cc MPa per mm of slip for a crack w mm wide in concrete
@@ -1359,6 +1465,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
                     float yield = m.steelStress[0];
                     interlock += m.dowelFactor * 1.65f * crossing * sqrt(m.compressiveStrength * yield);
+                    capParts.y = interlock - capParts.x;
                     // Kinking: slid by s, a bar debonded over a length L either side of the crack
                     // is stretched to sqrt(1 + (s/L)^2) - 1, and its tension leans along the
                     // slide. Stretched past rupture by it, the bars there have broken.
@@ -1373,10 +1480,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                         float tension = stretch <= elastic ? m.steelModulus * stretch
                                                            : steelYield(plasticStretch, m, slope);
                         interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
+                        capParts.z = interlock - capParts.x - capParts.y;
                     }
                 }
                 float trial = retention * stress;
                 stress = clamp(trial, -interlock, interlock);
+                capped = trial != stress;
                 // A crack slid past what interlock and dowels hold has slid for good: the faces
                 // ride over, grind and jam, and do not spring back. Without this the crack was a
                 // nonlinear spring that returned all the work of sliding, and a beam hinged on a
@@ -1424,6 +1533,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 state.jointSlip[pair] = 0.0f;  // turning axes: no slip in axes that move
             }
             shearStress[pair] = stress;
+            if (workTraced) {
+                float shearPower = stress * 2.0f * crackRate[b][a];
+                // Pressed shut: compression across the wider-open of the two planes.
+                bool pressed = normalStress[opening[a] >= opening[b] ? a : b] < 0.0f;
+                if (opened <= 0.0f || jointed) {
+                    power[workUncrackedShear] += shearPower;
+                } else if (!capped) {
+                    power[pressed ? workCrackShearPressed : workCrackShear] += shearPower;
+                } else {
+                    float total = max(capParts.x + capParts.y + capParts.z, 1e-30f);
+                    power[pressed ? workInterlockPressed : workInterlock] += shearPower * capParts.x / total;
+                    power[workDowel] += shearPower * capParts.y / total;
+                    power[workKink] += shearPower * capParts.z / total;
+                }
+            }
         }
         if (joints != 0u) {
             state.crackStrain = history;
@@ -1513,6 +1637,23 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // Bare: the concrete is gone, and only the bars below carry.
         if (bare) {
             material = float3x3(0.0f);
+        }
+        if (workTraced) {
+            // What the parts above leave of the concrete's work goes to the rest.
+            float concrete = 0.0f;
+            for (int c = 0; c < 3; ++c) {
+                concrete += dot(material[c], strainRate[c]);
+            }
+            if (bare) {
+                for (uint c = 0; c < workChannels; ++c) {
+                    power[c] = 0.0f;
+                }
+            }
+            float parts = 0.0f;
+            for (uint c = 0; c < workChannels; ++c) {
+                parts += power[c];
+            }
+            power[workOther] = concrete - parts;
         }
 
         // Smeared reinforcement: bars along the lattice axes, strained with the element. They
@@ -1605,6 +1746,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
         }
         state.steelPlastic = plastic;
+        if (workTraced) {
+            // The bars stretch as the concrete does, plus their slip: what the bond takes. (From
+            // their force through the element, per unit area of it.)
+            for (int j = 0; j < 3; ++j) {
+                power[workBars] += barForce[j] / (u.h * u.h) * (strainRate[j][j] + slipChangeRate[j] / u.h);
+                power[workBond] -= barForce[j] / (u.h * u.h) * slipChangeRate[j] / u.h;
+            }
+        }
         if (u.bondSlip != 0) {
             barForces[2 * compact] = float4(barForce, 0.0f);
             barForces[2 * compact + 1] = float4(bondLeft, 0.0f);
@@ -1655,6 +1804,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 steelCapacity += inclinedRatio * yield;
                 float3x3 outer = float3x3(inclined * inclined.x, inclined * inclined.y, inclined * inclined.z);
                 material += outer * (inclinedRatio * stress / root);
+                if (workTraced) {
+                    power[workBars] += inclinedRatio * stress / root * dot(inclined, strainRate * inclined);
+                }
             }
             state.inclinedPlastic = own;
         }
@@ -1846,6 +1998,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             f -= float3(state.hourglass[mode]) * gamma[mode][a];
         }
         out.force[a] = f;
+    }
+    if (workTraced) {
+        float hourglassPower = 0.0f;
+        for (uint mode = 0; mode < 4; ++mode) {
+            hourglassPower += dot(float3(state.hourglass[mode]), rate[mode]);
+        }
+        device float *own = work + workChannels * compact;
+        for (uint c = 0; c < workChannels; ++c) {
+            own[c] += power[c] * referenceVolume * dt;
+        }
+        own[workHourglass] += hourglassPower * dt;
+        own[workViscosity] -= viscous * trace * volume * dt;
     }
 
     // Pressure on faces that border the air or a failed element, on the deformed geometry: the

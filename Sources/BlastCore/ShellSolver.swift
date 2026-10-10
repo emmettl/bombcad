@@ -332,7 +332,7 @@ public final class ShellSolver {
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         var turned = true
-        nodeConstants.setConstantValue(&turned, type: .bool, index: 3)
+        nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
         turnedNodePipeline = { [library] in
             try? ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         }

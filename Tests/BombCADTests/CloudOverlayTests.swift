@@ -99,7 +99,9 @@ struct CloudOverlayTests {
         #expect(model.cloud == nil && !model.followingCloud)
     }
 
-    @Test("The path is drawn as lines: the track, the outlines until it stopped, and its drift")
+    @Test(
+        "The path is drawn as lines: the track, the outlines until it stopped and as it spread, and its drift"
+    )
     func lines() throws {
         let handOver = CloudHandOver(
             time: 0.1, mass: 700, volume: 4 / 3 * .pi * pow(8, 3), centre: SIMD3(30, 30, 5),
@@ -115,9 +117,25 @@ struct CloudOverlayTests {
         let lines = CloudOverlay.lines(cloud, eye: eye)
         #expect(lines.count % 2 == 0)
         let kinds = stride(from: 0, to: lines.count, by: 2).map { Int(lines[$0].w) }
-        // A segment of the track, and of its shadow on the ground, between each pair of samples.
+        // A segment of the track, and of its shadow on the ground, between each pair of samples,
+        // and lines down to the ground from where it stopped and from where it ended.
         #expect(kinds.filter { $0 == CloudOverlay.Kind.track.rawValue }.count == cloud.samples.count - 1)
-        #expect(kinds.filter { $0 == CloudOverlay.Kind.ground.rawValue }.count == cloud.samples.count)
+        #expect(kinds.filter { $0 == CloudOverlay.Kind.ground.rawValue }.count == cloud.samples.count + 1)
+        // As it spread, its ring at each half minute after it stopped, and at the end its ring and
+        // its outline from the side.
+        let last = try #require(cloud.samples.last)
+        #expect(CloudOverlay.spreadInterval(cloud) == 30 && last.thickness != nil)
+        let spreads = Int(((last.time - stopped.time) / 30).rounded(.up))
+        #expect(kinds.filter { $0 == CloudOverlay.Kind.spread.rawValue }.count == 64 * (spreads + 1))
+        let ends = stride(from: 0, to: lines.count, by: 2).filter {
+            Int(lines[$0].w) == CloudOverlay.Kind.spread.rawValue
+        }
+        .suffix(128).map { SIMD3<Float>(lines[$0].x, lines[$0].y, lines[$0].z) }
+        let middle = SIMD3<Float>(Float(last.position.x), Float(last.position.y), Float(last.height))
+        #expect(ends.allSatisfy { abs($0.z - middle.z) <= Float(last.halfDepth) * 1.001 })
+        #expect(
+            ends.map { simd_length(SIMD2($0.x - middle.x, $0.y - middle.y)) }.max()! > Float(last.radius)
+                * 0.99)
         // An outline at each minute until it stopped, 64 segments each, and two where it stopped.
         let outlines = Int((stopped.time - handOver.time) / 60) + 1
         #expect(kinds.filter { $0 == CloudOverlay.Kind.outline.rawValue }.count == 64 * outlines)
