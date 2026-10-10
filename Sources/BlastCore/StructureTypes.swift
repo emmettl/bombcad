@@ -1003,6 +1003,9 @@ struct StructureUniforms {
     var fluidDeepPatchOffset: UInt32 = 0
     var fluidDeepCellOffset: UInt32 = 0
     var pressedInterlock: UInt32 = 0
+    var gravityX: Float = 0
+    var gravityY: Float = 0
+    var gravityZ: Float = -1
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

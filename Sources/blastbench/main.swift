@@ -2301,7 +2301,7 @@ func runAnchorage() throws {
                 : flag("panel")
                     ? try AnchorageStudy.run(
                         device: device, base: .resting, mass: mass, standoff: standoff, duration: duration,
-                        elementSize: h, edges: base)
+                        elementSize: h, shells: shells, edges: base)
                     : try AnchorageStudy.run(
                         device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                         elementSize: h,

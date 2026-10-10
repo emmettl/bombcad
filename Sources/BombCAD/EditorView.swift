@@ -284,7 +284,7 @@ struct EditorView: View {
                                 }
                             }
                             Text(
-                                "Finite connections act on exposed lower faces of solids and lower edges of walls or vertical columns within this region. Keep the region a thin horizontal strip. It selects initial bearing points; the bearing plane extends horizontally after separation. A region on a vertical face or a horizontal shell slab needs an ideal clamp."
+                                "Finite connections act on exposed faces of solids, and on free edges, faces and beam ends or sides of shells, that face the joint within this region. Keep the region a thin strip along the joint. It selects initial bearing points; the joint's plane extends past the region after separation."
                             )
                             .font(.caption).foregroundStyle(.secondary)
                         }
