@@ -249,8 +249,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from
-   shapes or a DEM, solid in the air's mask on every level; see [Terrain](terrain.md). Next: cut
-   cells for its slopes, and terrain in thermal visibility and rigid contact.)
+   shapes or a DEM, solid in the air's mask on every level; it hides the fireball, carries ground
+   points, objects and the thermal paint; see [Terrain](terrain.md). Next: cut cells for its
+   slopes, and footings and the ground's connection on a slope.)
 16. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
    at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
    closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
