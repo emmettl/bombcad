@@ -109,3 +109,20 @@ shared raw SHA-256 is
 `a0e1eac4da0d49adf49b9852d65b8c6e8c4ead72e2d12457424ef4598d069c90`.
 This completes the bounded reconstruction policy comparison, while the distinct
 coupled/application/archive requirements above remain open.
+
+`Scripts/verify-qr-coupled-geometry.py` supplies a separate independent geometric
+integral check of the selected moving captures. A strictly contained rotating
+uniform cube has closed domain-complement volume and first/second moments;
+its translating closed surface has known area, normal integral and divergence
+moments. These formulas do not invoke production clipping or tetrahedral
+quadrature. The checker retains the full native endpoint/group data, checks
+partition/capacity and declared pose, and requires three coherent geometry
+corruptions to reject. This establishes the selected complete-domain identities;
+it does not certify each individual cut-cell fraction or measured geometry.
+
+The independent complete-domain geometry checker passes for both preliminary
+original/shared native captures: sixteen selected old/final endpoints per variant
+and all three capacity/covariance/surface-moment corruption controls. The same
+checker must replay the committed producer and physical-mini capture in the final
+durable evidence; the pressure-mode aggregate and per-cut-cell limitations above
+remain explicit.
