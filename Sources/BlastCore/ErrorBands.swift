@@ -190,8 +190,8 @@ public enum ValidationTables {
             id: "slabShell", low: 1.25, high: 1.25, document: "validation.md#summary",
             quote: "shells 135 mm (125%)"),
         Figure(
-            id: "beamMoment", low: 0.97, high: 0.99, document: "validation.md#summary",
-            quote: "peak moment 97–99%, failure at 38–52 mm against 42 mm"),
+            id: "beamMoment", low: 0.98, high: 1.01, document: "validation.md#summary",
+            quote: "peak moment 98–101%, failing at 53–57 mm on 12 elements"),
         Figure(
             id: "shearFine", low: 1.11, high: 1.15, document: "validation.md#summary",
             quote: "11–15% strong on fine meshes"),
@@ -206,7 +206,7 @@ public enum ValidationTables {
             quote: "within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3)"),
         Figure(
             id: "wuSmall", low: 0.4, high: 0.7, document: "validation.md#summary",
-            quote: "40–70% under 0.2–0.8 kg where the tests spalled"),
+            quote: "40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled"),
         Figure(
             id: "chamberPressure", low: 0.9, high: 1.6, document: "validation.md#summary",
             quote: "peak wall pressures 0.9 to 1.6 times those measured"),
@@ -215,7 +215,7 @@ public enum ValidationTables {
             quote: "the far face thrown 1.2–1.9 times as fast as the debris at first"),
         Figure(
             id: "roomDefault", low: 0.48, high: 1.14, document: "validation.md#summary",
-            quote: "48% to 114% of the design curve by default"),
+            quote: "48% to 114% by default"),
         Figure(
             id: "roomBurningHot", low: 0.98, high: 1.08, document: "validation.md#summary",
             quote: "98% to 108% with afterburning and hot air"),
@@ -228,22 +228,22 @@ public enum ValidationTables {
             quote: "Hot air without afterburning gives 43% to 91%."),
         Figure(
             id: "rockingMoment", low: 0.89, high: 1.11, document: "validation.md#summary",
-            quote: "moment within 11% to 14 mrad of rotation, 5–16% low beyond"),
+            quote: "moment within 11% to 14 mrad of rotation"),
         Figure(
-            id: "rockingMomentLarge", low: 0.84, high: 0.95, document: "validation.md#summary",
-            quote: "moment within 11% to 14 mrad of rotation, 5–16% low beyond"),
+            id: "rockingMomentLarge", low: 0.83, high: 0.94, document: "validation.md#summary",
+            quote: "6–17% low beyond"),
         Figure(
-            id: "rockingSettlement", low: 1.7, high: 2.2, document: "validation.md#summary",
-            quote: "settlement 1.7–2.2 times that measured"),
+            id: "rockingSettlement", low: 1.7, high: 2.3, document: "validation.md#summary",
+            quote: "settlement 1.7–2.3 times that measured"),
         Figure(
             id: "shakenSettlement", low: 0.6, high: 1.5, document: "validation.md#summary",
-            quote: "settlement 0.6–1.5 times, peak rotation within 22% where the test did not lurch one way"),
+            quote: "settlement 0.6–1.5 times"),
         Figure(
             id: "shakenRotation", low: 0.78, high: 1.22, document: "validation.md#summary",
-            quote: "settlement 0.6–1.5 times, peak rotation within 22% where the test did not lurch one way"),
+            quote: "peak rotation within 22% where the test did not lurch one way"),
         Figure(
-            id: "fireballTotal", low: 3, high: 5, document: "validation.md#summary",
-            quote: "100 t, whose total the volume exceeds three to five times"),
+            id: "fireballTotal", low: 3, high: 5.5, document: "validation.md#summary",
+            quote: "exceeds three to five and a half times"),
         Figure(
             id: "fireballCooling", low: 2, high: 3, document: "thermal-radiation.md#limitations",
             quote: "three to five times (two to three with the gas cooling)"),
@@ -254,8 +254,8 @@ public enum ValidationTables {
             id: "ventedBackWall", low: 0.55, high: 0.6, document: "validation.md#summary",
             quote: "lit at the back wall, 55–60% of the measured peaks"),
         Figure(
-            id: "ventedMiddle", low: 0.143, high: 0.2, document: "validation.md#summary",
-            quote: "lit in the middle, a fifth to a seventh"),
+            id: "ventedMiddle", low: 0.143, high: 0.167, document: "validation.md#summary",
+            quote: "lit in the middle, a sixth to a seventh"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
@@ -625,7 +625,8 @@ extension StandingScene {
                         high: "too flexible",
                         validity:
                             "one slab under a blast, 4 to 32 solid elements through (\(through) here); not "
-                            + "converged (113, 121, 124 mm on 8, 16, 32), and 93–99% under the earlier rate laws",
+                            + "converged (113, 121, 124 mm on 8, 16, 32; a strip of it runs away on 32), and 93–99% under "
+                            + "the earlier rate laws",
                         check: "A reinforced slab under a blast"))
             } else {
                 unbanded.append(

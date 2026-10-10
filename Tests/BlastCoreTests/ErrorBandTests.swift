@@ -63,7 +63,7 @@ private func numbers(_ text: String) -> [Double] {
     }
     let words: [String: Double] = [
         "a third": 33, "a half": 50, "twice": 200, "three": 300, "five": 500, "two": 200, "a thirtieth": 3.33,
-        "a fiftieth": 2, "a fifth": 20, "a seventh": 14.3,
+        "a fiftieth": 2, "a fifth": 20, "a sixth": 16.7, "a seventh": 14.3, "five and a half": 550,
     ]
     for (word, value) in words where text.contains(word) { found.append(value) }
     return found
