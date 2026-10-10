@@ -542,6 +542,7 @@ public final class BlastSolver {
             level.gravityTable = gravityTable(scale: level.parentScale * level.ratio)
             level.parentGravityTable = gravityTable(scale: level.parentScale)
             level.viscosity = mixingViscosity()
+            level.burnLimit = configuration.afterburnLimit != nil
         }
     }
 
@@ -2150,6 +2151,10 @@ public final class BlastSolver {
             uniforms.regionNz = UInt32(grid.nz)
             uniforms.maxStep = experimentalBoxMaxStep
         }
+        if let limit = configuration.afterburnLimit {
+            uniforms.ignitionTemperature = limit.ignitionTemperature
+            uniforms.limitFlameTemperature = limit.limitFlameTemperature
+        }
         if let mixing = configuration.mixing {
             uniforms.mixingCoefficient = mixing.coefficient
             uniforms.mixingPrandtl = mixing.prandtl
@@ -2168,13 +2173,15 @@ public final class BlastSolver {
         let model = configuration.airModel
         let gravity = configuration.gravity != nil
         let mixing = configuration.mixing != nil
-        let key = 4 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0)
+        let limit = configuration.afterburnLimit != nil
+        let key = 8 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
         constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
         if gravity { constants = ShaderLibrary.withGravity(constants) }
         if mixing { constants = ShaderLibrary.withMixing(constants) }
+        if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }

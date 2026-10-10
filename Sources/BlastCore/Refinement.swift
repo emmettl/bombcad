@@ -62,6 +62,8 @@ final class AirRefinement {
     var parentGravityTable: MTLBuffer?
     /// The coarse cells' eddy viscosity while the air has sub-grid mixing.
     var viscosity: MTLBuffer?
+    /// Whether afterburning has its extinction limit.
+    var burnLimit = false
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -639,8 +641,9 @@ final class AirRefinement {
     {
         let gravity = gravityTable != nil
         let mixing = viscosity != nil && name == "refineSweep"
-        guard gravity || mixing else { return base }
-        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing)"
+        let limit = burnLimit && name == "refineSweep"
+        guard gravity || mixing || limit else { return base }
+        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing) \(limit)"
         if let pipeline = gravityPipelines[key] { return pipeline }
         var constants = MTLFunctionConstantValues()
         if var value = model?.rawValue {
@@ -648,6 +651,7 @@ final class AirRefinement {
         }
         if gravity { constants = ShaderLibrary.withGravity(constants) }
         if mixing { constants = ShaderLibrary.withMixing(constants) }
+        if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         guard let pipeline = try? ShaderLibrary.pipeline(name, in: library, constants: constants) else {
             return base
         }
@@ -657,7 +661,7 @@ final class AirRefinement {
 
     private func sweepPipeline(for model: AirModel?) -> MTLComputePipelineState {
         guard let model else { return withGravity(sweepPipeline, "refineSweep") }
-        if gravityTable != nil || viscosity != nil {
+        if gravityTable != nil || viscosity != nil || burnLimit {
             return withGravity(sweepPipeline, "refineSweep", model: model)
         }
         if let pipeline = sweepPipelines[model] { return pipeline }

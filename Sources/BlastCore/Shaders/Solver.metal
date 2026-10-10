@@ -107,6 +107,10 @@ struct SolverUniforms {
     // and Schmidt numbers.
     float mixingCoefficient;
     float mixingPrandtl;
+    // Afterburning's extinction limit (see `afterburntHere`): the ignition temperature, and the
+    // limit flame temperature a mixture must reach by burning.
+    float ignitionTemperature;
+    float limitFlameTemperature;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.
@@ -182,6 +186,9 @@ constant bool airGravity = is_function_constant_defined(airGravityConstant) && a
 // Sub-grid mixing, when a kernel is compiled for it (see `mixingFace`), likewise.
 constant bool airMixingConstant [[function_constant(6)]];
 constant bool airMixing = is_function_constant_defined(airMixingConstant) && airMixingConstant;
+// Afterburning's extinction limit, when a kernel is compiled for it (see `afterburntHere`).
+constant bool burnLimitConstant [[function_constant(7)]];
+constant bool burnLimit = is_function_constant_defined(burnLimitConstant) && burnLimitConstant;
 
 // Dissociating air: thermally perfect air whose N2 and O2 also split into atoms once hot, in
 // equilibrium, as Lighthill's ideal dissociating gas. For each, a mass fraction alpha of the
@@ -864,6 +871,33 @@ static inline float burnt(float2 species, float dt, constant SolverUniforms &u) 
     return min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-dt * u.afterburnRate));
 }
 
+// Fuel burnt over `dt` in a cell of density `rho`, momentum `momentum` and energy `energy`
+// holding `species`: as `burnt`, but with the extinction limit compiled in, only where the
+// mixture can keep a flame going. It must be hot enough for the products' carbon monoxide to
+// oxidise faster than the gas mixes, `ignitionTemperature` (Dryer and Glassman's rate puts that
+// near 800 K for a fireball's mixing times); and burning all the fuel its oxygen allows must take
+// it to `limitFlameTemperature`, the flame temperature mixtures at their flammability limits
+// reach (about 1,500 K, Zabetakis), which makes a lean, cold mixture too dilute and a rich one too
+// short of oxygen to burn, and widens the limits as the mixture warms, as real limits do.
+static inline float afterburntHere(float2 species, float rho, float3 momentum, float energy, float dt,
+                                   constant SolverUniforms &u) {
+    if (!burnLimit) {
+        return burnt(species, dt, u);
+    }
+    float density = max(rho, u.densityFloor);
+    float internal = energy - 0.5f * dot(momentum, momentum) / density;
+    float pressure = gasPressure(density, internal, u.airModel, u.gamma);
+    float temperature = pressure / (density * airGasConstant);
+    if (!(temperature >= u.ignitionTemperature)) {
+        return 0.0f;
+    }
+    // The flame temperature at fixed volume, from the gas's heat capacity at its state.
+    float g = gasGamma(density, pressure, u.airModel, u.gamma);
+    float heat = density * airGasConstant / (g - 1.0f);
+    float flame = temperature + min(species.x, species.y / u.oxygenPerFuel) * u.afterburnEnergy / heat;
+    return flame >= u.limitFlameTemperature ? burnt(species, dt, u) : 0.0f;
+}
+
 static inline void storeFlux(device float *registers, uint slot, Flux f, uint axis, float dt) {
     float3 momentum = fromSweep(f.momentum, axis);
     registers[slot] = f.mass * dt;
@@ -1110,7 +1144,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             coarseSpeciesFlux[speciesRegister + 1] = through.y;
         }
         if (u.finalSweep != 0 && u.afterburnEnergy > 0.0f) {
-            float fuel = burnt(species, control.dt, u);
+            float fuel = afterburntHere(species, rho, momentum, energy, control.dt, u);
             species.x -= fuel;
             species.y -= fuel * u.oxygenPerFuel;
             energy += fuel * u.afterburnEnergy;

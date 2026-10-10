@@ -112,6 +112,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// For benchmarks: the two outermost cells on each x and y side copy the far side's before
     /// every sweep, so that the rest of the grid is periodic in x and y. Not for scenes.
     public var periodicSides = false
+    /// With afterburning, an extinction limit: the products burn only where the mixture can keep a
+    /// flame going (see `AfterburnLimit`); nil, the default, for wherever they meet oxygen.
+    public var afterburnLimit: AfterburnLimit?
 
     public init() {}
 }
@@ -218,6 +221,8 @@ struct SolverUniforms {
     var deflagration: UInt32 = 0
     var mixingCoefficient: Float = 0
     var mixingPrandtl: Float = 0
+    var ignitionTemperature: Float = 0
+    var limitFlameTemperature: Float = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

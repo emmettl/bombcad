@@ -218,6 +218,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case radiativeCooling
     case gravity
     case subgridMixing
+    case afterburnLimit
     case shockRefinement
     case twoLevelRefinement
     case mappedCharge
@@ -283,6 +284,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .radiativeCooling: return config.radiativeCooling != nil
         case .gravity: return config.gravity != nil
         case .subgridMixing: return config.mixing != nil
+        case .afterburnLimit: return config.afterburning && config.afterburnLimit != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
         case .mappedCharge: return config.mappedCharge
@@ -418,6 +420,11 @@ public enum StandingTable {
                     + "and blast loads within 0.5%, but on metre cells it changes a mixing layer, a rising "
                     + "thermal and Dial Pack's fireball little: the grid's resolved eddies do the mixing.",
                 document: "air-blast-model.md#sub-grid-mixing")
+        case .afterburnLimit:
+            return Entry(
+                title: "Afterburning's extinction limit", affects: air + [.thermal, .cloud], limit: nil,
+                note: "LIMIT_NOTE",
+                document: "air-blast-model.md#an-extinction-limit-for-afterburning")
         case .shockRefinement:
             return Entry(
                 title: "Shock refinement", affects: air + structure + [.envelopeExposure], limit: nil,
@@ -740,6 +747,7 @@ public enum StandingTable {
         "SolverConfiguration.gravity": .option([.gravity]),
         "SolverConfiguration.mixing": .option([.subgridMixing]),
         "SolverConfiguration.periodicSides": .numerical,
+        "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,

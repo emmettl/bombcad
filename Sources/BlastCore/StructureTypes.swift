@@ -1146,6 +1146,17 @@ enum ShaderLibrary {
     /// (`airMixingConstant` in Solver.metal).
     static let airMixingConstant = 6
 
+    /// Index of the optional function constant that compiles afterburning's extinction limit into
+    /// a kernel (`burnLimitConstant` in Solver.metal).
+    static let burnLimitConstant = 7
+
+    /// `constants` with afterburning's extinction limit compiled in.
+    static func withBurnLimit(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: burnLimitConstant)
+        return constants
+    }
+
     /// `constants` with sub-grid mixing compiled in.
     static func withMixing(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
         var on = true

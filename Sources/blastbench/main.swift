@@ -499,12 +499,23 @@ func chosenMixing() -> SubgridMixing? {
     return mixing
 }
 
+/// With `--burn-limit`, afterburning's extinction limit, of ignition temperature `--ignition` and
+/// limit flame temperature `--limit-flame` (K).
+func chosenBurnLimit() -> AfterburnLimit? {
+    guard flag("burn-limit") else { return nil }
+    var limit = AfterburnLimit()
+    if let value = option("ignition").flatMap({ Float($0) }) { limit.ignitionTemperature = value }
+    if let value = option("limit-flame").flatMap({ Float($0) }) { limit.limitFlameTemperature = value }
+    return limit
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
+    configuration.afterburnLimit = chosenBurnLimit()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if let air = chosenAirModel() {
@@ -611,6 +622,7 @@ func runValidation() throws {
         solver.configuration.radiativeCooling = try? chosenCooling()
         solver.configuration.gravity = chosenGravity()
         solver.configuration.mixing = chosenMixing()
+        solver.configuration.afterburnLimit = chosenBurnLimit()
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -3058,6 +3070,7 @@ func runDialPack() throws {
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
+    configuration.afterburnLimit = chosenBurnLimit()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
@@ -3092,7 +3105,8 @@ func runDialPack() throws {
             mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
             (configuration.radiativeCooling == nil ? "" : ", the gas cooling")
                 + (configuration.gravity == nil ? "" : ", with gravity")
-                + (configuration.mixing == nil ? "" : ", sub-grid mixing")))
+                + (configuration.mixing == nil ? "" : ", sub-grid mixing")
+                + (configuration.afterburnLimit == nil ? "" : ", afterburning's extinction limit")))
     var lines = [
         "time_s,diameter_m,temperature_K,hottest_K,centre_m,radiated_W,gas_lost_J,"
             + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(

@@ -18,3 +18,22 @@ public struct SubgridMixing: Sendable, Hashable, Codable {
         self.prandtl = prandtl
     }
 }
+
+/// An extinction limit for afterburning (see `afterburntHere` in Solver.metal and
+/// docs/air-blast-model.md#an-extinction-limit-for-afterburning): the products burn only where the
+/// mixture can keep a flame going, at least `ignitionTemperature` hot and able, by burning all the
+/// fuel its oxygen allows, to reach `limitFlameTemperature`. Off by default (nil in
+/// `SolverConfiguration`), when they burn wherever they meet oxygen.
+public struct AfterburnLimit: Sendable, Hashable, Codable {
+    /// K: below it the products' carbon monoxide oxidises more slowly than the gas mixes (Dryer and
+    /// Glassman's global rate, for a fireball's mixing times of tens of milliseconds to a second).
+    public var ignitionTemperature: Float = 800
+    /// K: the flame temperature of mixtures at their flammability limits (Zabetakis), which a
+    /// mixture must reach by burning.
+    public var limitFlameTemperature: Float = 1500
+
+    public init(ignitionTemperature: Float = 800, limitFlameTemperature: Float = 1500) {
+        self.ignitionTemperature = ignitionTemperature
+        self.limitFlameTemperature = limitFlameTemperature
+    }
+}
