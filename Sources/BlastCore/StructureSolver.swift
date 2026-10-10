@@ -1044,6 +1044,9 @@ public final class StructureSolver {
         public var maxOpening: Float = 0
         /// The deepest the ground has yielded and let the base settle for good, in metres.
         public var maxSettlement: Float = 0
+        /// The work the connection's sliding has dissipated, in joules (solid elements' ground and
+        /// support connections not on a footing).
+        public var dissipated: Float = 0
     }
 
     /// The connection's state after the last step, or nil when the base is clamped or free.
@@ -1060,6 +1063,7 @@ public final class StructureSolver {
                 let state = anchors[3 * n]
                 let force = SIMD3(anchors[3 * n + 1].x, anchors[3 * n + 1].y, anchors[3 * n + 1].z)
                 summary.maxSettlement = max(summary.maxSettlement, -anchors[3 * n + 2].x)
+                summary.dissipated += anchors[3 * n + 2].y
                 let index = Int(lattice[n])
                 let (i, j) = (index % (ex + 1), (index / (ex + 1)) % (ey + 1))
                 let k = index / ((ex + 1) * (ey + 1))

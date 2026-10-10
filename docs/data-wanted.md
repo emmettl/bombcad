@@ -96,7 +96,7 @@ titles; the authors, journals and years should be enough to find each one.
 
 ## 3. Formulae quoted from memory
 
-Nine values in the code were written from memory and should be checked against the original.
+Ten values in the code were written from memory and should be checked against the original.
 
 - **A rigid footing's static stiffness and Wolf's cones.** G. Gazetas, "Formulas and charts for
   impedances of surface and embedded foundations", *Journal of Geotechnical Engineering* 117(9)
@@ -106,6 +106,12 @@ Nine values in the code were written from memory and should be checked against t
   stratum factors (as quoted by Gazetas), used for rocking over a layer. Used in
   `FootingImpedance`; the vertical and horizontal stiffness of a square agree with the rigid
   disk's within 1% and its rocking within 9%, which checks the memory a little.
+- **Embedded footings' stiffness.** The same paper's Table 2 (and G. Mylonakis, S. Nikolaou and
+  G. Gazetas, *Soil Dynamics and Earthquake Engineering* 26 (2006), Table 1): the trench and
+  sidewall factors for vertical and horizontal stiffness, the rocking factors, and which side
+  of the footing his horizontal factors' (h A_w / B L²) and (h A_w / L B²) belong to. Used in
+  `Embedment.gazetasFactors`. And a measured embedded footing: FoRCy's TRISEE series (1 g,
+  embedded on Gabbia sand) is in the database already obtained, not yet downloaded.
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
@@ -267,3 +273,11 @@ Supplied by hand during development, and now in use:
   rocked slowly, compared with `Footing` in [footings](structural-model.md#footings)
   (`blastbench rocking`, data in `Samples/FoRCy`). Its dynamic sister, FoRDy, and the other
   series (PWRI's 1 g footings on Toyoura sand, TRISEE's embedded ones) are not used yet.
+- H. Rodrigues, A. Arêde, A. Furtado, R. Sousa and H. Varum's twelve cyclic tests of a precast
+  beam seated on a column corbel (Mendeley Data, doi:10.17632/46xpgbhsw6.1, CC BY 4.0), fetched
+  on 10 October 2026 with the user's agreement: concrete on concrete, neoprene pads and dowels
+  under three axial loads, compared with a seat's joint (`blastbench precast`, data in
+  `Samples/PrecastSeat`). Still wanted: the paper (N. Batalha et al., *Earthquake Eng. Struct.
+  Dyn.*, 2022, doi:10.1002/eqe.3606), whose repository copy is restricted, for the seat's
+  length, the pads' size and stiffness and the concrete's and dowels' strengths, which the dowel
+  tests need.

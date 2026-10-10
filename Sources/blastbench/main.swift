@@ -32,6 +32,8 @@ import simd
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
@@ -2236,6 +2238,41 @@ func runSlab() throws {
     }
 }
 
+/// A precast beam's seat cycled along its corbel against Batalha et al.'s tests (`PrecastSeatTest`).
+func runPrecast() throws {
+    let tests = (option("tests") ?? "i0_50,i0_100,i0_150").split(separator: ",").map { "spc_" + $0 }
+    let friction = option("friction").flatMap { Float($0) } ?? 0.7
+    let limit = option("reversals").flatMap { Int($0) }
+    let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
+    print(
+        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+            + (limit.map { ", first \($0) reversals" } ?? ""))
+    print(
+        pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
+            + pad("energy, model", 15)
+            + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
+    for test in tests {
+        var law = Anchorage.resting(friction: friction)
+        // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
+        law.shearStiffness = option("pad").flatMap { Float($0) }
+        // `--normal 1e9` the joint's stiffness across, in Pa/m.
+        law.normalStiffness = option("normal").flatMap { Float($0) }
+        let r = try PrecastSeatTest.run(
+            device: device, test: test, samples: folder, law: law, reversals: limit)
+        if let out = option("history") {
+            try r.history.map { "\($0.x),\($0.y)" }.joined(separator: "\n").write(
+                toFile: out.replacingOccurrences(of: "%", with: test), atomically: true, encoding: .utf8)
+        }
+        print(
+            pad(test, 13) + pad("\(format(Double(PrecastSeatTest.axialLoad(of: test)) / 1000, 0)) kN", 8)
+                + pad("\(format(Double(r.sliding) / 1000, 1)) kN", 16)
+                + pad("\(format(Double(r.measuredSliding) / 1000, 1)) kN", 10)
+                + pad("\(format(Double(r.energy) / 1000, 1)) kJ", 15)
+                + pad("\(format(Double(r.measuredEnergy) / 1000, 1)) kJ", 10)
+                + pad("\(format(Double(r.lag) * 1000, 2)) mm", 9) + pad("\(format(r.wallSeconds)) s", 9))
+    }
+}
+
 /// A precast beam seated on corbels, one of its columns struck away from the span
 /// (`DroppedSpanStudy`).
 func runSeat() throws {
@@ -2612,6 +2649,7 @@ do {
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "seat": try runSeat()
+    case "precast": try runPrecast()
     case "thermal": try runThermal()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")

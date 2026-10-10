@@ -215,6 +215,40 @@ element of tributary area and goes first. With starter bars through the pad (`--
 the beam at 12 m/s on a 100 mm seat drops too: the bars pull it after the column until they
 break. This shows the mechanism; it is not a validation.
 
+**Measured seats** (`PrecastSeatTest`, `blastbench precast`, data in
+[Samples/PrecastSeat](../Samples/PrecastSeat/README.md)). N. Batalha, H. Rodrigues, A. Arêde,
+A. Furtado, R. Sousa and H. Varum (2022) cycled the end of a full-scale precast beam on its
+column's corbel along the seat, at 0.2 mm/s in cycles growing to about ±48 mm, under an axial
+load of 50, 100 or 150 kN: concrete on concrete, on one or two neoprene pads, or with two 16 mm
+dowels. The model is the seat as a stiff block resting on a bearing with the given law, for a
+stiff column's corbel, pushed by an actuator block that follows the test's reversals at up to
+0.25 m/s through a joint between parts that pushes and pulls only; the seat is damped in
+proportion to its mass at 3,000/s, which stops the actuator's pin ringing (undamped, it made the
+seat stick and slip by turns and its bearing dissipate half what it should) and leaves the
+bearing's own work alone. That work, accumulated on the GPU, is compared with the test's ∮ F du
+over its whole history, and the force at which it slides with the test's median beyond 5 mm:
+
+| Test | Law | Slides at, model / test | Energy, model / test |
+|---|---|---|---|
+| concrete, 50 kN | resting, μ 0.7 | 35.0 / 34.7 kN | 111 / 109 kJ |
+| concrete, 100 kN | resting, μ 0.7 | 69.8 / 68.2 kN | 213 / 207 kJ |
+| concrete, 150 kN | resting, μ 0.7 | 104.8 / 101.8 kN | 243 / 233 kJ |
+| concrete, 100 kN | resting, μ 0.6 (the preset) | 60.0 / 68.2 kN | 183 / 207 kJ |
+| one pad, 50, 100, 150 kN | resting, μ 0.5 | 25, 50, 75 / 24, 45, 59 kN | 80, 156, 229 / 75, 127, 162 kJ |
+| two pads, 50, 100, 150 kN | resting, μ 0.5 | 25, 50, 75 / 27, 47, 62 kN | 80, 156, 229 / 78, 121, 149 kJ |
+| dowels, 100 and 150 kN | resting, μ 0.7 | 70, 105 / 98–129 kN | 101–119 / 43–57 kJ |
+
+On concrete the seat slides at 0.68 to 0.69 of its load, flat to ±48 mm with no loss, and a
+resting joint with Eurocode 2's 0.7 for a rough joint follows each test within 2–4% in energy;
+the preset's 0.6 is 11% low. On neoprene the seat slides at 0.48 of the load at 50 kN, falling to
+0.39 at 150 kN and with wear over the cycles: one coefficient matches the light load and
+overstates the heavy ones by 23–53%; the law has neither friction that falls with pressure nor
+wear of the pad. With dowels the seat's force rises with slip to 160–200 kN at 20–25 mm one way
+and stays near friction (0.4 of the load) the other, the dowels bending against the corbel's
+edge; the law has nothing of the kind, and Rasmussen's 1.3 d² √(f_c f_y) (82 kN for the two,
+with the strengths assumed) only bounds the first millimetres. The seat's length, the pads and
+the materials are in the paper, not read; the model here needs none of them.
+
 `blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
 ground between two columns that do not move, its vertical edges tied to them by each connection
 in turn, under the same pulse (sway at the top's middle):

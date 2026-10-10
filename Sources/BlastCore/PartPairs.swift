@@ -33,6 +33,8 @@ public final class PartPairs {
         public var maxOpening: Float = 0
         /// The bearing area still seated, in m².
         public var seatedArea: Float = 0
+        /// The work the pairs' sliding has dissipated, in joules.
+        public var dissipated: Float = 0
     }
 
     let count: Int
@@ -120,6 +122,7 @@ public final class PartPairs {
                 if remaining <= 0 { summary.separated += 1 }
                 let unseated = values[3 * p + 2].y != 0
                 if unseated { summary.unseated += 1 } else { summary.seatedArea += pair.area }
+                summary.dissipated += values[3 * p + 2].w
                 summary.force += SIMD3(values[3 * p + 1].x, values[3 * p + 1].y, values[3 * p + 1].z)
                 summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(stored.y, stored.z)))
                 let relative = nodes[pair.owner].displacement - nodes[pair.partner].displacement

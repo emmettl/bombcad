@@ -2613,7 +2613,7 @@ float3 jointTraction(thread float4 &state, thread float &settlement, float3 disp
 
 // A lattice node's connection to the ground: three float4 per node, (tributary area, slip x,
 // slip y, wear), (the force the connection put on the node in the last substep, the largest
-// opening so far) and (the ground's settlement, unused). The area is zero for nodes without a
+// opening so far) and (the ground's settlement, the work sliding has dissipated, unused). The area is zero for nodes without a
 // connection. Updates the state and returns the force on the node.
 float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u, AnchorLaw law) {
     float4 stored = anchors[3 * index];
@@ -2621,11 +2621,17 @@ float3 anchorForce(device float4 *anchors, uint index, StructureNode node, const
     float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
     float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 force =
-        -area * jointTraction(state, settlement, float3(node.displacement), float3(node.velocity), damper, law);
+    float2 slipBefore = state.xy;
+    float3 traction = jointTraction(state, settlement, float3(node.displacement), float3(node.velocity), damper, law);
+    float3 force = -area * traction;
+    // The work its sliding has dissipated: the shear across the slip.
+    float3 normal = all(float3(law.normal[0], law.normal[1], law.normal[2]) == 0.0f)
+        ? float3(0.0f, 0.0f, 1.0f) : float3(law.normal[0], law.normal[1], law.normal[2]);
+    float dissipated = anchors[3 * index + 2].y
+        + area * length(state.xy - slipBefore) * length(traction - dot(traction, normal) * normal);
     anchors[3 * index] = float4(area, state.xyz);
     anchors[3 * index + 1] = float4(force, state.w);
-    anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);
+    anchors[3 * index + 2] = float4(settlement, dissipated, 0.0f, 0.0f);
     return force;
 }
 
@@ -2644,7 +2650,8 @@ static inline void jointAxes(float3 normal, thread float3 &along, thread float3 
 // Connections between two parts of the body (`Anchorage.betweenParts`): each pair ties a node of
 // one part to the node of the other straight across the gap between them, by the law acting on
 // their relative motion. Per pair, three float4 as an anchor's (area, slip x, slip y, wear),
-// (force on the first node, largest opening) and (settlement, off its seat, reduced mass, 0),
+// (force on the first node, largest opening) and (settlement, off its seat, reduced mass, the
+// work its sliding has dissipated, J),
 // and how far the seat reaches from the second node along each axis of the joint (+along,
 // -along, +other, -other). Run before the node pass, which gives the first node the force and the
 // second its opposite, so that the pair's momentum is exactly kept. Once the first node has slid
@@ -2684,7 +2691,12 @@ kernel void structurePairs(device const StructureNode *nodes [[buffer(0)]],
     float3 force = float3(0.0f);
     if (extra.y == 0.0f) {
         float damper = 2.0f * u.contactDamping * sqrt(law.kn * extra.z / area);
-        force = -area * jointTraction(state, settlement, displacement, velocity, damper, law);
+        float2 slipBefore = state.xy;
+        float3 traction = jointTraction(state, settlement, displacement, velocity, damper, law);
+        force = -area * traction;
+        float3 normal = all(float3(law.normal[0], law.normal[1], law.normal[2]) == 0.0f)
+            ? float3(0.0f, 0.0f, 1.0f) : float3(law.normal[0], law.normal[1], law.normal[2]);
+        extra.w += area * length(state.xy - slipBefore) * length(traction - dot(traction, normal) * normal);
     }
     pairState[3 * p] = float4(area, state.xyz);
     pairState[3 * p + 1] = float4(force, state.w);
