@@ -8,7 +8,8 @@ deformable structure. It lives in `Sources/BlastCore/BlastSolver.swift` and
 
 The three-dimensional compressible Euler equations for an ideal gas with a constant ratio of
 specific heats γ = 1.4, on a uniform Cartesian grid of cubic cells. There is no viscosity, heat
-conduction, gravity or chemistry. The conserved variables per cell are density, three momentum
+conduction, gravity or chemistry, and no radiation unless [radiative cooling](#radiative-cooling)
+is on. The conserved variables per cell are density, three momentum
 components and total energy, stored as five single-precision numbers.
 
 ## Numerical scheme
@@ -165,6 +166,24 @@ It costs 3.6 times as long as thermally perfect air. It is therefore an option, 
 the app's "Afterburning and hot air" switch. Where it would matter, within a charge diameter
 or two, the products, still treated as air, and the cells, which resolve no detail of the
 fireball, matter more.
+
+### Radiative cooling
+
+`SolverConfiguration.radiativeCooling` (`--radiate` in `blastbench`; off by default) takes from
+the luminous gas the heat it radiates. Every fourth step, each cell at least 1,500 K hot absorbs
+and emits as the [thermal radiation's volume](thermal-radiation.md#the-gas-losing-what-it-radiates)
+takes it to, grey gas and the unburnt products' soot; the radiance is carried through the box
+round those cells along the lattice's 26 directions, and each cell loses what it emits less what
+it absorbs, κ(4πB − G), exactly what the beams carry away (the discrete transfer method of
+Lockwood and Shah). It is a source in the energy equation, taken after the step's sweeps, so it
+touches no flux; refined cells lose what their coarse cell loses a volume, which keeps the levels
+conservative across their edges. The energy radiated is kept as `BlastSolver.radiatedEnergy`.
+
+With afterburning and hot air it moves every Kingery–Bulmash incident and reflected impulse by
+0.2% or less and every peak by 0.4% or less, and lowers a closed room's gas pressure after 80 ms by
+2% to 4%, the heat the walls take; the street's fireball then radiates 12.8% of the charge's
+energy by 170 ms rather than 21%. It costs about 5% more a step, and saves about as much in
+steps, the cooler gas allowing longer ones.
 
 ## Skipping still air
 
@@ -367,7 +386,8 @@ UFC 3-340-02, lowest for light charges.
    gauge.
 4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
    or as thermally perfect air, so the fireball's composition, and its temperature, are not
-   realistic.
+   realistic. It loses the heat it radiates only with radiative cooling on, and then only above
+   the luminous temperature, as a grey gas with soot, into black, cold surroundings.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
    ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
    does; see the structural model's coupling notes.
@@ -401,6 +421,10 @@ UFC 3-340-02, lowest for light charges.
   ground (160–180%, p. 407), and the residual pressure of a charge burnt in a closed vessel
   (pp. 153–158). Read from a scan.
 
+- F. C. Lockwood and N. G. Shah, "A new radiation solution method for incorporation in general
+  combustion prediction procedures", *18th Symposium (International) on Combustion*, 1981,
+  1405–1414. The discrete transfer method behind the radiative cooling; M. F. Modest,
+  *Radiative Heat Transfer*, Academic Press, for the radiation's term in the energy equation.
 - E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer,
   2009. The MUSCL–Hancock scheme, slope limiting and the HLL and HLLC solvers.
 - E. F. Toro, M. Spruce and W. Speares, "Restoration of the contact surface in the HLL-Riemann

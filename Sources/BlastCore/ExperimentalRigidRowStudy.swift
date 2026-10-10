@@ -3,8 +3,9 @@ import Metal
 import simd
 
 /// A row of parked saloons side by side, the nearest side-on to a charge 0.3 m above the ground:
-/// the first populated case. The nearest car is coupled to the air as in the single-car study;
-/// the rest move only when struck (see `ExperimentalRigidWorldSimulation`). Each case also runs
+/// the first populated case. Every car is coupled to the air as in the single-car study, or only
+/// the nearest, the rest then moving only when struck (see `ExperimentalRigidWorldSimulation`).
+/// Each case also runs
 /// with every car held, so the air solver's own cost is measured on identical geometry apart
 /// from motion, coupling and contact.
 public enum ExperimentalRigidRowStudy {
@@ -15,17 +16,19 @@ public enum ExperimentalRigidRowStudy {
         public let peakTilt: Double
         public let finalTilt: Double
         public let outcome: ExperimentalRigidCarStudy.Outcome
+        /// The air's impulse on the car (N s); zero if it is not in the air.
+        public let airImpulse: SIMD3<Double>
     }
 
     public struct Result: Codable, Sendable {
         public let study: ExperimentalRigidCarStudy.Case
         public let chargeMass: Double
         public let held: Bool
+        /// Only the nearest car was in the air.
+        public let nearestOnly: Bool
         public let time: Double
         public let steps: Int
         public let cars: [Car]
-        /// Gas impulse on the nearest car (N s).
-        public let airImpulse: SIMD3<Double>
         public let wallSeconds: Double
         public let timings: ExperimentalRigidCarSimulation.Timings
         public let failure: String?
@@ -47,17 +50,17 @@ public enum ExperimentalRigidRowStudy {
 
     public static func run(
         device: MTLDevice, study: ExperimentalRigidCarStudy.Case, chargeMass: Double, held: Bool = false,
-        count: Int = 4, duration: Double = 2, recordEvery: Double? = nil,
+        count: Int = 4, nearestOnly: Bool = false, duration: Double = 2, recordEvery: Double? = nil,
         progress: ((Double) -> Void)? = nil
     ) throws -> (result: Result, frames: [RigidObjectDemo.Frame]) {
         let simulation = try ExperimentalRigidWorldSimulation(
             device: device, scenario: scenario(chargeMass: chargeMass, count: count),
             cellSize: study.cellSize, configuration: ExperimentalRigidCarStudy.configuration(for: study),
-            motion: held ? .held : .free, coupled: 0)
+            motion: held ? .held : .free, coupled: nearestOnly ? [0] : nil)
         let start = simulation.members
         var peakSpeed = [Double](repeating: 0, count: count)
         var peakTilt = [Double](repeating: 0, count: count)
-        var impulse = SIMD3<Double>.zero
+        var impulse = [SIMD3<Double>](repeating: .zero, count: count)
         var frames: [RigidObjectDemo.Frame] = []
         var next = 0.0
         var reported = 0.0
@@ -78,7 +81,7 @@ public enum ExperimentalRigidRowStudy {
                 failure = "\(error)"
                 break
             }
-            impulse += simulation.lastImpulse
+            for n in 0..<count { impulse[n] += simulation.lastAirImpulses[n] }
             for (n, member) in simulation.members.enumerated() {
                 peakSpeed[n] = max(peakSpeed[n], simd_length(member.velocity))
                 peakTilt[n] = max(peakTilt[n], member.tilt)
@@ -98,12 +101,12 @@ public enum ExperimentalRigidRowStudy {
             return Car(
                 name: pair.1.name, displacement: pair.1.centreOfMass - pair.0.centreOfMass,
                 peakSpeed: peakSpeed[n], peakTilt: peakTilt[n], finalTilt: tilt,
-                outcome: tilt > balance ? .overturned : tilt < 2 ? .upright : .tilted)
+                outcome: tilt > balance ? .overturned : tilt < 2 ? .upright : .tilted, airImpulse: impulse[n])
         }
         return (
             Result(
-                study: study, chargeMass: chargeMass, held: held, time: simulation.air.time,
-                steps: simulation.air.stepCount, cars: cars, airImpulse: impulse,
+                study: study, chargeMass: chargeMass, held: held, nearestOnly: nearestOnly,
+                time: simulation.air.time, steps: simulation.air.stepCount, cars: cars,
                 wallSeconds: Date.timeIntervalSinceReferenceDate - started, timings: simulation.timings,
                 failure: failure),
             frames

@@ -101,6 +101,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two levels, a third
     /// of it goes to the first and two thirds to the second.
     public var refinementMemory = 1 << 30
+    /// The luminous gas losing the heat it radiates (see `RadiativeCooling`); nil, the default,
+    /// for none. Read at `restart()`.
+    public var radiativeCooling: RadiativeCooling?
 
     public init() {}
 }
@@ -189,16 +192,8 @@ struct SolverUniforms {
     var refineAlpha: Float = 0
     var refineThreshold: Float = 0
     var refineMaxPatches: UInt32 = 0
+    /// The number of experimental rigid boxes in the air (see `ExperimentalBoxGeometry`).
     var experimentalBox: UInt32 = 0
-    var boxCentreX: Float = 0
-    var boxCentreY: Float = 0
-    var boxCentreZ: Float = 0
-    var boxMinX: Float = 0
-    var boxMinY: Float = 0
-    var boxMinZ: Float = 0
-    var boxMaxX: Float = 0
-    var boxMaxY: Float = 0
-    var boxMaxZ: Float = 0
     var couplingMapCount: UInt32 = 0
     var parentSide: UInt32 = 0
     var parentTileNx: UInt32 = 0
