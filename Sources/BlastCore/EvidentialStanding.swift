@@ -234,6 +234,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case fixedCrackAxes
     case noSecondCracks
     case noBareBars
+    case removesFragments
     case noCrackSlip
     case slipKeepsCracksClosed
     case bondSlip
@@ -300,6 +301,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .noSecondCracks:
             return !concrete.isEmpty && any { $0.crackAxes != .turningUntilOpen && !$0.secondCracks }
         case .noBareBars: return any { !$0.bareBars }
+        case .removesFragments: return !concrete.isEmpty && any { $0.removesFragments }
         case .noCrackSlip: return !concrete.isEmpty && any { !$0.crackSlip }
         case .slipKeepsCracksClosed: return !concrete.isEmpty && any { $0.crackSlip && !$0.slipWidensCracks }
         case .bondSlip: return any { $0.bondSlip != nil }
@@ -509,6 +511,13 @@ public enum StandingTable {
                 title: "Concrete removed with its bars", affects: [.structuralDamage], limit: .approximation,
                 note: "A holed member takes its smeared bars with it rather than hanging on them.",
                 document: "concrete-model.md#removal")
+        case .removesFragments:
+            return Entry(
+                title: "Fragments removed", affects: [.structuralDamage], limit: .approximation,
+                note: "Concrete cracked open two ways is removed; under close-in and contact charges it "
+                    + "holed Hupfauf's and Wu's slabs near size but also slabs that held, not "
+                    + "Chiquito's, and damaged struck beams.",
+                document: "validation.md#holes-under-close-in-and-contact-charges")
         case .noCrackSlip:
             return Entry(
                 title: "Cracks spring back after sliding", affects: structure, limit: .approximation,
@@ -764,6 +773,7 @@ public enum StandingTable {
         "StructureModel.crackAxes": .option([.latticeCrackAxes, .fixedCrackAxes]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
+        "StructureModel.removesFragments": .option([.removesFragments]),
         "StructureModel.crackSlip": .option([.noCrackSlip]),
         "StructureModel.slipWidensCracks": .option([.slipKeepsCracksClosed]),
         "StructureModel.bondSlip": .option([.bondSlip]),
