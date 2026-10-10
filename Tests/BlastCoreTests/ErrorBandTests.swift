@@ -230,6 +230,11 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let face = try #require(standing.gauge("Face"))
         #expect(face.onSurface)
         #expect(face.peak?.quantity == "Reflected peak overpressure")
+        // Behind the wall, shielded: not compared.
+        scenario.gauges = [Gauge("Behind", at: SIMD3(wall.max.x + 0.1, (wall.min.y + wall.max.y) / 2, 1))]
+        let behind = try #require(
+            SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.25)).gauge("Behind"))
+        #expect(behind.peak == nil && behind.note?.hasPrefix("Shielded") == true)
     }
 
     @Test func structuresTakeBandsByRegimeMeshAndMaterial() throws {

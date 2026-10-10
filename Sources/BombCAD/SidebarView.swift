@@ -138,6 +138,9 @@ struct SidebarView: View {
                     LabeledContent(
                         "Deflection now", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
                     LabeledContent("Largest so far", value: String(format: "%.0f mm", model.peakDeflection))
+                    ExpectedRangeLine(
+                        model: model,
+                        value: ShownValue(measure: .peakDeflection, value: model.peakDeflection, unit: "mm"))
                     LabeledContent(
                         "Worst damage", value: String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
                     LabeledContent("Substeps per air step", value: "up to \(model.structureSubsteps)")

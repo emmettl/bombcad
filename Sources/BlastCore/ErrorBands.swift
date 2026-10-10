@@ -366,6 +366,10 @@ extension StandingScene {
                 bands.note = reason
                 return bands
             }
+            if boxes.contains(where: { Self.crosses($0, from: nearest.position, to: gauge.position) }) {
+                bands.note = "Shielded from the charge, which no comparison was."
+                return bands
+            }
             let validity = String(
                 format: "%.2f m/kg^(1/3) from the charge, cells of %.3f m/kg^(1/3) near the shock", distance,
                 cell)
@@ -430,7 +434,7 @@ extension StandingScene {
                         : band(
                             ValidationTables.reflectedPeak, grids, distances, measure: .peakOverpressure,
                             quantity: "Reflected peak overpressure", check: check, document: document,
-                            low: "under-resolved: shocks smeared")
+                            low: "peaks smeared over cells")
                     bands.impulse = band(
                         burning
                             ? ValidationTables.burningReflectedImpulse : ValidationTables.reflectedImpulse,
@@ -443,13 +447,13 @@ extension StandingScene {
                         burning ? ValidationTables.burningIncidentPeak : ValidationTables.incidentPeak, grids,
                         distances,
                         measure: .peakOverpressure, quantity: "Incident peak overpressure", check: check,
-                        document: document, low: "under-resolved: shocks smeared")
+                        document: document, low: "peaks smeared over cells")
                     bands.impulse = band(
                         burning ? ValidationTables.burningIncidentImpulse : ValidationTables.incidentImpulse,
                         grids,
                         distances, measure: .impulse, quantity: "Incident impulse", check: check,
                         document: document,
-                        low: burning ? "under-read" : "under-read: no afterburning")
+                        low: burning ? "under-read" : "under-read without afterburning")
                 }
                 if bands.peak == nil || bands.impulse == nil {
                     bands.note =
@@ -460,6 +464,25 @@ extension StandingScene {
             }
             return bands
         }
+    }
+
+    /// Whether the straight path from `a` to `b` passes through `box`.
+    static func crosses(_ box: Box, from a: SIMD3<Float>, to b: SIMD3<Float>) -> Bool {
+        let direction = b - a
+        var enter: Float = 0
+        var leave: Float = 1
+        for axis in 0..<3 {
+            if abs(direction[axis]) < 1e-9 {
+                if a[axis] <= box.min[axis] || a[axis] >= box.max[axis] { return false }
+            } else {
+                let t0 = (box.min[axis] - a[axis]) / direction[axis]
+                let t1 = (box.max[axis] - a[axis]) / direction[axis]
+                enter = max(enter, min(t0, t1))
+                leave = min(leave, max(t0, t1))
+                if enter >= leave { return false }
+            }
+        }
+        return true
     }
 
     /// A band from a single figure of the record.
@@ -481,7 +504,9 @@ extension StandingScene {
         first.low = bands.map(\.low).min()!
         first.high = bands.map(\.high).max()!
         first.quantity = quantity
-        first.validity = "Over \(bands.count) gauge\(bands.count == 1 ? "" : "s"); each has its own band"
+        first.validity =
+            bands.count == 1
+            ? first.validity : "the \(bands.count) gauges together; each has its own band under its value"
         first.scaled = bands.contains(where: \.scaled)
         return first
     }
@@ -519,7 +544,7 @@ extension StandingScene {
                 bands.append(
                     figure(
                         id, .gasPressure, "Gas pressure left in a closed room",
-                        low: "under-read: no afterburning",
+                        low: "under-read without afterburning",
                         high: "over-read", validity: "0.25 to 4 kg/m³ in a closed 6 m cube, read at 80 ms",
                         check: "UFC 3-340-02's gas pressure (blastbench gas)"))
             }

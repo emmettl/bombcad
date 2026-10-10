@@ -143,6 +143,7 @@ private struct PressureReadout: View {
                     .foregroundStyle(.secondary)
             }
             .font(.callout)
+            GaugeExpectationLine(model: model, name: trace.name, peak: trace.peak)
         }
         Spacer(minLength: 0)
         Text("Gauges are the cyan markers in the view.")
@@ -166,6 +167,9 @@ private struct StructureReadout: View {
         if let summary = model.structureSummary {
             row("Deflection now", String(format: "%.0f mm", summary.maxDisplacement * 1000))
             row("Largest so far", String(format: "%.0f mm", model.peakDeflection))
+            ExpectedRangeLine(
+                model: model,
+                value: ShownValue(measure: .peakDeflection, value: model.peakDeflection, unit: "mm"))
             row("Elements failed", String(format: "%.1f%%", summary.erodedFraction * 100))
             row("Worst damage", String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
         }

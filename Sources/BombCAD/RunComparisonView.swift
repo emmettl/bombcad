@@ -246,7 +246,9 @@ struct RunComparisonView: View {
                     if let cloud = run.cloud { Text(cloud.comparison).font(.callout) }
                     if plotsStructure {
                         if let response = run.structure {
-                            metric("Peak recorded deflection", response.peak, baseline?.structure?.peak, "mm")
+                            metric(
+                                "Peak recorded deflection", response.peak, baseline?.structure?.peak, "mm",
+                                band: run.standing?.band(.peakDeflection))
                             HStack {
                                 Text(
                                     "Elements failed: \(response.failedFraction * 100, format: .number.precision(.fractionLength(1)))%"
@@ -270,14 +272,16 @@ struct RunComparisonView: View {
                     } else if let gauge = measurement(run) {
                         metric(
                             "Peak positive overpressure", gauge.peak,
-                            baseline.flatMap { measurement($0)?.peak }, "kPa")
+                            baseline.flatMap { measurement($0)?.peak }, "kPa",
+                            band: run.standing?.gauge(gauge.key.name)?.peak)
                         let values = PressureMeasurements(points: gauge.points, threshold: arrivalThreshold)
                         let reference = baseline.flatMap { measurement($0) }.map {
                             PressureMeasurements(points: $0.points, threshold: arrivalThreshold)
                         }
                         metric(
                             "Positive impulse (recorded window)", values.positiveImpulse,
-                            reference?.positiveImpulse, "Pa·s")
+                            reference?.positiveImpulse, "Pa·s",
+                            band: run.standing?.gauge(gauge.key.name)?.impulse)
                         metric(
                             "Signed impulse (recorded window)", values.signedImpulse,
                             reference?.signedImpulse, "Pa·s")
@@ -354,11 +358,23 @@ struct RunComparisonView: View {
         return BaseConnection.allCases.first { $0.anchorage == law }?.title ?? "Custom connection"
     }
 
-    private func metric(_ title: String, _ value: Double, _ reference: Double?, _ unit: String) -> some View {
+    private func metric(
+        _ title: String, _ value: Double, _ reference: Double?, _ unit: String, band: ErrorBand? = nil
+    ) -> some View {
         HStack {
             Text("\(title): \(value, format: .number.precision(.fractionLength(2))) \(unit)")
             if let reference {
                 Text(String(format: "Δ %+.2f %@", value - reference, unit)).foregroundStyle(.secondary)
+                // A difference narrower than the model's own error band cannot be told apart against
+                // measurement.
+                if let band, value != reference, band.cannotSeparate(value, from: reference) {
+                    Label("within the error band", systemImage: "equal.circle")
+                        .foregroundStyle(.orange)
+                        .help(
+                            "The runs differ by less than the model's error band here (\(band.ratio) of measured: "
+                                + "\(band.quantity)), so the difference cannot be told apart against measurement."
+                        )
+                }
             }
         }.font(.callout).monospacedDigit()
     }

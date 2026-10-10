@@ -172,7 +172,23 @@ public struct SceneStanding: Codable, Hashable, Sendable {
         var text = ["Standing (\(table)):"]
         for result in results {
             text.append("  \(result.kind.title): \(result.level.title). \(result.summary)")
+            for band in result.bands ?? [] { text.append("    Band: \(band.summary), for \(band.validity)") }
+            for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
+            for advice in result.regimes ?? [] {
+                let verdict = advice.suits.map { $0 ? "suits it" : "does not suit it" } ?? "note"
+                text.append(
+                    "    Regime (\(advice.regime)): \(advice.option), \(verdict). \(advice.note)"
+                        + (advice.suggestion.map { " \($0)" } ?? ""))
+            }
             for note in result.resolution { text.append("    Resolution: \(note)") }
+        }
+        for gauge in gauges ?? [] {
+            let bands = [gauge.peak, gauge.impulse].compactMap {
+                $0.map { "\($0.quantity.lowercased()) \($0.ratio)" }
+            }
+            text.append(
+                String(format: "  Gauge %@ at %.2f m/kg^(1/3): ", gauge.name, gauge.scaledDistance)
+                    + (bands.isEmpty ? "no band. \(gauge.note ?? "")" : bands.joined(separator: ", ")))
         }
         for note in resolution { text.append("  Resolution: \(note)") }
         for effect in unsupported { text.append("  Not modelled: \(effect)") }
@@ -187,7 +203,7 @@ public struct SceneStanding: Codable, Hashable, Sendable {
 
 /// What a scene's standing is derived from: its inputs, the air's resolution and solver
 /// configuration, and the models run alongside it.
-public struct StandingInputs: Sendable {
+public struct StandingInputs: Sendable, Equatable {
     public var scenario: Scenario
     /// The coarse air cell, in metres.
     public var cellSize: Float
