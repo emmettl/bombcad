@@ -43,7 +43,6 @@ struct DeflagrationUniforms {
     float ignitionX;
     float ignitionY;
     float ignitionZ;
-    float reserved;
     float densityFloor;
     float ambientPressure;
     float gamma;
@@ -51,6 +50,7 @@ struct DeflagrationUniforms {
     uint panelCellCount;
     float unburntDensity;          // the unburnt gas's density and ratio of specific heats, ambient
     float unburntGamma;
+    float expansionRatio;          // the burnt gas's volume over the unburnt's, at constant pressure
 };
 
 static inline float laminarBurningSpeed(float fraction, constant DeflagrationUniforms &d) {
@@ -148,13 +148,16 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         gradient += behind * behind + ahead * ahead;
     }
     gradient = sqrt(gradient) / dx;
-    // The ignition point lights the cell holding it (or the cells, on their faces): it burns as a
-    // flame kernel growing at about the expansion ratio times the burning velocity would, in a
-    // few times dx / S rather than the many a gradient of b / dx gives.
+    // The ignition point lights the cell holding it (or the cells, on their faces) as a spherical
+    // flame kernel: the cell's burnt gas taken as a sphere, the flame its surface, so that it burns
+    // at rho_u S_T times that area, (36 pi)^(1/3) sigma^(2/3) (1 - b)^(2/3) / dx per volume for
+    // expansion ratio sigma. A seed of a thousandth starts it, and the burning grows from nothing
+    // as a real kernel's does, without the pressure pulse a sudden start would send out.
     float3 centreOfCell = (float3(cell) + 0.5f) * dx;
     float3 ignition = float3(d.ignitionX, d.ignitionY, d.ignitionZ);
     if (all(fabs(centreOfCell - ignition) <= 0.5f * dx + d.ignitionRadius)) {
-        gradient = max(gradient, 4.0f * b / dx);
+        float burnt = max(1.0f - b, 1e-3f);
+        gradient = max(gradient, 4.836f * pow(d.expansionRatio * burnt, 2.0f / 3.0f) / dx);
     }
     if (gradient <= 0.0f) {
         return;

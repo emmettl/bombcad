@@ -191,4 +191,23 @@ struct DeflagrationTests {
         #expect(solver.isSolid(20, 10, 10))
         #expect(solver.peakOverpressure(30, 10, 10) == 0)
     }
+
+    @Test("A cloud lit in a small room opens its vent panel, which then holds the pressure down")
+    func ventedRoom() throws {
+        var study = VentedRoomStudy()
+        study.room = SIMD3(2, 2, 2)
+        study.ventArea = 1
+        study.wallThickness = 0.25
+        study.cellSize = 0.25
+        study.releasePressure = 1000
+        study.maximumTime = 1.5
+        let result = try study.run(device: device)
+        let opened = try #require(result.ventOpened)
+        // When it opened, the back wall's pressure had about reached the release pressure.
+        let index = try #require(result.times.firstIndex { $0 >= opened })
+        #expect(result.overpressures[index] > 700, "\(result.overpressures[index]) Pa at \(opened) s")
+        // Above the release pressure, far below a closed room's 8 bar.
+        #expect(result.rawPeak > 1000 && result.reducedPressure < 50_000, "\(result.reducedPressure) Pa")
+        #expect(result.burntFraction > 0.9)
+    }
 }

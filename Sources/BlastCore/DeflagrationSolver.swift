@@ -25,7 +25,6 @@ struct DeflagrationUniforms {
     var ignitionX: Float = 0
     var ignitionY: Float = 0
     var ignitionZ: Float = 0
-    var reserved: Float = 0
     var densityFloor: Float = 0
     var ambientPressure: Float = 0
     var gamma: Float = 0
@@ -33,6 +32,7 @@ struct DeflagrationUniforms {
     var panelCellCount: UInt32 = 0
     var unburntDensity: Float = 0
     var unburntGamma: Float = 0
+    var expansionRatio: Float = 0
 }
 
 /// The GPU side of a deflagration: the flame, if there is one, and the vent panels, which also
@@ -77,7 +77,7 @@ final class DeflagrationStage {
     // The resources are made before the stage, which keeps its initialiser simple.
     static func make(
         device: MTLDevice, library: MTLLibrary, grid: Grid, deflagration: Deflagration?, panels: [VentPanel],
-        panelCells: [(index: Int, panel: Int)], heat: Float, unburntDensity: Float,
+        panelCells: [(index: Int, panel: Int)], heat: Float, unburntDensity: Float, expansionRatio: Float,
         configuration: SolverConfiguration
     ) throws -> DeflagrationStage {
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
@@ -109,7 +109,7 @@ final class DeflagrationStage {
         return DeflagrationStage(
             resources: resources, grid: grid, deflagration: deflagration, panels: panels,
             panelCellCount: panelCells.count, heat: heat, unburntDensity: unburntDensity,
-            configuration: configuration)
+            expansionRatio: expansionRatio, configuration: configuration)
     }
 
     // Unoptimised: with optimisation, Swift 6's LLVM verifier rejects this initialiser ("Instruction
@@ -118,7 +118,7 @@ final class DeflagrationStage {
     private init(
         resources: Resources, grid: Grid, deflagration: Deflagration?, panels: [VentPanel],
         panelCellCount: Int,
-        heat: Float, unburntDensity: Float, configuration: SolverConfiguration
+        heat: Float, unburntDensity: Float, expansionRatio: Float, configuration: SolverConfiguration
     ) {
         self.deflagration = deflagration
         self.panels = panels
@@ -167,6 +167,7 @@ final class DeflagrationStage {
             u.ignitionZ = deflagration.ignition.z
             u.unburntDensity = unburntDensity
             u.unburntGamma = 1.4
+            u.expansionRatio = expansionRatio
         }
         uniforms = u
     }
@@ -308,10 +309,14 @@ extension BlastSolver {
             scenario.deflagration?.heatPerKilogram(
                 atmosphere: scenario.atmosphere, airModel: configuration.airModel, gamma: configuration.gamma)
             ?? 0
+        let expansion =
+            scenario.deflagration?.modelExpansionRatio(
+                atmosphere: scenario.atmosphere, airModel: configuration.airModel, gamma: configuration.gamma)
+            ?? 1
         deflagrationStage = try DeflagrationStage.make(
             device: device, library: library, grid: grid, deflagration: scenario.deflagration, panels: panels,
             panelCells: panelCells, heat: heat, unburntDensity: scenario.atmosphere.density,
-            configuration: configuration)
+            expansionRatio: expansion, configuration: configuration)
     }
 
     /// When each vent panel with a release pressure opened (s), in scenario order, or nil while it

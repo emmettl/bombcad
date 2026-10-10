@@ -141,6 +141,7 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
     base.ignition = option("ignition") == "back" ? .backWall : .centre
     base.airModel = chosenAirModel() ?? .idealGas
     if flag("laminar") { base.acceleration = .laminar }
+    if let wall = option("wall").flatMap({ Float($0) }) { base.wallThickness = wall }
     if let factor = option("factor").flatMap({ Float($0) }) { base.acceleration.factor = factor }
     if let room = option("room") {
         let parts = room.split(separator: "x").compactMap { Float($0) }
