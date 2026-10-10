@@ -1359,8 +1359,10 @@ private struct StandingScene {
             ],
             assumptions: [
                 "Computed apart from the ordinary run, on air cropped around the objects.",
-                "Only the object nearest the charge takes the air's load; the rest move only when struck.",
+                "Every object takes the air's load on fine cells around it; objects that touch share whole "
+                    + "cells.",
                 "The air's load after about 0.4 s, with an object steeply tilted, is not converged.",
+                "Furniture is solid boxes.",
             ], documents: ["freestanding-objects.md#limitations-and-future-work"])
     }
 
