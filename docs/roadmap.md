@@ -29,14 +29,14 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
-| 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
+| 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
 | 9 | A base can be tied to rigid flat ground by a breakable joint, but footings and soil are not modelled; independent rigid objects cannot move | Foundation failure is excluded; cars and furniture cannot slide, lift or overturn as independent bodies | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
@@ -119,7 +119,10 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    Driven along Walraven and Reinhardt's measured crack paths, a crack carries its cap alone, a
    twentieth to a fifth of what theirs carried pressed shut by their restraint, which the model
    cannot do; and with slip the slab cracks as a photograph of the test shows, ten cracks over
-   600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
+   600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). Traced by
+   mechanism (`--work`), it lies in the concrete between the slab's cracks carrying tension, and
+   OA1's excess with slip is not in cracks pressed shut; interlock that grows with pressure, now
+   an option, matches the push-off tests but breaks beams under impact. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
    than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
@@ -2061,6 +2064,12 @@ two collapsing over several seconds.
 - **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
   read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
   depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.
+- **Interlock that grows with the pressure across a crack, by default** (Walraven and Reinhardt's
+  relations; `--pressed-interlock`): it brings the push-off tests within 0.57–1.03 of the
+  measured shear, but breaks Saatci's and Ando's beams under blows they survived and makes OA1
+  126–188% strong. Kept as an option. The pressure on the cap alone, without the crack's own
+  sliding pressing it, changed neither OA1 nor the push-off paths and stiffened Saatci's heavy
+  drops by a tenth; it was not kept.
 - **Removing concrete cracked open every way, as rubble**, to let a close-in charge hole the
   slab, as the test authors' own model eroded fully damaged elements: it took the lower half of
   the slab over a circle 1.8 m across within 12 ms, made no hole and did not move the slab.

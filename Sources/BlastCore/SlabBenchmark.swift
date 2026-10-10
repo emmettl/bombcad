@@ -189,6 +189,8 @@ public enum SlabBenchmark {
         crackShearStiffness: Bool = false,
         adjust: (inout StructureMaterial) -> Void = { _ in },
         adjustModel: (inout StructureModel) -> Void = { _ in },
+        prepare: ((StructureSolver) -> Void)? = nil,
+        sample: ((StructureSolver) -> Void)? = nil,
         inspect: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         var model = model(elementsThroughThickness: elementsThroughThickness, rate: rate, width: width)
@@ -203,6 +205,7 @@ public enum SlabBenchmark {
         var load = load
         load.history = load.history.map { SIMD2($0.x, $0.y * loadScale) }
         solver.appliedLoad = load
+        prepare?(solver)
 
         // Simple supports 52 in apart on the unloaded face. The source does not describe the rig,
         // so how they are modelled is an assumption; see `Supports`.
@@ -242,6 +245,7 @@ public enum SlabBenchmark {
         while solver.time < 0.08 {
             solver.advance(steps: stepsPerSample)
             history.append(SIMD2(Float(solver.time), -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z))
+            sample?(solver)
         }
         let elapsed = ContinuousClock.now - start
         inspect?(solver)

@@ -327,6 +327,24 @@ and slid on under 9–12 MPa, a crack in the model carries 0.03–0.3 MPa, read 
 opening it has had. So the model underestimates the shear across cracks that bars cross and
 their opening stretches, stirrups above all, and has no friction on closed cracks.
 
+**Pressed cracks** (an option, `StructureModel.pressedInterlock`, `--pressed-interlock`). From
+the same relations, eqs. 1a and 1b, with C_τ(w) and C_σ(w) the rates (MPa per mm of slip) at
+which the shear along a crack w mm open and the stress across it grow as it slides:
+
+- an open crack slid by δ presses its faces by σ = C_σ(w) δ − f_cc/20, w its present opening
+  and δ its slide, each its strain over the plane's band; a crack whose faces already bear
+  carries its compression by the compression law instead;
+- pressed by σ, from its own sliding or from anything else, its cap grows by C_τ(w)/C_σ(w) σ,
+  1 to 2 times σ, up to half the concrete's compressive strength.
+
+Along the push-off paths the crack then carries 0.57 to 1.03 of the measured shear, and the
+stress across it within 0.85–0.93 of the fit. But it breaks Saatci's and Ando's beams under
+blows they survived, losing thousands of elements, makes OA1 126–188% strong, and moves the slab
+and close-in slabs a few per cent; only the chamber's roof goes the right way, 49 mm and left
+25 mm up against 38 and 16 (see [Validation](validation.md#one-crack-sheared-along-its-measured-path)).
+The pressure on the cap alone, without the crack's own sliding pressing it, leaves OA1 as it was
+and the push-off paths too, and stiffens Saatci's heavy drops by a tenth. Neither is the default.
+
 **A crack's slide also opened it.** The opening is read from the principal values of the
 element's strain, and the slide stored by `crackSlip` is part of that strain: a crack 1.05 mm
 open slid by 2 mm on 50 mm elements read as about 1.9 mm open and carried 57% of its cap, and
@@ -505,7 +523,16 @@ apart, over about 600 mm; in plan (`blastbench slab --plan`) the model with slip
 cracks over 1 mm wide, 50–55 mm apart, holding nine tenths of the face's opening within
 570 mm, the widest at mid-span as in the test (see
 [Validation](validation.md#its-cracks)). So its stiffness does not come from too few cracks
-or too short a zone, but from what lies between or beneath them. Under impact, slip lets Saatci's beam without stirrups come through the light drop
+or too short a zone, but from what lies between or beneath them. Traced by mechanism
+(`blastbench slab --work`), it is the concrete between the cracks: by 80 mm the bars and their
+bond do the same work as perfectly bonded, and the concrete cracked by under 0.1 mm, still
+carrying tension, three and a half times as much (421 J against 116), balanced by a
+compression zone that crushes from 40–60 mm instead of 90; interlock and dowel action are
+1–2% and nothing is pressed shut. Halving the concrete's tensile strength brings the peak to
+105 mm; halving the fracture energy, removing interlock, confinement or half the hourglass
+control, to 97–100 mm. OA1 with slip, traced the same way, reaches its bending strength with
+3% of the work at the interlock cap, and without any interlock still carries 332 kN through
+cracked concrete in tension across its web. Under impact, slip lets Saatci's beam without stirrups come through the light drop
 whole, as the test beam did, where perfectly bonded it splits along its bars, and still breaks
 it under the heavy drop, as in the test; but it stiffens the beams with stirrups by a fifth under the heavy drops. So
 the option stays off until the shear across discrete cracks, and the slab, are understood.
@@ -991,7 +1018,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    crack advances accounts for part of the coarse beam's excess at most. Bars that slip (see
    [Reinforcement](#bars-that-slip-an-option)) do separate cracks on coarse elements, and make
    the beam's strength the same on both meshes, but 42–47% strong: with discrete cracks the
-   shear they carry by interlock keeps the diagonal crack from running. Beams check each section's shear
+   shear they carry by interlock keeps the diagonal crack from running; traced by mechanism
+   (`blastbench shear --work`), only a ninth of that is on cracks pressed shut, and without
+   interlock, concrete cracked under 0.1 mm still carries 332 kN across the web (see
+   [Validation](validation.md#a-beam-failing-in-shear)). Beams check each section's shear
    instead (see the [shell model](shell-model.md#materials)). Dowel
    action is Rasmussen's for a bar
    well embedded in concrete; bars near a face, as a column's or a slab's mats are, split their
@@ -1082,11 +1112,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   Candidates include the high-strength slabs of the same contest (Thiagarajan et al., 2015) and
   the University of Ottawa shock-tube programmes, most of which load each specimen several
   times and so need care.
-- **More cracks**: a third crack, to relieve the stress locking that remains; and dilatancy
-  (the opening that sliding forces) that presses on what restrains it, with interlock that
-  grows with the pressure across the crack (the modified compression field theory's full
-  limit), which Walraven and Reinhardt's push-off tests need and the model lacks (see
-  [shear across cracks](#shear-across-cracks)); and friction on closed cracks.
+- **More cracks**: a third crack, to relieve the stress locking that remains. Dilatancy that
+  presses on what restrains it, with interlock that grows with the pressure, is now an option
+  that matches Walraven and Reinhardt's push-off tests but breaks beams under impact (see
+  [shear across cracks](#shear-across-cracks)); under a blow it would need the crack's
+  pressure limited by what holds it, and the trace says neither the slab nor OA1 depends on it.
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
@@ -1096,8 +1126,10 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   mesh, but leaves the shear beam OA1 42–47% strong and the slab 12% stiff. Interlock was
   checked directly against push-off tests, and the slab's cracks against a photograph of the
   test; neither explains it (see [shear across cracks](#shear-across-cracks) and
-  [Validation](validation.md#its-cracks)). What does is still wanted; and inclined bars,
-  shells and beams that slip too.
+  [Validation](validation.md#its-cracks)). Traced by mechanism, the slab's stiffness is the
+  concrete between its cracks carrying tension; whether that tension stiffening is too strong
+  at blast rates (the concrete's tensile strength raised by its rate law, the bond not) is the
+  next question, and inclined bars, shells and beams that slip are still wanted.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete in contact with a charge;
   the close-in slabs do not need it (limitation 6).
