@@ -27,7 +27,7 @@ import simd
 ///
 /// The law has no rate dependence, no dilatancy and no rotational stiffness of its own: a solid
 /// body's base rocks through the opening of its nodes on one side, and a shell's or a column's
-/// through points of its footprint that turn with its node (`ShellMesh.baseFibres`).
+/// through points of its faces that turn with its node (`ShellMesh.jointPoints`).
 public struct Anchorage: Sendable, Hashable, Codable {
     /// Normal stiffness per unit area in Pa/m; nil takes the body material's E / h, as stiff as
     /// one more element of the body, which leaves its time step unchanged.
@@ -367,6 +367,16 @@ extension StructureModel {
         guard !isClampedBySupport(at: point) else { return nil }
         if let index = finiteSupportIndex(at: point) { return anchorage(ofSupport: index) }
         return fixedBase && abs(point.z) < 1e-4 ? baseAnchorage : nil
+    }
+
+    /// The connection in `slot`: 0 the ground's, 1 + n support region n's.
+    func connection(inSlot slot: Int) -> Anchorage? {
+        slot == 0 ? (fixedBase ? baseAnchorage : nil) : anchorage(ofSupport: slot - 1)
+    }
+
+    /// The normals of every connection's joint.
+    var connectionNormals: [SIMD3<Float>] {
+        ((fixedBase ? [baseAnchorage] : []) + supportAnchorages).compactMap { $0?.across }
     }
 
     func finiteSupportIndex(at point: SIMD3<Float>) -> Int? {

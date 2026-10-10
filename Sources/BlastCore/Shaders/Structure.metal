@@ -117,7 +117,10 @@ struct StructureUniforms {
     float gravityZ;
 };
 
-float3 gravityDirection(constant StructureUniforms &u) { return float3(u.gravityX, u.gravityY, u.gravityZ); }
+// Gravity's pull per unit mass, when it has been turned.
+float3 gravityPull(constant StructureUniforms &u) {
+    return -u.gravity * float3(u.gravityX, u.gravityY, u.gravityZ);
+}
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
 // the shell's thickness where its midsurface meets the solid. The node moves as the line does
@@ -241,6 +244,10 @@ constant uint maxMaterials = 8;
 // fold the per-element lookup away.
 constant bool singleMaterial [[function_constant(0)]];
 constant bool finiteConnections [[function_constant(1)]];
+// Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
+// exactly as they always have, since the fast-math compiler can round another expression differently.
+constant bool turnedGravityConstant [[function_constant(3)]];
+constant bool turnedGravity = is_function_constant_defined(turnedGravityConstant) && turnedGravityConstant;
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
@@ -2420,6 +2427,25 @@ float3 anchorTraction(thread float4 &state, thread float &settlement, float3 dis
     return float3(shear, normal);
 }
 
+// The traction a point of a joint carries, in the world's frame, its side of the joint having
+// moved by `displacement` at `velocity`: `anchorTraction` across and along a joint under the body,
+// or one whose normal the law carries, in that joint's own frame.
+float3 jointTraction(thread float4 &state, thread float &settlement, float3 displacement, float3 velocity, float damper,
+                     AnchorLaw law) {
+    float3 normal = float3(law.normal[0], law.normal[1], law.normal[2]);
+    if (all(normal == 0.0f)) {
+        return anchorTraction(state, settlement, displacement, velocity.z, damper, law);
+    }
+    // A joint facing another way: the law in its own frame, two directions along it and its
+    // normal across.
+    float3 along = normalize(cross(abs(normal.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f), normal));
+    float3 other = cross(normal, along);
+    float3 local = anchorTraction(
+        state, settlement, float3(dot(displacement, along), dot(displacement, other), dot(displacement, normal)),
+        dot(velocity, normal), damper, law);
+    return local.x * along + local.y * other + local.z * normal;
+}
+
 // A lattice node's connection to the ground: three float4 per node, (tributary area, slip x,
 // slip y, wear), (the force the connection put on the node in the last substep, the largest
 // opening so far) and (the ground's settlement, unused). The area is zero for nodes without a
@@ -2430,21 +2456,8 @@ float3 anchorForce(device float4 *anchors, uint index, StructureNode node, const
     float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
     float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 normal = float3(law.normal[0], law.normal[1], law.normal[2]);
-    float3 force;
-    if (all(normal == 0.0f)) {
-        force = -area * anchorTraction(state, settlement, float3(node.displacement), node.velocity.z, damper, law);
-    } else {
-        // A joint facing another way: the law in its own frame, two directions along it and
-        // its normal across.
-        float3 along = normalize(cross(abs(normal.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f), normal));
-        float3 other = cross(normal, along);
-        float3 displacement = float3(node.displacement);
-        float3 local = anchorTraction(
-            state, settlement, float3(dot(displacement, along), dot(displacement, other), dot(displacement, normal)),
-            dot(float3(node.velocity), normal), damper, law);
-        force = -area * (local.x * along + local.y * other + local.z * normal);
-    }
+    float3 force =
+        -area * jointTraction(state, settlement, float3(node.displacement), float3(node.velocity), damper, law);
     anchors[3 * index] = float4(area, state.xyz);
     anchors[3 * index + 1] = float4(force, state.w);
     anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);
@@ -2643,7 +2656,8 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         }
     }
 
-    float3 velocity = float3(node.velocity) + dt * (force / node.mass + u.gravity * gravityDirection(u));
+    float3 velocity = float3(node.velocity)
+        + dt * (force / node.mass - (turnedGravity ? gravityPull(u) : float3(0.0f, 0.0f, u.gravity)));
     velocity *= max(0.0f, 1.0f - u.damping * dt);
     if ((node.flags & 8u) != 0) {
         velocity = float3(node.velocity);  // prescribed motion

@@ -500,63 +500,132 @@ struct ShellMesh {
         return layers
     }
 
-    /// Where each node on the ground carries its share of a connection to it (`Anchorage`): points
-    /// of the footprint as (offset x, offset y from the node, area, 0). A wall's node carries
-    /// `across` points through the wall's thickness, over half of each element edge it ends; a
-    /// column's, `across` × `across` over its section. The points run from face to face with the
-    /// trapezoid rule's weights, so that a base rocking on its toe bears at the face, as solid
-    /// elements' corner nodes do. Nodes of neither carry none.
-    func baseFibres(across: Int, selecting: (SIMD3<Float>) -> Bool = { abs($0.z) < 1e-4 }) -> [[SIMD4<Float>]]
-    {
-        var fibres = [[SIMD4<Float>]](repeating: [], count: positions.count)
+    /// A point of a face of a wall, slab or beam that a connection ties (`Anchorage`): its offset
+    /// from the node it moves with, the area it stands for, and the connection's slot (as
+    /// `StructureModel.connectionSlot`).
+    struct JointPoint {
+        var arm: SIMD3<Float>
+        var area: Float
+        var slot: Int
+    }
+
+    /// Where each node carries its share of a connection: points of the faces of its walls, slabs
+    /// and beams that face the connection's joint. `joint` gives the slot and the normal (across
+    /// the joint into the body) of the connection that holds a point, given the point and its
+    /// node, or nil where none does; `normals` are all the normals it may give, so that faces none
+    /// can face are passed over. Each face that faces the support carries its area weighted
+    /// by the cosine between them, as solid elements' faces do:
+    /// - a free edge of a wall or slab (one with no element of its plate beyond), `across` points
+    ///   through its thickness at each of its two nodes, over half the edge each;
+    /// - either face of a wall or slab, one point at each corner, over a quarter of it;
+    /// - a free end of a beam, `across` × `across` points over its section;
+    /// - a side of a beam, `across` points across it at each end, over half its length.
+    /// The points run from face to face with the trapezoid rule's weights, so that a base rocking
+    /// on its toe bears at the face, as solid elements' corner nodes do.
+    func jointPoints(
+        across: Int, normals: [SIMD3<Float>],
+        joint: (_ point: SIMD3<Float>, _ node: SIMD3<Float>) -> (slot: Int, normal: SIMD3<Float>)?
+    ) -> [[JointPoint]] {
+        var points = [[JointPoint]](repeating: [], count: positions.count)
         let intervals = Float(across - 1)
-        func onGround(_ node: UInt32) -> Bool { selecting(positions[Int(node)]) }
         // Position from -1/2 to 1/2 and weight, summing to one, of point k.
         func point(_ k: Int) -> (offset: Float, weight: Float) {
             (Float(k) / intervals - 0.5, (k == 0 || k == across - 1 ? 0.5 : 1) / intervals)
         }
-        for element in elements where element.axis != 2 {
-            // A wall: its thickness is horizontal, along `axis`; its base edge runs along the
-            // other horizontal axis, the element's first unless that is vertical.
-            let edge = (element.axis + 1) % 3 == 2 ? element.size.y : element.size.x
-            var normal = SIMD2<Float>.zero
-            normal[element.axis] = 1
-            let bottom = (0..<4).map { positions[Int(element.nodes[$0])].z }.min()!
-            for corner in 0..<4
-            where onGround(element.nodes[corner])
-                && abs(positions[Int(element.nodes[corner])].z - bottom) < 1e-4
-            {
-                for k in 0..<across {
-                    let (fraction, weight) = point(k)
-                    let offset: SIMD2<Float> = fraction * element.thickness * normal
-                    let area: Float = weight * element.thickness * edge / 2
-                    fibres[Int(element.nodes[corner])].append(SIMD4(offset.x, offset.y, area, 0))
+        func unit(_ axis: Int, _ sign: Float = 1) -> SIMD3<Float> {
+            var value = SIMD3<Float>.zero
+            value[axis] = sign
+            return value
+        }
+        // Adds the points `arms` (with areas) at `node` of a face whose outward normal is `outward`,
+        // where a joint faces it.
+        func add(_ node: UInt32, outward: SIMD3<Float>, _ arms: @autoclosure () -> [(SIMD3<Float>, Float)]) {
+            guard normals.contains(where: { simd_dot(outward, $0) < -1e-4 }) else { return }
+            let at = positions[Int(node)]
+            for (arm, area) in arms() {
+                guard let held = joint(at + arm, at) else { continue }
+                let weight = -simd_dot(outward, held.normal)
+                guard weight > 1e-4 else { continue }
+                points[Int(node)].append(JointPoint(arm: arm, area: weight * area, slot: held.slot))
+            }
+        }
+        for element in elements {
+            let k = element.axis
+            let (first, second) = ((k + 1) % 3, (k + 2) % 3)
+            let through = (0..<across).map { point($0) }
+            // Free edges: -first (corners 0, 3), +first (1, 2), -second (0, 1), +second (2, 3).
+            let edges: [(corners: [Int], outward: SIMD3<Float>, length: Float)] = [
+                ([0, 3], unit(first, -1), element.size.y), ([1, 2], unit(first), element.size.y),
+                ([0, 1], unit(second, -1), element.size.x), ([2, 3], unit(second), element.size.x),
+            ]
+            for (e, edge) in edges.enumerated() where element.neighbours[e] < 0 {
+                let arms = through.map {
+                    ($0.offset * element.thickness * unit(k), $0.weight * element.thickness * edge.length / 2)
+                }
+                for corner in edge.corners { add(element.nodes[corner], outward: edge.outward, arms) }
+            }
+            // Its two faces.
+            for sign in [Float(-1), 1] {
+                for corner in 0..<4 {
+                    add(
+                        element.nodes[corner], outward: unit(k, sign),
+                        [(sign * element.thickness / 2 * unit(k), element.size.x * element.size.y / 4)])
                 }
             }
         }
-        for beam in beams where beam.axis == 2 {
-            let bottom = min(positions[Int(beam.nodes[0])].z, positions[Int(beam.nodes[1])].z)
-            for end in 0..<2
-            where onGround(beam.nodes[end]) && abs(positions[Int(beam.nodes[end])].z - bottom) < 1e-4 {
-                for i in 0..<across {
-                    for j in 0..<across {
-                        let (u, wu) = point(i)
-                        let (v, wv) = point(j)
-                        let offset: SIMD2<Float> = SIMD2(u, v) * beam.section
-                        let area: Float = wu * wv * beam.section.x * beam.section.y
-                        fibres[Int(beam.nodes[end])].append(SIMD4(offset.x, offset.y, area, 0))
+        // A beam's end is free where no other beam along its axis carries on from it.
+        var ends: [SIMD2<UInt32>: Int] = [:]
+        for beam in beams {
+            for end in 0..<2 { ends[SIMD2(beam.nodes[end], UInt32(beam.axis)), default: 0] += 1 }
+        }
+        for beam in beams {
+            let a = beam.axis
+            let (first, second) = ((a + 1) % 3, (a + 2) % 3)
+            for end in 0..<2 {
+                let node = beam.nodes[end]
+                let along = positions[Int(node)][a] - positions[Int(beam.nodes[1 - end])][a]
+                if ends[SIMD2(node, UInt32(a))] == 1 {
+                    var arms: [(SIMD3<Float>, Float)] = []
+                    for i in 0..<across {
+                        for j in 0..<across {
+                            let (u, wu) = point(i)
+                            let (v, wv) = point(j)
+                            arms.append(
+                                (
+                                    u * beam.section.x * unit(first) + v * beam.section.y * unit(second),
+                                    wu * wv * beam.section.x * beam.section.y
+                                ))
+                        }
+                    }
+                    add(node, outward: unit(a, along < 0 ? -1 : 1), arms)
+                }
+                // Its sides, across each at either end over half its length.
+                for (side, other, width, depth) in [
+                    (first, second, beam.section.y, beam.section.x),
+                    (second, first, beam.section.x, beam.section.y),
+                ] {
+                    for sign in [Float(-1), 1] {
+                        let arms = (0..<across).map { k in
+                            let (offset, weight) = point(k)
+                            return (
+                                sign * depth / 2 * unit(side) + offset * width * unit(other),
+                                weight * width * beam.length / 2
+                            )
+                        }
+                        add(node, outward: unit(side, sign), arms)
                     }
                 }
             }
         }
-        // Points that elements meeting at a node both give are one point, with both shares.
-        return fibres.map { list in
-            var merged: [SIMD4<Float>] = []
+        // Points of one connection that faces meeting at a node both give are one point, with
+        // both shares.
+        return points.map { list in
+            var merged: [JointPoint] = []
             for point in list {
                 if let k = merged.firstIndex(where: {
-                    simd_distance(SIMD2($0.x, $0.y), SIMD2(point.x, point.y)) < 1e-6
+                    simd_distance($0.arm, point.arm) < 1e-6 && $0.slot == point.slot
                 }) {
-                    merged[k].z += point.z
+                    merged[k].area += point.area
                 } else {
                     merged.append(point)
                 }

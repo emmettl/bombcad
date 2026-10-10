@@ -236,9 +236,9 @@ public final class ShellSolver {
     /// debonded length.
     private let barPlasticBuffers: [MTLBuffer]
     private let tiedStartBuffer: MTLBuffer
-    /// The base's connection to the ground, when it has one (`Anchorage`): for each node, where
-    /// its points of the footprint start in the lists that follow (one more entry than nodes);
-    /// each point's (offset x, offset y, area, the node's whole area), its state (slip x, slip y,
+    /// The body's connections, when it has any (`Anchorage`): for each node, where its points
+    /// (`ShellMesh.jointPoints`) start in the lists that follow (one more entry than nodes); each
+    /// point's (offset, area) and (the node's whole area, 0, 0, 0), its state (slip x, slip y,
     /// wear, largest opening) and the force on it in the last substep. Placeholders otherwise.
     private let fibreStartBuffer: MTLBuffer
     private let fibreGeometryBuffer: MTLBuffer
@@ -246,6 +246,8 @@ public final class ShellSolver {
     private let fibreForceBuffer: MTLBuffer
     private let fibreLawBuffer: MTLBuffer
     private let fibreCount: Int
+    /// Each point's connection slot (as `StructureModel.connectionSlot`).
+    private let fibreSlots: [Int]
     /// The connection's stiffnesses per unit area, when the base has one.
     private let anchorStiffness: (normal: Float, shear: Float)?
     /// The largest square angular frequency, in 1/s², of a node on its connection alone.
@@ -270,6 +272,9 @@ public final class ShellSolver {
     private let debrisAreaPipeline: MTLComputePipelineState
     private let beamPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
+    /// The node kernel with gravity turned from straight down, made when first needed.
+    private let turnedNodePipeline: () -> MTLComputePipelineState?
+    private lazy var turnedNodes: MTLComputePipelineState? = turnedNodePipeline()
     public let beamBuffer: MTLBuffer
     public let beamFlagBuffer: MTLBuffer
     /// Damage of each beam, 0 (sound) to 1 (failing), for display.
@@ -326,6 +331,11 @@ public final class ShellSolver {
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
+        var turned = true
+        nodeConstants.setConstantValue(&turned, type: .bool, index: 3)
+        turnedNodePipeline = { [library] in
+            try? ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
+        }
         tiePipeline = try pipeline("shellTies")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 
@@ -461,28 +471,37 @@ public final class ShellSolver {
         var fibreGeometry: [SIMD4<Float>] = []
         try model.validateAnchorages()
         var fibreLaws: [AnchorageParameters] = []
+        var slots: [Int] = []
         if let stiffness = model.connectionStiffness {
             anchorStiffness = stiffness
-            // Shells and columns are tied only under them.
-            let lists = mesh.baseFibres(across: Self.fibresAcross) {
-                model.connection(at: $0).map { ($0.side ?? .below) == .below } ?? false
+            // The ground's connection ties only nodes on the ground; a support's, the points of
+            // faces in its region that face its joint.
+            let lists = mesh.jointPoints(across: Self.fibresAcross, normals: model.connectionNormals) {
+                point, node in
+                guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                    let law = model.connection(inSlot: slot)
+                else { return nil }
+                return (slot, law.across)
             }
-            for (n, list) in lists.enumerated() {
-                let area = list.reduce(0) { $0 + $1.z }
-                fibreGeometry += list.map { SIMD4($0.x, $0.y, $0.z, area) }
-                if let law = model.connection(at: mesh.positions[n]) {
-                    fibreLaws += Array(
-                        repeating: AnchorageParameters(
-                            law, material: model.material, elementSize: model.elementSize), count: list.count)
+            for list in lists {
+                let area = list.reduce(0) { $0 + $1.area }
+                for point in list {
+                    fibreGeometry += [SIMD4(point.arm, point.area), SIMD4(area, 0, 0, 0)]
+                    fibreLaws.append(
+                        AnchorageParameters(
+                            model.connection(inSlot: point.slot)!, material: model.material,
+                            elementSize: model.elementSize))
+                    slots.append(point.slot)
                 }
-                fibreStarts.append(UInt32(fibreGeometry.count))
+                fibreStarts.append(UInt32(slots.count))
             }
         } else {
             anchorStiffness = nil
         }
-        fibreCount = fibreGeometry.count
+        fibreSlots = slots
+        fibreCount = slots.count
         let fibreStartStorage = try buffer(fibreStarts.count * 4, "shell anchor starts")
-        let fibreGeometryStorage = try buffer(fibreCount * 16, "shell anchor points")
+        let fibreGeometryStorage = try buffer(fibreCount * 32, "shell anchor points")
         fibreStartStorage.copy(fibreStarts)
         fibreGeometryStorage.copy(fibreGeometry)
         fibreStartBuffer = fibreStartStorage
@@ -506,15 +525,16 @@ public final class ShellSolver {
         if let anchorStiffness, fibreCount > 0 {
             let starts = fibreStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodes + 1)
             let points = fibreGeometryBuffer.contents().bindMemory(
-                to: SIMD4<Float>.self, capacity: fibreCount)
+                to: SIMD4<Float>.self, capacity: 2 * fibreCount)
             let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
             mutateNodes { nodes in
                 for n in nodes.indices where starts[n + 1] > starts[n] && nodes[n].mass > 0 {
                     var area: Float = 0
                     var second: Float = 0
                     for f in Int(starts[n])..<Int(starts[n + 1]) {
-                        area += points[f].z
-                        second += points[f].z * (points[f].x * points[f].x + points[f].y * points[f].y)
+                        let point = points[2 * f]
+                        area += point.w
+                        second += point.w * (point.x * point.x + point.y * point.y + point.z * point.z)
                     }
                     let frequency = max(area / nodes[n].mass, second / max(nodes[n].inertia, 1e-30))
                     anchorFrequencySquared = max(anchorFrequencySquared, stiffest * frequency)
@@ -526,15 +546,15 @@ public final class ShellSolver {
             mutateNodes { nodes in
                 for n in nodes.indices {
                     bodyMass += nodes[n].mass
-                    guard starts[n + 1] > starts[n], !nodes[n].isClamped,
-                        let slot = model.connectionSlot(at: mesh.positions[n]),
-                        let law = model.connection(at: mesh.positions[n]), law.footing != nil
-                    else { continue }
+                    guard starts[n + 1] > starts[n], !nodes[n].isClamped else { continue }
                     for f in Int(starts[n])..<Int(starts[n + 1]) {
+                        let slot = fibreSlots[f]
+                        guard let law = model.connection(inSlot: slot), law.footing != nil else { continue }
+                        let point = points[2 * f]
                         members.append(
                             FootingSystem.Member(
-                                entity: f, rest: mesh.positions[n] + SIMD3(points[f].x, points[f].y, 0),
-                                area: points[f].z, slot: slot, law: law,
+                                entity: f, rest: mesh.positions[n] + SIMD3(point.x, point.y, point.z),
+                                area: point.w, slot: slot, law: law,
                                 stiffness: law.stiffness(
                                     material: model.material, elementSize: model.elementSize)))
                     }
@@ -628,11 +648,12 @@ public final class ShellSolver {
     }
 
     /// The connection's state after the last step, or nil when the base is clamped or free. Its
-    /// counts are of points of the footprint rather than nodes.
+    /// counts are of points of the faces rather than nodes.
     public func anchorSummary() -> StructureSolver.AnchorSummary? {
         guard anchorStiffness != nil, fibreCount > 0 else { return nil }
         let starts = fibreStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodeCount + 1)
-        let points = fibreGeometryBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
+        let points = fibreGeometryBuffer.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: 2 * fibreCount)
         let states = fibreStateBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
         let forces = fibreForceBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
         var summary = StructureSolver.AnchorSummary()
@@ -640,15 +661,13 @@ public final class ShellSolver {
         var centre = SIMD3<Float>.zero
         var loads: [(SIMD3<Float>, SIMD3<Float>)] = []
         mutateNodes { nodes in
-            for n in 0..<nodeCount {
-                guard let anchorage = model.connection(at: mesh.positions[n]), !nodes[n].isClamped,
-                    nodes[n].flags & 384 == 0
-                else {
-                    continue
-                }
-                let stiffness = anchorage.stiffness(material: model.material, elementSize: model.elementSize)
+            for n in 0..<nodeCount where !nodes[n].isClamped && nodes[n].flags & 384 == 0 {
                 for f in Int(starts[n])..<Int(starts[n + 1]) {
-                    let arm = SIMD3(points[f].x, points[f].y, 0)
+                    guard let anchorage = model.connection(inSlot: fibreSlots[f]) else { continue }
+                    let stiffness = anchorage.stiffness(
+                        material: model.material, elementSize: model.elementSize)
+                    let point = points[2 * f]
+                    let arm = SIMD3(point.x, point.y, point.z)
                     let position = mesh.positions[n] + arm
                     let force = SIMD3(forces[f].x, forces[f].y, forces[f].z)
                     let remaining = anchorage.remaining(
@@ -656,17 +675,18 @@ public final class ShellSolver {
                     let moved = nodes[n].displacement + nodes[n].rotation.act(arm) - arm
                     summary.nodes += 1
                     if remaining <= 0 { summary.separated += 1 }
-                    summary.meanDamage += points[f].z * (1 - remaining)
+                    summary.meanDamage += point.w * (1 - remaining)
                     summary.reaction += force
                     summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(states[f].x, states[f].y)))
                     // On a footing, the opening is from the footing's top as it has moved.
                     let ground = footings?.footing(ofEntity: f).map {
                         footings!.displacement(ofPointAt: position, footing: $0).z
                     }
-                    summary.maxOpening = max(summary.maxOpening, moved.z - (ground ?? 0))
+                    summary.maxOpening = max(
+                        summary.maxOpening, simd_dot(moved, anchorage.across) - (ground ?? 0))
                     summary.maxSettlement = max(summary.maxSettlement, -forces[f].w)
-                    area += points[f].z
-                    centre += points[f].z * position
+                    area += point.w
+                    centre += point.w * position
                     loads.append((position, force))
                 }
             }
@@ -678,17 +698,18 @@ public final class ShellSolver {
         return summary
     }
 
-    /// Actual bearing area of finite support footprint points, excluding held or slave nodes.
-    /// Read only while the GPU is idle.
+    /// Actual bearing area of a finite support's points, excluding held or slave nodes. Read only
+    /// while the GPU is idle.
     public func supportBearingArea(at support: Int) -> Float {
         guard fibreCount > 0, model.supports.indices.contains(support) else { return 0 }
         let starts = fibreStartBuffer.contents().bindMemory(to: UInt32.self, capacity: nodeCount + 1)
-        let points = fibreGeometryBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: fibreCount)
+        let points = fibreGeometryBuffer.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: 2 * fibreCount)
         var area: Float = 0
         mutateNodes { nodes in
             for n in nodes.indices where !nodes[n].isClamped && nodes[n].flags & 384 == 0 {
-                if model.finiteSupportIndex(at: mesh.positions[n]) == support {
-                    for f in Int(starts[n])..<Int(starts[n + 1]) { area += points[f].z }
+                for f in Int(starts[n])..<Int(starts[n + 1]) where fibreSlots[f] == 1 + support {
+                    area += points[2 * f].w
                 }
             }
         }
@@ -1064,7 +1085,8 @@ public final class ShellSolver {
             }
             beforeNodes?(uniforms)
 
-            encoder.setComputePipelineState(nodePipeline)
+            let down = gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
+            encoder.setComputePipelineState(down ? nodePipeline : turnedNodes ?? nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
             encoder.setBuffer(flagBuffer, offset: 0, index: 2)

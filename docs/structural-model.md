@@ -135,8 +135,8 @@ the ground over its share of the base (a quarter of each element face it touches
   sliding wears both away over a given slip.
 
 Support regions can also carry independent `Anchorage` laws (`supportAnchorages`, aligned
-with `supports`; null entries retain ideal clamping). Finite connections act on exposed lower
-solid faces or lower wall/vertical-column footprint points selected by each region. The law
+with `supports`; null entries retain ideal clamping). Finite connections act on exposed solid faces, or points of shell and beam faces, that face
+the region's joint. The law
 uses each point’s reference position as a stationary bearing plane, horizontal unless the
 region's joint faces another way (below). Regions select initial attachment points; they do
 not bound the bearing plane after sliding or separation. A footing ([below](#footings)) is a
@@ -148,7 +148,7 @@ over the body (a soffit it hangs from) or against one of its faces across x or y
 joint, as of a panel cast between columns), as well as under it. It then ties the exposed
 lattice faces of solid elements that face that way, and the law acts in the joint's own frame:
 opening and tension across it, Mohr–Coulomb shear in its plane. The ground's connection and a
-footing are under the body only, and shells and beam columns are tied only under them. Checks
+footing are under the body only. Checks
 (`SupportConnectionTests`): a 1 m block hung on a vertical joint facing −x or +y (1 m² tied,
 the face on that side only) holds its weight with a cohesion of 1/0.7 of it and slides down
 with 1/1.3 of it, without friction; with friction 0.6 the lower third, pressed by the block's
@@ -193,12 +193,21 @@ it stands at every distance where the freestanding wall goes over: as it bends b
 columns it arches, pressing its edges into them (62 kN of friction along the edges of a 3 m
 panel at 10 m, with no ties at all), the arching action that holds infill walls wedged between
 stiff frames. Columns that give, or gaps at the edges, would take that away; the panel's
-columns here are rigid. About 3 s a run. Ideal support clamps take precedence over finite laws; among finite
+columns here are rigid. About 3 s a run. Meshed with shells of 125 mm (`--panel --shells`), the
+tied panel sways within 10% of the solid one (clamped 12.1, 5.1, 2.2 and 0.7 mm; starter bars
+13.2, 5.7, 2.6 and 0.8; construction joint 14.2, 6.4, 3.3 and 1.2, its ties lost at the same 68%
+and 32%), but resting against the columns it sways 1.4 to 1.6 times as far (41, 19, 10 and 4.6
+mm) and slips twice as much: the shell's edge arches more weakly. On 62.5 mm shells it sways
+16 mm at 10 m against the solid's 11.7. Ideal support clamps take precedence over finite laws; among finite
 regions the last region wins. See [editing supports](structural-editing.md#restraints) for the
 app controls, active bearing-area diagnostics and save/undo behavior.
 
 Shells and beams have one node through a wall's thickness or a column's section, so there the
-connection acts at points of the footprint instead: nine through the thickness at each node on
+connection acts at points of the faces that face its joint instead (`ShellMesh.jointPoints`),
+each over its area weighted by the cosine to the joint as solid faces are: through the thickness
+at free edges of walls and slabs, at the corners of either face of a wall or slab (a slab's
+soffit seated on a bearing), over the section at a beam's free end and across its sides (a
+beam's soffit on a corbel). Under the base, as before: nine through the thickness at each node on
 a wall's base, over half of each element edge it ends, and nine by nine over a column's
 section, from face to face with the trapezoid rule's weights. Each point moves with its node's
 rotation, so a wall can open at its heel while it bears at its toe, and the node takes the

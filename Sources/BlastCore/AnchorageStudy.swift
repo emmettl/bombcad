@@ -98,7 +98,7 @@ public enum AnchorageStudy {
             }, anchors: solver.anchorSummary, footings: solver.footingSummaries, summary: solver.summary)
     }
 
-    private static func body(_ solver: ShellSolver) -> Body {
+    private static func body(_ solver: ShellSolver, length: Float) -> Body {
         let top = solver.nearestNode(to: SIMD3(thickness / 2, length / 2, height))
         return Body(
             step: Double(solver.criticalTimeStep), time: { solver.time }, advance: solver.advance(steps:),
@@ -114,7 +114,7 @@ public enum AnchorageStudy {
     /// With `edges`, the wall is instead a panel as long as it is high, between two columns that
     /// do not move, its vertical edges tied to them by `edges` across joints facing along it
     /// (`JointSide`; clamped, starter bars, a construction joint, or resting against them), and
-    /// its top's sway is at mid-length. Solid elements only.
+    /// its top's sway is at mid-length.
     public static func run(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 6, duration: Float = 0.5,
         elementSize: Float = 0.0625, shells: Bool = false, soil: Soil? = nil, edges: BaseConnection? = nil
@@ -126,9 +126,8 @@ public enum AnchorageStudy {
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: barArea, depth: 0.04)
         model.baseAnchorage = anchorage(base, soil: soil)
         if let edges {
-            guard !shells, edges.anchorage?.footing == nil, edges != .soil else {
-                throw ImportedMesh.ImportError.invalid(
-                    "A panel's edges are joints of solid elements, not soil.")
+            guard edges.anchorage?.footing == nil, edges != .soil else {
+                throw ImportedMesh.ImportError.invalid("A panel's edges are joints, not soil.")
             }
             let slack = 0.01 * elementSize
             for side in [JointSide.negativeY, .positiveY] {
@@ -145,7 +144,7 @@ public enum AnchorageStudy {
         let solver: Body
         if shells {
             model.elementKind = .shell
-            solver = body(try ShellSolver(device: device, model: model))
+            solver = body(try ShellSolver(device: device, model: model), length: length)
         } else {
             solver = body(try StructureSolver(device: device, model: model))
         }

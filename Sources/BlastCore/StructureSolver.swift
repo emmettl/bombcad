@@ -138,6 +138,9 @@ public final class StructureSolver {
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
     private let nodePipeline: MTLComputePipelineState
+    /// The node kernel with gravity turned from straight down, made when first needed.
+    private let turnedNodePipeline: () -> MTLComputePipelineState?
+    private lazy var turnedNodes: MTLComputePipelineState? = turnedNodePipeline()
     private let contactClearPipeline: MTLComputePipelineState
     private let contactHashPipeline: MTLComputePipelineState
     private let contactForcePipeline: MTLComputePipelineState
@@ -209,6 +212,11 @@ public final class StructureSolver {
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
+        var turned = true
+        nodeConstants.setConstantValue(&turned, type: .bool, index: 3)
+        turnedNodePipeline = { [library] in
+            try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
+        }
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")
         contactForcePipeline = try pipeline("contactForces")
@@ -1213,7 +1221,8 @@ public final class StructureSolver {
             }
 
             beforeNodes?(substep, uniforms)
-            encoder.setComputePipelineState(nodePipeline)
+            let down = gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
+            encoder.setComputePipelineState(down ? nodePipeline : turnedNodes ?? nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
             encoder.setBuffer(flagBuffer, offset: 0, index: 2)
