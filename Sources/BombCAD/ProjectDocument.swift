@@ -17,6 +17,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// Levels of the shocks' refinement when more than one; nil, and left out of the file (and of
     /// a saved run's fingerprint, so that runs saved before it existed still match theirs), for one.
     var shockLevels: Int?
+    /// The jump that refines the air, as a share of the pressure, when it is not the usual 0.1;
+    /// nil, and left out of the file and the fingerprint, when it is.
+    var shockThreshold: Float?
     /// Gravity in the air when on; nil, and left out of the file and the fingerprint, when off.
     var gravity: Bool?
     var solidElementSize: Float
@@ -27,6 +30,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         detailedCharge = settings.detailedCharge
         sharpShocks = settings.sharpShocks
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
+        shockThreshold = settings.shockThreshold != 0.1 ? settings.shockThreshold : nil
         gravity = settings.gravity ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
@@ -45,7 +49,8 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
 
     func validate() throws {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
-            duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true
+            duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true,
+            shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }
     }
 }

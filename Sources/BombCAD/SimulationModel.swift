@@ -149,6 +149,9 @@ struct SimulationSettings: Equatable {
     /// With `sharpShocks`, the levels of refinement: 2 refines the refined air again, so that the
     /// peaks come out as on a grid four times as fine.
     var shockLevels = 1
+    /// With `sharpShocks`, the jump across a cell that refines it, as a share of its pressure:
+    /// lower follows a weakening shock further, at a cost (see docs/large-scenes.md).
+    var shockThreshold: Float = 0.1
     /// Gravity in the air: it starts at rest in a hydrostatic atmosphere and hot gas rises.
     var gravity = false
 
@@ -646,6 +649,7 @@ final class SimulationModel {
                 settings.detailedCharge = run.detailedCharge
                 settings.sharpShocks = run.sharpShocks
                 settings.shockLevels = run.shockLevels ?? 1
+                settings.shockThreshold = run.shockThreshold ?? 0.1
                 settings.gravity = run.gravity ?? false
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
@@ -783,6 +787,7 @@ final class SimulationModel {
             settings.detailedCharge = run.detailedCharge
             settings.sharpShocks = run.sharpShocks
             settings.shockLevels = run.shockLevels ?? 1
+            settings.shockThreshold = run.shockThreshold ?? 0.1
             settings.gravity = run.gravity ?? false
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
@@ -983,6 +988,7 @@ final class SimulationModel {
         settings.detailedCharge = inputs.settings.detailedCharge
         settings.sharpShocks = inputs.settings.sharpShocks
         settings.shockLevels = inputs.settings.shockLevels ?? 1
+        settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
         settings.gravity = inputs.settings.gravity ?? false
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration

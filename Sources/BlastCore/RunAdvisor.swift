@@ -19,6 +19,40 @@ public enum AdvisorTarget: Sendable, Equatable {
     }
 }
 
+extension AdvisorTarget {
+    /// From the command line: "peak:20%", "impulse:0.15" or "deflection:30%" for a fidelity, and
+    /// "time:600", "time:10m" or "time:2h" for a budget.
+    public init?(text: String) {
+        let parts = text.lowercased().split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+        if parts[0] == "time" {
+            var value = parts[1]
+            var unit = 1.0
+            if value.hasSuffix("h") {
+                unit = 3600
+                value.removeLast()
+            } else if value.hasSuffix("m") {
+                unit = 60
+                value.removeLast()
+            } else if value.hasSuffix("s") {
+                value.removeLast()
+            }
+            guard let seconds = Double(value), seconds > 0 else { return nil }
+            self = .seconds(seconds * unit)
+            return
+        }
+        guard let quantity = AdvisorQuantity(rawValue: parts[0]) else { return nil }
+        var value = parts[1]
+        var scale = 1.0
+        if value.hasSuffix("%") {
+            value.removeLast()
+            scale = 0.01
+        }
+        guard let within = Double(value).map({ $0 * scale }), within > 0, within < 10 else { return nil }
+        self = .fidelity(quantity, within: within)
+    }
+}
+
 /// A result the advisor weighs.
 public enum AdvisorQuantity: String, CaseIterable, Codable, Sendable {
     case peak, impulse, deflection
