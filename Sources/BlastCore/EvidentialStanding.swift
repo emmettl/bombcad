@@ -106,6 +106,13 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
     public var options: [String]
     /// Pages under docs/, with anchors.
     public var documents: [String]
+    /// How far it has been from measurement, where the scene lies within a comparison's range
+    /// (see `ErrorBand`); nil in standings recorded before bands were.
+    public var bands: [ErrorBand]? = nil
+    /// Why no band applies, where none does.
+    public var unbanded: [String]? = nil
+    /// Whether the chosen options suit the scene's regime.
+    public var regimes: [RegimeAdvice]? = nil
 
     public var id: ResultKind { kind }
 }
@@ -115,7 +122,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-1"
+    public static let currentTable = "standing-table-2"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -123,6 +130,8 @@ public struct SceneStanding: Codable, Hashable, Sendable {
     public var resolution: [String]
     /// Effects this scene could involve that no model here represents.
     public var unsupported: [String]
+    /// Each gauge's bands; nil in standings recorded before bands were.
+    public var gauges: [GaugeBands]? = nil
 
     public subscript(kind: ResultKind) -> ResultStanding? { results.first { $0.kind == kind } }
 
@@ -973,12 +982,19 @@ extension SceneStanding {
                 }
             }
         }
+        for index in results.indices {
+            let (bands, unbanded) = scene.bands(for: results[index].kind)
+            results[index].bands = bands
+            results[index].unbanded = unbanded
+            results[index].regimes = scene.regimes(for: results[index].kind)
+        }
         self.init(results: results, resolution: scene.resolutionNotes(), unsupported: scene.unsupported())
+        gauges = scene.gaugeBands()
     }
 }
 
 /// The scene's numbers the table needs, worked out once.
-private struct StandingScene {
+struct StandingScene {
     let inputs: StandingInputs
     let options: [ModelOption]
     let structures: [StructureModel]
@@ -1022,7 +1038,7 @@ private struct StandingScene {
             }.min()
     }
 
-    private func has(_ option: ModelOption) -> Bool { options.contains(option) }
+    func has(_ option: ModelOption) -> Bool { options.contains(option) }
 
     // MARK: Resolution
 
@@ -1384,7 +1400,7 @@ private struct StandingScene {
     }
 
     /// The kinds of material in the scene's structures, weakest standing last.
-    private enum MaterialClass: Int, Comparable {
+    enum MaterialClass: Int, Comparable {
         case reinforcedConcrete, plainConcrete, steel, masonry, glass
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
@@ -1401,7 +1417,7 @@ private struct StandingScene {
         }
     }
 
-    private var materialClasses: [MaterialClass] {
+    var materialClasses: [MaterialClass] {
         Set(structures.flatMap { [$0.material] + $0.solidMaterial.compactMap { $0 } }.map(MaterialClass.init))
             .sorted()
     }
