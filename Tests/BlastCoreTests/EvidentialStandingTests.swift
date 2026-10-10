@@ -15,6 +15,7 @@ private var inputSamples: [Any] {
         StructureMaterial.reinforcedConcrete,
         Anchorage.resting(),
         ThermalSpec(),
+        SurfaceHeatingSpec(),
         CloudSpec(),
         FragmentSpec(),
         GroundShockSpec(),
@@ -194,7 +195,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
             $0.fragments = FragmentSpec()
             $0.groundShock = GroundShockSpec()
         }
-        for kind in [ResultKind.thermal, .cloud, .fragments, .groundShock] {
+        for kind in [ResultKind.thermal, .surfaceHeating, .cloud, .fragments, .groundShock] {
             #expect(scene[kind]?.level == .illustrative, "\(kind)")
         }
         #expect(scene[.thermal]?.assumptions.contains { $0.contains("Without afterburning") } == true)

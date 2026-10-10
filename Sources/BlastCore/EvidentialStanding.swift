@@ -54,6 +54,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case envelopeExposure
     case freestandingMotion
     case thermal
+    case surfaceHeating
     case cloud
     case fragments
     case groundShock
@@ -69,6 +70,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .envelopeExposure: "Building surface exposure"
         case .freestandingMotion: "Freestanding objects' motion"
         case .thermal: "Thermal radiation"
+        case .surfaceHeating: "Surface heating and ignition"
         case .cloud: "Rise and cloud"
         case .fragments: "Fragments"
         case .groundShock: "Ground shock"
@@ -250,6 +252,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case thermalVolume
     case thermalShape
     case thermalSphere
+    case surfaceHeating
     case measuredSounding
     case cloudSpread
     case freestandingBoxes
@@ -320,6 +323,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .thermalVolume: return inputs.thermal?.fireball == .volume
         case .thermalShape: return inputs.thermal?.fireball == .shape
         case .thermalSphere: return inputs.thermal?.fireball == .sphere
+        case .surfaceHeating: return inputs.thermal?.heating.enabled == true
         case .measuredSounding: return inputs.cloud?.sounding != nil
         case .cloudSpread: return inputs.cloud?.spread == true
         case .freestandingBoxes: return !(inputs.scenario.rigidObjects ?? []).isEmpty
@@ -569,6 +573,12 @@ public enum StandingTable {
                 title: "Fireball as a sphere", affects: [.thermal], limit: nil,
                 note: "The fireball's equivalent sphere, at a chosen emissivity.",
                 document: "thermal-radiation.md#the-model")
+        case .surfaceHeating:
+            return Entry(
+                title: "Surface heating", affects: [.surfaceHeating], limit: .illustrative,
+                note: "Each surface heated as an inert solid, one dimension deep; ignition flags are test "
+                    + "thresholds, not a fire model.",
+                document: "surface-heating.md")
         case .measuredSounding:
             return Entry(
                 title: "Measured sounding", affects: [.cloud], limit: nil,
@@ -728,6 +738,19 @@ public enum StandingTable {
         "ThermalSpec.absorption": .input,
         "ThermalSpec.sootYield": .input,
         "ThermalSpec.marchStep": .numerical,
+        "ThermalSpec.heating": .option([.surfaceHeating]),
+        "SurfaceHeatingSpec.enabled": .option([.surfaceHeating]),
+        "SurfaceHeatingSpec.ambient": .input,
+        "SurfaceHeatingSpec.convection": .input,
+        "SurfaceHeatingSpec.ground": .input,
+        "SurfaceHeatingSpec.blocks": .input,
+        "SurfaceHeatingSpec.structure": .input,
+        "SurfaceHeatingSpec.overrides": .input,
+        "SurfaceHeatingSpec.materials": .input,
+        "SurfaceHeatingSpec.cells": .numerical,
+        "SurfaceHeatingSpec.resolvedTime": .numerical,
+        "SurfaceHeatingSpec.horizon": .numerical,
+        "SurfaceHeatingSpec.maximumStep": .numerical,
         "CloudSpec.handOverTemperature": .input,
         "CloudSpec.entrainment": .input,
         "CloudSpec.addedMass": .input,
@@ -797,6 +820,7 @@ extension SceneStanding {
             results.append(scene.freestandingMotion())
         }
         if inputs.thermal != nil { results.append(scene.thermal()) }
+        if scene.options.contains(.surfaceHeating) { results.append(scene.surfaceHeating()) }
         if inputs.cloud != nil { results.append(scene.cloud()) }
         if inputs.fragments != nil { results.append(scene.fragments()) }
         if inputs.groundShock != nil { results.append(scene.groundShock()) }
@@ -1401,6 +1425,23 @@ private struct StandingScene {
             documents: ["thermal-radiation.md#limitations"])
     }
 
+    func surfaceHeating() -> ResultStanding {
+        result(
+            .surfaceHeating, .illustrative,
+            "Checked against conduction's exact solutions within 0.5%, but fed an illustrative irradiance; "
+                + "the ignition flags say a surface passed a test's threshold, not that it ignites.",
+            evidence: [
+                StandingEvidence(
+                    "Constant flux on a semi-infinite solid, and a slab against its series", "Within 0.5%",
+                    "surface-heating.md#checks")
+            ],
+            assumptions: [
+                "Inert solids of constant properties: nothing melts, chars, spalls or burns, and no moisture.",
+                "Heat flows only along each receiver's normal, and only radiation heats the surfaces.",
+                "Ignition thresholds are from nuclear thermal pulses of seconds, applied unscaled.",
+            ], documents: ["surface-heating.md#limitations", "surface-heating.md#ignition-illustrative"])
+    }
+
     func cloud() -> ResultStanding {
         var assumptions = [
             "A textbook integral model of a turbulent thermal, with coefficients from laboratory thermals, "
@@ -1457,7 +1498,10 @@ private struct StandingScene {
         if inputs.thermal == nil {
             effects.append("Radiant heat from the fireball (not reckoned in this scene).")
         }
-        effects.append("Ignition, material heating and fire.")
+        effects.append(
+            has(.surfaceHeating)
+                ? "Fire: ignition is flagged against test thresholds, but nothing burns or spreads."
+                : "Ignition, material heating and fire.")
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
         if !(inputs.scenario.rigidObjects ?? []).isEmpty || !(inputs.scenario.rigidCars ?? []).isEmpty {
             effects.append("Freestanding objects in the ordinary run: they move only in Compute Motion.")
