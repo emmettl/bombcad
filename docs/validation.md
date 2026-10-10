@@ -340,9 +340,28 @@ peak much:
 | Hourglass control halved | 116 mm | 97 mm |
 
 So the slab's stiffness with slip is tension stiffening: the concrete between its cracks
-carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks. Whether the
-model's is too strong there, with the tensile strength raised by its rate law and the bond
-not, is the next question.
+carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks.
+
+**Where that tension comes from** (`blastbench slab --stiffening`). By 80 mm, over the 600 mm
+about mid-span, in kN:
+
+| Carried by | Perfect bond | Bars that slip |
+|---|---|---|
+| Bars | 484 | 477 |
+| Concrete never cracked | 1 | 2 |
+| Concrete cracked under 0.02 mm | 9 | 54 |
+| Concrete cracked 0.02–0.1 mm | 2 | 23 |
+| Concrete cracked wider | 20 | 17 |
+
+With slip, the concrete across a crack's own plane carries next to nothing. Between cracks it
+has been loaded through the bond to its tensile strength, raised by its strain rate, and holds
+it at the start of its softening. Nothing is counted twice: with slip there is no
+tension-stiffening branch, only plain concrete's softening over each element. A tie with the
+same law carries what the Model Code's tension stiffening gives at the raised strength, on two
+meshes (see [the concrete model](concrete-model.md#bars-that-slip-an-option)). The bond law
+hardly matters (95–96 mm with pull-out, splitting or confined splitting bond); a tenth of the
+fracture energy takes the slab with slip to 107 mm. Softening that would bring the slab to the
+test spoils the tie's crack spacing and tension stiffening, and leaves OA1 40% strong.
 
 ### What this does and does not show
 

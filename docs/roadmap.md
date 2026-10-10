@@ -121,8 +121,10 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    twentieth to a fifth of what theirs carried pressed shut by their restraint, which the model
    cannot do; and with slip the slab cracks as a photograph of the test shows, ten cracks over
    600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). Traced by
-   mechanism (`--work`), it lies in the concrete between the slab's cracks carrying tension, and
-   OA1's excess with slip is not in cracks pressed shut; interlock that grows with pressure, now
+   mechanism (`--work`), it lies in the concrete between the slab's cracks carrying tension, the
+   bond's reaction, nothing counted twice and as much as the Model Code gives a tie
+   (`--stiffening`, `tie`); softening it sooner fixes the slab but spoils the tie. OA1's excess
+   with slip is not in cracks pressed shut; interlock that grows with pressure, now
    an option, matches the push-off tests but breaks beams under impact. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
@@ -2074,6 +2076,11 @@ two collapsing over several seconds.
   126–188% strong. Kept as an option. The pressure on the cap alone, without the crack's own
   sliding pressing it, changed neither OA1 nor the push-off paths and stiffened Saatci's heavy
   drops by a tenth; it was not kept.
+- **Softening the concrete between cracks sooner, with bars that slip**: a crack inclined to the
+  lattice given a band as wide as the staircase of elements it crosses (Oliver), or neighbouring
+  cracked elements taken as one crack. The first barely moved the slab or OA1; the second
+  brought the slab to 101% but left OA1 40% strong and the tie with the Model Code's tension
+  stiffening and crack spacing lost.
 - **Removing concrete cracked open every way, as rubble**, to let a close-in charge hole the
   slab, as the test authors' own model eroded fully damaged elements: it took the lower half of
   the slab over a circle 1.8 m across within 12 ms, made no hole and did not move the slab.
