@@ -213,6 +213,42 @@ struct RadiativeCoolingTests {
             "energy and fuel \(before) J -> \(after) J, radiated \(radiated) J")
     }
 
+    @Test("Taking the loss every fourth step radiates as taking it every step does, to half a per cent")
+    func everyFourthStep() throws {
+        func radiated(interval: Int) throws -> Double {
+            var cooling = RadiativeCooling(absorption: 1, sootYield: 0)
+            cooling.interval = interval
+            let solver = try hotSphere(cooling: cooling)
+            for _ in 0..<4 { solver.advance(steps: 50) }
+            return solver.radiatedEnergy
+        }
+        let every = try radiated(interval: 1)
+        let fourth = try radiated(interval: 4)
+        #expect(abs(fourth / every - 1) < 0.005, "\(fourth) J against \(every) J")
+    }
+
+    @Test("A box too large for the directions' slices, taken one direction at a time, cools alike")
+    func oneDirectionAtATime() throws {
+        func run(capacity: Int?) throws -> (energy: Double, state: [CellState]) {
+            let cooling = RadiativeCooling(absorption: 1, sootYield: 0)
+            let solver = try hotSphere(cooling: cooling)
+            if let capacity {
+                solver.radiativeCoolingStage = try RadiativeCoolingStage(
+                    settings: cooling, device: device, library: solver.library, grid: solver.grid,
+                    airModel: solver.configuration.airModel, gamma: solver.configuration.gamma,
+                    capacity: capacity)
+            }
+            solver.advance(steps: 10)
+            return (solver.radiatedEnergy, solver.withState { Array($0) })
+        }
+        let together = try run(capacity: nil)
+        let apart = try run(capacity: 100)
+        #expect(
+            abs(apart.energy / together.energy - 1) < 1e-5, "\(apart.energy) J against \(together.energy) J")
+        let worst = zip(together.state, apart.state).map { abs($0.energy - $1.energy) / $0.energy }.max() ?? 0
+        #expect(worst < 1e-5, "energy differs by \(worst) of a cell's")
+    }
+
     @Test("With nothing luminous, the air runs exactly as without the cooling")
     func nothingLuminousChangesNothing() throws {
         func run(_ cooling: RadiativeCooling?) throws -> [CellState] {

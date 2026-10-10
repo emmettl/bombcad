@@ -455,7 +455,7 @@ func runGasPressure() throws {
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
             + pad("UFC 2-152", 12)
-            + pad("model/UFC", 11) + pad("burnt", 8))
+            + pad("model/UFC", 11) + pad("burnt", 8) + (flag("radiate") ? pad("radiated", 9) : ""))
     // `--per-volume 0.1415` runs other ratios (that one is Cooper's closed-vessel example).
     let ratios =
         option("per-volume").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [
@@ -499,7 +499,10 @@ func runGasPressure() throws {
                 + pad("\(format(mean / 1e6, 2)) MPa", 12) + pad("\(format(ideal / 1e6, 2)) MPa", 12)
                 + pad("\(format(reference / 1e6, 2)) MPa", 12)
                 + pad("\(format(100 * mean / reference, 0))%", 11)
-                + pad(solver.configuration.afterburning ? "\(format(100 * burnt, 0))%" : "-", 8))
+                + pad(solver.configuration.afterburning ? "\(format(100 * burnt, 0))%" : "-", 8)
+                + (flag("radiate")
+                    ? pad("\(format(100 * solver.radiatedEnergy / Double(scenario.charge.energy), 1))%", 9)
+                    : ""))
     }
 }
 
@@ -829,6 +832,14 @@ func runSnapshot() throws {
             }
             print(line)
         }
+        // How large and hot it was at each of a few moments.
+        var across = "  across, and its temperature, at"
+        for moment in [0.01, 0.02, 0.05, 0.1, 0.17, 0.3, 0.5] where moment <= time + 1e-9 {
+            guard let frame = result.fireball.last(where: { $0.time <= moment + 1e-9 }) else { continue }
+            across += String(
+                format: " %.0f ms: %.1f m, %.0f K;", moment * 1000, 2 * frame.radius, frame.temperature)
+        }
+        print(across)
         if let other {
             print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
             for line in other.result.summary { print(line) }

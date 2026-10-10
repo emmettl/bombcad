@@ -1463,14 +1463,18 @@ public final class BlastSolver {
                     encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms)
             }
             if let radiativeCoolingStage, !asleep {
-                // The luminous gas loses what it radiates, in the coarse cells; the fine cells under
-                // them each lose as much a volume, as they gain what debris trades with the air.
+                // Every few steps, and at the batch's end, the luminous gas loses what it has
+                // radiated since, in the coarse cells; the fine cells under them each lose as much a
+                // volume, as they gain what debris trades with the air.
+                let take =
+                    step == steps - 1
+                    || (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
                 radiativeCoolingStage.encode(
-                    encoder, state: stateBuffers[current], mask: maskBuffer,
+                    encoder, take: take, state: stateBuffers[current], mask: maskBuffer,
                     species: hasSpecies ? speciesBuffers[current] : nil, placeholder: noSpecies,
                     control: controlBuffer, uniforms: uniforms,
                     tiles: tilesEnabled ? (tileListBuffer, tileDispatchBuffer, tileThreads) : nil)
-                if let refinement, refining {
+                if take, let refinement, refining {
                     refinement.encodeSync(
                         encoder, parent: coarseView(species: currentSpecies), control: controlBuffer,
                         uniforms: uniforms)
