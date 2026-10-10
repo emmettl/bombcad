@@ -33,7 +33,7 @@ import simd
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
-//                       [--air thermal] [--afterburn]
+//                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
@@ -403,9 +403,25 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     }
 }
 
+/// With `--radiate`, the luminous gas loses the heat it radiates: as `--thermal`'s description
+/// absorbs, when one is given, else by `--absorption` (1/m) and `--soot-yield`, or their defaults.
+func chosenCooling() throws -> RadiativeCooling? {
+    guard flag("radiate") else { return nil }
+    if let path = option("thermal") {
+        return RadiativeCooling(
+            spec: try JSONDecoder().decode(
+                ThermalSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path))))
+    }
+    var cooling = RadiativeCooling()
+    if let value = option("absorption").flatMap({ Float($0) }) { cooling.absorption = value }
+    if let value = option("soot-yield").flatMap({ Float($0) }) { cooling.sootYield = value }
+    return cooling
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
+    configuration.radiativeCooling = try chosenCooling()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if let air = chosenAirModel() {
@@ -506,6 +522,7 @@ func runValidation() throws {
             solver.configuration.afterburnTime = time / 1000
         }
         configureRefinement(&solver.configuration)
+        solver.configuration.radiativeCooling = try? chosenCooling()
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -875,6 +892,20 @@ func runSnapshot() throws {
                     largestCells.counts.x,
                     largestCells.counts.y, largestCells.counts.z, largestCells.voxelSize,
                     Double(largestCells.binary.count) / 1e6))
+        }
+        if solver.configuration.radiativeCooling != nil {
+            // What the gas lost to its radiation by each of the same moments.
+            var line = String(
+                format: "The gas lost %.1f MJ to its radiation, %.1f%% of the charge's energy; by",
+                solver.radiatedEnergy / 1e6, 100 * solver.radiatedEnergy / max(thermal.result.chargeEnergy, 1)
+            )
+            for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
+                let lost = solver.radiationHistory.last { $0.time <= moment + 1e-9 }?.energy ?? 0
+                line += String(
+                    format: " %.0f ms: %.1f%%;", moment * 1000,
+                    100 * lost / max(thermal.result.chargeEnergy, 1))
+            }
+            print(line)
         }
         let unburnt = solver.speciesTotals()
         if unburnt.fuel > 0 {
