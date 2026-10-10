@@ -218,7 +218,7 @@ device, each gauge's peak and the structure's largest deflection.
 | `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
 | `--thermal <spec.json>` | Reckons the fireball's thermal radiation on the ground and the scene's faces, a frame at a time; `--thermal-results` writes it as JSON; see [Thermal radiation](thermal-radiation.md) |
 | `--cloud <spec.json>` | Hands the hot gas left at the end over to a model of the fireball's rise and cloud, followed for minutes; `--cloud-results` writes it as JSON, `--sounding <file.csv>` gives it a measured atmosphere, and `BombCAD cloud <results.json>` follows it again without the blast; see [The fireball's rise and cloud](fireball-rise.md) |
-| `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
+| `--consumer local\|<ssh host>\|auto` | Where the fragments fly: this Mac's CPU (the default) or another Mac; `fragments=`, `thermal=` and `ground=` place each model, and `auto` places by cost among this Mac and each `--worker <ssh host>`; see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines) |
 | `--fragment-results <file>` | Writes the fragments' impacts as JSON |
 | `--ground-shock <spec.json>` | Estimates the ground's shaking under chosen points from the overpressure on the ground, a frame at a time; `--ground-results` writes it as JSON; see [Ground shock](ground-shock.md) |
 | `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb`, `--fragments`, `--thermal` and `--ground-shock`, 1 by default |

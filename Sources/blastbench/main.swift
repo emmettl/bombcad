@@ -40,6 +40,8 @@ import simd
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
+//   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
@@ -2619,6 +2621,125 @@ func runAnchorage() throws {
 /// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
 /// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
 /// does with afterburning; and whether the two agree.
+/// Dial Pack, 500 tons of TNT as a sphere resting on the ground (Suffield, 1970), whose thermal
+/// radiation DREO Report 642 measured at 600 and 1,700 m: the fireball reckoned frame by frame as
+/// the volume, its opaque shape and its equivalent sphere (both at emissivity 1) radiate it to an
+/// instrument at each range aimed along the ground at it, and what it radiated, round it and as
+/// the gas lost it. `--csv` writes every frame; `Scripts/compare-dial-pack.py` sets it against the
+/// report (Samples/DialPack1970).
+func runDialPack() throws {
+    let tons = option("tons").flatMap { Float($0) } ?? 500
+    let mass = tons * 907.185  // short tons
+    let cellSize = option("dx").flatMap { Float($0) } ?? 4
+    let side = option("domain").flatMap { Float($0) } ?? 480
+    let duration = option("time").flatMap { Double($0) } ?? 1
+    // TNT at 1,600 kg/m³, its sphere's centre one radius up.
+    let radius = cbrt(3 * mass / (4 * .pi * 1600))
+    var scenario = Scenario(
+        name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
+    scenario.gauges = []
+    var configuration = SolverConfiguration()
+    configureRefinement(&configuration)
+    configuration.afterburning = true
+    configuration.airModel = .thermallyPerfect
+    configuration.radiativeCooling = try chosenCooling()
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+    var volume = ThermalSpec()
+    // A receiver or so on the ground: only the instruments are reckoned.
+    volume.groundSpacing = side
+    var shape = volume
+    shape.fireball = .shape
+    var sphere = volume
+    sphere.fireball = .sphere
+    let scene = FragmentScene(scenario)
+    let models = [("volume", volume), ("shape", shape), ("sphere", sphere)].map {
+        (name: $0.0, exposure: ThermalExposure(spec: $0.1, scene: scene))
+    }
+    let ranges: [Float] = [600, 1700]
+    // South of ground zero, 1.5 m up, facing it along the ground.
+    let points = ranges.map { range in
+        ThermalReceiver(
+            position: SIMD3(side / 2, side / 2 - range, 1.5), normal: SIMD3(0, 1, 0), surface: "instrument")
+    }
+    solver.frameRequest = FrameRequest(thermal: volume)
+    var frameTimes: [Double] = []
+    var t = 0.0005
+    while t < duration - 1e-9 {
+        frameTimes.append(t)
+        t += t < 0.01 ? 0.0005 : (t < 0.1 ? 0.0025 : (t < 0.3 ? 0.01 : 0.025))
+    }
+    frameTimes.append(duration)
+    print(
+        String(
+            format:
+                "Dial Pack: %.0f t of TNT (%.0f short tons), a sphere %.2f m in radius on the ground, %.0f m cells, %.0f by %.0f by %.0f m, to %.2f s%@",
+            mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
+            configuration.radiativeCooling == nil ? "" : ", the gas cooling"))
+    var lines = [
+        "time_s,diameter_m,temperature_K,hottest_K,radiated_W,gas_lost_J,"
+            + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(
+                separator: ",")
+    ]
+    var last: (time: Double, values: [Float])?
+    var fluence = [Double](repeating: 0, count: models.count * ranges.count)
+    var peak = [Float](repeating: 0, count: models.count * ranges.count)
+    var radiated = 0.0
+    var lastPower: (time: Double, power: Double)?
+    let started = ContinuousClock.now
+    for target in frameTimes {
+        while solver.time < target - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: target)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        let frame = solver.fireball(for: volume)
+        var values: [Float] = []
+        for model in models { values += model.exposure.irradiance(frame, at: points) }
+        let power = models[0].exposure.radiatedPower(frame)
+        if let last {
+            for n in values.indices {
+                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (solver.time - last.time)
+            }
+        }
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
+        for n in values.indices { peak[n] = max(peak[n], values[n]) }
+        last = (solver.time, values)
+        lastPower = (solver.time, power)
+        lines.append(
+            [
+                String(format: "%.5f", solver.time), String(format: "%.2f", 2 * frame.radius),
+                String(format: "%.0f", frame.temperature), String(format: "%.0f", frame.hottest),
+                String(format: "%.4g", power), String(format: "%.4g", solver.radiatedEnergy),
+            ].joined(separator: ",") + "," + values.map { String(format: "%.4g", $0) }.joined(separator: ","))
+    }
+    let charge = Double(scenario.charge.energy)
+    for (m, model) in models.enumerated() {
+        let text = ranges.enumerated().map { r, range in
+            String(
+                format: "%.0f m: %.2f kJ/m², peak %.2f kW/m²", range, fluence[m * ranges.count + r] / 1000,
+                peak[m * ranges.count + r] / 1000)
+        }.joined(separator: "; ")
+        print("  as its \(model.name): \(text)")
+    }
+    print(
+        String(
+            format: "  radiated round it, the volume: %.3g J, %.2f%% of the charge's energy%@", radiated,
+            100 * radiated / charge,
+            configuration.radiativeCooling == nil
+                ? ""
+                : String(
+                    format: "; the gas lost %.3g J, %.2f%%", solver.radiatedEnergy,
+                    100 * solver.radiatedEnergy / charge)))
+    print(
+        String(
+            format: "  %d steps, simulated in %.0f s", solver.stepCount,
+            (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 func runThermal() throws {
     let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
     let scene = FragmentScene(scenario)
@@ -2934,6 +3055,7 @@ do {
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "thermal": try runThermal()
+    case "dialpack": try runDialPack()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)

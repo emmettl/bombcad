@@ -634,7 +634,8 @@ Nine values in the code were written from memory and should be checked against t
     spectrum against time and the surface temperature, compared with earlier TNT shots.
     **Gives:** a second shot by the same group and methods as Tate and Pattmann, so a repeat of
     the radiated fraction and the pulse's shape, and through its comparisons perhaps
-    Snowball's.
+    Snowball's. **Compared** (10 October 2026), transcribed in Samples/DialPack1970: see
+    [thermal radiation](thermal-radiation.md#against-dial-pack).
   - J. J. Rudolphi, N. Kolb and J. Stofleth, "Optical measurements in visible and NIR bands of
     composition C-4 and argon flash hemispheres", *Science and Technology of Energetic
     Materials* 81(1) (2020) 5–9, [JES](https://www.jes.or.jp/mag/stem/Vol.81/No.1.02.html), open:
