@@ -472,6 +472,8 @@ final class SimulationModel {
     @ObservationIgnored private(set) var thermalReceivers: [ThermalReceiver] = []
     /// The same receivers by surface, the grids the view paints.
     @ObservationIgnored private var thermalGrids: [ThermalSurfaceGrid] = []
+    /// The material each receiver's surface was given, where their heating is reckoned.
+    @ObservationIgnored private var thermalHeating: SurfaceHeating.Layout?
     /// The thermal radiation the current run reckons, as it was when it started, and the
     /// fireball at each frame sent.
     @ObservationIgnored private var reckonedSpec: ThermalSpec?
@@ -1342,7 +1344,8 @@ final class SimulationModel {
             reckoned = ThermalResult(
                 spec: spec, receivers: thermalReceivers, peakIrradiance: live.peakIrradiance,
                 fluence: live.fluence, fireball: fireballFrames,
-                chargeEnergy: ThermalExposure.chargeEnergy(FragmentScene(scenario)))
+                chargeEnergy: ThermalExposure.chargeEnergy(FragmentScene(scenario)),
+                heating: heatingResult(live, spec: spec))
         }
         var run = SavedSimulationRun(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -1659,6 +1662,9 @@ final class SimulationModel {
         }
         thermalGrids = ThermalExposure.surfaceGrids(scene: scene, spec: spec)
         thermalReceivers = thermalGrids.flatMap(\.receivers)
+        thermalHeating =
+            spec.heating.enabled
+            ? SurfaceHeating.Layout(spec: spec.heating, grids: thermalGrids, scene: scene) : nil
         reckonedSpec = spec
         nextFireballTime = 0
         sendFireball(solver)
@@ -1670,6 +1676,7 @@ final class SimulationModel {
         thermal = nil
         thermalReceivers = []
         thermalGrids = []
+        thermalHeating = nil
         reckonedSpec = nil
         fireballFrames = []
         thermalPaintCache = nil
@@ -1714,6 +1721,12 @@ final class SimulationModel {
         let dose = live.fluence.max() ?? 0
         text += String(format: " · fluence up to %.1f kJ/m² over ", dose / 1000)
         text += "\(thermalReceivers.count.formatted()) receivers"
+        if let spec = reckonedSpec, let heating = heatingResult(live, spec: spec) {
+            let hottest = heating.peakTemperature.max() ?? heating.ambient
+            text += String(format: " · surfaces up to %.0f K", hottest)
+            let flagged = heating.ignition.filter { $0 != 0 }.count
+            if flagged > 0 { text += " · \(flagged.formatted()) past ignition thresholds (illustrative)" }
+        }
 
         if live.frames < thermal.sent { text += " · \(thermal.sent - live.frames) frames to reckon" }
         let place = thermal.placement
@@ -2196,10 +2209,29 @@ extension SimulationModel {
         if let cache = thermalPaintCache, cache.frames == live.frames, cache.quantity == quantity {
             return cache.paint
         }
-        let values = quantity == .fluence ? live.fluence : live.peakIrradiance
-        let paint = SurfacePaint(grids: thermalGrids, shades: values.map(ThermalQuantity.shade))
+        let values: [Float]
+        switch quantity {
+        case .fluence: values = live.fluence
+        case .peakIrradiance: values = live.peakIrradiance
+        case .surfaceTemperature, .ignition:
+            guard let spec = reckonedSpec, let heating = heatingResult(live, spec: spec) else { return nil }
+            values =
+                quantity == .ignition
+                ? heating.ignition.map(Float.init) : heating.peakTemperature.map { $0 - heating.ambient }
+        }
+        let paint = SurfacePaint(grids: thermalGrids, shades: values.map(quantity.shade))
         thermalPaintCache = (live.frames, quantity, paint)
         return paint
+    }
+
+    /// The surfaces' heating so far, with the materials they were given and the ignition thresholds
+    /// they passed; nil where it is not reckoned or has not come in.
+    private func heatingResult(_ live: ThermalLive, spec: ThermalSpec) -> SurfaceHeatingResult? {
+        guard let thermalHeating, live.peakTemperature.count == thermalHeating.material.count else {
+            return nil
+        }
+        return thermalHeating.result(
+            peakTemperature: live.peakTemperature, fluence: live.fluence, ambient: spec.heating.ambient)
     }
 }
 

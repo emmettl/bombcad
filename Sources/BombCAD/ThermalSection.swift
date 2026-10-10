@@ -51,6 +51,17 @@ struct ThermalSection: View {
                     range: 800...3000, text: "\(Int(spec.luminousTemperature)) K"
                 )
                 .help("Gas at least this hot is part of the fireball.")
+                Toggle("Heat the surfaces", isOn: heating(\.enabled))
+                    .help(
+                        "Conducts what each surface absorbs into its material, one dimension deep, losing heat by "
+                            + "convection and its own radiation, for its peak temperature; and marks timber, "
+                            + "canvas and dry grass past test thresholds for ignition. Illustrative: nothing melts, "
+                            + "chars or burns, and no fire is modelled.")
+                if spec.heating.enabled {
+                    materialPicker("Ground is", \.ground, ["asphalt", "concrete", "soil", "dry grass"])
+                    materialPicker(
+                        "Blocks are", \.blocks, ["concrete", "masonry", "steel", "glass", "timber"])
+                }
                 PlacementPicker(
                     title: "Run on", host: $model.thermalHost,
                     help: "Reckons the radiation here or on a Mac set for sweeps in Settings, frame by frame."
@@ -58,7 +69,8 @@ struct ThermalSection: View {
                 Text(
                     model.thermalStatus.isEmpty
                         ? "Changes take effect from the next run. Afterburning makes a larger, longer fireball. "
-                            + "Display › Surfaces paints its fluence or peak irradiance."
+                            + "Display › Surfaces paints its fluence, peak irradiance, the surfaces' peak "
+                            + "temperature or illustrative ignition."
                         : model.thermalStatus
                 )
                 .font(.caption)
@@ -66,6 +78,25 @@ struct ThermalSection: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private func heating<Value>(_ path: WritableKeyPath<SurfaceHeatingSpec, Value>) -> Binding<Value> {
+        Binding(
+            get: { (model.thermalSpec ?? ThermalSpec()).heating[keyPath: path] },
+            set: { model.thermalSpec?.heating[keyPath: path] = $0 })
+    }
+
+    /// A picker of the library's materials for one kind of surface; the structure takes its own.
+    private func materialPicker(
+        _ title: String, _ path: WritableKeyPath<SurfaceHeatingSpec, String>, _ names: [String]
+    ) -> some View {
+        let current = (model.thermalSpec ?? ThermalSpec()).heating[keyPath: path]
+        return Picker(title, selection: heating(path)) {
+            ForEach(names.contains(current) ? names : names + [current], id: \.self) { name in
+                Text(name.prefix(1).uppercased() + name.dropFirst()).tag(name)
+            }
+        }
+        .help("What these surfaces are made of, for their heating; the structure's follow its own materials.")
     }
 
     private var enabled: Binding<Bool> {
