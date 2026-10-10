@@ -99,7 +99,7 @@ private func runTube(device: MTLDevice, gas: FlammableGas, ball: Bool) throws {
     var scenario = Scenario(
         name: "Tube", domainSize: SIMD3(length, width, width), boxes: [],
         charge: Charge(mass: 0, position: .zero))
-    scenario.reflectiveFaces = ball ? [] : BoundaryFaces.all.subtracting(.xMax)
+    scenario.reflectiveFaces = ball ? (flag("closed") ? .all : []) : BoundaryFaces.all.subtracting(.xMax)
     let ignition =
         ball
         ? SIMD3<Float>(repeating: length / 2 + (option("offset").flatMap { Float($0) } ?? 0) * dx)
@@ -119,6 +119,7 @@ private func runTube(device: MTLDevice, gas: FlammableGas, ball: Bool) throws {
     let grid = solver.grid
     let row = grid.cell(containing: ignition)
     let step = option("every").flatMap { Double($0) } ?? 0.05
+    var lastRadius = 0.0
     for n in 1...(option("count").flatMap { Int($0) } ?? 6) {
         solver.advance(until: step * Double(n))
         guard let front = solver.unburntShare() else { return }
@@ -188,6 +189,21 @@ private func runTube(device: MTLDevice, gas: FlammableGas, ball: Bool) throws {
                         + "\(format(sums[bin] / Double(counts[bin]), 4)) max \(format(largest[bin].0, 4)) m/s at "
                         + "\(format(Double(simd_distance(c, ignition)), 3)) m from ignition")
             }
+        }
+        if let state = solver.deflagrationState(), ball, flag("closed") {
+            // The radius of a sphere of the mixture burnt so far, burnt at constant pressure, and the
+            // rate it has grown at since the last print against the expansion ratio times the
+            // burning velocity.
+            let sigma = Double(
+                scenario.deflagration!.modelExpansionRatio(
+                    atmosphere: scenario.atmosphere, airModel: .idealGas, gamma: 1.4))
+            let burnt = state.initialUnburnt - state.unburnt
+            let radius = cbrt(3 * burnt * sigma / (Double(scenario.atmosphere.density) * 4 * Double.pi))
+            print(
+                "  burnt-mass radius \(format(radius, 3)) m = \(format(radius / Double(dx), 1)) cells, growing at "
+                    + "\(format((radius - lastRadius) / step, 2)) m/s against "
+                    + "\(format(sigma * Double(scenario.deflagration!.laminarBurningVelocity), 2))")
+            lastRadius = radius
         }
         if let state = solver.deflagrationState() {
             print(
