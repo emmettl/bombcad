@@ -85,7 +85,7 @@ public enum FootingRockingTest {
     public static func run(
         device: MTLDevice, shearModulus: Float = 40e6, bearingCapacity: Float = Self.bearingCapacity,
         friction: Float = 0.6, packets: [Packet] = Self.packets, speed: Float = 0.2, interval: Double = 1e-3,
-        progress: ((String) -> Void)? = nil
+        cyclic: CyclicSand? = CyclicSand(), progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         let h: Float = 0.2
@@ -109,6 +109,7 @@ public enum FootingRockingTest {
             soil: Soil(
                 material: SoilMaterial(shearModulus: shearModulus, poissonRatio: 0.3, density: 1657),
                 bearingCapacity: bearingCapacity, friction: friction))
+        joint.footing?.soil.cyclic = cyclic
         model.baseAnchorage = joint
         // The test's Teflon guides, which kept the wall from falling over sideways: bearings
         // against both its faces across y over its top 2 m, with friction 0.1 and no tie.

@@ -30,7 +30,7 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 2 | Peterson et al. 2026, KTH: 18 beams with and without stirrups struck to shear failure, with raw high-speed images ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Shear under impact; interlock | Open, CC BY 4.0 (Mendeley Data) | Support reactions and images from which crack opening and slip can be read, on beams that fail in shear |
 | 3 | Hupfauf and Gebbeken 2022, and Hupfauf's 2024 thesis: 15 slabs under contact charges ([3c](#3c-collapse-and-debris)) | Debris; spall | Open, CC BY 4.0; used ([Validation](validation.md#slabs-under-contact-charges)) | The first debris comparison: secondary debris velocities and spall craters, on documented slabs |
 | 4 | Hrynyk 2013, slabs struck by a falling weight, digital records on the VecTor site ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Tension stiffening under impact | Open download, terms not stated | Raw records of reinforced and fibre-reinforced slabs, which separate what the concrete between cracks carries |
-| 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, Open Data Commons Attribution on DesignSafe (CC BY-NC-SA 4.0 on DataCenterHub) | Settlement measured under shaking, on the sand family of SSG02_03, where the model settles a tenth as much |
+| 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, Open Data Commons Attribution on DesignSafe (CC BY-NC-SA 4.0 on DataCenterHub); used ([Validation](validation.md#a-footing-shaken-on-dry-sand)) | Settlement measured under shaking, on the sand of SSG02_03: eight events of SSG03 and SSG04 now compared, settling 0.6–1.5 times as much on cyclic sand |
 | 6 | Wang et al. 2022, *Materials* 15, 6449: two slabs, steel in both faces, 10 kg at 1.2 m ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Air and structure together | Open, CC BY 4.0 | Reflected pressures and deflection histories from one open-air shot; but an aluminised charge and nominal materials |
 | 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Needs the user to obtain (ERDC, DTIC) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB | A second 500-ton TNT shot measured by the group behind the one comparison so far |
@@ -469,10 +469,10 @@ Ten values in the code were written from memory and should be checked against th
 
 ## 3b. A footing or connection under fast loading
 
-- **Needed:** beyond FoRCy's slow rocking (see Obtained), a footing under dynamic or
-  blast-like loading with its settlement measured, since the model settles a tenth as much as
-  SSG02_03; and a wall–foundation joint, starter bars, dowels or anchors under fast loading with
-  slip or rotation measured, for `Anchorage`.
+- **Needed:** beyond FoRCy's slow rocking and FoRDy's shaking (both now used, see Obtained), a
+  footing under blast-like loading, a single fast push, with its settlement and rotation
+  measured, and a footing on another soil; and a wall–foundation joint, starter bars, dowels or
+  anchors under fast loading with slip or rotation measured, for `Anchorage`.
 - **Found, 10 October 2026:**
   - **FoRDy**: B. L. Kutter, A. G. Gavras, I. Anastasopoulos, L. Deng, S. Gajan, A. Tsatsis,
     K. Sharma, T. Kouno, M. Hakhamaneshi, G. Gazetas and K. Athipotta Variam, *FoRDy: Rocking
@@ -486,7 +486,10 @@ Ten values in the code were written from memory and should be checked against th
     ground motions, 200 events, each as tab-delimited time series with baseline-corrected
     motions and spectra; drift, rotation, sliding, settlement and the footing's loads. Size not
     stated. **Gives:** settlement under shaking on the same family of sands as SSG02_03, with
-    sequences of motions on one model.
+    sequences of motions on one model. **Used** (10 October 2026): Gajan's SSG04 (surface) and
+    SSG03 (embedded) events in `Samples/FoRDy`, compared in
+    [validation](validation.md#a-footing-shaken-on-dry-sand); the other series (UC Davis's
+    later footings, NTUA's and PWRI's 1 g tests) are not used yet.
   - PWRI's 1 g footings on Toyoura sand (Shirato, Paolucci et al., *EESD* 2008,
     doi:10.1002/eqe.773) are in FoRCy and probably FoRDy already; they add the contact pressure
     under an uplifting footing. Whether TRISEE's embedded footings (ELSA, Ispra) are in FoRCy is
@@ -733,7 +736,6 @@ their licence, as `Samples/FoRCy` does.
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
 | `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
-| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, 809 files, each checked against the listing's size | Open Data Commons Attribution |
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
@@ -821,8 +823,16 @@ Supplied by hand during development, and now in use:
   Commons Attribution), fetched on 9 October 2026 with the user's agreement: its mastersheet and
   S. Gajan and B. L. Kutter's test SSG02_03, a shear wall on a surface footing on dry dense sand
   rocked slowly, compared with `Footing` in [footings](structural-model.md#footings)
-  (`blastbench rocking`, data in `Samples/FoRCy`). Its dynamic sister, FoRDy, and the other
-  series (PWRI's 1 g footings on Toyoura sand, TRISEE's embedded ones) are not used yet.
+  (`blastbench rocking`, data in `Samples/FoRCy`). The other series (PWRI's 1 g footings on
+  Toyoura sand, TRISEE's embedded ones) are not used yet.
+- FoRDy, its dynamic sister (DesignSafe PRJ-3836, doi:10.13019/3rqyd929, Open Data Commons
+  Attribution), fetched on 10 October 2026 with the user's agreement to
+  `/Volumes/StudioData/bombcad/data/FoRDy` (mastersheet, 550 data files, critical plots,
+  references and photos, 2.34 GB): eight events of Gajan's SSG04 and SSG03 on the same footing
+  and sand, shaken at the base, compared in
+  [validation](validation.md#a-footing-shaken-on-dry-sand) (`blastbench shaking`, data in
+  `Samples/FoRDy`). Gajan's and Gavras's dissertations in its references gave the sand's push
+  test and the contact interface model's rules on which cyclic sand is built.
 - H. Rodrigues, A. Arêde, A. Furtado, R. Sousa and H. Varum's twelve cyclic tests of a precast
   beam seated on a column corbel (Mendeley Data, doi:10.17632/46xpgbhsw6.1, CC BY 4.0), fetched
   on 10 October 2026 with the user's agreement: concrete on concrete, neoprene pads and dowels

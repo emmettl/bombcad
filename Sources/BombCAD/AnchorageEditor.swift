@@ -133,6 +133,15 @@ struct AnchorageEditor: View {
                             candidate.footing?.soil.radiationDamping = value
                             law = candidate
                         }))
+                Toggle(
+                    "Sand settles under cycles",
+                    isOn: Binding(
+                        get: { law?.footing?.soil.cyclic != nil },
+                        set: { on in
+                            guard var candidate = law, candidate.footing != nil else { return }
+                            candidate.footing?.soil.cyclic = on ? CyclicSand() : nil
+                            law = candidate
+                        }))
                 footingOptional(
                     "Soil all the way down", "Layer depth", "m", \.soil.layerDepth, initial: 3, scale: 1)
                 if law?.footing?.soil.layerDepth != nil {
