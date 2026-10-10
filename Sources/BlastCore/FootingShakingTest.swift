@@ -200,7 +200,7 @@ public enum FootingShakingTest {
     public static func run(
         device: MTLDevice, test: Test, series: [Series], shearModulus: Float = 80e6,
         bearingCapacity: Float = Self.bearingCapacity, friction: Float = 0.6, damping: Float = 0.2,
-        cyclic: CyclicSand? = nil, interval: Double = 1e-3, progress: ((String) -> Void)? = nil
+        cyclic: CyclicSand? = CyclicSand(), interval: Double = 1e-3, progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         let h: Float = 0.2
@@ -242,9 +242,8 @@ public enum FootingShakingTest {
         let weight = (test.structure.wallMass + footingMass) * solver.gravity
 
         // Settle under gravity.
-        // (Cyclic sand, softer as it is first loaded, takes longer.)
         solver.damping = 200
-        solver.advance(steps: Int(((cyclic == nil ? 0.5 : 2) / Double(solver.criticalTimeStep)).rounded()))
+        solver.advance(steps: Int((0.5 / Double(solver.criticalTimeStep)).rounded()))
         solver.damping = damping
         guard let rest = solver.footingSummaries().first else {
             throw ImportedMesh.ImportError.invalid("The shaken wall has no footing.")

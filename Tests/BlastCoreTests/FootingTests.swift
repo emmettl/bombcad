@@ -44,7 +44,8 @@ struct FootingTests {
 
     @Test("A block on a footing settles under its weight as the half-space's stiffness says")
     func settlement() throws {
-        let footing = Footing(overhang: SIMD2(0.25, 0.25), thickness: 0.5, soil: Soil(bearingCapacity: nil))
+        let footing = Footing(
+            overhang: SIMD2(0.25, 0.25), thickness: 0.5, soil: Soil(bearingCapacity: nil, cyclic: nil))
         let solver = try block(SIMD3(1, 1, 1), footing: footing)
         let summary0 = try #require(solver.footingSummaries().first)
         #expect(abs(summary0.size.x - 1.5) < 1e-4 && abs(summary0.size.y - 1.5) < 1e-4)
@@ -134,7 +135,8 @@ struct FootingTests {
     func rockingAndUplift() throws {
         // Rough enough not to slide under the push.
         let footing = Footing(
-            overhang: SIMD2(0.25, 0.25), thickness: 0.5, soil: Soil(bearingCapacity: nil, friction: 1.2))
+            overhang: SIMD2(0.25, 0.25), thickness: 0.5,
+            soil: Soil(bearingCapacity: nil, friction: 1.2, cyclic: nil))
         let bed = FootingBed(width: 1.5, length: 1.5, soil: footing.soil)
         for eccentricity: Float in [0.1, 0.25, 0.4] {
             let solver = try block(SIMD3(1, 1, 1), footing: footing)
@@ -220,7 +222,7 @@ struct FootingTests {
             overhang: SIMD2(0.5, 0), thickness: 0.4,
             soil: Soil(
                 material: SoilMaterial(shearModulus: 400e6, poissonRatio: 0.3, density: 2000),
-                bearingCapacity: nil, friction: 1, layerDepth: layer))
+                bearingCapacity: nil, friction: 1, layerDepth: layer, cyclic: nil))
         let width = thickness + 2 * footing.overhang.x
         /// The top's sway at 0.75 s and 1.5 s under a steady push `pressure` on the face.
         func sway(_ pressure: Float) throws -> (early: Float, late: Float) {
@@ -304,7 +306,7 @@ struct FootingTests {
     }
 
     /// A 1 m block on a 1.5 m square footing 0.5 m thick on the medium dense sand.
-    private func impedanceBlock(soil: Soil = Soil(bearingCapacity: nil, friction: 2)) throws
+    private func impedanceBlock(soil: Soil = Soil(bearingCapacity: nil, friction: 2, cyclic: nil)) throws
         -> StructureSolver
     {
         let solver = try block(
@@ -317,7 +319,7 @@ struct FootingTests {
 
     @Test("Driven up and down, a footing answers as the vertical cone's impedance says")
     func verticalImpedance() throws {
-        let soil = Soil(bearingCapacity: nil, friction: 2)
+        let soil = Soil(bearingCapacity: nil, friction: 2, cyclic: nil)
         let bed = FootingBed(width: 1.5, length: 1.5, soil: soil)
         let probe = try impedanceBlock(soil: soil)
         let mass = Double(bodyMass(probe) + probe.footingSummaries()[0].mass)
@@ -342,7 +344,7 @@ struct FootingTests {
 
     @Test("Pushed to and fro, a footing sways and rocks as the cones' impedances say")
     func rockingImpedance() throws {
-        let soil = Soil(bearingCapacity: nil, friction: 2)
+        let soil = Soil(bearingCapacity: nil, friction: 2, cyclic: nil)
         let bed = FootingBed(width: 1.5, length: 1.5, soil: soil)
         let probe = try impedanceBlock(soil: soil)
         let footing = probe.footingSummaries()[0]
@@ -405,7 +407,7 @@ struct FootingTests {
     @Test("Over a layer on rock a footing is stiffer, as the cones' echoes and Kausel's stratum say")
     func layerStatics() throws {
         let depth: Float = 1.5
-        let layer = Soil(bearingCapacity: nil, friction: 2, layerDepth: depth)
+        let layer = Soil(bearingCapacity: nil, friction: 2, layerDepth: depth, cyclic: nil)
         let bed = FootingBed(width: 1.5, length: 1.5, soil: layer)
         let impedance = bed.impedance
         let factor = impedance.staticStiffness(.vertical) / impedance.stiffness[0]
@@ -439,7 +441,7 @@ struct FootingTests {
         "Pushed past its friction, a footing slides at (F − μ W) / M, on the half-space or over a layer",
         arguments: [nil, 2] as [Float?])
     func sliding(layer: Float?) throws {
-        let soil = Soil(bearingCapacity: nil, friction: 0.5, layerDepth: layer)
+        let soil = Soil(bearingCapacity: nil, friction: 0.5, layerDepth: layer, cyclic: nil)
         let solver = try block(
             SIMD3(1, 1, 0.5), footing: Footing(overhang: SIMD2(0.5, 0.5), thickness: 0.3, soil: soil))
         solver.damping = 200
@@ -490,7 +492,7 @@ struct FootingTests {
 
     @Test("Over a layer on rock a footing radiates little below the layer's cut-off, as its impedance says")
     func layerImpedance() throws {
-        let soil = Soil(bearingCapacity: nil, friction: 2, layerDepth: 1.5)
+        let soil = Soil(bearingCapacity: nil, friction: 2, layerDepth: 1.5, cyclic: nil)
         let bed = FootingBed(width: 1.5, length: 1.5, soil: soil)
         let probe = try impedanceBlock(soil: soil)
         let mass = Double(bodyMass(probe) + probe.footingSummaries()[0].mass)
@@ -579,7 +581,7 @@ struct FootingTests {
     // MARK: - Measured
 
     @Test(
-        "Rocked slowly, a footing on dry sand mobilizes the moment Gajan and Kutter's did, within 10% to 7 mrad"
+        "Rocked slowly, a footing on dry sand mobilizes the moment Gajan and Kutter's did, within 15% to 7 mrad"
     )
     func measuredRocking() throws {
         // The first two packets (`blastbench rocking` runs all five), the push set every 4 ms.
@@ -590,10 +592,33 @@ struct FootingTests {
             #expect(abs(model.peakRotation / measured.peakRotation - 1) < 0.15, "\(measured.name) rotation")
             // Pushing forward: the measured moment back was lopsided in the first packet.
             #expect(
-                abs(model.moment.x / measured.moment.x - 1) < 0.1,
+                abs(model.moment.x / measured.moment.x - 1) < 0.15,
                 "\(measured.name): \(model.moment.x) against \(measured.moment.x)")
         }
-        // It settles far less than the sand did (see docs/structural-model.md#footings).
-        #expect(result.packets[1].settlement < 0.3 * packets[1].settlement)
+        // On cyclic sand it settles up to twice as much as the sand did, where the elastic bed
+        // settled a tenth (see docs/validation.md#a-footing-shaken-on-dry-sand).
+        let ratio = result.packets[1].settlement / packets[1].settlement
+        #expect(ratio > 0.7 && ratio < 2.5, "\(ratio)")
+    }
+
+    @Test(
+        "Shaken at its base, a wall on a footing on dry sand settles and rocks as Gajan's SSG04 did, within 50%"
+    )
+    func measuredShaking() throws {
+        // The first of SSG04's shakes on the lighter wall (`blastbench shaking` runs them all).
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appending(path: "../../Samples/FoRDy").standardized
+        var test = FootingShakingTest.tests[0]
+        test.events = [test.events[0]]
+        let measured = try FootingShakingTest.Series.load(folder.appending(path: "\(test.events[0]).csv"))
+        let result = try FootingShakingTest.run(
+            device: device, test: test, series: [measured], interval: 2e-3)
+        let (a, b) = (measured.summary, result.events[0].summary)
+        #expect(
+            abs(b.settlement / a.settlement - 1) < 0.5, "settlement \(b.settlement) against \(a.settlement)")
+        let peak = { (s: FootingShakingTest.Summary) in max(s.rotation.x, -s.rotation.y) }
+        #expect(abs(peak(b) / peak(a) - 1) < 0.5, "rotation \(peak(b)) against \(peak(a))")
+        // It dissipates energy in the sand, if less than the test did.
+        #expect(b.energy > 0.3 * a.energy, "energy \(b.energy) against \(a.energy)")
     }
 }

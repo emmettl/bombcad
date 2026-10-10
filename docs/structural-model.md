@@ -455,6 +455,29 @@ values within the ranges foundation texts give, not measured for any site. Its s
 stiffnesses are G. Gazetas's for a rigid rectangle (1991), which agree with the rigid disk's
 within 1% in translation and 9% in rocking for a square.
 
+**Sand that settles under cycles** (`Soil.cyclic`, `CyclicSand`, on by default since
+2026-10-10). Sand settles at every cycle of a rocking footing, well below its bearing capacity,
+by about as much each cycle at a given amplitude (in SSG02_03's third packet, 0.0017 and
+0.0016 of L in its second and third cycles). A bed of points that settle only past their share
+of the capacity, as the bed was, settles a tenth as much: after the first cycle at an amplitude
+the toe has been rounded to the footing and bears no more than it did. S. Gajan's contact
+interface model (PhD dissertation, UC Davis, 2006, §6.5; S. Gajan and B. L. Kutter, *J.
+Geotech. Geoenviron. Eng.* 135(3), 2009) makes all compression past the deepest the footing
+has pressed permanent, at the soil's elastic stiffness, and lets the pressure fall to nothing
+where the footing lifts, so that it builds again only as the footing presses deeper. Each point
+of the bed does the same: pressed past the largest force it has borne, it is as stiff as the
+elastic bed, but gives back only an eighth of that compression when unloaded, unloading and
+reloading eight times as stiffly below that force; unloaded to nothing, it forgets the force.
+The eighth is Gajan's vertical push on the Nevada sand at 80% relative density, first loaded
+at about 11 MN/m³ and unloaded and reloaded at 80–100 (his §4.2, Figs. 4.1–4.3). A point counts
+as unloaded once it bears nothing; the heave Gajan gives the soil under a lifted heel
+(`heave`, his rebounding ratio Rv₀ (1 − 1/FS), Rv₀ = 0.1) only once it lifts clear by more than
+the soil springs back, as points at the edge of the contact flicker on and off from step to
+step. Off by default: in his model the heave raises a second surface that bears weakly, but
+here it raises the surface the point bears on, and any Rv₀ from 0.01 to 0.1 stopped SSG02_03
+settling after its first packet. First loaded as stiffly as the elastic bed, a footing settles
+under its weight and turns under a first push as it did; it is the cycles that differ.
+
 **The soil's mass and radiation damping** (`Soil.radiationDamping`, on by default) follow
 J. P. Wolf's cones (*Foundation Vibration Analysis Using Simple Physical Models*, 1994), each
 fitted to the bed's static stiffness K: a cone of apex height z₀ = ρ c² A / K carries the waves
@@ -493,7 +516,8 @@ rocking the layer only stiffens the bed, by E. Kausel's 1 + r / (6 d) for a stra
 scaled by −R, and the half-space's rocking cone carries on. Without the soil's mass, the bed is
 given the layer's static stiffness from the start.
 
-**Checks** (`FootingTests`, a stiff elastic block or wall cast on starter bars):
+**Checks** (`FootingTests`, a stiff elastic block or wall cast on starter bars, on the elastic
+bed unless cyclic sand is named):
 
 - the bed gives the half-space's vertical and both rocking stiffnesses within 1% under a
   square footing, and both rocking stiffnesses under footings two and ten times as long as
@@ -523,6 +547,10 @@ given the layer's static stiffness from the start.
   on the half-space and over a layer 2 m deep on rock, where the bed's points alone bear only
   about 56% of the weight and slid at twice that rate until they were given the echoes' share;
   and the wall on its footing tips about the toe as above over a layer 2 m deep;
+- on cyclic sand, a block on a footing settles under its weight within 3% of the elastic
+  bed; pushed one way and the other past its kern four times, it settles at every cycle, where
+  on the elastic bed its stiff edges yield a little at first and then no more, and where sand
+  that remembered the force it bore would stop settling after the first cycle;
 - over layers 0.3 to 10 m deep, on rock, soft rock or a soft clay, the impedance's imaginary
   part is nowhere negative in any mode, up to ten times the layer's lowest frequency: the soil
   never gives the footing energy;
@@ -537,23 +565,26 @@ wall on starter bars onto a footing 1.25 m wide and 0.4 m thick, on the sand wit
 
 | Distance | Peak sway | At 0.5 s | Footing turned | Heel lifted | Slid | Rose |
 |---|---|---|---|---|---|---|
-| 6 m | over (1.38 m) | over | 398 mrad | 440 mm | 54 mm | 197 mm |
-| 10 m | 360 mm | 318 mm | 103 mrad | 115 mm | 8 mm | 44 mm |
-| 15 m | 130 mm | −69 mm | 37 mrad | 40 mm | 1.8 mm | 7 mm |
-| 25 m | 43 mm | 28 mm | 12 mrad | 12 mm | 0.8 mm | 1.8 mm |
+| 6 m | over (1.37 m) | over | 394 mrad | 432 mm | 54 mm | 192 mm |
+| 10 m | 355 mm | 307 mm | 101 mrad | 110 mm | 8 mm | 38 mm |
+| 15 m | 128 mm | −52 mm | 37 mrad | 38 mm | 2.0 mm | 4 mm |
+| 25 m | 41 mm | 19 mm | 12 mrad | 11 mm | 0.8 mm | −2 mm |
 
-Without the soil's mass (`--massless`) the peak sway is within 1.5% at every distance and the
-footing turns within 0.5%: rocking on its toe radiates little, and the toe's crushing and the
+On the elastic bed (`--elastic`, the default before cyclic sand) the wall swayed 1.38 m (over),
+360, 130 and 43 mm and the footing rose 197, 44 and 7 mm at 6, 10 and 15 m: a single pulse is
+mostly one first loading, and the sand that settles under cycles changes it by a few per cent.
+Without the soil's mass (`--massless`) the peak sway is within 1% at every distance and the
+footing turns within 1%: rocking on its toe radiates little, and the toe's crushing and the
 heel's lift do the rest. Over a layer 3 m deep (`--layer 3`) on rock the wall and footing rock
-further, 426 mm and 122 mrad at 10 m, 149 mm and 43 mrad at 15 m, as the stiffer ground under
+further, 427 mm and 122 mrad at 10 m, 147 mm and 42 mrad at 15 m, as the stiffer ground under
 the toe gives back more of what it takes; over a soft clay (`--beneath clay`) a little less,
-338 mm and 96 mrad at 10 m. The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
+329 mm and 94 mrad at 10 m. The wall stays tied to its footing (the joint opens 0.4 mm at 6 m) and the two rock together
 on the footing's toe, which crushes the sand. Clamped, the wall sways 200, 65, 29 and 11 mm;
 on the Winkler bed of `Anchorage.soil()` under its own 250 mm base it goes over at every
 distance. The footing is what keeps it up at 10 m and beyond, but it rocks. At 10 m the pulse's
 angular impulse about the toe, 5.3 kN m s, gives the wall and footing (9,250 kg m² about the
 toe) 1.5 kJ; rocking as a rigid block on its toe, they would rise until that has lifted their
-weight, at 0.09 rad, against 0.103 found on the yielding sand. Each run takes about 22 s, as
+weight, at 0.09 rad, against 0.101 found on the yielding sand. Each run takes about 22 s, as
 on the other bases. Meshed with shells (`--shells`, 10 s a run) the wall and footing do the
 same within 1% at 10, 15 and 25 m and 2% at 6 m.
 
@@ -565,32 +596,54 @@ relative density of 80% (ultimate bearing pressure 814 kPa against the 157 kPa i
 pushed slowly to and fro by an actuator 4.9 m up in five packets of three cycles, prototype
 units. The model is the wall as a stiff block on a footing 0.65 m thick, their masses set to
 the test's, driven at the actuator's height by the measured amplitudes through a spring and
-dashpot to the displacement asked for (it lags by at most 2.3 mm), with bearings against its
+dashpot to the displacement asked for (it lags by at most 2 mm), with bearings against its
 faces near the top for the test's Teflon guides (without them the 8.6 m wall on its 0.65 m
 footing fell over sideways). The sand's shear modulus is the one input not taken from the
-test; 80 MPa is roughly its small-strain value under the footing by the usual correlations for a dense sand, an estimate, and 40 MPa is the default sand's.
+test; 80 MPa is roughly its small-strain value under the footing by the usual correlations for
+a dense sand, an estimate, and 40 MPa is the default sand's. On 80 MPa sand:
 
-| Packet | Rotation | Moment 2 M / (L P), measured | 80 MPa | 40 MPa | Settlement / L, measured | 80 MPa | 40 MPa |
+| Packet | Rotation | Moment 2 M / (L P), measured | cyclic sand | elastic bed | Settlement / L, measured | cyclic sand | elastic bed |
 |---|---|---|---|---|---|---|---|
-| a | 3 mrad | 0.53 / 0.37 | 0.52 | 0.34 | 0.0027 | 0.0005 | 0.0008 |
-| b | 7 mrad | 0.69 / 0.62 | 0.67 | 0.55 | 0.0065 | 0.0007 | 0.0010 |
-| c | 14 mrad | 0.78 / 0.78 | 0.74 | 0.68 | 0.0108 | 0.0009 | 0.0014 |
-| d | 30 mrad | 0.84 / 0.91 | 0.78 | 0.74 | 0.0173 | 0.0012 | 0.0019 |
-| e | 62 mrad | 0.87 / 0.96 | 0.80 | 0.78 | 0.0295 | 0.0016 | 0.0024 |
+| a | 3 mrad | 0.53 / 0.37 | 0.58 | 0.52 | 0.0027 | 0.0046 | 0.0005 |
+| b | 7 mrad | 0.69 / 0.62 | 0.62 / 0.65 | 0.67 | 0.0065 | 0.0116 | 0.0007 |
+| c | 14 mrad | 0.78 / 0.78 | 0.74 / 0.75 | 0.74 | 0.0108 | 0.0234 | 0.0009 |
+| d | 30 mrad | 0.84 / 0.91 | 0.79 | 0.78 | 0.0173 | 0.0399 | 0.0012 |
+| e | 62 mrad | 0.87 / 0.96 | 0.80 | 0.80 | 0.0295 | 0.0639 | 0.0016 |
 
-(The measured moment is the largest each way; the model's is the same both ways.) On 80 MPa
-sand the moment the footing mobilizes follows the test within 6% to 14 mrad of rotation. It then
-levels off at 0.80, the capacity of a rigid footing whose toe bears 814 kPa,
-(1 − A_c / A) with A / A_c = 5.2, where the test went on rising to 0.87–0.96: the sand under the
-toe bore more than its bearing capacity as it was rounded and confined, which points that yield
-at a fixed pressure cannot. The settlement is the model's failing: a tenth or less of the
-sand's, 4.5 mm against 83 mm by the end. The bed's points settle only while each is pressed
-past its share of the bearing capacity, and as the footing rocks its toe soon bears on few
-points; the sand settled at every cycle as it was pushed aside and rounded under the footing.
-Settlement under cyclic rocking needs a soil that yields gradually below its capacity and
-flows from under the toe. `FootingTests` checks the moment of the first two packets within 10%
-and that the model still settles less than a third as much. A run of all five packets takes
-about 90 s.
+(The measured moment is the largest each way; the model's is nearly the same both ways. On
+the elastic bed of 40 MPa sand the moments were 0.34, 0.55, 0.68, 0.74 and 0.78 and the
+settlements 0.0008 to 0.0024.) The moment the footing mobilizes follows the test within 11%
+to 14 mrad of rotation. It then levels off at 0.80, the capacity of a rigid footing whose toe
+bears 814 kPa, (1 − A_c / A) with A / A_c = 5.2, where the test went on rising to 0.87–0.96:
+the sand under the toe bore more than its bearing capacity as it was rounded and confined,
+which points that yield at a fixed pressure cannot. On the elastic bed the settlement was a
+tenth or less of the sand's, 4.5 mm against 83 mm by the end: its points settle only while
+pressed past their share of the bearing capacity, and after the first cycle at an amplitude
+the toe bears no more. On cyclic sand it settles at every cycle, 1.7 to 2.2 times as much as
+the sand did, 179 mm by the end; shaken, the same sand settles about as much as measured
+(below), and Gajan found the shaken footings settling more than the slowly rocked ones for the
+same rotation. `FootingTests` checks the moment of the first two packets within 15% and their
+settlement within 0.7 to 2.5 times. A run of all five packets takes about 60 s.
+
+**A shaken footing** (`FootingShakingTest`, `blastbench shaking`, data in
+[Samples/FoRDy](../Samples/FoRDy/README.md)). FoRDy, FoRCy's dynamic sister, holds the same
+footing on the same sand in Gajan's tests SSG04 (on the surface) and SSG03 (its base 0.7 m
+down), carrying a 33.6 Mg aluminium wall (DSW) or a 54.8 Mg steel one (SHW), shaken at the
+container's base by tapered 1.2 Hz sines at two or three levels in turn. The wall is a stiff
+block in two parts, a lighter stem under a heavier top, which give it the database's mass,
+height of centre of mass and moment of inertia; frictionless bearings near its top stand for
+what held the walls upright across the shaking. The whole problem is solved in the ground's
+frame: `StructureSolver.groundAcceleration` pulls every node, and each footing, by −m a for
+the measured base acceleration, besides gravity (the soil's cones move with the ground). The
+sand is the slow test's, nothing fitted. On cyclic sand the footing settles 0.6 to 1.5 times
+as much as measured in each of the eight events, against a tenth to a two-hundredth on the
+elastic bed; it rocks within 22% of the surface footing's peak rotation where the test rocked
+both ways, but not where the test lurched one way and was left leaning; and it dissipates a
+sixth to a half of the energy the test did, where on the elastic bed the surface footing
+dissipated a fortieth to a sixth and rocked on for seconds after each shake. The table and figure are in
+[validation](validation.md#a-footing-shaken-on-dry-sand). `FootingTests` runs the first event
+(SSG04 DSW 3): settlement and peak rotation within 50%, energy more than 0.3 of the test's.
+The three surface events of the lighter wall take about a minute.
 
 **Set into the soil** (`Footing.embedment`, `Embedment`, `FootingSides`). A footing can have its
 base a depth D below the surface, the soil then against its sides over its thickness or D,
@@ -636,8 +689,11 @@ against its sides is springs with limits, its rocking past their reach a spring 
 with its own limit; the soil's radiation from the sides, and a gap left by soil that has given
 way, are left out. It is drawn nowhere in the app. The bed's
 springs do not interact, and its points yield one by one with no rounding of the soil under
-the toe. One footing spans every point its connection ties, however far apart. Settlement under cyclic
-rocking is a tenth of a measured footing's (above).
+the toe. One footing spans every point its connection ties, however far apart. Cyclic sand
+settles and dissipates only by what its points keep of being pressed: not by the sand's own
+densification under shaking (the free field settled a fifth to a quarter as much as the
+footing in SSG04), nor by soil pushed back under the heel, and a shaken footing does not lurch
+one way as the tests' did. Its share given back is one sand's.
 
 ## Failure and removal
 

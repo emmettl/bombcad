@@ -65,7 +65,7 @@ swift run -c release blastbench chamber
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Low: illustrative; afterburning keeps the fireball near the flame temperature |
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to an eighth with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
-| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
+| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation, 5–16% low beyond; settlement 1.7–2.2 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, peak rotation within 22% where the test did not lurch one way, a sixth to a half of the energy dissipated | Moderate for rocking moment and settlement; low for energy and for a footing that lurches |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
 ## Structural response against a real test
@@ -2050,9 +2050,53 @@ A premixed methane or propane cloud lit at a point (see [Gas deflagrations](defl
 S. Gajan and B. L. Kutter's centrifuge test SSG02_03, from the FoRCy database: a 29 Mg shear
 wall on a 2.8 × 0.65 m surface footing on dry Nevada sand at 80% relative density, pushed
 slowly to and fro through five packets of rising amplitude. On sand of 80 MPa the footing's
-moment follows the test within 6% to 14 mrad and levels off at the rigid footing's capacity,
-7–17% below the test's at 30 to 60 mrad; it settles a tenth as much as the sand did. Details,
-the 40 MPa run and why: [footings](structural-model.md#footings) (`blastbench rocking`).
+moment follows the test within 11% to 14 mrad and levels off near the rigid footing's capacity,
+5–16% below the test's at 30 to 60 mrad. On the sand that settles under cycles (the default since
+the shaken tests below) it settles 1.7 to 2.2 times as much as the test did; on the bed elastic
+up to its capacity, a tenth as much. Details: [footings](structural-model.md#footings)
+(`blastbench rocking`, `--elastic` for the elastic bed).
+
+## A footing shaken on dry sand
+
+FoRDy, FoRCy's dynamic sister: the same footing on the same sand in S. Gajan's centrifuge tests
+SSG04 (on the surface) and SSG03 (its base 0.7 m down), carrying a 33.6 Mg aluminium wall
+(DSW, static pressure 198 kPa, factor of safety 4) or a 54.8 Mg steel one (SHW, 313 kPa, 2.6),
+each shaken at its container's base by a tapered 1.2 Hz sine at two or three levels in turn
+(`blastbench shaking`, data in [Samples/FoRDy](../Samples/FoRDy/README.md)). The model drives
+the wall and footing with the measured base acceleration, every node and the footing pulled by
+−m a in the ground's frame, on the 80 MPa sand of the slow test with its 814 kPa bearing
+capacity; nothing was fitted to these tests. 2026-10-10:
+
+| Event | Peak base | Rotation (mrad), measured / model | Settlement / L, measured / model / elastic bed | ∫ M dθ / (P L / 2), measured / model / elastic bed |
+|---|---|---|---|---|
+| SSG04 DSW 3 | 0.13 g | +3.6 −4.8 / +5.2 −5.6 | 0.0091 / 0.0087 / 0.0007 | 0.010 / 0.005 / 0.002 |
+| SSG04 DSW 4 | 0.53 g | +9.0 −9.9 / +9.2 −9.2 | 0.0162 / 0.0238 / 0.0003 | 0.062 / 0.021 / 0.002 |
+| SSG04 DSW 5 | 0.73 g | +9.0 −20.8 / +15.1 −11.1 | 0.0240 / 0.0362 / 0.0001 | 0.104 / 0.036 / 0.003 |
+| SSG04 SHW 3 | 0.12 g | +3.2 −2.5 / +3.9 −3.8 | 0.0083 / 0.0095 / 0.0010 | 0.008 / 0.004 / 0.001 |
+| SSG04 SHW 4 | 0.60 g | +15.0 −5.4 / +8.6 −7.8 | 0.0284 / 0.0220 / 0.0007 | 0.049 / 0.013 / 0.003 |
+| SSG03 DSW 3 (embedded) | 0.13 g | +5.1 −3.7 / +1.7 −1.4 | 0.0047 / 0.0029 / 0.0010 | 0.011 / 0.002 / 0.006 |
+| SSG03 DSW 4 | 0.49 g | +21.6 −7.1 / +10.2 −10.4 | 0.0186 / 0.0224 / 0.0000 | 0.119 / 0.041 / 0.015 |
+| SSG03 DSW 5 | 0.97 g | +49.5 +2.8 / +13.5 −13.6 | 0.0190 / 0.0217 / 0.0001 | 0.175 / 0.045 / 0.019 |
+
+![Moment against rotation in SSG04's DSW event 4, settlement through its three events, and settlement against rotation in the slow SSG02_03: measured, on cyclic sand and on the elastic bed](footing-shaken.png)
+
+On the bed elastic up to its bearing capacity, the footing settled a tenth to a two-hundredth
+of what the sand did, and its moment–rotation loops were thin: it went on rocking for seconds
+after each shake had stopped, where the test's footing came to rest. The sand that settles
+under cycles (see [footings](structural-model.md#footings)) settles 0.6 to 1.5 times as much
+as measured in every event, and follows the measured settlement through each shake, building
+while the shaking is strong and stopping with it. It takes Gajan's contact interface model's
+rules and the share given back from his vertical push on the same sand, so that the slow test
+and these are run on the same sand: it settles twice as much as the slow test did and about as
+much as these, which Gajan found too (the dynamic tests settling more for the same rotation,
+in part by the free field's own settlement, which here was a fifth to a quarter of the
+footing's in SSG04's heavier event). The peak rotation of the surface footing is within 22% where the
+test rocked both ways; where it lurched one way (SSG04 DSW 5, SHW 4 and SSG03 DSW 4 and 5, left leaning by
+8 to 27 mrad) the model rocks symmetrically and does not lurch. The loops are fatter than the
+elastic bed's but still a sixth to a half as wide as measured: the sand dissipates by settling
+under the toe, and by nothing else. The peak moment is up to 0.13 of P L / 2 above the test's
+on the lighter wall. The embedded footing's first event is the worst: it rocks a third as far
+as the test did, its sides as stiff as Gazetas's formulas say.
 
 ## Bars that slip, across the tests
 

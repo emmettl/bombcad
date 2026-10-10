@@ -601,15 +601,17 @@ public enum StandingTable {
         case .footings:
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
-                note: "One footing rocked on dry sand: moment within 6% to 14 mrad and 7–17% low beyond; "
-                    + "settlement a tenth of that measured.",
+                note:
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–16% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.7–2.2 times that "
+                    + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
         case .cyclicSand:
             return Entry(
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
                 note:
-                    "Settlement under rocking within 0.6–1.5 times of eight shaken centrifuge events (FoRDy) and "
-                    + "1.7–2.2 times of a slow-cycled one (FoRCy), against a tenth on the elastic bed; a sixth to "
+                    "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
+                    + "1.7–2.2 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
                     + "a half of the energy the shaken footings dissipated.",
                 document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:

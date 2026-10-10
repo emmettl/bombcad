@@ -31,14 +31,14 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
-//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1]   (the footing's soil)
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1] [--elastic]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
 //   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
 //                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
-//                      [--cyclic [--elastic-share 0.12] [--memory 0] [--heave 0.1]]   (cyclic sand; also for shaking)
+//                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
@@ -3099,9 +3099,11 @@ func runAnchorage() throws {
     }
     // The footing's soil: `--massless` without its mass and radiation damping; `--layer d` a layer
     // d metres deep over rock (or `--beneath sand`, a looser sand, or `--beneath clay`, a soft
-    // clay, as a half-space).
+    // clay, as a half-space); `--elastic` elastic up to its bearing capacity, not settling under
+    // cycles.
     var soil = Soil()
     soil.radiationDamping = !flag("massless")
+    soil.cyclic = cyclicSandOption()
     soil.layerDepth = option("layer").flatMap { Float($0) }
     switch option("beneath") {
     case "sand": soil.beneath = SoilMaterial(shearModulus: 20e6, poissonRatio: 0.3, density: 1800)
@@ -3111,6 +3113,7 @@ func runAnchorage() throws {
     if soil != Soil() {
         print(
             "Footing on medium dense sand" + (soil.radiationDamping ? "" : " without its mass")
+                + (soil.cyclic == nil ? ", elastic" : "")
                 + (soil.layerDepth.map {
                     " as a layer \(format(Double($0), 1)) m deep over " + (option("beneath") ?? "rock")
                 } ?? ""))
@@ -3709,10 +3712,10 @@ func runRocking() throws {
     }
 }
 
-/// The cyclic sand asked for: `--cyclic` for Gajan's, `--elastic-share`, `--memory` and `--heave`
-/// to change it (`CyclicSand`).
+/// The footing's sand: Gajan's cyclic sand (`CyclicSand`), changed by `--elastic-share`,
+/// `--memory` and `--heave`; `--elastic` for the bed elastic up to its bearing capacity.
 func cyclicSandOption() -> CyclicSand? {
-    guard flag("cyclic") else { return nil }
+    guard !flag("elastic") else { return nil }
     var sand = CyclicSand()
     if let v = option("elastic-share").flatMap({ Float($0) }) { sand.elasticShare = v }
     if let v = option("memory").flatMap({ Float($0) }) { sand.memory = v }

@@ -60,14 +60,17 @@ public struct Soil: Sendable, Hashable, Codable {
     public var layerDepth: Float?
     /// What lies under the layer; nil for rock that does not move.
     public var beneath: SoilMaterial?
-    /// Sand that compresses for good when pressed past the most it has borne (`CyclicSand`); nil
-    /// for a bed elastic up to its bearing capacity.
+    /// Sand that compresses for good when pressed past the most it has borne (`CyclicSand`), by
+    /// default; nil for a bed elastic up to its bearing capacity (as documents saved before it
+    /// came in keep).
     public var cyclic: CyclicSand?
 
     public init(
         material: SoilMaterial = .mediumDenseSand, bearingCapacity: Float? = 600e3, friction: Float = 0.5,
-        radiationDamping: Bool = true, layerDepth: Float? = nil, beneath: SoilMaterial? = nil
+        radiationDamping: Bool = true, layerDepth: Float? = nil, beneath: SoilMaterial? = nil,
+        cyclic: CyclicSand? = CyclicSand()
     ) {
+        self.cyclic = cyclic
         self.material = material
         self.bearingCapacity = bearingCapacity
         self.friction = friction
