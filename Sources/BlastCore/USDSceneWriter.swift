@@ -221,9 +221,12 @@ public final class USDSceneWriter {
         addPoints(
             "GroundShock",
             frames: [
-                open.map {
-                    SIMD3(
-                        $0.position.x, $0.position.y, (scenario.terrain?.height(at: $0.position) ?? 0) + 0.05)
+                open.map { point in
+                    // Placed on the terrain by the run, or here for results from before.
+                    point.elevation == nil
+                        ? SIMD3(
+                            point.position.x, point.position.y,
+                            (scenario.terrain?.height(at: point.position) ?? 0) + 0.05) : point.marker
                 }
             ],
             widths: [Float](repeating: width, count: open.count), colour: SIMD3(0.6, 0.35, 0.9),

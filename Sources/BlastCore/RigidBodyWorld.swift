@@ -15,6 +15,12 @@ import simd
 /// boxes crossed at an angle meeting along edges, with no corner inside the other) is not found.
 /// Candidate pairs come from a sweep along x over bounds grown by each body's travel in the step.
 ///
+/// Over a terrain (`terrain`) the ground is its surface: each corner and support is held off it
+/// along the surface's normal under the point, and each node of the terrain under a member is held
+/// out of the member's faces, as a block's corners are, so that a box resting across a step's edge
+/// turns about the edge. Between nodes the surface's own edges are not found against the member's
+/// edges, as between boxes.
+///
 /// A deformable structure's nodes can be handed in for a step (`nodes`): each is a point mass, or
 /// a sphere of half a shell's thickness, struck by the members' faces with the same impulses,
 /// equal and opposite between the member and the node. A member's corner pressed into a
@@ -65,6 +71,10 @@ struct RigidBodyWorld {
 
     private(set) var members: [Member]
     let blocks: [Box]
+    /// The ground's shape; nil for the floor, z = 0 (a flat terrain is the floor).
+    var terrain: Terrain? {
+        didSet { if terrain?.isFlat == true { terrain = nil } }
+    }
     /// The structure's nodes for the next step; contact changes their velocities.
     var nodes: [Node] = []
     /// Friction between members and the structure's nodes (a pair takes the smaller coefficients).
@@ -75,9 +85,10 @@ struct RigidBodyWorld {
     /// Pairs tested in the last step after the sweep, for checking the spatial filter.
     private(set) var lastCandidatePairs = 0
 
-    init(members: [Member], blocks: [Box] = []) {
+    init(members: [Member], blocks: [Box] = [], terrain: Terrain? = nil) {
         self.members = members
         self.blocks = blocks
+        self.terrain = terrain?.isFlat == true ? nil : terrain
     }
 
     /// The scenario's freestanding objects and cars, in that order, among its rigid blocks.
@@ -90,7 +101,7 @@ struct RigidBodyWorld {
             let made = try car.makeBody()
             members.append(Member(body: made.body, supports: made.tyres, friction: car.ground))
         }
-        self.init(members: members, blocks: scenario.boxes)
+        self.init(members: members, blocks: scenario.boxes, terrain: scenario.terrain)
     }
 
     var kineticEnergy: Double { members.reduce(0) { $0 + $1.body.kineticEnergy } }
@@ -272,7 +283,41 @@ struct RigidBodyWorld {
     private mutating func findContacts(dt: Double, ground: Bool) -> [Contact] {
         let tolerance = contactTolerance
         var contacts: [Contact] = []
-        if ground {
+        if ground, let terrain {
+            for n in members.indices {
+                let body = members[n].body
+                let points =
+                    body.corners.map { ($0, false) } + members[n].supports.map { (body.worldPoint($0), true) }
+                for (point, support) in points {
+                    let (gap, normal) = Self.clearance(point, above: terrain)
+                    let speed = simd_dot(pointVelocity(body, point), normal)
+                    guard gap <= tolerance || gap + dt * speed <= 0 else { continue }
+                    contacts.append(
+                        Contact(
+                            member: n, other: .ground, point: point, normal: normal, isSupport: support,
+                            gap: gap,
+                            tangents: Self.tangents(normal)))
+                }
+                // The terrain's nodes against the member's faces, pushing it away from the face each
+                // is near.
+                let centre = body.worldPoint(.zero)
+                let travel =
+                    dt
+                    * (simd_length(body.linearVelocity) + simd_length(body.angularVelocity)
+                        * simd_length(body.size))
+                for node in Self.nodes(of: terrain, under: bounds(n, dt: dt)) {
+                    guard
+                        let c = Self.pointAgainstBox(
+                            node.position, centre: centre, pose: body.orientation, half: body.size / 2,
+                            towards: -node.normal, reach: travel + tolerance),
+                        Self.canPush(node, along: -c.normal)
+                    else { continue }
+                    add(
+                        &contacts, member: n, other: .ground, point: node.position, gap: c.gap,
+                        normal: -c.normal, dt: dt)
+                }
+            }
+        } else if ground {
             for n in members.indices {
                 let body = members[n].body
                 let points =
@@ -588,10 +633,90 @@ struct RigidBodyWorld {
             if !moved { break }
         }
         guard ground else { return }
+        if let terrain {
+            // Out of the terrain along the normal of the deepest point, a few times over.
+            for n in members.indices {
+                for _ in 0..<4 {
+                    let body = members[n].body
+                    var worst: (depth: Double, normal: SIMD3<Double>)?
+                    for point in body.corners + members[n].supports.map(body.worldPoint) {
+                        let (gap, normal) = Self.clearance(point, above: terrain)
+                        if gap < -tolerance, -gap > (worst?.depth ?? 0) { worst = (-gap, normal) }
+                    }
+                    let centre = body.worldPoint(.zero)
+                    for node in Self.nodes(of: terrain, under: bounds(n, dt: 0)) {
+                        guard
+                            let c = Self.pointAgainstBox(
+                                node.position, centre: centre, pose: body.orientation, half: body.size / 2,
+                                towards: -node.normal, reach: 0),
+                            c.gap < -tolerance, -c.gap > (worst?.depth ?? 0),
+                            Self.canPush(node, along: -c.normal)
+                        else { continue }
+                        worst = (-c.gap, -c.normal)
+                    }
+                    guard let worst else { break }
+                    members[n].body = body.translated(by: worst.normal * (worst.depth - tolerance))
+                }
+            }
+            return
+        }
         for n in members.indices {
             let body = members[n].body
             let lowest = (body.corners + members[n].supports.map(body.worldPoint)).map(\.z).min()!
             if lowest < 0 { members[n].body = body.translated(by: SIMD3(0, 0, -lowest)) }
         }
+    }
+
+    // MARK: Terrain
+
+    /// How far `point` is above the terrain, along the surface's normal under it (the distance to
+    /// the tangent plane there), and that normal.
+    static func clearance(_ point: SIMD3<Double>, above terrain: Terrain) -> (
+        gap: Double, normal: SIMD3<Double>
+    ) {
+        let (height, normal) = terrain.surface(at: SIMD2(point.x, point.y))
+        return ((point.z - height) * normal.z, normal)
+    }
+
+    /// A node of the terrain, with the normals of the four cells round it.
+    struct TerrainNode {
+        let position: SIMD3<Double>
+        let normals: [SIMD3<Double>]
+        /// Their mean direction.
+        var normal: SIMD3<Double> { simd_normalize(normals.reduce(.zero, +)) }
+    }
+
+    /// Whether a node can push a member along `direction`: only within 60° of one of the cells'
+    /// normals round it. Nodes lying in a slope's face would otherwise catch a box sliding over
+    /// it on the edge of its leading face, while the node at a step's edge holds a box resting
+    /// across it up, along the plateau's normal.
+    static func canPush(_ node: TerrainNode, along direction: SIMD3<Double>) -> Bool {
+        node.normals.contains { simd_dot($0, direction) > 0.5 }
+    }
+
+    /// The terrain's nodes within `bounds` and not below its floor.
+    static func nodes(of terrain: Terrain, under bounds: (low: SIMD3<Double>, high: SIMD3<Double>))
+        -> [TerrainNode]
+    {
+        let s = Double(terrain.spacing)
+        let origin = SIMD2<Double>(terrain.origin)
+        let first = SIMD2<Int>(((SIMD2(bounds.low.x, bounds.low.y) - origin) / s).rounded(.up))
+        let last = SIMD2<Int>(((SIMD2(bounds.high.x, bounds.high.y) - origin) / s).rounded(.down))
+        let low = simd_max(first, .zero)
+        let high = simd_min(last, SIMD2(terrain.columns - 1, terrain.rows - 1))
+        guard all(low .<= high) else { return [] }
+        var nodes: [TerrainNode] = []
+        for j in low.y...high.y {
+            for i in low.x...high.x {
+                let height = Double(terrain.height(column: i, row: j))
+                guard height >= bounds.low.z else { continue }
+                let xy = origin + s * SIMD2(Double(i), Double(j))
+                let normals = [SIMD2<Double>(1, 1), SIMD2(-1, 1), SIMD2(-1, -1), SIMD2(1, -1)].map {
+                    terrain.surface(at: xy + 0.25 * s * $0).normal
+                }
+                nodes.append(TerrainNode(position: SIMD3(xy.x, xy.y, height), normals: normals))
+            }
+        }
+        return nodes
     }
 }

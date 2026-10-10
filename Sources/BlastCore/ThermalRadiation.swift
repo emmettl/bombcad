@@ -297,7 +297,7 @@ public struct ThermalExposure: Sendable {
         receivers = grids.flatMap(\.receivers)
         heating = spec.heating.enabled ? SurfaceHeating(spec: spec.heating, grids: grids, scene: scene) : nil
         let occluders = Self.occluders(scene)
-        let visibility = visibility ?? Self.defaultVisibility(occluders: occluders)
+        let visibility = visibility ?? Self.defaultVisibility(occluders: occluders, terrain: scene.terrain)
         self.visibility = visibility
         chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
@@ -307,7 +307,8 @@ public struct ThermalExposure: Sendable {
             ? nil
             : march
                 ?? Self.defaultMarch(
-                    occluders: occluders, spiral: cone, visibility: visibility as? MetalThermalVisibility)
+                    occluders: occluders, terrain: scene.terrain, spiral: cone,
+                    visibility: visibility as? MetalThermalVisibility)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
         fluence = [Double](repeating: 0, count: receivers.count)
     }
@@ -509,7 +510,7 @@ public struct ThermalExposure: Sendable {
     public static func surfaceGrids(scene: FragmentScene, spec: ThermalSpec) -> [ThermalSurfaceGrid] {
         let solids = scene.blocks + scene.structure
         func buried(_ point: SIMD3<Float>) -> Bool {
-            solids.contains { $0.contains(point) }
+            solids.contains { $0.contains(point) } || (scene.terrain?.contains(point) ?? false)
                 || point.x < 0 || point.y < 0 || point.x > scene.domain.x || point.y > scene.domain.y
                 || point.z > scene.domain.z
         }

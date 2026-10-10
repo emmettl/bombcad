@@ -569,7 +569,7 @@ UFC 3-340-02, lowest for light charges.
   products and air through its whole volume, so it burns throughout near the flame temperature,
   where a real one burns in thin sheets round a fuel-rich core. Sub-grid mixing and an extinction
   limit, tried for this, change it little (see [Dial Pack](thermal-radiation.md#against-dial-pack));
-  a mixture-fraction flame model might.
+  a mixture-fraction flame model might. Paused for now, with the fireball's radiation.
 
 ## Sources
 
