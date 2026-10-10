@@ -475,16 +475,14 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     Flux fluxHigh;
     stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
 
-    // Experimental moving box: finest-level tractions and impermeable moving-wall work.
+    // Experimental moving boxes: finest-level tractions and impermeable moving-wall work, one
+    // scalar for each face as on the coarse grid.
     if (u.experimentalBox != 0) {
         int3 global = tile * side + local;
         float dx = u.dx / float(r);
-        float3 centre = float3(u.boxCentreX, u.boxCentreY, u.boxCentreZ);
-        float3 received = float3(0.0f), moment = float3(0.0f);
         for (int direction = -1; direction <= 1; direction += 2) {
             int3 across = global; across[u.axis] += direction;
             if (any(across < 0) || any(across >= int3(u.nx,u.ny,u.nz) * r)) continue;
-            float3 point = (float3(across)+0.5f)*dx;
             int holder = patchAt(across/r,boxPatches,u);
             if (holder < 0) continue;
             uint there = fineIndex(uint(holder),across,tileCoordinates(tileOfPatch[holder],u),u);
@@ -494,12 +492,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             float traction = f.momentum.x-f.mass*speed;
             f.mass = 0.0f; f.momentum = float3(traction,0.0f,0.0f); f.energy = traction*speed;
             if (direction < 0) fluxLow = f; else fluxHigh = f;
-            float3 impulse = float3(0.0f);
-            impulse[u.axis] = float(direction) * (traction-u.ambientPressure) * dt * dx * dx;
-            float3 face = (float3(global)+0.5f)*dx; face[u.axis] += float(direction)*0.5f*dx;
-            received += impulse; moment += cross(face-centre,impulse);
+            boxImpulse[6*index+2*u.axis+(direction < 0 ? 0 : 1)] +=
+                float(direction) * (traction-u.ambientPressure) * dt * dx * dx;
         }
-        for (uint a=0; a<3; ++a) { boxImpulse[6*index+a] += received[a]; boxImpulse[6*index+3+a] += moment[a]; }
     }
 
     // Where a finer level lies beneath this one: a cell of this level beside a patch of that
@@ -1024,13 +1019,14 @@ static inline void flagAround(int3 cell, device uchar *wanted, constant SolverUn
 // Step 7a: a tile is wanted where the pressure of a cell in it and of a neighbour differ by more
 // than `refineThreshold` of the lower, or where such a pair lies within `refineReach` cells.
 static inline void flagCell(int3 cell, const device Cell *coarse, const device uchar *mask, device uchar *wanted,
-                            constant SolverUniforms &u) {
+                            constant SolverUniforms &u, const device float4 *boxDefinition) {
     int3 dims = int3(u.nx, u.ny, u.nz);
     int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
-    if (u.experimentalBox != 0) {
+    // Around each experimental box, whatever the air does there.
+    for (uint b = 0; b < u.experimentalBox; ++b) {
         float3 point = (float3(cell)+0.5f)*u.dx;
-        float3 low = float3(u.boxMinX,u.boxMinY,u.boxMinZ)-2.0f*u.dx;
-        float3 high = float3(u.boxMaxX,u.boxMaxY,u.boxMaxZ)+2.0f*u.dx;
+        float3 low = boxDefinition[boxVectors*b+6].xyz-2.0f*u.dx;
+        float3 high = boxDefinition[boxVectors*b+7].xyz+2.0f*u.dx;
         if (all(point >= low) && all(point <= high)) { flagAround(cell,wanted,u); return; }
     }
     if (mask[index] != 0) {
@@ -1066,11 +1062,12 @@ kernel void refineFlag(const device Cell *coarse [[buffer(0)]],
                        device uchar *wanted [[buffer(2)]],
                        constant SolverUniforms &u [[buffer(3)]],
                        const device StepControl &control [[buffer(4)]],
+                       const device float4 *boxDefinition [[buffer(6)]],
                        uint3 tid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f || tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
-    flagCell(int3(tid), coarse, mask, wanted, u);
+    flagCell(int3(tid), coarse, mask, wanted, u, boxDefinition);
 }
 
 // The same over the awake tiles alone, as `sweepTiles` (still air has nothing to flag).
@@ -1080,6 +1077,7 @@ kernel void refineFlagTiles(const device Cell *coarse [[buffer(0)]],
                             constant SolverUniforms &u [[buffer(3)]],
                             const device StepControl &control [[buffer(4)]],
                             const device uint *tiles [[buffer(5)]],
+                            const device float4 *boxDefinition [[buffer(6)]],
                             uint3 group [[threadgroup_position_in_grid]],
                             uint3 local [[thread_position_in_threadgroup]],
                             uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1092,7 +1090,7 @@ kernel void refineFlagTiles(const device Cell *coarse [[buffer(0)]],
     for (uint z = local.z; z < uint(tileSize); z += groupSize.z) {
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
-            flagCell(int3(cell), coarse, mask, wanted, u);
+            flagCell(int3(cell), coarse, mask, wanted, u, boxDefinition);
         }
     }
 }
@@ -1464,9 +1462,10 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     bool structure = u.experimentalBox == 0 && parentIsSolid && !parentRigid(rigidMask, index, u);
     uint at = patch * cells + position;
     float3 point = (float3(fineCoordinates)+0.5f)*(u.dx/float(r));
-    bool own = u.experimentalBox != 0 && experimentalBoxContains(point,u.dx/float(r),u,boxDefinition);
+    int owner = u.experimentalBox != 0 ? experimentalBoxOwner(point,u.dx/float(r),u,boxDefinition) : -1;
+    bool own = owner >= 0;
     fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0);
-    fineWall[at] = own ? experimentalBoxVelocity(point,u,boxDefinition)
+    fineWall[at] = own ? experimentalBoxVelocity(point,boxDefinition+boxVectors*uint(owner))
                       : structure ? parentWallVelocity(wallVelocity, cell, index, u) : float3(0.0f);
     if (!parentIsSolid) {
         fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches);

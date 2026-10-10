@@ -4,13 +4,13 @@ import simd
 
 /// Explicit opt-in, synchronous reference for several freestanding objects around a charge: the
 /// scenario's rigid objects and cars move and collide together in `RigidBodyWorld`, among its
-/// rigid blocks, and one of them, by default the one nearest the charge, is also in the air and
-/// driven by it as in `ExperimentalRigidBoxSimulation` and `ExperimentalRigidCarSimulation`.
+/// rigid blocks, and those chosen, by default all of them, are also in the air and driven by it
+/// as in `ExperimentalRigidBoxSimulation` and `ExperimentalRigidCarSimulation`: each is a moving
+/// boundary of the air with its own patches, shields and reflects onto the others, and takes the
+/// load of the faces it owns.
 ///
-/// The others take no load from the air and do not obstruct it: the blast passes through them,
-/// so they neither shield the coupled object nor reflect onto it, and their own motion comes only
-/// from contact. This is a mechanics reference for populated scenes; it does not predict the air's
-/// loads on more than one object.
+/// Any left out of the air take no load from it and do not obstruct it: the blast passes through
+/// them and their own motion comes only from contact.
 public final class ExperimentalRigidWorldSimulation {
     public typealias Failure = ExperimentalRigidBoxSimulation.Failure
     public typealias Motion = ExperimentalRigidBoxSimulation.Motion
@@ -33,14 +33,17 @@ public final class ExperimentalRigidWorldSimulation {
 
     public let air: BlastSolver
     public let motion: Motion
-    /// The member in the air.
-    public let coupled: Int
+    /// The members in the air, in order.
+    public let coupled: [Int]
     public let names: [String]
     public var gravity = SIMD3<Double>(0, 0, -9.81)
     private var world: RigidBodyWorld
     private let carCount: Int
+    /// The air's impulse over the last step on all the members together, and on each.
     public private(set) var lastImpulse = SIMD3<Double>.zero
     public private(set) var lastAngularImpulse = SIMD3<Double>.zero
+    public private(set) var lastAirImpulses: [SIMD3<Double>] = []
+    public private(set) var lastAirAngularImpulses: [SIMD3<Double>] = []
     /// Contact impulse on each member over the last step: ground, blocks and other members.
     public private(set) var lastContactImpulses: [SIMD3<Double>] = []
     public private(set) var timings = Timings()
@@ -48,7 +51,7 @@ public final class ExperimentalRigidWorldSimulation {
     public init(
         device: MTLDevice, scenario: Scenario, cellSize: Float,
         configuration: SolverConfiguration = SolverConfiguration(), motion: Motion = .free,
-        coupled: Int? = nil
+        coupled: [Int]? = nil
     ) throws {
         let objects = scenario.rigidObjects ?? []
         let cars = scenario.rigidCars ?? []
@@ -61,13 +64,10 @@ public final class ExperimentalRigidWorldSimulation {
         world = built
         names = objects.map(\.name) + cars.map(\.name)
         carCount = cars.count
-        let charge = SIMD3<Double>(scenario.charge.position)
-        let nearest = built.members.indices.min {
-            simd_distance(built.members[$0].body.worldPoint(.zero), charge)
-                < simd_distance(built.members[$1].body.worldPoint(.zero), charge)
-        }!
-        self.coupled = coupled ?? nearest
-        guard built.members.indices.contains(self.coupled) else { throw Failure.unsupportedConfiguration }
+        self.coupled = Array(Set(coupled ?? Array(built.members.indices))).sorted()
+        guard !self.coupled.isEmpty, self.coupled.allSatisfy(built.members.indices.contains) else {
+            throw Failure.unsupportedConfiguration
+        }
         self.motion = motion
         var config = configuration
         config.skipStillAir = false
@@ -78,13 +78,28 @@ public final class ExperimentalRigidWorldSimulation {
         initial.rigidObjects = nil
         initial.rigidCars = nil
         air = try BlastSolver(device: device, scenario: initial, cellSize: cellSize, configuration: config)
-        try air.installExperimentalBox(built.members[self.coupled].body)
+        try air.installExperimentalBoxes(self.coupled.map { built.members[$0].body })
         air.deposit(scenario.charge)
         for charge in scenario.additionalCharges ?? [] { air.deposit(charge) }
         air.restart()
         try air.checkExperimentalBoxRefinement()
         air.removeExperimentalBoxPackedGas()
         lastContactImpulses = Array(repeating: .zero, count: built.members.count)
+        lastAirImpulses = lastContactImpulses
+        lastAirAngularImpulses = lastContactImpulses
+    }
+
+    /// The member nearest the charge, for coupling one object alone.
+    public static func nearest(in scenario: Scenario) throws -> Int {
+        let world = try RigidBodyWorld(scenario: scenario)
+        let charge = SIMD3<Double>(scenario.charge.position)
+        guard
+            let nearest = world.members.indices.min(by: {
+                simd_distance(world.members[$0].body.worldPoint(.zero), charge)
+                    < simd_distance(world.members[$1].body.worldPoint(.zero), charge)
+            })
+        else { throw Failure.unsupportedConfiguration }
+        return nearest
     }
 
     public var count: Int { world.members.count }
@@ -104,7 +119,9 @@ public final class ExperimentalRigidWorldSimulation {
     {
         guard motion == .free else { throw Failure.unsupportedConfiguration }
         world.applyImpulse(impulse, to: member, at: point)
-        if member == coupled { try air.updateExperimentalBox(world.members[coupled].body) }
+        if coupled.contains(member) {
+            try air.updateExperimentalBoxes(coupled.map { world.members[$0].body })
+        }
     }
     public var kineticEnergy: Double { world.kineticEnergy }
 
@@ -125,17 +142,25 @@ public final class ExperimentalRigidWorldSimulation {
             lap(\.air)
             if let timeLimit, result.elapsed == 0, air.time >= timeLimit - 1e-8 { return }
             guard result.isStable, result.elapsed > 0 else { throw Failure.unstable }
-            let impulses = air.experimentalBoxImpulses()
-            lastImpulse = impulses.linear
-            lastAngularImpulse = impulses.angular
+            let loads = air.experimentalBoxLoads()
+            lastAirImpulses = Array(repeating: .zero, count: world.members.count)
+            lastAirAngularImpulses = lastAirImpulses
+            for (load, member) in zip(loads, coupled) {
+                lastAirImpulses[member] = load.linear
+                lastAirAngularImpulses[member] = load.angular
+            }
+            lastImpulse = loads.reduce(.zero) { $0 + $1.linear }
+            lastAngularImpulse = loads.reduce(.zero) { $0 + $1.angular }
             lap(\.coupling)
             guard motion == .free else { continue }
             var next = world
-            next.applyImpulse(impulses.linear, to: coupled)
-            next.applyAngularImpulse(impulses.angular, to: coupled)
+            for (load, member) in zip(loads, coupled) {
+                next.applyImpulse(load.linear, to: member)
+                next.applyAngularImpulse(load.angular, to: member)
+            }
             let contacts = next.advance(by: result.elapsed, gravity: gravity)
             lap(\.mechanics)
-            try air.updateExperimentalBox(next.members[coupled].body)
+            try air.updateExperimentalBoxes(coupled.map { next.members[$0].body })
             lap(\.coupling)
             var contactImpulses = [SIMD3<Double>](repeating: .zero, count: next.members.count)
             for contact in contacts {

@@ -136,15 +136,23 @@ enum ConservativeCellRemap {
 
 /// Float geometry shared with the Metal box predicates. Small inclusion tolerance prevents
 /// roundoff at a face from giving the CPU remapper a different mask from patch initialisation.
+/// `vectors` are the box's definition as the shaders read it (see `boxVectors` in Solver.metal).
 struct ExperimentalBoxGeometry {
+    static let vectorCount = 8
     let centre: SIMD3<Float>
+    /// The box's bounds, from its corners.
+    let low: SIMD3<Float>
+    let high: SIMD3<Float>
     let vectors: [SIMD4<Float>]
     init(_ body: RigidBoxBody) {
         centre = SIMD3<Float>(body.position)
+        let corners = body.corners.map { SIMD3<Float>($0) }
+        low = corners.reduce(SIMD3<Float>(repeating: .infinity), simd_min)
+        high = corners.reduce(SIMD3<Float>(repeating: -.infinity), simd_max)
         vectors = [
             SIMD4<Float>(body.orientation.vector), SIMD4(SIMD3<Float>(body.size / 2), 0),
             SIMD4(SIMD3<Float>(body.centreOfMass), 0), SIMD4(SIMD3<Float>(body.linearVelocity), 0),
-            SIMD4(SIMD3<Float>(body.angularVelocity), 0),
+            SIMD4(SIMD3<Float>(body.angularVelocity), 0), SIMD4(centre, 0), SIMD4(low, 0), SIMD4(high, 0),
         ]
     }
     func contains(_ point: SIMD3<Float>, cellSize: Float) -> Bool {
@@ -159,5 +167,12 @@ struct ExperimentalBoxGeometry {
     func velocity(at point: SIMD3<Float>) -> SIMD3<Float> {
         SIMD3(vectors[3].x, vectors[3].y, vectors[3].z)
             + simd_cross(SIMD3(vectors[4].x, vectors[4].y, vectors[4].z), point - centre)
+    }
+    /// The first of the boxes that holds the point, as `experimentalBoxOwner` in Solver.metal.
+    static func owner(of point: SIMD3<Float>, among boxes: [Self], cellSize: Float) -> Int? {
+        boxes.indices.first {
+            all(point .>= boxes[$0].low - cellSize) && all(point .<= boxes[$0].high + cellSize)
+                && boxes[$0].contains(point, cellSize: cellSize)
+        }
     }
 }

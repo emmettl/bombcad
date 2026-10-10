@@ -490,24 +490,29 @@ final class AirRefinement {
         }
     }
 
-    /// Sums and zeroes the fine impulses of the patches in use; free slots hold zeros.
-    func boxImpulses() -> (linear: SIMD3<Double>, angular: SIMD3<Double>) {
-        var linear = SIMD3<Double>.zero
-        var angular = SIMD3<Double>.zero
-        guard let buffer = experimentalBoxImpulse else { return (linear, angular) }
+    /// Passes each fine face's impulse recorded on the patches in use to `face`, with the fine
+    /// cell's coordinates and the face's axis and side (0 low, 1 high), and zeroes them; free
+    /// slots hold zeros.
+    func takeBoxFaceImpulses(_ face: (SIMD3<Int>, Int, Int, Double) -> Void) {
+        guard let buffer = experimentalBoxImpulse else { return }
         let values = buffer.contents().bindMemory(to: Float.self, capacity: buffer.length / 4)
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
         let cells = side * side * side
         for patch in 0..<maxPatches where owners[patch] != .max {
-            for n in (patch * cells)..<((patch + 1) * cells) {
-                for a in 0..<3 {
-                    linear[a] += Double(values[6 * n + a])
-                    angular[a] += Double(values[6 * n + 3 + a])
+            let tile = Int(owners[patch])
+            let origin =
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* side
+            for n in 0..<cells {
+                let base = 6 * (patch * cells + n)
+                for slot in 0..<6 where values[base + slot] != 0 {
+                    face(
+                        origin &+ SIMD3(n % side, (n / side) % side, n / (side * side)), slot / 2, slot % 2,
+                        Double(values[base + slot]))
                 }
             }
             memset(buffer.contents() + patch * cells * 6 * MemoryLayout<Float>.stride, 0, cells * 6 * 4)
         }
-        return (linear, angular)
     }
 
     func reset() {
@@ -792,9 +797,12 @@ final class AirRefinement {
     /// `tiles` (the awake tiles' list and its dispatch), only awake tiles are searched.
     func encodeFlag(
         _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, mask: MTLBuffer, control: MTLBuffer,
-        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid, uniforms: SolverUniforms
+        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid,
+        uniforms: SolverUniforms,
+        boxDefinition: MTLBuffer? = nil
     ) {
         var uniforms = uniforms
+        encoder.setBuffer(boxDefinition ?? wanted, offset: 0, index: 6)
         if let tiles {
             encoder.setComputePipelineState(flagTilesPipeline)
             encoder.setBuffer(coarse, offset: 0, index: 0)
@@ -1024,9 +1032,11 @@ final class AirRefinement {
 extension AirRefinement {
     /// Prepare without writes so a coverage/collision/remap failure cannot half-change the gas.
     /// Commit the fine state and its coarse proxy only after the driver validates the whole step.
+    /// `boxes` are those whose cells lie within `low`...`high` (m), before and after, and no
+    /// others' do; each must keep a fine cell.
     func prepareBoxRemap(
-        _ body: RigidBoxBody, grid: Grid,
-        previousBounds: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil
+        _ boxes: [ExperimentalBoxGeometry], low unionLow: SIMD3<Float>, high unionHigh: SIMD3<Float>,
+        grid: Grid
     ) throws
         -> (UnsafeMutableBufferPointer<CellState>) -> Void
     {
@@ -1037,18 +1047,9 @@ extension AirRefinement {
             boxRemapProfile[name, default: 0] += now - stamp
             stamp = now
         }
-        let geometry = ExperimentalBoxGeometry(body)
         let h = grid.cellSize / Float(ratio)
         // Use complete coarse cells so averaging their fine children remains unchanged.
         // One coarse-cell margin contains every donor adjacent to an opening/closing cell.
-        let newLow = body.corners.reduce(SIMD3<Float>(repeating: .infinity)) {
-            simd_min($0, SIMD3<Float>($1))
-        }
-        let newHigh = body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) {
-            simd_max($0, SIMD3<Float>($1))
-        }
-        let unionLow = simd_min(newLow, previousBounds?.min ?? newLow)
-        let unionHigh = simd_max(newHigh, previousBounds?.max ?? newHigh)
         let gridDims = SIMD3(grid.nx, grid.ny, grid.nz)
         let low =
             useLocalBoxRemap
@@ -1094,12 +1095,16 @@ extension AirRefinement {
         var oldMask: [UInt8] = []
         var nextMask: [UInt8] = []
         var initial: [CellState] = []
+        var ownerOf: [Int] = []
+        var held = [Bool](repeating: false, count: boxes.count)
         var lookup = [Int](repeating: -1, count: slotOf.count)
         for d in slotOf.indices where slotOf[d] >= 0 {
             let at = slotOf[d]
             let p = fineLow &+ SIMD3(d % extent.x, (d / extent.x) % extent.y, d / (extent.x * extent.y))
             let point = (SIMD3<Float>(p) + 0.5) * h
-            let own = geometry.contains(point, cellSize: h)
+            let owner = ExperimentalBoxGeometry.owner(of: point, among: boxes, cellSize: h)
+            let own = owner != nil
+            if let owner { held[owner] = true }
             let rigid = masks[at] & 2 != 0
             guard !(own && rigid) else { throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision }
             lookup[d] = coordinates.count
@@ -1107,10 +1112,11 @@ extension AirRefinement {
             slots.append(at)
             oldMask.append(masks[at])
             nextMask.append((own || rigid ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0))
+            ownerOf.append(owner ?? -1)
             initial.append(states[at])
         }
         phase("snapshot")
-        guard nextMask.contains(where: { $0 & 8 != 0 }) else {
+        guard !held.contains(false) else {
             throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
         }
         phase("ordering")
@@ -1154,7 +1160,7 @@ extension AirRefinement {
                 states[at] = remapped[n]
                 masks[at] = nextMask[n]
                 let velocity =
-                    nextMask[n] & 8 != 0 ? geometry.velocity(at: (SIMD3<Float>(p) + 0.5) * h) : .zero
+                    ownerOf[n] >= 0 ? boxes[ownerOf[n]].velocity(at: (SIMD3<Float>(p) + 0.5) * h) : .zero
                 for axis in 0..<3 { walls[3 * at + axis] = velocity[axis] }
                 guard nextMask[n] & 1 == 0 else { continue }
                 let c = p / self.ratio

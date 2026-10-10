@@ -561,7 +561,7 @@ do {
         exit(0)
     }
     if arguments.contains("--car-row") {
-        // --mass=10 --cases=0.2x4 --duration=2 --cars=4
+        // --mass=10 --cases=0.2x4 --duration=2 --cars=4 [--nearest-only]
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
@@ -573,6 +573,7 @@ do {
         let mass = option("mass").flatMap(Double.init) ?? 10
         let duration = option("duration").flatMap(Double.init) ?? 2
         let cars = option("cars").flatMap(Int.init) ?? 4
+        let nearestOnly = arguments.contains("--nearest-only")
         let parts = (option("cases") ?? "0.2x4").split(separator: "x")
         let study = ExperimentalRigidCarStudy.Case(
             cellSize: Float(parts[0]) ?? 0.2, refinement: parts.count > 1 ? Int(parts[1]) ?? 1 : 1)
@@ -583,8 +584,8 @@ do {
         var recording: RigidObjectDemo.Recording?
         for held in [false, true] {
             let (r, frames) = try ExperimentalRigidRowStudy.run(
-                device: device, study: study, chargeMass: mass, held: held, count: cars, duration: duration,
-                recordEvery: held ? nil : 0.01
+                device: device, study: study, chargeMass: mass, held: held, count: cars,
+                nearestOnly: nearestOnly, duration: duration, recordEvery: held ? nil : 0.01
             ) { time in
                 print(String(format: "  %@: %.1f s", held ? "held" : "free", time))
                 fflush(stdout)
@@ -599,8 +600,10 @@ do {
             for car in r.cars where !held {
                 print(
                     String(
-                        format: "  %@: moved %.2f m, peak speed %.2f m/s, peak tilt %.1f°, final %.1f° (%@)",
-                        car.name, simd_length(car.displacement), car.peakSpeed, car.peakTilt, car.finalTilt,
+                        format:
+                            "  %@: air %.0f/%.0f/%.0f N s, moved %.2f m, peak speed %.2f m/s, peak tilt %.1f°, final %.1f° (%@)",
+                        car.name, car.airImpulse.x, car.airImpulse.y, car.airImpulse.z,
+                        simd_length(car.displacement), car.peakSpeed, car.peakTilt, car.finalTilt,
                         car.outcome.rawValue))
             }
             if !held {
@@ -611,8 +614,12 @@ do {
                     name: String(format: "Row of %d cars, %g kg", cars, mass),
                     description: String(
                         format:
-                            "%g kg 1.5 m from Car 1's near side at 0.3 m height; only Car 1 is in the air, the others move only when struck. Moved and peak tilt: %@. %@ air.",
-                        mass, summary, study.label),
+                            "%g kg 1.5 m from Car 1's near side at 0.3 m height; %@. Moved and peak tilt: %@. %@ air.",
+                        mass,
+                        nearestOnly
+                            ? "only Car 1 is in the air, the others move only when struck"
+                            : "every car is in the air",
+                        summary, study.label),
                     frames: frames, view: "front")
             }
         }
@@ -630,7 +637,9 @@ do {
                 .replacingOccurrences(
                     of: "Recorded from the Swift reference solver; no blast loading.",
                     with:
-                        "Experimental: the nearest car coupled to the air, the row moving through contact. The other cars take no air load and do not obstruct the blast."
+                        nearestOnly
+                        ? "Experimental: the nearest car coupled to the air, the row moving through contact. The other cars take no air load and do not obstruct the blast."
+                        : "Experimental: every car coupled to the air and moving through its load and contact."
                 )
                 .replacingOccurrences(
                     of: "<option value=\"1\" selected>Real time</option>",

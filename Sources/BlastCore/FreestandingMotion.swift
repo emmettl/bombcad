@@ -4,10 +4,10 @@ import simd
 
 /// How a scene's freestanding objects move after the blast: displacement, speed and tipping, and
 /// their poses over time, from `ExperimentalRigidWorldSimulation` on a domain cropped around the
-/// objects and the charge. The object nearest the charge is in the air, on 0.2 m cells with
-/// patches four times finer over it, as the car's resolution study supports (0.05 m cells
-/// resolve its 0.15 m gap; the early impulse is within about a tenth of 0.025 m cells'); the
-/// others move only through contact, take no air load and do not obstruct the blast.
+/// objects and the charge. Every object is in the air, on 0.2 m cells with patches four times
+/// finer over each, as the car's resolution study supports (0.05 m cells resolve its 0.15 m gap;
+/// the early impulse is within about a tenth of 0.025 m cells'), and they strike each other and
+/// the scene's blocks.
 public struct FreestandingMotion: Codable, Sendable {
     public struct Object: Codable, Sendable {
         public let id: UUID
@@ -50,8 +50,8 @@ public struct FreestandingMotion: Codable, Sendable {
     }
 
     public let objects: [Object]
-    /// The object in the air.
-    public let coupled: Int
+    /// The objects in the air (all of them unless `compute` was told otherwise).
+    public let coupled: [Int]
     public let frames: [Frame]
     public let duration: Double
     /// Where it stopped early, if the reference failed (an object left the cropped domain).
@@ -122,7 +122,7 @@ public struct FreestandingMotion: Codable, Sendable {
     /// `cellSize` and `refinement` default to the resolution the car study supports.
     public static func compute(
         device: MTLDevice, scenario: Scenario, duration: Double = 1.5, frameInterval: Double = 0.02,
-        cellSize: Float = 0.2, refinement: Int = 4,
+        cellSize: Float = 0.2, refinement: Int = 4, coupled: [Int]? = nil,
         progress: ((Double) -> Void)? = nil, shouldContinue: (() -> Bool)? = nil
     ) throws -> FreestandingMotion {
         let (scene, offset) = try cropped(scenario, cellSize: Double(cellSize))
@@ -130,7 +130,8 @@ public struct FreestandingMotion: Codable, Sendable {
         configuration.refinement = refinement
         if refinement > 1 { configuration.refinementMemory = 512 << 20 }
         let simulation = try ExperimentalRigidWorldSimulation(
-            device: device, scenario: scene, cellSize: cellSize, configuration: configuration)
+            device: device, scenario: scene, cellSize: cellSize, configuration: configuration,
+            coupled: coupled)
         let ids = (scenario.rigidObjects ?? []).map(\.id) + (scenario.rigidCars ?? []).map(\.id)
         let start = simulation.members
         var peakSpeed = [Double](repeating: 0, count: start.count)

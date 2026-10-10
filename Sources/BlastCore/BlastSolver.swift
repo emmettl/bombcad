@@ -36,7 +36,7 @@ public final class BlastSolver {
     /// Must be configured at time zero after loading. Ordinary runs allocate no recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
-        guard time == 0, experimentalBoxCentre == nil,
+        guard time == 0, experimentalBoxes.isEmpty,
             bodies.allSatisfy({ body in
                 var fixed = true
                 if let solid = body.solids {
@@ -188,9 +188,9 @@ public final class BlastSolver {
     private var experimentalBoxDefinition: MTLBuffer?
     private var experimentalBoxMask: MTLBuffer?
     private var experimentalBoxImpulse: MTLBuffer?
-    private var experimentalBoxCentre: SIMD3<Double>?
+    /// The experimental rigid boxes in the air, as last placed.
+    private var experimentalBoxes: [RigidBoxBody] = []
     private var experimentalBoxMaxStep: Float = 0
-    private var experimentalBoxBounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
     var experimentalBoxRemapMode: ExperimentalBoxRemap = .redistribution
 
     let library: MTLLibrary
@@ -1200,7 +1200,7 @@ public final class BlastSolver {
             updateGaugeChildren()
             return
         }
-        let levels = configuration.refinementLevels > 1 && experimentalBoxCentre == nil ? 2 : 1
+        let levels = configuration.refinementLevels > 1 && experimentalBoxes.isEmpty ? 2 : 1
         let total = configuration.refinementMemory
         let memory =
             levels == 1 ? [total] : Self.levelMemoryShares.map { Int(Double(total) * $0) }
@@ -1254,7 +1254,7 @@ public final class BlastSolver {
     private func coarseView(species: MTLBuffer) -> AirRefinement.ParentView {
         AirRefinement.ParentView(
             state: stateBuffers[current], species: species, mask: maskBuffer,
-            rigid: (hasBody || experimentalBoxCentre != nil) ? rigidMaskBuffer : maskBuffer,
+            rigid: (hasBody || !experimentalBoxes.isEmpty) ? rigidMaskBuffer : maskBuffer,
             wallVelocity: wallVelocityBuffer, impulse: impulseBuffer, placeholder: refinementPlaceholder)
     }
 
@@ -1272,7 +1272,7 @@ public final class BlastSolver {
         }
         refinement.encodeFlag(
             encoder, coarse: stateBuffers[current], mask: maskBuffer, control: controlBuffer, tiles: tiles,
-            grid: grid, uniforms: uniforms)
+            grid: grid, uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
         if let finerRefinement, let deep {
             finerRefinement.encodeNest(encoder, control: controlBuffer, uniforms: deep)
         }
@@ -1848,7 +1848,7 @@ public final class BlastSolver {
             + (combinedOccupancyBuffer?.length ?? 0) + (couplingTiles?.length ?? 0)
             + (interactionBuffer?.length ?? 0)
             + (bodyEnvelopeBuffer?.length ?? 0)
-            + (experimentalBoxCentre == nil ? 0 : wallVelocityBuffer.length)
+            + (experimentalBoxes.isEmpty ? 0 : wallVelocityBuffer.length)
     }
 
     /// Structural substeps encoded per fluid step. The fluid step never exceeds the CFL limit
@@ -1907,19 +1907,8 @@ public final class BlastSolver {
             uniforms.regionNy = UInt32(region.dims.y)
             uniforms.regionNz = UInt32(region.dims.z)
         }
-        if let centre = experimentalBoxCentre {
-            uniforms.experimentalBox = 1
-            uniforms.boxCentreX = Float(centre.x)
-            uniforms.boxCentreY = Float(centre.y)
-            uniforms.boxCentreZ = Float(centre.z)
-            if let bounds = experimentalBoxBounds {
-                uniforms.boxMinX = bounds.min.x
-                uniforms.boxMinY = bounds.min.y
-                uniforms.boxMinZ = bounds.min.z
-                uniforms.boxMaxX = bounds.max.x
-                uniforms.boxMaxY = bounds.max.y
-                uniforms.boxMaxZ = bounds.max.z
-            }
+        if !experimentalBoxes.isEmpty {
+            uniforms.experimentalBox = UInt32(experimentalBoxes.count)
             uniforms.regionX = 0
             uniforms.regionY = 0
             uniforms.regionZ = 0
@@ -1981,9 +1970,14 @@ public final class BlastSolver {
     }
 }
 
-// Only the explicit ExperimentalRigidBoxSimulation driver calls this synchronous reference path.
+// Only the explicit ExperimentalRigidBox/Car/WorldSimulation drivers call this synchronous
+// reference path. Several boxes may be in the air at once; each cell of a box belongs to the
+// first box that holds it, and each face's load goes to the box beyond it.
 extension BlastSolver {
-    func installExperimentalBox(_ body: RigidBoxBody) throws {
+    func installExperimentalBox(_ body: RigidBoxBody) throws { try installExperimentalBoxes([body]) }
+
+    func installExperimentalBoxes(_ bodies: [RigidBoxBody]) throws {
+        precondition(!bodies.isEmpty && bodies.count < 255, "1 to 254 boxes")
         func allocate(_ length: Int) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
                 throw BlastError.allocationFailed("experimental rigid box")
@@ -1991,70 +1985,137 @@ extension BlastSolver {
             memset(buffer.contents(), 0, length)
             return buffer
         }
-        experimentalBoxDefinition = try allocate(5 * MemoryLayout<SIMD4<Float>>.stride)
+        experimentalBoxDefinition = try allocate(
+            bodies.count * ExperimentalBoxGeometry.vectorCount * MemoryLayout<SIMD4<Float>>.stride)
         experimentalBoxMask = try allocate(grid.cellCount)
         experimentalBoxImpulse = try allocate(grid.cellCount * 6 * MemoryLayout<Float>.stride)
         wallVelocityBuffer = try allocate(grid.cellCount * 3 * MemoryLayout<Float>.stride)
-        try updateExperimentalBox(body, initial: true)
+        experimentalBoxes = []
+        try updateExperimentalBoxes(bodies, initial: true)
+    }
+
+    func updateExperimentalBox(_ body: RigidBoxBody, initial: Bool = false) throws {
+        try updateExperimentalBoxes([body], initial: initial)
+    }
+
+    /// The coarse cells from `low` to `high` (m), grown by `margin` cells and clipped to the grid.
+    private func experimentalCellRange(_ low: SIMD3<Float>, _ high: SIMD3<Float>, margin: Int)
+        -> (low: SIMD3<Int>, high: SIMD3<Int>)
+    {
+        let dims = SIMD3(grid.nx, grid.ny, grid.nz)
+        return (
+            simd_max(SIMD3<Int>((low / grid.cellSize).rounded(.down)) &- margin, .zero),
+            simd_min(SIMD3<Int>((high / grid.cellSize).rounded(.up)) &+ margin, dims &- 1)
+        )
     }
 
     /// Conservative local redistribution when whole cells change occupancy. This is a coarse
-    /// reference remap, not a cut-cell method; local pressure artefacts must be checked on refinement.
-    func updateExperimentalBox(_ body: RigidBoxBody, initial: Bool = false) throws {
+    /// reference remap, not a cut-cell method; local pressure artefacts must be checked on
+    /// refinement. Every box moves at once, and nothing is changed if any of them fails.
+    func updateExperimentalBoxes(_ bodies: [RigidBoxBody], initial: Bool = false) throws {
         precondition(!batchInFlight)
+        precondition(initial || bodies.count == experimentalBoxes.count, "the boxes installed")
         let domain = SIMD3<Double>(Double(grid.size.x), Double(grid.size.y), Double(grid.size.z))
         let h = Double(grid.cellSize)
-        guard
-            body.corners.allSatisfy({
-                $0.x >= h && $0.y >= h && $0.z >= -1e-8
-                    && $0.x <= domain.x - h && $0.y <= domain.y - h && $0.z <= domain.z - h
-            })
-        else { throw ExperimentalRigidBoxSimulation.Failure.outsideDomain }
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        var next = Array(UnsafeBufferPointer(start: scenery, count: grid.cellCount))
-        var own = [UInt8](repeating: 0, count: grid.cellCount)
-        let walls = wallVelocityBuffer.contents().bindMemory(to: Float.self, capacity: 3 * grid.cellCount)
-        for k in 0..<grid.nz {
-            for j in 0..<grid.ny {
-                for i in 0..<grid.nx {
-                    let n = grid.index(i, j, k)
-                    let point = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
-                    let local = body.orientation.inverse.act(point - body.position) + body.centreOfMass
-                    guard all(abs(local) .<= body.size / 2) else { continue }
-                    guard scenery[n] == 0 else {
-                        throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision
-                    }
-                    own[n] = 1
-                    next[n] = 1
-                }
-            }
-        }
-        guard own.contains(1) || configuration.refinement > 1 else {
-            throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
+        for body in bodies {
+            guard
+                body.corners.allSatisfy({
+                    $0.x >= h && $0.y >= h && $0.z >= -1e-8
+                        && $0.x <= domain.x - h && $0.y <= domain.y - h && $0.z <= domain.z - h
+                })
+            else { throw ExperimentalRigidBoxSimulation.Failure.outsideDomain }
         }
         // The experimental box is resolved by one finer level only.
         guard finerRefinement == nil else {
             throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
-        let fineCommit =
-            !initial
-            ? try refinement?.prepareBoxRemap(body, grid: grid, previousBounds: experimentalBoxBounds) : nil
+        let geometries = bodies.map(ExperimentalBoxGeometry.init)
+        let previous = initial ? geometries : experimentalBoxes.map(ExperimentalBoxGeometry.init)
+        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        // The coarse cells each box holds now, the first box taking a cell two share.
+        var owner: [Int: Int] = [:]
+        var held = [[Int]](repeating: [], count: bodies.count)
+        for (b, body) in bodies.enumerated() {
+            let range = experimentalCellRange(geometries[b].low, geometries[b].high, margin: 1)
+            for k in range.low.z...range.high.z {
+                for j in range.low.y...range.high.y {
+                    for i in range.low.x...range.high.x {
+                        let n = grid.index(i, j, k)
+                        let point = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
+                        let local = body.orientation.inverse.act(point - body.position) + body.centreOfMass
+                        guard all(abs(local) .<= body.size / 2), owner[n] == nil else { continue }
+                        guard scenery[n] == 0 else {
+                            throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision
+                        }
+                        owner[n] = b
+                        held[b].append(n)
+                    }
+                }
+            }
+            guard !held[b].isEmpty || configuration.refinement > 1 else {
+                throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
+            }
+        }
+        // Each box's cells before and after, grown by a cell for the donors beside them.
+        let regions = bodies.indices.map {
+            experimentalCellRange(
+                simd_min(geometries[$0].low, previous[$0].low),
+                simd_max(geometries[$0].high, previous[$0].high),
+                margin: 1)
+        }
+        func eachCell(_ body: (Int) -> Void) {
+            for range in regions {
+                for k in range.low.z...range.high.z {
+                    for j in range.low.y...range.high.y {
+                        for i in range.low.x...range.high.x { body(grid.index(i, j, k)) }
+                    }
+                }
+            }
+        }
+        var commits: [(UnsafeMutableBufferPointer<CellState>) -> Void] = []
+        if !initial, let refinement {
+            // Boxes whose regions overlap share one remap; the rest are remapped apart.
+            var groups: [[Int]] = []
+            if refinement.useLocalBoxRemap {
+                var group = Array(bodies.indices)
+                func overlap(_ a: Int, _ b: Int) -> Bool {
+                    all(regions[a].low .<= regions[b].high) && all(regions[b].low .<= regions[a].high)
+                }
+                for b in bodies.indices where group[b] == b {
+                    var members = [b]
+                    var next = 0
+                    while next < members.count {
+                        for c in bodies.indices where group[c] == c && c != b && overlap(members[next], c) {
+                            group[c] = b
+                            members.append(c)
+                        }
+                        next += 1
+                    }
+                    groups.append(members.sorted())
+                }
+            } else {
+                groups = [Array(bodies.indices)]
+            }
+            for members in groups {
+                let low = members.map { simd_min(geometries[$0].low, previous[$0].low) }.reduce(
+                    SIMD3<Float>(repeating: .infinity), simd_min)
+                let high = members.map { simd_max(geometries[$0].high, previous[$0].high) }.reduce(
+                    SIMD3<Float>(repeating: -.infinity), simd_max)
+                commits.append(
+                    try refinement.prepareBoxRemap(
+                        members.map { geometries[$0] }, low: low, high: high, grid: grid))
+            }
+        }
         if !initial && refinement == nil {
-            let newLow = body.corners.reduce(SIMD3<Float>(repeating: .infinity)) {
-                simd_min($0, SIMD3<Float>($1))
+            let old = Array(UnsafeBufferPointer(start: mask, count: grid.cellCount))
+            var next = old
+            var inRegion = [Bool](repeating: false, count: grid.cellCount)
+            eachCell {
+                next[$0] = scenery[$0]
+                inRegion[$0] = true
             }
-            let newHigh = body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) {
-                simd_max($0, SIMD3<Float>($1))
-            }
-            let low =
-                SIMD3<Int>(
-                    (simd_min(newLow, experimentalBoxBounds?.min ?? newLow) / grid.cellSize).rounded(.down))
-                &- 1
-            let high =
-                SIMD3<Int>(
-                    (simd_max(newHigh, experimentalBoxBounds?.max ?? newHigh) / grid.cellSize).rounded(.up))
-                &+ 1
+            for n in owner.keys { next[n] = 1 }
             func neighbours(_ n: Int) -> [Int] {
                 let i = n % grid.nx
                 let j = (n / grid.nx) % grid.ny
@@ -2064,83 +2125,136 @@ extension BlastSolver {
                 ]
                 .filter {
                     $0.0 >= 0 && $0.0 < grid.nx && $0.1 >= 0 && $0.1 < grid.ny && $0.2 >= 0 && $0.2 < grid.nz
-                        && (experimentalBoxRemapMode == .redistribution
-                            || (all(SIMD3($0.0, $0.1, $0.2) .>= low) && all(SIMD3($0.0, $0.1, $0.2) .<= high)))
                 }
                 .map { grid.index($0.0, $0.1, $0.2) }
+                .filter { experimentalBoxRemapMode == .redistribution || inRegion[$0] }
             }
             let cells = try ConservativeCellRemap.apply(
-                withState { Array($0) },
-                oldSolid: Array(UnsafeBufferPointer(start: mask, count: grid.cellCount)).map { $0 != 0 },
-                newSolid: next.map { $0 != 0 }, mode: experimentalBoxRemapMode, neighbours: neighbours)
+                withState { Array($0) }, oldSolid: old.map { $0 != 0 }, newSolid: next.map { $0 != 0 },
+                mode: experimentalBoxRemapMode, neighbours: neighbours)
             editState { _ = $0.update(from: cells) }
         }
-        if let fineCommit { editState(fineCommit) }
-        let geometry = ExperimentalBoxGeometry(body)
-        let definition = experimentalBoxDefinition!.contents().bindMemory(to: SIMD4<Float>.self, capacity: 5)
-        definition.update(from: geometry.vectors, count: 5)
-        let ownMask = experimentalBoxMask!.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        for n in 0..<grid.cellCount {
-            mask[n] = next[n]
-            ownMask[n] = own[n]
-            let i = n % grid.nx
-            let j = (n / grid.nx) % grid.ny
-            let k = n / (grid.nx * grid.ny)
-            let point = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
-            let velocity =
-                own[n] == 0
-                ? SIMD3<Double>.zero
-                : body.linearVelocity + simd_cross(body.angularVelocity, point - body.position)
-            for a in 0..<3 { walls[3 * n + a] = Float(velocity[a]) }
+        for commit in commits { editState(commit) }
+        let count = ExperimentalBoxGeometry.vectorCount
+        let definition = experimentalBoxDefinition!.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: count * bodies.count)
+        for (b, geometry) in geometries.enumerated() {
+            (definition + count * b).update(from: geometry.vectors, count: count)
         }
-        experimentalBoxCentre = body.position
-        experimentalBoxBounds = (
-            body.corners.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, SIMD3<Float>($1)) },
-            body.corners.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, SIMD3<Float>($1)) }
-        )
-        let speed =
-            simd_length(body.linearVelocity) + simd_length(body.angularVelocity) * simd_length(body.size)
+        let ownMask = experimentalBoxMask!.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let walls = wallVelocityBuffer.contents().bindMemory(to: Float.self, capacity: 3 * grid.cellCount)
+        eachCell { n in
+            mask[n] = scenery[n]
+            ownMask[n] = 0
+            for a in 0..<3 { walls[3 * n + a] = 0 }
+        }
+        for (b, body) in bodies.enumerated() {
+            for n in held[b] {
+                let i = n % grid.nx
+                let j = (n / grid.nx) % grid.ny
+                let k = n / (grid.nx * grid.ny)
+                let point = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
+                let velocity = body.linearVelocity + simd_cross(body.angularVelocity, point - body.position)
+                mask[n] = 1
+                ownMask[n] = UInt8(b + 1)
+                for a in 0..<3 { walls[3 * n + a] = Float(velocity[a]) }
+            }
+        }
+        experimentalBoxes = bodies
+        let speed = bodies.map {
+            simd_length($0.linearVelocity) + simd_length($0.angularVelocity) * simd_length($0.size)
+        }.max()!
         experimentalBoxMaxStep = Float(
             min(0.001, 0.2 * h / Double(max(configuration.refinement, 1)) / max(speed, 1)))
     }
 
     func clearExperimentalBoxImpulse() throws {
         try refinement?.clearBoxImpulse()
-        memset(experimentalBoxImpulse!.contents(), 0, experimentalBoxImpulse!.length)
+        _ = experimentalBoxLoads()
     }
 
+    /// The air's impulse and its moment about the centre of mass on all the boxes together.
     func experimentalBoxImpulses() -> (linear: SIMD3<Double>, angular: SIMD3<Double>) {
+        experimentalBoxLoads().reduce((SIMD3<Double>.zero, SIMD3<Double>.zero)) {
+            ($0.0 + $1.linear, $0.1 + $1.angular)
+        }
+    }
+
+    /// The air's impulse on each box, and its moment about the box's centre of mass, since the
+    /// last call: each face's impulse goes to the box on its far side. Zeroes what it reads.
+    func experimentalBoxLoads() -> [(linear: SIMD3<Double>, angular: SIMD3<Double>)] {
+        var loads = [(linear: SIMD3<Double>, angular: SIMD3<Double>)](
+            repeating: (.zero, .zero), count: experimentalBoxes.count)
+        func record(_ b: Int, face: SIMD3<Double>, axis: Int, impulse: Double) {
+            var vector = SIMD3<Double>.zero
+            vector[axis] = impulse
+            loads[b].linear += vector
+            loads[b].angular += simd_cross(face - experimentalBoxes[b].position, vector)
+        }
+        let h = Double(grid.cellSize)
         let values = experimentalBoxImpulse!.contents().bindMemory(
             to: Float.self, capacity: 6 * grid.cellCount)
-        var linear = SIMD3<Double>.zero
-        var angular = SIMD3<Double>.zero
-        for n in 0..<grid.cellCount {
-            for a in 0..<3 {
-                linear[a] += Double(values[6 * n + a])
-                angular[a] += Double(values[6 * n + 3 + a])
+        let ownMask = experimentalBoxMask!.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        // Writes lie in air beside a box's cells, so within a cell of its bounds.
+        for body in experimentalBoxes {
+            let geometry = ExperimentalBoxGeometry(body)
+            let range = experimentalCellRange(geometry.low, geometry.high, margin: 2)
+            for k in range.low.z...range.high.z {
+                for j in range.low.y...range.high.y {
+                    for i in range.low.x...range.high.x {
+                        let n = grid.index(i, j, k)
+                        for slot in 0..<6 where values[6 * n + slot] != 0 {
+                            let axis = slot / 2
+                            var across = SIMD3(i, j, k)
+                            across[axis] += slot % 2 == 0 ? -1 : 1
+                            var face = h * (SIMD3<Double>(Double(i), Double(j), Double(k)) + 0.5)
+                            face[axis] += (slot % 2 == 0 ? -0.5 : 0.5) * h
+                            let b = Int(ownMask[grid.index(across.x, across.y, across.z)]) - 1
+                            if b >= 0 {
+                                record(b, face: face, axis: axis, impulse: Double(values[6 * n + slot]))
+                            }
+                            values[6 * n + slot] = 0
+                        }
+                    }
+                }
             }
         }
-        if let fine = refinement?.boxImpulses() {
-            linear += fine.linear
-            angular += fine.angular
+        if let refinement {
+            let geometries = experimentalBoxes.map(ExperimentalBoxGeometry.init)
+            let dx = grid.cellSize / Float(refinement.ratio)
+            refinement.takeBoxFaceImpulses { cell, axis, side, impulse in
+                var across = cell
+                across[axis] += side == 0 ? -1 : 1
+                let point = (SIMD3<Float>(across) + 0.5) * dx
+                let b =
+                    ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
+                    ?? geometries.indices.min {
+                        simd_distance(geometries[$0].centre, point)
+                            < simd_distance(geometries[$1].centre, point)
+                    }!
+                var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
+                face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
+                record(b, face: face, axis: axis, impulse: impulse)
+            }
         }
-        return (linear, angular)
+        return loads
     }
 
     func checkExperimentalBoxRefinement() throws {
-        guard let refinement, let bounds = experimentalBoxBounds else { return }
+        guard let refinement, !experimentalBoxes.isEmpty else { return }
         let patches = refinement.patchOfTile.contents().bindMemory(
             to: Int32.self, capacity: refinement.patchOfTile.length / 4)
         let dims = refinement.tileDims
-        let gridDims = SIMD3(grid.nx, grid.ny, grid.nz)
-        let low = simd_max(SIMD3<Int>((bounds.min / grid.cellSize).rounded(.down)) &- 1, .zero)
-        let high = simd_min(SIMD3<Int>((bounds.max / grid.cellSize).rounded(.up)) &+ 1, gridDims &- 1)
-        for k in low.z...high.z {
-            for j in low.y...high.y {
-                for i in low.x...high.x {
-                    let tile = SIMD3(i, j, k) / AirRefinement.patchSize
-                    guard patches[tile.x + dims.x * (tile.y + dims.y * tile.z)] >= 0 else {
-                        throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        for body in experimentalBoxes {
+            let geometry = ExperimentalBoxGeometry(body)
+            let range = experimentalCellRange(geometry.low, geometry.high, margin: 1)
+            for k in range.low.z...range.high.z {
+                for j in range.low.y...range.high.y {
+                    for i in range.low.x...range.high.x {
+                        let tile = SIMD3(i, j, k) / AirRefinement.patchSize
+                        guard patches[tile.x + dims.x * (tile.y + dims.y * tile.z)] >= 0 else {
+                            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+                        }
                     }
                 }
             }
