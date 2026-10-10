@@ -99,7 +99,10 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    6.86 m/s, with and without stirrups, at shear spans of 0.4, 1 and 2 depths (2026), from their
    own records: the forces at a shear span of one depth within the scatter, the deep beams half
    as much again to twice as stiff; see
-   [Validation](validation.md#short-beams-struck-to-a-shear-failure).)
+   [Validation](validation.md#short-beams-struck-to-a-shear-failure).) (And Alsubaei's perimeter walls under ANFO in the
+   open (2015): column peaks within about 10% from 9 m out; the shielding not settled, the wing
+   walls' length unknown; reinforced blockwork 31 mm against 28 mm as one material, running away
+   as units and joints; see [Validation](validation.md#perimeter-walls-under-field-blasts).)
 
 ### Then the physics the evidence points to
 
