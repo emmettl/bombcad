@@ -226,8 +226,8 @@ fingerprint.
     collapses into a layer that spreads at its level, an intrusion. A box model of a constant
     volume V, the cloud's when it stopped, with the front condition u = Fr N h / 2 of Ungarish
     (2006), h = V / πa² its mean thickness and Fr = 1.19 (`frontFroude`), gives
-    da/dt = Fr N V / 2πa², so a³ = b³ + (3 Fr / 2π) N V t from the radius b where it stopped, and
-    c = b³ / a², the volume kept; the long-time t^⅓ of Ungarish and Zemach's (2007) inertial
+    da/dt = Fr N V / 2πa², so its radius a_g³ = b³ + (3 Fr / 2π) N V t from the radius b where
+    it stopped, and its half-depth c_g = b³ / a_g², the volume kept; the long-time t^⅓ of Ungarish and Zemach's (2007) inertial
     regime for a constant-volume intrusion, the regime Ib of Pouget et al. (2016). N is the air's
     over the cloud's depth around its centre, from its density temperature.
   - *It grows as a passive puff* in the air's turbulence, by the spreads of an instantaneous puff
@@ -244,7 +244,7 @@ fingerprint.
     (`leastTransportSpeed`) the puff is taken to travel at that speed.
 
   The gravity current's and the turbulence's spreads add as variances, as independent spreading
-  does, with the ellipsoid's semi-axes √5 σ, which for a uniform sphere is its radius:
+  does, with the ellipsoid's semi-axes √5 σ, as a uniform sphere's radius is √5 times its σ:
   a² = a_g² + 5σ_y², c² = c_g² + 5σ_z². As it grows the cloud draws in the air it grows into,
   ρ_air dV, with that air's heat and vapour, so its water goes on condensing, freezing and
   raining out as the rising cloud's does, by the same rain rate. The rising thermal's ADMS
