@@ -32,7 +32,7 @@ it should be used to judge the safety of a real structure.
 | 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–112% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 11–26% under light drops and −6% to 0% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 13% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured; on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
-| 4 | Peak pressure is under-resolved near the charge                         | Close-in loading and spall are unreliable                     | [Air-blast model](air-blast-model.md#limitations) |
+| 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall is unreliable | [Air-blast model](air-blast-model.md#limitations) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
@@ -180,11 +180,13 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    as units and mortar joints in running bond, which open at the bond and slide by friction,
    on solid elements no more than half a course high: see the
    [concrete model](concrete-model.md#masonry-as-units-and-mortar-joints).)
-12. **Adaptive resolution in the air**: several levels. (Done: one finer level, by 2 or 4, in
-   blocks of 4 × 4 × 4 cells that follow the shock, conservative across its edge, with its own
+12. **Adaptive resolution in the air**: several levels. (Done: one or two finer levels, by 2 or 4, in
+   blocks of 4 × 4 × 4 cells that follow the shock, the second nested in the first, conservative
+   across each level's edge, each with its own
    outline of blocks and structure, loading a deformable structure from the fine cells beside
    its faces, and carrying afterburning's fuel and oxygen; refined by 2, a grid gives the peaks of one twice as
-   fine three to five times faster in the open. See the
+   fine three to five times faster in the open, and in two levels those of one four times as fine,
+   1.2 to 1.4 times faster than one level by 4. See the
    [air-blast model](air-blast-model.md#refining-near-the-shock). A finely resolved
    one-dimensional start, tried first, gave exact records close to a charge but no lasting gain.)
    Stationary [building envelopes](building-envelopes.md) now retain walls, roofs and openings

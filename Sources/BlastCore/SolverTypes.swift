@@ -90,8 +90,16 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.
     public var refinementThreshold: Float = 0.1
+    /// Levels of refinement, 1 or 2, each by `refinement`: with 2, the blocks of the first level
+    /// that the shock crosses are refined again, as the first refines the coarse grid, so that
+    /// near the shock the cells are `refinement` squared times finer. Read at `restart()`.
+    public var refinementLevels = 1
+    /// The jump that refines the second level, as `refinementThreshold` does the first; nil
+    /// for the same.
+    public var refinementFinerThreshold: Float?
     /// GPU memory for the refined blocks, in bytes; where the shock would need more, the rest of
-    /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4.
+    /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two levels, a third
+    /// of it goes to the first and two thirds to the second.
     public var refinementMemory = 1 << 30
 
     public init() {}
@@ -192,6 +200,13 @@ struct SolverUniforms {
     var boxMaxY: Float = 0
     var boxMaxZ: Float = 0
     var couplingMapCount: UInt32 = 0
+    var parentSide: UInt32 = 0
+    var parentTileNx: UInt32 = 0
+    var parentTileNy: UInt32 = 0
+    var parentScale: UInt32 = 0
+    var childTileNx: UInt32 = 0
+    var childTileNy: UInt32 = 0
+    var childTileNz: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -352,6 +367,8 @@ public struct BatchResult: Sendable {
     public var sweptFraction: Double = 1
     /// Tiles refined at the end of the batch (0 when the air is not refined).
     public var refinedTiles = 0
+    /// Blocks of the second level refined at the end of the batch (0 without one).
+    public var finerRefinedTiles = 0
     /// True when the batch stopped just short of its time limit, leaving the last step up to it
     /// for another batch; its unused steps did nothing.
     public var stoppedShort = false

@@ -195,8 +195,10 @@ reached can differ, by the rounding error that still air reads as overpressure (
 A captured shock is smeared over two or three cells, so peak pressures read low unless the cells
 are small, and a grid fine everywhere costs eight times as much for each halving.
 `SolverConfiguration.refinement` (2 or 4; off by default) refines the air only where the shock
-is. In the app it is the "Sharpen shocks" switch (ratio 2); `blastbench` takes `--refine 2`. The
-code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
+is, in one level or, with `refinementLevels` 2, in two (below). In the app it is the "Sharpen
+shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastbench` takes
+`--refine 2` and `--refine-levels 2`. The code is `Sources/BlastCore/Refinement.swift` and
+`Shaders/Refine.metal`.
 
 - **Where.** The grid is cut into blocks of 4 × 4 × 4 cells. A block is refined where the
   pressures of two neighbouring cells in it differ by more than `refinementThreshold` (10%) of
@@ -258,17 +260,48 @@ code is `Sources/BlastCore/Refinement.swift` and `Shaders/Refine.metal`.
   added evenly to each fluid fine cell (a cell nothing touched is left exactly as it was); the
   structure's own outline in the fine cells follows it as above, each solid fine cell moving with
   the mean velocity of the structure in it.
+- **A second level.** With `refinementLevels` 2 the blocks of 4 × 4 × 4 fine cells that the
+  shock crosses are refined again, by the same ratio, so that at the shock the cells are r² times
+  finer than the coarse ones. The second level sees the first as the first sees the coarse grid,
+  its parent: each of its steps is r substeps taken within one substep of the first level, after
+  that substep's sweeps; its ghost cells come from a patch of its own or from the first level's
+  cells, between their state at the start and the end of that substep; the first level's cells
+  beside its patches record the fluxes they used, which its own then replace; and the first
+  level's cells under its patches become the mean of its fluid cells, before the first level's
+  own are averaged into the coarse cells. A block of the first level's cells is refined where two
+  neighbouring cells of the first level differ by `refinementFinerThreshold` (by default the same
+  10%), and only where the first level's patches hold every cell within two of it: so the second
+  level never meets the coarse grid, and the first level is kept wherever the second wants or
+  keeps a block, so that neither is released from under the other. It has its own outline (rigid
+  blocks, and the structure counted at its own resolution, its points no further apart than one
+  of its cells), loads a deformable structure from its cells beside the faces, carries the debris'
+  trade from the first level's cells, and carries afterburning's fuel and oxygen, all as the
+  first level does. Its patch list, cells, outline and structure counts lie in the first level's
+  buffers after the first level's own, which lets the structure's kernels, whose buffer slots are
+  all taken, reach both. A third of `refinementMemory` goes to the first level and two thirds to
+  the second, whose blocks are an eighth the volume; at the shock it needs four to six times as
+  many. A gauge reads the finest cell holding its point.
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,
-  as without refinement). A centred burst stays mirror-symmetric to 10⁻⁶ until rounding tips the
-  threshold for one block and not its mirror image; from then on the two sides are solved on
-  different grids and differ by up to about 1%.
+  as without refinement), with one level or two. When a pool is used up, the blocks asking for a
+  patch get them in the order of the blocks, by a sum over them, so that a full pool refines the
+  same blocks every run; until then the last patches went to whichever threads asked first,
+  which conserved the gas but made a run that filled the pool differ from run to run. A centred
+  burst stays mirror-symmetric to 10⁻⁶ until rounding tips the threshold for one block and not
+  its mirror image; from then on the two sides are solved on different grids and differ by up
+  to about 1%.
 
 On Sod's shock tube, refinement by 2 takes the error two-thirds of the way to that of a grid
 twice as fine. On the Kingery–Bulmash comparison a grid refined by 2 gives the peaks and
-impulses of a uniform grid twice as fine, in half the time or less (see
-[Validation](validation.md#with-refinement) and [Performance](performance.md#refinement)).
+impulses of a uniform grid twice as fine, in half the time or less; refined in two levels by 2,
+those of a grid four times as fine, in a quarter of its time or less, and 1.2 to 1.4 times faster
+than refined by 4 in one level, which gives the same. Close in, 40 mm cells refined in two levels
+give the reflected impulse of 10 mm cells within 1% (see
+[Validation](validation.md#with-refinement), [close in](validation.md#close-in) and
+[Performance](performance.md#refinement)). One level stays the default, and "Sharpen shocks" one
+level by 2: on the same coarse cells a second level costs five to seven times as much again
+(8.1 s against 1.6 s for the open-ground event on 0.5 m cells).
 
 **How it got here.** The first version refined whole tiles of still air (8 × 8 × 8 cells) and
 every tile around a flagged one, and was slower than the uniform grid it imitated: a sphere cuts
@@ -319,8 +352,8 @@ UFC 3-340-02, lowest for light charges.
    option that changes little.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
-   Refinement (above) gives the peaks of a grid twice or four times as fine, but only one finer
-   level.
+   Refinement (above) gives the peaks of a grid twice or four times as fine, in one level, or four
+   times as fine in two; there are no more than two levels.
 3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
    or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
@@ -352,9 +385,10 @@ UFC 3-340-02, lowest for light charges.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: patches placed and released over a fine outline without the gas
-  they move between grids being gained or lost. Several levels and smaller blocks were weighed
-  and would gain little (see [Performance](performance.md#refinement)): the cost is set by the
-  area of the shock.
+  they move between grids being gained or lost. Smaller blocks were weighed and would gain
+  little (see [Performance](performance.md#refinement)): the cost is set by the area of the shock.
+  A third level, or a second whose blocks follow only the strong shock near the charge
+  (`refinementFinerThreshold`), are untried.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
 

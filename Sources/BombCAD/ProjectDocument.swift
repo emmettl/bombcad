@@ -14,6 +14,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     var resolution: String
     var detailedCharge: Bool
     var sharpShocks: Bool
+    /// Levels of the shocks' refinement when more than one; nil, and left out of the file (and of
+    /// a saved run's fingerprint, so that runs saved before it existed still match theirs), for one.
+    var shockLevels: Int?
     var solidElementSize: Float
     var duration: Double
 
@@ -21,6 +24,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         resolution = settings.resolution.rawValue
         detailedCharge = settings.detailedCharge
         sharpShocks = settings.sharpShocks
+        shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -32,7 +36,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
 
     func validate() throws {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
-            duration.isFinite, duration > 0
+            duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }
     }
 }

@@ -99,6 +99,18 @@ struct SidebarView: View {
                         "Refines the air twice over where the shock is, so that peak pressures and the loads "
                             + "on walls come out close to those of the next finer resolution, at a fraction of its "
                             + "cost.")
+                if model.settings.sharpShocks {
+                    Toggle(
+                        "Twice over again",
+                        isOn: Binding(
+                            get: { model.settings.shockLevels > 1 },
+                            set: { model.settings.shockLevels = $0 ? 2 : 1 })
+                    )
+                    .padding(.leading, 20)
+                    .help(
+                        "Refines the refined air twice over again where the shock is, so that peaks come out "
+                            + "close to those of a grid four times as fine. Slower than refining once.")
+                }
                 LabeledSlider(
                     title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
                     text: metres(model.settings.chargePosition.x))

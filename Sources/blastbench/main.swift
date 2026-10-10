@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
-//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full]
+//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
@@ -18,7 +18,7 @@ import simd
 //               [--bond pullout|splitting|confined] [--crack-shear] [--slide-apart]   (also on beam and slab)
 //   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
-//   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2]
+//   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
@@ -207,7 +207,9 @@ func runThroughput() throws {
 
     var stepsPerMetre = 0.0
     var lastSwept = 1.0
-    for cellSize in [Float(0.5), 0.25, 0.125] {
+    let cellSizes =
+        option("dx").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [0.5, 0.25, 0.125]
+    for cellSize in cellSizes {
         let solver = try makeAirSolver(scenario, cellSize: cellSize)
         let cells = solver.grid.cellCount
         // Run the whole event unless it would take minutes; then time a sample and extrapolate
@@ -225,6 +227,8 @@ func runThroughput() throws {
         if runWholeEvent && solver.configuration.refinement > 1 {
             // Batch by batch, to follow how much of the air is refined.
             var refined = 0.0
+            var finer = 0.0
+            var (most, finerMost) = (0, 0)
             var batches = 0
             while solver.time < event {
                 let result = solver.advance(steps: 64, timeLimit: event)
@@ -234,13 +238,19 @@ func runThroughput() throws {
                     / Double(steps + result.steps)
                 steps += result.steps
                 refined += Double(result.refinedTiles)
+                finer += Double(result.finerRefinedTiles)
+                most = max(most, result.refinedTiles)
+                finerMost = max(finerMost, result.finerRefinedTiles)
                 batches += 1
             }
             let blocks = Double(
                 ((solver.grid.nx + 3) / 4) * ((solver.grid.ny + 3) / 4) * ((solver.grid.nz + 3) / 4))
             print(
                 "  refined blocks of 4 x 4 x 4 cells: \(format(refined / Double(max(batches, 1)), 0)) on average, "
-                    + "of \(Int(blocks))")
+                    + "at most \(most) (room for \(solver.refinementPatchCapacity)), of \(Int(blocks))"
+                    + (solver.configuration.refinementLevels > 1
+                        ? "; at the second level \(format(finer / Double(max(batches, 1)), 0)) on average, "
+                            + "at most \(finerMost) (room for \(solver.finerRefinementPatchCapacity))" : ""))
         } else if runWholeEvent {
             let result = solver.advance(until: event)
             (steps, swept) = (result.steps, result.sweptFraction)
@@ -372,11 +382,16 @@ func runChamber() throws {
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
-/// The air's refinement from `--refine 2|4`, `--refine-threshold` and `--refine-memory` (MB).
+/// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-threshold`,
+/// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }
     if let threshold = option("refine-threshold").flatMap({ Float($0) }) {
         configuration.refinementThreshold = threshold
+    }
+    if let levels = option("refine-levels").flatMap({ Int($0) }) { configuration.refinementLevels = levels }
+    if let threshold = option("refine-finer-threshold").flatMap({ Float($0) }) {
+        configuration.refinementFinerThreshold = threshold
     }
     if let memory = option("refine-memory").flatMap({ Int($0) }) {
         configuration.refinementMemory = memory << 20
@@ -975,6 +990,11 @@ func runCloseAir() throws {
         "1 kg TNT burst in the air above rigid ground, reflected square on below it; cells \(format(Double(cellSize), 3)) m"
     )
     print(pad("Z", 6) + pad("K-B peak", 12) + pad("model", 14) + pad("K-B impulse", 14) + pad("model", 16))
+    var refinement = SolverConfiguration()
+    configureRefinement(&refinement)
+    let finest =
+        refinement.refinement > 1
+        ? Int(pow(Double(refinement.refinement), Double(refinement.refinementLevels))) : 1
     for z in distances {
         let height = z
         let size = max(3 * height, 1.2)
@@ -984,10 +1004,12 @@ func runCloseAir() throws {
             gauges: [
                 Gauge(
                     "ground",
-                    // In the air cell against the ground, refined or not: a cell further up misses
-                    // the momentum the gas still carries towards it.
+                    // In the air cell against the ground, refined or not (a quarter of the finest
+                    // cell up): a cell further up misses the momentum the gas still carries
+                    // towards it.
                     at: SIMD3(
-                        size / 2, size / 2, (option("gauge-cells").flatMap { Float($0) } ?? 0.25) * cellSize))
+                        size / 2, size / 2,
+                        (option("gauge-cells").flatMap { Float($0) } ?? 0.25 / Float(finest)) * cellSize))
             ])
         scenario.reflectiveFaces = .ground
         let solver = try makeAirSolver(scenario, cellSize: cellSize)
@@ -2002,7 +2024,8 @@ func runDigest() throws {
         }
         print(
             "\(name), \(cellSize) m: \(String(hash, radix: 16)) after \(result.steps) steps, "
-                + "\(result.refinedTiles) refined blocks")
+                + "\(result.refinedTiles) refined blocks"
+                + (result.finerRefinedTiles > 0 ? ", \(result.finerRefinedTiles) at the second level" : ""))
     }
 }
 

@@ -104,6 +104,14 @@ struct StructureUniforms {
     uint barRateAlongBars;
     uint couplingMapCount;
     uint footings;  // rigid footings under connected bases (`FootingSystem`); 0: none
+    // A second level of the air's refinement (ratio 0 when there is none): its cells along a
+    // coarse cell's edge, its grid of blocks, and where its patches' list and cells start in the
+    // first level's buffers, which hold them after the first level's own.
+    uint fluidDeepRatio;
+    uint fluidDeepBlocksX;
+    uint fluidDeepBlocksY;
+    uint fluidDeepPatchOffset;
+    uint fluidDeepCellOffset;
 };
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -399,7 +407,9 @@ static inline float faceOverpressure(float3 point, float3 normal, const device C
                                      constant StructureUniforms &u) {
     return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, fineMask, u.fluidRefine,
                              u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
-                             u.fluidAirModel, u.fluidGamma, u.ambientPressure);
+                             u.fluidAirModel, u.fluidGamma, u.ambientPressure, patchOfTile + u.fluidDeepPatchOffset,
+                             fine + u.fluidDeepCellOffset, fineMask + u.fluidDeepCellOffset, u.fluidDeepRatio,
+                             u.fluidDeepBlocksX, u.fluidDeepBlocksY);
 }
 
 // Eigenvalues and eigenvectors (columns) of a symmetric matrix by cyclic Jacobi rotations.
@@ -2703,6 +2713,15 @@ struct CouplingUniforms {
     uint coarseSamples;
     uint couplingMapCount;
     uint couplingTileCapacity;
+    // A second level of the refinement (ratio 0 when there is none): its cells along a coarse
+    // cell's edge, its grid of blocks, the count that makes one of its cells solid, and where its
+    // patches' list and cells start in the first level's buffers.
+    uint deepRatio;
+    uint deepBlocksX;
+    uint deepBlocksY;
+    uint deepThreshold;
+    uint deepPatchOffset;
+    uint deepCellOffset;
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -2728,22 +2747,20 @@ static inline int coarseCouplingSlot(int3 local, constant CouplingUniforms &u, d
     return local.x + int(u.regionNx) * (local.y + int(u.regionNy) * local.z);
 }
 
-// Where the air is refined, adds a point of the structure, moving with `fixed` (fixed point), to
-// the occupancy of the fine cell holding it: four counters per fine cell, as for the coarse ones.
-static inline void splatFine(float3 sample, int3 fixed, uint weight, const device int *patchOfTile,
-                             device atomic_uint *fineOccupancy, constant CouplingUniforms &u) {
-    if (u.refineRatio == 0) {
-        return;
-    }
-    float fineCell = u.fluidCell / float(u.refineRatio);
+// Adds a point of the structure, moving with `fixed` (fixed point), to the occupancy of the cell
+// holding it of the level with `ratio` cells along a coarse cell's edge, in patches of `side`
+// cells: four counters per cell, as for the coarse ones.
+static inline void splatLevel(float3 sample, int3 fixed, uint weight, const device int *patchOfTile,
+                              device atomic_uint *fineOccupancy, uint ratio, int side, uint blocksX, uint blocksY,
+                              constant CouplingUniforms &u) {
+    float fineCell = u.fluidCell / float(ratio);
     int3 fine = int3(floor(sample / fineCell));
-    int3 cells = int3(u.fluidNx, u.fluidNy, u.fluidNz) * int(u.refineRatio);
+    int3 cells = int3(u.fluidNx, u.fluidNy, u.fluidNz) * int(ratio);
     if (any(fine < 0) || any(fine >= cells)) {
         return;
     }
-    int side = patchSize * int(u.refineRatio);
     int3 block = fine / side;
-    int patch = patchOfTile[block.x + int(u.blocksX) * (block.y + int(u.blocksY) * block.z)];
+    int patch = patchOfTile[block.x + int(blocksX) * (block.y + int(blocksY) * block.z)];
     if (patch < 0) {
         return;
     }
@@ -2753,6 +2770,22 @@ static inline void splatFine(float3 sample, int3 fixed, uint weight, const devic
     atomic_fetch_add_explicit(&fineOccupancy[slot + 1], uint(fixed.x) * weight, memory_order_relaxed);
     atomic_fetch_add_explicit(&fineOccupancy[slot + 2], uint(fixed.y) * weight, memory_order_relaxed);
     atomic_fetch_add_explicit(&fineOccupancy[slot + 3], uint(fixed.z) * weight, memory_order_relaxed);
+}
+
+// Where the air is refined, adds a point of the structure to the occupancy of the fine cell
+// holding it, with `weight`, and, where there is a second level, of that level's cell holding it,
+// with `deepWeight`.
+static inline void splatFine(float3 sample, int3 fixed, uint weight, uint deepWeight, const device int *patchOfTile,
+                             device atomic_uint *fineOccupancy, constant CouplingUniforms &u) {
+    if (u.refineRatio == 0) {
+        return;
+    }
+    splatLevel(sample, fixed, weight, patchOfTile, fineOccupancy, u.refineRatio, patchSize * int(u.refineRatio),
+               u.blocksX, u.blocksY, u);
+    if (u.deepRatio != 0) {
+        splatLevel(sample, fixed, deepWeight, patchOfTile + u.deepPatchOffset, fineOccupancy + 4 * u.deepCellOffset,
+                   u.deepRatio, patchSize * int(u.deepRatio / u.refineRatio), u.deepBlocksX, u.deepBlocksY, u);
+    }
 }
 
 // Velocities handed to the air are limited to this (m/s) and summed in steps of 1/1024 m/s.
@@ -2790,7 +2823,7 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     for (uint n = 0; u.refineRatio != 0 && n < samples * samples * samples; ++n) {
         float3 offset = (float3(n % samples, (n / samples) % samples, n / (samples * samples)) + 0.5f) / float(samples)
             - 0.5f;
-        splatFine(centre + offset * u.h, fixed, 1u, patchOfTile, fineOccupancy, u);
+        splatFine(centre + offset * u.h, fixed, 1u, 1u, patchOfTile, fineOccupancy, u);
     }
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
     uint coarse = u.coarseSamples;
@@ -2970,6 +3003,7 @@ kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
                                 constant uint &threshold [[buffer(8)]],
                                 const device uchar *mask [[buffer(9)]],
                                 device uint *pinned [[buffer(10)]],
+                                const device int *parentPatches [[buffer(11)]],
                                 uint gid [[thread_position_in_grid]]) {
     int r = int(u.refineRatio);
     int side = patchSize * r;
@@ -3015,7 +3049,7 @@ kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
             sum.energy += c.energy;
             neighbours += 1.0f;
         }
-        Cell fill = coarse[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)];
+        Cell fill = parentCell(coarse, parentIndex(cell, parentPatches, u), u);
         if (neighbours > 0.0f) {
             float scale = 1.0f / neighbours;
             fill.rho = sum.rho * scale;
@@ -3028,7 +3062,7 @@ kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
     }
     fineMask[at] = (m & 3) | (solid ? 4 : 0);
     // A fine outline that differs from the coarse cells' pins the patch (see `refineRelease`).
-    if (solid != (mask[cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z)] != 0)) {
+    if (solid != parentSolid(mask, parentIndex(cell, parentPatches, u), u)) {
         pinned[patch] = 1;
     }
 }

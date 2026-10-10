@@ -2,9 +2,12 @@ import Foundation
 import Metal
 import simd
 
-/// The air's finer level: patches of (4r)^3 cells over the blocks of 4 x 4 x 4 cells the shock
-/// crosses, from a pool of fixed size, placed and advanced on the GPU (see `Refine.metal`). Owned
-/// by `BlastSolver`.
+/// One finer level of the air: patches of (4r)^3 cells over the blocks of 4 x 4 x 4 cells of the
+/// grid it refines that the shock crosses, from a pool of fixed size, placed and advanced on the
+/// GPU (see `Refine.metal`). The first level refines the coarse grid; a second refines the first
+/// (its `parent`), and its patch list, cells, outline and structure counts lie in the first
+/// level's buffers after the first level's own, so that a kernel given the first level's can
+/// reach both. Owned by `BlastSolver`.
 final class AirRefinement {
     /// Coarse cells along a patch's edge.
     static let patchSize = 4
@@ -15,6 +18,14 @@ final class AirRefinement {
     let maxPatches: Int
     /// The grid's size in blocks of `patchSize` cells.
     let tileDims: SIMD3<Int>
+    /// The level this one refines, or nil for the coarse grid.
+    let parent: AirRefinement?
+    /// The parent's cells along a coarse cell's edge: 1 for the first level.
+    let parentScale: Int
+    /// Where this level's patch list, and its cells, start in the buffers it shares with its
+    /// parent, in entries (0 for the first level).
+    let patchOffset: Int
+    let cellOffset: Int
 
     /// Per block: its patch, or -1.
     let patchOfTile: MTLBuffer
@@ -23,21 +34,21 @@ final class AirRefinement {
     private let freeStack: MTLBuffer
     /// The free stack's height, the count of new patches and the count of listed patches.
     private let counters: MTLBuffer
-    private let patchList: MTLBuffer
+    let patchList: MTLBuffer
     private let newPatches: MTLBuffer
     /// Threadgroup counts of the sweep, halo, reflux, restriction, fill and ghost dispatches, then
     /// the number of patches in use.
-    private let arguments: MTLBuffer
-    private let wanted: MTLBuffer
+    let arguments: MTLBuffer
+    let wanted: MTLBuffer
     /// Per coarse cell of each patch: whether it was solid when the fine cells last saw it.
     private let seenMask: MTLBuffer
     /// Per pool slot: whether the patch lies over an outline that differs from the coarse cells',
     /// and so stays until the next reset.
-    private let pinned: MTLBuffer
+    let pinned: MTLBuffer
     /// Per fine cell: solid (bit 0) and rigid (bit 1), the fine cells' own outline; the velocity
     /// of the structure where it is solid; and the structure's points counted into it.
     let fineMask: MTLBuffer
-    private let fineWall: MTLBuffer
+    let fineWall: MTLBuffer
     var useLocalBoxRemap = true
     var boxRemapMode: ExperimentalBoxRemap = .redistribution
     var measureBoxRemap = false
@@ -60,7 +71,7 @@ final class AirRefinement {
     private let ghostKinds: MTLBuffer
     private let fineFlux: MTLBuffer
     /// Each fine cell's impulse since its patch was placed, and each coarse cell's impulse then.
-    private let fineImpulse: MTLBuffer
+    let fineImpulse: MTLBuffer
     private let impulseBase: MTLBuffer
     let coarseFlux: MTLBuffer
     /// With afterburning: the fine cells' fuel and oxygen (twice, as `fine`), their ghosts', and
@@ -83,12 +94,21 @@ final class AirRefinement {
     private let restrictPipeline: MTLComputePipelineState
     private let flagPipeline: MTLComputePipelineState
     private let flagTilesPipeline: MTLComputePipelineState
+    private let flagFinePipeline: MTLComputePipelineState
+    private let nestPipeline: MTLComputePipelineState
     private let syncPipeline: MTLComputePipelineState
     private let conservePipeline: MTLComputePipelineState
     private let remaskPreparePipeline: MTLComputePipelineState
     private let remaskApplyPipeline: MTLComputePipelineState
     private let releasePipeline: MTLComputePipelineState
     private let allocatePipeline: MTLComputePipelineState
+    private let requestPipeline: MTLComputePipelineState
+    private let grantPipeline: MTLComputePipelineState
+    /// Per group of `allocationGroup` blocks: how many ask for a new patch, then where their
+    /// requests start among all.
+    private let groupCounts: MTLBuffer
+    /// Blocks per threadgroup of the allocation's kernels (`allocationGroup` in Refine.metal).
+    static let allocationGroup = 256
     private let listPipeline: MTLComputePipelineState
     private let argumentsPipeline: MTLComputePipelineState
     private let fillPipeline: MTLComputePipelineState
@@ -108,27 +128,47 @@ final class AirRefinement {
             + 6 * patchSize * patchSize * 8
     }
 
+    /// The size in blocks of a level whose parent has `parentScale` cells along each coarse
+    /// cell's edge, and how many patches `memory` holds.
+    static func layout(
+        grid: Grid, ratio: Int, parentScale: Int, memory: Int, species: Bool, bodyComposition: Bool
+    ) -> (tileDims: SIMD3<Int>, maxPatches: Int) {
+        let block = patchSize
+        let cells = SIMD3(grid.nx, grid.ny, grid.nz) &* parentScale
+        let tileDims = (cells &+ (block - 1)) / block
+        let tiles = tileDims.x * tileDims.y * tileDims.z
+        let patches = max(
+            1,
+            min(
+                tiles,
+                memory / bytesPerPatch(ratio: ratio, species: species, bodyComposition: bodyComposition)))
+        return (tileDims, patches)
+    }
+
+    /// A level of `memory` bytes. With `parent`, it refines that level (of the same ratio), whose
+    /// shared buffers must have been made with room for it (`reserve`, in blocks and in cells).
     init(
         device: MTLDevice, library: MTLLibrary, grid: Grid, ratio: Int, memory: Int, species: Bool = false,
-        bodyComposition: Bool = false
+        bodyComposition: Bool = false, parent: AirRefinement? = nil,
+        reserve: (tiles: Int, cells: Int) = (0, 0)
     )
         throws
     {
         precondition(ratio == 2 || ratio == 4, "The air is refined by 2 or 4")
+        precondition(parent.map { $0.ratio == ratio } ?? true, "Every level is refined by the same ratio")
         self.ratio = ratio
         self.bodyComposition = bodyComposition
         self.species = species
+        self.parent = parent
+        parentScale = parent.map { $0.parentScale * $0.ratio } ?? 1
         side = Self.patchSize * ratio
-        let block = Self.patchSize
-        tileDims = SIMD3(
-            (grid.nx + block - 1) / block, (grid.ny + block - 1) / block, (grid.nz + block - 1) / block)
+        let layout = Self.layout(
+            grid: grid, ratio: ratio, parentScale: parentScale, memory: memory, species: species,
+            bodyComposition: bodyComposition)
+        tileDims = layout.tileDims
+        maxPatches = layout.maxPatches
         let tiles = tileDims.x * tileDims.y * tileDims.z
-        maxPatches = max(
-            1,
-            min(
-                tiles,
-                memory / Self.bytesPerPatch(ratio: ratio, species: species, bodyComposition: bodyComposition))
-        )
+        let fineCells = maxPatches * side * side * side
 
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
@@ -140,12 +180,16 @@ final class AirRefinement {
         restrictPipeline = try pipeline("refineRestrict")
         flagPipeline = try pipeline("refineFlag")
         flagTilesPipeline = try pipeline("refineFlagTiles")
+        flagFinePipeline = try pipeline("refineFlagFine")
+        nestPipeline = try pipeline("refineNest")
         syncPipeline = try pipeline("refineSync")
         conservePipeline = try pipeline("refineFillConserve")
         remaskPreparePipeline = try pipeline("refineRemaskPrepare")
         remaskApplyPipeline = try pipeline("refineRemaskApply")
         releasePipeline = try pipeline("refineRelease")
         allocatePipeline = try pipeline("refineAllocate")
+        requestPipeline = try pipeline("refineRequest")
+        grantPipeline = try pipeline("refineGrant")
         listPipeline = try pipeline("refineList")
         argumentsPipeline = try pipeline("refineArguments")
         fillPipeline = try pipeline("refineFill")
@@ -158,7 +202,30 @@ final class AirRefinement {
             return buffer
         }
         let cell = MemoryLayout<CellState>.stride
-        patchOfTile = try buffer(tiles * 4, "patch of tile")
+        let fineLength = fineCells * cell
+        if let parent {
+            // In the parent's buffers, after its own entries.
+            patchOffset = parent.tileDims.x * parent.tileDims.y * parent.tileDims.z
+            cellOffset = parent.maxPatches * parent.side * parent.side * parent.side
+            precondition(
+                parent.patchOfTile.length >= (patchOffset + tiles) * 4
+                    && parent.fineMask.length >= cellOffset + fineCells,
+                "The parent level has no room for this one")
+            patchOfTile = parent.patchOfTile
+            fineMask = parent.fineMask
+            fineOccupancy = parent.fineOccupancy
+            fine = [parent.fine[0], try buffer(fineLength, "fine state B")]
+        } else {
+            patchOffset = 0
+            cellOffset = 0
+            patchOfTile = try buffer((tiles + reserve.tiles) * 4, "patch of tile")
+            fineMask = try buffer(fineCells + reserve.cells, "fine mask")
+            fineOccupancy = try buffer((fineCells + reserve.cells) * 16, "fine occupancy")
+            fine = [
+                try buffer(fineLength + reserve.cells * cell, "fine state A"),
+                try buffer(fineLength, "fine state B"),
+            ]
+        }
         tileOfPatch = try buffer(maxPatches * 4, "tile of patch")
         freeStack = try buffer(maxPatches * 4, "free patches")
         counters = try buffer(16, "refinement counters")
@@ -166,17 +233,14 @@ final class AirRefinement {
         newPatches = try buffer(maxPatches * 4, "new patches")
         arguments = try buffer(32 * 4, "refinement dispatches")
         wanted = try buffer(tiles, "blocks flagged")
+        groupCounts = try buffer(
+            (tiles + Self.allocationGroup - 1) / Self.allocationGroup * 4, "requests per group of blocks")
         seenMask = try buffer(maxPatches * Self.patchSize * Self.patchSize * Self.patchSize, "mask seen")
-        let fineCells = maxPatches * side * side * side
-        fineMask = try buffer(fineCells, "fine mask")
         pinned = try buffer(maxPatches * 4, "pinned patches")
         fineWall = try buffer(fineCells * 12, "fine wall velocity")
-        fineOccupancy = try buffer(fineCells * 16, "fine occupancy")
         boxes = try buffer(32, "rigid blocks")
         self.device = device
         self.library = library
-        let fineLength = maxPatches * side * side * side * cell
-        fine = [try buffer(fineLength, "fine state A"), try buffer(fineLength, "fine state B")]
         halo = try buffer(maxPatches * 512 * cell, "halo")
         ghosts = try buffer(maxPatches * 4 * side * side * cell, "ghost cells")
         ghostKinds = try buffer(maxPatches * 4 * side * side, "ghost kinds")
@@ -194,21 +258,84 @@ final class AirRefinement {
         coarseSpeciesFlux = try buffer(
             maxPatches * 6 * Self.patchSize * Self.patchSize * pair, "coarse species fluxes")
         if bodyComposition {
-            combinedBodyOccupancy = try buffer(fineOccupancy.length, "combined fine body occupancy")
+            combinedBodyOccupancy = try buffer(fineCells * 16, "combined fine body occupancy")
             memset(combinedBodyOccupancy!.contents(), 0, combinedBodyOccupancy!.length)
             bodyComposePipeline = try pipeline("composeFineBodyOccupancy")
             bodyPublishPipeline = try pipeline("publishFineBodyOccupancy")
         }
     }
 
+    /// Bytes this level holds. A level beneath another holds part of its parent's buffers, which
+    /// the parent counts.
     var memoryFootprint: Int {
-        ([
-            patchOfTile, tileOfPatch, freeStack, patchList, newPatches, wanted, seenMask, halo, ghosts,
-            ghostKinds,
-            fineFlux, fineImpulse, impulseBase, coarseFlux, fineMask, fineWall, fineOccupancy, ghostSpecies,
-            fineSpeciesFlux, coarseSpeciesFlux,
-        ] + fine + fineSpecies).reduce(0) { $0 + $1.length } + (experimentalBoxImpulse?.length ?? 0)
+        let shared =
+            parent == nil ? [patchOfTile, fineMask, fineOccupancy, fine[0]].reduce(0) { $0 + $1.length } : 0
+        return
+            ([
+                tileOfPatch, freeStack, patchList, newPatches, wanted, groupCounts, seenMask, halo, ghosts,
+                ghostKinds,
+                fineFlux, fineImpulse, impulseBase, coarseFlux, fineWall, ghostSpecies,
+                fineSpeciesFlux, coarseSpeciesFlux, fine[1],
+            ] + fineSpecies).reduce(0) { $0 + $1.length } + shared + (experimentalBoxImpulse?.length ?? 0)
             + (combinedBodyOccupancy?.length ?? 0)
+    }
+
+    /// Byte offset of this level's entries in `buffer`, one of those it may share with its parent.
+    private func offset(of buffer: MTLBuffer) -> Int {
+        if buffer === patchOfTile { return patchOffset * 4 }
+        if buffer === fineMask { return cellOffset }
+        if buffer === fineOccupancy { return cellOffset * 16 }
+        if buffer === fine[0] { return cellOffset * MemoryLayout<CellState>.stride }
+        return 0
+    }
+
+    /// Binds this level's own part of `buffer`.
+    private func bind(_ encoder: MTLComputeCommandEncoder, _ buffer: MTLBuffer, _ index: Int) {
+        encoder.setBuffer(buffer, offset: offset(of: buffer), index: index)
+    }
+
+    /// The grid a level refines, as its kernels see it: the coarse grid's fields, or the parent
+    /// level's, each with its byte offset.
+    struct ParentView {
+        var state: (MTLBuffer, Int)
+        var species: (MTLBuffer, Int)
+        var mask: (MTLBuffer, Int)
+        var rigid: (MTLBuffer, Int)
+        var wallVelocity: (MTLBuffer, Int)
+        var impulse: (MTLBuffer, Int)
+        /// The parent level's patch of each block (any buffer for the coarse grid).
+        var patches: (MTLBuffer, Int)
+
+        /// The coarse grid.
+        init(
+            state: MTLBuffer, species: MTLBuffer, mask: MTLBuffer, rigid: MTLBuffer, wallVelocity: MTLBuffer,
+            impulse: MTLBuffer, placeholder: MTLBuffer
+        ) {
+            self.state = (state, 0)
+            self.species = (species, 0)
+            self.mask = (mask, 0)
+            self.rigid = (rigid, 0)
+            self.wallVelocity = (wallVelocity, 0)
+            self.impulse = (impulse, 0)
+            patches = (placeholder, 0)
+        }
+
+        init(level: AirRefinement, current n: Int) {
+            state = (level.fine[n], n == 0 ? level.offset(of: level.fine[0]) : 0)
+            species = (level.fineSpecies[n], 0)
+            mask = (level.fineMask, level.offset(of: level.fineMask))
+            rigid = mask
+            wallVelocity = (level.fineWall, 0)
+            impulse = (level.fineImpulse, 0)
+            patches = (level.patchOfTile, level.offset(of: level.patchOfTile))
+        }
+    }
+
+    /// This level as the grid a level beneath it refines, with its fine state `n` current.
+    func view(current n: Int = 0) -> ParentView { ParentView(level: self, current: n) }
+
+    private func set(_ encoder: MTLComputeCommandEncoder, _ bound: (MTLBuffer, Int), _ index: Int) {
+        encoder.setBuffer(bound.0, offset: bound.1, index: index)
     }
 
     func encodeComposeBody(
@@ -219,7 +346,7 @@ final class AirRefinement {
         var threshold = threshold
         var uniforms = uniforms
         encoder.setComputePipelineState(bodyComposePipeline)
-        encoder.setBuffer(fineOccupancy, offset: 0, index: 0)
+        bind(encoder, fineOccupancy, 0)
         encoder.setBuffer(combinedBodyOccupancy, offset: 0, index: 1)
         encoder.setBytes(&threshold, length: 4, index: 2)
         setUniforms(encoder, &uniforms, index: 3)
@@ -234,7 +361,7 @@ final class AirRefinement {
         guard let combinedBodyOccupancy, let bodyPublishPipeline else { return }
         var uniforms = uniforms
         encoder.setComputePipelineState(bodyPublishPipeline)
-        encoder.setBuffer(fineOccupancy, offset: 0, index: 0)
+        bind(encoder, fineOccupancy, 0)
         encoder.setBuffer(combinedBodyOccupancy, offset: 0, index: 1)
         setUniforms(encoder, &uniforms, index: 2)
         encoder.setBuffer(patchList, offset: 0, index: 3)
@@ -246,17 +373,27 @@ final class AirRefinement {
     /// Patches in use after the last regrid.
     var patchCount: Int { Int(arguments.contents().load(fromByteOffset: 24 * 4, as: UInt32.self)) }
 
-    /// The gas the patches hold: which coarse cells they cover, and the mass, energy, momentum and
-    /// (with afterburning) fuel and oxygen of their fluid fine cells.
-    func gas(in grid: Grid) -> (
+    /// This level's cells along each axis.
+    func cellDims(_ grid: Grid) -> SIMD3<Int> { SIMD3(grid.nx, grid.ny, grid.nz) &* (parentScale * ratio) }
+
+    /// The gas the patches hold: which cells of the grid they refine they cover (as indices into
+    /// that grid, the coarse grid's or the parent level's cells numbered through its whole
+    /// extent), and the mass, energy, momentum and (with afterburning) fuel and oxygen of their
+    /// fluid fine cells, leaving out those in `excluding` (this level's cells, numbered so),
+    /// which a level beneath holds.
+    func gas(in grid: Grid, excluding: Set<Int> = []) -> (
         covered: Set<Int>, mass: Double, energy: Double, momentum: SIMD3<Double>, species: SIMD2<Double>
     ) {
         let block = Self.patchSize
         let cells = side * side * side
-        let volume = Double(pow(grid.cellSize / Float(ratio), 3))
+        let volume = Double(pow(grid.cellSize / Float(parentScale * ratio), 3))
+        let parentDims = SIMD3(grid.nx, grid.ny, grid.nz) &* parentScale
+        let dims = parentDims &* ratio
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
-        let state = fine[0].contents().bindMemory(to: CellState.self, capacity: maxPatches * cells)
-        let solid = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * cells)
+        let state = (fine[0].contents() + offset(of: fine[0])).bindMemory(
+            to: CellState.self, capacity: maxPatches * cells)
+        let solid = (fineMask.contents() + offset(of: fineMask)).bindMemory(
+            to: UInt8.self, capacity: maxPatches * cells)
         let fuelAndOxygen = fineSpecies[0].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: species ? maxPatches * cells : 0)
         var covered = Set<Int>()
@@ -270,9 +407,13 @@ final class AirRefinement {
             for n in 0..<cells {
                 let local = SIMD3(n % side, (n / side) % side, n / (side * side))
                 let cell = origin &+ local / ratio
-                guard grid.contains(cell.x, cell.y, cell.z) else { continue }
-                covered.insert(grid.index(cell.x, cell.y, cell.z))
+                guard all(cell .< parentDims) else { continue }
+                covered.insert(cell.x + parentDims.x * (cell.y + parentDims.y * cell.z))
                 guard solid[patch * cells + n] & 1 == 0 else { continue }
+                if !excluding.isEmpty {
+                    let at = origin &* ratio &+ local
+                    guard !excluding.contains(at.x + dims.x * (at.y + dims.y * at.z)) else { continue }
+                }
                 let c = state[patch * cells + n]
                 mass += Double(c.density) * volume
                 energy += Double(c.energy) * volume
@@ -287,9 +428,10 @@ final class AirRefinement {
     /// oxygen where afterburning is on.
     func setFine(_ cells: [SIMD3<Int>: (state: CellState, species: SIMD2<Float>)]) {
         let total = side * side * side
-        let map = patchOfTile.contents().bindMemory(
+        let map = (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
             to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z)
-        let state = fine[0].contents().bindMemory(to: CellState.self, capacity: maxPatches * total)
+        let state = (fine[0].contents() + offset(of: fine[0])).bindMemory(
+            to: CellState.self, capacity: maxPatches * total)
         let carried = fineSpecies[0].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: species ? maxPatches * total : 0)
         for (fine, cell) in cells {
@@ -358,7 +500,8 @@ final class AirRefinement {
 
     func reset() {
         let tiles = tileDims.x * tileDims.y * tileDims.z
-        memset(patchOfTile.contents(), 0xFF, tiles * 4)
+        let cells = maxPatches * side * side * side
+        memset(patchOfTile.contents() + offset(of: patchOfTile), 0xFF, tiles * 4)
         memset(tileOfPatch.contents(), 0xFF, maxPatches * 4)
         let stack = freeStack.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
         for n in 0..<maxPatches { stack[n] = UInt32(maxPatches - 1 - n) }
@@ -369,7 +512,7 @@ final class AirRefinement {
         memset(fineFlux.contents(), 0, fineFlux.length)
         memset(fineSpeciesFlux.contents(), 0, fineSpeciesFlux.length)
         memset(fineImpulse.contents(), 0, fineImpulse.length)
-        memset(fineOccupancy.contents(), 0, fineOccupancy.length)
+        memset(fineOccupancy.contents() + offset(of: fineOccupancy), 0, cells * 16)
         if let combinedBodyOccupancy {
             memset(combinedBodyOccupancy.contents(), 0, combinedBodyOccupancy.length)
         }
@@ -386,18 +529,19 @@ final class AirRefinement {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: index)
     }
 
-    /// Step 1: the coarse cells around each patch, at the start of the step.
+    /// Step 1: the parent's cells around each patch, at the start of the parent's step.
     func encodeSaveHalo(
-        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, uniforms: SolverUniforms, control: MTLBuffer
+        _ encoder: MTLComputeCommandEncoder, parent: ParentView, uniforms: SolverUniforms, control: MTLBuffer
     ) {
         var uniforms = uniforms
         encoder.setComputePipelineState(haloPipeline)
-        encoder.setBuffer(coarse, offset: 0, index: 0)
+        set(encoder, parent.state, 0)
         encoder.setBuffer(halo, offset: 0, index: 1)
         setUniforms(encoder, &uniforms, index: 2)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 3)
         encoder.setBuffer(patchList, offset: 0, index: 4)
         encoder.setBuffer(control, offset: 0, index: 5)
+        set(encoder, parent.patches, 6)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 12,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -419,12 +563,15 @@ final class AirRefinement {
         return pipeline
     }
 
+    /// A level beneath this one, as this level's substeps advance it: the level and its uniforms.
+    typealias Child = (level: AirRefinement, uniforms: SolverUniforms)
+
     /// Step 3: r substeps of every patch, each sweeping `axes` in order, each sweep after filling
-    /// the patches' ghosts along its axis.
+    /// the patches' ghosts along its axis. With `child`, that level takes its own r substeps
+    /// within each of these (steps 1 to 5 for it, this level standing for the coarse grid).
     func encodeSubsteps(
-        _ encoder: MTLComputeCommandEncoder, axes: [Int], coarse: MTLBuffer, coarseSpecies: MTLBuffer,
-        mask: MTLBuffer, peak: MTLBuffer, control: MTLBuffer, maxSpeed: MTLBuffer, wallVelocity: MTLBuffer,
-        uniforms: SolverUniforms
+        _ encoder: MTLComputeCommandEncoder, axes: [Int], parent: ParentView, peak: MTLBuffer,
+        control: MTLBuffer, maxSpeed: MTLBuffer, uniforms: SolverUniforms, child: Child? = nil
     ) {
         var uniforms = uniforms
         let sweepPipeline = sweepPipeline(for: AirModel(rawValue: uniforms.airModel))
@@ -437,38 +584,46 @@ final class AirRefinement {
             // The order of the sweeps alternates from substep to substep, starting with the coarse
             // step's, so that the splitting stays second order.
             let order = substep.isMultiple(of: 2) ? axes : axes.reversed()
+            if let child {
+                child.level.encodeSaveHalo(
+                    encoder, parent: view(current: sweep % 2), uniforms: child.uniforms, control: control)
+            }
             for (n, axis) in order.enumerated() {
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == order.count - 1 ? 1 : 0
                 let source = fine[sweep % 2]
+                let sourceOffset = sweep % 2 == 0 ? offset(of: fine[0]) : 0
 
                 encoder.setComputePipelineState(ghostPipeline)
-                encoder.setBuffer(source, offset: 0, index: 0)
+                encoder.setBuffer(source, offset: sourceOffset, index: 0)
                 encoder.setBuffer(ghosts, offset: 0, index: 1)
                 encoder.setBuffer(ghostKinds, offset: 0, index: 2)
-                encoder.setBuffer(mask, offset: 0, index: 3)
+                set(encoder, parent.mask, 3)
                 setUniforms(encoder, &uniforms, index: 4)
-                encoder.setBuffer(patchOfTile, offset: 0, index: 5)
+                bind(encoder, patchOfTile, 5)
                 encoder.setBuffer(tileOfPatch, offset: 0, index: 6)
                 encoder.setBuffer(patchList, offset: 0, index: 7)
-                encoder.setBuffer(coarse, offset: 0, index: 8)
+                set(encoder, parent.state, 8)
                 encoder.setBuffer(halo, offset: 0, index: 9)
-                encoder.setBuffer(wallVelocity, offset: 0, index: 10)
-                encoder.setBuffer(fineMask, offset: 0, index: 11)
+                set(encoder, parent.wallVelocity, 10)
+                bind(encoder, fineMask, 11)
                 encoder.setBuffer(fineWall, offset: 0, index: 12)
                 encoder.setBuffer(fineFlux, offset: 0, index: 13)
                 encoder.setBuffer(control, offset: 0, index: 14)
                 encoder.setBuffer(fineSpecies[sweep % 2], offset: 0, index: 15)
                 encoder.setBuffer(ghostSpecies, offset: 0, index: 16)
-                encoder.setBuffer(coarseSpecies, offset: 0, index: 17)
+                set(encoder, parent.species, 17)
+                set(encoder, parent.patches, 18)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
 
                 encoder.setComputePipelineState(sweepPipeline)
-                encoder.setBuffer(source, offset: 0, index: 0)
-                encoder.setBuffer(fine[1 - sweep % 2], offset: 0, index: 1)
-                encoder.setBuffer(mask, offset: 0, index: 2)
+                encoder.setBuffer(source, offset: sourceOffset, index: 0)
+                let destination = fine[1 - sweep % 2]
+                encoder.setBuffer(
+                    destination, offset: destination === fine[0] ? offset(of: fine[0]) : 0, index: 1)
+                set(encoder, parent.mask, 2)
                 encoder.setBuffer(peak, offset: 0, index: 3)
                 encoder.setBuffer(control, offset: 0, index: 4)
                 encoder.setBuffer(maxSpeed, offset: 0, index: 5)
@@ -479,33 +634,51 @@ final class AirRefinement {
                 encoder.setBuffer(patchList, offset: 0, index: 10)
                 encoder.setBuffer(fineFlux, offset: 0, index: 12)
                 encoder.setBuffer(fineImpulse, offset: 0, index: 13)
-                encoder.setBuffer(fineMask, offset: 0, index: 14)
+                bind(encoder, fineMask, 14)
                 encoder.setBuffer(fineWall, offset: 0, index: 15)
                 encoder.setBuffer(fineSpecies[sweep % 2], offset: 0, index: 16)
                 encoder.setBuffer(fineSpecies[1 - sweep % 2], offset: 0, index: 17)
                 encoder.setBuffer(ghostSpecies, offset: 0, index: 18)
                 encoder.setBuffer(fineSpeciesFlux, offset: 0, index: 19)
-                encoder.setBuffer(patchOfTile, offset: 0, index: 20)
+                bind(encoder, patchOfTile, 20)
                 encoder.setBuffer(experimentalBoxImpulse ?? fineImpulse, offset: 0, index: 21)
+                if let child {
+                    child.level.bind(encoder, child.level.patchOfTile, 22)
+                    encoder.setBuffer(child.level.coarseFlux, offset: 0, index: 23)
+                    encoder.setBuffer(child.level.coarseSpeciesFlux, offset: 0, index: 24)
+                } else {
+                    // Not read without a level beneath.
+                    encoder.setBuffer(fineFlux, offset: 0, index: 22)
+                    encoder.setBuffer(fineFlux, offset: 0, index: 23)
+                    encoder.setBuffer(fineFlux, offset: 0, index: 24)
+                }
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
                 sweep += 1
             }
+            if let child {
+                let now = view(current: sweep % 2)
+                child.level.encodeSubsteps(
+                    encoder, axes: order, parent: now, peak: peak, control: control, maxSpeed: maxSpeed,
+                    uniforms: child.uniforms)
+                child.level.encodeRefluxAndRestrict(
+                    encoder, axes: order, parent: now, control: control, uniforms: child.uniforms)
+            }
         }
         precondition(sweep.isMultiple(of: 2), "A coarse step must take an even number of fine sweeps")
     }
 
-    /// Steps 4 and 5: refluxing along each of `axes`, then the coarse cells under the patches.
+    /// Steps 4 and 5: refluxing along each of `axes`, then the parent's cells under the patches.
     func encodeRefluxAndRestrict(
-        _ encoder: MTLComputeCommandEncoder, axes: [Int], coarse: MTLBuffer, coarseSpecies: MTLBuffer,
-        mask: MTLBuffer, control: MTLBuffer, impulse: MTLBuffer, uniforms: SolverUniforms
+        _ encoder: MTLComputeCommandEncoder, axes: [Int], parent: ParentView, control: MTLBuffer,
+        uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
         encoder.setComputePipelineState(refluxPipeline)
-        encoder.setBuffer(coarse, offset: 0, index: 0)
-        encoder.setBuffer(mask, offset: 0, index: 1)
-        encoder.setBuffer(patchOfTile, offset: 0, index: 3)
+        set(encoder, parent.state, 0)
+        set(encoder, parent.mask, 1)
+        bind(encoder, patchOfTile, 3)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 4)
         encoder.setBuffer(patchList, offset: 0, index: 5)
         encoder.setBuffer(fineFlux, offset: 0, index: 6)
@@ -513,7 +686,8 @@ final class AirRefinement {
         encoder.setBuffer(control, offset: 0, index: 8)
         encoder.setBuffer(fineSpeciesFlux, offset: 0, index: 9)
         encoder.setBuffer(coarseSpeciesFlux, offset: 0, index: 10)
-        encoder.setBuffer(coarseSpecies, offset: 0, index: 11)
+        set(encoder, parent.species, 11)
+        set(encoder, parent.patches, 12)
         // One axis at a time: a coarse cell can border patches across several of its faces, but
         // across only one along any axis.
         for axis in axes {
@@ -525,19 +699,20 @@ final class AirRefinement {
                     width: 2 * Self.patchSize * Self.patchSize, height: 1, depth: 1))
         }
         encoder.setComputePipelineState(restrictPipeline)
-        encoder.setBuffer(coarse, offset: 0, index: 0)
-        encoder.setBuffer(mask, offset: 0, index: 1)
+        set(encoder, parent.state, 0)
+        set(encoder, parent.mask, 1)
         setUniforms(encoder, &uniforms, index: 2)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 3)
         encoder.setBuffer(patchList, offset: 0, index: 4)
-        encoder.setBuffer(fine[0], offset: 0, index: 5)
+        bind(encoder, fine[0], 5)
         encoder.setBuffer(control, offset: 0, index: 6)
-        encoder.setBuffer(impulse, offset: 0, index: 7)
+        set(encoder, parent.impulse, 7)
         encoder.setBuffer(fineImpulse, offset: 0, index: 8)
         encoder.setBuffer(impulseBase, offset: 0, index: 9)
-        encoder.setBuffer(fineMask, offset: 0, index: 10)
+        bind(encoder, fineMask, 10)
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 11)
-        encoder.setBuffer(coarseSpecies, offset: 0, index: 12)
+        set(encoder, parent.species, 12)
+        set(encoder, parent.patches, 13)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 36,
             threadsPerThreadgroup: MTLSize(
@@ -548,29 +723,29 @@ final class AirRefinement {
     /// remask): the fine cells' outline follows the structure, a fine cell being solid where
     /// `threshold` of its points are.
     func encodeRemask(
-        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, mask: MTLBuffer, threshold: UInt32,
-        uniforms: SolverUniforms
+        _ encoder: MTLComputeCommandEncoder, parent: ParentView, threshold: UInt32, uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
         var threshold = threshold
         encoder.setComputePipelineState(remaskPreparePipeline)
-        encoder.setBuffer(fineMask, offset: 0, index: 0)
+        bind(encoder, fineMask, 0)
         encoder.setBuffer(fineWall, offset: 0, index: 1)
-        encoder.setBuffer(fineOccupancy, offset: 0, index: 2)
-        encoder.setBuffer(fine[0], offset: 0, index: 3)
-        encoder.setBuffer(coarse, offset: 0, index: 4)
+        bind(encoder, fineOccupancy, 2)
+        bind(encoder, fine[0], 3)
+        set(encoder, parent.state, 4)
         setUniforms(encoder, &uniforms, index: 5)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 6)
         encoder.setBuffer(patchList, offset: 0, index: 7)
         encoder.setBytes(&threshold, length: 4, index: 8)
-        encoder.setBuffer(mask, offset: 0, index: 9)
+        set(encoder, parent.mask, 9)
         encoder.setBuffer(pinned, offset: 0, index: 10)
+        set(encoder, parent.patches, 11)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 72,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
         encoder.setComputePipelineState(remaskApplyPipeline)
-        encoder.setBuffer(fineMask, offset: 0, index: 0)
-        encoder.setBuffer(fineOccupancy, offset: 0, index: 1)
+        bind(encoder, fineMask, 0)
+        bind(encoder, fineOccupancy, 1)
         setUniforms(encoder, &uniforms, index: 2)
         encoder.setBuffer(patchList, offset: 0, index: 3)
         encoder.dispatchThreadgroups(
@@ -579,39 +754,35 @@ final class AirRefinement {
     }
 
     /// Step 6, after a structure's substeps: carries into the fine cells what it changed in the
-    /// coarse cells under the patches.
+    /// parent's cells under the patches.
     func encodeSync(
-        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, mask: MTLBuffer, control: MTLBuffer,
-        uniforms: SolverUniforms
+        _ encoder: MTLComputeCommandEncoder, parent: ParentView, control: MTLBuffer, uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
         encoder.setComputePipelineState(syncPipeline)
-        encoder.setBuffer(fine[0], offset: 0, index: 0)
-        encoder.setBuffer(coarse, offset: 0, index: 1)
-        encoder.setBuffer(mask, offset: 0, index: 2)
+        bind(encoder, fine[0], 0)
+        set(encoder, parent.state, 1)
+        set(encoder, parent.mask, 2)
         setUniforms(encoder, &uniforms, index: 3)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 4)
         encoder.setBuffer(patchList, offset: 0, index: 5)
         encoder.setBuffer(seenMask, offset: 0, index: 6)
         encoder.setBuffer(control, offset: 0, index: 7)
-        encoder.setBuffer(fineMask, offset: 0, index: 8)
+        bind(encoder, fineMask, 8)
+        set(encoder, parent.patches, 9)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 36,
             threadsPerThreadgroup: MTLSize(
                 width: Self.patchSize * Self.patchSize * Self.patchSize, height: 1, depth: 1))
     }
 
-    /// Step 7: places the patches afresh from the coarse state, and lists them for the next step.
-    /// With `tiles` (the awake tiles' list and its dispatch), only awake tiles are searched.
-    func encodeRegrid(
-        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, coarseSpecies: MTLBuffer, mask: MTLBuffer,
-        rigidMask: MTLBuffer, wallVelocity: MTLBuffer, control: MTLBuffer, impulse: MTLBuffer,
-        tileFlags: MTLBuffer,
-        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid,
-        uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil
+    /// Step 7a for the first level: flags the blocks the coarse state asks to be refined. With
+    /// `tiles` (the awake tiles' list and its dispatch), only awake tiles are searched.
+    func encodeFlag(
+        _ encoder: MTLComputeCommandEncoder, coarse: MTLBuffer, mask: MTLBuffer, control: MTLBuffer,
+        tiles: (list: MTLBuffer, dispatch: MTLBuffer, threads: MTLSize)?, grid: Grid, uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
-        let tileCount = tileDims.x * tileDims.y * tileDims.z
         if let tiles {
             encoder.setComputePipelineState(flagTilesPipeline)
             encoder.setBuffer(coarse, offset: 0, index: 0)
@@ -636,10 +807,58 @@ final class AirRefinement {
                     width: width, height: max(1, flagPipeline.maxTotalThreadsPerThreadgroup / width), depth: 1
                 ))
         }
-        let perTile = MTLSize(width: tileCount, height: 1, depth: 1)
+    }
+
+    /// Step 7a for a level beneath another: flags the blocks its parent's cells ask to be
+    /// refined, then marks the parent's blocks this level needs around it.
+    func encodeFlagFromParent(
+        _ encoder: MTLComputeCommandEncoder, control: MTLBuffer, uniforms: SolverUniforms
+    ) {
+        guard let parent else { return }
+        var uniforms = uniforms
+        let view = parent.view()
+        encoder.setComputePipelineState(flagFinePipeline)
+        set(encoder, view.state, 0)
+        set(encoder, view.mask, 1)
+        encoder.setBuffer(wanted, offset: 0, index: 2)
+        setUniforms(encoder, &uniforms, index: 3)
+        encoder.setBuffer(control, offset: 0, index: 4)
+        set(encoder, view.patches, 5)
+        encoder.setBuffer(parent.tileOfPatch, offset: 0, index: 6)
+        encoder.setBuffer(parent.patchList, offset: 0, index: 7)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: parent.arguments, indirectBufferOffset: 72,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+    }
+
+    /// Step 7a', after the parent is flagged too: the parent's blocks around those this level
+    /// wants or keeps are wanted, so that it stays nested.
+    func encodeNest(_ encoder: MTLComputeCommandEncoder, control: MTLBuffer, uniforms: SolverUniforms) {
+        guard let parent else { return }
+        var uniforms = uniforms
+        encoder.setComputePipelineState(nestPipeline)
+        encoder.setBuffer(wanted, offset: 0, index: 0)
+        bind(encoder, patchOfTile, 1)
+        encoder.setBuffer(pinned, offset: 0, index: 2)
+        encoder.setBuffer(parent.wanted, offset: 0, index: 3)
+        setUniforms(encoder, &uniforms, index: 4)
+        encoder.setBuffer(control, offset: 0, index: 5)
+        encoder.dispatchThreads(
+            MTLSize(width: tileDims.x * tileDims.y * tileDims.z, height: 1, depth: 1),
+            threadsPerThreadgroup: group(nestPipeline, 256))
+    }
+
+    /// Steps 7b to 7f: places the patches afresh where flagged, filled from `parent`, and lists
+    /// them for the next step.
+    func encodePlace(
+        _ encoder: MTLComputeCommandEncoder, parent: ParentView, control: MTLBuffer, tileFlags: MTLBuffer,
+        uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil
+    ) {
+        var uniforms = uniforms
+        let perTile = MTLSize(width: tileDims.x * tileDims.y * tileDims.z, height: 1, depth: 1)
 
         encoder.setComputePipelineState(releasePipeline)
-        encoder.setBuffer(patchOfTile, offset: 0, index: 0)
+        bind(encoder, patchOfTile, 0)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 1)
         encoder.setBuffer(freeStack, offset: 0, index: 2)
         encoder.setBuffer(counters, offset: 0, index: 3)
@@ -649,8 +868,29 @@ final class AirRefinement {
         encoder.setBuffer(control, offset: 0, index: 7)
         encoder.dispatchThreads(perTile, threadsPerThreadgroup: group(releasePipeline, 256))
 
+        // Granted in block order (see `refineGrant`), in groups of exactly `allocationGroup`.
+        let groups = MTLSize(
+            width: (perTile.width + Self.allocationGroup - 1) / Self.allocationGroup, height: 1, depth: 1)
+        let groupSize = MTLSize(width: Self.allocationGroup, height: 1, depth: 1)
+        encoder.setComputePipelineState(requestPipeline)
+        bind(encoder, patchOfTile, 0)
+        encoder.setBuffer(wanted, offset: 0, index: 1)
+        encoder.setBuffer(groupCounts, offset: 0, index: 2)
+        setUniforms(encoder, &uniforms, index: 3)
+        set(encoder, parent.patches, 4)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+
+        encoder.setComputePipelineState(grantPipeline)
+        encoder.setBuffer(groupCounts, offset: 0, index: 0)
+        encoder.setBuffer(counters, offset: 0, index: 1)
+        setUniforms(encoder, &uniforms, index: 2)
+        encoder.setBuffer(control, offset: 0, index: 3)
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+
         encoder.setComputePipelineState(allocatePipeline)
-        encoder.setBuffer(patchOfTile, offset: 0, index: 0)
+        bind(encoder, patchOfTile, 0)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 1)
         encoder.setBuffer(freeStack, offset: 0, index: 2)
         encoder.setBuffer(counters, offset: 0, index: 3)
@@ -660,7 +900,9 @@ final class AirRefinement {
         setUniforms(encoder, &uniforms, index: 7)
         encoder.setBuffer(control, offset: 0, index: 8)
         encoder.setBuffer(pinned, offset: 0, index: 9)
-        encoder.dispatchThreads(perTile, threadsPerThreadgroup: group(allocatePipeline, 256))
+        set(encoder, parent.patches, 10)
+        encoder.setBuffer(groupCounts, offset: 0, index: 11)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
 
         encoder.setComputePipelineState(listPipeline)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 0)
@@ -680,46 +922,48 @@ final class AirRefinement {
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
         encoder.setComputePipelineState(fillPipeline)
-        encoder.setBuffer(fine[0], offset: 0, index: 0)
-        encoder.setBuffer(coarse, offset: 0, index: 1)
-        encoder.setBuffer(mask, offset: 0, index: 2)
+        bind(encoder, fine[0], 0)
+        set(encoder, parent.state, 1)
+        set(encoder, parent.mask, 2)
         setUniforms(encoder, &uniforms, index: 3)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 4)
         encoder.setBuffer(newPatches, offset: 0, index: 5)
         encoder.setBuffer(fineImpulse, offset: 0, index: 6)
-        encoder.setBuffer(impulse, offset: 0, index: 7)
+        set(encoder, parent.impulse, 7)
         encoder.setBuffer(impulseBase, offset: 0, index: 8)
         encoder.setBuffer(seenMask, offset: 0, index: 9)
-        encoder.setBuffer(rigidMask, offset: 0, index: 10)
+        set(encoder, parent.rigid, 10)
         encoder.setBuffer(boxes, offset: 0, index: 11)
         var count = boxCount
         encoder.setBytes(&count, length: 4, index: 12)
-        encoder.setBuffer(fineMask, offset: 0, index: 13)
+        bind(encoder, fineMask, 13)
         encoder.setBuffer(fineWall, offset: 0, index: 14)
-        encoder.setBuffer(wallVelocity, offset: 0, index: 15)
-        encoder.setBuffer(coarseSpecies, offset: 0, index: 16)
+        set(encoder, parent.wallVelocity, 15)
+        set(encoder, parent.species, 16)
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 17)
         encoder.setBuffer(boxDefinition ?? fine[0], offset: 0, index: 18)
+        set(encoder, parent.patches, 19)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
 
         encoder.setComputePipelineState(conservePipeline)
-        encoder.setBuffer(fine[0], offset: 0, index: 0)
-        encoder.setBuffer(mask, offset: 0, index: 1)
+        bind(encoder, fine[0], 0)
+        set(encoder, parent.mask, 1)
         setUniforms(encoder, &uniforms, index: 2)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 3)
         encoder.setBuffer(newPatches, offset: 0, index: 4)
-        encoder.setBuffer(fineMask, offset: 0, index: 5)
+        bind(encoder, fineMask, 5)
         encoder.setBuffer(pinned, offset: 0, index: 6)
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 7)
+        set(encoder, parent.patches, 8)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 84,
             threadsPerThreadgroup: MTLSize(
                 width: Self.patchSize * Self.patchSize * Self.patchSize, height: 1, depth: 1))
     }
 
-    /// The uniforms' refinement fields.
+    /// The uniforms' refinement fields, for the first level (`uniforms` being the coarse grid's).
     func configure(_ uniforms: inout SolverUniforms, threshold: Float) {
         uniforms.refineRatio = UInt32(ratio)
         uniforms.refineTileNx = UInt32(tileDims.x)
@@ -727,6 +971,41 @@ final class AirRefinement {
         uniforms.refineTileNz = UInt32(tileDims.z)
         uniforms.refineThreshold = threshold
         uniforms.refineMaxPatches = UInt32(maxPatches)
+        uniforms.parentScale = 1
+    }
+
+    /// The uniforms a level beneath another runs with, from the coarse grid's (`base`): its
+    /// parent's grid stands for the coarse grid's, and the fields of skipping still air, moving
+    /// solids and the experimental box are cleared, as its parent's patches handle those.
+    func levelUniforms(from base: SolverUniforms, threshold: Float, grid: Grid) -> SolverUniforms {
+        guard let parent else {
+            var uniforms = base
+            configure(&uniforms, threshold: threshold)
+            return uniforms
+        }
+        var uniforms = base
+        let dims = SIMD3(grid.nx, grid.ny, grid.nz) &* parentScale
+        uniforms.nx = UInt32(dims.x)
+        uniforms.ny = UInt32(dims.y)
+        uniforms.nz = UInt32(dims.z)
+        uniforms.dx = grid.cellSize / Float(parentScale)
+        configure(&uniforms, threshold: threshold)
+        uniforms.parentScale = UInt32(parentScale)
+        uniforms.parentSide = UInt32(parent.side)
+        uniforms.parentTileNx = UInt32(parent.tileDims.x)
+        uniforms.parentTileNy = UInt32(parent.tileDims.y)
+        uniforms.childTileNx = 0
+        uniforms.childTileNy = 0
+        uniforms.childTileNz = 0
+        uniforms.tileNx = 0
+        uniforms.tileNy = 0
+        uniforms.tileNz = 0
+        uniforms.regionNx = 0
+        uniforms.regionNy = 0
+        uniforms.regionNz = 0
+        uniforms.couplingMapCount = 0
+        uniforms.experimentalBox = 0
+        return uniforms
     }
 }
 

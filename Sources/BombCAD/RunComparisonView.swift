@@ -183,7 +183,7 @@ struct RunComparisonView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(run.name + (run.id == baseline?.id ? " · Reference" : "")).font(.headline)
                     Text(
-                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? "on" : "off")"
+                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")"
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     DisclosureGroup("Run inputs") {

@@ -988,6 +988,11 @@ struct StructureUniforms {
     var barRateAlongBars: UInt32 = 0
     var couplingMapCount: UInt32 = 0
     var footings: UInt32 = 0
+    var fluidDeepRatio: UInt32 = 0
+    var fluidDeepBlocksX: UInt32 = 0
+    var fluidDeepBlocksY: UInt32 = 0
+    var fluidDeepPatchOffset: UInt32 = 0
+    var fluidDeepCellOffset: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1080,6 +1085,12 @@ struct CouplingUniforms {
     var coarseSamples: UInt32 = 1
     var couplingMapCount: UInt32 = 0
     var couplingTileCapacity: UInt32 = 0
+    var deepRatio: UInt32 = 0
+    var deepBlocksX: UInt32 = 0
+    var deepBlocksY: UInt32 = 0
+    var deepThreshold: UInt32 = 1
+    var deepPatchOffset: UInt32 = 0
+    var deepCellOffset: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.

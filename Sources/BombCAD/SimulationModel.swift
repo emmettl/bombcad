@@ -59,6 +59,9 @@ struct SimulationSettings: Equatable {
     /// Refine the air twice over where the shock is, so that peak pressures come out as on a grid
     /// twice as fine.
     var sharpShocks = false
+    /// With `sharpShocks`, the levels of refinement: 2 refines the refined air again, so that the
+    /// peaks come out as on a grid four times as fine.
+    var shockLevels = 1
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -481,6 +484,7 @@ final class SimulationModel {
                 settings.resolution = Resolution(rawValue: run.resolution)!
                 settings.detailedCharge = run.detailedCharge
                 settings.sharpShocks = run.sharpShocks
+                settings.shockLevels = run.shockLevels ?? 1
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -614,6 +618,7 @@ final class SimulationModel {
             settings.resolution = Resolution(rawValue: run.resolution)!
             settings.detailedCharge = run.detailedCharge
             settings.sharpShocks = run.sharpShocks
+            settings.shockLevels = run.shockLevels ?? 1
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -810,6 +815,7 @@ final class SimulationModel {
         settings.resolution = Resolution(rawValue: inputs.settings.resolution)!
         settings.detailedCharge = inputs.settings.detailedCharge
         settings.sharpShocks = inputs.settings.sharpShocks
+        settings.shockLevels = inputs.settings.shockLevels ?? 1
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings
@@ -1695,6 +1701,7 @@ final class SimulationModel {
         solver.configuration.afterburning = settings.detailedCharge
         solver.configuration.airModel = settings.detailedCharge ? .thermallyPerfect : .idealGas
         solver.configuration.refinement = settings.sharpShocks ? 2 : 1
+        solver.configuration.refinementLevels = settings.sharpShocks ? settings.shockLevels : 1
     }
 
     private func rebuild() {
