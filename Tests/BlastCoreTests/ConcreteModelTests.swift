@@ -26,7 +26,8 @@ struct ConcreteModelTests {
     /// rate. Returns the nominal stress against strain, sampled as it goes.
     private func strainCube(
         size: Float, material: StructureMaterial, steelRatio: Float = 0, crossBars: Float = 0,
-        to strains: [Float], samplesPerLeg: Int = 150, crackShearStiffness: Bool = false
+        to strains: [Float], samplesPerLeg: Int = 150, crackShearStiffness: Bool = false,
+        tracesWork: Bool = false
     ) throws -> (curve: [(strain: Float, stress: Float)], solver: StructureSolver) {
         let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
         var model = StructureModel(solids: [cube], material: material, elementSize: size, fixedBase: false)
@@ -37,6 +38,7 @@ struct ConcreteModelTests {
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false
+        solver.tracesWork = tracesWork
 
         var curve: [(strain: Float, stress: Float)] = []
         var strain: Float = 0
@@ -905,6 +907,57 @@ extension ConcreteModelTests {
                 }
             }
         }
+    }
+
+    @Test("Pressed by its own riding up, a restrained push-off crack carries about what the specimens did")
+    func pressedPushOff() throws {
+        // With `pressedInterlock`, the crack's faces press as it slides (eq. 1b), and pressed it
+        // carries more shear (eqs. 1a and 1b): along the measured paths, the stress across the
+        // crack follows the paper's fit and the shear what was measured, where without it the
+        // crack carries a fifth or less and nothing across (above).
+        for name in ["1/.0/3.6", "1/.2/.4"] {
+            let specimen = try #require(PushOffTest.specimens.first { $0.name == name })
+            let result = try PushOffTest.run(device: device, specimen: specimen, stepsPerMillimetre: 1000) {
+                $0.pressedInterlock = true
+            }
+            for slip in [0.0012, 0.002] as [Float] {
+                let width = specimen.width(at: slip)
+                let modelled = result.modelled(at: slip)
+                let fitted = PushOffTest.fittedNormal(
+                    width: width, slip: slip, cubeStrength: specimen.cubeStrength)
+                // 0.89-0.97 of the fit, written.
+                #expect(
+                    abs(modelled.normal - fitted) < 0.15 * fitted,
+                    "\(name) at \(slip * 1000) mm: \(modelled.normal / 1e6) against \(fitted / 1e6) MPa across"
+                )
+                let measured = try #require(specimen.measuredShear(at: slip))
+                // 0.85-1.07 of what was measured, written.
+                #expect(
+                    abs(modelled.shear - measured) < 0.25 * measured,
+                    "\(name) at \(slip * 1000) mm: \(modelled.shear / 1e6) against \(measured / 1e6) MPa")
+            }
+        }
+    }
+
+    @Test("The work trace adds up to the work done on an element, by mechanism")
+    func workTrace() throws {
+        // A cube with 2% of bars along x pulled past cracking and well past the bars' yield: the
+        // trace's channels together come to the work done on it, nearly all of it the bars'.
+        let size: Float = 0.05
+        let steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.12)
+        let (curve, solver) = try strainCube(
+            size: size, material: Self.concrete(steel: steel), steelRatio: 0.02, to: [0.0003, 0.01],
+            tracesWork: true)
+        let done = Double(energyDensity(curve) * size * size * size)
+        let traced = solver.workTotals()
+        let total = traced.reduce(0, +)
+        #expect(abs(total - done) < 0.02 * done, "traced \(total) J against \(done) J done")
+        func work(_ channel: StructureSolver.WorkChannel) -> Double { traced[channel.rawValue] }
+        #expect(work(.bars) > 0.9 * done, "bars \(work(.bars)) J of \(done)")
+        let tension = work(.tensionNormal) + work(.tensionHairline) + work(.tensionCracked)
+        #expect(tension > 0 && tension < 0.1 * done, "concrete in tension \(tension) J")
+        #expect(abs(work(.interlock)) + abs(work(.dowel)) + abs(work(.hourglass)) < 0.01 * done)
     }
 
     @Test("A crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured")

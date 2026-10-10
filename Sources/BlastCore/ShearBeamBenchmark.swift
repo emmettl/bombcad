@@ -96,7 +96,10 @@ public enum ShearBeamBenchmark {
         crackShearStiffness: Bool = false,
         mapAt: Float? = nil,
         slipWidensCracks: Bool = true,
-        adjust: (inout StructureMaterial) -> Void = { _ in }
+        pressedInterlock: Bool = false,
+        adjust: (inout StructureMaterial) -> Void = { _ in },
+        prepare: ((StructureSolver) -> Void)? = nil,
+        sample: ((_ solver: StructureSolver, _ deflection: Float, _ load: Float) -> Void)? = nil
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth, slice: slice)
         let scale = width / (slice ?? width)
@@ -105,10 +108,12 @@ public enum ShearBeamBenchmark {
         model.crackShearStiffness = crackShearStiffness
         adjust(&model.material)
         model.slipWidensCracks = slipWidensCracks
+        model.pressedInterlock = pressedInterlock
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false
         solver.damping = 100
+        prepare?(solver)
 
         let h = model.elementSize
         let overhang = (length - span) / 2
@@ -154,6 +159,7 @@ public enum ShearBeamBenchmark {
             }
             let centre = -solver.displacement(middle, solver.ey / 2, 0).z
             curve.append(SIMD2(centre, reaction * scale))
+            sample?(solver, centre, reaction * scale)
             if let mapAt, map.isEmpty, centre >= mapAt {
                 map = solver.crackMap(row: solver.ey / 2)
                 mapLoad = reaction * scale

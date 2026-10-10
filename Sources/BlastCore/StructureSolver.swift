@@ -134,6 +134,9 @@ public final class StructureSolver {
     public let nodeCount: Int
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
+    /// Builds the element kernel with the work trace compiled in (`tracesWork`).
+    private let traceElementPipeline: () -> MTLComputePipelineState?
+    private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
     private let contactClearPipeline: MTLComputePipelineState
     private let contactHashPipeline: MTLComputePipelineState
@@ -154,6 +157,10 @@ public final class StructureSolver {
     /// stiffness at each node along each axis (two `SIMD4<Float>`); and each element's bar force
     /// along each axis. Placeholders with perfect bond.
     private var slipBuffer: MTLBuffer
+    /// The work trace (`tracesWork`): each element's work by mechanism since it was last folded
+    /// into `workSums`, `WorkChannel.allCases.count` floats per element.
+    private var workBuffer: MTLBuffer?
+    private var workSums: [Double] = []
     private var slipSupportBuffer: MTLBuffer
     private var barForceBuffer: MTLBuffer
     /// The base's connection to the ground, three `SIMD4<Float>` per node (see `anchorForce` in
@@ -200,7 +207,17 @@ public final class StructureSolver {
         }
         var single = model.materials.count == 1 && !model.materials.contains(where: showsJoints)
         constants.setConstantValue(&single, type: .bool, index: 0)
+        var traced = false
+        constants.setConstantValue(&traced, type: .bool, index: 3)
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
+        traceElementPipeline = {
+            let tracing = MTLFunctionConstantValues()
+            var single = single
+            var traced = true
+            tracing.setConstantValue(&single, type: .bool, index: 0)
+            tracing.setConstantValue(&traced, type: .bool, index: 3)
+            return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
+        }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
@@ -563,6 +580,10 @@ public final class StructureSolver {
             flags[Int(instances[n])] = ElementFlag.active.rawValue
         }
         memset(stateBuffer.contents(), 0, stateBuffer.length)
+        if let workBuffer {
+            memset(workBuffer.contents(), 0, workBuffer.length)
+            workSums = workSums.map { _ in 0 }
+        }
         memset(slipBuffer.contents(), 0, slipBuffer.length)
         memset(barForceBuffer.contents(), 0, barForceBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
@@ -663,6 +684,88 @@ public final class StructureSolver {
 
     @inlinable
     public func elementIndex(_ i: Int, _ j: Int, _ k: Int) -> Int { i + ex * (j + ey * k) }
+
+    /// The mechanisms the work trace (`tracesWork`) separates, in the order of `workChannels` in
+    /// Structure.metal. Concrete's stresses are split in its crack axes.
+    public enum WorkChannel: Int, CaseIterable, Sendable {
+        /// Concrete's normal stresses where tensile, on planes not cracked open (see
+        /// `tensionCracked`).
+        case tensionNormal
+        /// Concrete's normal stresses where compressive, on axes not crushed past their peak
+        /// (see `compressionCrushed`).
+        case compressionNormal
+        /// Shear on planes no crack has opened.
+        case uncrackedShear
+        /// Shear across cracks held at their cap, in proportion to the cap's parts: aggregate
+        /// interlock, the bars' dowel action and their kinking.
+        case interlock, dowel, kink
+        /// The bars' own stretching, and the bond on their slip (with `bondSlip`).
+        case bars, bond
+        /// Hourglass control.
+        case hourglass
+        /// The rest of the concrete's work (second cracks, compaction, large rotations), and
+        /// elements of other materials.
+        case other
+        /// Bulk viscosity.
+        case viscosity
+        /// Shear across cracks below their cap: the cracked plane's own stiffness.
+        case crackShear
+        /// `interlock` and `crackShear` where the crack is pressed shut (compression across it).
+        case interlockPressed, crackShearPressed
+        /// `tensionNormal` on planes cracked 0.1 mm open or more, and `compressionNormal` on
+        /// axes crushed past their peak.
+        case tensionCracked, compressionCrushed
+        /// `tensionNormal` on planes cracked, but by less than 0.1 mm: the concrete between
+        /// cracks, as far as the mesh separates it.
+        case tensionHairline
+
+        public var label: String {
+            [
+                "tension", "compression", "uncracked shear", "interlock", "dowel", "kinking", "bars", "bond",
+                "hourglass", "other", "viscosity", "crack shear", "interlock, pressed",
+                "crack shear, pressed",
+                "tension, cracked", "compression, crushed", "tension, hairline",
+            ][rawValue]
+        }
+    }
+
+    /// Adds each element's work by mechanism to a trace (`workTotals`), as a diagnostic of where
+    /// a structure's stiffness and strength come from. Off by default; it costs a buffer of
+    /// seventeen floats per element.
+    public var tracesWork = false {
+        didSet {
+            guard tracesWork, workBuffer == nil else { return }
+            tracingPipeline = traceElementPipeline()
+            let length = max(elementCount * WorkChannel.allCases.count * 4, 16)
+            workBuffer = device.makeBuffer(length: length, options: .storageModeShared)
+            if let workBuffer { memset(workBuffer.contents(), 0, workBuffer.length) }
+            workSums = [Double](repeating: 0, count: elementCount * WorkChannel.allCases.count)
+        }
+    }
+
+    /// The work (J) each mechanism has done since the trace began, summed over the elements
+    /// `include` accepts by their lattice coordinates; indexed by `WorkChannel`. Call between
+    /// steps; it folds the GPU's single-precision sums into double precision as it goes, so
+    /// call it every few thousand steps at least.
+    public func workTotals(where include: ((Int, Int, Int) -> Bool)? = nil) -> [Double] {
+        let channels = WorkChannel.allCases.count
+        guard let workBuffer else { return [Double](repeating: 0, count: channels) }
+        let raw = workBuffer.contents().bindMemory(to: Float.self, capacity: elementCount * channels)
+        for n in 0..<(elementCount * channels) {
+            workSums[n] += Double(raw[n])
+        }
+        memset(workBuffer.contents(), 0, workBuffer.length)
+        let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
+        var totals = [Double](repeating: 0, count: channels)
+        for n in 0..<elementCount {
+            if let include {
+                let (i, j, k) = elementCoordinates(Int(instances[n]))
+                guard include(i, j, k) else { continue }
+            }
+            for c in 0..<channels { totals[c] += workSums[n * channels + c] }
+        }
+        return totals
+    }
 
     public func elementCoordinates(_ index: Int) -> (i: Int, j: Int, k: Int) {
         (index % ex, (index / ex) % ey, index / (ex * ey))
@@ -1131,7 +1234,7 @@ public final class StructureSolver {
         for substep in 0..<count {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
-            encoder.setComputePipelineState(elementPipeline)
+            encoder.setComputePipelineState(tracesWork ? tracingPipeline ?? elementPipeline : elementPipeline)
             encoder.setBuffer(stateBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
             encoder.setBuffer(flagBuffer, offset: 0, index: 2)
@@ -1161,6 +1264,8 @@ public final class StructureSolver {
             encoder.setBuffer(barForceBuffer, offset: 0, index: 25)
             encoder.setBuffer(barRateBuffers[substep % 2], offset: 0, index: 26)
             encoder.setBuffer(barRateBuffers[1 - substep % 2], offset: 0, index: 27)
+            encoder.setBuffer(
+                tracesWork ? workBuffer ?? placeholderBuffer : placeholderBuffer, offset: 0, index: 28)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -1273,6 +1378,7 @@ public final class StructureSolver {
         uniforms.crackSlip = model.crackSlip ? (model.slipWidensCracks ? 1 : 2) : 0
         uniforms.barAxes = barAxes
         uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
+        uniforms.pressedInterlock = model.pressedInterlock ? 1 : 0
         uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0
         if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)
@@ -1423,7 +1529,7 @@ public final class StructureSolver {
         }
         // Aggregate interlock: v = 0.18 sqrt(fc) / (0.31 + 24 w / (a + 16)), in MPa and mm.
         parameters.crackBand = band
-        parameters.interlockStrength = 0.18e6 * (fc / 1e6).squareRoot()
+        parameters.interlockStrength = material.interlockFactor * 0.18e6 * (fc / 1e6).squareRoot()
         parameters.interlockWidthScale = 24_000 / (material.aggregateSize * 1000 + 16)
         parameters.crackResidual = material.crackResidual
         parameters.dowelFactor = material.dowelFactor

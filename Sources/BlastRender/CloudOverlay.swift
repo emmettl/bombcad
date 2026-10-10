@@ -3,8 +3,8 @@ import Foundation
 import simd
 
 /// Where the fireball's cloud went after a run, drawn over the scene as lines: the track of its
-/// centre, its outline at intervals until it stopped rising, where it stopped, and its drift
-/// across the ground.
+/// centre, its outline at intervals until it stopped rising, where it stopped, its outline at
+/// intervals as it spread after, and its drift across the ground.
 public enum CloudOverlay {
     /// What a line shows, which sets its colour and width.
     public enum Kind: Int, Sendable {
@@ -14,8 +14,12 @@ public enum CloudOverlay {
         case outline = 1
         /// Its outline and height when it stopped rising.
         case stabilised = 2
-        /// Its track across the ground below, and the line down to the ground from where it stopped.
+        /// Its track across the ground below, and the lines down to the ground from where it
+        /// stopped and from where it was at the end.
         case ground = 3
+        /// Its ring at its height at an interval as it spread after it stopped rising, and its
+        /// outline from the side at the end.
+        case spread = 4
     }
 
     /// The farthest the view's controls zoom out, in metres.
@@ -29,7 +33,19 @@ public enum CloudOverlay {
     /// Seconds between the outlines drawn: a round number giving at most eight from the
     /// hand-over to `end`.
     public static func interval(_ result: CloudResult) -> Double {
-        let span = end(result) - result.handOver.time
+        interval(over: end(result) - result.handOver.time)
+    }
+
+    /// Seconds between the outlines of the spreading cloud: a round number giving at most eight
+    /// from where it stopped rising to the end; nil if it did not spread.
+    public static func spreadInterval(_ result: CloudResult) -> Double? {
+        guard let stopped = result.stabilised, let last = result.samples.last, last.thickness != nil else {
+            return nil
+        }
+        return interval(over: last.time - stopped.time)
+    }
+
+    private static func interval(over span: Double) -> Double {
         let steps: [Double] = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800]
         return steps.first { span / $0 <= 8 } ?? 3600
     }
@@ -49,6 +65,7 @@ public enum CloudOverlay {
         sample.height = a.height + f * (b.height - a.height)
         sample.radius = a.radius + f * (b.radius - a.radius)
         sample.position = a.position + f * (b.position - a.position)
+        if let low = a.thickness, let high = b.thickness { sample.thickness = low + f * (high - low) }
         return sample
     }
 
@@ -108,33 +125,63 @@ public enum CloudOverlay {
             outline(cloud, .outline)
             time += step
         }
+        // The spreading cloud, an ellipsoid: its ring at its height, and at the end its outline
+        // from the side as well, upright and facing the eye.
+        func spreading(_ sample: CloudSample, side drawn: Bool) {
+            let middle = centre(sample)
+            let radius = Float(sample.radius)
+            let depth = Float(sample.halfDepth)
+            circle(middle, ([1, 0, 0], [0, 1, 0]), radius: radius, .spread)
+            guard drawn else { return }
+            var view = eye - middle
+            view.z = 0
+            let side =
+                simd_length(view) > 1e-3 ? simd_normalize(SIMD3(-view.y, view.x, 0)) : SIMD3<Float>(1, 0, 0)
+            let segments = 64
+            var previous = middle + radius * side
+            for n in 1...segments {
+                let angle = 2 * Float.pi * Float(n) / Float(segments)
+                let next = middle + radius * cos(angle) * side + SIMD3(0, 0, depth * sin(angle))
+                line(previous, next, .spread)
+                previous = next
+            }
+        }
         if let stopped = result.stabilised {
             let middle = centre(stopped)
             outline(stopped, .stabilised)
             circle(middle, ([1, 0, 0], [0, 1, 0]), radius: Float(stopped.radius), .stabilised)
             line(middle, SIMD3(middle.x, middle.y, 0.05), .ground)
+            if let step = spreadInterval(result), let last = samples.last {
+                var time = stopped.time + step
+                while time < last.time - 1e-9, let cloud = Self.sample(result, at: time) {
+                    spreading(cloud, side: false)
+                    time += step
+                }
+                spreading(last, side: true)
+                let end = centre(last)
+                line(end, SIMD3(end.x, end.y, 0.05), .ground)
+            }
         }
         return lines
     }
 
-    /// The path from the hand-over to `end`, and the ground below it.
+    /// The whole path, rising and spreading, and the ground below it.
     public static func bounds(_ result: CloudResult) -> Box {
-        let end = end(result)
         var low = SIMD3<Float>(repeating: .infinity)
         var high = SIMD3<Float>(repeating: -.infinity)
-        for sample in result.samples where sample.time <= end + 1e-9 {
+        for sample in result.samples {
             let middle = centre(sample)
-            let radius = Float(sample.radius)
-            low = simd_min(low, middle - radius)
-            high = simd_max(high, middle + radius)
+            let extent = SIMD3(Float(sample.radius), Float(sample.radius), Float(sample.halfDepth))
+            low = simd_min(low, middle - extent)
+            high = simd_max(high, middle + extent)
         }
         low.z = 0
         return Box(min: low, max: high)
     }
 
-    /// A view of the cloud from the side, a little above the ground: the whole of its path up to
-    /// where it stopped rising if that is near enough to see whole, and otherwise the cloud where
-    /// it stopped, over the ground below it.
+    /// A view of the cloud from the side, a little above the ground: the whole of its path if
+    /// that is near enough to see whole, and otherwise the cloud where it stopped rising, over
+    /// the ground below it.
     public static func framing(_ result: CloudResult) -> OrbitCamera {
         var box = bounds(result)
         let fieldOfView = OrbitCamera(target: .zero, distance: 1, azimuth: 0, elevation: 0).fieldOfView
