@@ -94,7 +94,13 @@ enum SweepWorker {
             return
         }
         switch result {
-        case .success(let outcome): try? writer.send(.ensembleFinished(job.id, outcome))
+        case .success(let outcome):
+            do {
+                try writer.send(.ensembleFinished(job.id, outcome))
+            } catch {
+                try? writer.send(
+                    .failed(job.id, "The result could not be sent: \(error.localizedDescription)"))
+            }
         case .failure(let error): try? writer.send(.failed(job.id, error.localizedDescription))
         }
     }

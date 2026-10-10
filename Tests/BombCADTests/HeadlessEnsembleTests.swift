@@ -61,3 +61,43 @@ struct HeadlessEnsembleTests {
         #expect(kept.samples == there.cases[0].samples)
     }
 }
+
+@MainActor @Suite("An ensemble cut short carries on from its results", .serialized)
+struct EnsembleResumeTests {
+    @Test("Results already in the output folder are not run again, and the report is the same")
+    func resume() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "ensemble-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        var options = try HeadlessEnsemble.Options.parse(["kb-curve", "--samples", "6", "--out", folder.path])
+        let whole = try await HeadlessEnsemble.run(options)
+        let progress = folder.appending(path: "progress.jsonl")
+        let lines = try String(contentsOf: progress, encoding: .utf8).split(separator: "\n")
+        #expect(lines.count == 7)
+        // Cut short after four: three are run again, and only those.
+        try (lines.prefix(4).joined(separator: "\n") + "\n").write(
+            to: progress, atomically: true, encoding: .utf8)
+        options = try HeadlessEnsemble.Options.parse(["kb-curve", "--samples", "6", "--out", folder.path])
+        let ran = Counter()
+        let resumed = try await HeadlessEnsemble.run(
+            options,
+            runHere: { sample in
+                ran.add()
+                return try ValidationEnsemble.run(sample)
+            })
+        #expect(ran.count == 3)
+        #expect(resumed.cases[0].outcomes.map { $0?.outputs } == whole.cases[0].outcomes.map { $0?.outputs })
+        // A folder that is not an ensemble's is refused.
+        #expect(throws: ProjectFileError.self) {
+            try HeadlessEnsemble.Options.parse([
+                "kb-curve", "--out", FileManager.default.temporaryDirectory.path,
+            ])
+        }
+    }
+
+    final class Counter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = 0
+        var count: Int { lock.withLock { value } }
+        func add() { lock.withLock { value += 1 } }
+    }
+}

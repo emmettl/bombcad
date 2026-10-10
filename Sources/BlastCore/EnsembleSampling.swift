@@ -151,3 +151,33 @@ public struct EnsembleStatistics: Codable, Sendable, Equatable {
     /// The coefficient of variation.
     public var variation: Double { mean == 0 ? 0 : deviation / abs(mean) }
 }
+
+/// Spearman's rank correlation of two series: how far one rises as the other does, from −1 to
+/// 1, whatever the shape; ties take their mean rank. Nil for fewer than three pairs, or a series
+/// that does not vary.
+public func rankCorrelation(_ x: [Double], _ y: [Double]) -> Double? {
+    guard x.count == y.count, x.count >= 3 else { return nil }
+    func ranks(_ values: [Double]) -> [Double] {
+        let order = values.indices.sorted { values[$0] < values[$1] }
+        var ranks = [Double](repeating: 0, count: values.count)
+        var start = 0
+        while start < order.count {
+            var end = start
+            while end + 1 < order.count, values[order[end + 1]] == values[order[start]] { end += 1 }
+            for position in start...end { ranks[order[position]] = Double(start + end) / 2 }
+            start = end + 1
+        }
+        return ranks
+    }
+    let (a, b) = (ranks(x), ranks(y))
+    let n = Double(a.count)
+    let (ma, mb) = (a.reduce(0, +) / n, b.reduce(0, +) / n)
+    var (sab, saa, sbb) = (0.0, 0.0, 0.0)
+    for index in a.indices {
+        sab += (a[index] - ma) * (b[index] - mb)
+        saa += (a[index] - ma) * (a[index] - ma)
+        sbb += (b[index] - mb) * (b[index] - mb)
+    }
+    guard saa > 0, sbb > 0 else { return nil }
+    return sab / (saa * sbb).squareRoot()
+}

@@ -17,7 +17,9 @@ enum HeadlessEnsemble {
         once for each sample (16 by default; 0 runs the middle alone), here and, with --worker (once per host), on other
         Macs reached over SSH; --local-workers adds workers on this Mac. Prints each output's
         mean, spread and percentiles, and whether the measurement falls within the 5th to 95th
-        percentiles; --out writes each case's samples and results as JSON into a new folder.
+        percentiles; --out writes each case's samples and results as JSON into a new folder, each
+        result as it comes in, and given a folder an ensemble cut short was writing, carries on
+        from the results already there.
         --list names the cases and their inputs.
         """
 
@@ -32,7 +34,10 @@ enum HeadlessEnsemble {
         }
         do {
             let options = try Options.parse(arguments)
-            let report = try await run(options) { line in print(line) }
+            // Unbuffered, so that each case shows as it finishes, also when written to a file.
+            let report = try await run(options) { line in
+                FileHandle.standardOutput.write(Data((line + "\n").utf8))
+            }
             if let folder = options.out {
                 try write(report, to: folder)
                 print("Written to \(folder.path)")
@@ -104,8 +109,13 @@ enum HeadlessEnsemble {
                     options.ratio = ratio
                 case "out":
                     let url = URL(filePath: value, directoryHint: .isDirectory)
-                    guard !FileManager.default.fileExists(atPath: url.path) else {
-                        throw ProjectFileError.invalid("--out must be a new folder.")
+                    guard
+                        !FileManager.default.fileExists(atPath: url.path)
+                            || FileManager.default.fileExists(
+                                atPath: url.appending(path: "progress.jsonl").path)
+                    else {
+                        throw ProjectFileError.invalid(
+                            "--out must be a new folder, or one an ensemble was writing.")
                     }
                     options.out = url
                 default:
@@ -158,19 +168,34 @@ enum HeadlessEnsemble {
     ) async throws -> Report {
         var jobs: [(caseIndex: Int, sample: EnsembleSample)] = []
         var report = Report(seed: options.seed, cases: [])
+        // Samples already run into the same folder, by an ensemble cut short, are not run again.
+        let progress = try options.out.map { try Progress(folder: $0) }
+        let done = progress?.done ?? []
         for (caseIndex, id) in options.cases.enumerated() {
             let samples = try ValidationEnsemble.samples(case: id, count: options.samples, seed: options.seed)
-            report.cases.append(
-                Report.Case(
-                    id: id, samples: samples, outcomes: Array(repeating: nil, count: samples.count),
-                    places: Array(repeating: nil, count: samples.count)))
-            jobs += samples.map { (caseIndex, $0) }
+            var item = Report.Case(
+                id: id, samples: samples, outcomes: Array(repeating: nil, count: samples.count),
+                places: Array(repeating: nil, count: samples.count))
+            for sample in samples {
+                if let entry = done.first(where: { $0.sample == sample }) {
+                    item.outcomes[sample.index] = entry.outcome
+                    item.places[sample.index] = entry.place
+                } else {
+                    jobs.append((caseIndex, sample))
+                }
+            }
+            report.cases.append(item)
         }
         let costs = jobs.map { ValidationEnsemble.estimatedSeconds(case: report.cases[$0.caseIndex].id) }
         var schedule = SweepSchedule(costs: costs, workers: options.workers.count + options.localWorkers)
         if let ratio = options.ratio { schedule.ratio = ratio }
         let shared = Shared(schedule, report: report)
         let start = ContinuousClock.now
+        for (caseIndex, item) in report.cases.enumerated() {
+            let left = jobs.filter { $0.caseIndex == caseIndex }.count
+            shared.remaining[caseIndex] = left
+            if left == 0 { for line in summary(item) { log(line) } }
+        }
 
         /// The job is done, here or elsewhere, with `outcome` or without; a case is reported
         /// once every sample of it is.
@@ -178,7 +203,10 @@ enum HeadlessEnsemble {
             let (caseIndex, sample) = jobs[job]
             shared.report.cases[caseIndex].outcomes[sample.index] = outcome
             shared.report.cases[caseIndex].places[sample.index] = outcome == nil ? nil : place
-            shared.remaining[caseIndex, default: shared.report.cases[caseIndex].samples.count] -= 1
+            if let outcome {
+                progress?.append(Progress.Entry(sample: sample, outcome: outcome, place: place))
+            }
+            shared.remaining[caseIndex, default: 0] -= 1
             if shared.remaining[caseIndex] == 0 {
                 for line in summary(shared.report.cases[caseIndex]) { log(line) }
             }
@@ -214,7 +242,21 @@ enum HeadlessEnsemble {
                     }
                     let begun = ContinuousClock.now
                     do {
-                        let outcome = try await worker.run(jobs[job].sample)
+                        // A worker that never answers gives its job back, however slow its Mac.
+                        let sample = jobs[job].sample
+                        let limit = 300 + 30 * ValidationEnsemble.estimatedSeconds(case: sample.caseID)
+                        let outcome = try await withThrowingTaskGroup(of: EnsembleOutcome?.self) { group in
+                            group.addTask { try await worker.run(sample) }
+                            group.addTask {
+                                try await Task.sleep(for: .seconds(limit))
+                                return nil
+                            }
+                            defer { group.cancelAll() }
+                            guard let first = try await group.next(), let outcome = first else {
+                                throw ProjectFileError.invalid("No answer in \(Int(limit)) s.")
+                            }
+                            return outcome
+                        }
                         shared.schedule.finish(.worker(number), seconds: begun.duration(to: .now).seconds)
                         finished(job, outcome, at: worker.name)
                     } catch {
@@ -255,6 +297,40 @@ enum HeadlessEnsemble {
         return shared.report
     }
 
+    /// Each sample's outcome, kept in `progress.jsonl` in the output folder as it comes in.
+    final class Progress {
+        struct Entry: Codable {
+            var sample: EnsembleSample
+            var outcome: EnsembleOutcome
+            var place: String
+        }
+        let url: URL
+        private(set) var done: [Entry] = []
+
+        init(folder: URL) throws {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            url = folder.appending(path: "progress.jsonl")
+            if let text = try? String(contentsOf: url, encoding: .utf8) {
+                done = text.split(separator: "\n").compactMap {
+                    try? JSONDecoder().decode(Entry.self, from: Data($0.utf8))
+                }
+            } else {
+                FileManager.default.createFile(atPath: url.path, contents: nil)
+            }
+        }
+
+        func append(_ entry: Entry) {
+            guard let data = try? JSONEncoder().encode(entry), let handle = try? FileHandle(forWritingTo: url)
+            else {
+                return
+            }
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data + Data("\n".utf8))
+            done.append(entry)
+        }
+    }
+
     @MainActor private final class Shared {
         var schedule: SweepSchedule
         var report: Report
@@ -289,6 +365,8 @@ enum HeadlessEnsemble {
                 output.name, stats.p50, output.unit, middle.map { String(format: "%.3g", $0) } ?? "–",
                 stats.mean,
                 stats.deviation, 100 * stats.variation, stats.p5, stats.p95)
+            let runs = item.outcomes.dropFirst().compactMap { $0 }.count
+            if values.count < runs { line += " (in \(values.count) of \(runs) runs)" }
             if let measured = output.measured {
                 let inside = measured >= stats.p5 && measured <= stats.p95
                 line += String(
@@ -299,6 +377,22 @@ enum HeadlessEnsemble {
                         format: "; the tests' scatter %.0f%% against the model's %.0f%%", 100 * scatter,
                         100 * stats.variation)
                 }
+            }
+            // The inputs the output follows most closely, by rank.
+            let pairs = zip(item.samples.dropFirst(), item.outcomes.dropFirst()).compactMap {
+                sample, outcome in
+                outcome?.outputs[output.key].flatMap { $0.isFinite ? (sample, $0) : nil }
+            }
+            let drivers = info.inputs.compactMap { input -> (String, Double)? in
+                rankCorrelation(pairs.map { $0.0.values[input.key] ?? 0 }, pairs.map(\.1)).map {
+                    (input.key, $0)
+                }
+            }
+            .filter { abs($0.1) >= 0.3 }.sorted { abs($0.1) > abs($1.1) }.prefix(3)
+            if !drivers.isEmpty {
+                line +=
+                    "; follows "
+                    + drivers.map { String(format: "%@ (%+.2f)", $0.0, $0.1) }.joined(separator: ", ")
             }
             lines.append(line)
         }

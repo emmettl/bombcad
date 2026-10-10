@@ -93,3 +93,15 @@ struct EnsembleSamplingTests {
         #expect(Set(outputs).count == 4)
     }
 }
+
+@Suite("Rank correlation of an output with an input")
+struct RankCorrelationTests {
+    @Test("Spearman's coefficient follows the order, not the shape, and ties share their rank")
+    func spearman() {
+        let x: [Double] = [1, 2, 3, 4, 5]
+        #expect(rankCorrelation(x, x.map { $0 * $0 * $0 }) == 1)
+        #expect(rankCorrelation(x, x.map { -$0 }) == -1)
+        #expect(abs(rankCorrelation([1, 2, 2, 3], [1, 2, 3, 4])! - 0.9486833) < 1e-6)
+        #expect(rankCorrelation(x, [1, 1, 1, 1, 1]) == nil && rankCorrelation([1, 2], [1, 2]) == nil)
+    }
+}

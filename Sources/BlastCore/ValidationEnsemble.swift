@@ -34,7 +34,8 @@ public struct EnsembleCase: Sendable {
     public var title: String
     public var inputs: [EnsembleInput]
     public var outputs: [EnsembleOutput]
-    /// Roughly how long one run takes on an M4 Max, for sharing the work out.
+    /// Roughly how long one run takes on an M4 Max (measured lightly loaded), for sharing the
+    /// work out.
     public var estimatedSeconds: Double
 }
 
@@ -184,7 +185,7 @@ public enum ValidationEnsemble {
                     measuredVariation: near.1),
                 EnsembleOutput(
                     key: "far", name: "far reaction", unit: "kN", measured: far.0, measuredVariation: far.1),
-            ], estimatedSeconds: 20)
+            ], estimatedSeconds: 12)
     }
 
     public static let cases: [EnsembleCase] = [
@@ -206,7 +207,7 @@ public enum ValidationEnsemble {
             outputs: [
                 EnsembleOutput(
                     key: "peak", name: "peak deflection", unit: "mm", measured: 108, measuredVariation: nil)
-            ], estimatedSeconds: 15),
+            ], estimatedSeconds: 27),
         EnsembleCase(
             id: "janney", title: "Janney's beam bent to failure, 12 elements through",
             inputs: [statedStrength(36.2e6), tensile, fracture] + steel(measured: false),
@@ -216,7 +217,7 @@ public enum ValidationEnsemble {
                 EnsembleOutput(
                     key: "failure", name: "deflection at failure", unit: "mm", measured: 42,
                     measuredVariation: nil),
-            ], estimatedSeconds: 60),
+            ], estimatedSeconds: 58),
         EnsembleCase(
             id: "oa1",
             title: "OA1, a beam without stirrups failing in shear, 24 elements through, a 92 mm slice",
@@ -227,7 +228,7 @@ public enum ValidationEnsemble {
                 EnsembleOutput(
                     key: "deflection", name: "deflection at the peak", unit: "mm", measured: 9.2,
                     measuredVariation: nil),
-            ], estimatedSeconds: 120),
+            ], estimatedSeconds: 14),
         EnsembleCase(
             id: "saatci", title: "Saatci's SS2b-1, struck by 600 kg at 8 m/s, 16 elements through",
             inputs: [
@@ -252,7 +253,7 @@ public enum ValidationEnsemble {
                 EnsembleOutput(
                     key: "reaction", name: "largest support reaction", unit: "kN", measured: 592,
                     measuredVariation: nil),
-            ], estimatedSeconds: 120),
+            ], estimatedSeconds: 35),
         peterson("D-1d-NoS", title: "Peterson's D-1d-NoS, struck at one depth from a support, no stirrups"),
         peterson("D-2d-S90", title: "Peterson's D-2d-S90, struck at two depths, stirrups at 90 mm"),
         EnsembleCase(
@@ -277,7 +278,7 @@ public enum ValidationEnsemble {
                 EnsembleOutput(
                     key: "residual", name: "residual deflection there", unit: "mm",
                     measured: Double(wuTest.residual ?? 0) * 1000, measuredVariation: nil),
-            ], estimatedSeconds: 600),
+            ], estimatedSeconds: 79),
         EnsembleCase(
             id: "chiquito-s1", title: "Chiquito et al.'s S1–S3, 2 kg at 1 m over a slab, coupled",
             inputs: [
@@ -287,13 +288,14 @@ public enum ValidationEnsemble {
                 standoff(1.0, deviation: 0.02),
             ],
             outputs: [
+                // The text's values; the scatter from the three shots' peaks in its Figure 9.
                 EnsembleOutput(
-                    key: "near", name: "peak at G1, 1 m", unit: "MPa", measured: 3.05,
-                    measuredVariation: scatter([2.5, 3.6])),
+                    key: "near", name: "peak at G1, 1 m", unit: "MPa", measured: 2.5,
+                    measuredVariation: scatter([3.3, 3.45, 3.6])),
                 EnsembleOutput(
-                    key: "far", name: "peak at G3, 2 m", unit: "MPa", measured: 0.525,
-                    measuredVariation: scatter([0.47, 0.58])),
-            ], estimatedSeconds: 300),
+                    key: "far", name: "peak at G3, 2 m", unit: "MPa", measured: 0.5,
+                    measuredVariation: scatter([0.47, 0.525, 0.58])),
+            ], estimatedSeconds: 33),
         EnsembleCase(
             id: "kb-wall",
             title: "100 kg on a rigid wall at 2 m/kg^(1/3), 0.25 m cells, against Kingery–Bulmash",
@@ -310,7 +312,7 @@ public enum ValidationEnsemble {
                     key: "impulse", name: "reflected impulse", unit: "Pa s",
                     measured: KingeryBulmash.point(at: wallDistance).map { $0.reflectedImpulse(mass: 100) },
                     measuredVariation: nil),
-            ], estimatedSeconds: 30),
+            ], estimatedSeconds: 5),
         EnsembleCase(
             id: "kb-curve",
             title:
@@ -371,7 +373,8 @@ public enum ValidationEnsemble {
             throw BlastError.allocationFailed("No Metal device")
         }
         let start = ContinuousClock.now
-        let outputs = try outputs(sample, device: device)
+        // An output that did not happen (a beam that never failed) is left out.
+        let outputs = try outputs(sample, device: device).filter(\.value.isFinite)
         let took = start.duration(to: .now)
         return EnsembleOutcome(
             outputs: outputs,
