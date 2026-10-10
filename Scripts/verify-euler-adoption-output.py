@@ -26,6 +26,28 @@ def stage(i,input,result,stage_faces,stage_walls,limit):
   'limitBits':format(int.from_bytes(ref.struct.pack('>d',limit),'big'),'x'),'input':[native(c) for c in input],
   'faces':faces(stage_faces),'walls':walls(stage_walls),'result':[native(c) for c in result['cells']],
   'impulses':[w['impulse'] for w in result['loads']],'work':[w['work'] for w in result['loads']], 'failure':None})
+def composed_rounding_scale(i,k):
+ # Bound the magnitudes of all arithmetic terms, including pressure fluxes that
+ # cancel in a resting closed mesh. Net momentum alone is not a rounding scale.
+ scale=math.fsum(abs(c['amount'][k]) for c in i['input']+i['result']['cells'])
+ stages=[(i['input'],i['faces'],i['first'])]
+ if i.get('second') is not None:stages.append((i['first']['cells'],i['secondFaces'],i['second']))
+ weight=1/len(stages)
+ for input,interfaces,result in stages:
+  for f in interfaces:
+   a=ref.native(native(f['left'] or input[f['a']]),True);b=ref.native(native(f['right'] or input[f['b']]),True)
+   velocities=[math.fsum(x*y for x,y in zip(v[9:12],f['normal'])) for v in [a,b]]
+   q=[[x/v[0] for x in v[1:9]] for v in [a,b]]
+   signal=max(abs(u)+math.sqrt(1.4*v[12]/(v[1]/v[0])) for u,v in zip(velocities,[a,b]))
+   physical=[]
+   for v,u,amount in zip([a,b],velocities,q):
+    if k==0:physical.append(abs(amount[0]*u))
+    elif k<4:physical.append(abs(amount[k]*u)+abs(v[12]*f['normal'][k-1]))
+    else:physical.append((abs(amount[4])+v[12])*abs(u))
+   bound=i['duration']*f['area']*(sum(physical)/2+signal*(abs(q[0][k])+abs(q[1][k]))/2)
+   scale+=weight*2*bound  # The same packet enters both extensive cells.
+  if k>0:scale+=weight*math.fsum(abs(w['impulse'][k-1] if k<4 else w['work']) for w in result['loads'])
+ return scale
 def verify(root,reports=None):
  if reports is None:
   a=(root/'original/euler-report.json').read_bytes();b=(root/'shared/euler-report.json').read_bytes()
@@ -89,7 +111,7 @@ def verify(root,reports=None):
    for k in range(5):
     change=math.fsum(b[k+1]-a[k+1] for a,b in zip(before,after))
     load=0 if k==0 else math.fsum(w['impulse'][k-1] if k<4 else w['work'] for w in result['loads'])
-    ref.near(change,-load,math.fsum(abs(a[k+1])+abs(b[k+1]) for a,b in zip(before,after)),'independent composed extensive wall budget')
+    ref.near(change,-load,composed_rounding_scale(i,k),'independent composed extensive wall budget')
    if run['profile']=='uniform' and run['wallSpeed']==0:
     for v in after:require(abs(v[1]/v[0]/1.225-1)<1e-10 and abs(v[12]/101325-1)<1e-10 and max(abs(x) for x in v[9:12])<1e-8,'uniform resting coupled field')
    intervals+=1

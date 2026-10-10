@@ -24,3 +24,9 @@ clock continuity, aggregation/scatter completeness and the exact dependency pins
 Fifteen deliberate corruptions must reject beyond paired equality. Existing wall
 and packet corruption gates remain. These are numerical integration checks, not
 empirical blast accuracy or extraction of geometry/reconstruction/time policy.
+
+The composed rounding budget includes absolute transported/pressure/dissipation
+terms and individual wall loads from both stages, rather than a nearly zero net
+momentum after cancellation. The 256-epsilon factor is unchanged. Initial valid
+reports exposed the incomplete net-only scale; the failure is retained and full
+reports are reverified without changing app calculations, cases or timesteps.
