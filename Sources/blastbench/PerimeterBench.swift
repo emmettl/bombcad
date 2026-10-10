@@ -24,6 +24,8 @@ import Metal
 ///   --charges 25,125                    ANFO masses (the tests' by default)
 ///   --dx 0.05 --h 0.05 --time 0.2       air cells, elements, and how long
 ///   --no-bars                           blockwork without its bars
+///   --no-joints                         blockwork as one material, without its mortar joints
+///   --clearance 3                       the air behind and above, in wall heights
 ///   --footing 2,0.5                     the footing's width and depth (the thesis's 2.2 × 0.6 m
 ///                                       for the canopied wall, half that taken for the half-scale)
 func runPerimeter(device: MTLDevice) throws {
@@ -265,7 +267,9 @@ private func runPerimeterWall(device: MTLDevice) throws {
                     device: device, wall: wall, base: base, anfo: anfo, cellSize: dx, elementSize: h,
                     duration: duration
                         ?? (wall == .halfScale ? 0.15 : anfo > 50 && wall == .masonry ? 1.0 : 0.3),
-                    bars: bars, footing: footing, progress: flag("progress") ? { print("    " + $0) } : nil)
+                    bars: bars, joints: !flag("no-joints"), footing: footing,
+                    clearance: option("clearance").flatMap { Float($0) } ?? 3,
+                    progress: flag("progress") ? { print("    " + $0) } : nil)
                 print(
                     "  \(format(Double(anfo), 0)) kg, \(base.rawValue): top \(format(Double(r.peakTop) * 1000, 1)) mm "
                         + "peak, \(format(Double(r.finalTop) * 1000, 1)) left; mid-height "

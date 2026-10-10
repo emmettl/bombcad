@@ -381,21 +381,25 @@ public enum PerimeterWallTests {
     /// cells of `cellSize`, meshed with elements of `elementSize`, for `duration` seconds. The wing
     /// walls either side are rigid, `gap` clear of its ends. For the blockwork, `bars` puts the
     /// thesis's bars in it as though bonded (its cells were filled with foam, though the text also
-    /// calls them grouted). On a footing, `footing` gives its width across the wall and its depth
-    /// instead of the thesis's (the canopied wall's) or half of them (the half-scale wall's).
+    /// calls them grouted), and `joints` meshes it as units and mortar joints rather than as one
+    /// material. On a footing, `footing` gives its width across the wall and its depth
+    /// instead of the thesis's (the canopied wall's) or half of them (the half-scale wall's). The
+    /// air reaches `clearance` times the wall's height behind it and above it (at least 3 m).
     public static func runWall(
         device: MTLDevice, wall: Wall, base: Base, anfo: Float, cellSize: Float = 0.05,
         elementSize: Float = 0.05, duration: Double = 0.2, gap: Float = 0.05, bars: Bool = true,
-        crackWidth: Float = 0.1e-3, footing: SIMD2<Float>? = nil, progress: ((String) -> Void)? = nil
+        joints: Bool = true,
+        crackWidth: Float = 0.1e-3, footing: SIMD2<Float>? = nil, clearance: Float = 3,
+        progress: ((String) -> Void)? = nil
     ) throws -> WallResult {
         let started = ContinuousClock.now
         let layout = wall.layout
         let t = layout.wallThickness
         let height = layout.wallHeight
-        let behind = max(3 * layout.top, 3)
+        let behind = max(clearance * layout.top, 3)
         let size = SIMD3(
             2 * layout.margin + layout.chargeToWall + t + behind, layout.width,
-            max(3 * layout.top, layout.top + 3))
+            max(clearance * layout.top, layout.top + 3))
         let charge = SIMD3(layout.margin, layout.width / 2, layout.heightOfBurst)
         let front = charge.x + layout.chargeToWall
         let y0 = (layout.width - wall.length) / 2
@@ -426,6 +430,7 @@ public enum PerimeterWallTests {
             verticalRatio = 2 * area / t
         case .masonry:
             model = StructureModel(solids: solids, material: blockwork(bars: bars), elementSize: elementSize)
+            model.unitJoints = joints
             // A 20 mm bar in each cell, the cells 200 mm apart along the middle of each leaf; 12 mm
             // in the bed joints, taken as one bar a course in each leaf.
             let area: Float = 314e-6 / 0.2
