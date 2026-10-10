@@ -302,4 +302,17 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         #expect(old.gauges == nil && old.results.allSatisfy { $0.bands == nil && $0.regimes == nil })
         #expect(try JSONDecoder().decode(SceneStanding.self, from: JSONEncoder().encode(current)) == current)
     }
+
+    @Test func theConfinedRegimesDefaultsAreReported() throws {
+        let chamber = SceneStanding(
+            StandingInputs(scenario: ScenarioPreset.internalExplosion.scenario, cellSize: 0.25))
+        let advice = try #require(
+            chamber[.structuralResponse]?.regimes?.first { $0.option == "Pressed interlock" })
+        #expect(
+            advice.regime == "confined" && advice.suits == true && advice.note.hasPrefix("On by the confined")
+        )
+        // The regime's own default is no user option, so it does not take the band away.
+        #expect(
+            chamber[.structuralResponse]?.unbanded?.contains { $0.contains("Pressed interlock") } == false)
+    }
 }

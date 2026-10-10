@@ -303,11 +303,22 @@ extension ValidationTables {
 // MARK: - Choosing the bands for a scene
 
 extension StandingScene {
-    /// The scene's regime, by where its structure lies from the charge and what encloses it.
+    /// The structures with the regime their scene gives them, as a run loads them.
+    private var placedStructures: [StructureModel] {
+        structures.map { $0.detectingRegime(in: inputs.scenario) }
+    }
+
+    /// The scene's regime: the most severe of its structures' (`StructuralRegime`, the user's
+    /// override first), or, with only stationary envelopes, theirs by the same distances.
     var regime: String {
-        if has(.closedBoundaries) || chargeEnclosed { return "confined" }
-        guard let distance = structureDistance else { return structures.isEmpty ? "open air" : "far field" }
-        return distance < 0.15 ? "in contact" : distance < 0.75 ? "close in" : "far field"
+        let regimes = placedStructures.compactMap(\.regime)
+        for severe in [StructuralRegime.confined, .inContact, .closeIn, .farField]
+        where regimes.contains(severe) {
+            return severe.title
+        }
+        if has(.closedBoundaries) || chargeEnclosed { return StructuralRegime.confined.title }
+        guard let distance = structureDistance else { return "open air" }
+        return (distance < 0.15 ? StructuralRegime.inContact : distance < 0.75 ? .closeIn : .farField).title
     }
 
     /// Whether a charge lies within a structure's outline, as in a chamber.
@@ -764,7 +775,13 @@ extension StandingScene {
                     "Leave bars bonded (the default) under a blast.",
                     "validation.md#bars-that-slip-across-the-tests")
             }
-            if has(.pressedInterlock) {
+            if placedStructures.contains(where: \.pressedInterlockFromRegime) {
+                add(
+                    "Pressed interlock", true,
+                    "On by the confined regime's defaults: the chamber's roof edge 49 / 25 mm against 38 / 16 without "
+                        + "it (95 measured).",
+                    nil, "validation.md#one-crack-sheared-along-its-measured-path")
+            } else if has(.pressedInterlock) {
                 add(
                     "Pressed interlock", place == "confined",
                     place == "confined"
@@ -774,7 +791,7 @@ extension StandingScene {
                             + "way except the chamber, breaking beams under impact.",
                     place == "confined" ? nil : "Turn it off outside a confined explosion.",
                     "validation.md#one-crack-sheared-along-its-measured-path")
-            } else if place == "confined" {
+            } else if place == "confined", !placedStructures.contains(where: \.appliesPressedInterlock) {
                 add(
                     "Pressed interlock", nil,
                     "In a confined explosion the record's one improvement from it: the chamber's roof edge 49 / 25 mm "
