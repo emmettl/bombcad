@@ -1498,8 +1498,9 @@ func energyProbe() -> (StructureSolver, Double) -> Void {
 /// seconds; `--held` holds Wu's slabs lengthwise at both edges; `--bond pullout` and the other
 /// concrete options as elsewhere; `--work` prints the work by mechanism at the peak and the end;
 /// `--history` the first probe's displacement every millisecond; `--out dir` writes each
-/// record there as CSV; for Wang's, `--hinged` holds the edges on hinge lines instead of fixing
-/// them, and `--afterburn` lets the products burn on.
+/// record there as CSV; for Wang's, `--edges hinged|sliding` (or `--hinged`) holds the edges
+/// otherwise than fixed (see `TwoFaceSlabTests.WangEdges`), and `--afterburn` lets the products
+/// burn on.
 func runTwoFace() throws {
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.025
     let elementSize = option("h").flatMap { Float($0) } ?? 0.0125
@@ -1549,7 +1550,7 @@ func runTwoFace() throws {
             "Displacement 300 mm from the centre of the underside (mm, down positive); rebound up past the start; areas cm2\n"
         )
         print(
-            pad("test", 5) + pad("charge", 14) + pad("peak", 13) + pad("rebound", 13) + pad("residual", 13)
+            pad("test", 5) + pad("charge", 16) + pad("peak", 13) + pad("rebound", 13) + pad("residual", 13)
                 + pad("along/centre", 14) + pad("top", 11) + pad("bottom", 11) + pad("hole cm", 11)
                 + pad("failed", 8)
                 + pad("s", 6))
@@ -1568,7 +1569,7 @@ func runTwoFace() throws {
                 "\(format(Double(test.charge), 1)) kg "
                 + (test.standoff.map { "@\(format(Double($0), 2))" } ?? "contact")
             print(
-                pad(test.name, 5) + pad(charge, 14) + pad("\(mm(test.peak))/\(mm(result.peaks[0]))", 13)
+                pad(test.name, 5) + pad(charge, 16) + pad("\(mm(test.peak))/\(mm(result.peaks[0]))", 13)
                     + pad("\(mm(test.rebound))/\(mm(result.rebounds[0]))", 13)
                     + pad("\(mm(test.residual))/\(mm(result.residuals[0]))", 13)
                     + pad("\(mm(result.peaks[1]))/\(mm(result.peaks[2]))", 14)
@@ -1592,7 +1593,9 @@ func runTwoFace() throws {
             let result = try TwoFaceSlabTests.run(
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 1,
-                elementSize: elementSize, duration: duration, hinged: flag("hinged"),
+                elementSize: elementSize, duration: duration,
+                edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
+                    ?? (flag("hinged") ? .hinged : .fixed),
                 afterburning: flag("afterburn"),
                 adjust: { scenario in
                     adjust(&scenario)

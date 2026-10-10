@@ -445,13 +445,25 @@ public enum TwoFaceSlabTests {
             }, prepare: prepare, progress: progress)
     }
 
-    /// Runs one of Wang's slabs: probes on the back face at the five gauges' heights. With
-    /// `hinged`, the edges are held only along a line at mid-depth `wangEdge` / 2 in, free to
-    /// turn, instead of fixed over `wangEdge`; with `afterburning`, the products burn on in the
-    /// air, as an aluminised charge's do.
+    /// How Wang's slabs are held at their edges.
+    public enum WangEdges: String, Sendable {
+        /// Every node within `wangEdge` of an edge fixed: clamped, and held in its plane.
+        case fixed
+        /// A line of nodes at mid-depth `wangEdge` / 2 in held, free to turn: hinged, but still
+        /// held in its plane.
+        case hinged
+        /// Every node within `wangEdge` of an edge held across the slab only, free to slide in
+        /// its plane: clamped against turning, but with no thrust to arch against.
+        case sliding
+    }
+
+    /// Runs one of Wang's slabs: probes on the back face at the five gauges' heights, the edges
+    /// held as `edges` says; with `afterburning`, the products burn on in the air, as an
+    /// aluminised charge's do.
     public static func run(
         device: MTLDevice, test: WangTest, cellSize: Float = 0.025, refinement: Int = 1,
-        elementSize: Float = 0.0125, duration: Double = 0.1, hinged: Bool = false, afterburning: Bool = false,
+        elementSize: Float = 0.0125, duration: Double = 0.1, edges: WangEdges = .fixed,
+        afterburning: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil
     ) throws -> Result {
@@ -467,7 +479,7 @@ public enum TwoFaceSlabTests {
             refinement: refinement, duration: duration, chargeTowardsLow: true, afterburning: afterburning,
             hold: { structure, nodes, index in
                 let h = structure.model.elementSize
-                if hinged {
+                if edges == .hinged {
                     let mid = (index(wangSlab.min.y, 1) + index(wangSlab.max.y, 1)) / 2
                     for k in 0...structure.ez {
                         for i in 0...structure.ex {
@@ -491,7 +503,12 @@ public enum TwoFaceSlabTests {
                             let edge = min(
                                 min(p.x - wangSlab.min.x, wangSlab.max.x - p.x),
                                 min(p.z - wangSlab.min.z, wangSlab.max.z - p.z))
-                            if edge <= wangEdge + 1e-4, let n = structure.storedNode(i, j, k) {
+                            guard edge <= wangEdge + 1e-4, let n = structure.storedNode(i, j, k) else {
+                                continue
+                            }
+                            if edges == .sliding {
+                                nodes[n].restrain(y: true)
+                            } else {
                                 nodes[n].isFixed = true
                             }
                         }

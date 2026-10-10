@@ -139,6 +139,9 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
   - The University of Ottawa's shock-tube theses (Jacques 2011; Melançon 2016,
     [10393/34102](https://ruor.uottawa.ca/handle/10393/34102), 43 MB) shoot each specimen
     repeatedly at rising pressures: only a first, nearly elastic shot would be usable.
+- **Used, 10 October 2026:** Wu's and Wang's slabs are now compared (see
+  [Validation](validation.md#slabs-with-steel-in-both-faces)); still wanted from Wang: how its
+  slabs were held, and whether its displacement gauges moved with the frame.
 - **Not searched** (allowance spent): Schenker et al. 2008, Yao et al. 2016, Zhao and Chen
   2013, Silva and Lu 2007, DesignSafe.
 
