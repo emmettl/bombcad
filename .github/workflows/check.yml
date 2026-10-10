@@ -11,7 +11,7 @@ on:
       suite:
         description: Full application checks, adiabatic benchmark or wall adoption comparison
         type: choice
-        options: [all, adiabatic, wall-adoption, packet-adoption, euler-adoption, qr-reconstruction-adoption, qr-coupled-adoption]
+        options: [all, adiabatic, wall-adoption, packet-adoption, euler-adoption, qr-reconstruction-adoption, qr-coupled-adoption, qr-application-adoption]
         default: all
 
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
