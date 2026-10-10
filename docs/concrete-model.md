@@ -679,7 +679,9 @@ The factor raises strength without changing stiffness. Two details matter:
   Malvar and Crawford's steep law that held the contest slab's mid-span hinge; under the
   CEB's it did not, and a 25 mm strip of the slab ran away on fine meshes (180 mm and still
   going at 80 ms on 16 elements, 153 mm on 32), and the full slab fell apart on 32. Over the
-  debonded length the strip peaks at 121, 127 and 131 mm on 8, 16 and 32 elements.
+  debonded length the strip peaked at 121, 127 and 131 mm on 8, 16 and 32 elements on 8 October;
+  on the defaults of 10 October it gives 121, 127 and 278 mm, the hinge running away on 32 (see
+  [Validation](validation.md#structural-response-against-a-real-test)).
 
 Until the fix described in step 14 below, the compressive law above 30 per second omitted the
 normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
@@ -1026,7 +1028,8 @@ matter.
    runaway hinge came from the bars' rate: taken from the one element a crack runs through, it
    grew as the mesh was refined, and Malvar and Crawford's steep law had made the bars there
    strong enough to hold. Averaged over the debonded length, as their rupture is, the strip
-   converges under the CEB's law (121, 127 and 131 mm on 8, 16 and 32 elements), and that law,
+   gave 121, 127 and 131 mm on 8, 16 and 32 elements under the CEB's law (on the defaults of
+   10 October, 121, 127 and 278 mm, running away on 32: not converged), and that law,
    which tension tests of bars support, became the default.
 
 29. **Confinement from the stress the other axes carry** (see Compression and confinement).
@@ -1046,17 +1049,27 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Limitations
 
-1. **Validated against three tests**: a one-way slab under a uniform blast load, a beam bent
+1. **Compared with eleven member tests** (see [Validation](validation.md#summary)), of which
+   three test bending and shear statically: a one-way slab under a uniform blast load, a beam bent
    slowly to failure, and a beam without stirrups failing in shear (see limitation 4). On the slab the peak is 114, 113, 121 and 124 mm with 4, 8, 16 and 32 elements through
    the thickness, 5–15% above the measurement, the finest losing 1.4% of its elements (under Malvar and Crawford's law for the bars it was
-   100, 101, 107 and 105 mm on 4 to 32, converged about 3% below). On the beam the peak moment is 99% and 97% of the
-   measured on 12 and 24 elements through the depth; six elements run 20% strong. Results for
-   members in bending should still be checked at more than one mesh. Nothing in shear,
-   punching or direct shear has been compared with a test.
+   100, 101, 107 and 105 mm on 4 to 32, converged about 3% below). On the beam the peak moment is 98–101% of the
+   measured on 12 and 24 elements through the depth; six elements run 17% strong. Results for
+   members in bending should still be checked at more than one mesh. Shear has been compared
+   with one beam failing statically and with beams struck to shear failure; punching and direct
+   shear have not.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
    because the hourglass forces of squeezed elements add to the section's moment (see the
    structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
-   section analysis.
+   section analysis. More generally, hourglass control does several times the work an
+   element's own bending would (traced with `--work --breakdown`; see
+   [Validation](validation.md#hourglass-control)): 7% at the contest slab's peak on 8 elements
+   through (15% on 4), mostly at its cap in cracked elements carrying bars, whose cap counts
+   the bars as if spread through their depth; 18% in Wu's slabs, stored and spread through the
+   slab, deciding little. Below its cap it keeps an uncracked element's stiffness however
+   cracked the element is. Softening it with cracking (`StructureModel.hourglassFollowsCracking`,
+   an option) brings OA1 within 4% on fine meshes and Janney's beam to fail where the test did,
+   but folds the beams struck by a falling weight, which it has been holding together.
 3. **Crack axes turn until the crack opens, then are fixed.** A crack that opens and then has
    the stress turn across it opens a second crack past 30°, but tension within 30° of its axes
    still locks, a third crack is never opened, and a crack crossing another at an angle under
@@ -1066,7 +1079,7 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
    cross them, each from a published formula, not fitted. Against one beam without stirrups
    that failed in diagonal tension (see [Validation](validation.md#a-beam-failing-in-shear)),
-   the model fails the same way, 11–12% strong on fine meshes but 37% strong with twelve
+   the model fails the same way, 11–15% strong on fine meshes but 37% strong with twelve
    elements through the depth: shear strength needs a finer mesh than bending does, about 24
    elements through a member's depth. On coarser meshes the diagonal crack cannot cut through
    the compression zone, and the load arches to the supports over the bars until they yield;
@@ -1111,7 +1124,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    the [shell model](shell-model.md#materials)); in the solid elements this has not been
    checked. Earlier versions of the slab sat
    near a shear failure; since the errors of step 14 were fixed it does not. The chamber test
-   depends on these terms, but no test of a member that failed in shear has been run.
+   depends on these terms; of the members that failed in shear, OA1 fails as its test did, 11–15%
+   strong, and Peterson's struck beams fail by the wrong mechanism or hold.
 5. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm
    after its peak, where the specimen recovered about 13 mm and settled. The cause is the
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
@@ -1202,6 +1216,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   that matches Walraven and Reinhardt's push-off tests but breaks beams under impact (see
   [shear across cracks](#shear-across-cracks)); under a blow it would need the crack's
   pressure limited by what holds it, and the trace says neither the slab nor OA1 depends on it.
+- **An element that feels its own bending in cracked concrete**: selective full integration of
+  cracked elements, or an assumed-strain element after T. Belytschko and L. P. Bindeman
+  (*Computer Methods in Applied Mechanics and Engineering* 105, 1993), so that the resistance of
+  cracked members, the struck beams above all, comes from the concrete and not from hourglass
+  control kept as stiff as uncracked concrete (see [Validation](validation.md#hourglass-control)).
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip

@@ -115,7 +115,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-1"
+    public static let currentTable = "standing-table-2"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -241,6 +241,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case bondSlip
     case crackShearStiffness
     case pressedInterlock
+    case hourglassSecant
+    case hourglassWithoutSteel
     case barRateInElements
     case interfaceBond
     case smearedMasonry
@@ -310,6 +312,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .bondSlip: return any { $0.bondSlip != nil }
         case .crackShearStiffness: return any { $0.crackShearStiffness }
         case .pressedInterlock: return any { $0.pressedInterlock }
+        case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
+        case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
         case .barRateInElements: return any { !$0.barRateAlongBars }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
@@ -432,7 +436,7 @@ public enum StandingTable {
             return Entry(
                 title: "Afterburning's extinction limit", affects: air + [.thermal, .cloud], limit: nil,
                 note: "Products burn only above 800 K and where they could reach 1,500 K; closed rooms are "
-                    + "unchanged but the open incident impulse falls 8 to 9% below Kingery-Bulmash's fit, and "
+                    + "unchanged but the open incident impulse falls by 8 to 9%, to 86–91% of Kingery-Bulmash's, and "
                     + "Dial Pack's fireball is no cooler.",
                 document: "air-blast-model.md#an-extinction-limit-for-afterburning")
         case .shockRefinement:
@@ -488,7 +492,7 @@ public enum StandingTable {
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
                     + "vessel and wrinkled by sub-grid turbulence after FM Global's LES; in their vented chamber it "
-                    + "reaches 55–60% of the tests' peaks lit at the back wall, a fifth to a seventh lit in the "
+                    + "reaches 55–60% of the tests' peaks lit at the back wall, a sixth to a seventh lit in the "
                     + "middle, and far below the venting correlations.",
                 document: "deflagration.md#limitations")
         case .ventPanels:
@@ -534,9 +538,10 @@ public enum StandingTable {
         case .removesFragments:
             return Entry(
                 title: "Fragments removed", affects: [.structuralDamage], limit: .approximation,
-                note: "Concrete cracked open two ways is removed; under close-in and contact charges it "
-                    + "holed Hupfauf's and Wu's slabs near size but also slabs that held, not "
-                    + "Chiquito's, and damaged struck beams.",
+                note:
+                    "Concrete cracked open two ways is removed; under contact charges it holed Wu's slabs at "
+                    + "two thirds and 1.6 times the measured size and Hupfauf's 20 cm slabs, but also his 30 cm "
+                    + "slabs that held; it did not hole Chiquito's, and damaged struck beams.",
                 document: "validation.md#holes-under-close-in-and-contact-charges")
         case .noCrackSlip:
             return Entry(
@@ -567,6 +572,18 @@ public enum StandingTable {
                 note: "Brings the chamber's roof edge to 25 mm against 95 mm measured, but breaks beams "
                     + "under impact that the tests saw survive.",
                 document: "concrete-model.md#shear-across-cracks")
+        case .hourglassSecant:
+            return Entry(
+                title: "Hourglass control softening with cracking", affects: structure, limit: .approximation,
+                note: "Brings the shear beam OA1 within 4% and the contest slab's residual within 1%, but "
+                    + "makes struck beams go too far.",
+                document: "validation.md#hourglass-control")
+        case .hourglassWithoutSteel:
+            return Entry(
+                title: "Hourglass cap without the bars", affects: structure, limit: .approximation,
+                note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
+                    + "not run against the impact tests.",
+                document: "validation.md#hourglass-control")
         case .barRateInElements:
             return Entry(
                 title: "Bar strain rate in elements", affects: structure, limit: .approximation,
@@ -607,8 +624,8 @@ public enum StandingTable {
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
                 note:
-                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–16% low beyond. "
-                    + "With the sand that settles under cycles (the default), settlement 1.7–2.2 times that "
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 6–17% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.7–2.3 times that "
                     + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
         case .cyclicSand:
@@ -616,7 +633,7 @@ public enum StandingTable {
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
                 note:
                     "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
-                    + "1.7–2.2 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
+                    + "1.7–2.3 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
                     + "a half of the energy the shaken footings dissipated.",
                 document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
@@ -811,6 +828,8 @@ public enum StandingTable {
         "StructureModel.bondSlip": .option([.bondSlip]),
         "StructureModel.crackShearStiffness": .option([.crackShearStiffness]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
+        "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
+        "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
         "StructureModel.barRateAlongBars": .option([.barRateInElements]),
         // Materials: properties are inputs; the switches between laws are options.
         "StructureMaterial.name": .input,
@@ -1202,7 +1221,7 @@ private struct StandingScene {
                     + "deflagration vessel)",
                 "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; laminar rise "
                     + "times within 1–3% on 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G "
-                    + "51 bar m/s against 76, converging from below (verified)",
+                    + "35, 41 and 51 bar m/s on 12, 24 and 48 cells against 76, rising but not converged (verified)",
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "A laminar flame lit at a tube's closed end",
@@ -1214,8 +1233,9 @@ private struct StandingScene {
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
                 "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
-                "Lit at the back wall, 55–60% of the measured peaks with the measured flame speeds; lit in the "
-                    + "middle, a fifth to a seventh, the flame stalling towards the back wall",
+                "Lit at the back wall, 55–60% of the measured peaks, the flame speeds within a fifth beyond 3 m "
+                    + "(half over the first 2 m); lit in the middle, a sixth to a seventh, the flame stalling "
+                    + "towards the back wall",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1426,7 +1446,7 @@ private struct StandingScene {
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
-                    "Peak moment 97–99%; failure at 38–52 mm against 42 mm",
+                    "Peak moment 98–101%; failing at 53–57 mm on 12 elements and holding to 60 mm on 24, against 42 mm",
                     "validation.md#a-reinforced-beam-bent-to-failure"),
                 StandingEvidence(
                     "A beam without stirrups failing in shear",
@@ -1444,8 +1464,9 @@ private struct StandingScene {
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
             ]
             parts.append(
-                "reinforced concrete within 5–15% of one slab test and close to beam tests, but too stiff "
-                    + "in a full-scale chamber and springing back too far")
+                "reinforced concrete within 5–15% of one slab test and of beams in bending and struck on 16 "
+                    + "elements, but too strong in shear, too stiff in a full-scale chamber and close in, and "
+                    + "springing back too far")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1626,15 +1647,24 @@ private struct StandingScene {
         }
         return result(
             .thermal, .illustrative,
-            "Set against one measurement of a TNT fireball's radiation, which it exceeds "
-                + (cooling ? "two to three times, the gas cooling as it radiates." : "three to five times."),
+            "Set against two TNT fireballs measured by one group: a 100 kg run, scaled, exceeds the 100 t "
+                + "shot's total "
+                + (cooling
+                    ? "two to three and a half times, the gas cooling as it radiates"
+                    : "three to five and a half times")
+                + ", and Dial Pack's 500 t pulse comes out far too faint early and two to five times too bright "
+                + "after a second.",
             evidence: [
                 StandingEvidence(
-                    "A TNT fireball's measured radiation",
+                    "The 100 t TNT shot's measured radiation, against a 100 kg run scaled by the cube root",
                     cooling
-                        ? "Exceeded two to three times, with the gas cooling"
-                        : "Exceeded three to five times",
-                    "thermal-radiation.md#the-volume-against-the-shape")
+                        ? "Exceeded two to three and a half times, with the gas cooling"
+                        : "Exceeded three to five and a half times",
+                    "thermal-radiation.md#the-volume-against-the-shape"),
+                StandingEvidence(
+                    "Dial Pack, 500 t of TNT, at full size on 2 to 8 m cells",
+                    "A sixth as bright at the first maximum, dark from 40 to 350 ms, two to five times too "
+                        + "bright after 1 s", "validation.md#the-fireballs-radiation-against-dial-pack"),
             ], assumptions: assumptions, resolution: resolution,
             documents: ["thermal-radiation.md#limitations"])
     }
@@ -1733,7 +1763,8 @@ private struct StandingScene {
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
         if has(.deflagration) {
             effects.append(
-                "Flame acceleration is modelled but uncalibrated; there is no transition to detonation.")
+                "Flame acceleration is modelled, its one constant fitted in the chamber it is compared in; "
+                    + "there is no transition to detonation.")
         }
         if has(.terrain) {
             effects.append(

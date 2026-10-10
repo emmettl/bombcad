@@ -619,7 +619,7 @@ the sand under the toe bore more than its bearing capacity as it was rounded and
 which points that yield at a fixed pressure cannot. On the elastic bed the settlement was a
 tenth or less of the sand's, 4.5 mm against 83 mm by the end: its points settle only while
 pressed past their share of the bearing capacity, and after the first cycle at an amplitude
-the toe bears no more. On cyclic sand it settles at every cycle, 1.7 to 2.2 times as much as
+the toe bears no more. On cyclic sand it settles at every cycle, 1.7 to 2.3 times as much as
 the sand did, 179 mm by the end; shaken, the same sand settles about as much as measured
 (below), and Gajan found the shaken footings settling more than the slowly rocked ones for the
 same rotation. `FootingTests` checks the moment of the first two packets within 15% and their

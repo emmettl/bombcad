@@ -551,6 +551,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// 1b), which their push-off tests with restraint follow. Off, a crack carries the interlock
     /// of an unpressed crack whatever presses it. Solid elements only; not saved.
     public var pressedInterlock = false
+    /// Whether a cracked solid element's hourglass control (the bending its one integration point
+    /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
+    /// of as an uncracked element whatever its cracking, up to the cap. Not saved.
+    public var hourglassFollowsCracking = false
+    /// Whether the bars' strength counts in the cap on a solid element's hourglass control, as if
+    /// they were spread through its depth and so could bend it; off, only the concrete's
+    /// remaining strength does. Not saved.
+    public var hourglassCapsSteel = true
     /// Bars take their strain rate, for their strain-rate law, as their stretching rate averaged
     /// over their debonded length (the window their rupture is judged over), instead of the
     /// effective strain rate of the element they run through, which grows as the mesh is
@@ -1247,6 +1255,7 @@ extension StructureModel {
         case bareBars, removesFragments, crackSlip, bondSlip, crackShearStiffness, barRateAlongBars,
             solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
+        case slipWidensCracks, pressedInterlock
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1270,6 +1279,9 @@ extension StructureModel {
         try container.encode(bareBars, forKey: .bareBars)
         if removesFragments { try container.encode(removesFragments, forKey: .removesFragments) }
         try container.encode(crackSlip, forKey: .crackSlip)
+        // Saved only where they differ from the standard, so files without them read as before.
+        if !slipWidensCracks { try container.encode(slipWidensCracks, forKey: .slipWidensCracks) }
+        if pressedInterlock { try container.encode(pressedInterlock, forKey: .pressedInterlock) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
         try container.encode(barRateAlongBars, forKey: .barRateAlongBars)
@@ -1307,6 +1319,8 @@ extension StructureModel {
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
         removesFragments = try container.decodeIfPresent(Bool.self, forKey: .removesFragments) ?? false
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
+        slipWidensCracks = try container.decodeIfPresent(Bool.self, forKey: .slipWidensCracks) ?? true
+        pressedInterlock = try container.decodeIfPresent(Bool.self, forKey: .pressedInterlock) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false
         barRateAlongBars = try container.decodeIfPresent(Bool.self, forKey: .barRateAlongBars) ?? true

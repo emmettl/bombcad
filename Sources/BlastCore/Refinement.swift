@@ -441,6 +441,56 @@ final class AirRefinement {
         return (covered, mass, energy, momentum, carried)
     }
 
+    /// Whether a patch refines any of the parent's cells from `low` through `high`.
+    func holdsAny(from low: SIMD3<Int>, through high: SIMD3<Int>) -> Bool {
+        let map = (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
+            to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z)
+        let first = simd_max(low / Self.patchSize, .zero)
+        let last = simd_min(high / Self.patchSize, tileDims &- 1)
+        guard all(first .<= last) else { return false }
+        for z in first.z...last.z {
+            for y in first.y...last.y {
+                for x in first.x...last.x where map[x + tileDims.x * (y + tileDims.y * z)] >= 0 {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// Reads this level's air cell by cell, by its own cells' coordinates: a cell's state and its
+    /// unburnt products (zero without afterburning) where a patch holds it and it is not solid,
+    /// else nil. For reading between batches only.
+    func fineReader() -> (SIMD3<Int>) -> (state: CellState, products: Float)? {
+        let side = side
+        let tileDims = tileDims
+        let total = side * side * side
+        let map = UnsafePointer(
+            (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
+                to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z))
+        let solid = UnsafePointer(
+            (fineMask.contents() + offset(of: fineMask)).bindMemory(
+                to: UInt8.self, capacity: maxPatches * total))
+        let state = UnsafePointer(
+            (fine[0].contents() + offset(of: fine[0])).bindMemory(
+                to: CellState.self, capacity: maxPatches * total))
+        let carried =
+            species
+            ? UnsafePointer(
+                fineSpecies[0].contents().bindMemory(to: SIMD2<Float>.self, capacity: maxPatches * total))
+            : nil
+        return { cell in
+            let block = cell / side
+            guard all(cell .>= 0), all(block .< tileDims) else { return nil }
+            let patch = Int(map[block.x + tileDims.x * (block.y + tileDims.y * block.z)])
+            guard patch >= 0 else { return nil }
+            let local = cell &- block &* side
+            let at = patch * total + local.x + side * (local.y + side * local.z)
+            guard solid[at] & 1 == 0 else { return nil }
+            return (state[at], carried?[at].x ?? 0)
+        }
+    }
+
     /// Sets fine cells, by their fine coordinates, where a patch holds them, with their fuel and
     /// oxygen where afterburning is on.
     func setFine(_ cells: [SIMD3<Int>: (state: CellState, species: SIMD2<Float>)]) {
