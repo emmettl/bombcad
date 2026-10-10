@@ -726,8 +726,8 @@ their licence, as `Samples/FoRCy` does.
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
 | `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
-| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, still downloading (DesignSafe serves about 12 KB/s a connection) | Open Data Commons Attribution |
-| `DialPack1971` | Pattman's DREO Report 642 | 1.52 MB | Government of Canada |
+| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, 809 files, each checked against the listing's size | Open Data Commons Attribution |
+| `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper and a text extract | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
 
