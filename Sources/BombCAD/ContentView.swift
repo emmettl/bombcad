@@ -283,6 +283,34 @@ private struct ThermalLegendView: View {
     ]
 
     var body: some View {
+        if quantity == .ignition { ignition } else { scale }
+    }
+
+    /// Two swatches, at the shades `ThermalQuantity.ignitionShade` gives.
+    private var ignition: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Ignition so far, illustrative").font(.caption.weight(.semibold))
+            ForEach(
+                [
+                    (Self.stops[2], "Hot enough to ignite under steady heating"),
+                    (Self.stops[4], "Past a short pulse's ignition fluence"),
+                ], id: \.1
+            ) {
+                colour, label in
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 2).fill(colour).frame(width: 14, height: 10)
+                    Text(label).font(.caption2)
+                }
+            }
+            Text("Test thresholds for combustible surfaces, not a fire model: nothing spreads or burns.")
+                .font(.caption2).foregroundStyle(.secondary).frame(width: 220, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .background(.regularMaterial, in: .rect(cornerRadius: 10))
+    }
+
+    private var scale: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(quantity.title) so far (\(quantity.unit))")
                 .font(.caption.weight(.semibold))
@@ -302,13 +330,8 @@ private struct ThermalLegendView: View {
         .background(.regularMaterial, in: .rect(cornerRadius: 10))
     }
 
-    /// Labels at each decade of the scale, in kJ/m² or kW/m², lowest first.
-    private var ticks: [String] {
-        (0...Int(ThermalQuantity.decades)).map { step in
-            let value = Double(ThermalQuantity.scaleBottom) / 1000 * pow(10, Double(step))
-            return value >= 1 ? String(format: "%.0f", value) : String(format: "%.1f", value)
-        }
-    }
+    /// Labels at each decade of the scale, lowest first.
+    private var ticks: [String] { quantity.ticks }
 }
 
 /// Colour scale for the damage painted on the deformable structure.

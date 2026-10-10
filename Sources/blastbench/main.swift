@@ -814,6 +814,8 @@ func runSnapshot() throws {
     case "impulse": renderer.settings.mode = .impulse
     case "fluence": renderer.settings.thermal = .fluence
     case "irradiance": renderer.settings.thermal = .peakIrradiance
+    case "temperature": renderer.settings.thermal = .surfaceTemperature
+    case "ignition": renderer.settings.thermal = .ignition
     default: renderer.settings.mode = .peakOverpressure
     }
     renderer.settings.showWave = !flag("no-wave")
@@ -830,14 +832,21 @@ func runSnapshot() throws {
         print("  " + result.summary)
     }
     if let thermal {
-        // Painted onto the surfaces with --mode fluence or irradiance, as the app paints them.
-        let values =
-            renderer.settings.thermal == .peakIrradiance
-            ? thermal.peakIrradiance : thermal.fluence.map { Float($0) }
+        // Painted onto the surfaces with --mode fluence, irradiance, temperature or ignition, as
+        // the app paints them.
+        let quantity = renderer.settings.thermal ?? .fluence
+        let heating = thermal.result.heating
+        let values: [Float] =
+            switch quantity {
+            case .fluence: thermal.fluence.map { Float($0) }
+            case .peakIrradiance: thermal.peakIrradiance
+            case .surfaceTemperature: heating.map { h in h.peakTemperature.map { $0 - h.ambient } } ?? []
+            case .ignition: heating?.ignition.map(Float.init) ?? []
+            }
         renderer.setSurfacePaint(
             SurfacePaint(
                 grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
-                shades: values.map(ThermalQuantity.shade)))
+                shades: values.map(quantity.shade)))
         print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
         for line in thermal.result.summary { print(line) }
         // What it had radiated by each of a few moments.

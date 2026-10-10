@@ -249,7 +249,14 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         && frame.centre.x.isFinite && frame.centre.y.isFinite && frame.centre.z.isFinite
                         && frame.temperature.isFinite && frame.temperature >= 0 && frame.hottest.isFinite
                         && frame.hottest >= 0
-                })
+                }),
+                thermal.heating.map({ heating in
+                    heating.material.count == count && heating.peakTemperature.count == count
+                        && heating.ignition.count == count && heating.ambient.isFinite && heating.ambient > 0
+                        && !heating.materials.isEmpty && heating.materials.allSatisfy({ !$0.layers.isEmpty })
+                        && heating.material.allSatisfy({ heating.materials.indices.contains($0) })
+                        && heating.peakTemperature.allSatisfy({ $0.isFinite && $0 > 0 })
+                }) ?? true
             else { throw ProjectFileError.invalid("Invalid saved thermal radiation.") }
         }
         if let cloud {
@@ -407,10 +414,14 @@ extension ThermalResult {
             return "Thermal: no luminous fireball"
         }
         let lasting = fireball.last { $0.volume > 0 }?.time ?? 0
-        return String(
+        let line = String(
             format:
                 "Thermal: fireball up to %.1f m across, luminous until %.0f ms; fluence up to %.1f kJ/m² (ε %.2f)",
             2 * largest.radius, lasting * 1000, dose, spec.emissivity)
+        guard let heating, let hottest = heating.peakTemperature.max() else { return line }
+        let flagged = heating.ignition.filter { $0 != 0 }.count
+        return line + String(format: "; surfaces up to %.0f K", hottest)
+            + (flagged > 0 ? ", \(flagged) points past ignition thresholds (illustrative)" : "")
     }
 }
 
