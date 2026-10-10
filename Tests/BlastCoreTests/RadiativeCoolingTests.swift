@@ -81,6 +81,26 @@ struct RadiativeCoolingTests {
             "κ \(absorption): centre \(centreLoss) W/m³ against \(centreExpected)")
     }
 
+    @Test(
+        "Clear of the ground, the gas loses what the thermal radiation's volume measures it radiates",
+        arguments: [Float(0.05), 1, 20])
+    func agreesWithTheVolume(absorption: Float) throws {
+        var spec = ThermalSpec()
+        spec.absorption = absorption
+        spec.sootYield = 0
+        spec.samples = 256
+        let solver = try hotSphere(cooling: RadiativeCooling(spec: spec))
+        var scenario = Scenario(
+            name: "Sphere", domainSize: SIMD3(repeating: 6), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(repeating: 3)))
+        scenario.gauges = []
+        let exposure = ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+        let measured = exposure.radiatedPower(solver.fireball(for: spec))
+        let result = solver.advance(steps: 1)
+        let lost = solver.radiatedEnergy / result.lastTimeStep
+        #expect(abs(lost / measured - 1) < 0.03, "κ \(absorption): lost \(lost) W, measured \(measured) W")
+    }
+
     @Test("Thin gas cools at 4κσT⁴ a cubic metre over many steps, thick gas far more slowly")
     func thinAndThickCooling() throws {
         // The centre's temperature over 5 steps against dT/dt = -4κσT⁴ e^(-κR) / (ρ c_v) at fixed
