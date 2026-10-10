@@ -29,7 +29,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
@@ -123,7 +123,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    600 mm, so its stiffness lies elsewhere (see [Validation](validation.md#its-cracks)). Traced by
    mechanism (`--work`), it lies in the concrete between the slab's cracks carrying tension, the
    bond's reaction, nothing counted twice and as much as the Model Code gives a tie
-   (`--stiffening`, `tie`); softening it sooner fixes the slab but spoils the tie. OA1's excess
+   (`--stiffening`, `tie`); softening it sooner fixes the slab but spoils the tie. Run on every
+   test, slip is mesh-independent but too stiff nearly everywhere, so it stays an option (see
+   [Validation](validation.md#bars-that-slip-across-the-tests)). OA1's excess
    with slip is not in cracks pressed shut; interlock that grows with pressure, now
    an option, matches the push-off tests but breaks beams under impact. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
@@ -2081,6 +2083,10 @@ two collapsing over several seconds.
   cracked elements taken as one crack. The first barely moved the slab or OA1; the second
   brought the slab to 101% but left OA1 40% strong and the tie with the Model Code's tension
   stiffening and crack spacing lost.
+- **Bars that slip, by default**: mesh-independent on the slab, OA1 and Saatci's beams, and
+  right where perfect bond splits a beam along its bars, but too stiff nearly everywhere else
+  (the slab 89%, OA1 150%, heavy drops 8–14% short, Ando's beams a quarter short). Kept as an
+  option.
 - **Removing concrete cracked open every way, as rubble**, to let a close-in charge hole the
   slab, as the test authors' own model eroded fully damaged elements: it took the lower half of
   the slab over a circle 1.8 m across within 12 ms, made no hole and did not move the slab.

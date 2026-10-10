@@ -546,7 +546,9 @@ beams without stirrups go 30% wrong on average, nearly all short, keeping a thir
 measured residuals (13% and three quarters perfectly bonded), OA1 carries 142% and 148% on 12
 and 24 elements, Janney's beam on 24 elements fails at 29 mm, and the contest slab peaks at
 95 mm on 8 elements (88%) and, under fixed design factors or static strengths, collapses.
-`--bond splitting` on `blastbench impact` and `impact --ando`.
+`--bond splitting` on `blastbench impact` and `impact --ando`. Every structural test with slip
+on and off, on 2026-10-10's defaults, is in [Validation](validation.md#bars-that-slip-across-the-tests):
+slip is mesh-independent but too stiff nearly everywhere, so perfect bond stays the default.
 
 **The tension between the cracks.** With slip, the concrete's tension was suspected of being
 counted twice: once through the bond, which hands the bars' force to the concrete between
@@ -1195,7 +1197,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   concrete between its cracks carrying tension, the bond's reaction, nothing counted twice, and
   as much as the Model Code's tension stiffening gives a tie at the raised strengths (see
   [the tension between the cracks](#bars-that-slip-an-option)). Whether tension stiffening
-  survives in a yielding hinge at blast rates needs tests that measure it; and inclined bars,
+  survives in a yielding hinge at blast rates needs tests that measure it; across every test
+  slip is mesh-independent but too stiff, so it stays off; and inclined bars,
   shells and beams that slip are still wanted.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete in contact with a charge;
