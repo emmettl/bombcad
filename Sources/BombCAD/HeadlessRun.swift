@@ -9,7 +9,7 @@ import Foundation
 enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
-                           [--csv <file.csv>] [--resolution coarse|medium|fine] [--mass <kg TNT>]
+                           [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--fragment-results <file.json>]]
@@ -132,8 +132,9 @@ enum HeadlessRun {
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
             if let text = values["resolution"] {
-                guard let resolution = Resolution(rawValue: text) else {
-                    throw ProjectFileError.invalid("Resolution must be coarse, medium or fine.")
+                guard let resolution = Resolution(text: text) else {
+                    throw ProjectFileError.invalid(
+                        "Resolution must be coarse, medium, fine or a cell size in metres from 0.01 to 200.")
                 }
                 options.resolution = resolution
             }
@@ -813,7 +814,7 @@ enum HeadlessRun {
     ) -> String {
         func format(_ value: Double, _ digits: Int) -> String { String(format: "%.\(digits)f", value) }
         var lines = [
-            "\(run.name): \(run.scenario.name), \(run.settings.resolution) grid, "
+            "\(run.name): \(run.scenario.name), \(run.settings.gridName) grid, "
                 + run.scenario.sourceDescription,
             "\(run.stepCount) steps to \(format(run.elapsedTime * 1000, 1)) ms on \(run.deviceName), "
                 + "in \(format(wallSeconds, 1)) s"

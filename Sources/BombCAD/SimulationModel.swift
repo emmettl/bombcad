@@ -6,26 +6,113 @@ import Metal
 import Observation
 import simd
 
-enum Resolution: String, CaseIterable, Identifiable, Sendable {
-    case coarse
-    case medium
-    case fine
+/// The air's cell size: one of the three presets, saved by name as they always were, or any
+/// other size, saved as "cell:" and the size in metres, which readers from before other sizes
+/// refuse rather than misread.
+struct Resolution: RawRepresentable, Hashable, Identifiable, Sendable {
+    let cellSize: Float
 
-    var id: String { rawValue }
+    static let coarse = Resolution(preset: 0.5)
+    static let medium = Resolution(preset: 0.25)
+    static let fine = Resolution(preset: 0.125)
+    /// The presets, coarsest first.
+    static let allCases: [Resolution] = [.coarse, .medium, .fine]
+    /// The sizes a cell may have, in metres.
+    static let sizes: ClosedRange<Float> = 0.01...200
 
-    var cellSize: Float {
-        switch self {
-        case .coarse: 0.5
-        case .medium: 0.25
-        case .fine: 0.125
+    private init(preset cellSize: Float) { self.cellSize = cellSize }
+
+    /// A cell of `cellSize` metres, as a preset when it is one's size; nil outside `sizes`.
+    init?(cellSize: Float) {
+        guard cellSize.isFinite, Self.sizes.contains(cellSize) else { return nil }
+        self.cellSize = cellSize
+    }
+
+    init?(rawValue: String) {
+        switch rawValue {
+        case "coarse": self = .coarse
+        case "medium": self = .medium
+        case "fine": self = .fine
+        default:
+            guard rawValue.hasPrefix("cell:"), let size = Float(rawValue.dropFirst(5)),
+                let resolution = Resolution(cellSize: size)
+            else { return nil }
+            self = resolution
         }
     }
+
+    /// A preset's name, or a size from the command line: a preset's name, its raw value, or metres.
+    init?(text: String) {
+        if let resolution = Resolution(rawValue: text) {
+            self = resolution
+        } else if let metres = Float(
+            text.replacingOccurrences(of: "m", with: "").trimmingCharacters(in: .whitespaces)),
+            let resolution = Resolution(cellSize: metres)
+        {
+            self = resolution
+        } else {
+            return nil
+        }
+    }
+
+    var rawValue: String {
+        switch cellSize {
+        case 0.5: "coarse"
+        case 0.25: "medium"
+        case 0.125: "fine"
+        default: "cell:" + String(format: "%g", Double(cellSize))
+        }
+    }
+
+    var id: String { rawValue }
+    var isPreset: Bool { Self.allCases.contains(self) }
 
     var title: String {
         switch self {
         case .coarse: "Coarse · 0.5 m"
         case .medium: "Medium · 0.25 m"
         case .fine: "Fine · 0.125 m"
+        default: "Cells of " + Self.metres(cellSize)
+        }
+    }
+
+    static func metres(_ value: Float) -> String { String(format: "%g m", Double(value)) }
+
+    /// The scaled cells offered for a charge: in metres per cube root of the kilogram, coarse
+    /// enough for impulse and arrival in the open, and finer for peaks (see docs/large-scenes.md).
+    static let scaledCells: [Float] = [0.2, 0.1, 0.05]
+
+    /// A cell of `scaled` m/kg^(1/3) for `mass` kg, to two significant figures; nil where that is
+    /// under a metre, where the presets serve a small charge's scene instead.
+    static func scaled(_ scaled: Float, mass: Float) -> Resolution? {
+        let size = scaled * cbrt(max(mass, 0))
+        guard size >= 1 else { return nil }
+        let digits = pow(10, floor(log10(size)) - 1)
+        return Resolution(cellSize: Float((Double(size) / Double(digits)).rounded() * Double(digits)))
+    }
+
+    /// What a grid picker offers for a charge of `mass` kg: the scaled cells coarser than the
+    /// presets, the presets, and `current` whatever it is, coarsest first.
+    static func choices(mass: Float, current: Resolution) -> [Resolution] {
+        var choices = scaledCells.compactMap { scaled($0, mass: mass) } + allCases
+        if !choices.contains(current) { choices.append(current) }
+        var seen = Set<Resolution>()
+        return choices.filter { seen.insert($0).inserted }.sorted { $0.cellSize > $1.cellSize }
+    }
+
+    /// `title`, with the cell's size per cube root of the charge's mass when it is not a preset.
+    func title(mass: Float) -> String {
+        guard !isPreset, mass > 0 else { return title }
+        return title + String(format: " · %.2g m/kg^(1/3)", Double(cellSize / cbrt(mass)))
+    }
+
+    /// The next finer cell: the next preset, or half the size.
+    var finer: Resolution? {
+        switch self {
+        case .coarse: .medium
+        case .medium: .fine
+        case .fine: nil
+        default: Resolution(cellSize: cellSize / 2)
         }
     }
 }
@@ -68,6 +155,23 @@ struct SimulationSettings: Equatable {
     var chargeMass: Float {
         get { scenario.charge.mass }
         set { scenario.charge.mass = newValue }
+    }
+
+    /// A mass from the charge's logarithmic slider: whole kilograms below 100, two significant
+    /// figures above.
+    static func roundedMass(_ kilograms: Double) -> Float {
+        guard kilograms >= 100 else { return Float(max(kilograms, 1).rounded()) }
+        let step = pow(10, floor(log10(kilograms)) - 1)
+        return Float((kilograms / step).rounded() * step)
+    }
+
+    /// A mass as kilograms, tonnes or kilotonnes.
+    static func massText(_ kilograms: Float) -> String {
+        switch kilograms {
+        case ..<1000: String(format: "%.0f kg", kilograms)
+        case ..<1_000_000: String(format: "%g t", Double(kilograms / 1000))
+        default: String(format: "%g kt", Double(kilograms / 1_000_000))
+        }
     }
 
     var chargePosition: SIMD3<Float> {
@@ -698,7 +802,7 @@ final class SimulationModel {
         settings.scenario = scenario
         inspectedImportID = nil
         if let h = scenario.importedModels?.first(where: { $0.isAttached })?.preview.cellSize,
-            let resolution = Resolution.allCases.first(where: { $0.cellSize == h })
+            let resolution = Resolution(cellSize: h)
         {
             settings.resolution = resolution
         }
@@ -965,6 +1069,59 @@ final class SimulationModel {
         let name = "Gauge \(settings.scenario.gauges.count + 1)"
         settings.scenario.gauges.append(Gauge(name, at: SIMD3(centre.x, centre.y, 1.5)))
         selection = .gauge(settings.scenario.gauges.count - 1)
+    }
+
+    /// Resizes the domain from its origin, everything staying where it is (gauges left outside are
+    /// removed), and frames the view on it.
+    func resizeDomain(to size: SIMD3<Float>) {
+        var scenario = settings.scenario
+        do {
+            let removed = try scenario.resizeDomain(to: size)
+            settings.scenario = scenario
+            camera = .framing(scenario)
+            if !removed.isEmpty {
+                errorMessage =
+                    "Gauges outside the new domain were removed: \(removed.joined(separator: ", "))."
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Whether the scene is open, with nothing in it but its charge, gauges and terrain, and so
+    /// can be fitted to its charge.
+    var canFitOpenScene: Bool { settings.scenario.contentBounds == nil }
+
+    /// The most cells a fitted open scene's grid is given: enough for its peaks with the shocks
+    /// sharpened, few enough to run in minutes.
+    static let fittedCellBudget = 20_000_000
+
+    /// Fits an open scene to its charge out to `scaledReach` m/kg^(1/3) (see
+    /// `Scenario.fitOpenScene(scaledReach:)`), with the finest grid scaled to the charge that keeps
+    /// within `fittedCellBudget`, and frames the view on it.
+    func fitOpenScene(scaledReach: Float) {
+        var scenario = settings.scenario
+        do {
+            try scenario.fitOpenScene(scaledReach: scaledReach)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        let mass = scenario.charge.mass
+        let candidates =
+            Resolution.scaledCells.reversed().compactMap { Resolution.scaled($0, mass: mass) }
+            + Resolution.allCases.reversed()
+        let fits = candidates.first {
+            scenario.grid(cellSize: $0.cellSize).cellCount <= Self.fittedCellBudget
+        }
+        settings.resolution =
+            fits ?? Resolution(
+                cellSize: cbrt(
+                    Float(scenario.domainSize.x * scenario.domainSize.y * scenario.domainSize.z)
+                        / Float(Self.fittedCellBudget)
+                ).rounded(.up)) ?? settings.resolution
+        settings.scenario = scenario
+        camera = .framing(scenario)
     }
 
     /// Adds gauges 1.5 m above the ground on a line from the charge, where it has the most room,
@@ -1978,6 +2135,12 @@ final class SimulationModel {
                     grid.cellCount * (settings.detailedCharge ? 73 : 57)
                     + grid.cellCount * (scenario.deflagration == nil ? 0 : 20)
                     + (refined ? SolverConfiguration().refinementMemory : 0)
+                // The view's volume texture holds at most 2,048 cells along a side.
+                guard max(grid.nx, grid.ny, grid.nz) <= 2048 else {
+                    throw BlastError.allocationFailed(
+                        "\(max(grid.nx, grid.ny, grid.nz)) cells along a side, more than the view's 2,048; "
+                            + "choose a coarser grid")
+                }
                 guard UInt64(required) < device.recommendedMaxWorkingSetSize / 10 * 7 else {
                     throw BlastError.allocationFailed(
                         "\(grid.cellCount / 1_000_000) million cells; try a coarser resolution")

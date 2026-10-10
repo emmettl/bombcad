@@ -522,6 +522,26 @@ struct SimulationModelTests {
         #expect(model.settings.scenario.gauges.count == BlastSolver.maxGauges && !model.canAddGauge)
     }
 
+    @Test("An open scene fitted to a large charge gets a domain, a top and a grid scaled to it")
+    func fitOpenScene() async throws {
+        let model = try await makeModel()
+        model.select(.openGround)
+        model.settings.chargeMass = 500_000
+        #expect(model.canFitOpenScene)
+        model.fitOpenScene(scaledReach: 10)
+        let scenario = model.settings.scenario
+        #expect(scenario.domainSize.x > 1600 && scenario.charge.position.x == scenario.domainSize.x / 2)
+        #expect(!model.settings.resolution.isPreset)
+        #expect(
+            scenario.grid(cellSize: model.settings.resolution.cellSize).cellCount
+                <= SimulationModel.fittedCellBudget)
+        // Shrinking the domain past the charge is refused and changes nothing.
+        model.resizeDomain(to: SIMD3(100, 100, 100))
+        #expect(model.settings.scenario.domainSize == scenario.domainSize)
+        model.select(.singleBuilding)
+        #expect(!model.canFitOpenScene)
+    }
+
     @Test("A gauge line runs from the charge at the Kingery-Bulmash scaled distances that fit")
     func gaugeLine() async throws {
         let model = try await makeModel()
