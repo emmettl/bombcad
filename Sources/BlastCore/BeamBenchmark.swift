@@ -104,9 +104,7 @@ public enum BeamBenchmark {
     public static func run(
         device: MTLDevice, elementsThroughDepth: Int = 12, deflection: Float = 0.06, rate: Float = 0.1,
         unload: Bool = false, crackSlip: Bool = true,
-        crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
-        crackShearStiffness: Bool = false,
-        slipWidensCracks: Bool = true,
+        bondSlip: BondSlip? = nil,
         pressedInterlock: Bool = false,
         adjustModel: (inout StructureModel) -> Void = { _ in },
         adjust: (inout StructureMaterial) -> Void = { _ in },
@@ -116,12 +114,9 @@ public enum BeamBenchmark {
         var model = model(elementsThroughDepth: elementsThroughDepth)
         model.pressedInterlock = pressedInterlock
         adjustModel(&model)
-        model.crackAxes = crackAxes
         model.bondSlip = bondSlip
-        model.crackShearStiffness = crackShearStiffness
         model.crackSlip = crackSlip
         adjust(&model.material)
-        model.slipWidensCracks = slipWidensCracks
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false

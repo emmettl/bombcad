@@ -196,14 +196,13 @@ public enum PushOffTest {
     /// sliding along z, over `stepsPerMillimetre` time steps per millimetre of the path, and then
     /// on through `beyond` (slip and width, m), if given.
     public static func run(
-        device: MTLDevice, specimen: Specimen, size: Float = 0.05, crackShearStiffness: Bool = false,
+        device: MTLDevice, specimen: Specimen, size: Float = 0.05,
         stepsPerMillimetre: Int = 4000, beyond: [SIMD2<Float>] = [],
         adjust: (inout StructureModel) -> Void = { _ in }
     ) throws -> Result {
         let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
         var model = StructureModel(
             solids: [cube], material: material(for: specimen), elementSize: size, fixedBase: false)
-        model.crackShearStiffness = crackShearStiffness
         adjust(&model)
         let solver = try StructureSolver(device: device, model: model)
         solver.gravity = 0
