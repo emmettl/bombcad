@@ -1056,7 +1056,15 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
    because the hourglass forces of squeezed elements add to the section's moment (see the
    structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
-   section analysis.
+   section analysis. More generally, hourglass control does several times the work an
+   element's own bending would (traced with `--work --breakdown`; see
+   [Validation](validation.md#hourglass-control)): 7% at the contest slab's peak on 8 elements
+   through (15% on 4), mostly at its cap in cracked elements carrying bars, whose cap counts
+   the bars as if spread through their depth; 18% in Wu's slabs, stored and spread through the
+   slab, deciding little. Below its cap it keeps an uncracked element's stiffness however
+   cracked the element is. Softening it with cracking (`StructureModel.hourglassFollowsCracking`,
+   an option) brings OA1 within 4% on fine meshes and Janney's beam to fail where the test did,
+   but folds the beams struck by a falling weight, which it has been holding together.
 3. **Crack axes turn until the crack opens, then are fixed.** A crack that opens and then has
    the stress turn across it opens a second crack past 30°, but tension within 30° of its axes
    still locks, a third crack is never opened, and a crack crossing another at an angle under
@@ -1202,6 +1210,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   that matches Walraven and Reinhardt's push-off tests but breaks beams under impact (see
   [shear across cracks](#shear-across-cracks)); under a blow it would need the crack's
   pressure limited by what holds it, and the trace says neither the slab nor OA1 depends on it.
+- **An element that feels its own bending in cracked concrete**: selective full integration of
+  cracked elements, or an assumed-strain element after T. Belytschko and L. P. Bindeman
+  (*Computer Methods in Applied Mechanics and Engineering* 105, 1993), so that the resistance of
+  cracked members, the struck beams above all, comes from the concrete and not from hourglass
+  control kept as stiff as uncracked concrete (see [Validation](validation.md#hourglass-control)).
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip

@@ -551,6 +551,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// 1b), which their push-off tests with restraint follow. Off, a crack carries the interlock
     /// of an unpressed crack whatever presses it. Solid elements only; not saved.
     public var pressedInterlock = false
+    /// Whether a cracked solid element's hourglass control (the bending its one integration point
+    /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
+    /// of as an uncracked element whatever its cracking, up to the cap. Not saved.
+    public var hourglassFollowsCracking = false
+    /// Whether the bars' strength counts in the cap on a solid element's hourglass control, as if
+    /// they were spread through its depth and so could bend it; off, only the concrete's
+    /// remaining strength does. Not saved.
+    public var hourglassCapsSteel = true
     /// Bars take their strain rate, for their strain-rate law, as their stretching rate averaged
     /// over their debonded length (the window their rupture is judged over), instead of the
     /// effective strain rate of the element they run through, which grows as the mesh is
