@@ -1,7 +1,7 @@
 # Current shared packet adiabatic adapter
 
 Run `bash Scripts/check-shared-adiabatic.sh OUTPUT_DIRECTORY [CASES_JSON]`. This
-optimized clean Git consumer resolves exact ContinuumKit alpha.14, imports public
+optimized clean Git consumer resolves exact ContinuumKit alpha.16, imports public
 BenchmarkSupport and CompressibleFlow, and copies the production packet alias.
 Metadata identifies the actual application alias and the fixture source.
 
