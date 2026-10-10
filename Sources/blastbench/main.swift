@@ -24,6 +24,7 @@ import simd
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
+//   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
 //   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
@@ -1492,6 +1493,176 @@ func energyProbe() -> (StructureSolver, Double) -> Void {
     }
 }
 
+/// Prints, every 20 µs, the fastest node of the structure: its speed, lattice position, how
+/// many of its elements are whole, and the largest compaction and pressure of those around it.
+func fastestNodes() -> (StructureSolver, Double) -> Void {
+    var next = 0.0
+    return { structure, time in
+        guard time >= next else { return }
+        next += 0.00002
+        var best: (speed: Float, i: Int, j: Int, k: Int) = (0, 0, 0, 0)
+        for k in 0...structure.ez {
+            for j in 0...structure.ey {
+                for i in 0...structure.ex where structure.storedNode(i, j, k) != nil {
+                    let speed = simd_length(structure.node(i, j, k).velocity)
+                    if speed > best.speed { best = (speed, i, j, k) }
+                }
+            }
+        }
+        var whole = 0
+        var compaction: Float = 0
+        var pressure: Float = 0
+        for corner in 0..<8 {
+            let (a, b, c) = (
+                best.i - (corner & 1), best.j - ((corner >> 1) & 1), best.k - ((corner >> 2) & 1)
+            )
+            guard a >= 0, b >= 0, c >= 0, a < structure.ex, b < structure.ey, c < structure.ez else {
+                continue
+            }
+            if structure.flag(a, b, c) == .active { whole += 1 }
+            compaction = max(compaction, structure.compaction(a, b, c))
+            let s = structure.stress(a, b, c)
+            pressure = max(pressure, -(s[0] + s[1] + s[2]) / 3)
+        }
+        print(
+            "    \(format(time * 1e6, 0)) µs: fastest node \(format(Double(best.speed), 0)) m/s at (\(best.i), \(best.j), \(best.k)), "
+                + "\(whole) whole elements, compaction \(format(Double(compaction), 3)), pressure \(format(Double(pressure) / 1e6, 0)) MPa"
+        )
+        fflush(stdout)
+    }
+}
+
+/// Prints, every 0.1 ms, the column of elements under the charge from the protective face up:
+/// each element's state (a active, b bare, x removed) and its lower node's downward velocity.
+func axisColumn() -> (StructureSolver, Double) -> Void {
+    var next = 0.0
+    return { structure, time in
+        guard time >= next else { return }
+        next += 0.0001
+        let i = structure.ex / 2
+        let j = structure.ey / 2
+        var states = ""
+        var speeds: [String] = []
+        for k in 0..<structure.ez {
+            let flag = structure.flag(i, j, k)
+            states += flag == .active ? "a" : flag == .bare ? "b" : flag == .eroded ? "x" : "."
+            speeds.append(format(Double(-structure.node(i, j, k).velocity.z), 0))
+        }
+        speeds.append(format(Double(-structure.node(i, j, structure.ez).velocity.z), 0))
+        print("    \(format(time * 1000, 2)) ms: \(states)  node v down: \(speeds.joined(separator: " "))")
+        fflush(stdout)
+    }
+}
+
+/// Hupfauf's slabs under contact charges: the debris's velocity off the protective face, the
+/// spall crater and the breach, against the thesis's measurements and fits.
+func runContact() throws {
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.02
+    let refinement = option("refine").flatMap { Int($0) } ?? 2
+    let levels = option("levels").flatMap { Int($0) } ?? 2
+    let layers = option("layers").flatMap { Int($0) } ?? 12
+    let duration = option("time").flatMap { Double($0) } ?? 0.003
+    print("Slabs under contact charges (Hupfauf, 2024)")
+    print(
+        "Air cells \(format(Double(cellSize), 3)) m, refined \(levels > 1 ? "twice " : "")by \(refinement); "
+            + "\(layers) elements through each slab; \(format(duration * 1000, 1)) ms\n")
+    func cm(_ value: Float) -> String { format(Double(value) * 100, 1) }
+    func list(_ values: [Float], scale: Float = 1, digits: Int = 1) -> String {
+        values.map { format(Double($0 * scale), digits) }.joined(separator: ", ")
+    }
+    for test in ContactSlabTest.tests where names?.contains(test.name) ?? true {
+        let fastest = fastestNodes()
+        let column = axisColumn()
+        let result = try ContactSlabTest.run(
+            device: device, test: test, cellSize: cellSize, elementSize: test.thickness / Float(layers),
+            refinement: refinement, levels: levels, duration: duration,
+            stepDivisor: option("step-divisor").flatMap { Float($0) } ?? 4,
+            adjust: { scenario in
+                if flag("no-rate") { scenario.structure?.material.rateDependent = false }
+                // `--charge 1.64`: a TNT sphere of this mass instead, still touching the slab.
+                if let mass = option("charge").flatMap({ Float($0) }),
+                    let top = scenario.structure?.bounds.max.z
+                {
+                    let radius = Float(cbrt(3 * Double(mass) / (4 * Double.pi * 1600)))
+                    scenario.charge = Charge(
+                        mass: mass,
+                        position: SIMD3(scenario.charge.position.x, scenario.charge.position.y, top + radius))
+                }
+                if var structure = scenario.structure {
+                    applyRateOptions(&structure)
+                    scenario.structure = structure
+                }
+            },
+            progress: flag("progress")
+                ? { line in
+                    print("  " + line)
+                    fflush(stdout)
+                } : nil,
+            inspect: { structure, time in
+                if flag("no-debris-drag") { structure.debrisDrag = false }
+                if flag("no-contact") { structure.contactMode = .off }
+                if flag("fastest") { fastest(structure, time) }
+                if flag("column") { column(structure, time) }
+            })
+        print(
+            "\(test.name): \(format(Double(test.thickness) * 100, 0)) cm, \(format(Double(test.semtex) * 1000, 0)) g SEMTEX 10 "
+                + "(\(format(Double(test.tntSphere) * 1000, 0)) g TNT sphere), T_W \(format(Double(test.scaledThickness), 2))"
+        )
+        print("                               measured           fit       model")
+        print(
+            "  tip velocity (m/s)           " + pad(list(test.tipVelocity), 19)
+                + pad(format(Double(test.fittedTipVelocity), 1), 10)
+                + "\(format(Double(result.tipVelocityAtEnd), 1)) (largest \(format(Double(result.tipVelocity), 1)))"
+        )
+        print(
+            "  spall crater diameter (cm)   " + pad(list(test.spallDiameter, scale: 100), 19) + pad("", 10)
+                + "\(cm(2 * result.separatedRadius)) come away, \(cm(2 * result.spallRadiusByDamage)) cracked loose"
+        )
+        print(
+            "  breach                       " + pad(test.breach ? "yes" : "no", 19) + pad("", 10)
+                + (result.breached ? "yes" : "no"))
+        print(
+            "  debris mass (kg)             " + pad(list(test.debrisMass), 19) + pad("", 10)
+                + "\(format(result.removedProtective, 1)) removed from the protective half "
+                + "(\(format(result.removedLoaded, 1)) from the loaded)")
+        print(
+            "  loaded-face crater (cm)      " + pad("44-54 across", 19) + pad("", 10)
+                + "\(cm(2 * result.craterRadius)) across, \(cm(result.craterDepth)) deep")
+        let at = [0.0001, 0.0002, 0.0005, 0.001]
+        let momenta = at.map { t in result.momentum.first { $0.x >= t }?.y ?? 0 }
+        print(
+            "  slab's momentum (N s)        at 0.1, 0.2, 0.5, 1 ms: "
+                + momenta.map { format($0, 0) }.joined(separator: ", ")
+                + "; largest \(format(result.momentum.map(\.y).max() ?? 0, 0))")
+        print(
+            "  kinetic energy (kJ)          debris, fit: \(format(Double(151 / test.scaledThickness - 60), 1)); "
+                + "slab, model: \(format(result.kineticEnergy / 1000, 1))")
+        print("  protective face's velocity (m/s) over the radius (cm), fit and model at each time:")
+        var radii: [Int] = []
+        var n = 0
+        while (Float(n) + 0.5) * result.ring <= 0.6 {
+            radii.append(n)
+            n += max(1, Int((0.04 / result.ring).rounded()))
+        }
+        print(
+            "    r       "
+                + radii.map { pad(format(Double((Float($0) + 0.5) * result.ring) * 100, 0), 6) }.joined())
+        print(
+            "    fit     "
+                + radii.map {
+                    pad(format(Double(test.fittedVelocity(at: (Float($0) + 0.5) * result.ring)), 1), 6)
+                }.joined())
+        for (time, velocity) in result.faceProfiles {
+            print(
+                "    " + pad(format(time * 1000, 1) + " ms", 8)
+                    + radii.map { pad(format(Double(velocity[$0]), 1), 6) }.joined())
+        }
+        print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
+        fflush(stdout)
+    }
+}
+
 /// Chiquito et al.'s full-scale slabs under charges hung 0.5 and 1 m above them.
 func runCloseIn() throws {
     let names = option("tests").map { $0.split(separator: ",").map(String.init) }
@@ -2916,6 +3087,7 @@ do {
     case "pushoff": try runPushOff()
     case "impact": try runImpact()
     case "closein": try runCloseIn()
+    case "contact": try runContact()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
