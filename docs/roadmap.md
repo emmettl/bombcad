@@ -31,13 +31,13 @@ it should be used to judge the safety of a real structure.
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
 | 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
-| 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on | [Air-blast model](air-blast-model.md#hot-air) |
+| 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
-| 9 | Supports and freestanding objects are checked against statics and theory, and footings against one centrifuge test only | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; but only the nearest object takes the air's load, its late flow is not converged, and the cars are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | Supports and freestanding objects are checked against statics and theory, and footings against one centrifuge test only | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -58,7 +58,8 @@ interactive review.
 ### Validation first
 
 More evidence is worth more than more features. The sources each step needs, and what is
-needed from them, are listed in [Data wanted](data-wanted.md).
+needed from them, are listed in [Data wanted](data-wanted.md); the open sources found for
+them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#where-to-start-the-open-leads-ranked).
 
 1. **The chamber's joints.** In the test they were cut through within milliseconds and the
    roof was left 95 mm up; the model's stay whole, carry an arching thrust that outlasts the
@@ -212,18 +213,21 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
-   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
-   its luminous cells marched on the GPU as a partly transparent volume; the fireball's [rise and
+   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac, chosen
+   by cost if asked,
+   its luminous cells marched on the GPU as a partly transparent volume, and, as an option, the
+   heat they radiate taken out of the gas, which halves the fluences; the radiation [conducted into
+   the surfaces' materials](surface-heating.md) for their peak temperatures, with ignition
+   thresholds from tests marked illustrative; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
    their first two minutes, then spread as a gravity current and a Pasquill–Gifford puff
    drifting downwind, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
-   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: taking the radiated heat out of the gas, the measured growth
-   of the cloud's top after two minutes, and a layered soil column and a comparison with measured
-   ground motion. The crater and the ground shock near the charge act back on the blast and remain
+   manuals' one-dimensional estimate or a layered soil column that loads and unloads at different
+   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
+   of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 
 ### Freestanding objects and supports
@@ -1947,12 +1951,13 @@ extraction.
    from a row of cars to a populated car park and a furnished room, with explicit friction
    and support assumptions. Benchmark each against identical geometry held stationary,
    reporting air-grid cost separately from motion, coupling and contact; include a crowded
-   collision case. Do not promise a throughput target before these measurements. (Started:
-   contact between bodies, blocks and the ground with a sweep over grown bounds, tested for
-   momentum, energy and resting stacks; the app places, duplicates and edits boxes and cars and
-   shows their motion, displacement, speed and tipping, with the nearest one in the air and the
-   rest moving through contact; a row of cars, held and free, and a 256-box crowded case. See
-   [freestanding objects](freestanding-objects.md#several-objects).)
+   collision case. Do not promise a throughput target before these measurements. (Done:
+   contact between bodies, blocks and the ground with a sweep over grown bounds; every object
+   in the air with its own moving boundary and patches, tested against one box of the same
+   size, a sheltered box and the gas's budget; objects striking solids and shells, with
+   momentum and energy budgets; a populated car park, a furnished room and a crowded pen in
+   the app or the study, each against the same geometry held, the coupling costing more than
+   the air. See [freestanding objects](freestanding-objects.md#several-objects).)
 
 Structural anchorage is a separate extension: retain ideal fixed supports as an explicit
 option, then add connections that can deform, open and fail under tension or shear, with

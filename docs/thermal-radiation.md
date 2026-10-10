@@ -11,16 +11,24 @@ from the blast.
 **Standing: illustrative.** Each ingredient is a textbook approximation, the fireball is only as
 good as the gas model makes it (below), its absorption coefficients are assumptions, and its
 total has been set against only one measurement of a TNT fireball's radiation, which it exceeds
-three to five times (see [Measured](#the-volume-against-the-shape)). Use it to see where a scene's
+three to five times, or two to three with the gas [losing what it
+radiates](#the-gas-losing-what-it-radiates), an option (see [Measured](#the-volume-against-the-shape)). Use it to see where a scene's
 surfaces see the fireball and how that compares between layouts, not for burn, ignition or damage
 thresholds.
+
+What the radiation does to the surfaces, conducted into their materials for each one's peak
+temperature, with ignition thresholds from tests marked illustrative, is [Surfaces heated by the
+fireball](surface-heating.md).
 
 ```bash
 swift run -c release BombCAD run street.bombcad --thermal thermal.json --thermal-results thermal-results.json --usd street.usda
 ```
 
 With `--consumer thermal=<ssh host>` the radiation is reckoned on another Mac, fed the fireball
-frame by frame (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+frame by frame, and with `--consumer thermal=auto --worker <ssh host>` wherever the run is
+estimated to wait least (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+On this Mac its march shares the GPU with the blast and can slow a run with many receivers by
+more than its own time.
 
 The description is JSON; any field left out takes its default, so `{}` will do:
 
@@ -52,7 +60,8 @@ their defaults. A project whose description names the shape or the sphere shows 
 `thermal.json`), takes effect from the next run, and is undone and redone with the layout's edits
 (⌘Z). With Macs set for sweeps in Settings, **Run on** reckons the radiation on the one chosen, over
 a connection kept open between runs and shared with any other model run there, such as the
-[fragments](fragments.md#in-the-app); should that Mac drop, it carries on here.
+[fragments](fragments.md#in-the-app); should that Mac drop, it carries on here. **Automatic**
+chooses at each run's start, from what the last run measured and a probe of each Mac.
 
 During a run, **Surfaces** under Display offers **Thermal fluence** and **Peak irradiance** beside
 the blast's fields, and paints the one chosen onto the ground and every face that has receivers,
@@ -190,9 +199,70 @@ in and 256 on the ground within it facing up, with nothing in the way but the gr
 crosses them, all the gas sends into the air but what goes straight into the ground beneath it
 (for an opaque sphere, σT⁴ over its surface above the ground, to 3% in the tests). For the shape
 and the sphere it is εσT⁴ over the part of the equivalent sphere above the ground, which for the
-street's shape agrees with the same measurement to under 1%. Nothing takes that energy out of
-the gas, so a share beyond what fireballs of that explosive are seen to radiate shows the gas
-stays hot and luminous too long, or the absorption or emissivity is too high.
+street's shape agrees with the same measurement to under 1%. Unless the gas [loses what it
+radiates](#the-gas-losing-what-it-radiates), nothing takes that energy out of it, so a share
+beyond what fireballs of that explosive are seen to radiate shows the gas stays hot and luminous
+too long, or the absorption or emissivity is too high.
+
+## The gas losing what it radiates
+
+With `SolverConfiguration.radiativeCooling` set (`blastbench … --radiate`; not yet in the app or
+`BombCAD run`), the air model's luminous gas gives up the heat it radiates, as the volume above
+takes it to absorb and emit, so the radiation no longer runs one way only. It is off by default:
+see [With the gas cooling](#with-the-gas-cooling) for why.
+
+- **The medium is the volume's.** Each cell at least `luminousTemperature` hot absorbs κ, the
+  gas's own `absorption` plus its soot's 1817 f T, and emits κB, B = σT⁴ / π; cooler gas neither
+  emits nor absorbs. Given `--thermal`, blastbench takes all three from its description, so the
+  gas loses what the volume radiates.
+- **A cell loses** κ(4πB − G) a cubic metre, G the radiation reaching it from every direction:
+  the divergence of the radiative flux, the radiation's term in the energy equation (Modest). G
+  is found along the lattice's 26 directions, to a cell's faces, edges and corners, each standing
+  for its share of the sphere, the directions nearer it than any other (0.575, 0.465 and
+  0.442 sr). Along every line of cells in each direction the radiance is carried across the box
+  round the luminous cells, both ways, from zero at its edge: a cell crossed over a path s takes
+  I(1 − e^(−κs)) from the beam and adds B(1 − e^(−κs)), κ and B taken as uniform across it.
+  This is Lockwood and Shah's discrete transfer method on the lattice, and, as in the
+  photon-conserving schemes of radiative transfer in astrophysics (Abel, Norman and Madau), what
+  the beam gains in a cell is exactly what the cell loses, so the gas loses exactly what leaves
+  it, into the air, the ground and the scene's faces.
+- **Its limits come out right.** Thin gas loses 4κσT⁴ a cubic metre, and an opaque fireball
+  σT⁴ over its surface: for a sphere exactly, as any set of directions sharing out the sphere
+  gives; for a flat face, from 2% more to 7% less by how it lies to the lattice, a face along its
+  axes least.
+- **It is taken on the GPU** every `interval` steps, four by default, and at each batch's end,
+  for the time since: the box round the luminous cells is found as the medium is made, the 13
+  lines are marched together (one at a time in a box of over a million cells), and each luminous
+  cell's loss over that time comes off its energy, its density and momentum unchanged. A cell
+  may lose at most a quarter of its internal energy at once, a guard never reached: the outer
+  cells of an opaque fireball at 3,000 K lose under a hundredth of their heat a step. Where the air is refined, the coarse cells lose it and the
+  fine cells under them lose as much a volume, as they take what debris trades with the air, so
+  that the levels agree and the energy is still conserved across their edges.
+- **What it radiated** is added up in a fixed order, so runs repeat exactly, as
+  `BlastSolver.radiatedEnergy` and, batch by batch, `radiationHistory`; in a closed box the gas's
+  energy falls by just that.
+- **Assumed**: the volume's grey gas and soot (above); cold, black surroundings, the air beyond
+  the box, the ground and the solids absorbing all that reaches them and sending nothing back
+  (air at 288 K radiates under a seven-hundredth of what gas at 1,500 K does); no scattering; each cell's medium
+  uniform across it, and luminous or not, where the volume interpolates its share; and the loss
+  over the steps since it was last taken worked out from the state at their end.
+
+Checked (`RadiativeCoolingTests`), with a sphere of gas 2 m in radius at 2,500 K and the
+surrounding pressure, on 0.25 m cells, so that nothing moves:
+
+| Absorption | Thin, 0.01/m | 1/m | Opaque, 20/m |
+|---|---|---|---|
+| What it radiates in a step, against an isothermal sphere of its optical radius (Modest) | within 0.01% | +0.015% | +0.6% |
+| Its centre's loss, against 4κσT⁴ e^(−κR) | +0.04% | +0.9% | none, as e^(−40) gives |
+| Against the volume's measurement round it (thin: 0.05/m) | +0.6% | +0.07% | −2.0% |
+
+Over five steps the thin sphere's centre cools as dT/dt = −4κσT⁴ e^(−κR) / (ρc_v) integrates, to
+0.5%, and the opaque sphere's not at all. The energy budget closes: in a closed box the gas loses
+what it radiated to 3 × 10⁻⁷ of it, 1.2 × 10⁻⁶ with two levels of refinement under a blast
+crossing the sphere, and with afterburning what burns is what the gas keeps and radiates, its
+soot included, to a thousandth of what it radiated. Taking it every fourth step instead of every
+step radiates 0.3% more over 200 steps in which the sphere loses 15% of its heat. Off, two builds
+give the same `blastbench digest`, with and without refinement.
 
 ## Measured
 
@@ -319,9 +389,9 @@ much, and its course is the wrong way round: 0.2% by 20 ms, 1.4% by 50 ms, 6.5% 
 21% by 170 ms, when its fireball is still at 2,400 K and growing. The volume is opaque here, so the
 excess is not the emissivity: the gas never loses the heat it radiates (21% of the charge's energy
 would cool it markedly), and stays hot and luminous far longer than a real fireball, while its
-first milliseconds, a fireball a few cells across, are faint. Taking the radiated heat out of the
-gas is the next step; until then, treat the volume's fluences, like the shape's, as an upper
-bound, and its timing as wrong.
+first milliseconds, a fireball a few cells across, are faint. With the gas losing what it
+radiates ([below](#with-the-gas-cooling)), 12.8%: two to three times as much, its timing still
+wrong. Treat the volume's fluences, like the shape's, as an upper bound, and its timing as wrong.
 
 **Its cost.** Each binary run three times, interleaved, the branch before the volume (the shape,
 compared with the sphere) and after (the volume, compared with the shape), each model's time on
@@ -341,6 +411,79 @@ the half second each frame's blast took here. On the CPU alone the same march is
 `blastbench thermal` on a sphere of cells growing to 15 m across over 30 frames takes 18 ms a
 frame with the GPU (8 ms of it the GPU's) and 540 ms on the cores, the two agreeing to 0.001%.
 
+### With the gas cooling
+
+The same street, afterburning and hot air, with the gas [losing what it
+radiates](#the-gas-losing-what-it-radiates) (`--radiate`, the volume's defaults):
+
+| At 170 ms | Without | With |
+|---|---|---|
+| Radiated, measured round the fireball | 87.9 MJ, 21.0% of the charge's energy | 53.5 MJ, 12.8% |
+| Lost by the gas | | 65.8 MJ, 15.7% |
+| Radiated by 20, 50 and 100 ms | 0.2%, 1.4%, 6.5% | 0.1%, 1.4%, 5.2% |
+| Fireball across at 20, 50, 100 and 170 ms | 5.5, 11.8, 13.7, 14.6 m | 5.3, 11.7, 13.5, 14.2 m |
+| Its temperature then | 1,608, 1,878, 2,187, 2,371 K | 1,590, 1,840, 2,047, 2,089 K |
+| Hottest gas | 3,101 K | 2,482 K |
+| Highest fluence: ground, blocks 1, 4 and 0 | 248, 269, 117, 130 kJ/m² | 121, 118, 84, 63 kJ/m² |
+| Blocks 2, 3 and 5 | 15 to 26 kJ/m² | 9 to 17 kJ/m² |
+| Peak irradiance: ground, block 1 | 3.2, 3.0 MW/m² | 3.2, 0.9 MW/m² |
+| Steps | 1,856 | 1,814 |
+
+**Out to 500 ms the difference grows.** Without the cooling the fireball goes on growing and
+heating, to 15.3 m across and 2,540 K at 500 ms (its hottest gas 3,640 K), and has radiated, as
+measured round it, 653 MJ, 156% of the charge's energy, the ground's highest fluence 1.4 MJ/m².
+With it the fireball is largest at 166 ms and then shrinks and cools, 13.9 m and 2,040 K at
+300 ms, 13.2 m and 1,860 K at 500 ms; it has radiated 198 MJ, 47% (the gas lost 249 MJ, 60%),
+the ground's highest fluence 400 kJ/m², and the run takes 10% fewer steps. Either way it is
+still luminous at 500 ms: 8 to 10 kg of products are still burning, and radiating takes the gas
+only down to the luminous temperature, so what ends a fireball here is its mixing with cold
+air, which on these cells is the grid's own.
+
+**The cloud is lower.** The [rise](fireball-rise.md) is handed the air's state at the run's end,
+at 500 ms with the cooling 951 kg at 1,068 K rather than 960 kg at 1,262 K, a fifth less heat
+above the air's. It stops rising at the same 365 s, its top at 454 m rather than 482 m, 6% lower,
+as a thermal's height going as the quarter power of its heat (0.79^¼ = 0.94) would have it; at
+600 s its spread top is 343 m rather than 365 m. The rise model is unchanged. Its comparison with
+Church's clouds was handed gas that had kept its radiated heat, so with the cooling its tops would
+come down by a few per cent, from 4% above his on average at two minutes towards them; the
+rise's own radiation (its `emissivity`, off by default) starts at the hand-over, so turning both
+on counts no heat twice.
+
+**The gas loses about a fifth more than is measured round it**, because the measurement leaves
+out what goes straight into the ground beneath the fireball, which the gas loses too; clear of
+the ground the two agree within 2% (above). In a street the fireball lies on the ground and
+against the faces, which take the rest.
+
+**Against a TNT fireball it is closer but not close.** By 170 ms the fireball has radiated 12.8%
+of the charge's energy, against the 3.8% to 6.6% measured, and its course is still the wrong way
+round: 0.1% by 20 ms, where the real one, scaled to 100 kg, would have peaked at 2 ms. What is
+left is not the gas keeping its heat: the products go on burning for the whole run, releasing
+some twice the charge's energy again (30 kg are unburnt at 170 ms, 8 at 500 ms), and the share is
+of the charge's energy alone; and its first milliseconds are faint, as before, the hot gas spread
+over cells far larger than a charge. The soot's absorption and its yield, which make it opaque,
+are untested assumptions too.
+
+**The blast is unchanged.** Against Kingery–Bulmash (`blastbench validate --afterburn --air
+thermal`, 0.25 m cells, 100 ms) every incident and reflected impulse moves by 0.2% or less, every
+peak by 0.4% or less and every arrival by 0.1 ms: the shock has left the fireball long before it
+radiates much. In closed rooms (`blastbench gas --afterburn --air thermal`) the gas radiates 4.5%
+to 7.7% of the charge's energy into the walls by 80 ms and its pressure falls by 2% to 4%, from
+98–108% of UFC 3-340-02's to 94–105%, a heat loss real rooms have and the manual's chart, worked
+out without it, leaves out.
+
+**Its cost.** The street to 170 ms without frames, each build run four times, interleaved, with
+load averages of 60 to 80 from other sessions: 6.1 to 6.3 s before, 6.1 to 6.3 s after with it
+off, and 6.2 to 6.3 s with it on. That is 5% more a step, about 0.17 ms on 3.5, and 4% fewer
+steps, the cooler gas allowing longer ones. Taken every step and with the 13 directions marched
+one after another it was 30% more a step; most of the rest is making the medium over the awake
+cells. The directions' slices take 52 MB, and the medium and loss 12 bytes a cell.
+
+**Why it is off by default.** It changes the blast's loads by under half a per cent, so it is not
+needed for them, and without afterburning there is little fireball for it to cool; with
+afterburning it halves the fluences and makes the fireball's heat more plausible, but its total
+has been compared with one measurement, which it still exceeds. Use it for thermal studies with
+afterburning and hot air.
+
 ## Output
 
 - **The summary** printed gives the largest fireball, its temperature and how long it was
@@ -349,13 +492,19 @@ frame with the GPU (8 ms of it the GPU's) and 540 ms on the cores, the two agree
   its peak irradiance (W/m²) and fluence (J/m²), and the fireball at every frame, as JSON.
 - **The USD scene** (`--usd`) gains `/Scene/Thermal`, a Points prim of the receivers with float
   primvars `fluence` (kJ/m²) and `peakIrradiance` (kW/m²), for colouring in Blender.
+- **The surfaces' heating**, each receiver's material, peak surface temperature and illustrative
+  ignition flags, joins all three ([Surfaces heated by the fireball](surface-heating.md#output)).
 
 ## Limitations
 
 - Illustrative, as above: one comparison with a measurement of a TNT fireball's radiation, which
-  the model exceeds three to five times.
-- The radiated energy is not taken from the gas, which therefore stays hot and luminous too
-  long; this, more than the absorption, is why the total is too high.
+  the model exceeds three to five times, two to three with the gas cooling.
+- The radiated energy is taken from the gas only as an option; without it the gas stays hot and
+  luminous too long. With it, the luminous gas cools as the volume radiates, on the lattice's 26
+  directions (a flat opaque face 2% too bright to 7% too dim by its orientation), into black,
+  cold surroundings, every fourth step; gas below the luminous temperature does not radiate at
+  all, and the products' afterburning, which goes on heating the gas, has not been checked
+  against a fireball's measured course.
 - The volume's absorption is assumed: a grey coefficient for the hot gas, between the thin-gas
   Planck mean and what saturated bands allow over metres, and Rayleigh soot as a fixed share of
   the unburnt products. Real soot forms, burns and cools on its own course, not the products'.
@@ -411,7 +560,19 @@ frame with the GPU (8 ms of it the GPU's) and 540 ms on the cores, the two agree
 - Committee for the Prevention of Disasters, *Methods for the calculation of physical effects*
   ("Yellow Book", CPR 14E), 3rd ed., 1997, chapter 6: the solid-flame model of fireballs.
 - M. F. Modest, *Radiative Heat Transfer*, Academic Press: the radiative transfer equation along
-  a ray in an absorbing, emitting medium, and mean absorption coefficients.
+  a ray in an absorbing, emitting medium, and mean absorption coefficients; the divergence of the
+  radiative flux, κ(4πB − G), as the radiation's term in the energy equation; the emittance of an
+  isothermal sphere, 1 − [1 − (1 + 2τ)e^(−2τ)] / 2τ², behind the cooling's tests; and the ray
+  effects of a few discrete directions.
+- F. C. Lockwood and N. G. Shah, "A new radiation solution method for incorporation in general
+  combustion prediction procedures", *18th Symposium (International) on Combustion*, The
+  Combustion Institute, 1981, 1405–1414: the discrete transfer method, rays carried across the
+  cells with each cell's heat source the change in their intensity, which the gas's cooling
+  follows on the lattice.
+- T. Abel, M. L. Norman and P. Madau, "Photon-conserving radiative transfer around point sources
+  in multidimensional numerical cosmology", *Astrophysical Journal* 523 (1999) 66–71: a cell
+  takes exactly what a ray loses crossing it, so the energy is conserved whatever the cell's
+  optical depth.
 - TNF Workshop, [Radiation models](https://tnfworkshop.org/radiation/) (RADCAL, after
   Grosshandler, NIST): curve fits of the Planck-mean absorption coefficients of water and carbon
   dioxide, 300 to 2,500 K, behind the gas's coefficient (an assumption, as above).

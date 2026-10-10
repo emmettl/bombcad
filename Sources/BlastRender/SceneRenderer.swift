@@ -23,10 +23,14 @@ public enum DisplayMode: Int, CaseIterable, Identifiable, Sendable {
 }
 
 /// What of the fireball's thermal radiation is painted onto the surfaces in place of the blast's
-/// field: both on a log scale over four decades, 0.1 to 1,000 kJ/m² and kW/m².
+/// field: the fluence and the peak irradiance on a log scale over four decades, 0.1 to 1,000 kJ/m²
+/// and kW/m²; the peak surface temperature's rise on one over three, 1 to 1,000 K; and the
+/// receivers past a test threshold for igniting their material, illustratively.
 public enum ThermalQuantity: Int, CaseIterable, Identifiable, Sendable {
     case fluence = 0
     case peakIrradiance = 1
+    case surfaceTemperature = 2
+    case ignition = 3
 
     public var id: Int { rawValue }
 
@@ -34,10 +38,47 @@ public enum ThermalQuantity: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .fluence: "Thermal fluence"
         case .peakIrradiance: "Peak irradiance"
+        case .surfaceTemperature: "Peak surface temperature"
+        case .ignition: "Ignition (illustrative)"
         }
     }
 
-    public var unit: String { self == .fluence ? "kJ/m²" : "kW/m²" }
+    public var unit: String {
+        switch self {
+        case .fluence: "kJ/m²"
+        case .peakIrradiance: "kW/m²"
+        case .surfaceTemperature: "K above ambient"
+        case .ignition: ""
+        }
+    }
+
+    /// The labels at each decade of the scale, lowest first, in `unit`; none for the ignition.
+    public var ticks: [String] {
+        switch self {
+        case .fluence, .peakIrradiance:
+            (0...Int(Self.decades)).map { step in
+                let value = Double(Self.scaleBottom) / 1000 * pow(10, Double(step))
+                return value >= 1 ? String(format: "%.0f", value) : String(format: "%.1f", value)
+            }
+        case .surfaceTemperature: ["1", "10", "100", "1000"]
+        case .ignition: []
+        }
+    }
+
+    /// A value on this quantity's scale, from 0 at its bottom to 1 at its top: J/m² or W/m², a
+    /// rise in kelvin, or `IgnitionFlags`' raw value.
+    public func shade(_ value: Float) -> Float {
+        switch self {
+        case .fluence, .peakIrradiance: Self.shade(value)
+        case .surfaceTemperature: min(max(log10(max(value, 1e-6)) / 3, 0), 1)
+        case .ignition: Self.ignitionShade(UInt8(max(0, min(value, 255))))
+        }
+    }
+
+    /// Past the short-pulse fluence, the top of the scale; hot enough alone, part of the way.
+    public static func ignitionShade(_ flags: UInt8) -> Float {
+        flags & 2 != 0 ? 1 : (flags & 1 != 0 ? 0.55 : 0)
+    }
 
     /// The scale's bottom and top in SI units, J/m² or W/m², and its decades.
     public static let scaleBottom: Float = 100

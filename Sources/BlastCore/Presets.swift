@@ -16,10 +16,12 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case protectedBuilding
     case glassFacade
     case carPark
+    case populatedCarPark
     case underpass
     case blockHouse
     case blockWall
     case internalExplosion
+    case furnishedRoom
     case ventedGasRoom
 
     public var id: String { rawValue }
@@ -41,10 +43,12 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .protectedBuilding: "Wall in front of a building"
         case .glassFacade: "Glass façade"
         case .carPark: "Car park"
+        case .populatedCarPark: "Car park with parked cars (freestanding)"
         case .underpass: "Underpass"
         case .blockHouse: "Block-built house"
         case .blockWall: "Blockwork wall"
         case .internalExplosion: "Internal explosion (test)"
+        case .furnishedRoom: "Furnished room (freestanding)"
         case .ventedGasRoom: "Gas explosion, vented room"
         }
     }
@@ -426,6 +430,13 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             // The reinforced concrete chamber of Shang et al. (2026), half of it: see ChamberTest.
             return ChamberTest.scenario()
 
+        case .populatedCarPark:
+            // The car park held rigid, with rows of freestanding cars: see PopulatedScene.
+            return PopulatedScene.carPark.scenario
+
+        case .furnishedRoom:
+            // Freestanding furniture in a rigid room under an internal explosion: see PopulatedScene.
+            return PopulatedScene.furnishedRoom.scenario
         case .ventedGasRoom:
             // A room of about FM Global's chamber's size (Bauwens et al. 2008) full of
             // stoichiometric methane, lit in the middle, its 2 x 2 m vent closed by a panel that

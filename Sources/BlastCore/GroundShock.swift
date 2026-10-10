@@ -29,9 +29,20 @@ public struct GroundSoil: Codable, Sendable, Equatable {
     public var impedance: Float { density * waveSpeed }
 }
 
+/// How the ground's shaking under each point is reckoned.
+public enum GroundShockModel: String, Codable, Sendable, CaseIterable {
+    /// The protective design manuals' one-dimensional estimate from the peak and impulse on the
+    /// ground, in uniform soil, worn down with depth by their empirical factor.
+    case estimate
+    /// A layered soil column under each point, solved step by step through the overpressure's
+    /// history on the ground (`SoilColumn`).
+    case column
+}
+
 /// Where to estimate the ground's shaking under the blast, and in what soil. An illustrative
 /// model, not a validated one: the one-dimensional air-induced ground shock of the protective
-/// design manuals, driven by the overpressure the run records on the ground.
+/// design manuals, or a layered soil column, driven by the overpressure the run records on the
+/// ground.
 public struct GroundShockSpec: Codable, Sendable, Equatable {
     /// Points along a straight line on the ground, ends included.
     public struct Line: Codable, Sendable, Equatable {
@@ -46,7 +57,12 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
         }
     }
 
+    /// The uniform soil of the manuals' estimate, and of the column where no profile is given.
     public var soil = GroundSoil()
+    /// The manuals' estimate unless asked otherwise, as descriptions saved before the column were.
+    public var model = GroundShockModel.estimate
+    /// The column's layers; nil for one elastic layer of `soil` going on for ever.
+    public var profile: SoilProfile?
     /// Ground points, (x, y) in metres.
     public var points: [SIMD2<Float>] = []
     public var line: Line?
@@ -58,7 +74,7 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case soil, points, line, depths, arrivalThreshold
+        case soil, model, profile, points, line, depths, arrivalThreshold
     }
 
     /// Any field left out takes its default.
@@ -66,11 +82,24 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = GroundShockSpec()
         soil = try c.decodeIfPresent(GroundSoil.self, forKey: .soil) ?? d.soil
+        model = try c.decodeIfPresent(GroundShockModel.self, forKey: .model) ?? d.model
+        profile = try c.decodeIfPresent(SoilProfile.self, forKey: .profile)
         points = try c.decodeIfPresent([SIMD2<Float>].self, forKey: .points) ?? d.points
         line = try c.decodeIfPresent(Line.self, forKey: .line)
         depths = try c.decodeIfPresent([Float].self, forKey: .depths) ?? d.depths
         arrivalThreshold = try c.decodeIfPresent(Float.self, forKey: .arrivalThreshold) ?? d.arrivalThreshold
     }
+
+    /// The column's soil: the profile, or one layer of `soil`.
+    public var columnProfile: SoilProfile { profile ?? SoilProfile(uniform: soil) }
+
+    /// The soil at the surface: the profile's top layer for the column, `soil` for the estimate.
+    public var surfaceSoil: GroundSoil { model == .column ? columnProfile.surface : soil }
+
+    /// The most elements a column may take, and the most element-steps a frame a millisecond
+    /// long may cost over all the points, to keep the column light enough to run alongside.
+    public static let columnElementLimit = 20_000
+    public static let columnWorkLimit = 50_000_000
 
     /// The points given, then the line's.
     public var allPoints: [SIMD2<Float>] {
@@ -96,6 +125,20 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
                 userInfo: [
                     NSLocalizedDescriptionKey: "The ground shock description is out of range or incomplete."
                 ])
+        }
+        if model == .column {
+            let column = SoilColumn(profile: columnProfile, depth: depths.max() ?? 0)
+            guard columnProfile.isValid, column.elementCount <= Self.columnElementLimit,
+                Double(column.elementCount * all.count) * 1e-3 / column.timeStep
+                    <= Double(Self.columnWorkLimit)
+            else {
+                throw CocoaError(
+                    .coderInvalidValue,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "The ground shock's soil profile is out of range, or its columns too fine to run alongside."
+                    ])
+            }
         }
         if let domain,
             !all.allSatisfy({ $0.x >= 0 && $0.y >= 0 && $0.x <= domain.x && $0.y <= domain.y })
@@ -146,10 +189,15 @@ public struct GroundResponse: Codable, Sendable, Equatable {
     public var horizontalVelocity: Float?
     /// When the stress wave reaches this depth, s; nil if the blast never reached the point.
     public var arrival: Double?
+    /// The column's only: the downward displacement at the last frame, m, what the soil's
+    /// compaction leaves once the wave has passed; and the downward velocity at each frame, m/s.
+    public var residualDisplacement: Float?
+    public var history: [Float]?
 
     public init(
         depth: Float, stress: Float, verticalVelocity: Float, verticalDisplacement: Float,
-        horizontalVelocity: Float?, arrival: Double?
+        horizontalVelocity: Float?, arrival: Double?, residualDisplacement: Float? = nil,
+        history: [Float]? = nil
     ) {
         self.depth = depth
         self.stress = stress
@@ -157,6 +205,8 @@ public struct GroundResponse: Codable, Sendable, Equatable {
         self.verticalDisplacement = verticalDisplacement
         self.horizontalVelocity = horizontalVelocity
         self.arrival = arrival
+        self.residualDisplacement = residualDisplacement
+        self.history = history
     }
 }
 
@@ -191,6 +241,16 @@ public enum AirInducedGroundShock {
         return sound * sqrt(1 + (gamma + 1) / (2 * gamma) * max(overpressure, 0) / ambientPressure)
     }
 
+    /// The horizontal velocity, m/s, of soil moving down at `vertical` where its loading wave
+    /// speed is `waveSpeed`, under a front sweeping over the ground at `frontSpeed`: the soil's
+    /// wave trails at θ, sin θ = c/U (Snell's law carries the front's horizontal slowness 1/U into
+    /// every layer), and its particles move square to the front. Nil short of superseismic.
+    public static func horizontalVelocity(vertical: Float, waveSpeed: Float, frontSpeed: Float) -> Float? {
+        guard frontSpeed >= waveSpeed * Float(2).squareRoot() else { return nil }
+        let sine = waveSpeed / frontSpeed
+        return vertical * sine / sqrt(1 - sine * sine)
+    }
+
     /// The response at `depth` to a surface overpressure with this peak (Pa), positive impulse
     /// (Pa·s) and arrival (s), its front sweeping over the ground at `frontSpeed` (m/s).
     public static func response(
@@ -204,13 +264,8 @@ public enum AirInducedGroundShock {
         let alpha = attenuation(depth: depth, soil: soil, duration: duration(peak: peak, impulse: impulse))
         let stress = alpha * peak
         let vertical = stress / soil.impedance
-        // Superseismic: the soil's wave front trails at θ to the ground, sin θ = c/U, and its
-        // particles move square to the front.
-        var horizontal: Float?
-        if GroundShockRegime(frontSpeed: frontSpeed, soil: soil) == .superseismic {
-            let sine = soil.waveSpeed / frontSpeed
-            horizontal = vertical * sine / sqrt(1 - sine * sine)
-        }
+        let horizontal = horizontalVelocity(
+            vertical: vertical, waveSpeed: soil.waveSpeed, frontSpeed: frontSpeed)
         return GroundResponse(
             depth: depth, stress: stress, verticalVelocity: vertical,
             // An elastic column's top sinks by I/(ρc) at every depth: the unloading that shaves

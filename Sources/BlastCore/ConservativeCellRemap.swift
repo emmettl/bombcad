@@ -89,6 +89,22 @@ enum ConservativeCellRemap {
             return c
         }
         for n in opening { cells[n] = state(.zero) }
+        // Between objects that touch, a cell can open or close with no air beside it, nor any
+        // path of other such cells to air: it then trades gas with the nearest air, found
+        // through whatever lies between, at most `reach` cells away. Gas so crosses a solid
+        // sliver a cell or two thick; it is conserved.
+        func nearestAir(_ n: Int, gas: Bool, reach: Int = 8) -> [Int] {
+            var frontier = [n]
+            var visited: Set<Int> = [n]
+            for _ in 0..<reach {
+                let adjacent = frontier.flatMap(neighbours).filter { visited.insert($0).inserted }
+                let air = adjacent.filter { !newSolid[$0] && (!gas || cells[$0].density > 0) }
+                if !air.isEmpty { return Array(Set(air)).sorted() }
+                guard !adjacent.isEmpty else { break }
+                frontier = adjacent
+            }
+            return []
+        }
         // Already matched closing cells still provide the same escape routes for residual
         // gas in a collapsing sheet. Their state is excluded from the residual source sum.
         let closingSet = Set(closing).union(closingTransit)
@@ -106,6 +122,7 @@ enum ConservativeCellRemap {
                     frontier = adjacent.filter { closingSet.contains($0) && visited.insert($0).inserted }
                 }
             }
+            if targets.isEmpty { targets = nearestAir(n, gas: false) }
             guard !targets.isEmpty else { throw Failure.enclosedClosingCell(n) }
             let share = vector(cells[n]) / Double(targets.count)
             for target in targets { cells[target] = state(vector(cells[target]) + share) }
@@ -127,7 +144,15 @@ enum ConservativeCellRemap {
                 cells[n] = state(vector(cells[n]) + sum * fraction)
                 for donor in donors { cells[donor] = state(vector(cells[donor]) * (1 - fraction)) }
             }
-            guard remaining.count < pending.count else { throw Failure.disconnectedOpening(remaining.count) }
+            if remaining.count == pending.count, let n = remaining.first {
+                let donors = nearestAir(n, gas: true)
+                guard !donors.isEmpty else { throw Failure.disconnectedOpening(remaining.count) }
+                let fraction = 1 / Double(donors.count + 1)
+                let sum = donors.reduce(SIMD8<Double>.zero) { $0 + vector(cells[$1]) }
+                cells[n] = state(vector(cells[n]) + sum * fraction)
+                for donor in donors { cells[donor] = state(vector(cells[donor]) * (1 - fraction)) }
+                remaining.removeFirst()
+            }
             pending = remaining
         }
         return cells
@@ -136,15 +161,35 @@ enum ConservativeCellRemap {
 
 /// Float geometry shared with the Metal box predicates. Small inclusion tolerance prevents
 /// roundoff at a face from giving the CPU remapper a different mask from patch initialisation.
+/// `vectors` are the box's definition as the shaders read it (see `boxVectors` in Solver.metal).
 struct ExperimentalBoxGeometry {
+    static let vectorCount = 8
     let centre: SIMD3<Float>
+    /// The box's bounds, from its corners.
+    let low: SIMD3<Float>
+    let high: SIMD3<Float>
     let vectors: [SIMD4<Float>]
-    init(_ body: RigidBoxBody) {
+    /// A box no longer in the air holds no cell, and its bounds hold no point.
+    var isAbsent: Bool { low.x > high.x }
+    init(_ body: RigidBoxBody?) {
+        guard let body else {
+            centre = .zero
+            low = SIMD3(repeating: .infinity)
+            high = SIMD3(repeating: -.infinity)
+            vectors = [
+                SIMD4(0, 0, 0, 1), SIMD4(-1, -1, -1, 0), .zero, .zero, .zero, .zero, SIMD4(low, 0),
+                SIMD4(high, 0),
+            ]
+            return
+        }
         centre = SIMD3<Float>(body.position)
+        let corners = body.corners.map { SIMD3<Float>($0) }
+        low = corners.reduce(SIMD3<Float>(repeating: .infinity), simd_min)
+        high = corners.reduce(SIMD3<Float>(repeating: -.infinity), simd_max)
         vectors = [
             SIMD4<Float>(body.orientation.vector), SIMD4(SIMD3<Float>(body.size / 2), 0),
             SIMD4(SIMD3<Float>(body.centreOfMass), 0), SIMD4(SIMD3<Float>(body.linearVelocity), 0),
-            SIMD4(SIMD3<Float>(body.angularVelocity), 0),
+            SIMD4(SIMD3<Float>(body.angularVelocity), 0), SIMD4(centre, 0), SIMD4(low, 0), SIMD4(high, 0),
         ]
     }
     func contains(_ point: SIMD3<Float>, cellSize: Float) -> Bool {
@@ -159,5 +204,12 @@ struct ExperimentalBoxGeometry {
     func velocity(at point: SIMD3<Float>) -> SIMD3<Float> {
         SIMD3(vectors[3].x, vectors[3].y, vectors[3].z)
             + simd_cross(SIMD3(vectors[4].x, vectors[4].y, vectors[4].z), point - centre)
+    }
+    /// The first of the boxes that holds the point, as `experimentalBoxOwner` in Solver.metal.
+    static func owner(of point: SIMD3<Float>, among boxes: [Self], cellSize: Float) -> Int? {
+        boxes.indices.first {
+            all(point .>= boxes[$0].low - cellSize) && all(point .<= boxes[$0].high + cellSize)
+                && boxes[$0].contains(point, cellSize: cellSize)
+        }
     }
 }

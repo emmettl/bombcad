@@ -122,8 +122,17 @@ struct ThermalSessionTests {
         var received = ThermalLive(receivers: exposure.receivers.count)
         try received.read(sent.payload, header: ThermalLiveHeader(frames: sent.frames, time: sent.time))
         #expect(received == sent && sent.frames == 4)
+        #expect(
+            sent.peakTemperature.count == exposure.receivers.count
+                && sent.payload.count == 12 * sent.fluence.count)
         #expect(throws: ProjectFileError.self) {
             try received.read(sent.payload.dropLast(4), header: ThermalLiveHeader(frames: 5, time: 0))
         }
+        // Without the surfaces' heating, the fluences and peak irradiances alone.
+        var unheated = sent
+        unheated.peakTemperature = []
+        var plain = ThermalLive(receivers: exposure.receivers.count)
+        try plain.read(unheated.payload, header: ThermalLiveHeader(frames: 4, time: sent.time))
+        #expect(plain == unheated)
     }
 }

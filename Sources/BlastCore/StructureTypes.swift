@@ -1118,7 +1118,9 @@ public enum ContactMode: UInt32, Sendable {
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
-        let files = ["Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Deflagration"]
+        let files = [
+            "Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation", "Deflagration",
+        ]
         let source = try files.map { name in
             guard
                 let url = Bundle.module.url(

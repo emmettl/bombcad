@@ -78,12 +78,8 @@ struct SolverUniforms {
     float refineAlpha;
     float refineThreshold;
     uint refineMaxPatches;
+    // The number of experimental rigid boxes in the air, whose definitions are passed beside.
     uint experimentalBox;
-    float boxCentreX;
-    float boxCentreY;
-    float boxCentreZ;
-    float boxMinX; float boxMinY; float boxMinZ;
-    float boxMaxX; float boxMaxY; float boxMaxZ;
     uint couplingMapCount;
     // Refinement in several levels (see Refine.metal). For a level refining another: the side
     // of its parent's patches (0 when the parent is the coarse grid, as for the first level), its
@@ -107,17 +103,27 @@ static inline bool carriesSpecies(constant SolverUniforms &u) {
     return u.afterburnEnergy > 0.0f || u.deflagration != 0u;
 }
 
-// Definition vectors: quaternion, half-size, local centre-of-mass offset, velocity, spin.
-static inline bool experimentalBoxContains(float3 point, float dx, constant SolverUniforms &u,
-                                           const device float4 *definition) {
+// Each experimental box has `boxVectors` definition vectors: quaternion, half-size, local
+// centre-of-mass offset, velocity, spin, centre, and its bounds' low and high corners.
+constant uint boxVectors = 8;
+static inline bool experimentalBoxContains(float3 point, float dx, const device float4 *definition) {
     float4 q = definition[0]; q.xyz = -q.xyz;
-    float3 v = point-float3(u.boxCentreX,u.boxCentreY,u.boxCentreZ);
+    float3 v = point-definition[5].xyz;
     float3 local = v+2.0f*cross(q.xyz,cross(q.xyz,v)+q.w*v)+definition[2].xyz;
     return all(abs(local) <= definition[1].xyz + dx*1e-5f);
 }
-static inline float3 experimentalBoxVelocity(float3 point, constant SolverUniforms &u,
-                                             const device float4 *definition) {
-    return definition[3].xyz+cross(definition[4].xyz,point-float3(u.boxCentreX,u.boxCentreY,u.boxCentreZ));
+static inline float3 experimentalBoxVelocity(float3 point, const device float4 *definition) {
+    return definition[3].xyz+cross(definition[4].xyz,point-definition[5].xyz);
+}
+// The first of the boxes that holds the point, or -1. Its bounds pass over boxes far from it.
+static inline int experimentalBoxOwner(float3 point, float dx, constant SolverUniforms &u,
+                                       const device float4 *definitions) {
+    for (uint b = 0; b < u.experimentalBox; ++b) {
+        const device float4 *definition = definitions + boxVectors * b;
+        if (any(point < definition[6].xyz - dx) || any(point > definition[7].xyz + dx)) continue;
+        if (experimentalBoxContains(point, dx, definition)) return int(b);
+    }
+    return -1;
 }
 
 constant int tileSize = 8;
@@ -730,12 +736,11 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
 
     // Experimental rigid-box path: impermeable moving-wall traction, recorded from the
-    // same numerical face flux used by the gas. Each fluid thread owns six output scalars.
-    // Use gauge pressure for body loading; uniform atmospheric preload is balanced externally.
+    // same numerical face flux used by the gas. Each fluid thread owns six output scalars, one
+    // for each of its faces (low and high along each axis); the host gives each face's impulse
+    // to the box beyond it. Use gauge pressure for body loading; uniform atmospheric preload is
+    // balanced externally.
     if (u.experimentalBox != 0 && (u.refineRatio == 0 || patchAt(cell, patchOfTile, u) < 0)) {
-        float3 received = float3(0.0f);
-        float3 moment = float3(0.0f);
-        float3 centre = float3(u.boxCentreX, u.boxCentreY, u.boxCentreZ);
         for (int side = 0; side < 2; ++side) {
             int direction = side == 0 ? -1 : 1;
             bool inside = side == 0 ? i > 0 : i < n - 1;
@@ -747,16 +752,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             f.momentum = float3(traction, 0.0f, 0.0f);
             f.energy = traction * speed;
             if (side == 0) fluxLow = f; else fluxHigh = f;
-            float3 impulse = float3(0.0f);
-            impulse[axis] = float(direction) * (traction - u.ambientPressure) * dt * u.dx * u.dx;
-            float3 face = (float3(cell) + 0.5f) * u.dx;
-            face[axis] += 0.5f * float(direction) * u.dx;
-            received += impulse;
-            moment += cross(face - centre, impulse);
-        }
-        for (uint a = 0; a < 3; ++a) {
-            boxImpulse[6 * index + a] += received[a];
-            boxImpulse[6 * index + 3 + a] += moment[a];
+            boxImpulse[6 * index + 2 * axis + side] +=
+                float(direction) * (traction - u.ambientPressure) * dt * u.dx * u.dx;
         }
     }
 
