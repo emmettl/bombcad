@@ -215,10 +215,11 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
-   their first two minutes, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
+   their first two minutes, then spread as a gravity current and a Pasquill–Gifford puff
+   drifting downwind, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
    manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: taking the radiated heat out of the gas, the cloud's growth once
-   it stops rising, and a layered soil column and a comparison with measured
+   drawn in the app. Next: taking the radiated heat out of the gas, the measured growth
+   of the cloud's top after two minutes, and a layered soil column and a comparison with measured
    ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 

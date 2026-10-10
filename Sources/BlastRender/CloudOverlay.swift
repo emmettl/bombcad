@@ -17,8 +17,8 @@ public enum CloudOverlay {
         /// Its track across the ground below, and the lines down to the ground from where it
         /// stopped and from where it was at the end.
         case ground = 3
-        /// Its outline from the side and its ring at its height at an interval as it spread after
-        /// it stopped rising.
+        /// Its ring at its height at an interval as it spread after it stopped rising, and its
+        /// outline from the side at the end.
         case spread = 4
     }
 
@@ -125,13 +125,14 @@ public enum CloudOverlay {
             outline(cloud, .outline)
             time += step
         }
-        // The spreading cloud, an ellipsoid: its ring at its height, and its outline from the
-        // side, upright and facing the eye.
-        func spreading(_ sample: CloudSample) {
+        // The spreading cloud, an ellipsoid: its ring at its height, and at the end its outline
+        // from the side as well, upright and facing the eye.
+        func spreading(_ sample: CloudSample, side drawn: Bool) {
             let middle = centre(sample)
             let radius = Float(sample.radius)
             let depth = Float(sample.halfDepth)
             circle(middle, ([1, 0, 0], [0, 1, 0]), radius: radius, .spread)
+            guard drawn else { return }
             var view = eye - middle
             view.z = 0
             let side =
@@ -153,10 +154,10 @@ public enum CloudOverlay {
             if let step = spreadInterval(result), let last = samples.last {
                 var time = stopped.time + step
                 while time < last.time - 1e-9, let cloud = Self.sample(result, at: time) {
-                    spreading(cloud)
+                    spreading(cloud, side: false)
                     time += step
                 }
-                spreading(last)
+                spreading(last, side: true)
                 let end = centre(last)
                 line(end, SIMD3(end.x, end.y, 0.05), .ground)
             }
@@ -164,24 +165,23 @@ public enum CloudOverlay {
         return lines
     }
 
-    /// The path from the hand-over to `end`, and the ground below it.
+    /// The whole path, rising and spreading, and the ground below it.
     public static func bounds(_ result: CloudResult) -> Box {
-        let end = end(result)
         var low = SIMD3<Float>(repeating: .infinity)
         var high = SIMD3<Float>(repeating: -.infinity)
-        for sample in result.samples where sample.time <= end + 1e-9 {
+        for sample in result.samples {
             let middle = centre(sample)
-            let radius = Float(sample.radius)
-            low = simd_min(low, middle - radius)
-            high = simd_max(high, middle + radius)
+            let extent = SIMD3(Float(sample.radius), Float(sample.radius), Float(sample.halfDepth))
+            low = simd_min(low, middle - extent)
+            high = simd_max(high, middle + extent)
         }
         low.z = 0
         return Box(min: low, max: high)
     }
 
-    /// A view of the cloud from the side, a little above the ground: the whole of its path up to
-    /// where it stopped rising if that is near enough to see whole, and otherwise the cloud where
-    /// it stopped, over the ground below it.
+    /// A view of the cloud from the side, a little above the ground: the whole of its path if
+    /// that is near enough to see whole, and otherwise the cloud where it stopped rising, over
+    /// the ground below it.
     public static func framing(_ result: CloudResult) -> OrbitCamera {
         var box = bounds(result)
         let fieldOfView = OrbitCamera(target: .zero, distance: 1, azimuth: 0, elevation: 0).fieldOfView

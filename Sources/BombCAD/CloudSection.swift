@@ -13,7 +13,8 @@ struct CloudSection: View {
             Toggle("Fireball's rise and cloud", isOn: enabled)
                 .help(
                     "Hands the hot gas left at the end of the run over to a model of a rising buoyant "
-                        + "cloud, and follows it for minutes after in a standard atmosphere. Illustrative: "
+                        + "cloud, and follows it for minutes after in a standard atmosphere, spreading and "
+                        + "drifting downwind once it stops rising. Illustrative: "
                         + "its top is within 4% on average of those measured over 22 TNT detonations for "
                         + "their first two minutes, with afterburning.")
             if let spec = model.cloudSpec {

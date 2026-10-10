@@ -121,11 +121,12 @@ struct CloudOverlayTests {
         // and lines down to the ground from where it stopped and from where it ended.
         #expect(kinds.filter { $0 == CloudOverlay.Kind.track.rawValue }.count == cloud.samples.count - 1)
         #expect(kinds.filter { $0 == CloudOverlay.Kind.ground.rawValue }.count == cloud.samples.count + 1)
-        // As it spread, its ring and side outline at each half minute after it stopped, and at the end.
+        // As it spread, its ring at each half minute after it stopped, and at the end its ring and
+        // its outline from the side.
         let last = try #require(cloud.samples.last)
         #expect(CloudOverlay.spreadInterval(cloud) == 30 && last.thickness != nil)
         let spreads = Int(((last.time - stopped.time) / 30).rounded(.up))
-        #expect(kinds.filter { $0 == CloudOverlay.Kind.spread.rawValue }.count == 2 * 64 * spreads)
+        #expect(kinds.filter { $0 == CloudOverlay.Kind.spread.rawValue }.count == 64 * (spreads + 1))
         let ends = stride(from: 0, to: lines.count, by: 2).filter {
             Int(lines[$0].w) == CloudOverlay.Kind.spread.rawValue
         }
