@@ -93,7 +93,30 @@ struct SolverUniforms {
     uint childTileNx;
     uint childTileNy;
     uint childTileNz;
+    // Gravity along -z (0 when off; see `stencilFluxesGravity`): its acceleration, and the
+    // hydrostatic atmosphere it holds at rest, cooling with height at `gravityLapse` K/m (0 for
+    // isothermal) from `gravityT0` K and `gravityP0` Pa at the ground.
+    float gravity;
+    float gravityLapse;
+    float gravityT0;
+    float gravityP0;
+    // 1 when the species carry a deflagration's unburnt mixture (x) instead of afterburning's fuel
+    // and oxygen: they are carried as afterburning's are, and burnt by Deflagration.metal.
+    uint deflagration;
+    // Sub-grid mixing (see `mixingFace`): Smagorinsky's coefficient, and the turbulent Prandtl
+    // and Schmidt numbers.
+    float mixingCoefficient;
+    float mixingPrandtl;
+    // Afterburning's extinction limit (see `afterburntHere`): the ignition temperature, and the
+    // limit flame temperature a mixture must reach by burning.
+    float ignitionTemperature;
+    float limitFlameTemperature;
 };
+
+// Whether the air carries species, for afterburning or a deflagration.
+static inline bool carriesSpecies(constant SolverUniforms &u) {
+    return u.afterburnEnergy > 0.0f || u.deflagration != 0u;
+}
 
 // Each experimental box has `boxVectors` definition vectors: quaternion, half-size, local
 // centre-of-mass offset, velocity, spin, centre, and its bounds' low and high corners.
@@ -156,6 +179,16 @@ static inline uint airModelOf(uint model) {
     return is_function_constant_defined(airModelConstant) ? airModelConstant : model;
 }
 constant float airGasConstant = 287.05f;
+// Gravity in the air, when a kernel is compiled for it (see `stencilFluxesGravity`): without it,
+// its code is left out of the kernels, which then run exactly as they did before it.
+constant bool airGravityConstant [[function_constant(5)]];
+constant bool airGravity = is_function_constant_defined(airGravityConstant) && airGravityConstant;
+// Sub-grid mixing, when a kernel is compiled for it (see `mixingFace`), likewise.
+constant bool airMixingConstant [[function_constant(6)]];
+constant bool airMixing = is_function_constant_defined(airMixingConstant) && airMixingConstant;
+// Afterburning's extinction limit, when a kernel is compiled for it (see `afterburntHere`).
+constant bool burnLimitConstant [[function_constant(7)]];
+constant bool burnLimit = is_function_constant_defined(burnLimitConstant) && burnLimitConstant;
 
 // Dissociating air: thermally perfect air whose N2 and O2 also split into atoms once hot, in
 // equilibrium, as Lighthill's ideal dissociating gas. For each, a mass fraction alpha of the
@@ -351,8 +384,7 @@ static inline float3 fromSweep(float3 s, uint axis) {
     return axis == 0 ? s : (axis == 1 ? s.zxy : s.yzx);
 }
 
-static inline Prim loadPrim(const device Cell *state, int index, constant SolverUniforms &u) {
-    Cell c = state[index];
+static inline Prim primOfCell(Cell c, constant SolverUniforms &u) {
     Prim w;
     w.rho = max(c.rho, u.densityFloor);
     float3 velocity = float3(c.mx, c.my, c.mz) / w.rho;
@@ -361,6 +393,10 @@ static inline Prim loadPrim(const device Cell *state, int index, constant Solver
     w.p = max(gas.x, u.pressureFloor);
     w.g = gas.y;
     return w;
+}
+
+static inline Prim loadPrim(const device Cell *state, int index, constant SolverUniforms &u) {
+    return primOfCell(state[index], u);
 }
 
 // Reflection in a wall moving at `wallSpeed` along the sweep axis.
@@ -578,13 +614,18 @@ static inline void wakeTilesAround(int3 cell, device uchar *tileFlags, uchar fla
 
 // What a cell contributes to the next step's limits: its fastest wave and its overpressure.
 static inline void recordCell(device atomic_uint *maxSpeed, float3 momentum, float rho, float pressure,
-                              constant SolverUniforms &u) {
+                              constant SolverUniforms &u, float ambient) {
     float3 speed = fabs(momentum) / rho;
     float fastest = max(speed.x, max(speed.y, speed.z))
         + sqrt(gasGamma(rho, pressure, u.airModel, u.gamma) * pressure / rho);
     recordWaveSpeed(maxSpeed, fastest);
     // The second slot tracks how disturbed the air still is.
-    recordWaveSpeed(maxSpeed + 1, fabs(pressure - u.ambientPressure));
+    recordWaveSpeed(maxSpeed + 1, fabs(pressure - ambient));
+}
+
+static inline void recordCell(device atomic_uint *maxSpeed, float3 momentum, float rho, float pressure,
+                              constant SolverUniforms &u) {
+    recordCell(maxSpeed, momentum, rho, pressure, u, u.ambientPressure);
 }
 
 // The fluxes through the low and high faces of the middle cell of a five-cell stencil, by
@@ -598,6 +639,202 @@ static inline void stencilFluxes(Prim wM2, Prim wM1, Prim w0, Prim wP1, Prim wP2
     FacePair facesP1 = reconstruct(wP1, slope(w0, wP1, wP2, theta), halfLambda, u);
     low = riemannFlux(facesM1.hi, faces0.lo, u);
     high = riemannFlux(faces0.hi, facesP1.lo, u);
+}
+
+// Gravity, as an option: the air is held by a hydrostatic background, p_b(z) and rho_b(z) with
+// dp_b/dz = -g rho_b, and the vertical sweep works on each cell's deviation from it, as
+// atmospheric codes do (the "well-balanced" schemes of Botta, Klein and others, and of Kappeli
+// and Mishra): the slopes and the Hancock predictor are those of the deviations, with the
+// background's own gradient and gravity's pull on the deviation in the predictor; the faces carry
+// the background at the face plus the deviation; the background's pressure at each face is taken
+// back out of the momentum flux and gravity's pull on the background out of the source, which is
+// -g (rho - rho_b). Air in the background state at rest has no deviation, so its fluxes and its
+// source cancel to the bit. The energy gains -g times the mean of the cell's two faces' mass
+// fluxes, so that the gas's energy and its potential energy are conserved together.
+
+// The background at height z: density (x) and pressure (y), from the ideal gas law with air's gas
+// constant and a temperature falling linearly with height (or constant).
+static inline float2 hydrostatic(float z, constant SolverUniforms &u) {
+    float t;
+    float p;
+    if (u.gravityLapse > 0.0f) {
+        t = u.gravityT0 - u.gravityLapse * z;
+        p = u.gravityP0 * pow(t / u.gravityT0, u.gravity / (airGasConstant * u.gravityLapse));
+    } else {
+        t = u.gravityT0;
+        p = u.gravityP0 * exp(-u.gravity * z / (airGasConstant * t));
+    }
+    return float2(p / (airGasConstant * t), p);
+}
+
+// Gravity's background is worked out once for each level, into a table (see `gravityTable` in
+// Gravity.metal), and read from it wherever it is needed, so that it is the same to the bit
+// everywhere (the same expressions compiled in two kernels can differ in the last bit): for each
+// cell k of the level's height, from 4 below the ground to 4 above the top, the background as a
+// cell stores it (density, energy), then at the cell's lower face (density, pressure).
+constant int gravityBelow = 4;
+
+static inline float4 gravityCellOf(const device float4 *table, int k) {
+    return table[2 * (k + gravityBelow)];
+}
+
+static inline float2 gravityFaceOf(const device float4 *table, int k) {
+    return table[2 * (k + gravityBelow) + 1].xy;
+}
+
+// The background at rest in cell `k`, as a cell stores it.
+static inline Cell gravityRestOf(const device float4 *table, int k) {
+    float4 t = gravityCellOf(table, k);
+    Cell c;
+    c.rho = t.x;
+    c.mx = 0.0f;
+    c.my = 0.0f;
+    c.mz = 0.0f;
+    c.energy = t.y;
+    return c;
+}
+
+// The pressure of air at rest in cell `k`, against which its overpressure is measured under
+// gravity: the ambient pressure at its height.
+static inline float gravityAmbientOf(const device float4 *table, int k, constant SolverUniforms &u) {
+    return primOfCell(gravityRestOf(table, k), u).p;
+}
+
+// Whether cell `k` of the coarse grid is still: under gravity, at rest in the background at its
+// height (and with afterburning, holding its oxygen and no products), which a sweep leaves as it
+// is to the bit; otherwise `isStill`.
+static inline bool isStillAt(Cell c, float2 species, int k, const device float4 *table,
+                             constant SolverUniforms &u) {
+    if (!airGravity) {
+        return isStill(c, species, u);
+    }
+    Cell b = gravityRestOf(table, k);
+    return c.rho == b.rho && c.mx == 0.0f && c.my == 0.0f && c.mz == 0.0f && c.energy == b.energy
+        && (u.afterburnEnergy == 0.0f || (species.x == 0.0f && species.y == u.stillOxygen / u.stillRho * b.rho));
+}
+
+// Hancock's predictor for the deviation `e` of cell `w`, of slope `d`, and its faces, whose
+// background is `below` and `above`, as full states. `rise` is the background's change across
+// the cell the state comes from, and `pull` gravity, both reversed for a mirrored ghost.
+static inline FacePair reconstructGravity(Prim w, Prim e, Prim d, float2 rise, float pull, float2 below,
+                                          float2 above, float halfLambda, float halfDt, constant SolverUniforms &u) {
+    Prim h;
+    h.rho = e.rho - halfLambda * (w.v.x * (d.rho + rise.x) + w.rho * d.v.x);
+    h.v.x = w.v.x - halfLambda * (w.v.x * d.v.x + d.p / w.rho) - halfDt * pull * e.rho / w.rho;
+    h.v.y = w.v.y - halfLambda * (w.v.x * d.v.y);
+    h.v.z = w.v.z - halfLambda * (w.v.x * d.v.z);
+    h.p = e.p - halfLambda * (w.v.x * (d.p + rise.y) + w.g * w.p * d.v.x);
+    FacePair faces;
+    faces.lo.rho = below.x + (h.rho - 0.5f * d.rho);
+    faces.lo.v = h.v - 0.5f * d.v;
+    faces.lo.p = below.y + (h.p - 0.5f * d.p);
+    faces.lo.g = w.g;
+    faces.hi.rho = above.x + (h.rho + 0.5f * d.rho);
+    faces.hi.v = h.v + 0.5f * d.v;
+    faces.hi.p = above.y + (h.p + 0.5f * d.p);
+    faces.hi.g = w.g;
+    bool valid = min(faces.lo.rho, faces.hi.rho) > u.densityFloor
+        && min(faces.lo.p, faces.hi.p) > u.pressureFloor;
+    if (!valid) {
+        faces.lo = w;
+        faces.lo.rho = below.x + e.rho;
+        faces.lo.p = below.y + e.p;
+        faces.hi = w;
+        faces.hi.rho = above.x + e.rho;
+        faces.hi.p = above.y + e.p;
+    }
+    return faces;
+}
+
+// The flux through a face: where the two sides are the same, as at rest in the background, the
+// physical flux, which the approximate Riemann solvers reach only to rounding.
+static inline Flux gravityFlux(Prim l, Prim r, constant SolverUniforms &u) {
+    bool same = l.rho == r.rho && l.p == r.p && all(l.v == r.v);
+    return same ? physicalFlux(l, totalEnergy(l, u)) : riemannFlux(l, r, u);
+}
+
+// As `stencilFluxes`, for the vertical sweep under gravity, cell 0 being cell `k` of its level,
+// whose background is `table`. `from` gives the cell each of the others' states came from, as an
+// offset from cell 0 (M2, M1, P1, P2), and `mirror` -1 where it is a mirrored ghost of it. The
+// momentum fluxes leave out the background's pressure at the face, so that at rest they are zero
+// to the bit (and the coarse and fine levels leave out the same, so refluxing is unchanged).
+static inline void stencilFluxesGravity(Prim wM2, Prim wM1, Prim w0, Prim wP1, Prim wP2, int4 from, float4 mirror,
+                                        int k, const device float4 *table, float lambda, float dt,
+                                        constant SolverUniforms &u, thread Flux &low, thread Flux &high) {
+    float halfLambda = 0.5f * lambda;
+    float halfDt = 0.5f * dt;
+    float theta = u.limiterTheta;
+    int ks[5] = {k + from.x, k + from.y, k, k + from.z, k + from.w};
+    float signs[5] = {mirror.x, mirror.y, 1.0f, mirror.z, mirror.w};
+    Prim w[5] = {wM2, wM1, w0, wP1, wP2};
+    Prim e[5];
+    float2 rise[5];
+    for (int j = 0; j < 5; ++j) {
+        // The background read back as the cells are, so that a cell holding it has no deviation.
+        Prim b = primOfCell(gravityRestOf(table, ks[j]), u);
+        e[j] = w[j];
+        e[j].rho -= b.rho;
+        e[j].p -= b.p;
+        rise[j] = signs[j] * (gravityFaceOf(table, ks[j] + 1) - gravityFaceOf(table, ks[j]));
+    }
+    // The faces' background, below cell M1 to above cell P1.
+    float2 f0 = gravityFaceOf(table, k - 1);
+    float2 f1 = gravityFaceOf(table, k);
+    float2 f2 = gravityFaceOf(table, k + 1);
+    float2 f3 = gravityFaceOf(table, k + 2);
+    FacePair facesM1 = reconstructGravity(w[1], e[1], slope(e[0], e[1], e[2], theta), rise[1],
+                                          signs[1] * u.gravity, f0, f1, halfLambda, halfDt, u);
+    FacePair faces0 = reconstructGravity(w[2], e[2], slope(e[1], e[2], e[3], theta), rise[2], u.gravity, f1, f2,
+                                         halfLambda, halfDt, u);
+    FacePair facesP1 = reconstructGravity(w[3], e[3], slope(e[2], e[3], e[4], theta), rise[3],
+                                          signs[3] * u.gravity, f2, f3, halfLambda, halfDt, u);
+    low = gravityFlux(facesM1.hi, faces0.lo, u);
+    high = gravityFlux(faces0.hi, facesP1.lo, u);
+    // The background's own pressure at each face, balanced by gravity's pull on the background.
+    low.momentum.x -= f1.y;
+    high.momentum.x -= f2.y;
+}
+
+// Gravity's share of a vertical sweep's update of cell `k`, whose density was `rho0` and whose
+// faces passed `low` and `high`: -g (rho - rho_b) dt for the momentum (the background's share
+// having left the fluxes), and -g times the faces' mean mass flux dt for the energy.
+static inline void gravitySources(thread float3 &momentum, thread float &energy, float rho0, Flux low, Flux high,
+                                  int k, const device float4 *table, float dt, constant SolverUniforms &u) {
+    momentum.x -= dt * u.gravity * (rho0 - gravityCellOf(table, k).x);
+    energy -= dt * u.gravity * 0.5f * (low.mass + high.mass);
+}
+
+// Sub-grid mixing, as an option: the turbulence the grid cannot resolve carries momentum, heat and
+// the products and oxygen across each face as an eddy viscosity nu (see `eddyViscosity` in
+// Mixing.metal) and diffusivities nu / Pr would: -rho nu dv/dx of momentum, its work and
+// -rho (nu / Pr) dh/dx of heat (h the specific enthalpy), and -rho (nu / Pr) dY/dx of each of the
+// species' mass fractions. The face takes the mean of its two cells' nu, at most a quarter of
+// dx^2 / dt, which keeps the explicit diffusion stable, and both cells beside it work out the same
+// flux, so the gas stays conserved. Walls and open faces pass none.
+struct MixingFace {
+    Flux flux;
+    float carrier;  // rho nu / (Pr dx): what multiplies a species' difference in mass fraction
+};
+
+static inline MixingFace mixingFace(Prim a, Prim b, float nuA, float nuB, float dx, float dt,
+                                    constant SolverUniforms &u) {
+    float nu = min(0.5f * (nuA + nuB), 0.25f * dx * dx / dt);
+    float scale = 0.5f * (a.rho + b.rho) * nu / dx;
+    float ha = (gasEnergy(a.rho, a.p, u.airModel, u.gamma) + a.p) / a.rho;
+    float hb = (gasEnergy(b.rho, b.p, u.airModel, u.gamma) + b.p) / b.rho;
+    MixingFace face;
+    face.flux.mass = 0.0f;
+    face.flux.momentum = -scale * (b.v - a.v);
+    face.flux.energy = dot(face.flux.momentum, 0.5f * (a.v + b.v)) - scale / u.mixingPrandtl * (hb - ha);
+    face.carrier = scale / u.mixingPrandtl;
+    return face;
+}
+
+static inline Flux sumOf(Flux a, Flux b) {
+    a.mass += b.mass;
+    a.momentum += b.momentum;
+    a.energy += b.energy;
+    return a;
 }
 
 // The patch refining coarse cell `cell`, or -1.
@@ -624,9 +861,41 @@ static inline float2 speciesFlux(float mass, float2 behind, float2 ahead) {
     return mass * (mass > 0.0f ? behind : ahead);
 }
 
+// Componentwise minmod.
+static inline float2 minmodPair(float2 a, float2 b) {
+    return select(select(b, a, fabs(a) < fabs(b)), float2(0.0f), a * b <= 0.0f);
+}
+
 // Fuel burnt over `dt` in a cell holding `species`, as far as its oxygen allows (see `sweepCell`).
 static inline float burnt(float2 species, float dt, constant SolverUniforms &u) {
     return min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-dt * u.afterburnRate));
+}
+
+// Fuel burnt over `dt` in a cell of density `rho`, momentum `momentum` and energy `energy`
+// holding `species`: as `burnt`, but with the extinction limit compiled in, only where the
+// mixture can keep a flame going. It must be hot enough for the products' carbon monoxide to
+// oxidise faster than the gas mixes, `ignitionTemperature` (Dryer and Glassman's rate puts that
+// near 800 K for a fireball's mixing times); and burning all the fuel its oxygen allows must take
+// it to `limitFlameTemperature`, the flame temperature mixtures at their flammability limits
+// reach (about 1,500 K, Zabetakis), which makes a lean, cold mixture too dilute and a rich one too
+// short of oxygen to burn, and widens the limits as the mixture warms, as real limits do.
+static inline float afterburntHere(float2 species, float rho, float3 momentum, float energy, float dt,
+                                   constant SolverUniforms &u) {
+    if (!burnLimit) {
+        return burnt(species, dt, u);
+    }
+    float density = max(rho, u.densityFloor);
+    float internal = energy - 0.5f * dot(momentum, momentum) / density;
+    float pressure = gasPressure(density, internal, u.airModel, u.gamma);
+    float temperature = pressure / (density * airGasConstant);
+    if (!(temperature >= u.ignitionTemperature)) {
+        return 0.0f;
+    }
+    // The flame temperature at fixed volume, from the gas's heat capacity at its state.
+    float g = gasGamma(density, pressure, u.airModel, u.gamma);
+    float heat = density * airGasConstant / (g - 1.0f);
+    float flame = temperature + min(species.x, species.y / u.oxygenPerFuel) * u.afterburnEnergy / heat;
+    return flame >= u.limitFlameTemperature ? burnt(species, dt, u) : 0.0f;
 }
 
 static inline void storeFlux(device float *registers, uint slot, Flux f, uint axis, float dt) {
@@ -645,7 +914,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                              const device float *wallVelocity, device uchar *tileFlags,
                              device float2 *speciesSrc, device float2 *speciesDst,
                              const device int *patchOfTile, device float *coarseFlux,
-                             device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse) {
+                             device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse,
+                             const device float4 *gravityTable, const device float *viscosity) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     if (control.dt <= 0.0f) {
         // A step that does nothing (past the time limit) swaps the two buffers' cells, solid
@@ -654,7 +924,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         Cell held = dst[index];
         dst[index] = src[index];
         src[index] = held;
-        if (u.afterburnEnergy > 0.0f) {
+        if (carriesSpecies(u)) {
             float2 species = speciesDst[index];
             speciesDst[index] = speciesSrc[index];
             speciesSrc[index] = species;
@@ -680,47 +950,96 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     float speedP1 = kindP1 == kindWall ? wallSpeed(wallVelocity, cell, 1, u) : 0.0f;
     float speedM1 = kindM1 == kindWall ? wallSpeed(wallVelocity, cell, -1, u) : 0.0f;
 
+    // With gravity, the cell each state came from (offsets M2, M1, P1, P2) and -1 for a mirror.
+    int4 from = int4(-2, -1, 1, 2);
+    float4 mirror = float4(1.0f);
     Prim wP1 = w0;
     if (kindP1 == kindFluid) {
         wP1 = loadPrim(src, index + stride, u);
     } else if (kindP1 == kindWall) {
         wP1 = mirrored(w0, speedP1);
+        from.z = 0;
+        mirror.z = -1.0f;
+    } else {
+        from.z = 0;
     }
     Prim wM1 = w0;
     if (kindM1 == kindFluid) {
         wM1 = loadPrim(src, index - stride, u);
     } else if (kindM1 == kindWall) {
         wM1 = mirrored(w0, speedM1);
+        from.y = 0;
+        mirror.y = -1.0f;
+    } else {
+        from.y = 0;
     }
 
     Prim wP2 = wP1;
     if (kindP1 == kindWall) {
         wP2 = mirrored(wM1, speedP1);
+        from.w = from.y;
+        mirror.w = -mirror.y;
     } else if (kindP1 == kindFluid) {
         int kind = classify(mask, index, 2, stride, i, n, lowWall, highWall);
         if (kind == kindFluid) {
             wP2 = loadPrim(src, index + 2 * stride, u);
         } else if (kind == kindWall) {
             wP2 = mirrored(wP1, wallSpeed(wallVelocity, cell, 2, u));
+            from.w = 1;
+            mirror.w = -1.0f;
+        } else {
+            from.w = 1;
         }
+    } else {
+        from.w = from.z;
     }
     Prim wM2 = wM1;
     if (kindM1 == kindWall) {
         wM2 = mirrored(wP1, speedM1);
+        from.x = from.z;
+        mirror.x = -mirror.z;
     } else if (kindM1 == kindFluid) {
         int kind = classify(mask, index, -2, stride, i, n, lowWall, highWall);
         if (kind == kindFluid) {
             wM2 = loadPrim(src, index - 2 * stride, u);
         } else if (kind == kindWall) {
             wM2 = mirrored(wM1, wallSpeed(wallVelocity, cell, -2, u));
+            from.x = -1;
+            mirror.x = -1.0f;
+        } else {
+            from.x = -1;
         }
+    } else {
+        from.x = from.y;
     }
 
     float dt = control.dt;
     float lambda = dt / u.dx;
     Flux fluxLow;
     Flux fluxHigh;
-    stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+    bool gravityHere = airGravity && axis == 2u;
+    if (gravityHere) {
+        stencilFluxesGravity(wM2, wM1, w0, wP1, wP2, from, mirror, cell.z, gravityTable, lambda, dt, u, fluxLow,
+                             fluxHigh);
+    } else {
+        stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+    }
+    // Sub-grid mixing's fluxes through the faces with fluid beyond them.
+    float carrierLow = 0.0f;
+    float carrierHigh = 0.0f;
+    if (airMixing) {
+        float nu0 = viscosity[index];
+        if (kindM1 == kindFluid) {
+            MixingFace face = mixingFace(wM1, w0, viscosity[index - stride], nu0, u.dx, dt, u);
+            fluxLow = sumOf(fluxLow, face.flux);
+            carrierLow = face.carrier;
+        }
+        if (kindP1 == kindFluid) {
+            MixingFace face = mixingFace(w0, wP1, nu0, viscosity[index + stride], u.dx, dt, u);
+            fluxHigh = sumOf(fluxHigh, face.flux);
+            carrierHigh = face.carrier;
+        }
+    }
 
     // Experimental rigid-box path: impermeable moving-wall traction, recorded from the
     // same numerical face flux used by the gas. Each fluid thread owns six output scalars, one
@@ -776,6 +1095,9 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     float rho = c.rho - lambda * (fluxHigh.mass - fluxLow.mass);
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
+    if (gravityHere) {
+        gravitySources(momentum, energy, w0.rho, fluxLow, fluxHigh, cell.z, gravityTable, dt, u);
+    }
 
     // Detonation products that have not yet burnt ("fuel") and oxygen, as densities, carried
     // by the same mass fluxes, each at the mass fraction of the cell it leaves (first-order
@@ -783,21 +1105,46 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     // as the oxygen allows, after the final sweep of the step: afterburning limited by mixing,
     // which here is the grid's own.
     float2 species = float2(0.0f);
-    if (u.afterburnEnergy > 0.0f) {
+    if (carriesSpecies(u)) {
         float2 own = speciesSrc[index];
         float2 fraction = own / max(c.rho, u.densityFloor);
         float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho : fraction;
         float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho : fraction;
         float2 inflow = speciesFlux(fluxLow.mass, below, fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, above);
+        if (u.deflagration != 0u) {
+            // A deflagration's mixture is carried at limited linear (MUSCL) mass fractions at the
+            // faces instead: at the upwind cell's, the grid's diffusion would spread its flame
+            // over many cells (see Deflagration.metal). Both cells beside a face work out the
+            // same value, so the species stay conserved.
+            float2 below2 = below;
+            if (kindM1 == kindFluid && classify(mask, index, -2, stride, i, n, lowWall, highWall) == kindFluid) {
+                below2 = speciesSrc[index - 2 * stride] / wM2.rho;
+            }
+            float2 above2 = above;
+            if (kindP1 == kindFluid && classify(mask, index, 2, stride, i, n, lowWall, highWall) == kindFluid) {
+                above2 = speciesSrc[index + 2 * stride] / wP2.rho;
+            }
+            float2 lowFace = fluxLow.mass > 0.0f ? below + 0.5f * minmodPair(below - below2, fraction - below)
+                                                 : fraction - 0.5f * minmodPair(fraction - below, above - fraction);
+            float2 highFace = fluxHigh.mass > 0.0f ? fraction + 0.5f * minmodPair(fraction - below, above - fraction)
+                                                   : above - 0.5f * minmodPair(above - fraction, above2 - above);
+            inflow = fluxLow.mass * lowFace;
+            outflow = fluxHigh.mass * highFace;
+        }
+        if (airMixing) {
+            // Sub-grid mixing carries the species down their gradients in mass fraction.
+            inflow -= carrierLow * (fraction - below);
+            outflow -= carrierHigh * (above - fraction);
+        }
         species = max(own - lambda * (outflow - inflow), 0.0f);
         if (speciesRegister >= 0) {
             float2 through = (registerLow ? inflow : outflow) * dt;
             coarseSpeciesFlux[speciesRegister] = through.x;
             coarseSpeciesFlux[speciesRegister + 1] = through.y;
         }
-        if (u.finalSweep != 0) {
-            float fuel = burnt(species, control.dt, u);
+        if (u.finalSweep != 0 && u.afterburnEnergy > 0.0f) {
+            float fuel = afterburntHere(species, rho, momentum, energy, control.dt, u);
             species.x -= fuel;
             species.y -= fuel * u.oxygenPerFuel;
             energy += fuel * u.afterburnEnergy;
@@ -823,15 +1170,17 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     dst[index] = result;
 
     if (u.finalSweep != 0) {
-        float overpressure = pressure - u.ambientPressure;
+        // Under gravity, against the ambient pressure at the cell's height.
+        float ambient = airGravity ? gravityAmbientOf(gravityTable, cell.z, u) : u.ambientPressure;
+        float overpressure = pressure - ambient;
         peak[index] = max(peak[index], overpressure);
         // Under a patch, impulse is taken from the fine cells instead (see Refine.metal).
         if (u.refineRatio == 0 || patchAt(cell, patchOfTile, u) < 0) {
             impulse[index] += max(overpressure, 0.0f) * dt;
         }
-        recordCell(maxSpeed, momentum, rho, pressure, u);
+        recordCell(maxSpeed, momentum, rho, pressure, u, ambient);
         // A changed cell near the edge of its tile wakes the tiles it can reach next step.
-        if (u.tileNx != 0 && !isStill(result, species, u)) {
+        if (u.tileNx != 0 && !isStillAt(result, species, cell.z, gravityTable, u)) {
             int3 local = cell % tileSize;
             if (any(local < tileReach) || any(local >= tileSize - tileReach)) {
                 wakeTilesAround(cell, tileFlags, tileWoken, u);
@@ -858,12 +1207,15 @@ kernel void sweep(device Cell *src [[buffer(0)]],
                   device float *coarseSpeciesFlux [[buffer(15)]],
                   const device uchar *boxMask [[buffer(16)]],
                   device float *boxImpulse [[buffer(17)]],
+                  const device float4 *gravityTable [[buffer(18)]],
+                  const device float *viscosity [[buffer(19)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-              speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse);
+              speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
+                      gravityTable, viscosity);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -886,6 +1238,8 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
                        device float *coarseSpeciesFlux [[buffer(15)]],
                   const device uchar *boxMask [[buffer(16)]],
                   device float *boxImpulse [[buffer(17)]],
+                       const device float4 *gravityTable [[buffer(18)]],
+                  const device float *viscosity [[buffer(19)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -896,7 +1250,8 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
-                      speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse);
+                      speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
+                      gravityTable, viscosity);
         }
     }
 }
@@ -907,12 +1262,13 @@ kernel void wakeTiles(const device Cell *state [[buffer(0)]],
                       device uchar *tileFlags [[buffer(2)]],
                       constant SolverUniforms &u [[buffer(3)]],
                       const device float2 *species [[buffer(4)]],
+                      const device float4 *gravityTable [[buffer(5)]],
                       uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     int index = int(tid.x + u.nx * (tid.y + u.ny * tid.z));
-    if (mask[index] == 0 && !isStill(state[index], species[index], u)) {
+    if (mask[index] == 0 && !isStillAt(state[index], species[index], int(tid.z), gravityTable, u)) {
         wakeTilesAround(int3(tid), tileFlags, tileActive, u);
     }
 }
@@ -925,12 +1281,18 @@ kernel void collectTiles(device uchar *tileFlags [[buffer(0)]],
                          device atomic_uint *tileCount [[buffer(2)]],
                          device atomic_uint *maxSpeed [[buffer(3)]],
                          constant SolverUniforms &u [[buffer(4)]],
+                         const device float4 *gravityTable [[buffer(5)]],
                          uint tid [[thread_position_in_grid]]) {
     if (tid >= u.tileNx * u.tileNy * u.tileNz) {
         return;
     }
     uchar flag = tileFlags[tid];
-    if (flag != tileActive) {
+    if (flag != tileActive && airGravity) {
+        // Under gravity, the air at rest at the ground, the warmest and so the fastest; it sets
+        // the step only while nothing moves, which a charge does from its first step.
+        Prim w = primOfCell(gravityRestOf(gravityTable, 0), u);
+        recordCell(maxSpeed, float3(0.0f), w.rho, w.p, u, w.p);
+    } else if (flag != tileActive) {
         float rho = max(u.stillRho, u.densityFloor);
         float3 momentum = float3(u.stillMx, u.stillMy, u.stillMz);
         float kinetic = 0.5f * dot(momentum, momentum) / rho;
@@ -954,7 +1316,7 @@ static inline void logGauges(device float *gaugeLog, uint row, float dt, const d
                              const device int *patchOfTile, const device Cell *fine,
                              const device uint *gaugeChildren, const device uchar *fineMask,
                              const device int *childPatches, const device Cell *childFine,
-                             const device uchar *childMask) {
+                             const device uchar *childMask, const device float4 *gravityTable) {
     row *= u.gaugeCount + 1;
     gaugeLog[row] = dt;
     for (uint g = 0; g < u.gaugeCount; ++g) {
@@ -996,7 +1358,14 @@ static inline void logGauges(device float *gaugeLog, uint row, float dt, const d
             }
         }
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);
-        gaugeLog[row + 1 + g] = gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
+        float pressure = gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
+        if (airGravity) {
+            // Under gravity, as if at the ground: its overpressure against the ambient pressure
+            // at the gauge's height, as the coarse cell holds it.
+            int k = int(gaugeCells[g] / (u.nx * u.ny));
+            pressure += u.ambientPressure - gravityAmbientOf(gravityTable, k, u);
+        }
+        gaugeLog[row + 1 + g] = pressure;
     }
 }
 
@@ -1017,6 +1386,7 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                         const device int *childPatches [[buffer(12)]],
                         const device Cell *childFine [[buffer(13)]],
                         const device uchar *childMask [[buffer(14)]],
+                        const device float4 *gravityTable [[buffer(15)]],
                         uint tid [[thread_position_in_grid]]) {
     if (tid != 0) {
         return;
@@ -1066,7 +1436,7 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     }
 
     logGauges(gaugeLog, control.stepIndex, dt, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask,
-              childPatches, childFine, childMask);
+              childPatches, childFine, childMask, gravityTable);
 
     control.dt = dt;
     control.batchTime += dt;
@@ -1088,10 +1458,11 @@ kernel void sampleGauges(const device StepControl &control [[buffer(0)]],
                          const device int *childPatches [[buffer(12)]],
                          const device Cell *childFine [[buffer(13)]],
                          const device uchar *childMask [[buffer(14)]],
+                         const device float4 *gravityTable [[buffer(15)]],
                          uint tid [[thread_position_in_grid]]) {
     if (tid == 0) {
         logGauges(gaugeLog, control.stepIndex, 0.0f, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask,
-                  childPatches, childFine, childMask);
+                  childPatches, childFine, childMask, gravityTable);
     }
 }
 

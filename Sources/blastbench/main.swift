@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
-//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full] [--dx 0.5,0.25]
+//               protected|glass|carpark|underpass|house|blockwall|chamber|gasroom] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
@@ -24,14 +24,19 @@ import simd
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
+//   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
 //   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
-//                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
+//   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
+//                   (a precast beam on corbels of two columns, one column struck away from the span)
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
@@ -40,9 +45,20 @@ import simd
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
-//   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
+//   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
+//   blastbench bubble [--dx 0.5] [--radius 4] [--hot 2] [--time 20] [--lapse 6.5] [--csv out.csv]
+//                     (a hot bubble rising under gravity, against the cloud's integral model)
+//   blastbench mixinglayer [--dx 0.5] [--speed 50] [--time 8] [--length 128] [--mixing] [--csv out.csv]
+//                          (a temporal mixing layer's growth, against dθ/dt = 0.014 ΔU)
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1] [--terrain hill]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
+//   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
+//                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68;
+//                            a tube's and a free sphere's flame profiles; layout --out f.json writes the
+//                            gas-room preset as a layout for `BombCAD run`)
+//   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -74,6 +90,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "house": .blockHouse
     case "blockwall": .blockWall
     case "chamber": .internalExplosion
+    case "gasroom": .ventedGasRoom
     default: .streetCanyon
     }
 }
@@ -122,6 +139,8 @@ func chosenScenario() -> Scenario {
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
         scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
     }
+    // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
+    if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     return scenario
 }
 
@@ -185,9 +204,17 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 
 /// `--work`: the work trace (`StructureSolver.tracesWork`), and `--hourglass 0.5` scales the
 /// hourglass control, for any bench that builds a solid body.
+/// The structure of the last run, kept for a report after it.
+nonisolated(unsafe) var lastStructure: StructureSolver?
+
 func prepareTrace(_ solver: StructureSolver) {
     solver.tracesWork = flag("work")
     if let factor = option("hourglass").flatMap({ Float($0) }) { solver.hourglassCoefficient = factor }
+    // `--step-divisor 4`: the structure's step a quarter of its elastic limit, which concrete
+    // compacted under a contact charge needs (see `ContactSlabTest`).
+    if let divisor = option("step-divisor").flatMap({ Float($0) }) {
+        solver.stepOverride = solver.stableTimeStep / divisor
+    }
 }
 
 /// The work trace's channels in the order printed.
@@ -214,6 +241,8 @@ func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
 }
 
 func applyRateOptions(_ model: inout StructureModel) {
+    // `--fragments`: concrete broken into fragments is removed (`removesFragments`).
+    if flag("fragments") { model.removesFragments = true }
     // `--element-bar-rate`: bars take the strain rate of the element they run through.
     if flag("element-bar-rate") { model.barRateAlongBars = false }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
@@ -465,10 +494,38 @@ func chosenCooling() throws -> RadiativeCooling? {
     return cooling
 }
 
+/// With `--gravity`, gravity acts on the air, which starts in a hydrostatic atmosphere cooling
+/// with height at `--lapse` K/km (6.5, the standard atmosphere's, by default; 0 for isothermal).
+func chosenGravity() -> AirGravity? {
+    guard flag("gravity") else { return nil }
+    return AirGravity(lapseRate: (option("lapse").flatMap { Float($0) } ?? 6.5) / 1000)
+}
+
+/// With `--mixing`, sub-grid turbulent mixing in the air, of Smagorinsky coefficient `--smagorinsky`.
+func chosenMixing() -> SubgridMixing? {
+    guard flag("mixing") else { return nil }
+    var mixing = SubgridMixing()
+    if let value = option("smagorinsky").flatMap({ Float($0) }) { mixing.coefficient = value }
+    return mixing
+}
+
+/// With `--burn-limit`, afterburning's extinction limit, of ignition temperature `--ignition` and
+/// limit flame temperature `--limit-flame` (K).
+func chosenBurnLimit() -> AfterburnLimit? {
+    guard flag("burn-limit") else { return nil }
+    var limit = AfterburnLimit()
+    if let value = option("ignition").flatMap({ Float($0) }) { limit.ignitionTemperature = value }
+    if let value = option("limit-flame").flatMap({ Float($0) }) { limit.limitFlameTemperature = value }
+    return limit
+}
+
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
     configuration.radiativeCooling = try chosenCooling()
+    configuration.gravity = chosenGravity()
+    configuration.mixing = chosenMixing()
+    configuration.afterburnLimit = chosenBurnLimit()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     if let air = chosenAirModel() {
@@ -573,6 +630,9 @@ func runValidation() throws {
         }
         configureRefinement(&solver.configuration)
         solver.configuration.radiativeCooling = try? chosenCooling()
+        solver.configuration.gravity = chosenGravity()
+        solver.configuration.mixing = chosenMixing()
+        solver.configuration.afterburnLimit = chosenBurnLimit()
     }
     func header(_ first: String) -> String {
         pad(first, 10) + pad("reference", 12)
@@ -833,6 +893,9 @@ func runSnapshot() throws {
 
     let renderer = try SceneRenderer(device: device)
     renderer.setScene(scenario, solver: solver)
+    // Vent panels that have released are not drawn.
+    let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
+    renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })
     switch option("mode") {
     case "now": renderer.settings.mode = .overpressure
     case "impulse": renderer.settings.mode = .impulse
@@ -851,7 +914,8 @@ func runSnapshot() throws {
     renderer.settings.showCharge = time == 0
     var dots: [SIMD4<Float>] = []
     if let ground {
-        let result = ground.result(frameInterval: 0)
+        var result = ground.result(frameInterval: 0)
+        result.place(on: scenario.terrain)
         dots += result.dots
         print("  " + result.summary)
     }
@@ -1492,7 +1556,435 @@ func energyProbe() -> (StructureSolver, Double) -> Void {
     }
 }
 
+/// Prints, every 20 µs, the fastest node of the structure: its speed, lattice position, how
+/// many of its elements are whole, and the largest compaction and pressure of those around it.
+func fastestNodes() -> (StructureSolver, Double) -> Void {
+    var next = 0.0
+    return { structure, time in
+        guard time >= next else { return }
+        next += 0.00002
+        var best: (speed: Float, i: Int, j: Int, k: Int) = (0, 0, 0, 0)
+        for k in 0...structure.ez {
+            for j in 0...structure.ey {
+                for i in 0...structure.ex where structure.storedNode(i, j, k) != nil {
+                    let speed = simd_length(structure.node(i, j, k).velocity)
+                    if speed > best.speed { best = (speed, i, j, k) }
+                }
+            }
+        }
+        var whole = 0
+        var compaction: Float = 0
+        var pressure: Float = 0
+        for corner in 0..<8 {
+            let (a, b, c) = (
+                best.i - (corner & 1), best.j - ((corner >> 1) & 1), best.k - ((corner >> 2) & 1)
+            )
+            guard a >= 0, b >= 0, c >= 0, a < structure.ex, b < structure.ey, c < structure.ez else {
+                continue
+            }
+            if structure.flag(a, b, c) == .active { whole += 1 }
+            compaction = max(compaction, structure.compaction(a, b, c))
+            let s = structure.stress(a, b, c)
+            pressure = max(pressure, -(s[0] + s[1] + s[2]) / 3)
+        }
+        print(
+            "    \(format(time * 1e6, 0)) µs: fastest node \(format(Double(best.speed), 0)) m/s at (\(best.i), \(best.j), \(best.k)), "
+                + "\(whole) whole elements, compaction \(format(Double(compaction), 3)), pressure \(format(Double(pressure) / 1e6, 0)) MPa"
+        )
+        fflush(stdout)
+    }
+}
+
+/// Prints, every 0.1 ms, the column of elements under the charge from the protective face up:
+/// each element's state (a active, b bare, x removed) and its lower node's downward velocity.
+func axisColumn() -> (StructureSolver, Double) -> Void {
+    var next = 0.0
+    return { structure, time in
+        guard time >= next else { return }
+        next += 0.0001
+        let i = structure.ex / 2
+        let j = structure.ey / 2
+        var states = ""
+        var speeds: [String] = []
+        for k in 0..<structure.ez {
+            let flag = structure.flag(i, j, k)
+            states += flag == .active ? "a" : flag == .bare ? "b" : flag == .eroded ? "x" : "."
+            speeds.append(format(Double(-structure.node(i, j, k).velocity.z), 0))
+        }
+        speeds.append(format(Double(-structure.node(i, j, structure.ez).velocity.z), 0))
+        print("    \(format(time * 1000, 2)) ms: \(states)  node v down: \(speeds.joined(separator: " "))")
+        fflush(stdout)
+    }
+}
+
+/// Prints the elements of the column under `point` (a lattice index i, j through the
+/// thickness) and of columns `offsets` elements out along x: each element's state, its crack
+/// planes' openings (mm, with the plane's tilt from the slab's: | across, - parallel to the
+/// face), its largest compressive strain, compaction, confinement gain, the bars' plastic strain
+/// and damage; and why it is kept, against the removal rules.
+func columnReport(_ structure: StructureSolver, i i0: Int, j: Int, offsets: [Int] = [0, 2, 4, 8]) {
+    let h = structure.model.elementSize
+    let erosion = structure.model.material.erosionOpening
+    print(
+        "  column under the charge, from the protective face up (opening mm: |vertical plane, -face-parallel):"
+    )
+    for offset in offsets {
+        let i = i0 + offset
+        print("    \(format(Double(Float(offset) * h) * 100, 1)) cm out:")
+        for k in 0..<structure.ez {
+            let flag = structure.flag(i, j, k)
+            let planes = structure.crackPlanes(i, j, k)
+            let openings = planes.history.indices.map { p -> String in
+                let tilt = abs(planes.normals.isEmpty ? 0 : planes.normals[p].z) > 0.7 ? "-" : "|"
+                return tilt + format(Double(planes.history[p] * h) * 1000, 2)
+            }
+            let bars = structure.barPlasticStrain(i, j, k)
+            let barText = [bars.x, bars.y].map { abs($0) > 1e8 ? "cut" : format(Double($0) * 100, 1) }
+            let widest = planes.history.max() ?? 0
+            let note: String
+            if flag != .active {
+                note = ""
+            } else if widest * h >= 3 * erosion {
+                note = "crack past 3x removal width"
+            } else if widest * h >= erosion {
+                note = "crack past removal width, bridged"
+            } else {
+                note = "crack \(format(Double(widest * h / erosion) * 100, 0))% of removal width"
+            }
+            print(
+                "      k\(k) " + pad("\(flag)", 7) + openings.joined(separator: " ")
+                    + "  crush \(format(Double(structure.plasticStrain(i, j, k)) * 100, 2))%"
+                    + " compaction \(format(Double(structure.compaction(i, j, k)) * 100, 2))%"
+                    + " gain \(structure.confinement(i, j, k).map { format(Double($0), 2) }.joined(separator: "/"))"
+                    + " bars \(barText.joined(separator: "/"))%  damage \(format(Double(structure.damage(i, j, k)), 2))  \(note)"
+            )
+        }
+    }
+}
+
+/// For candidate removal rules, applied after the fact to the state at the end: the hole each
+/// would leave about `(i0, j0)` (the equivalent diameter of the columns whose concrete is gone
+/// through the thickness, already or by the rule) and how many more elements it would remove,
+/// within 0.3 m of the axis and beyond. Openings are each crack plane's strain times the
+/// element size; "softened" is past the end of tension softening's tail (1% of the strength).
+func removalCensus(_ structure: StructureSolver, i i0: Int, j j0: Int) {
+    let h = structure.model.elementSize
+    struct Rule {
+        var name: String
+        var removes: (_ openings: [Float], _ crush: Float, _ compaction: Float) -> Bool
+    }
+    func planesOpen(_ w: [Float], _ limit: Float) -> Int { w.filter { $0 >= limit }.count }
+    let rules = [
+        Rule(name: "now") { _, _, _ in false },
+        Rule(name: "2 planes >= 1 mm") { w, _, _ in planesOpen(w, 1e-3) >= 2 },
+        Rule(name: "3 planes >= 0.5 mm") { w, _, _ in planesOpen(w, 0.5e-3) >= 3 },
+        Rule(name: "any plane >= 5% strain") { w, _, _ in (w.max() ?? 0) >= 0.05 * h },
+        Rule(name: "any plane >= 5% & 2 open >= 0.5 mm") { w, _, _ in
+            (w.max() ?? 0) >= 0.05 * h && planesOpen(w, 0.5e-3) >= 2
+        },
+        Rule(name: "compacted & 2 planes >= 0.5 mm") { w, _, m in m > 0 && planesOpen(w, 0.5e-3) >= 2 },
+        Rule(name: "compacted & 2 planes >= 1 mm") { w, _, m in m > 0 && planesOpen(w, 1e-3) >= 2 },
+        Rule(name: "compacted or crushed 1%, 2 >= 1 mm") { w, c, m in
+            (m > 0 || c > 0.01) && planesOpen(w, 1e-3) >= 2
+        },
+        Rule(name: "compacted or crushed 1%, 1 >= 1 mm") { w, c, m in
+            (m > 0 || c > 0.01) && planesOpen(w, 1e-3) >= 1
+        },
+        Rule(name: "crushed >= 5%") { _, c, _ in c >= 0.05 },
+    ]
+    print("  removal rules tried after the fact: hole (cm), elements more within 0.3 m / beyond")
+    for rule in rules {
+        var through = 0
+        var near = 0
+        var far = 0
+        for j in 0..<structure.ey {
+            for i in 0..<structure.ex where structure.flag(i, j, 0) != .empty {
+                let r = Float(simd_length(SIMD2<Float>(Float(i - i0), Float(j - j0)))) * h
+                var all = true
+                for k in 0..<structure.ez {
+                    let flag = structure.flag(i, j, k)
+                    if flag == .eroded || flag == .bare { continue }
+                    let planes = structure.crackPlanes(i, j, k)
+                    let w = (0..<3).map { planes.history[$0] * h }
+                    if rule.removes(w, structure.plasticStrain(i, j, k), structure.compaction(i, j, k)) {
+                        if r <= 0.3 { near += 1 } else { far += 1 }
+                    } else {
+                        all = false
+                    }
+                }
+                if all { through += 1 }
+            }
+        }
+        let diameter = (4 * Float(through) * h * h / .pi).squareRoot()
+        print("    " + pad(rule.name, 38) + pad(format(Double(diameter) * 100, 1), 8) + "\(near) / \(far)")
+    }
+}
+
+/// Hupfauf's slabs under contact charges: the debris's velocity off the protective face, the
+/// spall crater and the breach, against the thesis's measurements and fits.
+func runContact() throws {
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.02
+    let refinement = option("refine").flatMap { Int($0) } ?? 2
+    let levels = option("levels").flatMap { Int($0) } ?? 2
+    let layers = option("layers").flatMap { Int($0) } ?? 12
+    let duration = option("time").flatMap { Double($0) } ?? 0.003
+    print("Slabs under contact charges (Hupfauf, 2024)")
+    print(
+        "Air cells \(format(Double(cellSize), 3)) m, refined \(levels > 1 ? "twice " : "")by \(refinement); "
+            + "\(layers) elements through each slab; \(format(duration * 1000, 1)) ms\n")
+    func cm(_ value: Float) -> String { format(Double(value) * 100, 1) }
+    func list(_ values: [Float], scale: Float = 1, digits: Int = 1) -> String {
+        values.map { format(Double($0 * scale), digits) }.joined(separator: ", ")
+    }
+    for test in ContactSlabTest.tests where names?.contains(test.name) ?? true {
+        let fastest = fastestNodes()
+        let column = axisColumn()
+        var reported = false
+        let result = try ContactSlabTest.run(
+            device: device, test: test, cellSize: cellSize, elementSize: test.thickness / Float(layers),
+            refinement: refinement, levels: levels, duration: duration,
+            stepDivisor: option("step-divisor").flatMap { Float($0) } ?? 4,
+            adjust: { scenario in
+                if flag("no-rate") { scenario.structure?.material.rateDependent = false }
+                // `--charge 1.64`: a TNT sphere of this mass instead, still touching the slab.
+                if let mass = option("charge").flatMap({ Float($0) }),
+                    let top = scenario.structure?.bounds.max.z
+                {
+                    let radius = Float(cbrt(3 * Double(mass) / (4 * Double.pi * 1600)))
+                    scenario.charge = Charge(
+                        mass: mass,
+                        position: SIMD3(scenario.charge.position.x, scenario.charge.position.y, top + radius))
+                }
+                if var structure = scenario.structure {
+                    applyRateOptions(&structure)
+                    scenario.structure = structure
+                }
+            },
+            progress: flag("progress")
+                ? { line in
+                    print("  " + line)
+                    fflush(stdout)
+                } : nil,
+            inspect: { structure, time in
+                if flag("no-debris-drag") { structure.debrisDrag = false }
+                if flag("no-contact") { structure.contactMode = .off }
+                if flag("report") || flag("census"), time >= duration * 0.995, !reported {
+                    reported = true
+                    if flag("report") { columnReport(structure, i: structure.ex / 2, j: structure.ey / 2) }
+                    if flag("census") { removalCensus(structure, i: structure.ex / 2, j: structure.ey / 2) }
+                }
+                if flag("fastest") { fastest(structure, time) }
+                if flag("column") { column(structure, time) }
+            })
+        print(
+            "\(test.name): \(format(Double(test.thickness) * 100, 0)) cm, \(format(Double(test.semtex) * 1000, 0)) g SEMTEX 10 "
+                + "(\(format(Double(test.tntSphere) * 1000, 0)) g TNT sphere), T_W \(format(Double(test.scaledThickness), 2))"
+        )
+        print("                               measured           fit       model")
+        print(
+            "  tip velocity (m/s)           " + pad(list(test.tipVelocity), 19)
+                + pad(format(Double(test.fittedTipVelocity), 1), 10)
+                + "\(format(Double(result.tipVelocityAtEnd), 1)) (largest \(format(Double(result.tipVelocity), 1)))"
+        )
+        print(
+            "  spall crater diameter (cm)   " + pad(list(test.spallDiameter, scale: 100), 19) + pad("", 10)
+                + "\(cm(2 * result.separatedRadius)) come away, \(cm(2 * result.spallRadiusByDamage)) cracked loose"
+        )
+        print(
+            "  breach                       " + pad(test.breach ? "yes" : "no", 19) + pad("", 10)
+                + (result.breached ? "yes" : "no"))
+        print(
+            "  debris mass (kg)             " + pad(list(test.debrisMass), 19) + pad("", 10)
+                + "\(format(result.removedProtective, 1)) removed from the protective half "
+                + "(\(format(result.removedLoaded, 1)) from the loaded)")
+        print(
+            "  loaded-face crater (cm)      " + pad("44-54 across", 19) + pad("", 10)
+                + "\(cm(2 * result.craterRadius)) across, \(cm(result.craterDepth)) deep")
+        let at = [0.0001, 0.0002, 0.0005, 0.001]
+        let momenta = at.map { t in result.momentum.first { $0.x >= t }?.y ?? 0 }
+        print(
+            "  slab's momentum (N s)        at 0.1, 0.2, 0.5, 1 ms: "
+                + momenta.map { format($0, 0) }.joined(separator: ", ")
+                + "; largest \(format(result.momentum.map(\.y).max() ?? 0, 0))")
+        print(
+            "  kinetic energy (kJ)          debris, fit: \(format(Double(151 / test.scaledThickness - 60), 1)); "
+                + "slab, model: \(format(result.kineticEnergy / 1000, 1))")
+        print("  protective face's velocity (m/s) over the radius (cm), fit and model at each time:")
+        var radii: [Int] = []
+        var n = 0
+        while (Float(n) + 0.5) * result.ring <= 0.6 {
+            radii.append(n)
+            n += max(1, Int((0.04 / result.ring).rounded()))
+        }
+        print(
+            "    r       "
+                + radii.map { pad(format(Double((Float($0) + 0.5) * result.ring) * 100, 0), 6) }.joined())
+        print(
+            "    fit     "
+                + radii.map {
+                    pad(format(Double(test.fittedVelocity(at: (Float($0) + 0.5) * result.ring)), 1), 6)
+                }.joined())
+        for (time, velocity) in result.faceProfiles {
+            print(
+                "    " + pad(format(time * 1000, 1) + " ms", 8)
+                    + radii.map { pad(format(Double(velocity[$0]), 1), 6) }.joined())
+        }
+        print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
+        fflush(stdout)
+    }
+}
+
 /// Chiquito et al.'s full-scale slabs under charges hung 0.5 and 1 m above them.
+/// Slabs with steel in one face or both (Wu et al. 2023, Wang et al. 2022): `--wu S5,D5` or
+/// `--wang A,B`, at `--dx` air cells refined by `--refine`, `--h` elements, for `--time`
+/// seconds; `--held` holds Wu's slabs lengthwise at both edges; `--bond pullout` and the other
+/// concrete options as elsewhere; `--work` prints the work by mechanism at the peak and the end;
+/// `--history` the first probe's displacement every millisecond; `--out dir` writes each
+/// record there as CSV; for Wang's, `--edges hinged|sliding` (or `--hinged`) holds the edges
+/// otherwise than fixed (see `TwoFaceSlabTests.WangEdges`), and `--afterburn` lets the products
+/// burn on.
+func runTwoFace() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.025
+    let elementSize = option("h").flatMap { Float($0) } ?? 0.0125
+    let duration = option("time").flatMap { Double($0) } ?? 0.1
+    func mm(_ value: Float?) -> String { value.map { format(Double($0) * 1000, 1) } ?? "-" }
+    func cm2(_ value: Float?) -> String { value.map { format(Double($0) * 1e4, 0) } ?? "-" }
+    func adjust(_ scenario: inout Scenario) {
+        if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
+        if var structure = scenario.structure {
+            applyRateOptions(&structure)
+            // `--bond pullout`: bars that slip, of 8 mm bars (12 mm for Wang's B: see below).
+            if let bond = chosenBondSlip(diameter: 0.008) { structure.bondSlip = bond }
+            scenario.structure = structure
+        }
+    }
+    func report(_ result: TwoFaceSlabTests.Result, label: String) throws {
+        if flag("history") {
+            for sample in result.histories[0] where Int((sample.x * 1e4).rounded()) % 10 == 0 {
+                print("    \(format(Double(sample.x) * 1000, 1)) ms  \(mm(sample.y)) mm")
+            }
+        }
+        if let directory = option("out") {
+            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+            var text = "time," + result.probes.joined(separator: ",") + "\n"
+            for n in result.histories[0].indices {
+                text +=
+                    "\(result.histories[0][n].x),"
+                    + result.histories.map { "\($0[n].y)" }.joined(separator: ",") + "\n"
+            }
+            try text.write(toFile: "\(directory)/\(label).csv", atomically: true, encoding: .utf8)
+        }
+        if let work = result.work {
+            print("  work by mechanism (J), when the first probe peaked and at the end:")
+            print("  " + workHeader("", 8))
+            if let peak = result.workAtPeak { print("  " + workRow("peak", 8, peak)) }
+            print("  " + workRow("end", 8, work))
+        }
+    }
+    if let names = option("wu").map({ $0.split(separator: ",").map(String.init) }) {
+        print(
+            "Wu et al. (2023): 2 x 2 x 0.1 m slabs, one layer of steel (S) or two (D), TNT in contact or at 0.43 m/kg^1/3"
+        )
+        print(
+            "Air \(format(Double(cellSize), 3)) m refined by \(option("refine") ?? "2"), elements \(format(Double(elementSize), 4)) m, \(format(duration * 1000, 0)) ms"
+        )
+        print(
+            "Displacement 300 mm from the centre of the underside (mm, down positive); rebound up past the start; areas cm2\n"
+        )
+        print(
+            pad("test", 5) + pad("charge", 16) + pad("peak", 13) + pad("rebound", 13) + pad("residual", 13)
+                + pad("along/centre", 14) + pad("top", 11) + pad("bottom", 11) + pad("hole cm", 11)
+                + pad("failed", 8)
+                + pad("s", 6))
+        for test in TwoFaceSlabTests.wuTests where names.contains(test.name) {
+            let result = try TwoFaceSlabTests.run(
+                device: device, test: test, cellSize: cellSize,
+                refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
+                duration: duration,
+                heldLengthwise: flag("held"), adjust: adjust,
+                prepare: { solver in
+                    prepareTrace(solver)
+                    lastStructure = solver
+                },
+                progress: flag("progress")
+                    ? {
+                        print("  " + $0)
+                        fflush(stdout)
+                    } : nil)
+            let charge =
+                "\(format(Double(test.charge), 1)) kg "
+                + (test.standoff.map { "@\(format(Double($0), 2))" } ?? "contact")
+            print(
+                pad(test.name, 5) + pad(charge, 16) + pad("\(mm(test.peak))/\(mm(result.peaks[0]))", 13)
+                    + pad("\(mm(test.rebound))/\(mm(result.rebounds[0]))", 13)
+                    + pad("\(mm(test.residual))/\(mm(result.residuals[0]))", 13)
+                    + pad("\(mm(result.peaks[1]))/\(mm(result.peaks[2]))", 14)
+                    + pad("\(cm2(test.damagedTop))/\(cm2(result.damagedFront))", 11)
+                    + pad("\(cm2(test.damagedBottom))/\(cm2(result.damagedBack))", 11)
+                    + pad(
+                        "\(test.hole.map { format(Double($0) * 100, 1) } ?? "-")/\(format(Double(result.hole) * 100, 1))",
+                        11)
+                    + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
+            try report(result, label: "wu-\(test.name)")
+            if let structure = lastStructure {
+                let h = structure.model.elementSize
+                let c = TwoFaceSlabTests.wuCentre
+                let i = Int(((c.x - structure.origin.x) / h).rounded(.down))
+                let j = Int(((c.y - structure.origin.y) / h).rounded(.down))
+                if flag("report") { columnReport(structure, i: i, j: j) }
+                if flag("census") { removalCensus(structure, i: i, j: j) }
+            }
+        }
+    }
+    if let names = option("wang").map({ $0.split(separator: ",").map(String.init) }) {
+        print(
+            "Wang et al. (2022): 1.2 x 0.5 x 0.1 m slabs, steel both ways in both faces, 10 kg (TNT equivalent, assumed) at 1.2 m"
+        )
+        print(
+            "Air \(format(Double(cellSize), 3)) m refined by \(option("refine") ?? "1"), elements \(format(Double(elementSize), 4)) m, \(format(duration * 1000, 0)) ms\n"
+        )
+        for test in TwoFaceSlabTests.wangTests where names.contains(test.name) {
+            let result = try TwoFaceSlabTests.run(
+                device: device, test: test, cellSize: cellSize,
+                refinement: option("refine").flatMap { Int($0) } ?? 1,
+                elementSize: elementSize, duration: duration,
+                edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
+                    ?? (flag("hinged") ? .hinged : .fixed),
+                afterburning: flag("afterburn"),
+                adjust: { scenario in
+                    adjust(&scenario)
+                    if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
+                }, prepare: prepareTrace,
+                progress: flag("progress")
+                    ? {
+                        print("  " + $0)
+                        fflush(stdout)
+                    } : nil)
+            print("Slab \(test.name), \(format(Double(test.bar) * 1000, 0)) mm bars: \(test.remark)")
+            print("  gauge   peak, measured/model (mm)   residual (mm)")
+            for n in result.probes.indices {
+                print(
+                    "  " + pad(result.probes[n], 5) + pad("\(mm(test.peaks[n]))/\(mm(result.peaks[n]))", 18)
+                        + pad("\(mm(test.residuals[n]))/\(mm(result.residuals[n]))", 22))
+            }
+            print("  reflected pressure: peak (MPa), arrival (ms), impulse (MPa ms), measured/model")
+            for (n, gauge) in TwoFaceSlabTests.wangGauges.enumerated() {
+                print(
+                    "  \(gauge.name)  \(format(Double(gauge.peak) / 1e6, 1))/\(format(Double(result.gaugePeaks[n]) / 1e6, 1))"
+                        + "   \(format(Double(gauge.arrival) * 1000, 2))/\(format(Double(result.gaugeArrivals[n]) * 1000, 2))"
+                        + "   \(format(Double(gauge.impulse) / 1000, 2))/\(format(Double(result.gaugeImpulses[n]) / 1000, 2))"
+                )
+            }
+            print(
+                "  back face damaged \(cm2(result.damagedBack)) cm2, front \(cm2(result.damagedFront)) cm2; "
+                    + "\(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s")
+            try report(result, label: "wang-\(test.name)")
+            print("")
+        }
+    }
+}
+
 func runCloseIn() throws {
     let names = option("tests").map { $0.split(separator: ",").map(String.init) }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.05
@@ -1509,6 +2001,18 @@ func runCloseIn() throws {
         var inspect: ((StructureSolver, Double) -> Void)? =
             flag("spall") ? spallProbe() : flag("where") ? failureProbe(at: duration * 0.99) : nil
         if flag("faces") { inspect = faceProbe(at: duration * 0.99) }
+        if flag("census") {
+            var done = false
+            inspect = { structure, time in
+                guard !done, time >= duration * 0.99 else { return }
+                done = true
+                let h = structure.model.elementSize
+                let c = CloseInSlabTest.centre
+                removalCensus(
+                    structure, i: Int(((c.x - structure.origin.x) / h).rounded(.down)),
+                    j: Int(((c.y - structure.origin.y) / h).rounded(.down)))
+            }
+        }
         if flag("energy") { inspect = energyProbe() }
         if let path = option("trace") {
             let until = option("trace-until").flatMap { Double($0) } ?? 0.001
@@ -2542,6 +3046,73 @@ func runSlab() throws {
     }
 }
 
+/// A precast beam's seat cycled along its corbel against Batalha et al.'s tests (`PrecastSeatTest`).
+func runPrecast() throws {
+    let tests = (option("tests") ?? "i0_50,i0_100,i0_150").split(separator: ",").map { "spc_" + $0 }
+    let friction = option("friction").flatMap { Float($0) } ?? 0.7
+    let limit = option("reversals").flatMap { Int($0) }
+    let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
+    print(
+        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+            + (limit.map { ", first \($0) reversals" } ?? ""))
+    print(
+        pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
+            + pad("energy, model", 15)
+            + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
+    for test in tests {
+        var law = Anchorage.resting(friction: friction)
+        // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
+        law.shearStiffness = option("pad").flatMap { Float($0) }
+        // `--normal 1e9` the joint's stiffness across, in Pa/m.
+        law.normalStiffness = option("normal").flatMap { Float($0) }
+        let r = try PrecastSeatTest.run(
+            device: device, test: test, samples: folder, law: law, reversals: limit)
+        if let out = option("history") {
+            try r.history.map { "\($0.x),\($0.y)" }.joined(separator: "\n").write(
+                toFile: out.replacingOccurrences(of: "%", with: test), atomically: true, encoding: .utf8)
+        }
+        print(
+            pad(test, 13) + pad("\(format(Double(PrecastSeatTest.axialLoad(of: test)) / 1000, 0)) kN", 8)
+                + pad("\(format(Double(r.sliding) / 1000, 1)) kN", 16)
+                + pad("\(format(Double(r.measuredSliding) / 1000, 1)) kN", 10)
+                + pad("\(format(Double(r.energy) / 1000, 1)) kJ", 15)
+                + pad("\(format(Double(r.measuredEnergy) / 1000, 1)) kJ", 10)
+                + pad("\(format(Double(r.lag) * 1000, 2)) mm", 9) + pad("\(format(r.wallSeconds)) s", 9))
+    }
+}
+
+/// A precast beam seated on corbels, one of its columns struck away from the span
+/// (`DroppedSpanStudy`).
+func runSeat() throws {
+    let speeds = (option("speeds") ?? "4,8,12").split(separator: ",").compactMap { Float($0) }
+    let seats = (option("seats") ?? "0.1,0.2").split(separator: ",").compactMap { Float($0) }
+    let duration = option("time").flatMap { Float($0) } ?? 1.5
+    let h = option("h").flatMap { Float($0) } ?? 0.1
+    // `--dowels` ties the beam to its corbels by starter bars through the pad instead of resting.
+    let law: Anchorage = flag("dowels") ? .dowelled(ratio: 0.004) : .resting(friction: 0.5)
+    print(
+        "Precast beam 0.5 m deep on corbels of two columns 6 m apart, "
+            + (flag("dowels") ? "dowelled to them" : "resting with friction 0.5")
+            + "; the right column struck away from the span; \(format(Double(duration), 1)) s")
+    print(
+        pad("seat", 8) + pad("speed", 9) + pad("column sway", 13) + pad("slide", 10) + pad("off seat", 10)
+            + pad("end fell", 10) + pad("eroded", 8) + pad("run time", 9))
+    for seat in seats {
+        for speed in speeds {
+            let r = try DroppedSpanStudy.run(
+                device: device, seat: seat, speed: speed, law: law, duration: duration, elementSize: h)
+            print(
+                pad("\(format(Double(seat) * 1000, 0)) mm", 8) + pad("\(format(Double(speed), 1)) m/s", 9)
+                    + pad("\(format(Double(r.peakSway) * 1000, 0)) mm", 13)
+                    + pad("\(format(Double(r.peakSlide) * 1000, 0)) mm", 10)
+                    + pad("\(format(Double(r.unseated) * 100, 0))%", 10)
+                    + pad("\(format(Double(r.drop) * 1000, 0)) mm", 10)
+                    + pad("\(r.summary.erodedElements)", 8)
+                    + pad("\(format(r.wallSeconds)) s", 9))
+        }
+    }
+}
+
 /// A freestanding wall under a blast on each kind of base connection (`AnchorageStudy`).
 func runAnchorage() throws {
     let mass = option("mass").flatMap { Float($0) } ?? 50
@@ -2613,7 +3184,8 @@ func runAnchorage() throws {
                     : try AnchorageStudy.run(
                         device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                         elementSize: h,
-                        shells: shells, soil: soil)
+                        shells: shells, soil: soil,
+                        embedment: option("embed").flatMap { Float($0) }.map { Embedment(depth: $0) })
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
@@ -2660,8 +3232,368 @@ func runAnchorage() throws {
 /// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
 /// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
 /// does with afterburning; and whether the two agree.
+/// Dial Pack, 500 tons of TNT as a sphere resting on the ground (Suffield, 1970), whose thermal
+/// radiation DREO Report 642 measured at 600 and 1,700 m: the fireball reckoned frame by frame as
+/// the volume, its opaque shape and its equivalent sphere (both at emissivity 1) radiate it to an
+/// instrument at each range aimed along the ground at it, and what it radiated, round it and as
+/// the gas lost it. `--csv` writes every frame; `Scripts/compare-dial-pack.py` sets it against the
+/// report (Samples/DialPack1970).
+func runDialPack() throws {
+    let tons = option("tons").flatMap { Float($0) } ?? 500
+    let mass = tons * 907.185  // short tons
+    let cellSize = option("dx").flatMap { Float($0) } ?? 4
+    let side = option("domain").flatMap { Float($0) } ?? 480
+    let duration = option("time").flatMap { Double($0) } ?? 1
+    // TNT at 1,600 kg/m³, its sphere's centre one radius up.
+    let radius = cbrt(3 * mass / (4 * .pi * 1600))
+    var scenario = Scenario(
+        name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
+    scenario.gauges = []
+    var configuration = SolverConfiguration()
+    configureRefinement(&configuration)
+    configuration.afterburning = true
+    configuration.airModel = .thermallyPerfect
+    if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
+    configuration.radiativeCooling = try chosenCooling()
+    configuration.gravity = chosenGravity()
+    configuration.mixing = chosenMixing()
+    configuration.afterburnLimit = chosenBurnLimit()
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+    var volume = ThermalSpec()
+    // A receiver or so on the ground: only the instruments are reckoned.
+    volume.groundSpacing = side
+    var shape = volume
+    shape.fireball = .shape
+    var sphere = volume
+    sphere.fireball = .sphere
+    let scene = FragmentScene(scenario)
+    let models = [("volume", volume), ("shape", shape), ("sphere", sphere)].map {
+        (name: $0.0, exposure: ThermalExposure(spec: $0.1, scene: scene))
+    }
+    let ranges: [Float] = [600, 1700]
+    // South of ground zero, 1.5 m up, facing it along the ground.
+    let points = ranges.map { range in
+        ThermalReceiver(
+            position: SIMD3(side / 2, side / 2 - range, 1.5), normal: SIMD3(0, 1, 0), surface: "instrument")
+    }
+    solver.frameRequest = FrameRequest(thermal: volume)
+    var frameTimes: [Double] = []
+    var t = 0.0005
+    while t < duration - 1e-9 {
+        frameTimes.append(t)
+        t += t < 0.01 ? 0.0005 : (t < 0.1 ? 0.0025 : (t < 0.3 ? 0.01 : 0.025))
+    }
+    frameTimes.append(duration)
+    print(
+        String(
+            format:
+                "Dial Pack: %.0f t of TNT (%.0f short tons), a sphere %.2f m in radius on the ground, %.0f m cells, %.0f by %.0f by %.0f m, to %.2f s%@",
+            mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
+            (configuration.radiativeCooling == nil ? "" : ", the gas cooling")
+                + (configuration.gravity == nil ? "" : ", with gravity")
+                + (configuration.mixing == nil ? "" : ", sub-grid mixing")
+                + (configuration.afterburnLimit == nil ? "" : ", afterburning's extinction limit")))
+    var lines = [
+        "time_s,diameter_m,temperature_K,hottest_K,centre_m,radiated_W,gas_lost_J,"
+            + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(
+                separator: ",")
+    ]
+    var last: (time: Double, values: [Float])?
+    var fluence = [Double](repeating: 0, count: models.count * ranges.count)
+    var peak = [Float](repeating: 0, count: models.count * ranges.count)
+    var radiated = 0.0
+    var lastPower: (time: Double, power: Double)?
+    let started = ContinuousClock.now
+    // With gravity, the gas the cloud's rise would be handed at 1 s, everything at least 500 K.
+    var early: CloudHandOver?
+    for target in frameTimes {
+        while solver.time < target - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: target)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        if configuration.gravity != nil, early == nil, solver.time >= 1 - 1e-6 {
+            early = solver.cloudHandOver(hotterThan: 500)
+        }
+        let frame = solver.fireball(for: volume)
+        var values: [Float] = []
+        for model in models { values += model.exposure.irradiance(frame, at: points) }
+        let power = models[0].exposure.radiatedPower(frame)
+        if let last {
+            for n in values.indices {
+                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (solver.time - last.time)
+            }
+        }
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
+        for n in values.indices { peak[n] = max(peak[n], values[n]) }
+        last = (solver.time, values)
+        lastPower = (solver.time, power)
+        lines.append(
+            [
+                String(format: "%.5f", solver.time), String(format: "%.2f", 2 * frame.radius),
+                String(format: "%.0f", frame.temperature), String(format: "%.0f", frame.hottest),
+                String(format: "%.1f", frame.centre.z), String(format: "%.4g", power),
+                String(format: "%.4g", solver.radiatedEnergy),
+            ].joined(separator: ",") + "," + values.map { String(format: "%.4g", $0) }.joined(separator: ","))
+    }
+    let charge = Double(scenario.charge.energy)
+    for (m, model) in models.enumerated() {
+        let text = ranges.enumerated().map { r, range in
+            String(
+                format: "%.0f m: %.2f kJ/m², peak %.2f kW/m²", range, fluence[m * ranges.count + r] / 1000,
+                peak[m * ranges.count + r] / 1000)
+        }.joined(separator: "; ")
+        print("  as its \(model.name): \(text)")
+    }
+    print(
+        String(
+            format: "  radiated round it, the volume: %.3g J, %.2f%% of the charge's energy%@", radiated,
+            100 * radiated / charge,
+            configuration.radiativeCooling == nil
+                ? ""
+                : String(
+                    format: "; the gas lost %.3g J, %.2f%%", solver.radiatedEnergy,
+                    100 * solver.radiatedEnergy / charge)))
+    if let early, let gravity = configuration.gravity, solver.time > early.time {
+        // The cloud's integral model, from the 1 s hand-over, against the air model's own gas.
+        var spec = CloudSpec()
+        spec.lapseRate = Double(gravity.lapseRate)
+        spec.spread = false
+        spec.duration = solver.time - early.time + 1
+        let cloud = CloudResult(spec: spec, handOver: early)
+        let late = solver.cloudHandOver(hotterThan: 500)
+        let predicted = cloudAt(cloud, solver.time)
+        print(
+            String(
+                format:
+                    "  gas at least 500 K: at %.2f s %.0f t at %.0f K, its centre %.1f m up, rising at %.1f m/s; at %.2f s %.0f t, %.1f m up, %.1f m/s; the cloud's rise from the first: %.1f m up, %.1f m/s",
+                early.time, early.mass / 1000, early.temperature, Double(early.centre.z), early.riseSpeed,
+                solver.time, late.mass / 1000, Double(late.centre.z), late.riseSpeed, predicted.height,
+                predicted.speed))
+    }
+    print(
+        String(
+            format: "  %d steps, simulated in %.0f s", solver.stepCount,
+            (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// A sphere of hot air at the surrounding pressure, `--hot` times the surrounding temperature,
+/// released at rest one diameter above the ground under gravity, in a box 12 radii wide and 20
+/// high: where its warm gas is through time (the cloud's hand-over's centre, everything 1% warmer
+/// than the air), against the cloud's integral model (FireballRise) started from the same gas.
+/// The cloud's centre height, rise speed and mass at `time`, between its samples.
+func cloudAt(_ cloud: CloudResult, _ time: Double) -> (height: Double, speed: Double, mass: Double) {
+    let samples = cloud.samples
+    guard let after = samples.firstIndex(where: { $0.time >= time }) else {
+        let last = samples[samples.count - 1]
+        return (last.height, last.riseSpeed, last.mass)
+    }
+    guard after > 0 else { return (samples[0].height, samples[0].riseSpeed, samples[0].mass) }
+    let a = samples[after - 1]
+    let b = samples[after]
+    let f = (time - a.time) / max(b.time - a.time, 1e-12)
+    return (
+        a.height + f * (b.height - a.height), a.riseSpeed + f * (b.riseSpeed - a.riseSpeed),
+        a.mass + f * (b.mass - a.mass)
+    )
+}
+
+func runBubble() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.5
+    let radius = option("radius").flatMap { Float($0) } ?? 4
+    let hot = option("hot").flatMap { Float($0) } ?? 2
+    let duration = option("time").flatMap { Double($0) } ?? 20
+    let lapse = (option("lapse").flatMap { Float($0) } ?? 6.5) / 1000
+    let side = 12 * radius
+    let height = 20 * radius
+    var configuration = SolverConfiguration()
+    configuration.gravity = AirGravity(lapseRate: lapse)
+    configuration.mixing = chosenMixing()
+    configureRefinement(&configuration)
+    let solver = try BlastSolver(
+        device: device,
+        grid: Grid(
+            nx: Int(side / cellSize), ny: Int(side / cellSize), nz: Int(height / cellSize), cellSize: cellSize
+        ),
+        configuration: configuration)
+    let ground = Primitive(density: 1.225, pressure: 101_325)
+    solver.fill(uniform: ground)
+    let centre = SIMD3<Float>(side / 2, side / 2, 2 * radius)
+    let grid = solver.grid
+    solver.mutateState { cells in
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let x = (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5) * cellSize
+                    guard simd_distance(x, centre) < radius else { continue }
+                    let n = grid.index(i, j, k)
+                    // Hotter at the same pressure: lighter in proportion, the same internal energy a volume.
+                    cells[n].density /= hot
+                }
+            }
+        }
+    }
+    solver.restart()
+    let ambient = Float(ground.pressure / (ground.density * 287.05))
+    let threshold = ambient * 1.01
+    let start = solver.cloudHandOver(hotterThan: threshold)
+    var spec = CloudSpec()
+    spec.handOverTemperature = threshold
+    spec.lapseRate = Double(lapse)
+    spec.productWater = 0
+    spec.spread = false
+    spec.duration = duration
+    let cloud = CloudResult(spec: spec, handOver: start)
+    print(
+        String(
+            format:
+                "A bubble %.1f m in radius at %.0f K in air at %.0f K, its centre %.1f m up, on %.2f m cells, gravity, lapse %.1f K/km",
+            radius, Double(ambient * hot), Double(ambient), Double(centre.z), cellSize, Double(lapse * 1000)))
+    print("   time   air model: centre, rise speed, mass   integral model: centre, rise speed, mass")
+    var lines = [
+        "time_s,model_centre_m,model_speed_m_s,model_mass_kg,cloud_centre_m,cloud_speed_m_s,cloud_mass_kg"
+    ]
+    var times: [Double] = []
+    var t = 0.0
+    while t < duration - 1e-9 {
+        t += t < 2 ? 0.25 : 1
+        times.append(min(t, duration))
+    }
+    let started = ContinuousClock.now
+    for target in times {
+        while solver.time < target - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: target)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        let now = solver.cloudHandOver(hotterThan: threshold)
+        let sample = cloudAt(cloud, solver.time)
+        print(
+            String(
+                format: "  %5.2f s   %6.1f m %5.2f m/s %8.1f kg        %6.1f m %5.2f m/s %8.1f kg", target,
+                Double(now.centre.z), now.riseSpeed, now.mass, sample.height, sample.speed, sample.mass))
+        lines.append(
+            String(
+                format: "%.3f,%.3f,%.4f,%.2f,%.3f,%.4f,%.2f", target, Double(now.centre.z), now.riseSpeed,
+                now.mass,
+                sample.height, sample.speed, sample.mass))
+    }
+    print(
+        String(
+            format: "  %d steps, %.0f s, on %d by %d by %d cells", solver.stepCount,
+            (ContinuousClock.now - started) / .seconds(1), grid.nx, grid.ny, grid.nz))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// A temporal mixing layer: two streams of air at ±`--speed`/2 m/s along x, across a tanh profile
+/// of momentum thickness two cells in z, with small random velocities to set it off, in a box 128
+/// by 64 by 128 cells, periodic in x and y (`SolverConfiguration.periodicSides`, two cells of halo
+/// a side), whose z faces copy the air beyond them. Its momentum thickness from the planes'
+/// mean velocity, θ = ∫ (1/4 - (u/ΔU)²) dz, through time; self-similar layers grow at
+/// dθ/dt ≈ 0.014 ΔU (Rogers and Moser 1994). `--mixing` turns on the sub-grid mixing.
+func runMixingLayer() throws {
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.5
+    let speed = option("speed").flatMap { Float($0) } ?? 50
+    let duration = option("time").flatMap { Double($0) } ?? 8
+    let length = option("length").flatMap { Int($0) } ?? 128
+    let (nx, ny, nz) = (length + 4, length / 2 + 4, 128)
+    var configuration = SolverConfiguration()
+    configuration.reflectiveFaces = []
+    configuration.periodicSides = true
+    configuration.mixing = chosenMixing()
+    let solver = try BlastSolver(
+        device: device, grid: Grid(nx: nx, ny: ny, nz: nz, cellSize: cellSize), configuration: configuration)
+    let theta0 = 2 * cellSize
+    var random = SplitMix64(seed: 1994)
+    solver.fill { i, j, k in
+        let z = (Float(k) + 0.5 - Float(nz) / 2) * cellSize
+        let mean = 0.5 * speed * tanh(z / (2 * theta0))
+        // Perturbations a twentieth of the speed difference, where the layer is.
+        let envelope = exp(-z * z / (8 * theta0 * theta0)) * 0.05 * speed
+        let noise = SIMD3<Float>(random.unit(), random.unit(), random.unit()) * 2 - 1
+        return Primitive(density: 1.225, velocity: SIMD3(mean, 0, 0) + envelope * noise, pressure: 101_325)
+    }
+    func thickness() -> Double {
+        solver.withState { cells in
+            var total = 0.0
+            for k in 0..<nz {
+                var sum = 0.0
+                for j in 2..<(ny - 2) {
+                    for i in 2..<(nx - 2) {
+                        let c = cells[i + nx * (j + ny * k)]
+                        sum += Double(c.momentumX / c.density)
+                    }
+                }
+                let mean = sum / Double((nx - 4) * (ny - 4)) / Double(speed)
+                total += (0.25 - mean * mean) * Double(cellSize)
+            }
+            return total
+        }
+    }
+    print(
+        String(
+            format: "A temporal mixing layer, ΔU %.0f m/s, θ0 %.2f m, on %.2f m cells%@", speed, theta0,
+            cellSize,
+            configuration.mixing == nil ? "" : ", sub-grid mixing"))
+    var lines = ["time_s,theta_m"]
+    var samples: [(Double, Double)] = [(0, thickness())]
+    let started = ContinuousClock.now
+    var t = 0.0
+    while t < duration - 1e-9 {
+        t = min(t + 0.25, duration)
+        while solver.time < t - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: t)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        samples.append((solver.time, thickness()))
+    }
+    for (time, theta) in samples {
+        lines.append(String(format: "%.3f,%.4f", time, theta))
+    }
+    // The growth over the second half, against ΔU.
+    let half = samples.filter { $0.0 >= duration / 2 }
+    let n = Double(half.count)
+    let mt = half.reduce(0.0) { $0 + $1.0 } / n
+    let meanTheta = half.reduce(0.0) { $0 + $1.1 } / n
+    let slope =
+        half.reduce(0.0) { $0 + ($1.0 - mt) * ($1.1 - meanTheta) }
+        / max(half.reduce(0.0) { $0 + ($1.0 - mt) * ($1.0 - mt) }, 1e-12)
+    for (time, theta) in samples where time.truncatingRemainder(dividingBy: 1) < 0.01 {
+        print(String(format: "  %5.2f s: θ %.3f m", time, theta))
+    }
+    print(
+        String(
+            format:
+                "  dθ/dt over the second half %.3f m/s, %.4f ΔU (self-similar layers: about 0.014); %d steps, %.0f s",
+            slope, slope / Double(speed), solver.stepCount, (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// A small deterministic random generator, for repeatable perturbations.
+struct SplitMix64 {
+    var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+    /// Uniform in [0, 1).
+    mutating func unit() -> Float { Float(next() >> 40) / Float(1 << 24) }
+}
+
 func runThermal() throws {
-    let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    var scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    if option("preset") == nil, let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     let scene = FragmentScene(scenario)
     var spec = ThermalSpec()
     if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
@@ -2718,7 +3650,7 @@ func runThermal() throws {
         }
     }
     let occluders = ThermalExposure.occluders(scene)
-    let metal = MetalThermalVisibility(occluders: occluders)
+    let metal = MetalThermalVisibility(occluders: occluders, terrain: scene.terrain)
     print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
     if spec.fireball == .volume {
         // The march on the GPU, then on the CPU; each frame's irradiance and what it radiated.
@@ -2745,7 +3677,9 @@ func runThermal() throws {
         return
     }
     var answers: [[Float]] = []
-    for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
+    for (name, visibility) in [
+        ("CPU", CPUThermalVisibility(occluders: occluders, terrain: scene.terrain) as any ThermalVisibility)
+    ]
         + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
     {
         let timed = Timed(visibility)
@@ -2767,7 +3701,9 @@ func runThermal() throws {
             "\(name): \(exposure.receivers.count) receivers, \(timed.rays / count) rays a frame; "
                 + "\(format(total / Double(count) * 1000, 1)) ms a frame, "
                 + "\(format(timed.seconds / Double(count) * 1000, 1)) ms of it the visibility test; "
-                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame")
+                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame; "
+                + "mean irradiance \(format(Double(irradiance.reduce(0, +)) / Double(max(irradiance.count, 1)) / 1000, 2)) kW/m²"
+        )
     }
     if let metal {
         let usage = metal.usage
@@ -2834,8 +3770,13 @@ func runDigest() throws {
         var configuration = SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning
+        var scenario = preset.scenario
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        if option("terrain") == "flat" {
+            scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        }
         let solver = try BlastSolver(
-            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         let result = solver.advance(steps: steps)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         solver.withState { cells in
@@ -2960,6 +3901,8 @@ do {
     case "pushoff": try runPushOff()
     case "impact": try runImpact()
     case "closein": try runCloseIn()
+    case "twoface": try runTwoFace()
+    case "contact": try runContact()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
@@ -2969,9 +3912,16 @@ do {
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
+    case "seat": try runSeat()
+    case "precast": try runPrecast()
     case "thermal": try runThermal()
+    case "dialpack": try runDialPack()
+    case "bubble": try runBubble()
+    case "mixinglayer": try runMixingLayer()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
+    case "terrain": try runTerrain(device: device)
+    case "deflagration": try runDeflagration()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

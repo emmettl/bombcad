@@ -44,16 +44,171 @@ static bool thermalBlocks(ThermalBox box, float3 start, float3 end) {
     return true;
 }
 
-// One thread a ray: 1 in `visible` if it reaches its end above the ground with no box across it.
-// The acceleration structure holds the boxes, a little enlarged, as bounding-box primitives; the
-// hardware finds the candidates and the exact test above decides, so no intersection function is
-// needed. The ground is the plane z = 0, tested directly.
+// The terrain's cells, as TerrainSight reads them: see ThermalTerrain.swift. Cells come after the
+// boxes in the acceleration structure, from primitive `firstCell`, (columns + 1) × (rows + 1) of
+// them, the outer ring reaching `reach` beyond the nodes. `present` is 0 with no terrain.
+struct ThermalTerrain {
+    float originX;
+    float originY;
+    float spacing;
+    float reach;
+    uint columns;
+    uint rows;
+    uint firstCell;
+    uint present;
+};
+
+struct TerrainPatch {
+    float x0, y0, x1, y1;
+    float h00, h10, h01, h11;
+    float top;
+    float sx, sy;
+};
+
+static void terrainNodes(int a, int count, thread int &low, thread int &high) {
+    low = min(max(a - 1, 0), count - 1);
+    high = min(max(a, 0), count - 1);
+}
+
+static void terrainSpan(int a, int count, float origin, float spacing, float reach, thread float &low,
+    thread float &high)
+{
+    low = a == 0 ? origin - reach : origin + float(a - 1) * spacing;
+    high = a == count ? origin + float(count - 1) * spacing + reach : origin + float(a) * spacing;
+}
+
+// As TerrainSight.patch.
+static TerrainPatch terrainPatch(constant ThermalTerrain &t, device const float *heights, uint cell) {
+    int columns = int(t.columns);
+    int rows = int(t.rows);
+    int a = int(cell % (t.columns + 1));
+    int b = int(cell / (t.columns + 1));
+    int i0, i1, j0, j1;
+    terrainNodes(a, columns, i0, i1);
+    terrainNodes(b, rows, j0, j1);
+    TerrainPatch p;
+    terrainSpan(a, columns, t.originX, t.spacing, t.reach, p.x0, p.x1);
+    terrainSpan(b, rows, t.originY, t.spacing, t.reach, p.y0, p.y1);
+    p.h00 = heights[i0 + columns * j0];
+    p.h10 = heights[i1 + columns * j0];
+    p.h01 = heights[i0 + columns * j1];
+    p.h11 = heights[i1 + columns * j1];
+    p.top = max(max(p.h00, p.h10), max(p.h01, p.h11));
+    float inverse = 1 / t.spacing;
+    p.sx = i0 == i1 ? 0 : inverse;
+    p.sy = j0 == j1 ? 0 : inverse;
+    return p;
+}
+
+// As TerrainSight.margin.
+static float terrainMargin(float top) { return fma(1e-5f, fabs(top), 0.001f); }
+
+// As TerrainSight.clearance: the height of `point` above the patch.
+static float terrainClearance(TerrainPatch p, float3 point) {
+    float fx = (point.x - p.x0) * p.sx;
+    float fy = (point.y - p.y0) * p.sy;
+    float bottom = fma(fx, p.h10 - p.h00, p.h00);
+    float top = fma(fx, p.h11 - p.h01, p.h01);
+    return point.z - fma(fy, top - bottom, bottom);
+}
+
+static bool terrainClipAxis(float lower, float upper, float s, float d, thread float &low, thread float &high) {
+    if (fabs(d) < 1e-12f) return s >= lower && s <= upper;
+    float a = (lower - s) / d;
+    float b = (upper - s) / d;
+    if (a > b) {
+        float swapped = a;
+        a = b;
+        b = swapped;
+    }
+    low = max(low, a);
+    high = min(high, b);
+    return low <= high;
+}
+
+static bool terrainClip(TerrainPatch p, float3 start, float3 delta, thread float &low, thread float &high) {
+    return terrainClipAxis(p.x0, p.x1, start.x, delta.x, low, high)
+        && terrainClipAxis(p.y0, p.y1, start.y, delta.y, low, high);
+}
+
+static float3 terrainPoint(float3 start, float3 delta, float t) {
+    return float3(fma(t, delta.x, start.x), fma(t, delta.y, start.y), fma(t, delta.z, start.z));
+}
+
+// As TerrainSight.slope: the clearance's rate of change, and half its second derivative.
+static float2 terrainSlope(TerrainPatch p, float3 point, float3 delta) {
+    float fx = (point.x - p.x0) * p.sx;
+    float fy = (point.y - p.y0) * p.sy;
+    float bx = delta.x * p.sx;
+    float by = delta.y * p.sy;
+    float twist = (p.h11 - p.h01) - (p.h10 - p.h00);
+    float alongX = fma(fy, twist, p.h10 - p.h00);
+    float alongY = fma(fx, twist, p.h01 - p.h00);
+    float rate = delta.z - fma(bx, alongX, by * alongY);
+    return float2(rate, -(bx * by) * twist);
+}
+
+// As TerrainSight.blocks.
+static bool terrainBlocks(TerrainPatch p, float3 start, float3 delta) {
+    float low = 0;
+    float high = 1;
+    if (!terrainClip(p, start, delta, low, high)) return false;
+    float3 first = terrainPoint(start, delta, low);
+    float3 last = terrainPoint(start, delta, high);
+    // Above the patch's highest node throughout: nothing to find.
+    if (min(first.z, last.z) > p.top + terrainMargin(p.top)) return false;
+    if (terrainClearance(p, first) < 0 || terrainClearance(p, last) < 0) return true;
+    float2 slope = terrainSlope(p, first, delta);
+    if (!(slope.y > 0)) return false;
+    float turn = low + -slope.x / (2 * slope.y);
+    return turn > low && turn < high && terrainClearance(p, terrainPoint(start, delta, turn)) < 0;
+}
+
+// As TerrainSight.entry: where the ray first goes below the patch, if before `limit`.
+static bool terrainEntry(TerrainPatch p, float3 origin, float3 direction, float limit, thread float &t) {
+    float low = 0;
+    float high = limit;
+    if (!terrainClip(p, origin, direction, low, high)) return false;
+    float3 first = terrainPoint(origin, direction, low);
+    if (min(first.z, terrainPoint(origin, direction, high).z) > p.top + terrainMargin(p.top)) return false;
+    float c0 = terrainClearance(p, first);
+    if (c0 <= 0) {
+        t = low;
+        return low < limit;
+    }
+    float2 slope = terrainSlope(p, first, direction);
+    float c1 = slope.x;
+    float c2 = slope.y;
+    float u = INFINITY;
+    if (c2 == 0) {
+        if (c1 < 0) u = -c0 / c1;
+    } else {
+        float disc = fma(c1, c1, -4 * c2 * c0);
+        if (disc >= 0) {
+            float q = -0.5f * (c1 + (c1 < 0 ? -sqrt(disc) : sqrt(disc)));
+            float r1 = q / c2;
+            float r2 = c0 / q;
+            if (r1 > 0) u = min(u, r1);
+            if (r2 > 0) u = min(u, r2);
+        }
+    }
+    t = low + u;
+    return isfinite(u) && t <= high && t < limit;
+}
+
+// One thread a ray: 1 in `visible` if it reaches its end above the ground with no box across it
+// and without passing under the terrain. The acceleration structure holds the boxes, a little
+// enlarged, and then the terrain's cells, as bounding-box primitives; the hardware finds the
+// candidates and the exact tests above decide, so no intersection function is needed. The floor is
+// the plane z = 0, tested directly.
 kernel void thermalVisibility(
     device const ThermalRay *rays [[buffer(0)]],
     device const ThermalBox *boxes [[buffer(1)]],
     primitive_acceleration_structure structure [[buffer(2)]],
     device uchar *visible [[buffer(3)]],
     constant uint &count [[buffer(4)]],
+    constant ThermalTerrain &terrain [[buffer(5)]],
+    device const float *heights [[buffer(6)]],
     uint id [[thread_position_in_grid]])
 {
     if (id >= count) return;
@@ -72,8 +227,13 @@ kernel void thermalVisibility(
     intersection_query<> candidates;
     candidates.reset(query, structure, params);
     bool blocked = false;
+    float3 delta = end - origin;
     while (candidates.next()) {
-        if (thermalBlocks(boxes[candidates.get_candidate_primitive_id()], origin, end)) {
+        uint primitive = candidates.get_candidate_primitive_id();
+        bool blocks = primitive < terrain.firstCell
+            ? thermalBlocks(boxes[primitive], origin, end)
+            : terrainBlocks(terrainPatch(terrain, heights, primitive - terrain.firstCell), origin, delta);
+        if (blocks) {
             blocked = true;
             candidates.abort();
         }
@@ -264,6 +424,8 @@ kernel void thermalMarch(
     primitive_acceleration_structure structure [[buffer(5)]],
     device float *irradiance [[buffer(6)]],
     constant MarchUniforms &u [[buffer(7)]],
+    constant ThermalTerrain &terrain [[buffer(8)]],
+    device const float *heights [[buffer(9)]],
     uint receiver [[threadgroup_position_in_grid]],
     uint lane [[thread_index_in_threadgroup]])
 {
@@ -350,8 +512,8 @@ kernel void thermalMarch(
         }
         if (misses || !(enter < leave)) continue;
         if (u.occluded != 0) {
-            // The nearest block or structure in the way: the hardware offers the boxes the ray
-            // may cross, and the exact test decides, each one found shortening the ray.
+            // The nearest block, structure or terrain in the way: the hardware offers the boxes and
+            // cells the ray may cross, and the exact tests decide, each one found shortening it.
             ray query(x, direction, 0.0f, leave);
             intersection_params params;
             params.assume_geometry_type(geometry_type::bounding_box);
@@ -359,7 +521,12 @@ kernel void thermalMarch(
             candidates.reset(query, structure, params);
             while (candidates.next()) {
                 float t;
-                if (marchEntry(boxes[candidates.get_candidate_primitive_id()], x, direction, leave, t)) {
+                uint primitive = candidates.get_candidate_primitive_id();
+                bool enters = primitive < terrain.firstCell
+                    ? marchEntry(boxes[primitive], x, direction, leave, t)
+                    : terrainEntry(
+                        terrainPatch(terrain, heights, primitive - terrain.firstCell), x, direction, leave, t);
+                if (enters) {
                     leave = t;
                     candidates.commit_bounding_box_intersection(t);
                 }

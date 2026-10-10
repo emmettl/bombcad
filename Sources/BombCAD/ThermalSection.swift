@@ -17,6 +17,7 @@ struct ThermalSection: View {
                         + "was measured to, as the gas never loses the heat, and the air between is taken as "
                         + "transparent.")
             if let spec = model.thermalSpec {
+                StandingRow(model: model, kinds: [.thermal])
                 if spec.fireball == .volume {
                     // On a log scale, a tenth of a decade at a time.
                     LabeledSlider(
@@ -57,6 +58,7 @@ struct ThermalSection: View {
                             + "canvas and dry grass past test thresholds for ignition. Illustrative: nothing melts, "
                             + "chars or burns, and no fire is modelled.")
                 if spec.heating.enabled {
+                    StandingRow(model: model, kinds: [.surfaceHeating])
                     materialPicker("Ground is", \.ground, ["asphalt", "concrete", "soil", "dry grass"])
                     materialPicker(
                         "Blocks are", \.blocks, ["concrete", "masonry", "steel", "glass", "timber"])

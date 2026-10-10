@@ -43,7 +43,9 @@ public enum OpenVDBWriter {
     static let compressNone: UInt32 = 0
     static let compressZip: UInt32 = 1
 
-    public static func data(_ grids: [Grid], compress: Bool = true) -> Data {
+    /// `metadata` is the file's own, as strings: names and values.
+    public static func data(_ grids: [Grid], compress: Bool = true, metadata: [(String, String)] = []) -> Data
+    {
         var out = Output()
         // Header: magic, file and library versions, grid offsets present, then a UUID as text.
         out.int64(0x5644_4220)
@@ -52,7 +54,14 @@ public enum OpenVDBWriter {
         out.uint32(0)
         out.byte(1)
         out.bytes(Array(UUID().uuidString.lowercased().utf8))
-        out.uint32(0)  // file metadata: none
+        out.uint32(UInt32(metadata.count))
+        for (name, value) in metadata {
+            out.string(name)
+            out.string("string")
+            let bytes = Array(value.utf8)
+            out.uint32(UInt32(bytes.count))
+            out.bytes(bytes)
+        }
         out.int32(Int32(grids.count))
         for grid in grids {
             write(grid, compression: compress ? compressZip : compressNone, to: &out)
@@ -60,8 +69,10 @@ public enum OpenVDBWriter {
         return Data(out.data)
     }
 
-    public static func write(_ grids: [Grid], to url: URL, compress: Bool = true) throws {
-        try data(grids, compress: compress).write(to: url, options: .withoutOverwriting)
+    public static func write(
+        _ grids: [Grid], to url: URL, compress: Bool = true, metadata: [(String, String)] = []
+    ) throws {
+        try data(grids, compress: compress, metadata: metadata).write(to: url, options: .withoutOverwriting)
     }
 
     private struct Leaf {

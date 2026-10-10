@@ -156,17 +156,32 @@ static inline float cellPressureOf(Cell c, constant SolverUniforms &u) {
     return gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma);
 }
 
+// A cell less gravity's background at its height (or with `add`, plus it), from a level's table.
+static inline Cell gravityDeviation(Cell c, const device float4 *table, int k, float sign) {
+    float4 b = gravityCellOf(table, k);
+    c.rho += sign * b.x;
+    c.energy += sign * b.y;
+    return c;
+}
+
 // Fine cell `fine` filled from the coarse air around it: the coarse cell it lies in, plus
 // minmod-limited slopes towards its fluid neighbours. The slopes' offsets sum to zero over a
 // coarse cell's fine cells, so their mean is the coarse cell. Where that would leave density or
-// pressure below the floors, the coarse cell alone.
+// pressure below the floors, the coarse cell alone. With gravity, the coarse cells' deviations
+// from the background are filled so, and the fine cell's own background added, so that air at
+// rest in it fills fine cells at rest in it.
 static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *coarse, const device Cell *halo,
                            const device uchar *mask, float alpha, constant SolverUniforms &u,
-                           const device int *parentPatches) {
+                           const device int *parentPatches, const device float4 *parentTable,
+                           const device float4 *levelTable) {
     int r = int(u.refineRatio);
     int3 cell = fine / r;
     int3 dims = int3(u.nx, u.ny, u.nz);
+    bool gravity = airGravity;
     Cell c = coarseAt(cell, tile, patch, coarse, halo, alpha, u, parentPatches);
+    if (gravity) {
+        c = gravityDeviation(c, parentTable, cell.z, -1.0f);
+    }
     float3 offset = (float3(fine - cell * r) + 0.5f) / float(r) - 0.5f;
     Cell result = c;
     for (int axis = 0; axis < 3; ++axis) {
@@ -181,9 +196,15 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
         Cell hi = c;
         if (below[axis] >= 0 && !parentSolid(mask, parentIndex(below, parentPatches, u), u)) {
             lo = coarseAt(below, tile, patch, coarse, halo, alpha, u, parentPatches);
+            if (gravity) {
+                lo = gravityDeviation(lo, parentTable, below.z, -1.0f);
+            }
         }
         if (above[axis] < dims[axis] && !parentSolid(mask, parentIndex(above, parentPatches, u), u)) {
             hi = coarseAt(above, tile, patch, coarse, halo, alpha, u, parentPatches);
+            if (gravity) {
+                hi = gravityDeviation(hi, parentTable, above.z, -1.0f);
+            }
         }
         float o = offset[axis];
         result.rho += o * limitedSlope(c.rho - lo.rho, hi.rho - c.rho, 1.0f);
@@ -191,6 +212,10 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
         result.my += o * limitedSlope(c.my - lo.my, hi.my - c.my, 1.0f);
         result.mz += o * limitedSlope(c.mz - lo.mz, hi.mz - c.mz, 1.0f);
         result.energy += o * limitedSlope(c.energy - lo.energy, hi.energy - c.energy, 1.0f);
+    }
+    if (gravity) {
+        c = gravityDeviation(c, levelTable, fine.z, 1.0f);
+        result = gravityDeviation(result, levelTable, fine.z, 1.0f);
     }
     if (result.rho <= u.densityFloor || cellPressureOf(result, u) <= u.pressureFloor) {
         return c;
@@ -275,6 +300,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          device float2 *ghostSpecies [[buffer(16)]],
                          const device float2 *coarseSpecies [[buffer(17)]],
                          const device int *parentPatches [[buffer(18)]],
+                         const device float4 *parentTable [[buffer(19)]],
+                         const device float4 *levelTable [[buffer(20)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -330,7 +357,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         }
         return;
     }
-    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches);
+    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable,
+                           levelTable);
     ghosts[index] = outside;
     ghostKinds[index] = ghostCoarse;
     if (u.afterburnEnergy > 0.0f) {
@@ -366,7 +394,8 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
                                  const device packed_float3 *fineWall, const device float2 *speciesSrc,
                                  device float2 *speciesDst, const device float2 *ghostSpecies,
                                  device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch,
-                                 const device int *childPatches, device float *childFlux, device float *childSpeciesFlux) {
+                                 const device int *childPatches, device float *childFlux, device float *childSpeciesFlux,
+                                 const device float4 *gravityTable, const device float *viscosity) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -426,25 +455,36 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
 
     Cell c = fineSrc[index];
     Prim w0 = primOf(c, u);
+    // With gravity, the cell each state came from and -1 for a mirror, as in `sweepCell`.
+    int4 from = int4(-2, -1, 1, 2);
+    float4 mirror = float4(1.0f);
     Prim wP1 = w0;
     float speedP1;
     int kindP1 = look(1, wP1, speedP1);
     if (kindP1 == kindWall) {
         wP1 = mirrored(w0, speedP1);
+        from.z = 0;
+        mirror.z = -1.0f;
     } else if (kindP1 == kindOpen) {
         wP1 = w0;
+        from.z = 0;
     }
     Prim wM1 = w0;
     float speedM1;
     int kindM1 = look(-1, wM1, speedM1);
     if (kindM1 == kindWall) {
         wM1 = mirrored(w0, speedM1);
+        from.y = 0;
+        mirror.y = -1.0f;
     } else if (kindM1 == kindOpen) {
         wM1 = w0;
+        from.y = 0;
     }
     Prim wP2 = wP1;
     if (kindP1 == kindWall) {
         wP2 = mirrored(wM1, speedP1);
+        from.w = from.y;
+        mirror.w = -mirror.y;
     } else if (kindP1 == kindFluid) {
         Prim w = wP1;
         float speed;
@@ -453,11 +493,19 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             wP2 = w;
         } else if (kind == kindWall) {
             wP2 = mirrored(wP1, speed);
+            from.w = 1;
+            mirror.w = -1.0f;
+        } else {
+            from.w = 1;
         }
+    } else {
+        from.w = from.z;
     }
     Prim wM2 = wM1;
     if (kindM1 == kindWall) {
         wM2 = mirrored(wP1, speedM1);
+        from.x = from.z;
+        mirror.x = -mirror.z;
     } else if (kindM1 == kindFluid) {
         Prim w = wM1;
         float speed;
@@ -466,14 +514,52 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             wM2 = w;
         } else if (kind == kindWall) {
             wM2 = mirrored(wM1, speed);
+            from.x = -1;
+            mirror.x = -1.0f;
+        } else {
+            from.x = -1;
         }
+    } else {
+        from.x = from.y;
     }
 
     float dt = levelStep(control, u);
     float lambda = dt / (u.dx / float(r));
     Flux fluxLow;
     Flux fluxHigh;
-    stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+    bool gravityHere = airGravity && axis == 2u;
+    if (gravityHere) {
+        stencilFluxesGravity(wM2, wM1, w0, wP1, wP2, from, mirror, fine.z, gravityTable, lambda, dt, u, fluxLow,
+                             fluxHigh);
+    } else {
+        stencilFluxes(wM2, wM1, w0, wP1, wP2, lambda, u, fluxLow, fluxHigh);
+    }
+    // Sub-grid mixing's fluxes, each fine cell taking its coarse cell's eddy viscosity scaled to
+    // its own size as an inertial range's is, (dx_fine / dx_coarse)^(4/3).
+    float carrierLow = 0.0f;
+    float carrierHigh = 0.0f;
+    if (airMixing) {
+        int levels = r * scale;
+        float shrink = pow(1.0f / float(levels), 4.0f / 3.0f);
+        auto nuAt = [&](int offset) {
+            int3 g = fine;
+            g[axis] += offset;
+            int3 at = clamp(g / levels, int3(0), coarseDims - 1);
+            return shrink * viscosity[at.x + coarseDims.x * (at.y + coarseDims.y * at.z)];
+        };
+        float dxFine = u.dx / float(r);
+        float nu0 = nuAt(0);
+        if (kindM1 == kindFluid) {
+            MixingFace face = mixingFace(wM1, w0, nuAt(-1), nu0, dxFine, dt, u);
+            fluxLow = sumOf(fluxLow, face.flux);
+            carrierLow = face.carrier;
+        }
+        if (kindP1 == kindFluid) {
+            MixingFace face = mixingFace(w0, wP1, nu0, nuAt(1), dxFine, dt, u);
+            fluxHigh = sumOf(fluxHigh, face.flux);
+            carrierHigh = face.carrier;
+        }
+    }
 
     // Experimental moving boxes: finest-level tractions and impermeable moving-wall work, one
     // scalar for each face as on the coarse grid.
@@ -540,6 +626,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     float rho = c.rho - lambda * (fluxHigh.mass - fluxLow.mass);
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
+    if (gravityHere) {
+        gravitySources(momentum, energy, w0.rho, fluxLow, fluxHigh, fine.z, gravityTable, dt, u);
+    }
 
     // Fuel and oxygen, as in `sweepCell`: at the mass fraction of the cell they leave, burnt
     // after the substep's final sweep.
@@ -559,6 +648,11 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         };
         float2 inflow = speciesFlux(fluxLow.mass, speciesAt(-1, kindM1, wM1), fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, speciesAt(1, kindP1, wP1));
+        if (airMixing) {
+            // Sub-grid mixing carries the species down their gradients in mass fraction.
+            inflow -= carrierLow * (fraction - speciesAt(-1, kindM1, wM1));
+            outflow -= carrierHigh * (speciesAt(1, kindP1, wP1) - fraction);
+        }
         if (local[axis] == 0 && ghostKinds[ghostIndex(patch, 1u, a, b, uint(side))] == ghostCoarse) {
             uint slot = speciesSlot(patch, 2u * axis, a, b, uint(side));
             speciesFluxSums[slot] += inflow.x * dt;
@@ -576,7 +670,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         }
         float2 species = max(own - lambda * (outflow - inflow), 0.0f);
         if (u.finalSweep != 0) {
-            float fuel = burnt(species, dt, u);
+            float fuel = afterburntHere(species, rho, momentum, energy, dt, u);
             species.x -= fuel;
             species.y -= fuel * u.oxygenPerFuel;
             energy += fuel * u.afterburnEnergy;
@@ -601,8 +695,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     fineDst[index] = result;
 
     if (u.finalSweep != 0) {
-        recordCell(maxSpeed, momentum, rho, pressure, u);
-        float overpressure = pressure - u.ambientPressure;
+        // Under gravity, against the ambient pressure at the fine cell's height.
+        float ambient = airGravity ? gravityAmbientOf(gravityTable, fine.z, u) : u.ambientPressure;
+        recordCell(maxSpeed, momentum, rho, pressure, u, ambient);
+        float overpressure = pressure - ambient;
         if (overpressure > 0.0f) {
             // Positive floats order like their bit patterns.
             atomic_fetch_max_explicit(&peakBits[coarseIndex], as_type<uint>(overpressure), memory_order_relaxed);
@@ -635,6 +731,8 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         const device int *childPatches [[buffer(22)]],
                         device float *childFlux [[buffer(23)]],
                         device float *childSpeciesFlux [[buffer(24)]],
+                        const device float4 *gravityTable [[buffer(25)]],
+                        const device float *viscosity [[buffer(26)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -649,7 +747,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
                       speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
-                      childFlux, childSpeciesFlux);
+                      childFlux, childSpeciesFlux, gravityTable, viscosity);
     }
 }
 
@@ -758,6 +856,11 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
     c.my += scale * (area * sums[2] - coarseFlux[slot + 2]);
     c.mz += scale * (area * sums[3] - coarseFlux[slot + 3]);
     c.energy += scale * (area * sums[4] - coarseFlux[slot + 4]);
+    if (airGravity && axis == 2u) {
+        // The coarse cell's energy took -g times its faces' mean mass flux (see `gravitySources`);
+        // this face's has changed.
+        c.energy -= 0.5f * u.gravity * (area * sums[0] - coarseFlux[slot]);
+    }
     c.rho = max(c.rho, u.densityFloor);
     float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / c.rho;
     if (gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma) < u.pressureFloor) {
@@ -1409,6 +1512,32 @@ kernel void refineArguments(device atomic_int *counters [[buffer(0)]],
     arguments[24] = patches;
 }
 
+// Matches `TerrainUniforms` in Refinement.swift.
+struct TerrainUniforms {
+    float2 origin;
+    float spacing;
+    uint columns;
+    uint rows;
+    uint enabled;
+};
+
+// The terrain's elevation at `p`: bilinear between the nodes round it, the edge carried outward,
+// as `Terrain.height(at:)` computes it.
+static inline float terrainHeight(float2 p, constant TerrainUniforms &t, const device float *heights) {
+    float2 last = float2(float(t.columns - 1), float(t.rows - 1));
+    float2 position = clamp((p - t.origin) / t.spacing, float2(0.0f), last);
+    int2 low = min(int2(floor(position)), int2(int(t.columns) - 2, int(t.rows) - 2));
+    float2 f = position - float2(low);
+    uint base = uint(low.x) + t.columns * uint(low.y);
+    float h00 = heights[base];
+    float h10 = heights[base + 1];
+    float h01 = heights[base + t.columns];
+    float h11 = heights[base + t.columns + 1];
+    float bottom = h00 + f.x * (h10 - h00);
+    float top = h01 + f.x * (h11 - h01);
+    return bottom + f.y * (top - bottom);
+}
+
 // Step 7f: fills each new patch from the coarse air (at the step's end).
 kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device Cell *coarse [[buffer(1)]],
@@ -1430,6 +1559,10 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        device float2 *fineSpecies [[buffer(17)]],
                        const device float4 *boxDefinition [[buffer(18)]],
                        const device int *parentPatches [[buffer(19)]],
+                       const device float *terrainHeights [[buffer(20)]],
+                       constant TerrainUniforms &terrain [[buffer(21)]],
+                       const device float4 *gravityTable [[buffer(22)]],
+                       const device float4 *parentGravityTable [[buffer(23)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -1450,11 +1583,18 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     // The fine outline: rigid blocks by whether the fine cell's centre lies in one (or, without
     // a list of them, as the coarse cell is), and the structure as the coarse cell has it until
     // the structure's own fine pass (`refineRemaskPrepare`) refines it.
+    // The terrain likewise: by whether the fine cell's centre lies below its surface. (Marked 16
+    // for `refineFillConserve`, which runs next; the structure's remask clears the mark.)
     bool rigid = false;
-    if (boxCount > 0) {
+    bool byTerrain = false;
+    if (boxCount > 0 || terrain.enabled != 0) {
         float3 centre = (float3(fineCoordinates) + 0.5f) * (u.dx / float(r));
         for (uint n = 0; n < boxCount && !rigid; ++n) {
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
+        }
+        if (!rigid && terrain.enabled != 0) {
+            byTerrain = centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
+            rigid = byTerrain;
         }
     } else {
         rigid = parentRigid(rigidMask, index, u);
@@ -1464,28 +1604,38 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     float3 point = (float3(fineCoordinates)+0.5f)*(u.dx/float(r));
     int owner = u.experimentalBox != 0 ? experimentalBoxOwner(point,u.dx/float(r),u,boxDefinition) : -1;
     bool own = owner >= 0;
-    fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0);
+    fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0) | (byTerrain ? 16 : 0);
     fineWall[at] = own ? experimentalBoxVelocity(point,boxDefinition+boxVectors*uint(owner))
                       : structure ? parentWallVelocity(wallVelocity, cell, index, u) : float3(0.0f);
     if (!parentIsSolid) {
-        fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches);
+        fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches,
+                           parentGravityTable, gravityTable);
     } else {
         // A fine cell of air in a coarse cell that is solid: air the coarse cells could not see,
         // which has held the still air the domain was filled with. (The mean of the air beside it
-        // would copy the hottest gas into it, beside a charge, and add energy.)
+        // would copy the hottest gas into it, beside a charge, and add energy.) With gravity, the
+        // air at rest at its height.
         Cell still;
         still.rho = u.stillRho;
         still.mx = u.stillMx;
         still.my = u.stillMy;
         still.mz = u.stillMz;
         still.energy = u.stillEnergy;
+        if (airGravity) {
+            float4 b = gravityCellOf(gravityTable, fineCoordinates.z);
+            still.rho = b.x;
+            still.mx = 0.0f;
+            still.my = 0.0f;
+            still.mz = 0.0f;
+            still.energy = b.y;
+        }
         fine[at] = still;
     }
     if (u.afterburnEnergy > 0.0f) {
         // At the coarse cell's mass fractions, so that the fine cells' mean is the coarse cell's.
         fineSpecies[at] = !parentIsSolid
             ? coarseSpecies[index] / max(coarse[index].rho, u.densityFloor) * fine[at].rho
-            : float2(0.0f, u.stillOxygen);
+            : float2(0.0f, airGravity ? u.stillOxygen / u.stillRho * fine[at].rho : u.stillOxygen);
     }
     fineImpulse[at] = 0.0f;
     // The first fine cell of each coarse cell keeps the impulse the coarse cell had so far.
@@ -1500,6 +1650,11 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
 // After `refineFill`, per coarse cell of each new patch: where its fine outline differs from its
 // own, the gas the coarse cell held over the fine cells that are solid is shared among those that
 // are fluid, so that placing the patch neither loses nor gains gas, and the patch is pinned.
+// Not under the terrain: there it is given up, since shared it would raise the fluid cells'
+// pressure by the solid share (an eighth of a cell solid, 14%), which would flag the blocks beside
+// and refine its way along a sloping surface ahead of the blast. What is given up there balances,
+// on average over the surface, the still air gained where a fine cell is fluid in a solid coarse
+// cell.
 kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
                                const device uchar *mask [[buffer(1)]],
                                constant SolverUniforms &u [[buffer(2)]],
@@ -1531,7 +1686,7 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
         if ((fineMask[child] & 1) == 0) {
             fluid += 1;
-        } else if (!coarseSolid) {
+        } else if (!coarseSolid && (fineMask[child] & 16) == 0) {
             lost = addCells(lost, fine[child]);
             if (species) {
                 lostSpecies += fineSpecies[child];

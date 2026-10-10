@@ -35,6 +35,10 @@ swift run -c release blastbench closein
 ```
 
 ```bash
+swift run -c release blastbench contact
+```
+
+```bash
 swift run -c release blastbench closeair --dx 0.01
 ```
 
@@ -57,9 +61,12 @@ swift run -c release blastbench chamber
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, shells 135 mm (125%); one beam bent to failure: peak moment 97–99%, failure at 38–52 mm against 42 mm; one beam without stirrups failing in shear: 11–15% strong on fine meshes, failing suddenly as the test did; seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% on 24), the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived; nineteen on beams without stirrups at rising speeds: within 15% up to 3 m/s and 15% on average beyond on 16 elements, but further on 24, springing back too far, and decided by how the ends were held | Moderate for bending; low for shear: one test, and coarse meshes far too strong; moderate for impact, where the strain-rate laws decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of those measured, the impulse under the charge 86–95% of Kingery–Bulmash's; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
+| Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), 40–70% under 0.2–0.8 kg where the tests spalled; contact charges hole them, not to size. Wang et al. (2022): an aluminised charge's impulse 75% as its stated 10 kg of TNT, 94% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges; low for one layer against two, spall and holes |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
+| Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Low: illustrative; afterburning keeps the fireball near the flame temperature |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to an eighth with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
-| Collapse and debris  | Nothing                                              | None: plausible-looking only       |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
 ## Structural response against a real test
 
@@ -340,9 +347,28 @@ peak much:
 | Hourglass control halved | 116 mm | 97 mm |
 
 So the slab's stiffness with slip is tension stiffening: the concrete between its cracks
-carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks. Whether the
-model's is too strong there, with the tensile strength raised by its rate law and the bond
-not, is the next question.
+carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks.
+
+**Where that tension comes from** (`blastbench slab --stiffening`). By 80 mm, over the 600 mm
+about mid-span, in kN:
+
+| Carried by | Perfect bond | Bars that slip |
+|---|---|---|
+| Bars | 484 | 477 |
+| Concrete never cracked | 1 | 2 |
+| Concrete cracked under 0.02 mm | 9 | 54 |
+| Concrete cracked 0.02–0.1 mm | 2 | 23 |
+| Concrete cracked wider | 20 | 17 |
+
+With slip, the concrete across a crack's own plane carries next to nothing. Between cracks it
+has been loaded through the bond to its tensile strength, raised by its strain rate, and holds
+it at the start of its softening. Nothing is counted twice: with slip there is no
+tension-stiffening branch, only plain concrete's softening over each element. A tie with the
+same law carries what the Model Code's tension stiffening gives at the raised strength, on two
+meshes (see [the concrete model](concrete-model.md#bars-that-slip-an-option)). The bond law
+hardly matters (95–96 mm with pull-out, splitting or confined splitting bond); a tenth of the
+fracture energy takes the slab with slip to 107 mm. Softening that would bring the slab to the
+test spoils the tie's crack spacing and tension stiffening, and leaves OA1 40% strong.
 
 ### What this does and does not show
 
@@ -1242,6 +1268,336 @@ removed; and the tests' damage follows bending the model falls short of, after a
 the impulse is taken back by the wave wrapping under the slab. The supports' lengthwise
 restraint, the space under the slab and the charges' shapes are assumptions that matter.
 
+## Slabs with steel in both faces
+
+The sixth and seventh structural tests: slabs reinforced in one face or both, under TNT in
+contact, close in and in the open air, the air solver loading them. Neither paper had been
+used before; both are open (CC BY 4.0), and the values used are in `Fixtures/TwoFaceSlabs`,
+transcribed from their tables, text and drawings with nothing digitised from plots.
+`blastbench twoface --wu S5,D5` and `--wang A,B` run them (`TwoFaceSlabTests.swift`).
+
+### The tests
+
+**Wu et al.** (Y. Wu et al., *Materials* 16, 4068, 2023): sixteen slabs 2 × 2 m and 100 mm
+thick, the same steel in each, 8 mm bars either at 100 mm both ways in one layer near the
+underside (S) or at 200 mm in a layer in each face (D); concrete of 47.0 MPa (the mean of six
+150 mm cubes), bars of 455 MPa yield and 587.5 MPa ultimate; spanning one way on a steel frame,
+held down by two bolted clamps a side; one shot each. In contact (S1–S4, D1–D4) 0.2 to 1.6 kg of
+TNT holed every slab, 14 to 27.5 cm across; hung 0.25 to 0.50 m above (S5–S8, D5–D8, all at
+0.43 m/kg^(1/3)) it bent them, the undersides of S6, S7 and D6 spalling over about 0.1 m² and
+4 cm deep. A gauge 300 mm from the centre of the underside recorded each non-contact shot; the
+paper tabulates its peak, its rebound and the residual. Its records (Fig. 8) peak within 5–10
+ms and then swing upward 2–18 mm, past where they started, over some 60 ms, much more slowly
+than the slab's own period (about 20 ms by hand): something in the rig moved, and only the
+peak and the residual are used here.
+
+**Wang et al.** (W. Wang et al., *Materials* 15, 6449, 2022): two slabs 1,200 × 500 × 100 mm
+with bars both ways in both faces at 100 mm, 8 mm (A) and 12 mm (B), standing upright, their
+centres 0.7 m above the ground, clamped at the corners with plates welded between, "fixed on
+four sides"; one shot of a 10 kg sphere of TNT, RDX and aluminium, which the paper gives as
+10 kg of TNT, 1.2 m from each. Reflected pressures were recorded on a steel plate placed as
+the slabs were, and displacements at five points down each slab's back: A peaked at 19.7 mm and
+kept it, its back cracked and its bars exposed; B peaked at 14.1 mm and was left 5.8 mm down,
+finely cracked.
+
+### The model
+
+Solid elements 12.5 mm (8 through the thickness), each mat smeared through a band at its
+depth, the air in 25 mm cells refined by 2 near the shock, the charge started from the
+one-dimensional solution, the strain-rate laws on; nothing fitted. Assumed for Wu: the cube
+strength's 0.8 for the cylinder's; the layers centred 20 mm from the faces, as the drawing
+dimensions them (the text prints the two layers 600 mm apart, a misprint); the slab bearing on
+100 mm of each supported edge, held down along the clamps' line and lengthwise at one edge
+only, the frame's beams under those edges; the blast distance to the charge's centre, and a
+contact charge as a sphere of TNT touching the slab. For Wang: 30 MPa, the grade's value its
+own model used; HRB400 at 400 and 540 MPa; the layers 20 mm from the faces (the drawing marks
+13 mm of cover where the text prints 50 mm, and the printed steel ratios put the bars 80 mm from
+the far face); every node within 50 mm of an edge fixed; a steel frame 0.1 m wide about the slab
+and a shield 0.3 m behind it; the displacement gauges 0.2 and 0.4 m above and below the centre;
+and the aluminised charge as 10 kg of TNT, as the paper states, with no allowance for its
+aluminium beyond what afterburning gives.
+
+### Results
+
+**Wu's slabs, charges hung above.** Peak, rebound and residual 300 mm from the centre of the
+underside, in mm, measured / model:
+
+| Slab | Charge | Peak | Rebound past the start | Residual | Underside spalled |
+|---|---|---|---|---|---|
+| S5 | 0.2 kg at 0.25 m | 4.0 / 2.1 | 1.9 / none | 0.7 / 0.1 | no / no |
+| D5 | | 4.1 / 2.8 | none / none | 2.0 / −0.3 | no / no |
+| S6 | 0.4 kg at 0.32 m | 8.2 / 3.9 | 5.9 / none | 2.0 / 1.3 | 0.11 m² / no |
+| D6 | | 10.1 / 3.9 | 4.3 / none | 4.1 / 1.5 | 0.14 m² / no |
+| S7 | 0.8 kg at 0.40 m | 13.2 / 7.4 | 11.6 / none | 4.3 / 2.7 | 0.10 m² / no |
+| D7 | | 12.0 / 7.5 | 9.6 / none | 4.4 / 0.6 | cracks / no |
+| S8 | 1.6 kg at 0.50 m | 18.0 / 14.4 | 18.4 / none | 5.6 / 5.9 | cracks / no |
+| D8 | | 13.9 / 14.9 | 13.1 / none | 6.9 / 5.3 | cracks / no |
+
+The largest charges come within −20% and +7% at the peak, at the time the tests peaked (about
+6 ms), and within a quarter at the residual (the model still swinging by ±3 mm at 50 ms). The
+smaller the charge, the further the model falls short: 53–68% at 0.2 kg, 39–48% at 0.4 kg, 56–62%
+at 0.8 kg. Air refined by 4 instead of 2 (6 mm cells, under 0.01 of the charge's cube root)
+leaves S6 and D6 at 3.8 mm, so the load is not what is missing; the tests' undersides spalled
+4 cm deep within a few hundred millimetres of the gauge, and the model's do not spall at all,
+where spalling needs 12 elements through (see [what stops the spall](#what-stops-the-spall-and-the-breach)).
+With 12 elements through as well, S6 reaches 4.1 mm and still does not spall, so the shortfall
+under the small charges is not the mesh either, and is left open. The model never springs up past where it started: the tests' upward swing is
+the rig's, or the slab lifting in its clamps, which the model holds down.
+
+One layer or two: the tests' single layer near the underside did better under the small
+charges and worse under the large (18.0 mm against 13.9 at 1.6 kg). The model hardly tells
+them apart (14.4 against 14.9 mm). Traced by mechanism (`--work`), at the peak under 1.6 kg the
+bars do only 22% and 28% of the work, hourglass control 18% in both, and the concrete the rest,
+in tension (uncracked or cracked under 0.1 mm, 20%), in compression (13–17%) and in shear on
+uncracked and cracked planes (20–22%): at 14 mm on a 1.9 m span the slab is barely cracked
+through, so where its steel lies matters little to it, and an eighth of a 100 mm slab is a
+coarse element for its bending. Held lengthwise at both edges instead of one, both peak at
+11 mm, a quarter stiffer.
+
+**In contact.** Charges as spheres of TNT touching the slab, 1.6 kg (20 ms):
+
+| Slab | Hole, measured / model | Top face damaged | Underside damaged |
+|---|---|---|---|
+| S4, one layer | 27.5 / 18.9 cm | 0.13 / 0.15 m² | 0.29 / 0.10 m² |
+| D4, two layers | 23.5 / 50.5 cm | 0.11 / 0.42 m² | 0.21 / 0.41 m² |
+
+These holes were mostly the step running away (see [holes](#holes-under-close-in-and-contact-charges)):
+concrete compacted under a contact charge is several times stiffer than the step allows, and
+at a quarter of it (`--step-divisor 4`) the holes are 14.0 and 8.3 cm, both too small, with a
+fifth to a half as many elements removed. The holes counted here are now the columns whose
+concrete is gone through the thickness, removed or left as its bars, as the tests' holes had
+bars across them. Under the contact charges of the
+[next section](#slabs-under-contact-charges), on slabs two to three times as thick, the model
+holes none, and there a charge in contact was found to load the slab with about twice the
+impulse a proper equation of state for its products gives.
+
+**Wang's slabs.** Reflected pressure on the slab's face where the plate's gauges were, measured
+/ model:
+
+| Gauge | Peak (MPa) | Arrival (ms) | Impulse (MPa ms) | With afterburning |
+|---|---|---|---|---|
+| P1, facing the charge | 32.3 / 19.2 | 0.36 / 0.42 | 3.35 / 2.51 | 3.14 |
+| P2, 0.16 m across | 26.5 / 19.3 | 0.36 / 0.42 | 3.02 / 2.49 | 3.15 |
+| P3, 0.3 m up | 23.6 / 18.2 | 0.38 / 0.44 | 2.93 / 2.21 | 2.88 |
+
+As 10 kg of TNT the charge gives three quarters of the measured impulse, arriving a sixth late, and
+three fifths of the peak; with its products burning on (`--afterburn`) the impulse comes within
+6%, consistent with an aluminised charge worth more than its stated equivalent. The paper's
+own ConWep curve peaks near 24 MPa. Deflection at the centre of the back, mm, measured / model:
+
+| Slab | Measured, peak / left | Edges fixed | Edges free to slide in their plane | With slip |
+|---|---|---|---|---|
+| A, 8 mm bars | 19.7 / 19.7 | 3.1 / 0.9 | 6.3 / 1.5 | 2.7 |
+| B, 12 mm bars | 14.1 / 5.8 | 2.8 / 0.5 | 5.7 / 4.1 | 2.3 |
+
+The model's slabs barely move: fixed all round, a slab 0.4 m across between its clamps and 0.1 m
+thick arches against them and peaks within a millisecond, where the tests' peaked at 5–8 ms and
+kept most of it. Freed to slide in their plane they go twice as far, still a third of the
+tests'. Held on hinge lines instead, they tear along them (on single lines of nodes, as the
+close-in slabs did at their bolts). Afterburning, which brings the impulse in, leaves the peak
+at 2.9 mm. So the tests' slabs were held far less stiffly than "fixed on four sides", or their
+gauges moved with the frame; the paper does not say which, and the comparison tests the load
+far better than the slab.
+
+**With bars that slip** (`--bond pullout`) every slab is stiffer: Wu's S8 and D8 peak at 11.5
+and 11.9 mm and are left 2.7 and 3.4 mm down (5.6 and 6.9 measured), Wang's A and B at 2.7 and
+2.3 mm. That is the contest slab's direction too ([its cracks](#its-cracks)).
+
+### What this does and does not show
+
+It shows that the coupled model bends a 2 m slab under the larger of these charges about as far
+as the tests did, at the right time, with nothing fitted, and holes slabs under contact
+charges, though not to the measured size. It does not separate one layer of steel from two
+as the tests did; it falls well short under the smaller charges, where the tests' slabs
+spalled and the model's do not; and Wang's slabs, as supported in the model, are several times
+too stiff, a matter of supports the paper leaves unclear. Wang's pressures check the load from
+an aluminised charge, and say its TNT equivalence is low for impulse.
+
+## Slabs under contact charges
+
+The first comparison of debris: the speed of the concrete thrown off the far face of slabs
+under charges laid on them, the spall crater it leaves, and whether the slab is holed.
+
+### The test
+
+M. A. Hupfauf, *Secondary debris resulting from concrete slabs subjected to contact
+detonations*, PhD thesis, Universität der Bundeswehr München, 2024, with the first results in
+M. Hupfauf and N. Gebbeken, *Advances in Structural Engineering* 25(7) (2022) 1373–1385. Both
+CC BY 4.0; the data used are in `Fixtures/Hupfauf/slabs.json`, read off the thesis's figures
+where it gives no table (see its README).
+
+| Property  | Value                                                                        |
+|-----------|------------------------------------------------------------------------------|
+| Slabs     | 2.0 × 2.0 m, 20, 25 and 30 cm thick, fifteen without steel fibres; 42.7 MPa on cubes, 2,220 kg/m³, 8 mm aggregate |
+| Bars      | B500B, 10 mm at 150 mm both ways in both faces, 35 mm cover                   |
+| Supports  | Stood upright between steel beams 20 cm wide on both faces at two opposite edges, 1.6 m clear |
+| Charges   | Cylinders of 1000, 1500 and 2000 g of SEMTEX 10, 103 mm across, one end flush with the slab's centre; 1,550, 1,841 and 2,058 g of TNT as spheres of the same energy-equivalent impulse (the thesis's own factors) |
+| Measured  | High-speed video of the far face: the debris's velocities, its fastest (the tip of the cloud) within ±25%; 3D scans of the craters; the debris's mass from the scanned volume |
+
+The thesis fits its tip velocities as 292 / T_W − 98 m/s over the scaled thickness
+T_W = T / W^(1/3) (cm g^(−1/3)), within a few m/s of every slab, and the debris's velocity over
+the radius as a bell of width σ = 57 + 45 T_W mm; the slabs are holed below T_W = 2.1.
+
+### The model
+
+`ContactSlabTest.swift`: the slab horizontal, the charge a sphere of hot gas at its TNT mass
+touching the loaded face (no room to start it from the one-dimensional solution), air cells of
+20 mm refined twice by 2 to 5 mm near the shock, and 12 elements through the slab (17 to 25
+mm), as the [close-in trace](#what-stops-the-spall-and-the-breach) found a spall needs; the
+beams hold both faces still along two edges. The structure's step is a quarter of its elastic
+limit: at the limit, the column under the charge, compacted past the Holmquist–Johnson–Cook
+curve's locking point where it is three to twenty times stiffer than elastic, ran away within
+50 µs, to 3.7 TPa. The far face's velocity is taken as the median of its nodes in rings about
+the axis. `blastbench contact` runs one slab of each of the eight kinds, about five minutes each
+for 3 ms.
+
+### Results
+
+**The load.** The thesis simulated 1500 g of SEMTEX 10 (a cylinder 100 mm across, L/D 1.2) on a
+rigid wall with the detonation products' own equation of state, on cells down to 0.6 mm: 951
+N s by 0.1 ms, and nothing more after 0.05 ms. A sphere of the same total impulse by its
+factors, 1.43 kg of TNT, gives the slab 1,231 N s by 0.1 ms here (1,162 on air twice as fine),
+and goes on pushing to about 1,900 N s by 0.5 ms: a ball of air expanding from the charge's
+density loses its pressure far more slowly than detonation products do (γ = 1.4 against about
+3 for the products while dense), so in contact it delivers about twice the impulse. From 0.3
+m/kg^(1/3) out ([close in](#close-in)) the products' own equation of state did not matter; in
+contact it does.
+
+**The debris.** Downward velocity of the far face (m/s) at 0.5 ms, under the charge and 14 cm
+out (16 cm on the 30 cm slabs), against the thesis's fit, with the charges at their energy-equivalent mass; the spall
+crater's diameter (cm), measured against the model's cover cracked loose (a crack within 45° of
+the face's plane, between the face and the bars, opened past 0.5 mm); and the breach:
+
+| Slab  | T_W  | Under the charge | Fit | 14–16 cm out | Fit | Spall crater | Cracked loose | Breach (test / model) |
+|-------|------|------------------|-----|--------------|-----|--------------|---------------|-----------------------|
+| SN174 | 1.63 | 94–138           | 81  | 26           | 37  | 68–70        | 78            | yes / no              |
+| SN142 | 1.73 | 131              | 71  | 21           | 34  | 62.5–66      | 71            | yes / no              |
+| SN144 | 1.97 | 92               | 50  | 24           | 27  | 81–88        | 69            | yes / no              |
+| SN128 | 2.04 | 64               | 45  | 21           | 25  | 63–74        | 63            | yes / no              |
+| SN147 | 2.36 | 33               | 26  | 16           | 13  | 82–96        | 54            | no / no               |
+| SN131 | 2.59 | 22               | 15  | 12           | 8   | 83–85        | 24            | no / no               |
+
+(The measured tip velocities are within a few m/s of the fit: 76–84, 69–72.5, 46–55.5, 41.5–46,
+23.4–25 and 14.7–15 m/s.)
+
+At first, then, the far face under the charge moves 1.2 to 1.9 times as fast as the debris did,
+its profile narrower than the measured on the thinner slabs and about as wide on the thicker,
+and on the 20 and 25 cm slabs its cover cracks loose over about the measured spall crater. But
+the debris does not leave. Outside a central cap a few element widths across, the loose layer
+is held at its rim and pulled back to the slab's own motion: by 3 ms the face 14 to 16 cm out
+moves at −0.4 to 21 m/s, against the 8 to 37 m/s the thesis's fragments kept in flight. No slab
+is holed, where every 20 and 25 cm slab was; the concrete removed or left as bare bars in the
+slab's far half is 15 to 30 kg on those slabs and SN147 (the measured debris 37 to 70 kg), and
+under 1 kg on SN131. On the loaded face, the region removed or crushed past 1% is 22 to 30 cm across and
+15 to 19 cm deep, where the crushing craters measured 44 to 54 cm across and 6.5 cm deep to the
+breach (8 to 10 cm without).
+
+**With the load matched instead.** Charges cut to give the thesis's total impulse in this model
+(0.68 to 0.84 kg) leave the face too slow: under the charge 59 m/s on SN174 against 81, and 17
+on SN147 against 26, and almost nothing cracks loose. The measured debris lies between the two
+loads, so the load's error and the slab's cannot be told apart here.
+
+**What holds the debris back,** for the work on removal under close-in charges:
+
+- A layer cracked loose parallel to the face is removed only once its crack is 5 mm open. Until
+  then it is a plate held at its rim by the uncracked face around it, and is pulled back; the
+  tests' layer broke up along radial cracks and flew. The thesis also found, with two
+  established concrete models, that the energy a spall dissipates is spread over its fracture
+  zone rather than one layer of elements, where this model softens a crack no bar crosses over
+  one element.
+- Nodes freed under the charge leave at 400 to 800 m/s and pass through the intact slab:
+  contact checks no node whose eight elements are whole, and changes a node's speed by at most
+  2 m/s a step, so a loose node from the crater reached the far face in 0.75 ms and knocked a
+  node of it away at 180 m/s.
+- Removal by strain alone would not help: in the thesis's own models, eroding elements at 0.4 to
+  1.1% principal strain took 46 to 67% of the charge's energy out of the concrete within 0.02
+  ms, during the detonation itself, and the author advises against erosion for contact charges.
+- Compacted concrete is several times stiffer than the step allows (above); a contact charge in
+  the app, at the default step, would run away.
+
+### What this does and does not show
+
+It shows that the model, given the charge's mass, throws the far face of a slab under a contact
+charge at about the measured speed to within a factor of two, and cracks its cover loose over
+about the measured spall crater on the thinner slabs. It does not reproduce the debris: the
+loose layer is held back rather than thrown, so the velocities the fragments kept and their
+mass are a fraction of those measured, and no slab is holed where most were. The charge's load
+is the first error, about twice the impulse of a proper equation of state for the products;
+removal of loose and broken concrete is the second. The thesis's own simulations did not
+reproduce the debris's velocity either. Nothing here touches collapse.
+
+## Holes under close-in and contact charges
+
+Where the tests were holed the model was not: Chiquito's slabs at 0.5 m, Hupfauf's 20 and 25 cm
+slabs and, at a stable step, Wu's to only half the measured size. Each element under the
+charges was traced to see why its concrete stays (`--report` prints the column under the
+charge, `--census` the hole each candidate rule would leave), and one rule was tried in full.
+
+**Why the broken concrete stays.** On Wu's D4 (1.6 kg on 100 mm, two layers) at a stable step,
+the concrete within the measured hole's radius is cracked 2 to 7 mm across vertical planes
+(normal to the slab's faces), crushed by 1 to 8%, and in one element in five nearly whole.
+None of it meets a removal rule:
+
+- a crack across a vertical plane is crossed by the mats' bars somewhere in the section, so it
+  is bridged and the element stays until the crack is 15 mm open (three times the removal width);
+- crushing removes concrete only past the end of its softening by as much again, about 34% on
+  12.5 mm elements;
+- cracks parallel to the faces, which no bar crosses, are removed at 5 mm, and are;
+- neither confinement nor compaction holds it: taken from the stresses carried, the confinement
+  is gone once the shock has passed (the gain is zero), and compaction is under 1% at the rim
+  (11 to 18% only on the axis, where the concrete is removed in any case).
+
+**Rules tried after the fact.** The hole (cm) each rule would leave at the end, measured in
+brackets; Hupfauf's run 3 ms, Wu's 20 ms at a quarter step, Chiquito's 40 ms:
+
+| Rule | Wu S4 (27.5) | Wu D4 (23.5) | Wu S1, D1 (15, 14) | SN142, SN174 (holed) | SN147, SN131 (not) | P2 (holed), P7 (not) |
+|---|---|---|---|---|---|---|
+| As now | 14.0 | 8.3 | 0, 0 | 0, 0 | 0, 0 | 0, 0 |
+| Two planes open 1 mm | 21.7 | 11.9 | 0, 0 | 4.6, 16.2 | 6.9, 0 | 0, 0 |
+| Three planes open 0.5 mm | 17.4 | 10.8 | 0, 0 | 0, 10.5 | 0, 0 | 0, 0 |
+| A plane open 5% of the element | 35.0 | 18.6 | 0, 0 | 18.4, 24.4 | 8.0, 6.3 | 17.8, 0 |
+| That, with two planes open 0.5 mm | 28.3 | 13.7 | 0, 0 | 17.2, 23.4 | 8.0, 6.3 | 0, 0 |
+| Compacted, two planes open 1 mm | 17.5 | 11.8 | 0, 0 | 0, 0 | 0, 0 | 0, 0 |
+
+Every rule that holes Hupfauf's 20 cm slabs holes his 30 cm ones, which held, and none holes
+Wu's slabs under 0.2 kg, which the model barely damages: 3 elements fail on 12.5 mm air, 290 on
+6.25 mm air, against holes 14 and 15 cm across, so a charge 31 mm in radius is under-resolved
+there before any rule applies. A plane open 5% alone also removes 140 to 2,000 elements far from
+the charge, in hinges.
+
+**The rule tried in full** (`StructureModel.removesFragments`, `--fragments`): concrete cracked
+open across at least two planes by 0.5 mm, and across one by 5% of its size, is removed, left as
+its bars where they are intact, whatever bars cross it. It stands for the erosion of the
+continuous surface cap model that M. Martínez-Almajano et al. (2021) used to hole slabs of
+Chiquito's campaign (damage near one and principal strain past 5%), with "damaged" read as
+cracked open in two directions, so that a hinge's one crack is not removed. Shells' layers judge
+it the same way.
+
+| Case | Measured | As now | With the rule |
+|---|---|---|---|
+| Wu S4 (contact, 1.6 kg, one layer) | holed 27.5 cm | 14.0 cm | 43.2 cm, 12,800 elements removed |
+| Wu D4 (two layers) | holed 23.5 cm | 8.3 cm | 15.5 cm |
+| Wu S1, D1 (0.2 kg) | holed 15, 14 cm | none | none |
+| Hupfauf SN142, SN174 (20 cm) | holed | not | holed |
+| Hupfauf SN147, SN131 (30 cm) | not holed | not | holed |
+| Chiquito P1, P7 (1 m) | not holed | not | not |
+| Chiquito S5, P2 (0.5 m) | holed | not | not, on 50 mm and fine air |
+| Contest slab | | | unchanged |
+| Saatci's beams (16 elements) | | | the heavy drop with stirrups 25% further (49.4 mm against 39.5), the beam without stirrups losing five times the elements under the light drop |
+
+It holes slabs both where the tests did and where they did not, overshoots the slab with one
+layer and undershoots the slab with two, and damages struck beams; so it stays an option, and the
+default is unchanged. Removed concrete keeps its mass on its nodes, as bare bars or as loose
+debris, so momentum is kept and only the element's strain energy is lost; Hupfauf found the
+opposite failing in erosion by strain alone, which removed half the charge's energy during the
+detonation, and this rule, needing open cracks, acts only after the shock.
+
+What decides the holes is not removal alone. A charge in contact loads the slab with about
+twice the impulse of a proper equation of state for its products
+([contact charges](#slabs-under-contact-charges)), which holes the thick slabs that held; small
+charges are under-resolved on practical cells; and at 0.5 m Chiquito's slabs are neither
+crushed through nor spalled through by the model, whatever removes them.
+
 ## Blast loads against empirical references
 
 `blastbench validate` puts a 100 kg charge on rigid ground and compares the air solver with two
@@ -1712,6 +2068,44 @@ the gauge positions allow. One test, one measured residual, and two pieces of de
 had to be assumed: the chamber shows how the model behaves at a full-scale joint, not that it
 is right there.
 
+## The fireball's radiation against Dial Pack
+
+Dial Pack, 500 tons of TNT on the ground at Suffield in 1970, measured at 600 and 1,700 m from
+1 ms to 15 s (Pattman, DREO Report 642), radiated 7.0% to 7.4% of 10⁹ cal a ton, a third of it by
+2 s. The model's fireball, run at full size on 2 to 8 m cells (`blastbench dialpack`), is a sixth
+as bright as measured at the pulse's first maximum, too cool at the start for want of a thin,
+very hot shock layer. It has no luminous gas from 40 to 350 ms on 4 and 2 m cells, and after a
+second it is two to five times too bright and still brightening, its products burning in a
+fireball that neither rises nor draws in cold air. By 2 s it has radiated 3.9% (3.3% with the gas
+losing its radiated heat) against 2.4%. With gravity in the air the fireball rises, as the
+cloud's integral model has it to a tenth to a fifth, but stays 600 to 900 K too hot, so by 3 s it
+has radiated 8.6% against 3.2%, and by 6 s 32% against 5.1%. Sub-grid mixing changes that
+by under a fifth, and an extinction limit for afterburning not at all, while costing the open
+blast 8–9% of its incident impulse; how fast the products burn changes it by a factor of two. On
+these cells the grid burns the fireball through its whole volume near the flame temperature. Details, the opaque shapes' answers, the resolution's
+effect and the assumptions:
+[thermal radiation](thermal-radiation.md#against-dial-pack).
+
+## Gas deflagrations
+
+A premixed methane or propane cloud lit at a point (see [Gas deflagrations](deflagration.md#checks)):
+
+- **A closed sphere** of stoichiometric methane, against the thin-flame model with the same
+  burning velocity: the peak is the AICC pressure the heat was fitted to, and the energy is
+  conserved to 10⁻⁵; the times to half and nine tenths of the rise converge on the model's,
+  within 1% and 3% at 48 cells across the radius; the deflagration index converges slowly from
+  below (51 bar m/s against 76 at 48 cells), the last unburnt gas being far thinner than a cell.
+- **A tube**: a laminar flame lit at the closed end runs at the expansion ratio times the
+  burning velocity to within 10%.
+- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a fiftieth of
+  Molkov's correlation, and far below Bartknecht's and NFPA 68's, with the default flame; a fifth
+  to a seventh with its burning velocity tripled. Against Bauwens et al.'s six tests in that
+  chamber, whose peaks are only plotted, the model reaches a tenth (lit in the middle) to a half
+  (lit at the back wall) of the plots' axes, with the measured trends' directions. The flame's
+  acceleration by turbulence and instabilities, which these tests and correlations include, is a
+  factor in the model, not a model. The vented peak does not converge (0.56, 0.35 and 0.57 kPa on
+  0.2, 0.1 and 0.05 m cells). Illustrative.
+
 ## A footing rocked on dry sand
 
 S. Gajan and B. L. Kutter's centrifuge test SSG02_03, from the FoRCy database: a 29 Mg shear
@@ -1720,6 +2114,45 @@ slowly to and fro through five packets of rising amplitude. On sand of 80 MPa th
 moment follows the test within 6% to 14 mrad and levels off at the rigid footing's capacity,
 7–17% below the test's at 30 to 60 mrad; it settles a tenth as much as the sand did. Details,
 the 40 MPa run and why: [footings](structural-model.md#footings) (`blastbench rocking`).
+
+## Bars that slip, across the tests
+
+Bars that slip (`StructureModel.bondSlip`; see the
+[concrete model](concrete-model.md#bars-that-slip-an-option)) were run on every structural
+test, with the splitting bond of bars without enough cover to be confined unless noted
+(`--bond splitting`; `pullout` and `confined` for comparison), on the present defaults,
+2026-10-10:
+
+| Test | Measured | Perfect bond (the default) | Bars that slip |
+|---|---|---|---|
+| Contest slab, 4 / 8 / 16 through | 108 mm | 114 / 113 / 121 mm | 102 / 96 / 96 mm (pull-out bond 101 / 95 / 95) |
+| The same, a 25 mm strip, 16 / 32 through | 108 mm | 127 mm / 278 mm, 233 removed | 100 mm / 147 mm, 104 removed |
+| Janney's beam, 12 / 24 through | 41.5 kN m, failing at 42 mm | 42.0 / 41.2 kN m, failing at 53 mm / holding | 41.5 / 67.8 kN m, failing at 47 / 32 mm (pull-out 44.4 / 44.1, at 42 / 34 mm) |
+| OA1, 12 / 24 / 36 through | 332 kN | 456 / 368 / 384 kN | 491 / 487 / 501 kN (pull-out 472 / 489) |
+| Saatci's light drops SS0a / SS1a / SS2a, 16 through | 9.3 / 12.1 / 10.0 mm | 17.0 (246 removed) / 13.6 / 12.4 mm | 11.9 / 11.1 / 10.7 mm |
+| The same, 24 through | | 16.5 (763 removed) / 14.1 / 12.8 mm | 11.8 / 10.5 / 10.4 mm |
+| Saatci's heavy drops with stirrups SS1b / SS2b / SS3b, 16 through | 39.5 / 37.9 / 35.3 mm, left 18 | 40.5 / 37.1 / 33.6 mm, left 15–21 | 34.6 / 33.5 / 32.3 mm, left 12–14 (confined bond 34.2 / 33.0 / 31.4) |
+| The same, 24 through | | 46.4 / 42.5 / 35.0 mm, left 16–30 | 34.1 / 33.3 / 32.5 mm, left 13 |
+| SS0b-1, heavy drop, no stirrups | broken | broken (2,359 and 5,156 removed on 16 and 24) | broken (1,159 and 1,921) |
+| Ando's 19 beams without stirrups, 16 through | | within 16% on average, 0% mean | within 29% on average, 25% short; left a fraction as far down |
+| Chamber roof's edge | 87 mm in the paper's model; left 95 mm up | 38 mm, left 16 | 40 mm, left 16 (confined 39) |
+| Close-in P7 / P2, left down | 340 / 510 mm | 113 / 210 mm | 97 / 216 mm; far face spalled 1.4% (measured 18.6%) |
+
+Two more benchmarks point the same way. On Wu's slabs under 1.6 kg at 0.5 m
+([slabs with steel in both faces](#slabs-with-steel-in-both-faces), `blastbench twoface
+--bond pullout`), slip takes a fifth off the peak and half off the residual: 11.5 and 11.9 mm
+against 14.4 and 14.9 mm perfectly bonded, 18.0 and 13.9 measured. On Peterson et al.'s (2026)
+drop-weight beams (`blastbench impact --peterson`, run in another session and not yet in this
+document), slip misclassifies four of the six failure groups that perfect bond gets right:
+beams without stirrups that failed come through whole, and beams with close stirrups that held
+fail.
+
+So slip is mesh-independent where perfect bond is not: the slab is the same on 8 and 16
+elements, OA1 on all three meshes, Saatci's beams on 16 and 24. And it is right where perfect
+bond splits a beam along its bars under a light drop. But it is too stiff nearly everywhere
+else: the slab 11% short, OA1 half as strong again, the heavy drops 8–14% short, Ando's beams a
+quarter short, the close-in slab P7 further from the test, and Janney's beam broken at 163% on
+24 elements. Perfect bond remains the default; slip remains an option.
 
 ## Consistency across air grids
 

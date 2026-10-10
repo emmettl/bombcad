@@ -8,8 +8,8 @@ deformable structure. It lives in `Sources/BlastCore/BlastSolver.swift` and
 
 The three-dimensional compressible Euler equations for an ideal gas with a constant ratio of
 specific heats γ = 1.4, on a uniform Cartesian grid of cubic cells. There is no viscosity, heat
-conduction, gravity or chemistry, and no radiation unless [radiative cooling](#radiative-cooling)
-is on. The conserved variables per cell are density, three momentum
+conduction or chemistry, no gravity unless [gravity](#gravity) is on, and no radiation unless
+[radiative cooling](#radiative-cooling) is. The conserved variables per cell are density, three momentum
 components and total energy, stored as five single-precision numbers.
 
 ## Numerical scheme
@@ -49,6 +49,9 @@ the app paints on the ground and on rigid blocks.
 - At a solid cell or a reflecting domain face, the stencil is filled with mirrored ghost states
   (normal velocity reversed). The Riemann problem at the wall then has zero mass flux, so walls
   are exactly conservative and can be one cell thick.
+- The ground can have a shape, a heightfield [terrain](terrain.md): a cell below its surface is
+  solid, on the coarse grid and every refinement level, as for a block. The floor beneath it stays
+  a reflecting face.
 - The ground (z = 0) is a reflecting face. The other five faces of the domain are open: the
   stencil copies the last interior cell (zero-gradient extrapolation).
 
@@ -140,6 +143,39 @@ switch) it brings the closed-room gas pressure within 8% of UFC 3-340-02's at ev
 density tested, with nothing fitted to it, and keeps the incident impulse in the open within
 6% of Kingery–Bulmash (see [Validation](validation.md#afterburning)).
 
+### An extinction limit for afterburning
+
+`SolverConfiguration.afterburnLimit` (`--burn-limit [--ignition 800] [--limit-flame 1500]` in
+`blastbench`; off by default) lets the products burn only where the mixture can keep a flame
+going. The burning rate above the limit stays as it was: mixing-limited, as in Kuhl, Ferguson and
+Oppenheim's account of TNT's afterburning. Two conditions:
+- **ignition:** the cell must be at least 800 K, where Dryer and Glassman's global rate for the
+  oxidation of carbon monoxide, the products' main fuel, becomes faster than the gas mixes;
+- **flammability:** burning all the fuel its oxygen allows must take the cell to 1,500 K, about
+  the flame temperature of mixtures at their flammability limits (Zabetakis). This is a lean
+  limit and a rich one at once, and it widens as the mixture warms, as real limits do.
+
+It is compiled in only when on, and changes nothing in a [deflagration](deflagration.md), which
+never shares a run with afterburning. `AfterburnLimitTests` checks it:
+- cold products in air do not burn, nor warm ones too dilute to reach the limit flame
+  temperature;
+- hot or rich ones do;
+- what burns is what the gas gains.
+
+**It moves the blast it was meant to leave alone, and does not cool the fireball.** With
+afterburning and hot air, on 0.25 m cells:
+- *Closed rooms* (UFC 3-340-02) are as before, 98–107% of the design curve: their gas is hot and
+  dense enough to burn anyway.
+- *In the open* the incident impulse beyond 1 m/kg^⅓ falls by 8–9%, from 94–100% of
+  Kingery–Bulmash to 86–91%, the reflected impulse by up to 8.5% and the peaks by about 2%. Part
+  of the burning that feeds the blast is in mixtures the limit calls too cool or too dilute.
+- *A shorter burning time* restores the open impulse but not the rooms: 6 ms × W^⅓ gives 92–99%
+  in the open and 104–114% in rooms, and 4 ms gives 98–109% and 107–117%.
+
+So no refit holds both, and the fitted 10 ms stays. The fireball's luminous gas is no cooler
+with it, because the fireball's hot core burns anyway (see
+[Dial Pack](thermal-radiation.md#against-dial-pack)).
+
 ### Dissociating air
 
 `SolverConfiguration.airModel = .dissociating` (`--air dissociating` in `blastbench`) is
@@ -184,6 +220,115 @@ With afterburning and hot air it moves every Kingery–Bulmash incident and refl
 2% to 4%, the heat the walls take; the street's fireball then radiates 12.8% of the charge's
 energy by 170 ms rather than 21%. It costs about 5% more a step, and saves about as much in
 steps, the cooler gas allowing longer ones.
+
+### Gravity
+
+`SolverConfiguration.gravity` (`--gravity [--lapse 6.5]` in `blastbench`; off by default) pulls
+the air down at 9.81 m/s². The air then starts at rest in a hydrostatic atmosphere, its pressure
+and density falling with height as the temperature does, at the standard atmosphere's 6.5 K/km
+(as the [cloud's rise](fireball-rise.md) assumes) or, with a lapse rate of 0, isothermally. For a
+blast it changes nothing; it lets hot gas rise.
+
+**Well balanced.** Gravity's pull on air at rest is balanced by a pressure gradient that a scheme
+of this kind reproduces only to its truncation error, so a plain source term would set the
+resting atmosphere moving at millimetres a second. As atmospheric codes do (Botta, Klein and
+others; Käppeli and Mishra; and the perturbation form of Giraldo and Restelli), the vertical sweep
+works on each cell's deviation from the background:
+- the slopes and the Hancock predictor are the deviations', with the background's own gradient,
+  and gravity's pull on the deviation, in the predictor;
+- each face carries the background at the face plus the reconstructed deviation;
+- the background's pressure at the face is left out of the momentum flux, and gravity's pull on
+  the background out of the source, which is −g(ρ − ρ_b);
+- the energy gains −g times the mean of the cell's two faces' mass fluxes, so the gas's energy
+  and its potential energy are conserved together, and refluxing corrects that term where the
+  refined levels' fluxes replace the coarse one.
+
+Air at rest in the background has no deviation, so its fluxes and its sources are zero exactly.
+Getting that to the bit took three things:
+- the background is worked out once for each level into a table, since the same expressions
+  compiled into two kernels can differ in their last bit;
+- a face whose two sides are identical takes the physical flux, which HLLC gives only to
+  rounding;
+- refined cells and their ghosts are filled with the coarse cells' deviations plus their own
+  background.
+
+Fine air under solid coarse cells, as over [terrain](terrain.md), takes the background at its
+height. Gravity is compiled into the kernels only when on, so with it off they are unchanged:
+`blastbench digest` gives the same hashes as before, with and without refinement.
+
+**Checked** (`GravityTests`):
+- Air at rest stays at rest to the bit for 200 steps: isothermal or cooling with height, ideal
+  or thermally perfect, refined in two levels everywhere, and in a closed box over a hill.
+- Its pressure 63.5 m up is the barometric formula's to 10⁻⁵.
+- In a closed box a hot bubble's rise conserves the gas's energy and potential energy together
+  to 10⁻⁶.
+- A sphere of air twice as hot as its surroundings first accelerates at 90% of potential flow's
+  g Δρ / (ρ + ρₐ/2), a sphere 8 cells in radius.
+
+Followed for 20 s (`blastbench bubble`, a 4 m bubble at 576 K on 0.5 m cells), the bubble rises
+as the cloud's integral model of a turbulent thermal says: its warm gas's centre is 13.2 m up at
+2 s against 13.0, and 54.5 m at 20 s against 49.7, rising at 1.55 m/s against 1.41. Against
+Kingery–Bulmash (0.5 m cells refined) every incident and reflected peak and impulse moves by
+0.1% or less: on a blast's time scale gravity is nothing.
+
+**Around it:**
+- *Still air is skipped* as without gravity: still air is air at rest in the background at its
+  height, which a sweep leaves to the bit, so the answer is the same as sweeping everything
+  (`GravityTests` checks the street with afterburning). Skipped air counts towards the time step
+  at the ground's sound speed, the column's fastest, which sets the step only while nothing
+  moves.
+- *Overpressure* (peaks, impulses, gauges and the air's sleep test) is measured against the
+  ambient pressure at its own height, so air at rest records none anywhere. Exposure planes and
+  envelopes still take the ground's.
+- *In the app*, **Gravity in the air** in the Run tab's charge settings turns it on; it is saved
+  with the project only when on, so projects and runs saved before it are unchanged.
+- *The cloud's hand-over* relaxes each plane's gas to the ambient pressure at its height and
+  judges its warmth against the air there, so gas the air model has lifted is handed over as it
+  stands, and the hand-over can come later, after the air model itself has carried the
+  fireball's first rise.
+- *Not done*: the HLL solver balances only to rounding, and the experimental moving boxes have
+  not been tried with it.
+
+It costs about a fifth more a step (the street with afterburning to 170 ms: 11.2–11.4 s against
+9.5 s).
+
+### Sub-grid mixing
+
+`SolverConfiguration.mixing` (`--mixing [--smagorinsky 0.17]` in `blastbench`; off by default)
+lets the turbulence the grid cannot resolve carry momentum, heat and the products and oxygen.
+Before each step every cell gets an eddy viscosity after Smagorinsky, ν = (C Δ)² |S|:
+- |S| is the resolved rate of strain, and C = 0.17 is Lilly's value for the inertial range;
+- Ducros's sensor, (∇·u)² / ((∇·u)² + |∇×u|²), switches it off where the flow is compression
+  without rotation, so a shock keeps the scheme's own dissipation.
+
+In each sweep, conservative face fluxes add −ρν ∂v/∂x of momentum, its work, and −ρ(ν/Pr) ∂h/∂x
+of heat and ∂Y/∂x of each species, with Pr = Sc = 0.7. The face's ν is held under a quarter of
+Δx²/Δt, so the explicit diffusion stays stable. Refined cells take their coarse cell's ν scaled
+as an inertial range's, (Δ_fine/Δ_coarse)^(4/3). Like gravity, it is compiled in only when on.
+
+**Checked** (`MixingTests`):
+- In a closed box a swirling hot bubble keeps its mass and energy to 10⁻⁶.
+- A planar shock passes with its pressures changed by under 10⁻⁴.
+- A shear layer spreads faster with it than without.
+- Against Kingery–Bulmash (0.5 m cells refined), peaks move by 0.3% or less and impulses by
+  0.3% or less, with afterburning and hot air 0.45% and 0.2%.
+
+It costs about 28% more a step (the street to 170 ms: 13.6–13.8 s against 10.5–10.9 s).
+
+**It changes little that the grid resolves.**
+- *A temporal mixing layer* (`blastbench mixinglayer`: ΔU 50 m/s, momentum thickness θ₀ two
+  0.5 m cells, a box periodic in x and y) grows at 0.030 ΔU with it or without it, while θ goes
+  from 2.5 to 10 m. Rogers and Moser's self-similar layer grows at 0.014 ΔU; layers measured
+  in experiments, at 0.016 to 0.018. Over the first transition the model slows the growth a
+  little (0.015 against 0.021 ΔU in a shorter box), as Smagorinsky models are known to.
+- *The 4 m hot bubble* above rises to 55.2 m at 20 s against 54.4 m without it, both within 11%
+  of the integral model of a thermal that entrains at Morton, Taylor and Turner's α = 0.25.
+
+So on these cells the large eddies the grid resolves, and the scheme's own dissipation, do the
+mixing. A [deflagration](deflagration.md)'s burning velocity has its own sub-grid term; with both
+on, sub-grid turbulence is partly counted twice.
+
+## Skipping still air
 
 ## Skipping still air
 
@@ -411,6 +556,11 @@ UFC 3-340-02, lowest for light charges.
   (`refinementFinerThreshold`), are untried.
 - **Cut cells**, so that moving solid surfaces need not follow cell faces (see the structural
   model's future work).
+- **Burning in flame sheets rather than the bulk**: on metre cells the grid mixes a fireball's
+  products and air through its whole volume, so it burns throughout near the flame temperature,
+  where a real one burns in thin sheets round a fuel-rich core. Sub-grid mixing and an extinction
+  limit, tried for this, change it little (see [Dial Pack](thermal-radiation.md#against-dial-pack));
+  a mixture-fraction flame model might. Paused for now, with the fireball's radiation.
 
 ## Sources
 
@@ -425,6 +575,29 @@ UFC 3-340-02, lowest for light charges.
   combustion prediction procedures", *18th Symposium (International) on Combustion*, 1981,
   1405–1414. The discrete transfer method behind the radiative cooling; M. F. Modest,
   *Radiative Heat Transfer*, Academic Press, for the radiation's term in the energy equation.
+- A. L. Kuhl, R. E. Ferguson and A. K. Oppenheim, "Gasdynamics of combustion of TNT products
+  in air", *Archivum Combustionis* 19 (1999) 67–89: afterburning limited by mixing. F. L. Dryer
+  and I. Glassman, "High-temperature oxidation of CO and CH4", *Symposium (International) on
+  Combustion* 14 (1973) 987–1003: the global rate behind the ignition temperature. M. G.
+  Zabetakis, *Flammability characteristics of combustible gases and vapors*, US Bureau of Mines
+  Bulletin 627, 1965: flammability limits and the flame temperatures at them.
+- J. Smagorinsky, "General circulation experiments with the primitive equations", *Monthly Weather
+  Review* 91 (1963) 99–164; D. K. Lilly, "The representation of small-scale turbulence in
+  numerical simulation experiments", IBM Scientific Computing Symposium on Environmental
+  Sciences, 1967; F. Ducros and others, "Large-eddy simulation of the shock/turbulence
+  interaction", *Journal of Computational Physics* 152 (1999) 517–549. The eddy viscosity, its
+  coefficient, and the sensor that keeps it out of shocks.
+- M. M. Rogers and R. D. Moser, "Direct simulation of a self-similar turbulent mixing layer",
+  *Physics of Fluids* 6 (1994) 903–923; B. R. Morton, G. I. Taylor and J. S. Turner, "Turbulent
+  gravitational convection from maintained and instantaneous sources", *Proceedings of the Royal
+  Society A* 234 (1956) 1–23. The mixing layer's growth and a thermal's entrainment.
+- N. Botta, R. Klein, S. Langenberg and S. Lützenkirchen, "Well balanced finite volume methods
+  for nearly hydrostatic flows", *Journal of Computational Physics* 196 (2004) 539–565; R. Käppeli
+  and S. Mishra, "Well-balanced schemes for the Euler equations with gravitation", *Journal of
+  Computational Physics* 259 (2014) 199–219; F. X. Giraldo and M. Restelli, "A study of spectral
+  element and discontinuous Galerkin methods for the Navier–Stokes equations in nonhydrostatic
+  mesoscale atmospheric modeling", *Journal of Computational Physics* 227 (2008) 3849–3877. Gravity
+  balanced against a hydrostatic background, and the deviations from it.
 - E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer,
   2009. The MUSCL–Hancock scheme, slope limiting and the HLL and HLLC solvers.
 - E. F. Toro, M. Spruce and W. Speares, "Restoration of the contact surface in the HLL-Riemann

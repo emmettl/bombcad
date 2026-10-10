@@ -17,6 +17,8 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// Levels of the shocks' refinement when more than one; nil, and left out of the file (and of
     /// a saved run's fingerprint, so that runs saved before it existed still match theirs), for one.
     var shockLevels: Int?
+    /// Gravity in the air when on; nil, and left out of the file and the fingerprint, when off.
+    var gravity: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -25,6 +27,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         detailedCharge = settings.detailedCharge
         sharpShocks = settings.sharpShocks
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
+        gravity = settings.gravity ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }

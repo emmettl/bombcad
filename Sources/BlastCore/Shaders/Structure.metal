@@ -118,6 +118,8 @@ struct StructureUniforms {
     float gravityX;  // the way gravity pulls (unit length); down unless turned
     float gravityY;
     float gravityZ;
+    uint pairs;  // connections between two parts of the body (`structurePairs`)
+    uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -1890,6 +1892,15 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // Whatever bridges it, an element stretched to three times the removal width (or by
         // 100%, on large elements) is gone. Bars bridging a single crack rupture before that.
         eroded = eroded || torn || pulverised || crack > max(1.0f, 3.0f * m.erosionStrain);
+        // Optionally, concrete broken into fragments, whatever bridges it: cracked open across two
+        // planes or more by 0.5 mm and across one by 5% of its size (`removesFragments`).
+        if (u.removesFragments != 0 && joints == 0u) {
+            int open = 0;
+            for (int j = 0; j < 3; ++j) {
+                open += history[j] * u.h >= 0.5e-3f ? 1 : 0;
+            }
+            eroded = eroded || (crack >= 0.05f && open >= 2);
+        }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
         // as those bars alone, from the next step, until they too have ruptured.
         if (bare) {
@@ -2612,7 +2623,7 @@ float3 jointTraction(thread float4 &state, thread float &settlement, float3 disp
 
 // A lattice node's connection to the ground: three float4 per node, (tributary area, slip x,
 // slip y, wear), (the force the connection put on the node in the last substep, the largest
-// opening so far) and (the ground's settlement, unused). The area is zero for nodes without a
+// opening so far) and (the ground's settlement, the work sliding has dissipated, unused). The area is zero for nodes without a
 // connection. Updates the state and returns the force on the node.
 float3 anchorForce(device float4 *anchors, uint index, StructureNode node, constant StructureUniforms &u, AnchorLaw law) {
     float4 stored = anchors[3 * index];
@@ -2620,12 +2631,86 @@ float3 anchorForce(device float4 *anchors, uint index, StructureNode node, const
     float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
     float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 force =
-        -area * jointTraction(state, settlement, float3(node.displacement), float3(node.velocity), damper, law);
+    float2 slipBefore = state.xy;
+    float3 traction = jointTraction(state, settlement, float3(node.displacement), float3(node.velocity), damper, law);
+    float3 force = -area * traction;
+    // The work its sliding has dissipated: the shear across the slip.
+    float3 normal = all(float3(law.normal[0], law.normal[1], law.normal[2]) == 0.0f)
+        ? float3(0.0f, 0.0f, 1.0f) : float3(law.normal[0], law.normal[1], law.normal[2]);
+    float dissipated = anchors[3 * index + 2].y
+        + area * length(state.xy - slipBefore) * length(traction - dot(traction, normal) * normal);
     anchors[3 * index] = float4(area, state.xyz);
     anchors[3 * index + 1] = float4(force, state.w);
-    anchors[3 * index + 2] = float4(settlement, 0.0f, 0.0f, 0.0f);
+    anchors[3 * index + 2] = float4(settlement, dissipated, 0.0f, 0.0f);
     return force;
+}
+
+// The axes along a joint whose normal is `normal` (zero for one under the body: x and y), as
+// `jointTraction` takes them. Matches `Anchorage.jointAxes`.
+static inline void jointAxes(float3 normal, thread float3 &along, thread float3 &other) {
+    if (all(normal == 0.0f)) {
+        along = float3(1.0f, 0.0f, 0.0f);
+        other = float3(0.0f, 1.0f, 0.0f);
+        return;
+    }
+    along = normalize(cross(abs(normal.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f), normal));
+    other = cross(normal, along);
+}
+
+// Connections between two parts of the body (`Anchorage.betweenParts`): each pair ties a node of
+// one part to the node of the other straight across the gap between them, by the law acting on
+// their relative motion. Per pair, three float4 as an anchor's (area, slip x, slip y, wear),
+// (force on the first node, largest opening) and (settlement, off its seat, reduced mass, the
+// work its sliding has dissipated, J),
+// and how far the seat reaches from the second node along each axis of the joint (+along,
+// -along, +other, -other). Run before the node pass, which gives the first node the force and the
+// second its opposite, so that the pair's momentum is exactly kept. Once the first node has slid
+// past the seat it is off it for good, and the pair carries nothing.
+kernel void structurePairs(device const StructureNode *nodes [[buffer(0)]],
+                           const device uint2 *pairNodes [[buffer(1)]],
+                           device float4 *pairState [[buffer(2)]],
+                           const device float4 *pairSeat [[buffer(3)]],
+                           const device AnchorLaw *pairLaws [[buffer(4)]],
+                           constant StructureUniforms &u [[buffer(5)]],
+                           const device StepControl &control [[buffer(6)]],
+                           uint p [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active || p >= u.pairs) {
+        return;
+    }
+    uint2 ends = pairNodes[p];
+    StructureNode a = nodes[ends.x];
+    StructureNode b = nodes[ends.y];
+    AnchorLaw law = pairLaws[p];
+    float4 stored = pairState[3 * p];
+    float area = stored.x;
+    float4 state = float4(stored.yzw, pairState[3 * p + 1].w);
+    float4 extra = pairState[3 * p + 2];
+    float settlement = extra.x;
+    float3 displacement = float3(a.displacement) - float3(b.displacement);
+    float3 velocity = float3(a.velocity) - float3(b.velocity);
+    float3 along;
+    float3 other;
+    jointAxes(float3(law.normal[0], law.normal[1], law.normal[2]), along, other);
+    float2 slide = float2(dot(displacement, along), dot(displacement, other));
+    float4 seat = pairSeat[p];
+    if (slide.x > seat.x || -slide.x > seat.y || slide.y > seat.z || -slide.y > seat.w) {
+        extra.y = 1.0f;
+    }
+    float3 force = float3(0.0f);
+    if (extra.y == 0.0f) {
+        float damper = 2.0f * u.contactDamping * sqrt(law.kn * extra.z / area);
+        float2 slipBefore = state.xy;
+        float3 traction = jointTraction(state, settlement, displacement, velocity, damper, law);
+        force = -area * traction;
+        float3 normal = all(float3(law.normal[0], law.normal[1], law.normal[2]) == 0.0f)
+            ? float3(0.0f, 0.0f, 1.0f) : float3(law.normal[0], law.normal[1], law.normal[2]);
+        extra.w += area * length(state.xy - slipBefore) * length(traction - dot(traction, normal) * normal);
+    }
+    pairState[3 * p] = float4(area, state.xyz);
+    pairState[3 * p + 1] = float4(force, state.w);
+    pairState[3 * p + 2] = float4(settlement, extra.yzw);
 }
 
 // A rigid footing under a connected base (`Footing`, `FootingSystem` in Swift, `footingStep` in
@@ -2641,7 +2726,9 @@ struct FootingConstants {
     float4 layer;             // round trips of the vertical and of the shear waves; sample intervals of each
     uint4 history;            // first history value, first echo weight, samples kept per mode, echoes per mode
     float4 totals;            // the bed's sum k, sum k x^2, sum k y^2 (about the base centre); friction
-    float4 unused;
+    uint4 sides;              // an embedded footing's: first side point, side points
+    float4 embedded;          // its rocking stiffness about x and y beyond its base's and sides' springs, and
+                              // the most moment that gives about each
 };
 
 // A footing's state, laid out as `FootingSystem.State`.
@@ -2657,6 +2744,7 @@ struct FootingState {
     float4 contact;      // the bearing part of the base: least and greatest x, least and greatest y
     float4 elastic;      // the soil's deformation under it, from its springs (z, x, y); over a layer, all the
                          // soil bears over what the bed's points do (0 until set)
+    float4 sideForce;    // the soil's force on an embedded footing's sides; the most it has given way
 };
 
 static inline float3 footingRotate(float4 q, float3 v) {
@@ -2732,6 +2820,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device FootingConstants *footingConstants [[buffer(24)]],
                            const device FootingState *footingStates [[buffer(25)]],
                            device float4 *footingLinks [[buffer(26)]],
+                           const device float4 *pairState [[buffer(27)]],
+                           const device uint *nodePairStart [[buffer(28)]],
+                           const device int *nodePairs [[buffer(29)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2817,6 +2908,16 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
             float3 rest = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
             force += footingAnchorForce(anchors, threadIndex, node, rest, u, anchorLaws[threadIndex],
                                         footingConstants[footing - 1], footingStates[footing - 1], footingLinks);
+        }
+    }
+
+    // Its connections to another part of the body: the force each pair computed, on the pair's
+    // first node, or its opposite on the second.
+    if (finiteConnections && u.pairs != 0) {
+        for (uint e = nodePairStart[threadIndex]; e < nodePairStart[threadIndex + 1]; ++e) {
+            int entry = nodePairs[e];
+            float3 pairForce = pairState[3 * uint(abs(entry) - 1) + 1].xyz;
+            force += entry > 0 ? pairForce : -pairForce;
         }
     }
 

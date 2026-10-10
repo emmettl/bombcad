@@ -109,7 +109,9 @@ fingerprint.
 ## The model
 
 - **The hand-over** is every cell of air in the domain at least `handOverTemperature` kelvin
-  (500 K by default) at the end of the run, once brought to the ambient pressure. Each cell is
+  (500 K by default) at the end of the run, once brought to the ambient pressure (with [gravity
+  in the air](air-blast-model.md#gravity), the ambient pressure at its own height, its warmth
+  judged against the air there). Each cell is
   taken to the ambient pressure isentropically, with the run's gamma, which matters only where
   the blast has not quite left it; its temperature is then p / (ρR), which for dissociating air
   is above the true temperature but gives the right density, and so the right buoyancy. The

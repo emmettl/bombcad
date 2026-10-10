@@ -546,7 +546,74 @@ beams without stirrups go 30% wrong on average, nearly all short, keeping a thir
 measured residuals (13% and three quarters perfectly bonded), OA1 carries 142% and 148% on 12
 and 24 elements, Janney's beam on 24 elements fails at 29 mm, and the contest slab peaks at
 95 mm on 8 elements (88%) and, under fixed design factors or static strengths, collapses.
-`--bond splitting` on `blastbench impact` and `impact --ando`.
+`--bond splitting` on `blastbench impact` and `impact --ando`. Every structural test with slip
+on and off, on 2026-10-10's defaults, is in [Validation](validation.md#bars-that-slip-across-the-tests):
+slip is mesh-independent but too stiff nearly everywhere, so perfect bond stays the default.
+
+**The tension between the cracks.** With slip, the concrete's tension was suspected of being
+counted twice: once through the bond, which hands the bars' force to the concrete between
+cracks, and again through a tension-stiffening branch meant for smeared, bonded bars. There is
+no such branch to remove. With slip every crack already softens over its own element, as one
+in plain concrete does (crack band theory, Bažant and Oh), so cracks are stress-free but for
+their cohesion, and the concrete between them takes tension only through the bond. That is
+the Model Code's tension stiffening by bond.
+
+`blastbench slab --stiffening` splits the tension carried along the span over the 600 mm about
+mid-span between the bars and the concrete, and the concrete by how far its crack across the
+span has opened. At 80 mm, on 8 elements through, perfectly bonded the concrete carries 32 kN
+beside the bars' 484 kN (6% of the tension). With slip it carries 96 kN beside 477 (17%). Of
+that 96 kN:
+
+- 2% is in concrete never cracked;
+- 57% is in concrete cracked by under 0.02 mm, and 23% by 0.02 to 0.1 mm;
+- 18% is in wider cracks, carried along inclined cracks, not across them. Across a crack's own
+  plane the concrete carries under 0.5 MPa (`--column`).
+
+So the tension between cracks is the bond's reaction. The concrete there has been loaded
+through the bond to its tensile strength, raised a quarter by its strain rate, has just
+passed it, and holds most of it at the start of its softening. Six tenths of it lies above the
+bars, up to the compression zone. It is net tension (`--profile`), not the teeth between cracks
+bending. It does not depend on the bond law: pull-out, splitting and confined splitting bond
+give 95, 96 and 95 mm. Even the splitting bond, gone past 0.2 mm of slip, grips where the slip
+passes through zero midway between cracks (`--line`), and that is enough to load the concrete
+to its strength. What sets it is the concrete's softening: with a tenth of the fracture energy
+the slab with slip peaks at 107 mm; perfectly bonded, at 113 mm either way.
+
+Its size is the Model Code's. The tie above was rerun with its concrete's strengths raised by
+1.25 and by 1.5, as at blast rates, and the bond left static (`blastbench tie --factor 1.5`;
+a test checks it):
+
+| Strengths | 20 mm elements | 10 mm elements | Model Code, β = 0.4 |
+|---|---|---|---|
+| As measured | 71.2 kN | 72.8 kN | 73.4 kN |
+| × 1.25 | 77.7 kN | 71.7 kN | 76.7 kN |
+| × 1.5 | 82.6 kN | 74.0 kN | 80.1 kN |
+
+Its cracks spread further apart on the coarser mesh, as a static bond makes them. In the slab,
+the concrete within the bars' two rows of elements carries a mean of 0.3 of its raised
+strength, about the Model Code's long-term β. Counted over the Model Code's effective tension
+area, β f_ct A_c,ef is 40–60 kN with its depth h_c,ef taken as (h − x)/3, and 90–140 kN with
+2.5 (h − d); the model's 96 kN lies between.
+
+Two ways of making cracked concrete between cracks soften sooner were tried with slip, and set
+aside:
+
+- **The band across an inclined crack.** A crack inclined to the lattice runs through a
+  staircase of elements h (|n_x| + |n_y| + |n_z|) wide across it, not h (J. Oliver, 1989), and
+  its band was taken so. OA1 went from 472 to 416 kN on 12 elements and from 489 to 475 kN on
+  24; the slab from 95 to 97 mm; the tie was unchanged.
+- **One crack over neighbouring elements.** Elements opened next to each other along a crack's
+  normal were taken as one crack, softening with their summed opening, so that the crack
+  dissipates its fracture energy once. Linking every cracked neighbour, the slab peaks at
+  118 mm, OA1 carries 499 kN and the tie loses its tension stiffening (62–67 kN). Linking only
+  neighbours opened 0.02 mm or more, the slab peaks at 109 mm (101%), but OA1 still carries
+  464 kN, and the tie cracks only three or four times, 300–450 mm apart where the Model Code
+  puts cracks 83–167 mm apart, and carries little more than its bare bars.
+
+So the slab's peak asks for less tension between its cracks than the Model Code's tension
+stiffening gives, which the tie reproduces. Whether tension stiffening survives in a yielding
+hinge at blast rates, or something else in the slab is too stiff, needs tests that separate
+them.
 
 ## Strain-rate effects
 
@@ -659,6 +726,20 @@ removed. So concrete crushed or blown out round a mat leaves the mat across the 
 member broken through hangs on its bars instead of falling apart where its concrete went. The
 nodes keep the concrete's mass, which is not shed as debris. Bare elements are counted as
 removed, and not drawn.
+
+**Fragments, as an option** (`StructureModel.removesFragments`, off by default). Concrete broken
+into fragments is removed, left as its bars where they are intact, whatever bars cross it: an
+element cracked open across at least two planes by 0.5 mm and across one by 5% of its size, in
+solid elements and in shells' layers alike. It stands for the erosion of the continuous surface
+cap model, damage near one and principal strain past 5% (ERODE 1.05), with which M.
+Martínez-Almajano et al. (2021) holed slabs of Chiquito's campaign; "damaged" is read as cracked
+open in two directions, so that a hinge's single crack stays. Under close-in and contact charges
+it holes Hupfauf's 20 cm slabs and Wu's to about their size, but also Hupfauf's 30 cm slabs,
+which held, not Chiquito's, which were holed, and it damages beams struck by a falling weight
+(see [Validation](validation.md#holes-under-close-in-and-contact-charges)); so it is not the
+default. Without it, concrete broken under a charge stays: its cracks across the slab's
+thickness are bridged by the mats until 15 mm open, and crushing removes it only at about a
+third of its depth on 12.5 mm elements.
 
 The crack strain used to be capped at 0.5, and any element stretched past 100% removed. On
 elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on
@@ -1068,7 +1149,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    99 MPa across at the face, a mean of about four times f_c, compacting it by 1.3%), so the
    difference between its stresses stays under 40 MPa, far below its strength by this law or
    by Holmquist, Johnson and Cook's (about 4.6 f_c, 115 MPa, at that pressure, with their
-   constants as recalled). A charge in contact, or denser shocks, would test it.
+   constants as recalled). A charge in contact, or denser shocks, would test it. Under charges
+   in contact (see [Validation](validation.md#slabs-under-contact-charges)) concrete compacts
+   past the curve's locking point, where it is three to twenty times stiffer than elastic, and
+   the explicit step, set by the elastic wave speed, runs away within 50 µs; those runs take a
+   quarter of it.
 7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, bar buckling or
    lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
    the shear stress, mobilised as soon as a crack forms rather than over the first millimetre
@@ -1127,18 +1212,24 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   checked directly against push-off tests, and the slab's cracks against a photograph of the
   test; neither explains it (see [shear across cracks](#shear-across-cracks) and
   [Validation](validation.md#its-cracks)). Traced by mechanism, the slab's stiffness is the
-  concrete between its cracks carrying tension; whether that tension stiffening is too strong
-  at blast rates (the concrete's tensile strength raised by its rate law, the bond not) is the
-  next question, and inclined bars, shells and beams that slip are still wanted.
+  concrete between its cracks carrying tension, the bond's reaction, nothing counted twice, and
+  as much as the Model Code's tension stiffening gives a tie at the raised strengths (see
+  [the tension between the cracks](#bars-that-slip-an-option)). Whether tension stiffening
+  survives in a yielding hinge at blast rates needs tests that measure it; across every test
+  slip is mesh-independent but too stiff, so it stays off; and inclined bars,
+  shells and beams that slip are still wanted.
 - **Strength that grows with pressure** (a pressure-dependent failure surface, as in the
   Holmquist–Johnson–Cook and Karagozian & Case models) for concrete in contact with a charge;
   the close-in slabs do not need it (limitation 6).
 - **Close-in damage.** Under the close-in slabs' charges the concrete beneath is left broken,
   cracked open across all three planes in the lower half and crushed in the upper, but nothing
   removes it, so no hole forms; removing concrete cracked open every way took half the slab's
-  depth over a circle 1.8 m across (see the roadmap's things set aside). A rule for rubble that
-  the slab drives out, and a strain rate for the tensile strength that follows a stress wave
-  (an average over a fixed time rather than 50 steps), are wanted; and how the slab's own
+  depth over a circle 1.8 m across (see the roadmap's things set aside), and removing fragments
+  (now an option, see Removal) holes slabs that held as well as those that were holed. A load
+  for charges in contact from the products' own equation of state, which gives about half the
+  impulse of the present ball of hot air, should come before any removal rule is judged; then a
+  rule for rubble the slab drives out, and a strain rate for the tensile strength that follows a
+  stress wave (an average over a fixed time rather than 50 steps); and how the slab's own
   bending, which the tests' damage follows, comes out a third to a half of the tests'.
 - **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
 - **Masonry on coarse elements and shells**: strengths that differ across and along the bed
@@ -1159,6 +1250,14 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 - Z. P. Bažant and B. H. Oh, "Crack band theory for fracture of concrete", *Materials and
   Structures* 16, 1983. Scaling tension softening by fracture energy and band width.
+- J. Oliver, "A consistent characteristic length for smeared cracking models", *International
+  Journal for Numerical Methods in Engineering* 28(2), 1989. The band across a crack inclined
+  to the mesh, tried with bars that slip and set aside. Its formula for square elements was
+  written from memory.
+- fib, *fib Model Code for Concrete Structures 2010*, Ernst & Sohn, 2013, sections 7.6.4 and
+  7.6.5: the transfer length, with the mean bond stress τ_bms = 1.8 f_ctm while cracks form, the
+  tension-stiffening factor β (0.6 short-term, 0.4 long-term or repeated) and the effective
+  tension area, used to check the tie. Written from memory.
 - F. J. Vecchio and M. P. Collins, "The modified compression-field theory for reinforced
   concrete elements subjected to shear", *ACI Journal* 83(2), 1986. The aggregate-interlock
   limit on crack shear, after J. C. Walraven, "Fundamental analysis of aggregate interlock",

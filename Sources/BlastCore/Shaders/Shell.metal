@@ -85,6 +85,7 @@ struct ShellUniforms {
     float gravityX;  // the way gravity pulls, as in `StructureUniforms`
     float gravityY;
     float gravityZ;
+    uint removesFragments;  // as in `StructureUniforms`
 };
 
 // Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
@@ -494,6 +495,12 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
         outcome.slid[j] = history[j] > onset ? 1.0f : 0.0f;
     }
     outcome.destroyed = pulverised || crack >= m.erosionStrain;
+    // Optionally, a layer broken into fragments, as the solid elements judge it: cracked open
+    // across both in-plane planes by 0.5 mm and across one by 5% of the element's size.
+    if (u.removesFragments != 0) {
+        outcome.destroyed = outcome.destroyed
+            || (crack >= 0.05f && min(history.x, history.y) * u.elementSize >= 0.5e-3f);
+    }
     outcome.open = crack > max(1.0f, 3.0f * m.erosionStrain);
     outcome.failed = false;
     // Damage as the solid elements show it: cracking against the bars' rupture strain where

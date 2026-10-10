@@ -123,6 +123,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     /// The fireball's rise and cloud, followed from the hot gas left at the run's end. It does
     /// not act on the air either.
     var cloud: CloudResult? = nil
+    /// The standing of its results when it was kept (see docs/standing.md); nil for runs kept
+    /// before standing was recorded, which open as "standing not recorded". Not an input, so no
+    /// part of the fingerprint.
+    var standing: SceneStanding? = nil
 
     static let maximumThermalReceivers = 1_000_000
 
@@ -302,6 +306,12 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 }),
                 cloud.stabilised.map(valid) ?? true
             else { throw ProjectFileError.invalid("Invalid saved cloud.") }
+        }
+        if let standing {
+            guard !standing.table.isEmpty, standing.table.count <= 64,
+                Set(standing.results.map(\.kind)).count == standing.results.count,
+                standing.results.allSatisfy({ !$0.summary.isEmpty })
+            else { throw ProjectFileError.invalid("Invalid saved standing.") }
         }
         if let structure {
             guard structure.sampleInterval.isFinite, structure.sampleInterval > 0,

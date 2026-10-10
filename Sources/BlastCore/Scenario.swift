@@ -88,6 +88,15 @@ public struct Scenario: Sendable, Hashable, Codable {
     }
     public var atmosphere = Atmosphere()
     public var reflectiveFaces: BoundaryFaces = .ground
+    /// The ground's shape, over the reflecting floor at z = 0; nil (the default) is flat ground.
+    /// A scene-level property, beside the objects rather than one of them.
+    public var terrain: Terrain?
+    /// A premixed gas cloud ignited at a point: when set, it is the scene's source and the
+    /// charges are not fired. (Optional so that layouts saved before it existed still open.)
+    public var deflagration: Deflagration?
+    /// Panels closing openings until the overpressure beside them reaches their release pressure,
+    /// for either kind of source. (Optional for older layouts.)
+    public var ventPanels: [VentPanel]?
 
     public init(
         name: String, domainSize: SIMD3<Float>, boxes: [Box], charge: Charge, gauges: [Gauge] = [],
@@ -110,11 +119,22 @@ public struct Scenario: Sendable, Hashable, Codable {
             cellSize: cellSize)
     }
 
-    /// True when the charge sits inside a rigid block or the structure, where it can release
-    /// no energy into the air.
+    /// True when the charge (or a gas cloud's ignition point) sits inside a rigid block or the
+    /// structure, where it can release no energy into the air.
     public var chargeIsBlocked: Bool {
-        rigidBoxes.contains { $0.contains(charge.position) }
-            || structuralObjects.contains { $0.structure?.occupies(charge.position) == true }
+        // A gas cloud's ignition point, when the cloud is the source.
+        let point = deflagration?.ignition ?? charge.position
+        return rigidBoxes.contains { $0.contains(point) }
+            || terrain?.contains(point) == true
+            || structuralObjects.contains { $0.structure?.occupies(point) == true }
+    }
+
+    /// The source in a few words: the charge's mass, or the gas cloud's mixture.
+    public var sourceDescription: String {
+        if let cloud = deflagration {
+            return String(format: "%@–air cloud, %.1f%%", cloud.gas.displayName, cloud.concentration * 100)
+        }
+        return String(format: "%.2f kg TNT", charge.mass)
     }
 
     /// Time for an ambient sound wave to travel from the charge to the farthest corner.
@@ -131,7 +151,7 @@ extension Scenario {
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures, buildingEnvelopes
+            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels
     }
 
     private struct Ownership: Codable {
@@ -167,6 +187,9 @@ extension Scenario {
         additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
         atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
         reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
+        terrain = try c.decodeIfPresent(Terrain.self, forKey: .terrain)
+        deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
+        ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
         let additional =
             try c.decodeIfPresent([AdditionalStructure].self, forKey: .additionalStructures) ?? []
         guard additional.count < Self.maximumStructures, additional.isEmpty || structure != nil else {
@@ -220,6 +243,9 @@ extension Scenario {
         try c.encodeIfPresent(structure, forKey: .structure)
         try c.encode(atmosphere, forKey: .atmosphere)
         try c.encode(reflectiveFaces, forKey: .reflectiveFaces)
+        try c.encodeIfPresent(terrain, forKey: .terrain)
+        try c.encodeIfPresent(deflagration, forKey: .deflagration)
+        if let ventPanels, !ventPanels.isEmpty { try c.encode(ventPanels, forKey: .ventPanels) }
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
         if !envelopeObjects.isEmpty {
             try c.encode(
@@ -291,11 +317,26 @@ extension BlastSolver {
                 }
             }
         }
+        if let terrain = scenario.terrain {
+            try terrain.validate(domain: scenario.domainSize)
+            // A cell is solid when its centre lies below the surface, as for a block.
+            let surface = terrain.surfaceCells(grid: grid)
+            mutateMask { mask in
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx {
+                        for k in 0..<Int(surface[i + grid.nx * j]) { mask[grid.index(i, j, k)] = 1 }
+                    }
+                }
+            }
+            terrainSurface = surface
+        }
         rigidBoxes = scenario.rigidBoxes
+        terrain = scenario.terrain
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
         try setStructures(scenario.structuralObjects)
 
+        try loadDeflagration(scenario)
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
         let mapping = mapping(for: scenario)
@@ -305,6 +346,8 @@ extension BlastSolver {
         if let mapping {
             mapped = depositMapped(
                 scenario.charge, radius: mapping.radius, onGround: mapping.onGround, probes: gaugeCentres)
+        } else if let deflagration = scenario.deflagration {
+            deflagrationStage?.initialUnburnt = depositCloud(deflagration)
         } else {
             deposit(scenario.charge)
             for charge in scenario.additionalCharges ?? [] { deposit(charge) }
@@ -329,14 +372,29 @@ extension BlastSolver {
     /// off or not possible, or would not reach 3 cells.
     func mapping(for scenario: Scenario) -> (radius: Float, onGround: Bool)? {
         guard configuration.mappedCharge, !configuration.afterburning, configuration.airModel == .idealGas,
+            scenario.deflagration == nil,
             (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
         else { return nil }
         let c = scenario.charge.position
         let dx = grid.cellSize
-        let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin)
+        let shaped = scenario.terrain.map { !$0.isFlat } ?? false
+        let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin) && !shaped
         var nearest = Float.infinity
+        if shaped, let terrain = scenario.terrain {
+            // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
+            let reach = 16 * dx
+            let step = 0.25 * dx
+            let count = Int((2 * reach / step).rounded(.up))
+            for b in 0...count {
+                for a in 0...count {
+                    let p = SIMD2(c.x, c.y) - reach + step * SIMD2(Float(a), Float(b))
+                    nearest = min(nearest, simd_distance(SIMD3(p.x, p.y, terrain.height(at: p)), c))
+                }
+            }
+        }
         var obstacles = scenario.rigidBoxes
         obstacles.append(contentsOf: scenario.structuralObjects.compactMap { $0.structure?.bounds })
+        obstacles.append(contentsOf: (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }.map(\.box))
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
         }
@@ -453,7 +511,8 @@ extension BlastSolver {
                     let cell = SIMD3(i, j, k) / r
                     let centre = SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5
                     guard !isSolid(cell.x, cell.y, cell.z),
-                        !(rigidBoxes ?? []).contains(where: { $0.contains(centre * fine) })
+                        !(rigidBoxes ?? []).contains(where: { $0.contains(centre * fine) }),
+                        terrain?.contains(centre * fine) != true
                     else { continue }
                     let fromCharge = centre - charged
                     var inside = 0

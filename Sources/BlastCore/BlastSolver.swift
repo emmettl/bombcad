@@ -201,11 +201,13 @@ public final class BlastSolver {
         var sweepTiles: MTLComputePipelineState
         var collectTiles: MTLComputePipelineState
     }
-    /// `CellKernels` for each gas model used so far.
-    private var cellKernelsByModel: [AirModel: CellKernels] = [:]
+    /// `CellKernels` for each gas model used so far, with gravity compiled in or not.
+    private var cellKernelsByModel: [Int: CellKernels] = [:]
     private let wakeTilesPipeline: MTLComputePipelineState
     private let preparePipeline: MTLComputePipelineState
     private let sampleGaugesPipeline: MTLComputePipelineState
+    /// Kernels compiled with gravity in the air, by name, made when first needed.
+    private var gravityPipelines: [String: MTLComputePipelineState] = [:]
     private let measurePipeline: MTLComputePipelineState
     private let visualizationPipeline: MTLComputePipelineState
     private let splatPipeline: MTLComputePipelineState
@@ -254,6 +256,14 @@ public final class BlastSolver {
     /// The largest charge deposited since the air was last filled, kg, which sets how fast its
     /// products burn.
     var largestCharge: Float = 0
+    /// The deflagration laid down by `load`, if the scenario has one: its flame front and vent
+    /// panels (see `Deflagration.metal`). Its unburnt mixture is the species' x.
+    var deflagrationStage: DeflagrationStage?
+    /// Whether a deflagration's flame burns in the air (rather than only vent panels standing).
+    var hasFlame: Bool { deflagrationStage?.deflagration != nil }
+    /// Whether the species hold afterburning's detonation products and oxygen (rather than a
+    /// deflagration's unburnt mixture, or nothing).
+    public var speciesHoldDetonationProducts: Bool { hasSpecies && !hasFlame }
     /// The uniform state the air was last filled with: air still in it is not swept.
     private var stillCell = CellState(Primitive(density: 1.225, pressure: 101_325), gamma: 1.4)
     private var batchInFlight = false
@@ -275,6 +285,17 @@ public final class BlastSolver {
     /// The radiative cooling's kernels and buffers while it is on, what the gas has radiated since
     /// the restart, J, and that total at the end of each batch (see `RadiativeCooling`).
     var radiativeCoolingStage: RadiativeCoolingStage?
+    /// The air at the ground when it was last filled, from which gravity's hydrostatic background
+    /// rises (see `AirGravity`).
+    var gravityGround = Primitive(density: 1.225, pressure: 101_325)
+    /// Gravity's background for each level, by its cells along a coarse cell's edge, made when
+    /// the air is filled or a level first needs one.
+    private var gravityTables: [Int: MTLBuffer] = [:]
+    /// Sub-grid mixing's eddy viscosity in each coarse cell, worked out before each step's sweeps,
+    /// and its kernel, while the air has sub-grid mixing.
+    private var viscosityBuffer: MTLBuffer?
+    private var viscosityPipeline: MTLComputePipelineState?
+    private var periodicPipeline: MTLComputePipelineState?
     public internal(set) var radiatedEnergy = 0.0
     public internal(set) var radiationHistory: [(time: Double, energy: Double)] = []
     /// Per gauge: the finest cell of its cell that holds its point, as x + R (y + R z) for R
@@ -291,6 +312,11 @@ public final class BlastSolver {
     private(set) var frameExtractor: FrameExtractor?
     /// nil once the mask has been edited by hand.
     var rigidBoxes: [Box]?
+    /// The ground's shape the mask was made with; nil for flat ground or once the mask has been
+    /// edited by hand. The fine cells follow it as they follow `rigidBoxes`.
+    public internal(set) var terrain: Terrain?
+    /// The first cell of air above the terrain in each column, x fastest; nil for flat ground.
+    public internal(set) var terrainSurface: [Int32]?
     /// Charges laid down in fine cells for refined air (see `deposit`): what each fine cell gained,
     /// density and energy per volume, over the uniform state the air was filled with. Given to the
     /// fine cells at the next `restart()`; forgotten when the air is filled or edited by hand.
@@ -403,22 +429,155 @@ public final class BlastSolver {
             buffer.contents().bindMemory(to: CellState.self, capacity: grid.cellCount)
                 .update(repeating: cell, count: grid.cellCount)
         }
-        if configuration.afterburning && !hasSpecies {
+        let wantsSpecies = configuration.afterburning || hasFlame
+        if wantsSpecies && !hasSpecies {
             let length = grid.cellCount * MemoryLayout<SIMD2<Float>>.stride
             if let first = device.makeBuffer(length: length, options: .storageModeShared),
                 let second = device.makeBuffer(length: length, options: .storageModeShared)
             {
                 speciesBuffers = [first, second]
             }
-        } else if !configuration.afterburning {
+        } else if !wantsSpecies {
             speciesBuffers = []
         }
-        let air = SIMD2<Float>(0, Self.oxygenInAir * primitive.density)
+        // A deflagration's cloud is laid down afterwards (see `depositCloud`).
+        let air = SIMD2<Float>(0, hasFlame ? 0 : Self.oxygenInAir * primitive.density)
         for buffer in speciesBuffers {
             buffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: grid.cellCount)
                 .update(repeating: air, count: grid.cellCount)
         }
+        gravityGround = primitive
+        if configuration.gravity != nil { fillHydrostatic() }
         restart()
+    }
+
+    /// Fills both state buffers, and the oxygen with afterburning, with gravity's hydrostatic
+    /// background, on the GPU, as the sweeps work it out (see `AirGravity`).
+    private func fillHydrostatic() {
+        gravityTables = [:]
+        let constants = MTLFunctionConstantValues()
+        var model = configuration.airModel.rawValue
+        constants.setConstantValue(&model, type: .uint, index: ShaderLibrary.airModelConstant)
+        guard
+            let table = gravityTable(scale: 1),
+            let pipeline = try? ShaderLibrary.pipeline("fillHydrostatic", in: library, constants: constants),
+            let commandBuffer = commandQueue.makeCommandBuffer(),
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { return }
+        var uniforms = makeUniforms()
+        var oxygen: Float = hasSpecies ? Self.oxygenInAir : 0
+        encoder.setComputePipelineState(pipeline)
+        encoder.setBytes(&oxygen, length: MemoryLayout<Float>.stride, index: 2)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
+        encoder.setBuffer(table, offset: 0, index: 4)
+        for n in 0..<2 {
+            encoder.setBuffer(stateBuffers[n], offset: 0, index: 0)
+            encoder.setBuffer(hasSpecies ? speciesBuffers[n] : noSpecies, offset: 0, index: 1)
+            dispatchGrid(encoder, pipeline: pipeline)
+        }
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+    }
+
+    /// `base`, kernel `name`, or with gravity in the air compiled in while the air has gravity.
+    private func gravityVariant(_ base: MTLComputePipelineState, _ name: String) -> MTLComputePipelineState {
+        guard configuration.gravity != nil else { return base }
+        if let pipeline = gravityPipelines[name] { return pipeline }
+        guard
+            let pipeline = try? ShaderLibrary.pipeline(
+                name, in: library, constants: ShaderLibrary.withGravity(MTLFunctionConstantValues()))
+        else { return base }
+        gravityPipelines[name] = pipeline
+        return pipeline
+    }
+
+    /// The eddy viscosity's buffer while the air has sub-grid mixing, made when first needed.
+    func mixingViscosity() -> MTLBuffer? {
+        guard configuration.mixing != nil else { return nil }
+        if let viscosityBuffer { return viscosityBuffer }
+        viscosityBuffer = device.makeBuffer(
+            length: grid.cellCount * MemoryLayout<Float>.stride, options: .storageModeShared)
+        viscosityBuffer?.label = "eddy viscosity"
+        if let viscosityBuffer { memset(viscosityBuffer.contents(), 0, viscosityBuffer.length) }
+        return viscosityBuffer
+    }
+
+    /// Encodes the eddy viscosity of every coarse cell from the state at the start of the step.
+    private func encodeEddyViscosity(_ encoder: MTLComputeCommandEncoder, uniforms: SolverUniforms) {
+        guard let viscosity = mixingViscosity() else { return }
+        if viscosityPipeline == nil {
+            viscosityPipeline = try? ShaderLibrary.pipeline("eddyViscosity", in: library)
+        }
+        guard let pipeline = viscosityPipeline else { return }
+        var uniforms = uniforms
+        encoder.setComputePipelineState(pipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+        encoder.setBuffer(viscosity, offset: 0, index: 2)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 4)
+        dispatchGrid(encoder, pipeline: pipeline)
+    }
+
+    /// Refills the periodic halo of the current state (see `SolverConfiguration.periodicSides`),
+    /// then restores the sweep's own pipeline and buffers.
+    private func encodePeriodicHalo(_ encoder: MTLComputeCommandEncoder, uniforms: SolverUniforms) {
+        if periodicPipeline == nil {
+            periodicPipeline = try? ShaderLibrary.pipeline("periodicHalo", in: library)
+        }
+        guard let pipeline = periodicPipeline, let kernels = try? cellKernels() else { return }
+        var uniforms = uniforms
+        encoder.setComputePipelineState(pipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 1)
+        dispatchGrid(encoder, pipeline: pipeline)
+        encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+    }
+
+    /// Gives each refined level gravity's background at its resolution and its parent's.
+    func assignGravityTables() {
+        for level in refinementLevels {
+            level.gravityTable = gravityTable(scale: level.parentScale * level.ratio)
+            level.parentGravityTable = gravityTable(scale: level.parentScale)
+            level.viscosity = mixingViscosity()
+            level.burnLimit = configuration.afterburnLimit != nil
+        }
+    }
+
+    /// Gravity's background for the level with `scale` cells along a coarse cell's edge: a row a
+    /// cell of its height, from 4 below the ground to 4 above the top (see `gravityCellOf`).
+    func gravityTable(scale: Int) -> MTLBuffer? {
+        guard configuration.gravity != nil else { return nil }
+        if let table = gravityTables[scale] { return table }
+        let constants = MTLFunctionConstantValues()
+        var model = configuration.airModel.rawValue
+        constants.setConstantValue(&model, type: .uint, index: ShaderLibrary.airModelConstant)
+        var rows = UInt32(grid.nz * scale + 8)
+        var dz = grid.cellSize / Float(scale)
+        guard
+            let pipeline = try? ShaderLibrary.pipeline("gravityTable", in: library, constants: constants),
+            let table = device.makeBuffer(
+                length: 2 * Int(rows) * MemoryLayout<SIMD4<Float>>.stride, options: .storageModeShared),
+            let commandBuffer = commandQueue.makeCommandBuffer(),
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { return nil }
+        table.label = "gravity's background"
+        var uniforms = makeUniforms()
+        encoder.setComputePipelineState(pipeline)
+        encoder.setBuffer(table, offset: 0, index: 0)
+        encoder.setBytes(&rows, length: MemoryLayout<UInt32>.stride, index: 1)
+        encoder.setBytes(&dz, length: MemoryLayout<Float>.stride, index: 2)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(rows), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: min(Int(rows), 256), height: 1, depth: 1))
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        gravityTables[scale] = table
+        return table
     }
 
     /// Direct access to the densities of unburnt detonation products (x) and oxygen (y).
@@ -432,7 +591,7 @@ public final class BlastSolver {
 
     /// The densities of unburnt detonation products (x) and oxygen (y) to read, or nil without
     /// afterburning.
-    func readSpecies<R>(_ body: (UnsafeBufferPointer<SIMD2<Float>>?) throws -> R) rethrows -> R {
+    public func readSpecies<R>(_ body: (UnsafeBufferPointer<SIMD2<Float>>?) throws -> R) rethrows -> R {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
         guard hasSpecies else { return try body(nil) }
         let pointer = speciesBuffers[current].contents().bindMemory(
@@ -515,6 +674,8 @@ public final class BlastSolver {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
         frameExtractor?.invalidate()
         rigidBoxes = nil
+        terrain = nil
+        terrainSurface = nil
         needsRigidMaskCapture = true
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
@@ -1082,7 +1243,9 @@ public final class BlastSolver {
                 speciesBuffers[1 - current].contents(), speciesBuffers[current].contents(),
                 speciesBuffers[current].length)
         }
-        tilesEnabled = configuration.skipStillAir
+        // A deflagration's flame is advanced everywhere, its burning starts slowly, and vent panels
+        // open where the air may not yet be awake.
+        tilesEnabled = configuration.skipStillAir && deflagrationStage == nil
         memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
         tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         if tilesEnabled, tiledCoupling == nil, let region = couplingRegion {
@@ -1102,6 +1265,7 @@ public final class BlastSolver {
         }
 
         setUpRefinement()
+        assignGravityTables()
 
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
@@ -1115,13 +1279,16 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
         dispatchGrid(encoder, pipeline: measurePipeline)
         if tilesEnabled {
-            encoder.setComputePipelineState(wakeTilesPipeline)
+            let wake = gravityVariant(wakeTilesPipeline, "wakeTiles")
+            encoder.setComputePipelineState(wake)
             encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
             encoder.setBuffer(maskBuffer, offset: 0, index: 1)
             encoder.setBuffer(tileFlagBuffer, offset: 0, index: 2)
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
             encoder.setBuffer(hasSpecies ? speciesBuffers[current] : noSpecies, offset: 0, index: 4)
-            dispatchGrid(encoder, pipeline: wakeTilesPipeline)
+            // Not read without gravity.
+            encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 5)
+            dispatchGrid(encoder, pipeline: wake)
         }
         var placed = 0
         if refinement != nil {
@@ -1173,6 +1340,15 @@ public final class BlastSolver {
                 let fine = coarse &* r &+ SIMD3(n % r, (n / r) % r, n / (r * r))
                 var cell = stillCell
                 var species = SIMD2<Float>(0, stillOxygen)
+                if let table = gravityTable(scale: r) {
+                    // Under gravity, the air at rest at the fine cell's height.
+                    let row = table.contents().bindMemory(
+                        to: SIMD4<Float>.self, capacity: 2 * (grid.nz * r + 8))[2 * (fine.z + 4)]
+                    cell.density = row.x
+                    (cell.momentumX, cell.momentumY, cell.momentumZ) = (0, 0, 0)
+                    cell.energy = row.y
+                    species.y = stillOxygen / stillCell.density * row.x
+                }
                 // The mean of its finest cells, summed in double precision, so that it does not
                 // depend on their order.
                 var added = SIMD2<Double>.zero
@@ -1244,6 +1420,7 @@ public final class BlastSolver {
         for level in refinementLevels {
             level.reset()
             level.setBoxes(rigidBoxes)
+            level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
         updateGaugeChildren()
     }
@@ -1315,6 +1492,7 @@ public final class BlastSolver {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
         guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
         let steps = batchSteps(steps)
+        assignGravityTables()
         gpuProfiler?.beginBatch()
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -1383,6 +1561,8 @@ public final class BlastSolver {
                 encoder.setBuffer(tileCountBuffer, offset: 0, index: 2)
                 encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 3)
                 encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 4)
+                // Not read without gravity.
+                encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 5)
                 encoder.dispatchThreads(
                     MTLSize(width: tiles, height: 1, depth: 1),
                     threadsPerThreadgroup: MTLSize(
@@ -1390,7 +1570,9 @@ public final class BlastSolver {
                         depth: 1))
             }
 
-            encoder.setComputePipelineState(preparePipeline)
+            encoder.setComputePipelineState(gravityVariant(preparePipeline, "prepareStep"))
+            // Not read without gravity.
+            encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 15)
             encoder.setBuffer(controlBuffer, offset: 0, index: 0)
             encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 1)
             encoder.setBuffer(stateBuffers[current], offset: 0, index: 2)
@@ -1408,6 +1590,7 @@ public final class BlastSolver {
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
+            if !asleep { encodeEddyViscosity(encoder, uniforms: uniforms) }
             let refining = refinement != nil && !asleep
             if let refinement, refining {
                 refinement.encodeSaveHalo(
@@ -1436,7 +1619,11 @@ public final class BlastSolver {
             encoder.setBuffer(refinement?.coarseSpeciesFlux ?? refinementPlaceholder, offset: 0, index: 15)
             encoder.setBuffer(experimentalBoxMask ?? noSpecies, offset: 0, index: 16)
             encoder.setBuffer(experimentalBoxImpulse ?? noSpecies, offset: 0, index: 17)
+            // Not read without gravity, or without mixing.
+            encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 18)
+            encoder.setBuffer(mixingViscosity() ?? noSpecies, offset: 0, index: 19)
             for (n, axis) in axes.enumerated() where !asleep {
+                if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
                 uniforms.finalSweep = n == axes.count - 1 ? 1 : 0
                 encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
@@ -1484,6 +1671,13 @@ public final class BlastSolver {
                             encoder, parent: refinement.view(), control: controlBuffer, uniforms: deep)
                     }
                 }
+            }
+            if let deflagrationStage, !asleep {
+                deflagrationStage.encodeStep(
+                    encoder, state: stateBuffers[current],
+                    species: hasSpecies ? speciesBuffers[current] : nil,
+                    mask: maskBuffer,
+                    rigidMask: rigidMaskBuffer, control: controlBuffer)
             }
 
             phase("mechanics")
@@ -1559,7 +1753,9 @@ public final class BlastSolver {
         }
         if gaugeCount > 0 {
             var uniforms = makeUniforms()
-            encoder.setComputePipelineState(sampleGaugesPipeline)
+            encoder.setComputePipelineState(gravityVariant(sampleGaugesPipeline, "sampleGauges"))
+            // Not read without gravity.
+            encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 15)
             encoder.setBuffer(controlBuffer, offset: 0, index: 0)
             encoder.setBuffer(stateBuffers[current], offset: 0, index: 2)
             encoder.setBuffer(gaugeLogBuffer, offset: 0, index: 3)
@@ -1579,7 +1775,8 @@ public final class BlastSolver {
         }
         frameExtractor?.encode(
             encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
-            species: currentSpecies, hasSpecies: hasSpecies, control: controlBuffer, uniforms: makeUniforms())
+            species: currentSpecies, hasSpecies: speciesHoldDetonationProducts, control: controlBuffer,
+            uniforms: makeUniforms())
         if updateVisualization {
             encodeVisualization(encoder)
         }
@@ -1616,6 +1813,7 @@ public final class BlastSolver {
             if step > 0 { lastStep = step }
         }
         let elapsed = time - start
+        deflagrationStage?.complete(batchStart: start)
         for body in bodies {
             body.time = time
             if bodies.count > 1 {
@@ -1638,7 +1836,8 @@ public final class BlastSolver {
             let late =
                 configuration.airSleepCrossings > 0
                 && time > Double(configuration.airSleepCrossings) * crossing
-            airIsAsleep = quiet || late
+            // A deflagration's pressure rises slowly from nothing, and lasts many crossings.
+            airIsAsleep = (quiet || late) && !hasFlame
         }
         if control.activeSteps > 0 { lastFluidStep = control.lastStep }
         var swept = 1.0
@@ -1924,7 +2123,9 @@ public final class BlastSolver {
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)
             uniforms.childTileNz = UInt32(finerRefinement.tileDims.z)
         }
-        if hasSpecies {
+        if hasFlame {
+            uniforms.deflagration = 1
+        } else if hasSpecies {
             uniforms.afterburnEnergy = configuration.afterburnEnergy
             uniforms.oxygenPerFuel = Self.oxygenPerFuel
             uniforms.stillOxygen = Self.oxygenInAir * stillCell.density
@@ -1950,23 +2151,44 @@ public final class BlastSolver {
             uniforms.regionNz = UInt32(grid.nz)
             uniforms.maxStep = experimentalBoxMaxStep
         }
+        if let limit = configuration.afterburnLimit {
+            uniforms.ignitionTemperature = limit.ignitionTemperature
+            uniforms.limitFlameTemperature = limit.limitFlameTemperature
+        }
+        if let mixing = configuration.mixing {
+            uniforms.mixingCoefficient = mixing.coefficient
+            uniforms.mixingPrandtl = mixing.prandtl
+        }
+        if let gravity = configuration.gravity {
+            uniforms.gravity = gravity.acceleration
+            uniforms.gravityLapse = gravity.lapseRate
+            uniforms.gravityT0 = gravityGround.pressure / (gravityGround.density * AirGravity.gasConstant)
+            uniforms.gravityP0 = gravityGround.pressure
+        }
         return uniforms
     }
 
     /// The per-cell kernels for the configured gas model, compiled the first time it is used.
     private func cellKernels() throws -> CellKernels {
         let model = configuration.airModel
-        if let kernels = cellKernelsByModel[model] { return kernels }
-        let constants = MTLFunctionConstantValues()
+        let gravity = configuration.gravity != nil
+        let mixing = configuration.mixing != nil
+        let limit = configuration.afterburnLimit != nil
+        let key = 8 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0)
+        if let kernels = cellKernelsByModel[key] { return kernels }
+        var constants = MTLFunctionConstantValues()
         var value = model.rawValue
         constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        if gravity { constants = ShaderLibrary.withGravity(constants) }
+        if mixing { constants = ShaderLibrary.withMixing(constants) }
+        if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
         let kernels = CellKernels(
             sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
             collectTiles: try pipeline("collectTiles"))
-        cellKernelsByModel[model] = kernels
+        cellKernelsByModel[key] = kernels
         return kernels
     }
 

@@ -524,6 +524,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// as those bars alone (see `ElementFlag.bare`), so that a holed member hangs on its bars,
     /// instead of taking its smeared bars with it.
     public var bareBars = true
+    /// Whether concrete broken into fragments is removed (left as its bars where they are intact):
+    /// cracked open across at least two planes by 0.5 mm, and across one by 5% of the element's
+    /// size, by analogy with the erosion of the continuous surface cap model (damage near one and
+    /// principal strain past 5%) with which Martínez-Almajano et al. (2021) holed slabs under
+    /// close-in charges. Off by default: see the concrete model's Removal.
+    public var removesFragments = false
     /// Whether shear that a crack's interlock and dowels cannot hold slides it for good, as a
     /// masonry joint slides, instead of springing back when the load comes off.
     public var crackSlip = true
@@ -1006,6 +1012,8 @@ struct StructureUniforms {
     var gravityX: Float = 0
     var gravityY: Float = 0
     var gravityZ: Float = -1
+    var pairs: UInt32 = 0
+    var removesFragments: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1118,8 +1126,11 @@ public enum ContactMode: UInt32, Sendable {
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
-        let source = try ["Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation"].map {
-            name in
+        let files = [
+            "Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation", "Gravity",
+            "Deflagration", "Mixing",
+        ]
+        let source = try files.map { name in
             guard
                 let url = Bundle.module.url(
                     forResource: name, withExtension: "metal", subdirectory: "Shaders")
@@ -1134,6 +1145,38 @@ enum ShaderLibrary {
     /// Index of the optional function constant that compiles a kernel for one gas model
     /// (`airModelConstant` in Solver.metal).
     static let airModelConstant = 2
+    /// Index of the optional function constant that compiles gravity in the air into a kernel
+    /// (`airGravityConstant` in Solver.metal); without it, the kernel leaves gravity's code out.
+    static let airGravityConstant = 5
+
+    /// Index of the optional function constant that compiles sub-grid mixing into a kernel
+    /// (`airMixingConstant` in Solver.metal).
+    static let airMixingConstant = 6
+
+    /// Index of the optional function constant that compiles afterburning's extinction limit into
+    /// a kernel (`burnLimitConstant` in Solver.metal).
+    static let burnLimitConstant = 7
+
+    /// `constants` with afterburning's extinction limit compiled in.
+    static func withBurnLimit(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: burnLimitConstant)
+        return constants
+    }
+
+    /// `constants` with sub-grid mixing compiled in.
+    static func withMixing(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: airMixingConstant)
+        return constants
+    }
+
+    /// `constants` with gravity in the air compiled in.
+    static func withGravity(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: airGravityConstant)
+        return constants
+    }
 
     /// A compute pipeline for kernel `name`, specialised with `constants` (none by default).
     /// Every kernel is specialised: many read the optional gas-model constant through the gas
@@ -1201,7 +1244,8 @@ extension StructureModel {
         case solids, openings, material, elementSize, fixedBase, baseAnchorage
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, crackAxes, secondCracks
-        case bareBars, crackSlip, bondSlip, crackShearStiffness, barRateAlongBars, solidElementKind
+        case bareBars, removesFragments, crackSlip, bondSlip, crackShearStiffness, barRateAlongBars,
+            solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
     }
 
@@ -1224,6 +1268,7 @@ extension StructureModel {
         try container.encode(crackAxes, forKey: .crackAxes)
         try container.encode(secondCracks, forKey: .secondCracks)
         try container.encode(bareBars, forKey: .bareBars)
+        if removesFragments { try container.encode(removesFragments, forKey: .removesFragments) }
         try container.encode(crackSlip, forKey: .crackSlip)
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
@@ -1260,6 +1305,7 @@ extension StructureModel {
         crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
+        removesFragments = try container.decodeIfPresent(Bool.self, forKey: .removesFragments) ?? false
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false

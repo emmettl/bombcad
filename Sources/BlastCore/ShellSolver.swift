@@ -72,6 +72,7 @@ struct ShellUniforms {
     var gravityX: Float = 0
     var gravityY: Float = 0
     var gravityZ: Float = -1
+    var removesFragments: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -470,6 +471,10 @@ public final class ShellSolver {
         var fibreStarts: [UInt32] = [0]
         var fibreGeometry: [SIMD4<Float>] = []
         try model.validateAnchorages()
+        guard !model.supportAnchorages.contains(where: { $0?.betweenParts == true }) else {
+            throw ImportedMesh.ImportError.invalid(
+                "Connections between two parts are for solid elements only.")
+        }
         var fibreLaws: [AnchorageParameters] = []
         var slots: [Int] = []
         if let stiffness = model.connectionStiffness {
@@ -1194,6 +1199,7 @@ public final class ShellSolver {
     private func makeUniforms(fluid: StructureSolver.FluidBinding?) -> ShellUniforms {
         var uniforms = ShellUniforms()
         uniforms.crackSlip = model.crackSlip ? 1 : 0
+        uniforms.removesFragments = model.removesFragments ? 1 : 0
         if fibreCount > 0 { uniforms.anchored = 1 }
         if footings != nil { uniforms.footings = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage, fibreCount > 0 {

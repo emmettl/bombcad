@@ -215,7 +215,7 @@ extension BlastSolver {
         let size = SIMD3(grid.nx, grid.ny, grid.nz)
         let low = 2 &* lowest
         let counts = simd_min(2 &* (highest &+ 1), size) &- low
-        let hasProducts = readSpecies { $0 != nil }
+        let hasProducts = speciesHoldDetonationProducts
         if let packed = frameExtractor?.luminousCells(
             luminous: luminousTemperature, time: time, steps: stepCount, count: grid.cellCount)
         {
@@ -241,6 +241,7 @@ extension BlastSolver {
         let airModel = configuration.airModel
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         var packed = [UInt32](repeating: 0, count: counts.x * counts.y * counts.z)
+        let hasProducts = speciesHoldDetonationProducts
         withState { cells in
             readSpecies { species in
                 packed.withUnsafeMutableBufferPointer { packed in
@@ -258,7 +259,8 @@ extension BlastSolver {
                                     : bound
                                 guard t >= luminousTemperature, t.isFinite else { continue }
                                 let kelvin = UInt32(min(max(t.rounded(), 1), 65535))
-                                let products = Float16(min(max(species?[index].x ?? 0, 0), 65504))
+                                let held = hasProducts ? species?[index].x ?? 0 : 0
+                                let products = Float16(min(max(held, 0), 65504))
                                 packed[i + counts.x * (j + counts.y * k)] =
                                     kelvin | UInt32(products.bitPattern) << 16
                             }
@@ -553,7 +555,14 @@ final class ThermalReceiverSet: @unchecked Sendable {
 /// The march on the CPU's cores, as `MetalThermalMarch` does it on the GPU.
 struct CPUThermalMarch: ThermalMarch {
     let occluders: [Box]
+    let terrain: TerrainSight?
     let spiral: [SIMD3<Float>]
+
+    init(occluders: [Box], terrain: Terrain? = nil, spiral: [SIMD3<Float>]) {
+        self.occluders = occluders
+        self.terrain = TerrainSight(terrain)
+        self.spiral = spiral
+    }
 
     func irradiance(_ medium: ThermalMedium, receivers set: ThermalReceiverSet, occluded: Bool) -> [Float] {
         let receivers = set.receivers
@@ -598,6 +607,7 @@ struct CPUThermalMarch: ThermalMarch {
         for box in occluders {
             if let t = Self.entry(box, origin, direction, nearest) { nearest = t }
         }
+        if let terrain { nearest = terrain.nearest(from: origin, along: direction, within: nearest) }
         return nearest
     }
 
@@ -627,14 +637,16 @@ extension ThermalExposure {
     /// acceleration structure if given, otherwise on the CPU; `BOMBCAD_THERMAL_VISIBILITY=cpu` in
     /// the environment keeps it on the CPU.
     static func defaultMarch(
-        occluders: [Box], spiral: [SIMD3<Float>], visibility: MetalThermalVisibility? = nil
+        occluders: [Box], terrain: Terrain? = nil, spiral: [SIMD3<Float>],
+        visibility: MetalThermalVisibility? = nil
     ) -> any ThermalMarch {
         if ProcessInfo.processInfo.environment["BOMBCAD_THERMAL_VISIBILITY"] != "cpu",
-            let metal = MetalThermalMarch(occluders: occluders, spiral: spiral, visibility: visibility)
+            let metal = MetalThermalMarch(
+                occluders: occluders, terrain: terrain, spiral: spiral, visibility: visibility)
         {
             return metal
         }
-        return CPUThermalMarch(occluders: occluders, spiral: spiral)
+        return CPUThermalMarch(occluders: occluders, terrain: terrain, spiral: spiral)
     }
 
     /// The GPU's time on the volume's march so far, in seconds; nil if it is not marched there.

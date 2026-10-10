@@ -28,8 +28,13 @@ final class MetalThermalMarch: ThermalMarch, @unchecked Sendable {
 
     /// `visibility` lends its acceleration structure; one is built if it is not given. Nil where
     /// there is no GPU with ray tracing.
-    init?(occluders: [Box], spiral: [SIMD3<Float>], visibility: MetalThermalVisibility? = nil) {
-        guard let visibility = visibility ?? MetalThermalVisibility(occluders: occluders, allowingNone: true)
+    init?(
+        occluders: [Box], terrain: Terrain? = nil, spiral: [SIMD3<Float>],
+        visibility: MetalThermalVisibility? = nil
+    ) {
+        guard
+            let visibility = visibility
+                ?? MetalThermalVisibility(occluders: occluders, terrain: terrain, allowingNone: true)
         else { return nil }
         let packed = spiral.flatMap { [$0.x, $0.y, $0.z] }
         guard
@@ -40,7 +45,7 @@ final class MetalThermalMarch: ThermalMarch, @unchecked Sendable {
         self.visibility = visibility
         self.spiralBuffer = spiralBuffer
         samples = spiral.count
-        cpu = CPUThermalMarch(occluders: occluders, spiral: spiral)
+        cpu = CPUThermalMarch(occluders: occluders, terrain: terrain, spiral: spiral)
     }
 
     var usage: Usage { lock.withLock { counts } }
@@ -94,6 +99,9 @@ final class MetalThermalMarch: ThermalMarch, @unchecked Sendable {
         encoder.setAccelerationStructure(visibility.structure, bufferIndex: 5)
         encoder.setBuffer(outputBuffer, offset: 0, index: 6)
         encoder.setBytes(&uniforms, length: MemoryLayout<MarchUniforms>.stride, index: 7)
+        var terrain = visibility.terrainUniforms
+        encoder.setBytes(&terrain, length: MemoryLayout<TerrainSightUniforms>.stride, index: 8)
+        encoder.setBuffer(visibility.heights, offset: 0, index: 9)
         encoder.dispatchThreadgroups(
             MTLSize(width: count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))

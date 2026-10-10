@@ -104,6 +104,17 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// The luminous gas losing the heat it radiates (see `RadiativeCooling`); nil, the default,
     /// for none. Read at `restart()`.
     public var radiativeCooling: RadiativeCooling?
+    /// Gravity acting on the air, which then starts at rest in a hydrostatic atmosphere (see
+    /// `AirGravity`); nil, the default, for none. Read when the air is filled.
+    public var gravity: AirGravity?
+    /// Sub-grid turbulent mixing in the air (see `SubgridMixing`); nil, the default, for none.
+    public var mixing: SubgridMixing?
+    /// For benchmarks: the two outermost cells on each x and y side copy the far side's before
+    /// every sweep, so that the rest of the grid is periodic in x and y. Not for scenes.
+    public var periodicSides = false
+    /// With afterburning, an extinction limit: the products burn only where the mixture can keep a
+    /// flame going (see `AfterburnLimit`); nil, the default, for wherever they meet oxygen.
+    public var afterburnLimit: AfterburnLimit?
 
     public init() {}
 }
@@ -202,6 +213,16 @@ struct SolverUniforms {
     var childTileNx: UInt32 = 0
     var childTileNy: UInt32 = 0
     var childTileNz: UInt32 = 0
+    var gravity: Float = 0
+    var gravityLapse: Float = 0
+    var gravityT0: Float = 0
+    var gravityP0: Float = 0
+    /// 1 when the air carries a deflagration's unburnt mixture (see `Deflagration.metal`).
+    var deflagration: UInt32 = 0
+    var mixingCoefficient: Float = 0
+    var mixingPrandtl: Float = 0
+    var ignitionTemperature: Float = 0
+    var limitFlameTemperature: Float = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

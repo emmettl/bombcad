@@ -209,14 +209,17 @@ public struct ThermalSurfaceGrid: Sendable, Equatable {
         indices.reserveCapacity(columns * rows)
     }
 
-    mutating func add(_ point: SIMD3<Float>, column: Int, row: Int, buried: Bool, first: inout Int) {
+    mutating func add(
+        _ point: SIMD3<Float>, column: Int, row: Int, buried: Bool, first: inout Int,
+        normal: SIMD3<Float>? = nil
+    ) {
         guard !buried else {
             indices.append(nil)
             return
         }
         indices.append(first)
         first += 1
-        receivers.append(ThermalReceiver(position: point, normal: normal, surface: surface))
+        receivers.append(ThermalReceiver(position: point, normal: normal ?? self.normal, surface: surface))
     }
 
     /// Values at its cells, row by row, from values at the scene's receivers, each cell with no
@@ -294,7 +297,7 @@ public struct ThermalExposure: Sendable {
         receivers = grids.flatMap(\.receivers)
         heating = spec.heating.enabled ? SurfaceHeating(spec: spec.heating, grids: grids, scene: scene) : nil
         let occluders = Self.occluders(scene)
-        let visibility = visibility ?? Self.defaultVisibility(occluders: occluders)
+        let visibility = visibility ?? Self.defaultVisibility(occluders: occluders, terrain: scene.terrain)
         self.visibility = visibility
         chargeEnergy = Self.chargeEnergy(scene)
         cone = Self.spread(spec.samples)
@@ -304,7 +307,8 @@ public struct ThermalExposure: Sendable {
             ? nil
             : march
                 ?? Self.defaultMarch(
-                    occluders: occluders, spiral: cone, visibility: visibility as? MetalThermalVisibility)
+                    occluders: occluders, terrain: scene.terrain, spiral: cone,
+                    visibility: visibility as? MetalThermalVisibility)
         peakIrradiance = [Float](repeating: 0, count: receivers.count)
         fluence = [Double](repeating: 0, count: receivers.count)
     }
@@ -506,7 +510,7 @@ public struct ThermalExposure: Sendable {
     public static func surfaceGrids(scene: FragmentScene, spec: ThermalSpec) -> [ThermalSurfaceGrid] {
         let solids = scene.blocks + scene.structure
         func buried(_ point: SIMD3<Float>) -> Bool {
-            solids.contains { $0.contains(point) }
+            solids.contains { $0.contains(point) } || (scene.terrain?.contains(point) ?? false)
                 || point.x < 0 || point.y < 0 || point.x > scene.domain.x || point.y > scene.domain.y
                 || point.z > scene.domain.z
         }
@@ -520,10 +524,13 @@ public struct ThermalExposure: Sendable {
             normal: SIMD3(0, 0, 1), columns: columns, rows: rows)
         for j in 0..<rows {
             for i in 0..<columns {
-                let point = SIMD3<Float>(
+                // Over a terrain, on its surface and facing out of it.
+                let at = SIMD2<Float>(
                     (Float(i) + 0.5) * scene.domain.x / Float(columns),
-                    (Float(j) + 0.5) * scene.domain.y / Float(rows), lift)
-                ground.add(point, column: i, row: j, buried: buried(point), first: &first)
+                    (Float(j) + 0.5) * scene.domain.y / Float(rows))
+                let normal = scene.terrain?.normal(at: at) ?? SIMD3(0, 0, 1)
+                let point = SIMD3(at.x, at.y, scene.terrain?.height(at: at) ?? 0) + lift * normal
+                ground.add(point, column: i, row: j, buried: buried(point), first: &first, normal: normal)
             }
         }
         grids.append(ground)

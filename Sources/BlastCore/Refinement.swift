@@ -55,6 +55,15 @@ final class AirRefinement {
     private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
     let fineOccupancy: MTLBuffer
+    /// Gravity's background at this level's resolution (see `gravityCellOf` in Solver.metal),
+    /// while the air has gravity.
+    var gravityTable: MTLBuffer?
+    /// And at the resolution of the level it refines.
+    var parentGravityTable: MTLBuffer?
+    /// The coarse cells' eddy viscosity while the air has sub-grid mixing.
+    var viscosity: MTLBuffer?
+    /// Whether afterburning has its extinction limit.
+    var burnLimit = false
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -62,6 +71,10 @@ final class AirRefinement {
     /// coarse cells' rigid mask instead.
     private var boxes: MTLBuffer
     private var boxCount: UInt32 = 0
+    /// The terrain's heights and grid for the fine outline (`TerrainUniforms` in Refine.metal);
+    /// `enabled` 0 without one.
+    private var terrainHeights: MTLBuffer
+    private var terrainUniforms = TerrainUniforms()
     /// The fine state, twice for the sweeps to alternate between; the first is current between
     /// coarse steps, since a step takes an even number of fine sweeps.
     let fine: [MTLBuffer]
@@ -88,6 +101,9 @@ final class AirRefinement {
     /// far, the sweep compiled for that model alone, which leaves the others' code out of it.
     private let sweepPipeline: MTLComputePipelineState
     private var sweepPipelines: [AirModel: MTLComputePipelineState] = [:]
+    /// The sweep for each gas model, and the ghosts, refluxing and filling, with gravity in the air
+    /// compiled in (see `airGravityConstant` in Solver.metal), made when first needed.
+    private var gravityPipelines: [String: MTLComputePipelineState] = [:]
     private let ghostPipeline: MTLComputePipelineState
     private let haloPipeline: MTLComputePipelineState
     private let refluxPipeline: MTLComputePipelineState
@@ -239,6 +255,7 @@ final class AirRefinement {
         pinned = try buffer(maxPatches * 4, "pinned patches")
         fineWall = try buffer(fineCells * 12, "fine wall velocity")
         boxes = try buffer(32, "rigid blocks")
+        terrainHeights = try buffer(16, "terrain heights")
         self.device = device
         self.library = library
         halo = try buffer(maxPatches * 512 * cell, "halo")
@@ -462,6 +479,50 @@ final class AirRefinement {
         }
     }
 
+    /// Every fine cell the patches hold, by its coordinates at this level, and whether its outline
+    /// marks it rigid. For tests.
+    func rigidOutline(_ grid: Grid) -> [(cell: SIMD3<Int>, rigid: Bool)] {
+        let cells = side * side * side
+        let dims = cellDims(grid)
+        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let mask = (fineMask.contents() + offset(of: fineMask)).bindMemory(
+            to: UInt8.self, capacity: maxPatches * cells)
+        var outline: [(cell: SIMD3<Int>, rigid: Bool)] = []
+        for patch in 0..<maxPatches where owners[patch] != .max {
+            let tile = Int(owners[patch])
+            let origin =
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* side
+            for n in 0..<cells {
+                let cell = origin &+ SIMD3(n % side, (n / side) % side, n / (side * side))
+                guard all(cell .< dims) else { continue }
+                outline.append((cell, mask[patch * cells + n] & 2 != 0))
+            }
+        }
+        return outline
+    }
+
+    /// Sets the terrain whose outline the fine cells follow, besides the blocks'; nil for none.
+    func setTerrain(_ terrain: Terrain?) {
+        guard let terrain else {
+            terrainUniforms = TerrainUniforms()
+            return
+        }
+        if terrain.heights.count * 4 > terrainHeights.length,
+            let bigger = device.makeBuffer(length: terrain.heights.count * 4, options: .storageModeShared)
+        {
+            terrainHeights = bigger
+        }
+        terrain.heights.withUnsafeBytes { bytes in
+            if let base = bytes.baseAddress {
+                terrainHeights.contents().copyMemory(from: base, byteCount: bytes.count)
+            }
+        }
+        terrainUniforms = TerrainUniforms(
+            origin: terrain.origin, spacing: terrain.spacing, columns: UInt32(terrain.columns),
+            rows: UInt32(terrain.rows), enabled: 1)
+    }
+
     /// The pool slots of the patches in use whose block passes `near` (block coordinates).
     func patches(near: (SIMD3<Int>) -> Bool) -> [Int] {
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
@@ -573,8 +634,36 @@ final class AirRefinement {
 
     /// The fine sweep compiled for `model`, made the first time it is used; the general one if
     /// that fails.
+    /// `base`, kernel `name`, or with gravity compiled in while the air has gravity (`model` for the
+    /// gas model's specialisation, if any).
+    private func withGravity(_ base: MTLComputePipelineState, _ name: String, model: AirModel? = nil)
+        -> MTLComputePipelineState
+    {
+        let gravity = gravityTable != nil
+        let mixing = viscosity != nil && name == "refineSweep"
+        let limit = burnLimit && name == "refineSweep"
+        guard gravity || mixing || limit else { return base }
+        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing) \(limit)"
+        if let pipeline = gravityPipelines[key] { return pipeline }
+        var constants = MTLFunctionConstantValues()
+        if var value = model?.rawValue {
+            constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        }
+        if gravity { constants = ShaderLibrary.withGravity(constants) }
+        if mixing { constants = ShaderLibrary.withMixing(constants) }
+        if limit { constants = ShaderLibrary.withBurnLimit(constants) }
+        guard let pipeline = try? ShaderLibrary.pipeline(name, in: library, constants: constants) else {
+            return base
+        }
+        gravityPipelines[key] = pipeline
+        return pipeline
+    }
+
     private func sweepPipeline(for model: AirModel?) -> MTLComputePipelineState {
-        guard let model else { return sweepPipeline }
+        guard let model else { return withGravity(sweepPipeline, "refineSweep") }
+        if gravityTable != nil || viscosity != nil || burnLimit {
+            return withGravity(sweepPipeline, "refineSweep", model: model)
+        }
         if let pipeline = sweepPipelines[model] { return pipeline }
         let constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -618,7 +707,7 @@ final class AirRefinement {
                 let source = fine[sweep % 2]
                 let sourceOffset = sweep % 2 == 0 ? offset(of: fine[0]) : 0
 
-                encoder.setComputePipelineState(ghostPipeline)
+                encoder.setComputePipelineState(withGravity(ghostPipeline, "refineGhosts"))
                 encoder.setBuffer(source, offset: sourceOffset, index: 0)
                 encoder.setBuffer(ghosts, offset: 0, index: 1)
                 encoder.setBuffer(ghostKinds, offset: 0, index: 2)
@@ -638,6 +727,9 @@ final class AirRefinement {
                 encoder.setBuffer(ghostSpecies, offset: 0, index: 16)
                 set(encoder, parent.species, 17)
                 set(encoder, parent.patches, 18)
+                // Not read without gravity.
+                encoder.setBuffer(parentGravityTable ?? ghosts, offset: 0, index: 19)
+                encoder.setBuffer(gravityTable ?? ghosts, offset: 0, index: 20)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -676,6 +768,9 @@ final class AirRefinement {
                     encoder.setBuffer(fineFlux, offset: 0, index: 23)
                     encoder.setBuffer(fineFlux, offset: 0, index: 24)
                 }
+                // Not read without gravity.
+                encoder.setBuffer(gravityTable ?? fineFlux, offset: 0, index: 25)
+                encoder.setBuffer(viscosity ?? fineFlux, offset: 0, index: 26)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
@@ -699,7 +794,7 @@ final class AirRefinement {
         uniforms: SolverUniforms
     ) {
         var uniforms = uniforms
-        encoder.setComputePipelineState(refluxPipeline)
+        encoder.setComputePipelineState(withGravity(refluxPipeline, "refineReflux"))
         set(encoder, parent.state, 0)
         set(encoder, parent.mask, 1)
         bind(encoder, patchOfTile, 3)
@@ -948,7 +1043,7 @@ final class AirRefinement {
             MTLSize(width: 1, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
-        encoder.setComputePipelineState(fillPipeline)
+        encoder.setComputePipelineState(withGravity(fillPipeline, "refineFill"))
         bind(encoder, fine[0], 0)
         set(encoder, parent.state, 1)
         set(encoder, parent.mask, 2)
@@ -970,6 +1065,12 @@ final class AirRefinement {
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 17)
         encoder.setBuffer(boxDefinition ?? fine[0], offset: 0, index: 18)
         set(encoder, parent.patches, 19)
+        encoder.setBuffer(terrainHeights, offset: 0, index: 20)
+        var terrain = terrainUniforms
+        encoder.setBytes(&terrain, length: MemoryLayout<TerrainUniforms>.stride, index: 21)
+        // Not read without gravity.
+        encoder.setBuffer(gravityTable ?? fine[0], offset: 0, index: 22)
+        encoder.setBuffer(parentGravityTable ?? fine[0], offset: 0, index: 23)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -1192,4 +1293,13 @@ extension AirRefinement {
             }
         }
     }
+}
+
+/// Matches `TerrainUniforms` in Refine.metal.
+struct TerrainUniforms {
+    var origin: SIMD2<Float> = .zero
+    var spacing: Float = 1
+    var columns: UInt32 = 0
+    var rows: UInt32 = 0
+    var enabled: UInt32 = 0
 }

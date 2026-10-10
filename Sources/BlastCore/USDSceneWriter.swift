@@ -35,6 +35,9 @@ public final class USDSceneWriter {
         )] = []
     private var cloud: (samples: [CloudSample], secondsPerFrame: Double)?
     public let frameInterval: Double
+    /// The standing of the run's results (see `SceneStanding`), written into the layer's
+    /// `customLayerData` when the scene is finished.
+    public var standing: SceneStanding?
     private let scenario: Scenario
     private let playbackRate: Double
     private let parts: URL
@@ -189,7 +192,7 @@ public final class USDSceneWriter {
     }
 
     /// Adds the ground points with open ground, as `/Scene/GroundShock`: Points just above the
-    /// ground, half their spacing along a line across, carrying what the ground did there as
+    /// ground (the terrain's surface, where there is one), half their spacing along a line across, carrying what the ground did there as
     /// primvars: `peakOverpressure` (kPa), `impulse` (Pa·s), the surface's `verticalVelocity`
     /// (mm/s) and `verticalDisplacement` (mm), and `arrival` (ms, −1 where the blast never came).
     public func addGroundShock(_ result: GroundShockResult, spec: GroundShockSpec) {
@@ -216,7 +219,16 @@ public final class USDSceneWriter {
             values.append(("settlement", open.map { ($0.profile?.residualDisplacement.first ?? 0) * 1000 }))
         }
         addPoints(
-            "GroundShock", frames: [open.map { SIMD3($0.position.x, $0.position.y, 0.05) }],
+            "GroundShock",
+            frames: [
+                open.map { point in
+                    // Placed on the terrain by the run, or here for results from before.
+                    point.elevation == nil
+                        ? SIMD3(
+                            point.position.x, point.position.y,
+                            (scenario.terrain?.height(at: point.position) ?? 0) + 0.05) : point.marker
+                }
+            ],
             widths: [Float](repeating: width, count: open.count), colour: SIMD3(0.6, 0.35, 0.9),
             values: values)
     }
@@ -278,7 +290,7 @@ public final class USDSceneWriter {
                 customLayerData = {
                     string creator = "BombCAD"
                     string scenario = \(quoted(scenario.name))
-                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)
+                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)\(standingData)
                 }
                 defaultPrim = "Scene"
                 startTimeCode = 0
@@ -300,6 +312,7 @@ public final class USDSceneWriter {
                 SIMD3(0, 0, 0), SIMD3(domain.x, 0, 0), SIMD3(domain.x, domain.y, 0), SIMD3(0, domain.y, 0),
             ],
             colour: SIMD3(0.46, 0.47, 0.49), to: &text)
+        if let terrain = scenario.terrain, !terrain.isFlat { appendTerrain(terrain, to: &text) }
         let fixed =
             scenario.boxes
             + (scenario.importedModels ?? [])
@@ -416,6 +429,47 @@ public final class USDSceneWriter {
         }
         text.append("]\n        color3f[] primvars:displayColor = [")
         text.append(colour)
+        text.append("]\n    }\n\n")
+    }
+
+    /// The terrain as `/Scene/Terrain`: a mesh of its nodes, one quad a cell of them, with the
+    /// heights it was given and where they came from.
+    private func appendTerrain(_ terrain: Terrain, to text: inout Text) {
+        let (columns, rows) = (terrain.columns, terrain.rows)
+        text.append("    def Mesh \"Terrain\"\n    {\n        uniform token subdivisionScheme = \"none\"\n")
+        if let source = terrain.source {
+            text.append("        custom uniform string bombcad:terrainSource = \(quoted(source))\n")
+        }
+        text.append("        float3[] extent = [")
+        text.append(SIMD3(terrain.origin.x, terrain.origin.y, terrain.heights.min() ?? 0))
+        text.append(", ")
+        text.append(SIMD3(terrain.extent.x, terrain.extent.y, terrain.highest))
+        text.append("]\n        int[] faceVertexCounts = [")
+        text.appendList([Int32](repeating: 4, count: (columns - 1) * (rows - 1)))
+        text.append("]\n        int[] faceVertexIndices = [")
+        var indices: [Int32] = []
+        indices.reserveCapacity(4 * (columns - 1) * (rows - 1))
+        for j in 0..<(rows - 1) {
+            for i in 0..<(columns - 1) {
+                let n = Int32(i + columns * j)
+                // Counter-clockwise seen from above, so that the normals face up.
+                indices += [n, n + 1, n + 1 + Int32(columns), n + Int32(columns)]
+            }
+        }
+        text.appendList(indices)
+        text.append("]\n        point3f[] points = [")
+        for j in 0..<rows {
+            for i in 0..<columns {
+                if i + j > 0 { text.append(", ") }
+                text.append(
+                    SIMD3(
+                        terrain.origin.x + Float(i) * terrain.spacing,
+                        terrain.origin.y + Float(j) * terrain.spacing,
+                        terrain.height(column: i, row: j)))
+            }
+        }
+        text.append("]\n        color3f[] primvars:displayColor = [")
+        text.append(SIMD3<Float>(0.50, 0.49, 0.45))
         text.append("]\n    }\n\n")
     }
 
@@ -590,6 +644,25 @@ public final class USDSceneWriter {
             text.append(n == 3 ? ", 1)" : ", 0)")
         }
         text.append(" )\n        uniform token[] xformOpOrder = [\"xformOp:transform\"]\n    }\n\n")
+    }
+
+    /// The standing as a dictionary of the layer's metadata: each result's level and summary, the
+    /// notes on resolution and what the scene leaves out.
+    private var standingData: String {
+        guard let standing else { return "" }
+        func list(_ lines: [String]) -> String { "[" + lines.map(quoted).joined(separator: ", ") + "]" }
+        var lines = ["string table = \(quoted(standing.table))"]
+        for result in standing.results {
+            lines.append(
+                "string \(result.kind.rawValue) = \(quoted("\(result.level.rawValue): \(result.summary)"))")
+        }
+        lines.append(
+            "string[] resolution = \(list(standing.resolution + standing.results.flatMap(\.resolution)))")
+        lines.append("string[] notModelled = \(list(standing.unsupported))")
+        lines.append(
+            "string documentation = \"https://github.com/emmettl/bombcad/blob/main/docs/standing.md\"")
+        return "\n        dictionary standing = {\n" + lines.map { "            " + $0 + "\n" }.joined()
+            + "        }"
     }
 
     private func quoted(_ string: String) -> String {
