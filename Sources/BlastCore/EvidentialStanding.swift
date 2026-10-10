@@ -1745,7 +1745,8 @@ private struct StandingScene {
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
         if has(.deflagration) {
             effects.append(
-                "Flame acceleration is modelled but uncalibrated; there is no transition to detonation.")
+                "Flame acceleration is modelled, its one constant fitted in the chamber it is compared in; "
+                    + "there is no transition to detonation.")
         }
         if has(.terrain) {
             effects.append(
