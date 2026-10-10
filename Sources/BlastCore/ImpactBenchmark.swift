@@ -119,6 +119,12 @@ public enum ImpactBenchmark {
         /// It is one element thick, its modulus the stiffness times the element size. Nil strikes
         /// the plate's top nodes directly, a contact infinitely stiff.
         public var pad: Float?
+        /// Where the weight strikes, its centre's distance from the first support; nil at
+        /// mid-span.
+        public var strike: Float?
+        /// The supports hold the beam's top face down over the bearing length as well as bearing
+        /// its bottom face; false lets it lift off them.
+        public var heldDown = true
     }
 
     public static func specimen(_ test: Test) -> Specimen {
@@ -141,12 +147,16 @@ public enum ImpactBenchmark {
         let h = s.depth / Float(elementsThroughDepth)
         let base = (1 / h).rounded() * h
         let beam = Box(min: SIMD3(0, 0, base), max: SIMD3(s.length, s.width, base + s.depth))
-        let middle = s.length / 2
+        let middle = s.strike.map { (s.length - s.span) / 2 + $0 } ?? s.length / 2
+        // The plate struck, if it has a thickness; the pad, if any, on it or on the beam.
         let plateBox = Box(
             min: SIMD3(middle - s.plate.x / 2, 0, base + s.depth),
             max: SIMD3(middle + s.plate.x / 2, s.width, base + s.depth + s.plate.y))
-        var solids = [beam, plateBox]
+        var solids = [beam]
+        if s.plate.y > 0 { solids.append(plateBox) }
+        var padIndex: Int?
         if s.pad != nil {
+            padIndex = solids.count
             solids.append(
                 Box(
                     min: SIMD3(plateBox.min.x, 0, plateBox.max.z),
@@ -173,7 +183,7 @@ public enum ImpactBenchmark {
                     name: "Pad", density: 1000, youngsModulus: stiffness * h, poissonRatio: 0.3,
                     yieldStress: 1e12,
                     hardeningModulus: 0, failureStrain: 10),
-                of: 2)
+                of: padIndex ?? 2)
         }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
@@ -208,6 +218,11 @@ public enum ImpactBenchmark {
         /// Largest impact force (N): the weight's mass times its deceleration, while it rides
         /// the plate, averaged over the 0.42 ms between the tests' readings of its accelerometers.
         public var peakImpactForce: Float = 0
+        /// When the impact force peaks (s), and each support's largest reaction (N, over 0.5 ms)
+        /// and when it comes, the first support first.
+        public var impactPeakTime: Float = 0
+        public var supportReactions: SIMD2<Float> = .zero
+        public var supportReactionTimes: SIMD2<Float> = .zero
         public var summary: StructureSummary
         public var elementCount: Int
         public var wallSeconds: Double
@@ -248,7 +263,7 @@ public enum ImpactBenchmark {
         let solver = try StructureSolver(device: device, model: model)
         solver.groundContact = false
         let h = model.elementSize
-        let middle = Int((length / 2 / h).rounded())
+        let middle = Int(((specimen.strike.map { (length - span) / 2 + $0 } ?? length / 2) / h).rounded())
         // With support plates the lattice starts at their undersides, this many rows below the beam.
         let plateRows = specimen.supportPlates.map { Int(max(($0 / h).rounded(), 1)) } ?? 0
         let beamBottom = plateRows
@@ -312,7 +327,9 @@ public enum ImpactBenchmark {
                             nodes[n].restsOnSupport = true
                             nodes[n].restrain(y: j == 0)
                         }
-                        if let n = solver.storedNode(i, j, beamTop) { nodes[n].isHeldDown = true }
+                        if specimen.heldDown, let n = solver.storedNode(i, j, beamTop) {
+                            nodes[n].isHeldDown = true
+                        }
                     }
                 }
             }
@@ -398,7 +415,8 @@ public enum ImpactBenchmark {
                         if solver.storedNode(i, j, 0) != nil, solver.displacement(i, j, 0).z == 0 {
                             reaction[side] += solver.nodalForce(i, j, 0).z
                         }
-                        if solver.storedNode(i, j, beamTop) != nil, solver.displacement(i, j, beamTop).z == 0
+                        if specimen.heldDown, solver.storedNode(i, j, beamTop) != nil,
+                            solver.displacement(i, j, beamTop).z == 0
                         {
                             reaction[side] += solver.nodalForce(i, j, beamTop).z
                         }
@@ -412,21 +430,32 @@ public enum ImpactBenchmark {
         let window = max(
             1, Int((0.0005 / (Double(stepsPerSample) * Double(solver.criticalTimeStep))).rounded()))
         var peakReaction: Float = 0
+        var supportReactions = SIMD2<Float>.zero
+        var supportReactionTimes = SIMD2<Float>.zero
+        let sampleTime = Float(Double(stepsPerSample) * Double(solver.criticalTimeStep))
         if reactions.count >= window {
             for end in window...reactions.count {
-                let mean = reactions[(end - window)..<end].reduce(.zero, +) / Float(window)
-                peakReaction = max(peakReaction, abs(mean).max())
+                let mean = abs(reactions[(end - window)..<end].reduce(.zero, +) / Float(window))
+                peakReaction = max(peakReaction, mean.max())
+                for side in 0..<2 where mean[side] > supportReactions[side] {
+                    supportReactions[side] = mean[side]
+                    supportReactionTimes[side] = (Float(end) - Float(window) / 2) * sampleTime
+                }
             }
         }
         // Impact force from the weight's deceleration, over 0.42 ms windows.
         let sample = Double(stepsPerSample) * Double(solver.criticalTimeStep)
         let reading = max(1, Int((1 / 2400 / sample).rounded()))
         var peakImpactForce: Float = 0
+        var impactPeakTime: Float = 0
         if weightSpeed.count > reading {
             for i in reading..<weightSpeed.count {
                 let force =
                     weight * (weightSpeed[i - reading] - weightSpeed[i]) / Float(Double(reading) * sample)
-                peakImpactForce = max(peakImpactForce, force)
+                if force > peakImpactForce {
+                    peakImpactForce = force
+                    impactPeakTime = (Float(i) - Float(reading) / 2) * Float(sample)
+                }
             }
         }
         let end = push == nil ? duration : Double(history.last?.x ?? 0)
@@ -435,7 +464,10 @@ public enum ImpactBenchmark {
         return Result(
             history: history, peak: history.map(\.y).max() ?? 0,
             residual: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)), peakReaction: peakReaction,
-            peakImpactForce: peakImpactForce, summary: solver.summary(), elementCount: solver.elementCount,
+            peakImpactForce: peakImpactForce, impactPeakTime: impactPeakTime,
+            supportReactions: supportReactions,
+            supportReactionTimes: supportReactionTimes, summary: solver.summary(),
+            elementCount: solver.elementCount,
             wallSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18)
     }
 
@@ -604,6 +636,118 @@ public enum ImpactBenchmark {
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: 300, speed: test.speed,
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
+    }
+
+    // MARK: - Peterson et al. (KTH, 2026): short beams struck to a shear failure
+
+    /// One of V. Peterson, J. Magnusson, M. Hallgren and A. Ansell's beams, "Shear-type failure of
+    /// deep, short and slender impact-loaded RC beams", International Journal of Impact Engineering
+    /// 208, 105539 (2026), described in Peterson's KTH thesis (2026) and Data in Brief 65, 112487
+    /// (2026). The records are V. Peterson's on Mendeley Data, doi:10.17632/kn28g6dbj5.3, CC BY 4.0;
+    /// the measured values below are derived from them (docs/validation.md says how).
+    public struct PetersonTest: Sendable {
+        public var name: String
+        /// The weight's centre from the first support (m): 48, 120 or 240 mm, shear spans of
+        /// 0.4, 1 and 2 effective depths.
+        public var strike: Float
+        public var stirrupSpacing: Float?
+        /// Measured, where the beam has a record: the largest impact force (N, the striker's 70 kg
+        /// times its deceleration over 0.42 ms) and the largest reactions at the near and far
+        /// supports (N, over 0.5 ms), and when each came after the impact began (s).
+        public var impact: Float?
+        public var nearReaction: Float?
+        public var farReaction: Float?
+        public var impactTime: Float?
+        public var nearTime: Float?
+        public var farTime: Float?
+        /// The damage Peterson records: SC strut crushing, SCS strut crushing at the support,
+        /// FS flexural-shear, F flexure.
+        public var damage: String
+    }
+
+    public static let petersonWeight: Float = 70
+    /// Dropped 2.4 m through a guiding tube.
+    public static let petersonSpeed: Float = (2 * 9.81 * 2.4 as Float).squareRoot()
+
+    public static let petersonTests: [PetersonTest] = {
+        // name, strike (mm), stirrups (mm), impact, near, far (kN), at (ms), damage
+        let rows: [(String, Float, Float?, [Float]?, String)] = [
+            ("D-04d-NoS-1", 48, nil, [195, 206, 29, 0.94, 0.89, 4.69], "SC"),
+            ("D-04d-NoS-2", 48, nil, [260, 220, 20, 0.78, 1.04, 4.69], "SCS"),
+            ("D-04d-S90-1", 48, 90, nil, "SCS"),
+            // The record filed as D-04d-S90-2, which the dataset's readme says has none: its
+            // striker trace implies five times the striker's momentum, so its impact force is left
+            // out; its load cells read as the others'.
+            ("D-04d-S90-2", 48, 90, [.nan, 217, 12, .nan, 0.89, 11.88], "SCS"),
+            ("D-04d-S45-1", 48, 45, nil, "SCS"),
+            ("D-04d-S45-2", 48, 45, [211, 192, 13, 0.73, 0.83, 7.81], "SCS"),
+            ("D-1d-NoS-1", 120, nil, [282, 161, 44, 0.94, 1.15, 2.66], "SC"),
+            ("D-1d-NoS-2", 120, nil, [296, 179, 49, 0.83, 1.04, 3.70], "SC"),
+            ("D-1d-S90-1", 120, 90, [227, 163, 54, 1.30, 1.61, 3.23], "SC"),
+            ("D-1d-S90-2", 120, 90, [207, 160, 75, 1.25, 1.20, 3.39], "SC"),
+            ("D-1d-S45-1", 120, 45, [237, 196, 78, 0.52, 0.99, 3.28], "SC"),
+            ("D-1d-S45-2", 120, 45, [246, 157, 62, 0.89, 0.89, 3.02], "SC"),
+            ("D-2d-NoS-1", 240, nil, [210, 107, 84, 0.47, 1.46, 2.29], "FS"),
+            ("D-2d-NoS-2", 240, nil, [298, 140, 81, 0.68, 1.35, 2.50], "FS"),
+            ("D-2d-S90-1", 240, 90, [214, 111, 81, 0.52, 0.99, 2.34], "F"),
+            ("D-2d-S90-2", 240, 90, [263, 121, 86, 0.52, 1.25, 2.40], "F"),
+            ("D-2d-S45-1", 240, 45, [208, 110, 76, 0.47, 1.09, 2.34], "F"),
+            ("D-2d-S45-2", 240, 45, [219, 121, 80, 0.26, 1.09, 2.34], "F"),
+        ]
+        return rows.map { name, strike, spacing, values, damage in
+            func value(_ i: Int, _ scale: Float) -> Float? {
+                guard let v = values?[i], v.isFinite else { return nil }
+                return v * scale
+            }
+            return PetersonTest(
+                name: name, strike: strike / 1000, stirrupSpacing: spacing.map { $0 / 1000 },
+                impact: value(0, 1000), nearReaction: value(1, 1000), farReaction: value(2, 1000),
+                impactTime: value(3, 0.001), nearTime: value(4, 0.001), farTime: value(5, 0.001),
+                damage: damage)
+        }
+    }()
+
+    /// The fibreboard between striker and beam, as a pad of this stiffness per unit area (Pa/m),
+    /// set so that the struck beams' impact forces come out as measured (see docs/validation.md).
+    public static let petersonPad: Float = 2e9
+
+    public static func specimen(_ test: PetersonTest) -> Specimen {
+        // 0.80 m long, 150 x 150 mm, on supports 0.70 m apart; three 8 mm bars in the face struck
+        // away from and two in the face struck, both 30 mm in (26 mm cover); 6 mm stirrups. K500C
+        // bars: 8 mm 511 / 622 MPa, 6 mm 609 / 701 MPa (the model takes the 8 mm bars' steel for
+        // both). Concrete 44 MPa on cubes, taken as 36 MPa on cylinders. Assumed: the striker's
+        // face 100 mm long across the beam's width, the supports 30 mm wide, 16 mm aggregate.
+        var steel = SteelProperties(
+            yieldStress: 511e6, ultimateStress: 622e6, ultimateStrain: 0.08, ruptureStrain: 0.12)
+        steel.youngsModulus = 200e9
+        var material = StructureMaterial.concrete(
+            name: "Peterson beam", compressiveStrength: 36e6, density: 2400, steel: steel)
+        material.aggregateSize = 0.016
+        material.rateDependent = true
+        let bar: Float = .pi * 0.004 * 0.004
+        let leg: Float = .pi * 0.003 * 0.003
+        var specimen = Specimen(
+            width: 0.15, depth: 0.15, length: 0.80, span: 0.70,
+            bars: [(3 * bar, 0.030), (2 * bar, 0.120)],
+            stirrups: test.stirrupSpacing.map { (2 * leg, $0) }, plate: SIMD2(0.1, 0),
+            bearingLength: 0.03, material: material)
+        specimen.pad = petersonPad
+        specimen.strike = test.strike
+        specimen.heldDown = false
+        return specimen
+    }
+
+    /// Strikes one of Peterson's beams with 70 kg at 6.86 m/s, as `run(device:specimen:...)`.
+    public static func run(
+        device: MTLDevice, test: PetersonTest, elementsThroughDepth: Int = 16, duration: Double = 0.03,
+        specimen change: (inout Specimen) -> Void = { _ in },
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+    ) throws -> Result {
+        var specimen = specimen(test)
+        change(&specimen)
+        return try run(
+            device: device, specimen: specimen, weight: petersonWeight, speed: petersonSpeed,
             elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
     }
 }
