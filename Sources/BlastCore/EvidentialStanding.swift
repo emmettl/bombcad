@@ -240,6 +240,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case smearedMasonry
     case inclinedBars
     case baseConnections
+    case jointsBetweenParts
     case footings
     case freeBase
     // Materials.
@@ -304,6 +305,11 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return any { s in
                 (s.fixedBase && s.baseAnchorage.map { $0.footing == nil } == true)
                     || s.supportAnchorages.contains { $0 != nil && $0?.footing == nil }
+            }
+        case .jointsBetweenParts:
+            return any { s in
+                s.baseAnchorage?.betweenParts == true
+                    || s.supportAnchorages.contains { $0?.betweenParts == true }
             }
         case .footings:
             return any { s in
@@ -525,6 +531,13 @@ public enum StandingTable {
                 title: "Base connections", affects: structure, limit: .verified,
                 note: "Connections that deform, open, slide and fail are checked against statics and "
                     + "theory, not against a test.",
+                document: "structural-model.md#base-connections")
+        case .jointsBetweenParts:
+            return Entry(
+                title: "Joints between parts", affects: structure, limit: .verified,
+                note:
+                    "Seats tying two moving parts across a gap keep momentum and bear weight as statics says; "
+                    + "resting seats dissipate within 4% of three precast seats cycled slowly, never under a blast.",
                 document: "structural-model.md#base-connections")
         case .footings:
             return Entry(
@@ -754,6 +767,7 @@ public enum StandingTable {
         "Anchorage.footing": .option([.footings]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
+        "Anchorage.betweenParts": .option([.jointsBetweenParts]),
         // Models run alongside.
         "ThermalSpec.luminousTemperature": .input,
         "ThermalSpec.emissivity": .input,
@@ -1372,15 +1386,21 @@ private struct StandingScene {
         ]
         var level = EvidenceLevel.approximation
         var summary =
-            "Indicative: shear failure, breach and joints are the least reliable predictions; collapse and debris "
-            + "have never been compared with anything."
+            "Indicative: shear failure, breach and joints are the least reliable predictions; debris has been "
+            + "compared once, and collapse never."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
                     "Full-scale slabs under close-in charges",
                     "Spalled only under the charge, on fine air and 12 "
                         + "elements through, and never holed", "validation.md#slabs-under-close-in-charges"))
-            summary += " Close in, slabs spall too little and are never holed."
+            evidence.append(
+                StandingEvidence(
+                    "Slabs under contact charges (Hupfauf, 2024)",
+                    "The far face thrown 1.2–1.9 times as fast as the debris at first; the loose layer held back "
+                        + "rather than thrown, and no slab holed where four were",
+                    "validation.md#slabs-under-contact-charges"))
+            summary += " Close in, slabs spall too little, hold their debris back and are never holed."
         }
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
@@ -1554,7 +1574,9 @@ private struct StandingScene {
             "The ground is rigid and reflecting: no crater, displaced soil or ground coupling to the air.",
         ]
         if !structures.isEmpty {
-            effects.append("Collapse and debris have never been compared with anything.")
+            effects.append(
+                "Collapse has never been compared with anything, and debris only once, off slabs under contact "
+                    + "charges.")
             if structures.count > 1 { effects.append("Contact between independent structures.") }
         }
         if inputs.thermal == nil {
