@@ -9,6 +9,7 @@ final class ProjectSession {
 
     init(document: ProjectDocument, preferences: AppPreferences = .load()) {
         model = SimulationModel(document: document, playbackSpeed: preferences.playbackSpeed)
+        model.costStore = .standard
     }
 
     var snapshot: ProjectDocument { ProjectDocument(model: model) }

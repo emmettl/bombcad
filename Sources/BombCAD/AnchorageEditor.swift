@@ -60,6 +60,22 @@ struct AnchorageEditor: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
+            Toggle(
+                "Ties two parts across a gap",
+                isOn: Binding(
+                    get: { law?.betweenParts == true },
+                    set: { on in
+                        guard var candidate = law else { return }
+                        candidate.betweenParts = on ? true : nil
+                        if on { candidate.footing = nil }
+                        law = candidate
+                    }))
+            if law?.betweenParts == true {
+                Text(
+                    "The joint ties the body to another of its parts, both moving, instead of to fixed ground: each node on faces facing the joint to the node straight across the gap, as a beam seated on a corbel or a panel against its frame. Leave a gap of at least one element between the parts, and span it with the region; the seat ends where the other part's faces in the region end, and a node that slides past it is off its seat for good. Solid elements only."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
         }
         if law != nil {
             DisclosureGroup("Connection properties") {
@@ -77,7 +93,7 @@ struct AnchorageEditor: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
-            footing()
+            if law?.betweenParts != true { footing() }
         }
     }
 
@@ -139,8 +155,27 @@ struct AnchorageEditor: View {
                         beneathNumber("Density beneath", "kg/m³", \.density, scale: 1)
                     }
                 }
+                Toggle(
+                    "Set into the soil",
+                    isOn: Binding(
+                        get: { law?.footing?.embedment != nil },
+                        set: { on in
+                            guard var candidate = law, candidate.footing != nil else { return }
+                            candidate.footing?.embedment = on ? Embedment() : nil
+                            law = candidate
+                        }))
+                if law?.footing?.embedment != nil {
+                    embedmentNumber("Depth to its base", "m", \.depth, scale: 1)
+                    embedmentNumber("Soil friction angle", "°", \.frictionAngle, scale: .pi / 180)
+                    LabeledContent("Side friction") {
+                        Text(
+                            law?.footing?.embedment?.wallFriction.formatted(
+                                .number.precision(.fractionLength(2)))
+                                ?? "")
+                    }
+                }
                 Text(
-                    "The footing is rigid and spans the base it carries, widened by the overhang on each side. The soil defaults to a medium dense sand; with its mass it radiates energy as Wolf’s cones do, and a layer sends echoes back from its base."
+                    "The footing is rigid and spans the base it carries, widened by the overhang on each side. The soil defaults to a medium dense sand; with its mass it radiates energy as Wolf’s cones do, and a layer sends echoes back from its base. Set into the soil, its sides bear against the soil up to the passive pressure and grip it by friction, its base bears the overburden’s share as well, and it is as stiff as Gazetas’s embedded footing."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
@@ -180,6 +215,18 @@ struct AnchorageEditor: View {
                 candidate.footing?[keyPath: key] = value
                 law = candidate
             }, scale: scale)
+    }
+
+    private func embedmentNumber(
+        _ title: String, _ unit: String, _ key: WritableKeyPath<Embedment, Float>, scale: Float
+    ) -> some View {
+        field(
+            title, unit, get: { law?.footing?.embedment?[keyPath: key] },
+            set: { value in
+                guard var candidate = law, candidate.footing?.embedment != nil else { return }
+                candidate.footing?.embedment?[keyPath: key] = value
+                law = candidate
+            }, scale: scale, positive: true)
     }
 
     private func beneathNumber(

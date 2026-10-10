@@ -31,8 +31,12 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
-//                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
+//   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
+//                   (a precast beam on corbels of two columns, one column struck away from the span)
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
@@ -41,9 +45,12 @@ import simd
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
+//   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
+//   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -123,6 +130,8 @@ func chosenScenario() -> Scenario {
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
         scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
     }
+    // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
+    if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     return scenario
 }
 
@@ -2669,6 +2678,73 @@ func runSlab() throws {
     }
 }
 
+/// A precast beam's seat cycled along its corbel against Batalha et al.'s tests (`PrecastSeatTest`).
+func runPrecast() throws {
+    let tests = (option("tests") ?? "i0_50,i0_100,i0_150").split(separator: ",").map { "spc_" + $0 }
+    let friction = option("friction").flatMap { Float($0) } ?? 0.7
+    let limit = option("reversals").flatMap { Int($0) }
+    let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
+    print(
+        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+            + (limit.map { ", first \($0) reversals" } ?? ""))
+    print(
+        pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
+            + pad("energy, model", 15)
+            + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
+    for test in tests {
+        var law = Anchorage.resting(friction: friction)
+        // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
+        law.shearStiffness = option("pad").flatMap { Float($0) }
+        // `--normal 1e9` the joint's stiffness across, in Pa/m.
+        law.normalStiffness = option("normal").flatMap { Float($0) }
+        let r = try PrecastSeatTest.run(
+            device: device, test: test, samples: folder, law: law, reversals: limit)
+        if let out = option("history") {
+            try r.history.map { "\($0.x),\($0.y)" }.joined(separator: "\n").write(
+                toFile: out.replacingOccurrences(of: "%", with: test), atomically: true, encoding: .utf8)
+        }
+        print(
+            pad(test, 13) + pad("\(format(Double(PrecastSeatTest.axialLoad(of: test)) / 1000, 0)) kN", 8)
+                + pad("\(format(Double(r.sliding) / 1000, 1)) kN", 16)
+                + pad("\(format(Double(r.measuredSliding) / 1000, 1)) kN", 10)
+                + pad("\(format(Double(r.energy) / 1000, 1)) kJ", 15)
+                + pad("\(format(Double(r.measuredEnergy) / 1000, 1)) kJ", 10)
+                + pad("\(format(Double(r.lag) * 1000, 2)) mm", 9) + pad("\(format(r.wallSeconds)) s", 9))
+    }
+}
+
+/// A precast beam seated on corbels, one of its columns struck away from the span
+/// (`DroppedSpanStudy`).
+func runSeat() throws {
+    let speeds = (option("speeds") ?? "4,8,12").split(separator: ",").compactMap { Float($0) }
+    let seats = (option("seats") ?? "0.1,0.2").split(separator: ",").compactMap { Float($0) }
+    let duration = option("time").flatMap { Float($0) } ?? 1.5
+    let h = option("h").flatMap { Float($0) } ?? 0.1
+    // `--dowels` ties the beam to its corbels by starter bars through the pad instead of resting.
+    let law: Anchorage = flag("dowels") ? .dowelled(ratio: 0.004) : .resting(friction: 0.5)
+    print(
+        "Precast beam 0.5 m deep on corbels of two columns 6 m apart, "
+            + (flag("dowels") ? "dowelled to them" : "resting with friction 0.5")
+            + "; the right column struck away from the span; \(format(Double(duration), 1)) s")
+    print(
+        pad("seat", 8) + pad("speed", 9) + pad("column sway", 13) + pad("slide", 10) + pad("off seat", 10)
+            + pad("end fell", 10) + pad("eroded", 8) + pad("run time", 9))
+    for seat in seats {
+        for speed in speeds {
+            let r = try DroppedSpanStudy.run(
+                device: device, seat: seat, speed: speed, law: law, duration: duration, elementSize: h)
+            print(
+                pad("\(format(Double(seat) * 1000, 0)) mm", 8) + pad("\(format(Double(speed), 1)) m/s", 9)
+                    + pad("\(format(Double(r.peakSway) * 1000, 0)) mm", 13)
+                    + pad("\(format(Double(r.peakSlide) * 1000, 0)) mm", 10)
+                    + pad("\(format(Double(r.unseated) * 100, 0))%", 10)
+                    + pad("\(format(Double(r.drop) * 1000, 0)) mm", 10)
+                    + pad("\(r.summary.erodedElements)", 8)
+                    + pad("\(format(r.wallSeconds)) s", 9))
+        }
+    }
+}
+
 /// A freestanding wall under a blast on each kind of base connection (`AnchorageStudy`).
 func runAnchorage() throws {
     let mass = option("mass").flatMap { Float($0) } ?? 50
@@ -2740,7 +2816,8 @@ func runAnchorage() throws {
                     : try AnchorageStudy.run(
                         device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                         elementSize: h,
-                        shells: shells, soil: soil)
+                        shells: shells, soil: soil,
+                        embedment: option("embed").flatMap { Float($0) }.map { Embedment(depth: $0) })
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
@@ -2787,6 +2864,125 @@ func runAnchorage() throws {
 /// The thermal radiation's cost a frame on a scene's receivers, with the visibility tested on the
 /// CPU and on the GPU, for a fireball growing from 1 to 15 m across over the frames, as the street's
 /// does with afterburning; and whether the two agree.
+/// Dial Pack, 500 tons of TNT as a sphere resting on the ground (Suffield, 1970), whose thermal
+/// radiation DREO Report 642 measured at 600 and 1,700 m: the fireball reckoned frame by frame as
+/// the volume, its opaque shape and its equivalent sphere (both at emissivity 1) radiate it to an
+/// instrument at each range aimed along the ground at it, and what it radiated, round it and as
+/// the gas lost it. `--csv` writes every frame; `Scripts/compare-dial-pack.py` sets it against the
+/// report (Samples/DialPack1970).
+func runDialPack() throws {
+    let tons = option("tons").flatMap { Float($0) } ?? 500
+    let mass = tons * 907.185  // short tons
+    let cellSize = option("dx").flatMap { Float($0) } ?? 4
+    let side = option("domain").flatMap { Float($0) } ?? 480
+    let duration = option("time").flatMap { Double($0) } ?? 1
+    // TNT at 1,600 kg/m³, its sphere's centre one radius up.
+    let radius = cbrt(3 * mass / (4 * .pi * 1600))
+    var scenario = Scenario(
+        name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
+    scenario.gauges = []
+    var configuration = SolverConfiguration()
+    configureRefinement(&configuration)
+    configuration.afterburning = true
+    configuration.airModel = .thermallyPerfect
+    configuration.radiativeCooling = try chosenCooling()
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+    var volume = ThermalSpec()
+    // A receiver or so on the ground: only the instruments are reckoned.
+    volume.groundSpacing = side
+    var shape = volume
+    shape.fireball = .shape
+    var sphere = volume
+    sphere.fireball = .sphere
+    let scene = FragmentScene(scenario)
+    let models = [("volume", volume), ("shape", shape), ("sphere", sphere)].map {
+        (name: $0.0, exposure: ThermalExposure(spec: $0.1, scene: scene))
+    }
+    let ranges: [Float] = [600, 1700]
+    // South of ground zero, 1.5 m up, facing it along the ground.
+    let points = ranges.map { range in
+        ThermalReceiver(
+            position: SIMD3(side / 2, side / 2 - range, 1.5), normal: SIMD3(0, 1, 0), surface: "instrument")
+    }
+    solver.frameRequest = FrameRequest(thermal: volume)
+    var frameTimes: [Double] = []
+    var t = 0.0005
+    while t < duration - 1e-9 {
+        frameTimes.append(t)
+        t += t < 0.01 ? 0.0005 : (t < 0.1 ? 0.0025 : (t < 0.3 ? 0.01 : 0.025))
+    }
+    frameTimes.append(duration)
+    print(
+        String(
+            format:
+                "Dial Pack: %.0f t of TNT (%.0f short tons), a sphere %.2f m in radius on the ground, %.0f m cells, %.0f by %.0f by %.0f m, to %.2f s%@",
+            mass / 1000, tons, radius, cellSize, side, side, side / 2, duration,
+            configuration.radiativeCooling == nil ? "" : ", the gas cooling"))
+    var lines = [
+        "time_s,diameter_m,temperature_K,hottest_K,radiated_W,gas_lost_J,"
+            + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(
+                separator: ",")
+    ]
+    var last: (time: Double, values: [Float])?
+    var fluence = [Double](repeating: 0, count: models.count * ranges.count)
+    var peak = [Float](repeating: 0, count: models.count * ranges.count)
+    var radiated = 0.0
+    var lastPower: (time: Double, power: Double)?
+    let started = ContinuousClock.now
+    for target in frameTimes {
+        while solver.time < target - 1e-9 {
+            let result = solver.advance(steps: 256, timeLimit: target)
+            if result.steps == 0 || !result.isStable { break }
+        }
+        let frame = solver.fireball(for: volume)
+        var values: [Float] = []
+        for model in models { values += model.exposure.irradiance(frame, at: points) }
+        let power = models[0].exposure.radiatedPower(frame)
+        if let last {
+            for n in values.indices {
+                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (solver.time - last.time)
+            }
+        }
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
+        for n in values.indices { peak[n] = max(peak[n], values[n]) }
+        last = (solver.time, values)
+        lastPower = (solver.time, power)
+        lines.append(
+            [
+                String(format: "%.5f", solver.time), String(format: "%.2f", 2 * frame.radius),
+                String(format: "%.0f", frame.temperature), String(format: "%.0f", frame.hottest),
+                String(format: "%.4g", power), String(format: "%.4g", solver.radiatedEnergy),
+            ].joined(separator: ",") + "," + values.map { String(format: "%.4g", $0) }.joined(separator: ","))
+    }
+    let charge = Double(scenario.charge.energy)
+    for (m, model) in models.enumerated() {
+        let text = ranges.enumerated().map { r, range in
+            String(
+                format: "%.0f m: %.2f kJ/m², peak %.2f kW/m²", range, fluence[m * ranges.count + r] / 1000,
+                peak[m * ranges.count + r] / 1000)
+        }.joined(separator: "; ")
+        print("  as its \(model.name): \(text)")
+    }
+    print(
+        String(
+            format: "  radiated round it, the volume: %.3g J, %.2f%% of the charge's energy%@", radiated,
+            100 * radiated / charge,
+            configuration.radiativeCooling == nil
+                ? ""
+                : String(
+                    format: "; the gas lost %.3g J, %.2f%%", solver.radiatedEnergy,
+                    100 * solver.radiatedEnergy / charge)))
+    print(
+        String(
+            format: "  %d steps, simulated in %.0f s", solver.stepCount,
+            (ContinuousClock.now - started) / .seconds(1)))
+    if let path = option("csv") {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
 func runThermal() throws {
     let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
     let scene = FragmentScene(scenario)
@@ -2961,8 +3157,13 @@ func runDigest() throws {
         var configuration = SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning
+        var scenario = preset.scenario
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        if option("terrain") == "flat" {
+            scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        }
         let solver = try BlastSolver(
-            device: device, scenario: preset.scenario, cellSize: cellSize, configuration: configuration)
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         let result = solver.advance(steps: steps)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         solver.withState { cells in
@@ -3097,9 +3298,13 @@ do {
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
+    case "seat": try runSeat()
+    case "precast": try runPrecast()
     case "thermal": try runThermal()
+    case "dialpack": try runDialPack()
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
+    case "terrain": try runTerrain(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

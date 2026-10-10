@@ -101,6 +101,37 @@ struct RadiativeCoolingTests {
         #expect(abs(lost / measured - 1) < 0.03, "κ \(absorption): lost \(lost) W, measured \(measured) W")
     }
 
+    @Test("Points off the scene see the fireball as its receivers do, and far off as (R/d)² of σT⁴")
+    func pointsOffTheScene() throws {
+        var spec = ThermalSpec()
+        spec.absorption = 20
+        spec.sootYield = 0
+        spec.groundSpacing = 1.5
+        let solver = try hotSphere(cooling: nil)
+        var scenario = Scenario(
+            name: "Sphere", domainSize: SIMD3(repeating: 6), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(repeating: 3)))
+        scenario.gauges = []
+        let frame = solver.fireball(for: spec)
+        for model in [FireballModel.volume, .sphere] {
+            spec.fireball = model
+            let exposure = ThermalExposure(spec: spec, scene: FragmentScene(scenario))
+            let onScene = exposure.irradiance(frame)
+            let atPoints = exposure.irradiance(frame, at: exposure.receivers)
+            let largest = onScene.max() ?? 0
+            #expect(largest > 0)
+            let worst = zip(onScene, atPoints).map { abs($0 - $1) }.max() ?? 0
+            #expect(worst <= 1e-3 * largest, "\(model): \(worst) of \(largest)")
+            // An instrument 200 m off along the ground, facing the sphere.
+            let far = ThermalReceiver(
+                position: SIMD3(3, -197, 3), normal: SIMD3(0, 1, 0), surface: "instrument")
+            let radius = Double(frame.radius)
+            let expected = 5.670374e-8 * pow(2500.0, 4) * pow(radius / 200, 2)
+            let got = Double(exposure.irradiance(frame, at: [far])[0])
+            #expect(abs(got / expected - 1) < 0.05, "\(model): \(got) W/m² against \(expected)")
+        }
+    }
+
     @Test("Thin gas cools at 4κσT⁴ a cubic metre over many steps, thick gas far more slowly")
     func thinAndThickCooling() throws {
         // The centre's temperature over 5 steps against dT/dt = -4κσT⁴ e^(-κR) / (ρ c_v) at fixed

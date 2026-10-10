@@ -316,7 +316,7 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
 
 ## 3. Formulae quoted from memory
 
-Nine values in the code were written from memory and should be checked against the original.
+Ten values in the code were written from memory and should be checked against the original.
 
 - **A rigid footing's static stiffness and Wolf's cones.** G. Gazetas, "Formulas and charts for
   impedances of surface and embedded foundations", *Journal of Geotechnical Engineering* 117(9)
@@ -326,6 +326,12 @@ Nine values in the code were written from memory and should be checked against t
   stratum factors (as quoted by Gazetas), used for rocking over a layer. Used in
   `FootingImpedance`; the vertical and horizontal stiffness of a square agree with the rigid
   disk's within 1% and its rocking within 9%, which checks the memory a little.
+- **Embedded footings' stiffness.** The same paper's Table 2 (and G. Mylonakis, S. Nikolaou and
+  G. Gazetas, *Soil Dynamics and Earthquake Engineering* 26 (2006), Table 1): the trench and
+  sidewall factors for vertical and horizontal stiffness, the rocking factors, and which side
+  of the footing his horizontal factors' (h A_w / B L²) and (h A_w / L B²) belong to. Used in
+  `Embedment.gazetasFactors`. And a measured embedded footing: TRISEE's (1 g, embedded on
+  Gabbia sand; whether FoRCy or FoRDy holds them is open, see 3b).
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
@@ -636,7 +642,8 @@ Nine values in the code were written from memory and should be checked against t
     spectrum against time and the surface temperature, compared with earlier TNT shots.
     **Gives:** a second shot by the same group and methods as Tate and Pattmann, so a repeat of
     the radiated fraction and the pulse's shape, and through its comparisons perhaps
-    Snowball's.
+    Snowball's. **Compared** (10 October 2026), transcribed in Samples/DialPack1970: see
+    [thermal radiation](thermal-radiation.md#against-dial-pack).
   - J. J. Rudolphi, N. Kolb and J. Stofleth, "Optical measurements in visible and NIR bands of
     composition C-4 and argon flash hemispheres", *Science and Technology of Energetic
     Materials* 81(1) (2020) 5–9, [JES](https://www.jes.or.jp/mag/stem/Vol.81/No.1.02.html), open:
@@ -721,8 +728,8 @@ their licence, as `Samples/FoRCy` does.
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
 | `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
-| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, still downloading (DesignSafe serves about 12 KB/s a connection) | Open Data Commons Attribution |
-| `DialPack1971` | Pattman's DREO Report 642 | 1.52 MB | Government of Canada |
+| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, 809 files, each checked against the listing's size | Open Data Commons Attribution |
+| `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper and a text extract | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
 
@@ -811,3 +818,11 @@ Supplied by hand during development, and now in use:
   rocked slowly, compared with `Footing` in [footings](structural-model.md#footings)
   (`blastbench rocking`, data in `Samples/FoRCy`). Its dynamic sister, FoRDy, and the other
   series (PWRI's 1 g footings on Toyoura sand, TRISEE's embedded ones) are not used yet.
+- H. Rodrigues, A. Arêde, A. Furtado, R. Sousa and H. Varum's twelve cyclic tests of a precast
+  beam seated on a column corbel (Mendeley Data, doi:10.17632/46xpgbhsw6.1, CC BY 4.0), fetched
+  on 10 October 2026 with the user's agreement: concrete on concrete, neoprene pads and dowels
+  under three axial loads, compared with a seat's joint (`blastbench precast`, data in
+  `Samples/PrecastSeat`). Still wanted: the paper (N. Batalha et al., *Earthquake Eng. Struct.
+  Dyn.*, 2022, doi:10.1002/eqe.3606), whose repository copy is restricted, for the seat's
+  length, the pads' size and stiffness and the concrete's and dowels' strengths, which the dowel
+  tests need.

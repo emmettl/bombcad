@@ -88,6 +88,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     }
     public var atmosphere = Atmosphere()
     public var reflectiveFaces: BoundaryFaces = .ground
+    /// The ground's shape, over the reflecting floor at z = 0; nil (the default) is flat ground.
+    /// A scene-level property, beside the objects rather than one of them.
+    public var terrain: Terrain?
 
     public init(
         name: String, domainSize: SIMD3<Float>, boxes: [Box], charge: Charge, gauges: [Gauge] = [],
@@ -114,6 +117,7 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// no energy into the air.
     public var chargeIsBlocked: Bool {
         rigidBoxes.contains { $0.contains(charge.position) }
+            || terrain?.contains(charge.position) == true
             || structuralObjects.contains { $0.structure?.occupies(charge.position) == true }
     }
 
@@ -131,7 +135,7 @@ extension Scenario {
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures, buildingEnvelopes
+            additionalStructures, buildingEnvelopes, terrain
     }
 
     private struct Ownership: Codable {
@@ -167,6 +171,7 @@ extension Scenario {
         additionalCharges = try c.decodeIfPresent([Charge].self, forKey: .additionalCharges)
         atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
         reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
+        terrain = try c.decodeIfPresent(Terrain.self, forKey: .terrain)
         let additional =
             try c.decodeIfPresent([AdditionalStructure].self, forKey: .additionalStructures) ?? []
         guard additional.count < Self.maximumStructures, additional.isEmpty || structure != nil else {
@@ -220,6 +225,7 @@ extension Scenario {
         try c.encodeIfPresent(structure, forKey: .structure)
         try c.encode(atmosphere, forKey: .atmosphere)
         try c.encode(reflectiveFaces, forKey: .reflectiveFaces)
+        try c.encodeIfPresent(terrain, forKey: .terrain)
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
         if !envelopeObjects.isEmpty {
             try c.encode(
@@ -291,7 +297,21 @@ extension BlastSolver {
                 }
             }
         }
+        if let terrain = scenario.terrain {
+            try terrain.validate(domain: scenario.domainSize)
+            // A cell is solid when its centre lies below the surface, as for a block.
+            let surface = terrain.surfaceCells(grid: grid)
+            mutateMask { mask in
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx {
+                        for k in 0..<Int(surface[i + grid.nx * j]) { mask[grid.index(i, j, k)] = 1 }
+                    }
+                }
+            }
+            terrainSurface = surface
+        }
         rigidBoxes = scenario.rigidBoxes
+        terrain = scenario.terrain
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
         try setStructures(scenario.structuralObjects)
@@ -333,8 +353,21 @@ extension BlastSolver {
         else { return nil }
         let c = scenario.charge.position
         let dx = grid.cellSize
-        let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin)
+        let shaped = scenario.terrain.map { !$0.isFlat } ?? false
+        let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin) && !shaped
         var nearest = Float.infinity
+        if shaped, let terrain = scenario.terrain {
+            // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
+            let reach = 16 * dx
+            let step = 0.25 * dx
+            let count = Int((2 * reach / step).rounded(.up))
+            for b in 0...count {
+                for a in 0...count {
+                    let p = SIMD2(c.x, c.y) - reach + step * SIMD2(Float(a), Float(b))
+                    nearest = min(nearest, simd_distance(SIMD3(p.x, p.y, terrain.height(at: p)), c))
+                }
+            }
+        }
         var obstacles = scenario.rigidBoxes
         obstacles.append(contentsOf: scenario.structuralObjects.compactMap { $0.structure?.bounds })
         for box in obstacles {
@@ -453,7 +486,8 @@ extension BlastSolver {
                     let cell = SIMD3(i, j, k) / r
                     let centre = SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5
                     guard !isSolid(cell.x, cell.y, cell.z),
-                        !(rigidBoxes ?? []).contains(where: { $0.contains(centre * fine) })
+                        !(rigidBoxes ?? []).contains(where: { $0.contains(centre * fine) }),
+                        terrain?.contains(centre * fine) != true
                     else { continue }
                     let fromCharge = centre - charged
                     var inside = 0
