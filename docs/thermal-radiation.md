@@ -25,7 +25,10 @@ swift run -c release BombCAD run street.bombcad --thermal thermal.json --thermal
 ```
 
 With `--consumer thermal=<ssh host>` the radiation is reckoned on another Mac, fed the fireball
-frame by frame (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+frame by frame, and with `--consumer thermal=auto --worker <ssh host>` wherever the run is
+estimated to wait least (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)).
+On this Mac its march shares the GPU with the blast and can slow a run with many receivers by
+more than its own time.
 
 The description is JSON; any field left out takes its default, so `{}` will do:
 
@@ -57,7 +60,8 @@ their defaults. A project whose description names the shape or the sphere shows 
 `thermal.json`), takes effect from the next run, and is undone and redone with the layout's edits
 (⌘Z). With Macs set for sweeps in Settings, **Run on** reckons the radiation on the one chosen, over
 a connection kept open between runs and shared with any other model run there, such as the
-[fragments](fragments.md#in-the-app); should that Mac drop, it carries on here.
+[fragments](fragments.md#in-the-app); should that Mac drop, it carries on here. **Automatic**
+chooses at each run's start, from what the last run measured and a probe of each Mac.
 
 During a run, **Surfaces** under Display offers **Thermal fluence** and **Peak irradiance** beside
 the blast's fields, and paints the one chosen onto the ground and every face that has receivers,

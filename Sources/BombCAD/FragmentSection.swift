@@ -45,7 +45,8 @@ struct FragmentSection: View {
             }
         }
         // One connection to each Mac the companions run on, shared by those on the same one.
-        .task(id: wantedHosts.sorted()) {
+        // Choosing Automatic probes the Macs again, though they are the same.
+        .task(id: wantedHosts.sorted() + [model.thermalHost == ConsumerPlacement.automatic ? "probe" : ""]) {
             await model.connectWorkers(wantedHosts)
         }
     }
