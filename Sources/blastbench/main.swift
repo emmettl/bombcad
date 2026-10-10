@@ -914,7 +914,8 @@ func runSnapshot() throws {
     renderer.settings.showCharge = time == 0
     var dots: [SIMD4<Float>] = []
     if let ground {
-        let result = ground.result(frameInterval: 0)
+        var result = ground.result(frameInterval: 0)
+        result.place(on: scenario.terrain)
         dots += result.dots
         print("  " + result.summary)
     }

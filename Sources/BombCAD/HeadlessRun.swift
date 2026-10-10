@@ -619,6 +619,7 @@ enum HeadlessRun {
             case .groundShock(var result):
                 // What feeding it cost the run.
                 result.seconds = feed.cost.seconds
+                result.place(on: inputs.scenario.terrain)
                 groundResult = result
             }
             let consumer = feed.consumer
