@@ -679,7 +679,9 @@ The factor raises strength without changing stiffness. Two details matter:
   Malvar and Crawford's steep law that held the contest slab's mid-span hinge; under the
   CEB's it did not, and a 25 mm strip of the slab ran away on fine meshes (180 mm and still
   going at 80 ms on 16 elements, 153 mm on 32), and the full slab fell apart on 32. Over the
-  debonded length the strip peaks at 121, 127 and 131 mm on 8, 16 and 32 elements.
+  debonded length the strip peaked at 121, 127 and 131 mm on 8, 16 and 32 elements on 8 October;
+  on the defaults of 10 October it gives 121, 127 and 278 mm, the hinge running away on 32 (see
+  [Validation](validation.md#structural-response-against-a-real-test)).
 
 Until the fix described in step 14 below, the compressive law above 30 per second omitted the
 normalisation by 30×10⁻⁶ per second, so the factor fell from 1.45 to about 0.05 as the rate
@@ -1026,7 +1028,8 @@ matter.
    runaway hinge came from the bars' rate: taken from the one element a crack runs through, it
    grew as the mesh was refined, and Malvar and Crawford's steep law had made the bars there
    strong enough to hold. Averaged over the debonded length, as their rupture is, the strip
-   converges under the CEB's law (121, 127 and 131 mm on 8, 16 and 32 elements), and that law,
+   gave 121, 127 and 131 mm on 8, 16 and 32 elements under the CEB's law (on the defaults of
+   10 October, 121, 127 and 278 mm, running away on 32: not converged), and that law,
    which tension tests of bars support, became the default.
 
 29. **Confinement from the stress the other axes carry** (see Compression and confinement).

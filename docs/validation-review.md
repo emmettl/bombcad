@@ -19,7 +19,8 @@ Findings are ranked by severity: **high** where a summary's standing would chang
 caveat were carried; **medium** where a number or wording is wrong or a caveat material to a
 user is missing; **low** for small inconsistencies. Each gives the evidence and a fix. Those
 marked *fixed* were corrected in the documents with this review (wording and numbers only;
-no model code or result was changed). The rest are listed for the user at the end.
+no model code or result was changed), so the quotations below are of the documents as they
+were found. The rest are listed for the user at the end.
 
 ## High
 
@@ -38,7 +39,7 @@ comparisons:
 - concrete-model.md, steps 27–28 and the strain-rate section: the CEB's law "brings the
   impacts closer ... and that law ... became the default".
 
-Yet the impact section concludes "with nothing fitted" and the impact model paragraph says
+Yet the impact section concluded "with nothing fitted" and its model paragraph said
 "nothing is fitted". Choosing between published laws by their agreement with a test is a
 fit of one discrete parameter; the test is then not independent evidence for that choice.
 
@@ -88,8 +89,10 @@ validation.
   at 3% below the measurement", which describes the earlier laws (93–99%), not the defaults.
 - The bold "**The peak has converged at 105 to 107 mm**" is also under the earlier laws, in a
   paragraph a reader can take as current.
-- A rerun of the strip on 8, 16 and 32 elements on today's defaults was started with this
-  review; its result is added below when it finishes.
+- **Rerun with this review** (`blastbench slab --strip 25 --layers 8,16,32`, outputs in
+  `/Volumes/StudioData/bombcad/review/slab-strip-8-16-32.txt`): **121, 127 and 278 mm**, the
+  32-element strip still going at 80 ms with 233 elements failed (RMS 7.2, 10.9 and 61.1 mm). The
+  10 October table stands; the 131 mm is stale. On today's defaults the finest strip fails.
 
 The slab test is the record's best-supported structural result (README: "Moderate"); a
 monotone rise with refinement and a runaway on the finest strip are not convergence.
@@ -97,8 +100,8 @@ monotone rise with refinement and a runaway on the finest strip are not converge
 **Fix.** Say the peak rises with refinement under the defaults (113 to 124 mm from 8 to 32
 elements) and has not been shown to converge; give both strip results with their dates; say
 the "converged at 105–107 mm" and "within about 7% ... 3% below" statements are for the
-earlier laws. *Fixed* in validation.md. A rerun of the strip and the full slab on 32 elements
-on today's defaults would settle which number stands.
+earlier laws. *Fixed* in validation.md and concrete-model.md. A rerun of the full slab on 32
+elements on today's defaults (36 minutes or more) would say whether it fails as the strip does.
 
 ### 3. The impact standing rests on one mesh and one beam family, and omits what disagrees
 
@@ -113,8 +116,8 @@ stirrups on 16 elements. The sections also show:
   averages from the table: 14.6% and 53.1% mean absolute error, median 5% on 16.)
 - **The 24-element columns are stale**: they "predate confinement taken from the stresses
   carried ... which moved the 16-element ones by up to a fifth".
-- **The blow is two to three times too hard**: the model strikes with about 3,200 kN (light)
-  and 4,800 kN (heavy) against 1,421 kN measured for SS3a-1, and the reactions under the
+- **The blow is about twice too hard**: the model strikes with about 3,200 kN (light) and
+  4,800 kN (heavy), against 1,421 kN measured for SS3a-1 under the light drop (2.3 times), and the reactions under the
   heavy drops are 350–650 kN against 592–682 kN measured (up to 40% low), under the light
   ones 400–450 against 305–356 kN (up to 48% high).
 - **Ando's supports are chosen against the paper's description.** The paper's jig lets the
