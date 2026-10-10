@@ -1046,13 +1046,15 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Limitations
 
-1. **Validated against three tests**: a one-way slab under a uniform blast load, a beam bent
+1. **Compared with eleven member tests** (see [Validation](validation.md#summary)), of which
+   three test bending and shear statically: a one-way slab under a uniform blast load, a beam bent
    slowly to failure, and a beam without stirrups failing in shear (see limitation 4). On the slab the peak is 114, 113, 121 and 124 mm with 4, 8, 16 and 32 elements through
    the thickness, 5–15% above the measurement, the finest losing 1.4% of its elements (under Malvar and Crawford's law for the bars it was
-   100, 101, 107 and 105 mm on 4 to 32, converged about 3% below). On the beam the peak moment is 99% and 97% of the
-   measured on 12 and 24 elements through the depth; six elements run 20% strong. Results for
-   members in bending should still be checked at more than one mesh. Nothing in shear,
-   punching or direct shear has been compared with a test.
+   100, 101, 107 and 105 mm on 4 to 32, converged about 3% below). On the beam the peak moment is 98–101% of the
+   measured on 12 and 24 elements through the depth; six elements run 17% strong. Results for
+   members in bending should still be checked at more than one mesh. Shear has been compared
+   with one beam failing statically and with beams struck to shear failure; punching and direct
+   shear have not.
 2. **Bending is 10–15% too strong** where a compression zone is thinner than an element,
    because the hourglass forces of squeezed elements add to the section's moment (see the
    structural model). A reinforced beam six or twelve elements deep carries 11–14% more than
@@ -1066,7 +1068,7 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 4. **Shear across cracks** is interlock plus the dowel action and kinking of the bars that
    cross them, each from a published formula, not fitted. Against one beam without stirrups
    that failed in diagonal tension (see [Validation](validation.md#a-beam-failing-in-shear)),
-   the model fails the same way, 11–12% strong on fine meshes but 37% strong with twelve
+   the model fails the same way, 11–15% strong on fine meshes but 37% strong with twelve
    elements through the depth: shear strength needs a finer mesh than bending does, about 24
    elements through a member's depth. On coarser meshes the diagonal crack cannot cut through
    the compression zone, and the load arches to the supports over the bars until they yield;
@@ -1111,7 +1113,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    the [shell model](shell-model.md#materials)); in the solid elements this has not been
    checked. Earlier versions of the slab sat
    near a shear failure; since the errors of step 14 were fixed it does not. The chamber test
-   depends on these terms, but no test of a member that failed in shear has been run.
+   depends on these terms; of the members that failed in shear, OA1 fails as its test did, 11–15%
+   strong, and Peterson's struck beams fail by the wrong mechanism or hold.
 5. **The rebound after the peak is too large.** On every mesh the slab recovers about 30 mm
    after its peak, where the specimen recovered about 13 mm and settled. The cause is the
    hinge that forms at mid-span once its crushed compression zone unloads (see step 8 above),
