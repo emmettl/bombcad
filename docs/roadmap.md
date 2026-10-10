@@ -222,10 +222,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    within 4% on average and 21% shot by shot of the tops measured over 22 TNT detonations for
    their first two minutes, then spread as a gravity current and a Pasquill–Gifford puff
    drifting downwind, its path drawn and charted in the app; and [ground shock](ground-shock.md) away from the charge, the
-   manuals' one-dimensional estimate fed the overpressure on the rigid ground each frame and
-   drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
-   of the cloud's top after two minutes, and a layered soil column and a comparison with measured
-   ground motion. The crater and the ground shock near the charge act back on the blast and remain
+   manuals' one-dimensional estimate or a layered soil column that loads and unloads at different
+   stiffnesses, fed the overpressure on the rigid ground each frame and drawn in the app. Next: a fireball whose radiation peaks as early as a TNT fireball's, the measured growth
+   of the cloud's top after two minutes, and a comparison with measured ground motion. The crater and the ground shock near the charge act back on the blast and remain
    outside these.)
 
 ### Freestanding objects and supports
