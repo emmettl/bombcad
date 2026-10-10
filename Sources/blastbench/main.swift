@@ -1616,6 +1616,50 @@ func runImpact() throws {
     print(
         pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("model", 18) + pad("reaction", 18)
             + pad("failed", 8) + pad("run time", 10))
+    if flag("peterson") {
+        // Peterson et al. (KTH, 2026): 0.8 m beams struck by 70 kg at 6.86 m/s near a support.
+        print("Peterson et al. (2026): 150 x 150 mm beams on 0.70 m, struck by 70 kg at 6.86 m/s")
+        print(
+            pad("test", 13) + pad("damage", 7) + pad("impact kN", 16) + pad("near kN (ms)", 26)
+                + pad("far kN (ms)", 26) + pad("failed", 8) + pad("under load", 12))
+        func force(_ value: Float?, _ time: Float?) -> String {
+            guard let value else { return "-" }
+            return "\(format(Double(value) / 1000, 0))"
+                + (time.map { " (\(format(Double($0) * 1000, 2)))" } ?? "")
+        }
+        for test in ImpactBenchmark.petersonTests where names?.contains(test.name) ?? true {
+            let result = try ImpactBenchmark.run(
+                device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.03),
+                specimen: { specimen in
+                    chooseSupports(&specimen)
+                    if flag("spread") { specimen.spreadBars = true }
+                },
+                adjust: { model in
+                    if flag("no-rate") { model.material.rateDependent = false }
+                    // `--bond`: the 8 mm bars slip.
+                    if let bond = chosenBondSlip(diameter: 0.008) { model.bondSlip = bond }
+                    applyRateOptions(&model)
+                },
+                inspect: { solver in
+                    if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+                })
+            print(
+                pad(test.name, 13) + pad(test.damage, 7)
+                    + pad(force(test.impact, nil) + " / " + force(result.peakImpactForce, nil), 16)
+                    + pad(
+                        force(test.nearReaction, test.nearTime) + " / "
+                            + force(result.supportReactions.x, result.supportReactionTimes.x), 26)
+                    + pad(
+                        force(test.farReaction, test.farTime) + " / "
+                            + force(result.supportReactions.y, result.supportReactionTimes.y), 26)
+                    + pad("\(result.summary.erodedElements)", 8)
+                    + pad("\(format(Double(result.peak) * 1000)) mm", 12))
+        }
+        print(
+            "\nMeasured / model; times after the impact began. The impact force over 0.42 ms, reactions over 0.5 ms."
+        )
+        return
+    }
     if flag("ando") {
         // Ando et al. (2000): beams without stirrups, struck once each by 300 kg.
         print(

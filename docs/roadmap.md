@@ -29,7 +29,7 @@ it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with five tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
@@ -90,7 +90,11 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    full-scale slabs under 2–15 kg at 0.5 and 1 m (2023): the load within about a tenth of the
    empirical impulse, but the slab a third as far down as measured, barely spalled, not punched
    through under the charge, and falling apart once broken where the tests' hung on their bars;
-   see [Validation](validation.md#slabs-under-close-in-charges).)
+   see [Validation](validation.md#slabs-under-close-in-charges).) (And Peterson, Magnusson, Hallgren and Ansell's eighteen short beams struck by 70 kg at
+   6.86 m/s, with and without stirrups, at shear spans of 0.4, 1 and 2 depths (2026), from their
+   own records: the forces at a shear span of one depth within the scatter, the deep beams half
+   as much again to twice as stiff; see
+   [Validation](validation.md#short-beams-struck-to-a-shear-failure).)
 
 ### Then the physics the evidence points to
 
@@ -126,7 +130,10 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    an option, matches the push-off tests but breaks beams under impact. (Beams now check each section's shear.) (Done: a test of a beam without stirrups that failed in shear; cracks whose axes
    turn with the stress until the crack opens, by default, after the lattice planes were
    found to mishandle inclined cracks, and a second crack once the tension has turned more
-   than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).)
+   than 30° from fixed axes; see [Cracking](concrete-model.md#cracking).) Peterson's short beams under impact (2026; see
+   [Validation](validation.md#short-beams-struck-to-a-shear-failure)) fail without stirrups by
+   splitting along their bars rather than by crushing their strut, and hold with stirrups where
+   the tests' crushed it: the strut's crushing and splitting under impact are next.
 5. **The concrete's tensile strain-rate law.** Saatci's heavy impacts were a quarter too
    stiff with Malvar and Ross's law, and the close-in slabs' spall had to overcome 17–21 MPa
    with it, where spalling tests find 10–15 MPa. (Done: the fib Model Code 2010's law, now the

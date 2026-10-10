@@ -987,6 +987,67 @@ Beam elements with the sectional shear check are not usable under impacts: the c
 static and breaks every beam. They are usable without it, for bending, where they come within
 a few per cent of the heavy drops.
 
+## Short beams struck to a shear failure
+
+V. Peterson, J. Magnusson, M. Hallgren and A. Ansell, "Shear-type failure of deep, short and
+slender impact-loaded RC beams", *International Journal of Impact Engineering* 208, 105539
+(2026), with Peterson's KTH thesis (2026) and the records on Mendeley Data
+(doi:10.17632/kn28g6dbj5.3, CC BY 4.0; described in *Data in Brief* 65, 112487). Eighteen beams
+0.80 m long and 150 × 150 mm on supports 0.70 m apart, three 8 mm K500C bars in the face away
+from the load and two in the face struck, 26 mm cover; no stirrups, or 6 mm stirrups at 90 or
+45 mm; struck once each by 70 kg dropped 2.4 m (6.86 m/s) through a fibreboard, 48, 120 or
+240 mm from one support (shear spans of 0.4, 1 and 2 effective depths), two beams of each kind.
+Concrete 44 MPa on cubes; the 8 mm bars yield at 511 MPa and the 6 mm at 609. Load cells under
+both supports and an accelerometer on the striker were read at 19.2 kHz. Every beam struck
+failed in shear but the slender ones with stirrups, which bent: the deep and short beams by
+crushing of the strut (at the support for most deep ones), the slender ones without stirrups by
+flexural-shear in the long span.
+
+**The records.** Sixteen beams have them. Read with numpy alone (`Scripts/peterson2026`, which
+says how; scipy and h5py were not available), the impact force is the striker's mass times its
+deceleration over 0.42 ms, as `blastbench impact --force` reads the model's, and the reactions
+are over 0.5 ms. The two records filed under beams the dataset says have none are taken as named;
+one striker trace, implying five times the striker's momentum, is set aside.
+
+**The model** (`blastbench impact --peterson`). Assumed: concrete of 36 MPa on cylinders, 16 mm
+aggregate, the 8 mm bars' steel for the stirrups too, a striker face 100 mm long across the
+beam, supports 30 mm wide that bear the beam without holding it down, and the fibreboard as a
+pad of 2 GPa per metre (`--pad`), set so that the struck beams' impact forces come out about as
+measured (on one beam of shear span d it gives 274 kN against 227, on one of 2d 202 against
+263). Everything else is the present defaults.
+
+Largest forces (kN, the measured range over the beams of each kind, then the model's), 16
+elements through the depth:
+
+| Shear span | Stirrups | Impact | Near support | Far support | Measured damage | Model |
+|---|---|---|---|---|---|---|
+| 0.4 d | none | 195–260 / 382 | 206–220 / 335 | 20–29 / 28 | strut crushing | 221 elements lost, crushed under the load |
+| 0.4 d | 90 or 45 mm | 211 / 381 | 192–217 / 335 | 12–13 / 44–51 | strut crushing at the support | holds (30 lost) |
+| 1 d | none | 282–296 / 269 | 161–179 / 171 | 44–49 / 61 | strut crushing | fails, split along its bars (1,224 lost) |
+| 1 d | 90 or 45 mm | 207–246 / 274–275 | 157–196 / 176–181 | 54–78 / 56 | strut crushing | holds, 9 mm down |
+| 2 d | none | 210–298 / 200 | 107–140 / 80 | 81–84 / 62 | flexural-shear | fails, split along its bars (1,289 lost) |
+| 2 d | 90 or 45 mm | 208–263 / 202–203 | 110–121 / 72 | 76–86 / 56–58 | flexure | bends, 15–16 mm |
+
+At a shear span of one depth the forces come out as measured: impact within the scatter, the
+near support's reaction within 10%, the far one's within a fifth, the near reaction peaking at
+1.2–1.3 ms against 0.9–1.6. The deep beams take half as much again to twice the impact, and half
+as much again at the near support, as the tests (382 and 335 kN against 195–260 and 192–220): with the load 48 mm
+from the support the strut is so short that the pad is the only give, and the model's is too
+stiff there. The slender beams' reactions are a third low at the near support and a quarter at
+the far one, though their impact force is within the scatter; their inertia carries more of the
+blow in the model.
+
+The failures are half right. Without stirrups the model's beams fail where the tests' did,
+but by splitting along their bottom bars, the fault of the beams without stirrups on fine
+meshes (above), where the tests' crushed or split their strut or failed in flexural-shear;
+crushing under the load joins it in the deep and short ones. With stirrups the slender beams
+bend as the tests' did, but the deep and short ones, all of which failed by crushing of the
+strut, hold. So the model's concrete strut is too strong under impact, or its stirrups too
+effective: the strut's crushing at these rates, and its splitting, are not what the beams
+without stirrups test elsewhere. With bars that slip (`--bond splitting`) the forces move by
+under 6%, but four of the six kinds fail wrongly: the beams of shear span d and 2d without
+stirrups hold, and those with stirrups at 45 mm fail, where their companions at 90 mm hold.
+
 ## Slabs under close-in charges
 
 The fifth structural test, and the first in the open air with the air solver loading the
