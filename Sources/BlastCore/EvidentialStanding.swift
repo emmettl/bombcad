@@ -213,6 +213,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case afterburning
     case hotAir
     case dissociatingAir
+    case radiativeCooling
     case shockRefinement
     case twoLevelRefinement
     case mappedCharge
@@ -269,6 +270,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .afterburning: return config.afterburning
         case .hotAir: return config.airModel == .thermallyPerfect
         case .dissociatingAir: return config.airModel == .dissociating
+        case .radiativeCooling: return config.radiativeCooling != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
         case .mappedCharge: return config.mappedCharge
@@ -374,6 +376,12 @@ public enum StandingTable {
                 note: "Oxygen and nitrogen also dissociate when hot; it changes little and has no "
                     + "comparison of its own.",
                 document: "air-blast-model.md#dissociating-air")
+        case .radiativeCooling:
+            return Entry(
+                title: "Gas losing what it radiates", affects: [.thermal, .cloud], limit: nil,
+                note: "The luminous gas cools as the fireball's volume radiates; the cloud's comparison with "
+                    + "Church's was made without it, and its tops come down a few per cent.",
+                document: "thermal-radiation.md#the-gas-losing-what-it-radiates")
         case .shockRefinement:
             return Entry(
                 title: "Shock refinement", affects: air + structure + [.envelopeExposure], limit: nil,
@@ -632,6 +640,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
+        "SolverConfiguration.radiativeCooling": .option([.radiativeCooling]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
@@ -1356,8 +1365,11 @@ private struct StandingScene {
     }
 
     func thermal() -> ResultStanding {
+        let cooling = has(.radiativeCooling)
         var assumptions = [
-            "The radiated energy is not taken from the gas, which stays hot and luminous too long.",
+            cooling
+                ? "The luminous gas loses what it radiates, on the lattice's 26 directions, into black."
+                : "The radiated energy is not taken from the gas, which stays hot and luminous too long.",
             "The air between the fireball and a surface is transparent; nothing scatters.",
             "Shows where surfaces see the fireball, not burns, ignition or damage.",
         ]
@@ -1374,10 +1386,14 @@ private struct StandingScene {
         }
         return result(
             .thermal, .illustrative,
-            "Set against one measurement of a TNT fireball's radiation, which it exceeds three to five times.",
+            "Set against one measurement of a TNT fireball's radiation, which it exceeds "
+                + (cooling ? "two to three times, the gas cooling as it radiates." : "three to five times."),
             evidence: [
                 StandingEvidence(
-                    "A TNT fireball's measured radiation", "Exceeded three to five times",
+                    "A TNT fireball's measured radiation",
+                    cooling
+                        ? "Exceeded two to three times, with the gas cooling"
+                        : "Exceeded three to five times",
                     "thermal-radiation.md#the-volume-against-the-shape")
             ], assumptions: assumptions, resolution: resolution,
             documents: ["thermal-radiation.md#limitations"])
