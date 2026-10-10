@@ -289,7 +289,7 @@ enum HeadlessRun {
     /// Runs the project, writes any requested outputs and returns the kept run.
     static func execute(_ options: Options) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
-        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
+        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?, blastGPUSeconds: Double
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -320,7 +320,7 @@ enum HeadlessRun {
         }
         return (
             result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
-            result.envelopes
+            result.envelopes, result.blastGPUSeconds
         )
     }
 
@@ -337,7 +337,8 @@ enum HeadlessRun {
         }
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
-        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?,
+        blastGPUSeconds: Double
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
@@ -560,6 +561,11 @@ enum HeadlessRun {
                     1000 * feed.cost.seconds / Double(max(consumer.sent, 1)),
                     1000 * consumer.seconds / Double(max(consumer.sent, 1)), feed.held.seconds,
                     running.seconds)
+                    + ((consumer as? LocalFrameConsumer)?.gpuSeconds.map {
+                        String(
+                            format: "; %.2f ms a frame of this Mac's GPU",
+                            1000 * $0 / Double(max(consumer.sent, 1)))
+                    } ?? "")
                     + ((consumer as? ResilientFrameConsumer)?.fallback.map {
                         "; here after frame \($0.frame + 1), that Mac having failed: \($0.reason)"
                     } ?? ""))
@@ -605,7 +611,10 @@ enum HeadlessRun {
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
-        return (run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData)
+        return (
+            run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData,
+            model.blastGPUSeconds
+        )
     }
 
     /// A consumer the run feeds each frame, where it runs, and what it has cost the run: the time
@@ -646,13 +655,17 @@ enum HeadlessRun {
         if let error = model.errorMessage { throw ProjectFileError.invalid(error) }
     }
 
-    nonisolated static func summary(_ run: SavedSimulationRun, wallSeconds: Double) -> String {
+    /// `blastGPUSeconds`, if given, is the GPU's time on the blast's batches.
+    nonisolated static func summary(
+        _ run: SavedSimulationRun, wallSeconds: Double, blastGPUSeconds: Double? = nil
+    ) -> String {
         func format(_ value: Double, _ digits: Int) -> String { String(format: "%.\(digits)f", value) }
         var lines = [
             "\(run.name): \(run.scenario.name), \(run.settings.resolution) grid, "
                 + "\(format(Double(run.scenario.charge.mass), 2)) kg TNT",
             "\(run.stepCount) steps to \(format(run.elapsedTime * 1000, 1)) ms on \(run.deviceName), "
-                + "in \(format(wallSeconds, 1)) s",
+                + "in \(format(wallSeconds, 1)) s"
+                + (blastGPUSeconds.map { ", \(format($0, 1)) s of them the GPU's on the blast" } ?? ""),
         ]
         for gauge in run.gauges {
             lines.append("  \(gauge.key.name): peak \(format(gauge.peak, 1)) kPa")
@@ -685,8 +698,9 @@ enum HeadlessRun {
             print(
                 summary(
                     result.run,
-                    wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
-                ))
+                    wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds)
+                        * 1e-18,
+                    blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }

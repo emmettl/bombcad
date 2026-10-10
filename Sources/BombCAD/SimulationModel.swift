@@ -302,6 +302,9 @@ final class SimulationModel {
     private(set) var traces: [GaugeTrace] = []
     private(set) var stats = SimulationStats()
     @ObservationIgnored private var liveStats = SimulationStats()
+    /// The GPU's time on the blast's batches since the run began, in seconds, as each command
+    /// buffer's start and end on the GPU give it; work sharing the GPU stretches it.
+    @ObservationIgnored private(set) var blastGPUSeconds = 0.0
     @ObservationIgnored private var lastProgressPublication = ContinuousClock.now
     private static let progressInterval = 1.0 / 60
     private(set) var grid: Grid?
@@ -1863,6 +1866,7 @@ final class SimulationModel {
         stepCount = 0
         stats = SimulationStats()
         liveStats = SimulationStats()
+        blastGPUSeconds = 0
         batchSize = 4
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
@@ -1968,6 +1972,7 @@ final class SimulationModel {
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
         lastBatchCompletion = now
+        if gpuSeconds > 0 { blastGPUSeconds += gpuSeconds }
         if result.steps > 0, gpuSeconds > 0 {
             let stepRate = Double(result.steps) / gpuSeconds
             let blend = liveStats.stepsPerSecond == 0 ? 1 : 0.1

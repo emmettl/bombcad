@@ -168,6 +168,13 @@ struct ConsumerEngine: Sendable {
         return ConsumerReport(frame: frame, low: nil, high: nil, speed: 0, airborne: 0)
     }
 
+    /// The GPU's time on the model's frames so far, in seconds, if it uses the GPU: the thermal
+    /// radiation's march through the fireball.
+    var gpuSeconds: Double? {
+        if case .thermal(let exposure) = model { return exposure.marchGPUSeconds }
+        return nil
+    }
+
     /// The model's state now, for a live view, if its kind is live; `time` is the last frame's.
     func live(time: Double) -> ConsumerLive? {
         guard kind.isLive else { return nil }
