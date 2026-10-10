@@ -1167,6 +1167,20 @@ struct ImpactBenchmarkTests {
         #expect(result.residual > 0.006, "\(result.residual) m left")
     }
 
+    @Test("Peterson's beam struck at one depth from a support: impact and reactions as measured")
+    func peterson() throws {
+        let test = try #require(ImpactBenchmark.petersonTests.first { $0.name == "D-1d-S90-1" })
+        let result = try ImpactBenchmark.run(
+            device: device, test: test, elementsThroughDepth: 12, duration: 0.006)
+        // 227 kN at the striker and 163 kN at the near support measured; on 12 elements the
+        // model gives 260 and 164 (docs/validation.md).
+        let impact = try #require(test.impact)
+        let near = try #require(test.nearReaction)
+        #expect(abs(result.peakImpactForce - impact) / impact < 0.3, "impact \(result.peakImpactForce) N")
+        #expect(abs(result.supportReactions.x - near) / near < 0.2, "near \(result.supportReactions.x) N")
+        #expect(result.supportReactionTimes.x > 0.0008 && result.supportReactionTimes.x < 0.002)
+    }
+
     @Test("Beam elements, without the sectional shear check, give the measured peaks")
     func beams() throws {
         // The light drops all give about 13.6 mm, against 9.3 to 12.1 mm measured; the heavy ones

@@ -31,20 +31,24 @@ public struct ThermalRay: Sendable, Equatable {
     public var end: SIMD3<Float> { origin + length * direction }
 }
 
-/// What stands between the receivers and the fireball: the ground, the blocks and the structure's
-/// starting outline. Asked about many segments at once, so that an implementation can test them
+/// What stands between the receivers and the fireball: the ground (the terrain, where there is
+/// one), the blocks and the structure's starting outline. Asked about many segments at once, so that an implementation can test them
 /// together.
 public protocol ThermalVisibility: Sendable {
     /// Whether each ray reaches its end with nothing in the way, one a ray, in order.
     func visible(_ rays: [ThermalRay]) -> [Bool]
 }
 
-/// The visibility test on the CPU's cores: each segment against the ground and every box in turn.
+/// The visibility test on the CPU's cores: each segment against the ground, every box in turn and
+/// the terrain's cells under it.
 public struct CPUThermalVisibility: ThermalVisibility {
     public let occluders: [Box]
+    /// Nil for flat ground.
+    public let terrain: TerrainSight?
 
-    public init(occluders: [Box]) {
+    public init(occluders: [Box], terrain: Terrain? = nil) {
         self.occluders = occluders
+        self.terrain = TerrainSight(terrain)
     }
 
     public func visible(_ rays: [ThermalRay]) -> [Bool] {
@@ -75,11 +79,13 @@ public struct CPUThermalVisibility: ThermalVisibility {
         return stopped ? nil : result
     }
 
-    /// Whether one ray's end is above the ground and no box lies across it.
+    /// Whether one ray's end is above the ground, no box lies across it and it does not pass
+    /// under the terrain.
     public func visible(_ ray: ThermalRay) -> Bool {
         let end = ray.end
         guard end.z >= 0 else { return false }
-        return !occluders.contains { Self.blocks($0, from: ray.origin, to: end) }
+        if occluders.contains(where: { Self.blocks($0, from: ray.origin, to: end) }) { return false }
+        return !(terrain?.blocks(from: ray.origin, to: end) ?? false)
     }
 
     /// Whether `box` lies across the segment from `start` to `end`; an end inside it counts.

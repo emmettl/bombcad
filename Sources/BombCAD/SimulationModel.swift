@@ -1419,6 +1419,7 @@ final class SimulationModel {
                 throw ProjectFileError.invalid(
                     "The ground's shaking is still being estimated; keep the run in a moment.")
             }
+            result.place(on: scenario.terrain)
             // What is drawn, as what is kept.
             updateGroundShockStatus()
             result.frameTimes = nil
@@ -1551,7 +1552,8 @@ final class SimulationModel {
     }
 
     private func updateGroundShockStatus() {
-        guard let groundShock, let result = groundShock.groundShockLive else { return }
+        guard let groundShock, var result = groundShock.groundShockLive else { return }
+        result.place(on: scenario.terrain)
         if groundShockLive != result { groundShockLive = result }
         let open = result.points.filter { !$0.covered }
         let reached = open.filter { $0.arrival != nil }
@@ -2361,7 +2363,7 @@ extension SimulationModel {
 
     /// Draws the ground points as the run has left them, or before a run where they will be.
     func groundShockDots() -> [SIMD4<Float>] {
-        groundShockLive?.dots ?? groundShockSpec?.dots ?? []
+        groundShockLive?.dots ?? groundShockSpec?.dots(on: settings.scenario.terrain) ?? []
     }
 
     /// Paints the thermal radiation so far onto the ground and the faces, its fluence or its peak

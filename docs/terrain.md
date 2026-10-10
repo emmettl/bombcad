@@ -213,14 +213,68 @@ history) over flat ground's on the same cells:
 
 ## Downstream
 
-- **Ground points** (ground shock) read the first cell of air above the surface in each column
-  (`GroundSlice`), not the floor's cells; their soil column is still level.
-- **Thermal receivers** on the ground lie on the surface, a millimetre off it along its normal,
-  and take its normal for their horizon, so a slope facing the fireball receives more.
+- **Thermal radiation.** The terrain is in the sight lines (`ThermalTerrain.swift`): a segment
+  is blocked where it passes below the surface. Over one cell the bilinear surface along a
+  segment is a quadratic in the distance, so the lowest the segment comes beneath it is found
+  exactly, at the cell's edges and the quadratic's turning point. The CPU walks the cells under a
+  segment row by row; the GPU puts each cell in the acceleration structure beside the blocks, as
+  a box from the floor to its highest node, and runs the same test, every product that is added
+  written as a fused multiply-add so that both compilers do the same arithmetic. The volume's
+  march stops where a ray first meets the surface. Receivers on the ground lie on the surface, a
+  millimetre off it along its normal, and take that normal for their horizon; faces of blocks
+  under the surface are buried.
+- **Ground points** read the first cell of air above the surface in each column (`GroundSlice`),
+  carry the surface's height and normal, and their soil column runs **along the normal**, not
+  straight down: the air presses square on the surface, and a column stands for a plane wave
+  sent into a half-space from its loaded face, which travels along the face's normal. So on a
+  slope a column's depths, stress and "vertical" motion are along the normal into the ground, its
+  layers lie parallel to the surface, and its answer is the level column's under the point's own
+  load. A flat heightfield gives the flat ground's results to the bit.
+- **Freestanding objects** (the rigid world of Compute Motion) rest, slide and tip on the
+  surface: each corner and tyre is held off it along the normal under it, with friction in its
+  tangent plane, and each node of the terrain under an object is held out of the object's faces,
+  as a block's corners are, so a box across a step's edge turns about the edge. A node pushes
+  only within 60° of the normals of the cells round it; otherwise nodes lying in a slope's face
+  catch a sliding box on its leading edge. Compute Motion crops the terrain with the scene and
+  judges tilt from the ground's normal. Laying a terrain, or adding, duplicating or editing an
+  object, sets it on the ground with its lowest corner or tyre on it.
 - **Fragments** land where their path meets the surface, found by bisection along each step.
+- **Footings** sit wherever the nodes they tie are, so a body over a step is connected by a
+  support region a level, each with its own connection and footing at its height. The ground's
+  own connection and clamp still hold only the nodes at z = 0.
 - **The app's 3D view** draws the terrain as a mesh of its nodes, lit by its normal, with 10 m
-  contours, tinted by the blast's field in the air half a cell above it. **The USD export** writes it
-  as `/Scene/Terrain`, a mesh of its nodes with its source, and lifts the ground points onto it.
+  contours, tinted by the blast's field in the air half a cell above it, or, while the thermal
+  radiation is shown, painted with the ground's receivers' values. Objects, ground points and
+  receivers stand on it. **The USD export** writes it as `/Scene/Terrain`, a mesh of its nodes
+  with its source, with the ground points and receivers on it.
+
+### Checks downstream
+
+All tests, in `ThermalTerrainTests`, `TerrainGroundTests`, `TerrainContactTests` and
+`TerrainDrawingTests`:
+
+- **A ridge hides the fireball.** A receiver 25 m behind a 10 m ridge sees nothing of a fireball
+  low before it and all of one risen above it (the same rays, the same answer as flat ground);
+  one centred on the plane through the receiver and the crest is 54% seen. On the GPU and the CPU,
+  for the opaque sphere and for the volume's march.
+- **The exact test against sampling.** On a rough terrain of random heights (every cell
+  twisted, rays running off the nodes), 1,975 segments agree with the surface sampled at 4,000
+  points along each, 694 of them blocked; and the GPU gives the CPU's answer for each of 50,000
+  rays, with blocks among them.
+- **Statics on a 20° slope.** A box stays with μ = 0.45 (tan 20° = 0.36); with μ = 0.25 it slides
+  at g (sin θ − μ cos θ) within 2%; dropped level onto the slope it lands on an edge, turns onto
+  its face and rests at 20.0°. **Across a step's edge** it stays with its centre of mass 5 cm short
+  of the edge, and with it 5 cm past it turns about the edge (the end on the plateau lifting, the
+  edge on the bottom face) and falls off. In Compute Motion a crate on a 15° slope in a small
+  blast stays on it, upright to it.
+- **Ground points** on a 30° slope are open, on the surface, along its normal; those up the slope
+  facing the blast see the reflection.
+
+**Cost**, on the street canyon with a hill or a ridge laid under it (`blastbench thermal
+--terrain hill`), 500,000 rays a frame: the GPU's visibility test 5–18 ms a frame (1–2 ms on
+flat ground), its volume march 9 ms (the same as on flat ground); the CPU's test, its fallback,
+90–135 ms a frame, 0.8–1 s of its cores' time, where it was 1 ms: rays that run low over the
+surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Limitations
 
@@ -241,24 +295,32 @@ history) over flat ground's on the same cells:
    multi-band files, no rotated rasters. Resampling is bilinear without averaging, so a DEM much
    finer than the nodes is aliased rather than smoothed. Missing data takes the crop's lowest
    elevation.
-5. **Not seen downstream**:
-   - the fireball's radiation is not hidden by the terrain (neither the CPU's nor the GPU's
-     visibility test knows it), and the equivalent sphere's part "above the ground" is above z = 0;
-   - the app paints the thermal radiation on the floor's plane, under any raised terrain, and does
-     not paint the blast's field on the terrain while it shows the radiation;
-   - freestanding rigid objects rest and slide on the floor at z = 0, not on the terrain, and
-     anchorage footings assume level ground;
+5. **Downstream, in part**:
+   - the fireball's radiated power is measured over the floor, and the equivalent sphere's part
+     "above the ground" is above z = 0; the CPU's sight-line test is slow over a terrain (above);
+   - a ground point's soil column is level ground's turned along the normal: no slope's
+     static shear, no layers that cut the surface, no focusing by its shape; its front speed and
+     horizontal estimate are level ground's;
+   - freestanding objects find the surface by their corners and the terrain's nodes: a terrain
+     edge between nodes crossing an object's edge is not found, as between boxes, and a step is a
+     slope one node apart. The single-object studies (`ExperimentalRigidBoxSimulation`, the car's
+     and the demos) keep the floor;
+   - footings and the ground's connection stay level: the clamp and the ground's connection hold
+     the nodes at z = 0, under any terrain; a footing's soil is a level half-space whatever the
+     slope (no slope factor on its stiffness or bearing capacity), and its embedment is what is
+     given, not the terrain round it. A stepped base takes a support region a level;
    - a fragment step that crosses a ridge and comes down beyond it within one step passes through
      it (steps are far shorter than any hill);
-   - blocks and structures cast no shadows on the terrain in the view, nor it on them.
+   - blocks and structures cast no shadows on the terrain in the view, nor it on them, and the USD
+     export has no freestanding objects to set on it.
 6. **The domain must hold it**: heights from the floor up, the domain taller than the highest
    point; its open faces cut through the terrain as through the air.
 
 ## Future work
 
 - **Cut cells for terrain**, so that a slope is a slope: the staircase is the largest error found.
-- **Terrain in the thermal visibility** (a heightfield march on the CPU, triangles in the GPU's
-  acceleration structure), and in rigid contact and footings.
+- **Footings and the ground's connection on a slope**: the base held where it meets the terrain,
+  with slope factors on a footing's soil.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.
 - **Measured terrain shielding** or blast over hills, to validate rather than check.
 - **Landscape scale**: the shielding study holds at 500 t, scaled (see [Large

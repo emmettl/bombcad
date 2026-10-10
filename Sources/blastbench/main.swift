@@ -51,7 +51,7 @@ import simd
 //                     (a hot bubble rising under gravity, against the cloud's integral model)
 //   blastbench mixinglayer [--dx 0.5] [--speed 50] [--time 8] [--length 128] [--mixing] [--csv out.csv]
 //                          (a temporal mixing layer's growth, against dθ/dt = 0.014 ΔU)
-//   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
+//   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1] [--terrain hill]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
 //                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68;
@@ -915,7 +915,8 @@ func runSnapshot() throws {
     renderer.settings.showCharge = time == 0
     var dots: [SIMD4<Float>] = []
     if let ground {
-        let result = ground.result(frameInterval: 0)
+        var result = ground.result(frameInterval: 0)
+        result.place(on: scenario.terrain)
         dots += result.dots
         print("  " + result.summary)
     }
@@ -2120,6 +2121,50 @@ func runImpact() throws {
     print(
         pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("model", 18) + pad("reaction", 18)
             + pad("failed", 8) + pad("run time", 10))
+    if flag("peterson") {
+        // Peterson et al. (KTH, 2026): 0.8 m beams struck by 70 kg at 6.86 m/s near a support.
+        print("Peterson et al. (2026): 150 x 150 mm beams on 0.70 m, struck by 70 kg at 6.86 m/s")
+        print(
+            pad("test", 13) + pad("damage", 7) + pad("impact kN", 16) + pad("near kN (ms)", 26)
+                + pad("far kN (ms)", 26) + pad("failed", 8) + pad("under load", 12))
+        func force(_ value: Float?, _ time: Float?) -> String {
+            guard let value else { return "-" }
+            return "\(format(Double(value) / 1000, 0))"
+                + (time.map { " (\(format(Double($0) * 1000, 2)))" } ?? "")
+        }
+        for test in ImpactBenchmark.petersonTests where names?.contains(test.name) ?? true {
+            let result = try ImpactBenchmark.run(
+                device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.03),
+                specimen: { specimen in
+                    chooseSupports(&specimen)
+                    if flag("spread") { specimen.spreadBars = true }
+                },
+                adjust: { model in
+                    if flag("no-rate") { model.material.rateDependent = false }
+                    // `--bond`: the 8 mm bars slip.
+                    if let bond = chosenBondSlip(diameter: 0.008) { model.bondSlip = bond }
+                    applyRateOptions(&model)
+                },
+                inspect: { solver in
+                    if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+                })
+            print(
+                pad(test.name, 13) + pad(test.damage, 7)
+                    + pad(force(test.impact, nil) + " / " + force(result.peakImpactForce, nil), 16)
+                    + pad(
+                        force(test.nearReaction, test.nearTime) + " / "
+                            + force(result.supportReactions.x, result.supportReactionTimes.x), 26)
+                    + pad(
+                        force(test.farReaction, test.farTime) + " / "
+                            + force(result.supportReactions.y, result.supportReactionTimes.y), 26)
+                    + pad("\(result.summary.erodedElements)", 8)
+                    + pad("\(format(Double(result.peak) * 1000)) mm", 12))
+        }
+        print(
+            "\nMeasured / model; times after the impact began. The impact force over 0.42 ms, reactions over 0.5 ms."
+        )
+        return
+    }
     if flag("ando") {
         // Ando et al. (2000): beams without stirrups, struck once each by 300 kg.
         print(
@@ -3548,7 +3593,8 @@ struct SplitMix64 {
 }
 
 func runThermal() throws {
-    let scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    var scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
+    if option("preset") == nil, let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     let scene = FragmentScene(scenario)
     var spec = ThermalSpec()
     if let samples = option("samples").flatMap({ Int($0) }) { spec.samples = samples }
@@ -3605,7 +3651,7 @@ func runThermal() throws {
         }
     }
     let occluders = ThermalExposure.occluders(scene)
-    let metal = MetalThermalVisibility(occluders: occluders)
+    let metal = MetalThermalVisibility(occluders: occluders, terrain: scene.terrain)
     print("Device: \(device.name), ray tracing \(device.supportsRaytracing ? "yes" : "no")")
     if spec.fireball == .volume {
         // The march on the GPU, then on the CPU; each frame's irradiance and what it radiated.
@@ -3632,7 +3678,9 @@ func runThermal() throws {
         return
     }
     var answers: [[Float]] = []
-    for (name, visibility) in [("CPU", CPUThermalVisibility(occluders: occluders) as any ThermalVisibility)]
+    for (name, visibility) in [
+        ("CPU", CPUThermalVisibility(occluders: occluders, terrain: scene.terrain) as any ThermalVisibility)
+    ]
         + (metal.map { [("GPU", $0 as any ThermalVisibility)] } ?? [])
     {
         let timed = Timed(visibility)
@@ -3654,7 +3702,9 @@ func runThermal() throws {
             "\(name): \(exposure.receivers.count) receivers, \(timed.rays / count) rays a frame; "
                 + "\(format(total / Double(count) * 1000, 1)) ms a frame, "
                 + "\(format(timed.seconds / Double(count) * 1000, 1)) ms of it the visibility test; "
-                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame")
+                + "\(format(busy / Double(count) * 1000, 1)) ms of the CPU's cores' time a frame; "
+                + "mean irradiance \(format(Double(irradiance.reduce(0, +)) / Double(max(irradiance.count, 1)) / 1000, 2)) kW/m²"
+        )
     }
     if let metal {
         let usage = metal.usage
