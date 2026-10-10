@@ -49,6 +49,9 @@ the app paints on the ground and on rigid blocks.
 - At a solid cell or a reflecting domain face, the stencil is filled with mirrored ghost states
   (normal velocity reversed). The Riemann problem at the wall then has zero mass flux, so walls
   are exactly conservative and can be one cell thick.
+- The ground can have a shape, a heightfield [terrain](terrain.md): a cell below its surface is
+  solid, on the coarse grid and every refinement level, as for a block. The floor beneath it stays
+  a reflecting face.
 - The ground (z = 0) is a reflecting face. The other five faces of the domain are open: the
   stencil copies the last interior cell (zero-gradient extrapolation).
 

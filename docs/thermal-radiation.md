@@ -10,9 +10,11 @@ from the blast.
 
 **Standing: illustrative.** Each ingredient is a textbook approximation, the fireball is only as
 good as the gas model makes it (below), its absorption coefficients are assumptions, and its
-total has been set against only one measurement of a TNT fireball's radiation, which it exceeds
-three to five times, or two to three with the gas [losing what it
-radiates](#the-gas-losing-what-it-radiates), an option (see [Measured](#the-volume-against-the-shape)). Use it to see where a scene's
+total has been set against two TNT shots by the same group. On the first it exceeds what was
+measured three to five times, or two to three with the gas [losing what it
+radiates](#the-gas-losing-what-it-radiates), an option (see [Measured](#the-volume-against-the-shape)).
+On [Dial Pack](#against-dial-pack), 500 tons, its pulse has the wrong shape: far too faint at
+first, dark in the middle, and too bright late. Use it to see where a scene's
 surfaces see the fireball and how that compares between layouts, not for burn, ignition or damage
 thresholds.
 
@@ -484,6 +486,77 @@ afterburning it halves the fluences and makes the fireball's heat more plausible
 has been compared with one measurement, which it still exceeds. Use it for thermal studies with
 afterburning and hot air.
 
+### Against Dial Pack
+
+Dial Pack, 500 tons of TNT as a sphere resting on the ground at Suffield in 1970, was measured
+by the same group as the 100-ton shot above, with bolometers and calorimeters at 600 and
+1,700 m (Pattman, DREO Report 642; transcribed in
+[Samples/DialPack1970](../Samples/DialPack1970/README.md)). They give the fireball's radiant
+intensity from 1 ms to 15 s and its total, both corrected for the atmosphere. The total is
+3.5 to 3.7 × 10¹⁰ cal, 7.0% to 7.4% of the report's blast yield of 10⁹ cal a ton. Most of it comes
+late: a fifth by 1 s, a third by 2 s, the rest over the next 13 s, as the fireball rises.
+
+**The run.** `blastbench dialpack` fires 453.6 t (500 short tons) as a sphere 4.08 m in radius on
+the ground, with afterburning and hot air, in 480 × 480 × 240 m of air. It reckons, frame by frame,
+the irradiance at an instrument 1.5 m up at each range, aimed along the ground at the charge, by
+the volume, the shape and the sphere (the last two opaque, at emissivity 1).
+`Scripts/compare-dial-pack.py` sets the result against the report: the intensity toward 1,700 m,
+H r², and what has been radiated by each time by the report's own reckoning, 4πr² times the
+fluence at 1,700 m.
+
+**500 tons is within reach.** Cells scale with the cube root of the charge, so 500 t on 4 m cells
+costs what 100 kg on 0.24 m cells does. That is 0.9 million cells here, 2 s in 140 s on the Mac
+Studio under load. 8 m cells take 32 s for 3 s, and 2 m cells 190 s for 0.3 s. Refining the air by 2
+leaves the fireball's later fluence as it was (4.86 against 4.88 kJ/m² at 600 m by 1 s on 4 m
+cells) but costs six to eleven times as long; the runs below are unrefined. The air between is
+transparent and the radiation grey, where the measurements are corrected for the atmosphere and
+taken through silica, 200 to 4,500 nm, which passes about 90% of a 2,000 K black body: the
+model's figures would be about a tenth lower in the instruments' band.
+
+| 4 m cells | Measured | Volume | With the gas cooling | Shape, ε = 1 | Sphere, ε = 1 |
+|---|---|---|---|---|---|
+| Intensity toward 1,700 m at 1.25 ms (the first maximum), cal/sr/s × 10⁷ | 157 | 25 | 25 | 21 | 36 |
+| At 25 ms (the second) | 112 | 20 | 20 | 21 | 11 |
+| At 100 ms | 78 | 1 | 1 | 1 | 1 |
+| At 1 s | 45 | 83 | 73 | 87 | 135 |
+| At 2 s | 34 | 150 | 112 | 200 | 301 |
+| Fluence at 600 m by 2 s | 11.3 kJ/m² | 18.2 | 15.5 | 23.7 | 31.4 |
+| At 1,700 m | 1.41 kJ/m² | 2.26 | 1.92 | 2.98 | 3.93 |
+| Highest irradiance at 600 m | 18.2 kW/m², at 1.25 ms | 18.5, at 2 s | 13.1, at 2 s | 23.9 | 34.8 |
+| Radiated by 2 s, by the report's reckoning | 2.4% of 10⁹ cal a ton | 3.9% | 3.3% | 5.2% | 6.8% |
+| Measured round the fireball; lost by the gas | | 5.3% | 4.8%; 5.8% | | |
+
+On 8 m cells to 3 s the volume has radiated 7.2% by the report's reckoning (6.1% with the gas
+cooling) against 3.2% measured by then: by 3 s the model has given off as much as Dial Pack did in
+all 15 s, and its intensity, 144 (103 cooling) against 28, is still rising.
+
+**The pulse has the wrong shape, at every resolution tried.**
+- *Its first maximum is far too faint.* At 1.25 ms the fireball is about the right size: the
+  report's apparent area, 1.3 × 10⁶ cm², is a disc 13 m across, and the model's is 15 to 39 m
+  across at 0.5 ms on 2 to 8 m cells. But it is about 4,000 K where the report finds 7,500 to
+  8,000 K, so its radiance is a sixteenth: the model has no thin, very hot luminous shock layer,
+  its shock being smeared over cells. Finer cells make it fainter, not brighter (1,290, 450 and
+  180 W/m² at 1,700 m at 0.5 ms on 8, 4 and 2 m cells, against 2,270 measured at the maximum).
+- *It goes dark in the middle.* From about 40 to 350 ms no gas is at the luminous temperature on 4
+  and 2 m cells, where the report measures 1,900 to 1,950 K. The products cool as they expand and
+  burn again only once the grid has mixed air into them; on 8 m cells the coarser mixing keeps
+  them burning and the gap closes.
+- *Late it is too bright, and brightening.* The products go on burning, and the fireball, 200 m
+  across by 1 s, heats to 2,200 K by 2 s and 2,400 K by 3 s (2,100 and 2,160 K cooling), where
+  the report's falls to 1,800 K by 1.5 s and 1,600 K by 3 s. The air model has no gravity, so the
+  fireball neither rises nor draws in the cold air that cools a real one. The gas cooling helps
+  only a little at this size: an opaque fireball radiates its share of its heat in a time that
+  grows with its size, as the blast's times do, and 2 s at 500 t is 120 ms at 100 kg.
+
+Over the first second the errors offset: the fluence at 600 m by 1 s is 4.9 kJ/m² (4.5 cooling;
+4 m cells refined), against 6.7 measured. **The opaque shapes are no better.** The shape at
+emissivity 1 is a tenth to a third brighter than the volume, and the equivalent sphere, a ball of
+the luminous gas's volume at its mean temperature, from half as bright again to nearly three times
+as bright late, when the luminous gas is a wide, flat layer. So the radiated share against a measurement is still only an
+order of magnitude: Dial Pack's 7.4% in all, the model's 2.4% to 7% by 1 to 3 s and growing. The
+report restates the 1961 shot on its basis of 10⁹ cal a ton as 4.4% and 7.8%, which Tate and
+Pattmann gave as 3.8% and 6.6%.
+
 ## Output
 
 - **The summary** printed gives the largest fireball, its temperature and how long it was
@@ -497,8 +570,10 @@ afterburning and hot air.
 
 ## Limitations
 
-- Illustrative, as above: one comparison with a measurement of a TNT fireball's radiation, which
-  the model exceeds three to five times, two to three with the gas cooling.
+- Illustrative, as above: two TNT shots compared. The model exceeds the 100-ton shot's total three
+  to five times (two to three with the gas cooling), and Dial Pack's pulse is far too faint for its
+  first 350 ms and too bright after a second, the fireball neither rising nor cooling by mixing
+  with cold air, since the air model has no gravity.
 - The radiated energy is taken from the gas only as an option; without it the gas stays hot and
   luminous too long. With it, the luminous gas cools as the volume radiates, on the lattice's 26
   directions (a flat opaque face 2% too bright to 7% too dim by its orientation), into black,

@@ -634,7 +634,8 @@ Nine values in the code were written from memory and should be checked against t
     spectrum against time and the surface temperature, compared with earlier TNT shots.
     **Gives:** a second shot by the same group and methods as Tate and Pattmann, so a repeat of
     the radiated fraction and the pulse's shape, and through its comparisons perhaps
-    Snowball's.
+    Snowball's. **Compared** (10 October 2026), transcribed in Samples/DialPack1970: see
+    [thermal radiation](thermal-radiation.md#against-dial-pack).
   - J. J. Rudolphi, N. Kolb and J. Stofleth, "Optical measurements in visible and NIR bands of
     composition C-4 and argon flash hemispheres", *Science and Technology of Energetic
     Materials* 81(1) (2020) 5–9, [JES](https://www.jes.or.jp/mag/stem/Vol.81/No.1.02.html), open:
@@ -719,8 +720,8 @@ their licence, as `Samples/FoRCy` does.
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
 | `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
-| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, still downloading (DesignSafe serves about 12 KB/s a connection) | Open Data Commons Attribution |
-| `DialPack1971` | Pattman's DREO Report 642 | 1.52 MB | Government of Canada |
+| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, 809 files, each checked against the listing's size | Open Data Commons Attribution |
+| `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper and a text extract | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
 

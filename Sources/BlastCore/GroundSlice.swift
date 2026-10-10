@@ -1,7 +1,8 @@
 import Foundation
 import simd
 
-/// The air on the ground at one moment: the bottom layer of cells over a rectangle of the grid,
+/// The air on the ground at one moment: the bottom layer of cells over a rectangle of the grid (over
+/// a terrain, each column's first cell above the surface),
 /// each with its overpressure now and the peak overpressure and positive impulse it has seen so
 /// far. The peak and impulse are the solver's own, kept every time step, so a consumer fed a
 /// frame a millisecond does not miss a peak between frames. What a ground shock consumer needs
@@ -89,7 +90,8 @@ public struct GroundSlice: Sendable, Equatable {
 }
 
 extension BlastSolver {
-    /// The air now on the ground under the rectangle from `low` to `high`, (x, y) in metres.
+    /// The air now on the ground under the rectangle from `low` to `high`, (x, y) in metres: in
+    /// each column the first cell of air above the terrain, or the bottom cell on flat ground.
     /// Reads the state and fields directly, so call it only while no batch is in flight.
     public func groundSlice(low: SIMD2<Float>, high: SIMD2<Float>) -> GroundSlice {
         let h = grid.cellSize
@@ -107,7 +109,9 @@ extension BlastSolver {
             setFields { peak, impulse in
                 for j in 0..<ny {
                     for i in 0..<nx {
-                        let cell = grid.index(Int(first.x) + i, Int(first.y) + j, 0)
+                        let column = Int(first.x) + i + grid.nx * (Int(first.y) + j)
+                        let surface = min(Int(terrainSurface?[column] ?? 0), grid.nz - 1)
+                        let cell = grid.index(Int(first.x) + i, Int(first.y) + j, surface)
                         guard mask[cell] == 0 else { continue }
                         let n = 3 * (i + nx * j)
                         values[n] =
