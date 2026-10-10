@@ -354,11 +354,14 @@ public enum PerimeterWallTests {
         public var faceImpulse: Float = 0
         public var backImpulse: Float = 0
         /// Crack openings (m) across each element row up the front and back faces, the widest
-        /// along the wall's length and the fraction of its length open past `crackWidth`.
+        /// along the wall's length and the fraction of its length open past `crackWidth`, and the
+        /// fraction open past it on a horizontal plane (a crack running along the wall).
         public var frontWidest: [Float] = []
         public var frontSpread: [Float] = []
+        public var frontHorizontal: [Float] = []
         public var backWidest: [Float] = []
         public var backSpread: [Float] = []
+        public var backHorizontal: [Float] = []
         public var crackWidth: Float = 0
         /// The element size, and the base's largest opening and the share of its ties broken.
         public var elementSize: Float = 0
@@ -378,11 +381,12 @@ public enum PerimeterWallTests {
     /// cells of `cellSize`, meshed with elements of `elementSize`, for `duration` seconds. The wing
     /// walls either side are rigid, `gap` clear of its ends. For the blockwork, `bars` puts the
     /// thesis's bars in it as though bonded (its cells were filled with foam, though the text also
-    /// calls them grouted).
+    /// calls them grouted). On a footing, `footing` gives its width across the wall and its depth
+    /// instead of the thesis's (the canopied wall's) or half of them (the half-scale wall's).
     public static func runWall(
         device: MTLDevice, wall: Wall, base: Base, anfo: Float, cellSize: Float = 0.05,
         elementSize: Float = 0.05, duration: Double = 0.2, gap: Float = 0.05, bars: Bool = true,
-        crackWidth: Float = 0.1e-3, progress: ((String) -> Void)? = nil
+        crackWidth: Float = 0.1e-3, footing: SIMD2<Float>? = nil, progress: ((String) -> Void)? = nil
     ) throws -> WallResult {
         let started = ContinuousClock.now
         let layout = wall.layout
@@ -443,8 +447,8 @@ public enum PerimeterWallTests {
             if base == .footing {
                 // The footing's width across the wall (the canopied wall's 2.2 m, the half-scale's
                 // taken as half that), centred under it, flush with the ground.
-                let width: Float = wall == .halfScale ? 1.1 : 2.2
-                let depth: Float = wall == .halfScale ? 0.3 : 0.6
+                let width: Float = footing?.x ?? (wall == .halfScale ? 1.1 : 2.2)
+                let depth: Float = footing?.y ?? (wall == .halfScale ? 0.3 : 0.6)
                 law.footing = Footing(
                     overhang: SIMD2((width - t) / 2, 0), thickness: depth, embedment: Embedment(depth: depth))
             }
@@ -521,18 +525,32 @@ public enum PerimeterWallTests {
         for (column, faceIndex) in [(iFront, true), (iBack - 1, false)] {
             var widest: [Float] = []
             var spread: [Float] = []
+            var horizontal: [Float] = []
             for k in 0..<kTop {
                 let openings = jRange.map { structure.crackOpening(column, $0, k) * h }
+                // Open cracks whose widest plane is horizontal, running along the wall.
+                let flat = jRange.filter { j in
+                    guard structure.crackOpening(column, j, k) * h > crackWidth else { return false }
+                    let planes = structure.crackPlanes(column, j, k)
+                    let history = planes.history
+                    let n =
+                        history.x >= history.y && history.x >= history.z
+                        ? 0 : (history.y >= history.z ? 1 : 2)
+                    return planes.normals.count == 3 && abs(planes.normals[n].z) > 0.7
+                }
+                let count = Float(max(openings.count, 1))
                 widest.append(openings.max() ?? 0)
-                spread.append(
-                    Float(openings.filter { $0 > crackWidth }.count) / Float(max(openings.count, 1)))
+                spread.append(Float(openings.filter { $0 > crackWidth }.count) / count)
+                horizontal.append(Float(flat.count) / count)
             }
             if faceIndex {
                 result.frontWidest = widest
                 result.frontSpread = spread
+                result.frontHorizontal = horizontal
             } else {
                 result.backWidest = widest
                 result.backSpread = spread
+                result.backHorizontal = horizontal
             }
         }
         var fastest: Float = 0

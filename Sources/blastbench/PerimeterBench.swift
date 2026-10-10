@@ -24,6 +24,8 @@ import Metal
 ///   --charges 25,125                    ANFO masses (the tests' by default)
 ///   --dx 0.05 --h 0.05 --time 0.2       air cells, elements, and how long
 ///   --no-bars                           blockwork without its bars
+///   --footing 2,0.5                     the footing's width and depth (the thesis's 2.2 × 0.6 m
+///                                       for the canopied wall, half that taken for the half-scale)
 func runPerimeter(device: MTLDevice) throws {
     switch option("study") ?? "air" {
     case "air": try runPerimeterAir(device: device)
@@ -216,6 +218,11 @@ private func runPerimeterWall(device: MTLDevice) throws {
             }
         } ?? T.Wall.allCases
     let bars = !flag("no-bars")
+    // `--footing 2,0.5`: the footing's width across the wall and its depth.
+    let footing = option("footing").flatMap { text -> SIMD2<Float>? in
+        let parts = text.split(separator: ",").compactMap { Float($0) }
+        return parts.count == 2 ? SIMD2(parts[0], parts[1]) : nil
+    }
     for wall in walls {
         let layout = wall.layout
         let charges: [Float] =
@@ -245,12 +252,20 @@ private func runPerimeterWall(device: MTLDevice) throws {
             )
         }
         for anfo in charges {
+            // Kingery–Bulmash's surface burst at the face's distance, for scale.
+            let tnt = Double(anfo * T.tntFactor)
+            if let point = KingeryBulmash.point(at: Double(layout.chargeToWall) / cbrt(tnt)) {
+                print(
+                    "  \(format(Double(anfo), 0)) kg: Kingery–Bulmash's surface burst at the face's distance, "
+                        + "\(format(point.reflectedPressure / 1000, 0)) kPa reflected, "
+                        + "\(format(point.reflectedImpulse(mass: tnt), 0)) Pa s")
+            }
             for base in bases {
                 let r = try T.runWall(
                     device: device, wall: wall, base: base, anfo: anfo, cellSize: dx, elementSize: h,
                     duration: duration
                         ?? (wall == .halfScale ? 0.15 : anfo > 50 && wall == .masonry ? 1.0 : 0.3),
-                    bars: bars, progress: flag("progress") ? { print("    " + $0) } : nil)
+                    bars: bars, footing: footing, progress: flag("progress") ? { print("    " + $0) } : nil)
                 print(
                     "  \(format(Double(anfo), 0)) kg, \(base.rawValue): top \(format(Double(r.peakTop) * 1000, 1)) mm "
                         + "peak, \(format(Double(r.finalTop) * 1000, 1)) left; mid-height "
@@ -265,15 +280,19 @@ private func runPerimeterWall(device: MTLDevice) throws {
                         + "\(format(r.wallSeconds, 0)) s")
                 print(
                     "    Cracks up the faces, widest (mm) and share of the length open past "
-                        + "\(format(Double(r.crackWidth) * 1000, 1)) mm, front | back:")
+                        + "\(format(Double(r.crackWidth) * 1000, 1)) mm (on horizontal planes), front | back:"
+                )
                 for k in r.frontWidest.indices.reversed() {
                     let z = (Double(k) + 0.5) * Double(r.elementSize)
                     print(
                         "    " + pad("\(format(z, 2)) m", 8)
                             + pad(format(Double(r.frontWidest[k]) * 1000, 2), 7)
-                            + pad("\(format(Double(r.frontSpread[k]) * 100, 0))%", 6)
+                            + pad(
+                                "\(format(Double(r.frontSpread[k]) * 100, 0))% (\(format(Double(r.frontHorizontal[k]) * 100, 0))%)",
+                                13)
                             + "| " + pad(format(Double(r.backWidest[k]) * 1000, 2), 7)
-                            + "\(format(Double(r.backSpread[k]) * 100, 0))%")
+                            + "\(format(Double(r.backSpread[k]) * 100, 0))% (\(format(Double(r.backHorizontal[k]) * 100, 0))%)"
+                    )
                 }
             }
         }
