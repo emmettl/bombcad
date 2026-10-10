@@ -115,9 +115,15 @@ struct InterfaceSnapshotTests {
             size: CGSize(width: 340, height: 420), appearance: appearance,
             to: folder.appending(path: "standing-summary.png"))
         try snapshot(
-            StandingDetail(standing: model.standing, kinds: [.structuralResponse, .structuralDamage]),
+            StandingDetail(
+                standing: model.standing, kinds: [.structuralResponse, .structuralDamage],
+                value: ShownValue(measure: .peakDeflection, value: 68, unit: "mm")),
             size: CGSize(width: 380, height: 520), appearance: appearance,
             to: folder.appending(path: "standing-detail.png"))
+        try snapshot(
+            StandingDetail(standing: model.standing, kinds: [.peakOverpressure, .impulse]),
+            size: CGSize(width: 380, height: 520), appearance: appearance,
+            to: folder.appending(path: "standing-detail-air.png"))
         try snapshot(
             HStack(spacing: 8) { ForEach(EvidenceLevel.allCases, id: \.self) { StandingLabel(level: $0) } }
                 .padding(12),
@@ -140,6 +146,32 @@ struct InterfaceSnapshotTests {
             RunComparisonView(model: SimulationModel(document: document)),
             size: CGSize(width: 920, height: 640),
             appearance: appearance, to: folder.appending(path: "standing-comparison.png"))
+    }
+
+    @Test("Render the readouts' error bands after a short run", arguments: ["light", "dark"])
+    func bandedReadouts(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var document = ProjectDocument(scenario: ScenarioPreset.blastWall.scenario)
+        document.runSettings?.resolution = "medium"
+        document.runSettings?.duration = 0.03
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        let deadline = ContinuousClock.now + .seconds(300)
+        while !model.experimentIsReady {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        model.run()
+        while model.isRunning || model.time < 0.029 {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        try snapshot(
+            GaugeChartView(model: model).frame(width: 900, height: 260),
+            size: CGSize(width: 900, height: 260),
+            appearance: appearance, to: folder.appending(path: "standing-readout.png"))
     }
 
     private func snapshot<V: View>(

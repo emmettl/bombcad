@@ -166,30 +166,58 @@ room. The solver now records 64 gauges, not 16.
 
 **Frames for consumers.** Measured: cutting the fireball out for a thermal consumer costs
 0.1–0.7 ms of CPU a frame after the batch on these grids (its box of luminous cells, at most 57,000
-voxels at 4 m). It is the frames' interruptions that cost: each ends a batch. With refinement, a burst cut out
-every 50 ms took about 0.1 s a step against 0.04 s for a burst sixteen times the size unbroken;
-on uniform cells it costs little (1,362 steps in 9 s). The
-cut-out kernel writes a buffer of 4 bytes for every cell of the grid (0.6 GB at 144M cells), and
-takes the fireball from the coarse cells only, so a refined run hands the consumers a fireball
-on its coarse cells.
+voxels at 4 m). It is the frames' interruptions that cost: each ends a batch. With refinement, a
+burst cut out every 50 ms took about 0.1 s a step against 0.04 s for a burst sixteen times the
+size unbroken; on uniform cells it costs little (1,362 steps in 9 s). The cut-out kernel writes a
+buffer of 4 bytes for every cell of the grid (0.6 GB at 144M cells).
 
-**What remains** (none of it cheap):
+Done: **a refined run's fireball reaches the consumers on its finest cells.** Where a patch of
+refined air covers any of the fireball's box, its cells are cut out at the finest level whose box
+stays within the volume model's million voxels, each from the finest patch holding it and from its
+coarse cell where none does (`BlastSolver.refinedLuminousCells`). A kilogram's fireball half a
+millisecond on, on 0.25 m cells refined by 2, comes out on 0.125 m cells with a volume within 25%
+of a uniform 0.125 m grid's. Refinement follows the shock, not the fireball, so once the shock has
+left a fireball behind it lies on coarse cells again and goes as before; the 500 t run's frames
+at 50 ms intervals were nearly all of that kind.
 
-1. **The app's cell sizes are fixed** at 0.5, 0.25 and 0.125 m (`Resolution`, used in about 85
-   places across 20 files, saved by name in projects and runs, and assumed in the charge's
-   0.25 m snapping and the import previews). A landscape needs cell sizes chosen by the
-   scene, from the charge's cube root and the domain. Headless runs take the same three.
-2. **The app makes no large domain.** Domains come from the presets and from imports; there
-   is no domain editor, and the charge slider stops at 2 t.
-3. **The camera's zoom stops at 600 m** (`OrbitCamera.zoom(by:)` in ContinuumKit's SceneView).
-   A 3 km domain is framed from 5 km but cannot be zoomed back out after zooming in. The
-   renderer's clip planes (0.5 m to 20 km) are fine.
-4. **The thermal ground receivers are 2 m apart** whatever the domain: 2.8 million over 3.3 km,
-   for the march every frame and in the saved run. They should be spaced to the domain.
-5. **Saved runs carry the scene, terrain included**, once for each of up to 16 runs. A metre
-   DEM over 3.3 km is 11 million heights, 59 MB of base64 in every run kept.
-6. **A refined run's fireball reaches consumers on its coarse cells**, and the cut-out
-   buffer is the size of the grid (above).
+**The app.** Done:
+
+- **Cell sizes scaled to the scene.** `Resolution` is any cell size from 0.01 to 200 m: the three
+  presets are saved by name as they always were, others as `cell:` and the size in metres, which
+  readers from before refuse rather than misread. The Grid picker offers cells of 0.2, 0.1 and
+  0.05 m/kg^(1/3) for charges large enough that they come to a metre or more, and Cell size takes
+  any size. Headless runs take `--resolution` in metres. A grid of more than 2,048 cells along a
+  side is refused with that reason.
+- **A domain editor.** The Domain section sets the extent from the origin, everything staying
+  where it is and gauges left outside removed (`Scenario.resizeDomain(to:)`); offers the height
+  the open top needs for the farthest ground, 1.5 √(R W^(1/3)) above the charge
+  (`Scenario.suggestedHeight`); and fits an open scene (nothing in it but the charge, gauges and
+  terrain) to its charge, a square reaching 10, 20 or 40 m/kg^(1/3), the charge in its middle,
+  with the finest scaled grid that keeps within 20 million cells
+  (`Scenario.fitOpenScene(scaledReach:)`).
+- **Charges to 10 kt**, the slider logarithmic, to two significant figures above 100 kg.
+- **Terrain saved once.** A saved run over terrain keeps it by reference: the heights go to
+  `results/terrain/<sha256>.json`, shared by every run over the same ground, and the run's record,
+  now version 4, names the hash; older readers refuse it rather than open it on flat ground, and
+  runs saved inline read as before. The project's own scene keeps its copy, so a project holds the
+  heights at most twice, not once more for every run.
+- **Thermal ground receivers spaced to the floor.** Over a floor larger than a square kilometre
+  they stand far enough apart that there are at most 250,000 (6.7 m over 3.3 km); the Thermal
+  section sets the spacing and shows what it comes to.
+- **Zoom.** SceneView's `OrbitControlView` stops zooming out at 600 m and cannot be subclassed, so
+  the viewport takes the mouse wheel and pinches itself and zooms out to three times the domain's
+  longest side (never less than 600 m). **Asked upstream:** a zoom limit that the controller sets
+  (or that follows the scene's bounds) in ContinuumKit's `OrbitCamera.zoom(by:)`, after which this
+  workaround can go.
+
+Rendering at this scale was checked offscreen (`blastbench snapshot --fit-reach 10 --mass 500000
+--dx 8`, with and without `--terrain hill`): the domain is framed whole from 2.6 km, the hemisphere
+of peak overpressure is cut by the open top where it should be, a hill shows the reflection on its
+near face and the shadow behind it, and a frame takes 2–6 ms.
+
+**What remains:** the scene's own copy of its terrain besides the runs' (the scene file's format
+would have to change), and a domain grown about its centre rather than from its origin, which
+would mean moving every kind of object in a scene.
 
 ## Effects at scale
 
@@ -219,9 +247,7 @@ on its coarse cells.
 - A refinement criterion that follows weak shocks without refining the wake: a jump relative to
   the overpressure rather than to the pressure, so that the default follows a shock to
   40 m/kg^(1/3) at threshold 0.005's cost or less.
-- Cell sizes in the app chosen by the scene (above), a domain editor, and charges of kilotonnes.
-- The zoom limit in ContinuumKit, thermal receivers spaced to the domain, and the terrain saved
-  once for all runs.
+- The zoom limit in ContinuumKit itself, and a domain grown about its centre.
 - Large-HE field data: the Defense Nuclear Agency's Minor Scale and Misers Bluff reports, for
   gauge records over flat ground, and any over hills.
 

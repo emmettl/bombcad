@@ -124,4 +124,18 @@ struct StandingRunTests {
         let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(object["standing"] != nil && object["windSpeed"] as? Double == 3)
     }
+
+    @Test("A shown value gives where the measurement would lie, and comparisons see the band's width")
+    func expectationsAndComparison() throws {
+        let standing = SceneStanding(
+            StandingInputs(scenario: ScenarioPreset.blastWall.scenario, cellSize: 0.25))
+        let band = try #require(standing.band(.peakDeflection))
+        let shown = ShownValue(measure: .peakDeflection, value: 115, unit: "mm")
+        #expect(shown.expectation(band) == "expect 100–110 mm (model reads high: too flexible)")
+        #expect(
+            ShownValue(measure: .peakOverpressure, value: 1, unit: "kPa").range(25.3...29.6) == "25–30 kPa")
+        // 105–115% is about 9% wide: 3% apart cannot be told apart, 20% can.
+        #expect(band.cannotSeparate(103, from: 100))
+        #expect(!band.cannotSeparate(120, from: 100))
+    }
 }

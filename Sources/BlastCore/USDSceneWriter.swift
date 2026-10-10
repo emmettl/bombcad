@@ -655,6 +655,12 @@ public final class USDSceneWriter {
         for result in standing.results {
             lines.append(
                 "string \(result.kind.rawValue) = \(quoted("\(result.level.rawValue): \(result.summary)"))")
+            if let bands = result.bands, !bands.isEmpty {
+                lines.append(
+                    "string[] \(result.kind.rawValue)Bands = ["
+                        + bands.map { quoted("\($0.summary), for \($0.validity)") }
+                        .joined(separator: ", ") + "]")
+            }
         }
         lines.append(
             "string[] resolution = \(list(standing.resolution + standing.results.flatMap(\.resolution)))")

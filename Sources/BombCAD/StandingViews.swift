@@ -55,13 +55,27 @@ extension [SavedSimulationRun] {
     }
 }
 
+extension ErrorBand {
+    /// Whether two values differ by less than this band's width, so that against measurement they
+    /// cannot be told apart.
+    func cannotSeparate(_ value: Double, from reference: Double) -> Bool {
+        abs(value - reference) < relativeHalfWidth * 2 * max(abs(value), abs(reference))
+    }
+}
+
+/// The last standing worked out and its inputs: readouts redraw with every batch, and ask for it.
+@MainActor private var standingCache: (inputs: StandingInputs, standing: SceneStanding)?
+
 extension SimulationModel {
     /// The standing of the results the current inputs produce.
     var standing: SceneStanding {
-        SceneStanding(
-            ProjectRunSettings(model: self).standingInputs(
-                settings.scenario, thermal: thermalSpec, cloud: cloudSpec, fragments: fragmentSpec,
-                groundShock: groundShockSpec))
+        let inputs = ProjectRunSettings(model: self).standingInputs(
+            settings.scenario, thermal: thermalSpec, cloud: cloudSpec, fragments: fragmentSpec,
+            groundShock: groundShockSpec)
+        if let cached = standingCache, cached.inputs == inputs { return cached.standing }
+        let standing = SceneStanding(inputs)
+        standingCache = (inputs, standing)
+        return standing
     }
 }
 
@@ -100,6 +114,76 @@ private func documentTitle(_ document: String) -> String {
     return parts.map(words).joined(separator: " › ")
 }
 
+/// A result's value as shown, so that its band can say where the measurement would lie.
+struct ShownValue: Equatable {
+    var measure: BandMeasure
+    var value: Double
+    var unit: String
+    var digits = 0
+
+    func formatted(_ number: Double) -> String { String(format: "%.\(digits)f \(unit)", number) }
+
+    /// To two significant figures: a band is no finer than that.
+    func range(_ range: ClosedRange<Double>) -> String {
+        func rounded(_ value: Double) -> String {
+            guard value > 0 else { return "0" }
+            let step = pow(10, floor(log10(value)) - 1)
+            return ((value / step).rounded() * step).formatted(.number.precision(.significantDigits(1...2)))
+        }
+        return "\(rounded(range.lowerBound))–\(rounded(range.upperBound)) \(unit)"
+    }
+
+    /// "expect 100–110 mm (reads high: too flexible)", by `band`.
+    func expectation(_ band: ErrorBand) -> String {
+        "expect \(range(band.expected(value))) (model \(band.reads))"
+    }
+}
+
+/// Where the measurement would lie for a value shown, by the current inputs' band; nothing when
+/// no band applies.
+struct ExpectedRangeLine: View {
+    let model: SimulationModel
+    let value: ShownValue
+
+    var body: some View {
+        if value.value > 0, let band = model.standing.band(value.measure) {
+            Text(value.expectation(band))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .help("\(band.summary). Holds for \(band.validity).")
+        }
+    }
+}
+
+/// Under a gauge's peak, where the measurement would lie by that gauge's own band.
+struct GaugeExpectationLine: View {
+    let model: SimulationModel
+    let name: String
+    let peak: Double
+
+    var body: some View {
+        if peak > 0, let gauge = model.standing.gauge(name) {
+            if let band = gauge.peak {
+                let shown = ShownValue(measure: .peakOverpressure, value: peak, unit: "kPa")
+                Text(shown.expectation(band))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 14)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .help("\(band.summary). Holds for \(band.validity).")
+            } else if let note = gauge.note {
+                Text("No band: " + note.prefix(1).lowercased() + note.dropFirst())
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 14)
+                    .lineLimit(2)
+                    .help(note)
+            }
+        }
+    }
+}
+
 /// The level of a result, as a small capsule.
 struct StandingLabel: View {
     let level: EvidenceLevel
@@ -122,6 +206,8 @@ struct StandingBadge: View {
     let standing: SceneStanding?
     let kinds: [ResultKind]
     var unrecorded = false
+    /// A value shown beside the badge, for the popover to say where the measurement would lie.
+    var value: ShownValue? = nil
     @State private var showsDetail = false
 
     var body: some View {
@@ -135,7 +221,7 @@ struct StandingBadge: View {
             .help("\(weakest.level.title). \(weakest.summary) Click for the evidence.")
             .accessibilityLabel("Standing: \(weakest.level.title)")
             .popover(isPresented: $showsDetail, arrowEdge: .trailing) {
-                StandingDetail(standing: standing, kinds: kinds)
+                StandingDetail(standing: standing, kinds: kinds, value: value)
             }
         } else if unrecorded {
             Text("Standing not recorded")
@@ -168,6 +254,7 @@ struct StandingRow: View {
 struct StandingDetail: View {
     let standing: SceneStanding
     let kinds: [ResultKind]
+    var value: ShownValue? = nil
 
     var body: some View {
         ScrollView {
@@ -193,6 +280,8 @@ struct StandingDetail: View {
                                 }
                             }
                         }
+                        bands(result)
+                        regimes(result)
                         notes("Resolution", result.resolution)
                         notes("Assumptions", result.assumptions)
                         if !result.documents.isEmpty {
@@ -216,6 +305,64 @@ struct StandingDetail: View {
         }
         .frame(width: 380)
         .frame(maxHeight: 520)
+    }
+
+    /// How far it has been from measurement, and where this run's value would put the measurement.
+    @ViewBuilder private func bands(_ result: ResultStanding) -> some View {
+        if let bands = result.bands {
+            if !bands.isEmpty || !(result.unbanded ?? []).isEmpty { heading("Error bands") }
+            ForEach(bands, id: \.self) { band in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\(band.quantity): model \(band.ratio) of measured").fontWeight(.medium)
+                    Text("Model \(band.reads), on the \(band.side).").foregroundStyle(.secondary)
+                    if let value, value.measure == band.measure {
+                        Text(
+                            "This run's \(value.formatted(value.value)) puts the measurement at "
+                                + value.range(band.expected(value.value)) + ".")
+                    }
+                    Text("Holds for \(band.validity)\(band.scaled ? ", scaled to this resolution" : "").")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if let url = documentURL(band.document) {
+                        Link("\(band.check) · \(documentTitle(band.document))", destination: url).font(
+                            .caption)
+                    }
+                }
+            }
+            ForEach(result.unbanded ?? [], id: \.self) { line in
+                Text("No band: " + line.prefix(1).lowercased() + line.dropFirst()).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            heading("Error bands")
+            Text("Not recorded with this run.").foregroundStyle(.secondary)
+        }
+    }
+
+    /// Whether the chosen options suit the regime the scene is in.
+    @ViewBuilder private func regimes(_ result: ResultStanding) -> some View {
+        if let advice = result.regimes, let first = advice.first {
+            heading("Regime: \(first.regime)")
+            ForEach(advice, id: \.self) { item in
+                VStack(alignment: .leading, spacing: 1) {
+                    Label(
+                        item.option
+                            + (item.suits == true
+                                ? ": suits it" : item.suits == false ? ": does not suit it" : ""),
+                        systemImage: item.suits == true
+                            ? "checkmark.circle"
+                            : item.suits == false ? "exclamationmark.triangle" : "info.circle"
+                    )
+                    .foregroundStyle(item.suits == false ? .orange : .primary)
+                    .fontWeight(.medium)
+                    Text(item.note).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    if let suggestion = item.suggestion { Text(suggestion).italic() }
+                    if let url = documentURL(item.document) {
+                        Link(documentTitle(item.document), destination: url).font(.caption)
+                    }
+                }
+            }
+            Text("Suggestions only: no default changes.").font(.caption2).foregroundStyle(.tertiary)
+        }
     }
 
     private func heading(_ title: String) -> some View {

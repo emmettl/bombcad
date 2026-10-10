@@ -89,19 +89,21 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 | Twelve-storey tower collapsing over 4 s, 95,000 shells and beams, 0.5 m air | 56× slower   |
 
 Against the outside world, in brief; the [validation summary](docs/validation.md#summary) gives
-the numbers, and each section the test and the model:
+the numbers, and each section the test and the model. The defaults were chosen with these tests
+in view, most tests are single specimens, and where the model errs it mostly predicts too little
+damage; an [independent review](docs/validation-review.md) weighs the claims:
 
 | Area | Standing |
 |------|----------|
 | Air solver and structural numerics | Verified against exact solutions and theory |
-| Blast loads on walls | Good: impulse within 6% of Kingery–Bulmash on 0.25 m cells; peaks under-resolved, refinement helps |
-| Gas in a closed room | Good with afterburning and hot air, nothing fitted |
-| Bending of slabs and beams | Moderate: a slab test at 105–115% on solid elements, a beam bent to failure at 97–99% |
+| Blast loads on walls | Good: impulse within 6% of Kingery–Bulmash on 0.25 m cells beyond 1.5 m/kg^(1/3); peaks under-resolved, refinement helps |
+| Gas in a closed room | Good with afterburning and hot air against UFC 3-340-02's design curve, nothing fitted |
+| Bending of slabs and beams | Moderate: a slab test at 105–115% on solid elements, rising with the mesh, and as sensitive to the strain-rate law chosen; a beam bent to failure at 98–101% |
 | Shear | Low: one beam failing in shear 11–15% strong on fine meshes; beams struck to shear failure fail by the wrong mechanism |
-| Impact | Moderate: drop-weight beams within 12–24% under light drops, −5% to +3% under heavy ones |
-| Close-in and contact charges | Good for the load; low for damage: too little bending and spall, holes only as an option |
+| Impact | Moderate on one mesh: drop-weight beams within 12–24% under light drops, −5% to +3% under heavy ones on 16 elements, further on 24; the strain-rate laws that decide it were chosen on these tests |
+| Close-in and contact charges | Good for the load from 0.3 m/kg^(1/3); in contact about twice the products' impulse; low for damage: too little bending and spall, holes only as an option |
 | Steel in both faces | Moderate for bending under larger charges; one layer and two barely told apart |
-| Internal explosion | Low: the chamber's roof about twice as stiff as the paper's model |
+| Internal explosion | Low: the chamber's roof left a sixth as far up as measured, too stiff, and not converged |
 | Foundations | Moderate for a footing's rocking moment and settlement; low for energy |
 | Debris | Low: one comparison; collapse has none |
 | Fireball radiation and gas deflagrations | Illustrative |
@@ -123,6 +125,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
+| [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |

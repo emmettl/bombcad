@@ -483,19 +483,23 @@ public enum ImpactBenchmark {
 
     /// The same beam meshed with beam elements of `size`, stirrups as their tie ratio, struck
     /// through the nodes under the plate; supported at the nodes over each bearing, on the
-    /// beam's axis. With the sectional shear check (`sectionShear`), the sections beside the
-    /// plate fail in the first half millisecond under every drop: see docs/validation.md.
+    /// beam's axis. The blow is impulsive loading, under whose defaults beams do not check each
+    /// section's shear; with the check (`sectionShear` true), the sections beside the plate fail
+    /// in the first half millisecond under every drop: see docs/validation.md. Nil follows the
+    /// regime.
     public static func runBeams(
-        device: MTLDevice, test: Test, size: Float = 0.1, duration: Double = 0.2, sectionShear: Bool = true
+        device: MTLDevice, test: Test, size: Float = 0.1, duration: Double = 0.2, sectionShear: Bool? = nil
     ) throws -> BeamResult {
         var model = model(test, elementsThroughDepth: 12)
         model.solids.removeLast()
         model.solidMaterial = []
         model.elementSize = size
         model.elementKind = .shell
+        model.detectedLoading = .impulsive
+        if sectionShear == true { model.regimeDefaults = false }
         let solver = try ShellSolver(device: device, model: model)
         solver.groundContact = false
-        if !sectionShear { solver.disableSectionShear() }
+        if sectionShear == false { solver.disableSectionShear() }
         let axis = solver.referencePositions[solver.nearestNode(to: SIMD3(length / 2, width / 2, 0))]
         func nodes(within half: Float, of x: Float) -> [Int] {
             let at = solver.referencePositions[solver.nearestNode(to: SIMD3(x, axis.y, axis.z))].x

@@ -511,7 +511,7 @@ still 0.8 kPa from ambient.
 See [Validation](validation.md). In brief: the scheme reproduces Sod's shock tube, a reflected
 normal shock and the Sedov–Taylor blast, and conserves mass and energy exactly in a closed box.
 Against the Kingery–Bulmash curves for a surface burst, from 0.75 to 6 m/kg^(1/3), the impulse
-on a rigid wall is within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) and within 5% everywhere on
+on a rigid wall is within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3) and within 6% everywhere on
 0.125 m cells; the incident impulse is 13% to 22% low on every grid; and peak pressures are
 under-resolved (76% to 82% of the incident peak on 0.25 m cells, improving with resolution).
 In a closed room the gas pressure left after the shocks is 48% to 114% of the design curve of

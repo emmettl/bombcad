@@ -373,7 +373,13 @@ extension BlastSolver {
         terrain = scenario.terrain
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
-        try setStructures(scenario.structuralObjects)
+        // Each structure runs with the regime and loading the scene gives it, for its defaults.
+        try setStructures(
+            scenario.structuralObjects.map { object in
+                var object = object
+                if let model = object.structure { object.setStructure(model.detectingRegime(in: scenario)) }
+                return object
+            })
 
         try loadDeflagration(scenario)
         fill(
