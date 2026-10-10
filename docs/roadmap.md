@@ -213,7 +213,9 @@ needed from them, are listed in [Data wanted](data-wanted.md).
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
    size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
-   its luminous cells marched on the GPU as a partly transparent volume; the fireball's [rise and
+   its luminous cells marched on the GPU as a partly transparent volume, and [conducted into the
+   surfaces' materials](surface-heating.md) for their peak temperatures, with ignition thresholds
+   from tests marked illustrative; the fireball's [rise and
    cloud](fireball-rise.md), handed over from the air model's final state to an integral model of
    a rising thermal in a standard atmosphere or a measured sounding, a wind growing with height,
    turbulent air and humid air, where it condenses, freezes and rains once saturated, its top

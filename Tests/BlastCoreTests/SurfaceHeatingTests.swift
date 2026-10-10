@@ -112,7 +112,7 @@ struct SurfaceHeatingTests {
         #expect(steps[1] / steps[2] > 3 && steps[2] / steps[3] > 3)
     }
 
-    /// A slab 0 < x < L heated by q at x = 0 and insulated at L (Carslaw and Jaeger §3.3):
+    /// A slab 0 < x < L heated by q at x = 0 and insulated at L (Carslaw and Jaeger, chapter III):
     /// T − T₀ = qL/k [αt/L² + (3(L−x)² − L²)/(6L²) − (2/π²) Σ (−1)ⁿ/n² e^(−αn²π²t/L²) cos(nπ(L−x)/L)].
     private func slab(_ m: ThermalMaterial, length: Double, q: Double, t: Double, x: Double) -> Double {
         let alpha = m.diffusivity
