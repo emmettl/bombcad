@@ -347,9 +347,28 @@ peak much:
 | Hourglass control halved | 116 mm | 97 mm |
 
 So the slab's stiffness with slip is tension stiffening: the concrete between its cracks
-carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks. Whether the
-model's is too strong there, with the tensile strength raised by its rate law and the bond
-not, is the next question.
+carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks.
+
+**Where that tension comes from** (`blastbench slab --stiffening`). By 80 mm, over the 600 mm
+about mid-span, in kN:
+
+| Carried by | Perfect bond | Bars that slip |
+|---|---|---|
+| Bars | 484 | 477 |
+| Concrete never cracked | 1 | 2 |
+| Concrete cracked under 0.02 mm | 9 | 54 |
+| Concrete cracked 0.02–0.1 mm | 2 | 23 |
+| Concrete cracked wider | 20 | 17 |
+
+With slip, the concrete across a crack's own plane carries next to nothing. Between cracks it
+has been loaded through the bond to its tensile strength, raised by its strain rate, and holds
+it at the start of its softening. Nothing is counted twice: with slip there is no
+tension-stiffening branch, only plain concrete's softening over each element. A tie with the
+same law carries what the Model Code's tension stiffening gives at the raised strength, on two
+meshes (see [the concrete model](concrete-model.md#bars-that-slip-an-option)). The bond law
+hardly matters (95–96 mm with pull-out, splitting or confined splitting bond); a tenth of the
+fracture energy takes the slab with slip to 107 mm. Softening that would bring the slab to the
+test spoils the tie's crack spacing and tension stiffening, and leaves OA1 40% strong.
 
 ### What this does and does not show
 
@@ -1959,6 +1978,45 @@ slowly to and fro through five packets of rising amplitude. On sand of 80 MPa th
 moment follows the test within 6% to 14 mrad and levels off at the rigid footing's capacity,
 7–17% below the test's at 30 to 60 mrad; it settles a tenth as much as the sand did. Details,
 the 40 MPa run and why: [footings](structural-model.md#footings) (`blastbench rocking`).
+
+## Bars that slip, across the tests
+
+Bars that slip (`StructureModel.bondSlip`; see the
+[concrete model](concrete-model.md#bars-that-slip-an-option)) were run on every structural
+test, with the splitting bond of bars without enough cover to be confined unless noted
+(`--bond splitting`; `pullout` and `confined` for comparison), on the present defaults,
+2026-10-10:
+
+| Test | Measured | Perfect bond (the default) | Bars that slip |
+|---|---|---|---|
+| Contest slab, 4 / 8 / 16 through | 108 mm | 114 / 113 / 121 mm | 102 / 96 / 96 mm (pull-out bond 101 / 95 / 95) |
+| The same, a 25 mm strip, 16 / 32 through | 108 mm | 127 mm / 278 mm, 233 removed | 100 mm / 147 mm, 104 removed |
+| Janney's beam, 12 / 24 through | 41.5 kN m, failing at 42 mm | 42.0 / 41.2 kN m, failing at 53 mm / holding | 41.5 / 67.8 kN m, failing at 47 / 32 mm (pull-out 44.4 / 44.1, at 42 / 34 mm) |
+| OA1, 12 / 24 / 36 through | 332 kN | 456 / 368 / 384 kN | 491 / 487 / 501 kN (pull-out 472 / 489) |
+| Saatci's light drops SS0a / SS1a / SS2a, 16 through | 9.3 / 12.1 / 10.0 mm | 17.0 (246 removed) / 13.6 / 12.4 mm | 11.9 / 11.1 / 10.7 mm |
+| The same, 24 through | | 16.5 (763 removed) / 14.1 / 12.8 mm | 11.8 / 10.5 / 10.4 mm |
+| Saatci's heavy drops with stirrups SS1b / SS2b / SS3b, 16 through | 39.5 / 37.9 / 35.3 mm, left 18 | 40.5 / 37.1 / 33.6 mm, left 15–21 | 34.6 / 33.5 / 32.3 mm, left 12–14 (confined bond 34.2 / 33.0 / 31.4) |
+| The same, 24 through | | 46.4 / 42.5 / 35.0 mm, left 16–30 | 34.1 / 33.3 / 32.5 mm, left 13 |
+| SS0b-1, heavy drop, no stirrups | broken | broken (2,359 and 5,156 removed on 16 and 24) | broken (1,159 and 1,921) |
+| Ando's 19 beams without stirrups, 16 through | | within 16% on average, 0% mean | within 29% on average, 25% short; left a fraction as far down |
+| Chamber roof's edge | 87 mm in the paper's model; left 95 mm up | 38 mm, left 16 | 40 mm, left 16 (confined 39) |
+| Close-in P7 / P2, left down | 340 / 510 mm | 113 / 210 mm | 97 / 216 mm; far face spalled 1.4% (measured 18.6%) |
+
+Two more benchmarks point the same way. On Wu's slabs under 1.6 kg at 0.5 m
+([slabs with steel in both faces](#slabs-with-steel-in-both-faces), `blastbench twoface
+--bond pullout`), slip takes a fifth off the peak and half off the residual: 11.5 and 11.9 mm
+against 14.4 and 14.9 mm perfectly bonded, 18.0 and 13.9 measured. On Peterson et al.'s (2026)
+drop-weight beams (`blastbench impact --peterson`, run in another session and not yet in this
+document), slip misclassifies four of the six failure groups that perfect bond gets right:
+beams without stirrups that failed come through whole, and beams with close stirrups that held
+fail.
+
+So slip is mesh-independent where perfect bond is not: the slab is the same on 8 and 16
+elements, OA1 on all three meshes, Saatci's beams on 16 and 24. And it is right where perfect
+bond splits a beam along its bars under a light drop. But it is too stiff nearly everywhere
+else: the slab 11% short, OA1 half as strong again, the heavy drops 8–14% short, Ando's beams a
+quarter short, the close-in slab P7 further from the test, and Janney's beam broken at 163% on
+24 elements. Perfect bond remains the default; slip remains an option.
 
 ## Consistency across air grids
 
