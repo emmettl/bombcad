@@ -314,6 +314,10 @@ extension BlastSolver {
             configuration: configuration)
     }
 
+    /// When each vent panel with a release pressure opened (s), in scenario order, or nil while it
+    /// holds; empty without panels.
+    public var ventPanelOpenTimes: [Double?] { deflagrationStage?.openTimes ?? [] }
+
     /// The share of the cloud's gas still unburnt in each cell (1 where there is none), or nil
     /// without a flame.
     public func unburntShare() -> [Float]? {

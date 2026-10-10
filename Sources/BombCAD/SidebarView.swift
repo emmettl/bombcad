@@ -80,55 +80,13 @@ struct SidebarView: View {
                 }
             }
 
-            Section("Charge") {
-                // Logarithmic slider: 1 kg to 2 tonnes.
-                LabeledSlider(
-                    title: "TNT equivalent",
-                    value: Binding(
-                        get: { log10(Double(model.settings.chargeMass)) },
-                        set: { model.settings.chargeMass = Float(pow(10, $0).rounded()) }),
-                    range: 0...3.3,
-                    text: "\(Int(model.settings.chargeMass)) kg")
-                Toggle("Afterburning and hot air", isOn: $model.settings.detailedCharge)
-                    .help(
-                        "Burns the charge's products in the air they mix with, and lets hot air store energy "
-                            + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
-                            + "about twice as slow.")
-                Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
-                    .help(
-                        "Refines the air twice over where the shock is, so that peak pressures and the loads "
-                            + "on walls come out close to those of the next finer resolution, at a fraction of its "
-                            + "cost.")
-                if model.settings.sharpShocks {
-                    Toggle(
-                        "Twice over again",
-                        isOn: Binding(
-                            get: { model.settings.shockLevels > 1 },
-                            set: { model.settings.shockLevels = $0 ? 2 : 1 })
-                    )
-                    .padding(.leading, 20)
-                    .help(
-                        "Refines the refined air twice over again where the shock is, so that peaks come out "
-                            + "close to those of a grid four times as fine. Slower than refining once.")
-                }
-                LabeledSlider(
-                    title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
-                    text: metres(model.settings.chargePosition.x))
-                LabeledSlider(
-                    title: "Y", value: axisBinding(\.y), range: 1...Double(model.domainSize.y - 1),
-                    text: metres(model.settings.chargePosition.y))
-                LabeledSlider(
-                    title: "Height", value: axisBinding(\.z), range: 0...Double(model.domainSize.z / 2),
-                    text: metres(model.settings.chargePosition.z))
-                if model.chargeIsBlocked {
-                    Label(
-                        "The charge is inside a block or wall and will release no energy.",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                }
+            SourceKindSection(model: model)
+            if model.settings.scenario.deflagration != nil {
+                GasCloudSection(model: model)
+            } else {
+                chargeSection
             }
+            VentPanelSection(model: model)
 
             FragmentSection(model: model)
             ThermalSection(model: model)
@@ -215,7 +173,7 @@ struct SidebarView: View {
                     }
                 case .blast:
                     Picker("Scale maximum", selection: $model.renderSettings.pressureScale) {
-                        ForEach([30, 100, 300, 1000, 3000] as [Float], id: \.self) {
+                        ForEach([3, 10, 30, 100, 300, 1000, 3000] as [Float], id: \.self) {
                             Text("\(Int($0)) kPa").tag($0)
                         }
                     }
@@ -247,6 +205,58 @@ struct SidebarView: View {
                 .monospacedDigit()
         }
         .formStyle(.grouped)
+    }
+
+    private var chargeSection: some View {
+        Section("Charge") {
+            // Logarithmic slider: 1 kg to 2 tonnes.
+            LabeledSlider(
+                title: "TNT equivalent",
+                value: Binding(
+                    get: { log10(Double(model.settings.chargeMass)) },
+                    set: { model.settings.chargeMass = Float(pow(10, $0).rounded()) }),
+                range: 0...3.3,
+                text: "\(Int(model.settings.chargeMass)) kg")
+            Toggle("Afterburning and hot air", isOn: $model.settings.detailedCharge)
+                .help(
+                    "Burns the charge's products in the air they mix with, and lets hot air store energy "
+                        + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
+                        + "about twice as slow.")
+            Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
+                .help(
+                    "Refines the air twice over where the shock is, so that peak pressures and the loads "
+                        + "on walls come out close to those of the next finer resolution, at a fraction of its "
+                        + "cost.")
+            if model.settings.sharpShocks {
+                Toggle(
+                    "Twice over again",
+                    isOn: Binding(
+                        get: { model.settings.shockLevels > 1 },
+                        set: { model.settings.shockLevels = $0 ? 2 : 1 })
+                )
+                .padding(.leading, 20)
+                .help(
+                    "Refines the refined air twice over again where the shock is, so that peaks come out "
+                        + "close to those of a grid four times as fine. Slower than refining once.")
+            }
+            LabeledSlider(
+                title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
+                text: metres(model.settings.chargePosition.x))
+            LabeledSlider(
+                title: "Y", value: axisBinding(\.y), range: 1...Double(model.domainSize.y - 1),
+                text: metres(model.settings.chargePosition.y))
+            LabeledSlider(
+                title: "Height", value: axisBinding(\.z), range: 0...Double(model.domainSize.z / 2),
+                text: metres(model.settings.chargePosition.z))
+            if model.chargeIsBlocked {
+                Label(
+                    "The charge is inside a block or wall and will release no energy.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+            }
+        }
     }
 
     /// The blast's field painted onto the surfaces, or the thermal radiation's while the project

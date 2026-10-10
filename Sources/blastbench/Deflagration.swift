@@ -14,9 +14,12 @@ func runDeflagration() throws {
     switch mode {
     case "vessel": try runClosedVessel(device: device, gas: gas, concentration: concentration)
     case "vented": try runVented(device: device, gas: gas, concentration: concentration)
+    case "layout":
+        let data = try JSONEncoder().encode(ScenarioPreset.ventedGasRoom.scenario)
+        try data.write(to: URL(fileURLWithPath: option("out") ?? "gas-room.json"))
     case "tube", "ball": try runTube(device: device, gas: gas, ball: mode == "ball")
     default:
-        print("Unknown deflagration check \(mode). Use vessel, vented or converge.")
+        print("Unknown deflagration check \(mode). Use vessel, vented, tube, ball or layout.")
         exit(2)
     }
 }
@@ -26,7 +29,9 @@ private func runClosedVessel(device: MTLDevice, gas: FlammableGas, concentration
     let cells = option("cells").map { $0.split(separator: ",").compactMap { Int($0) } } ?? [20]
     let air = chosenAirModel() ?? .idealGas
     print(
-        "\(gas.displayName)–air in a closed sphere, ignited at the centre, laminar flame, \(air) air:"
+        "\(gas.displayName)–air in a closed sphere, ignited at the centre, "
+            + (flag("accelerated") ? "the default flame (wrinkling, sub-grid)" : "laminar flame")
+            + ", \(air) air:"
             + " against the thin-flame model with the same burning velocity and the model's AICC pressure")
     print(
         pad("R m", 6) + pad("cells/R", 9) + pad("S_u m/s", 9) + pad("AICC bar", 10) + pad("p_max bar", 11)
@@ -36,7 +41,8 @@ private func runClosedVessel(device: MTLDevice, gas: FlammableGas, concentration
     for radius in radii {
         for count in cells {
             let study = ClosedVesselStudy(
-                gas: gas, concentration: concentration, radius: radius, cellsPerRadius: count, airModel: air)
+                gas: gas, concentration: concentration, radius: radius, cellsPerRadius: count, airModel: air,
+                acceleration: flag("accelerated") ? FlameAcceleration() : .laminar)
             let clock = Date()
             let r = try study.run(
                 device: device,
@@ -157,13 +163,14 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
             study.ventArea = area
             study.cellSize = dx
             let clock = Date()
-            let r = try study.run(
-                device: device,
-                progress: flag("progress")
-                    ? { time, burnt in
-                        print("  t \(format(time * 1000, 0)) ms, burnt \(format(burnt * 100, 1))%")
-                    }
-                    : nil)
+            let progress: ((Double, Double) -> Void)? =
+                flag("progress")
+                ? { time, burnt in print("  t \(format(time * 1000, 0)) ms, burnt \(format(burnt * 100, 1))%")
+                }
+                : nil
+            var inspect: ((BlastSolver) -> Void)?
+            if flag("inspect") { inspect = { solver in inspectHottest(solver) } }
+            let r = try study.run(device: device, progress: progress, inspect: inspect)
             let c = r.correlations
             print(
                 pad(format(Double(area), 2), 8) + pad(format(Double(dx), 3), 7)
@@ -181,5 +188,29 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
                 try csv.write(toFile: file, atomically: true, encoding: .utf8)
             }
         }
+    }
+}
+
+/// Prints the cells of highest pressure and their surroundings.
+private func inspectHottest(_ solver: BlastSolver) {
+    let grid = solver.grid
+    var cells: [(p: Float, i: Int, j: Int, k: Int)] = []
+    for k in 0..<grid.nz {
+        for j in 0..<grid.ny {
+            for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
+                cells.append((solver.primitive(i, j, k).pressure, i, j, k))
+            }
+        }
+    }
+    cells.sort { $0.p > $1.p }
+    let share = solver.unburntShare()
+    for c in cells.prefix(8) {
+        let p = solver.primitive(c.i, c.j, c.k)
+        let t = p.pressure / (p.density * 287.05)
+        print(
+            "  (\(c.i), \(c.j), \(c.k)) at \(grid.cellCentre(c.i, c.j, c.k)): p \(format(Double(p.pressure) / 1e5, 3)) bar,"
+                + " rho \(format(Double(p.density), 4)), T \(format(Double(t), 0)) K,"
+                + " u \(p.velocity), b \(share.map { format(Double($0[grid.index(c.i, c.j, c.k)]), 3) } ?? "-")"
+        )
     }
 }

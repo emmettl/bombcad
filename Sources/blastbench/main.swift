@@ -10,7 +10,7 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
-//               protected|glass|carpark|underpass|house|blockwall|chamber] [--full] [--dx 0.5,0.25]
+//               protected|glass|carpark|underpass|house|blockwall|chamber|gasroom] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
@@ -40,8 +40,10 @@ import simd
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench deflagration [vessel|vented|converge] [--gas methane|propane] [--percent 9.5] [--air thermal]
-//                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68)
+//   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
+//                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68;
+//                            a tube's and a free sphere's flame profiles; layout --out f.json writes the
+//                            gas-room preset as a layout for `BombCAD run`)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -74,6 +76,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "house": .blockHouse
     case "blockwall": .blockWall
     case "chamber": .internalExplosion
+    case "gasroom": .ventedGasRoom
     default: .streetCanyon
     }
 }
@@ -811,6 +814,9 @@ func runSnapshot() throws {
 
     let renderer = try SceneRenderer(device: device)
     renderer.setScene(scenario, solver: solver)
+    // Vent panels that have released are not drawn.
+    let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
+    renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })
     switch option("mode") {
     case "now": renderer.settings.mode = .overpressure
     case "impulse": renderer.settings.mode = .impulse

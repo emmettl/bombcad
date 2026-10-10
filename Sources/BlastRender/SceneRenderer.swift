@@ -190,6 +190,8 @@ public final class SceneRenderer {
     private let boxBuffer: MTLBuffer
     private let gaugeBuffer: MTLBuffer
     private var boxCount = 0
+    /// The scenario's blocks, at the start of the box buffer; closed vent panels follow them.
+    private var rigidBoxCount = 0
     private var gaugeCount = 0
     private var scenario: Scenario?
     private var cellSize: Float = 1
@@ -276,17 +278,29 @@ public final class SceneRenderer {
         bodies = solver.bodies
         ambientPressure = scenario.atmosphere.pressure
 
-        boxCount = min(scenario.rigidBoxes.count, Self.maxBoxes)
+        rigidBoxCount = min(scenario.rigidBoxes.count, Self.maxBoxes)
         let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
-        for (n, box) in scenario.rigidBoxes.prefix(boxCount).enumerated() {
+        for (n, box) in scenario.rigidBoxes.prefix(rigidBoxCount).enumerated() {
             boxes[2 * n] = SIMD4(box.min, 0)
             boxes[2 * n + 1] = SIMD4(box.max, 0)
         }
+        setVentPanels((scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }.map(\.box))
         gaugeCount = min(scenario.gauges.count, BlastSolver.maxGauges)
         let gauges = gaugeBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: BlastSolver.maxGauges)
         for (n, gauge) in scenario.gauges.prefix(gaugeCount).enumerated() {
             gauges[n] = SIMD4(gauge.position, 0.35)
         }
+    }
+
+    /// The vent panels still closed, drawn as blocks after the scenario's own.
+    public func setVentPanels(_ panels: [Box]) {
+        let count = min(panels.count, Self.maxBoxes - rigidBoxCount)
+        let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
+        for (n, box) in panels.prefix(count).enumerated() {
+            boxes[2 * (rigidBoxCount + n)] = SIMD4(box.min, 0)
+            boxes[2 * (rigidBoxCount + n) + 1] = SIMD4(box.max, 0)
+        }
+        boxCount = rigidBoxCount + count
     }
 
     /// Pixels to a point on the screen drawn to, for dots of a size in points.

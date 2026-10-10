@@ -116,11 +116,21 @@ public struct Scenario: Sendable, Hashable, Codable {
             cellSize: cellSize)
     }
 
-    /// True when the charge sits inside a rigid block or the structure, where it can release
-    /// no energy into the air.
+    /// True when the charge (or a gas cloud's ignition point) sits inside a rigid block or the
+    /// structure, where it can release no energy into the air.
     public var chargeIsBlocked: Bool {
-        rigidBoxes.contains { $0.contains(charge.position) }
-            || structuralObjects.contains { $0.structure?.occupies(charge.position) == true }
+        // A gas cloud's ignition point, when the cloud is the source.
+        let point = deflagration?.ignition ?? charge.position
+        return rigidBoxes.contains { $0.contains(point) }
+            || structuralObjects.contains { $0.structure?.occupies(point) == true }
+    }
+
+    /// The source in a few words: the charge's mass, or the gas cloud's mixture.
+    public var sourceDescription: String {
+        if let cloud = deflagration {
+            return String(format: "%@–air cloud, %.1f%%", cloud.gas.displayName, cloud.concentration * 100)
+        }
+        return String(format: "%.2f kg TNT", charge.mass)
     }
 
     /// Time for an ambient sound wave to travel from the charge to the farthest corner.

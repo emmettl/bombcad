@@ -20,6 +20,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case blockHouse
     case blockWall
     case internalExplosion
+    case ventedGasRoom
 
     public var id: String { rawValue }
 
@@ -44,6 +45,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .blockHouse: "Block-built house"
         case .blockWall: "Blockwork wall"
         case .internalExplosion: "Internal explosion (test)"
+        case .ventedGasRoom: "Gas explosion, vented room"
         }
     }
 
@@ -423,6 +425,20 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .internalExplosion:
             // The reinforced concrete chamber of Shang et al. (2026), half of it: see ChamberTest.
             return ChamberTest.scenario()
+
+        case .ventedGasRoom:
+            // A room of about FM Global's chamber's size (Bauwens et al. 2008) full of
+            // stoichiometric methane, lit in the middle, its 2 x 2 m vent closed by a panel that
+            // releases at 2 kPa; walls half a metre thick so that every grid sees them.
+            var study = VentedRoomStudy()
+            study.room = SIMD3(4.5, 4.5, 3)
+            study.ventArea = 4
+            study.wallThickness = 0.5
+            study.releasePressure = 2000
+            study.cellSize = 0.125
+            var scenario = study.scenario()
+            scenario.name = title
+            return scenario
 
         case .tallFrame:
             // An eight-storey concrete frame, 28 m high: three bays by two of 6 m, 3.5 m storeys,

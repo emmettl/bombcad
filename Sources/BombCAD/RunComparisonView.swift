@@ -188,7 +188,7 @@ struct RunComparisonView: View {
                     .font(.caption).foregroundStyle(.secondary)
                     DisclosureGroup("Run inputs") {
                         Text(
-                            "Charge: \(run.scenario.charge.mass, format: .number) kg TNT · \(run.settings.duration * 1000, format: .number) ms target"
+                            "Source: \(run.scenario.sourceDescription) · \(run.settings.duration * 1000, format: .number) ms target"
                         )
                         if let body = run.scenario.structure {
                             Text("Materials: " + body.materials.map(\.name).joined(separator: ", "))

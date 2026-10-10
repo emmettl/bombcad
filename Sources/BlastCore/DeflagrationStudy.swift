@@ -261,18 +261,22 @@ public struct VentedRoomStudy: Sendable {
     /// The scenario: the room's walls as blocks, the vent's cover as a panel, the room full of
     /// mixture and gauges at the middle of the back wall, the room's middle and outside.
     public func scenario() -> Scenario {
+        // Air all round the room, and more beyond the vent: vented gas that reaches an open face of the
+        // domain can flow back in through it (the faces copy the cell inside them), and burnt gas
+        // drawn back in has pressurised a whole domain whose room stood against its face.
         let t = wallThickness
-        let margin: Float = 1
-        let outside: Float = 4
+        let margin: Float = 2
+        let outside: Float = 5
         let side = ventArea.squareRoot()
-        let size = SIMD3(t + room.x + t + outside, margin + t + room.y + t + margin, room.z + t + 1.5)
-        let x0 = t
+        let size = SIMD3(
+            margin + t + room.x + t + outside, margin + t + room.y + t + margin, room.z + t + margin)
+        let x0 = margin + t
         let y0 = margin + t
         let x1 = x0 + room.x
         let y1 = y0 + room.y
         let z1 = room.z
         var blocks = [
-            Box(min: SIMD3(0, y0 - t, 0), max: SIMD3(x0, y1 + t, z1 + t)),  // back wall
+            Box(min: SIMD3(x0 - t, y0 - t, 0), max: SIMD3(x0, y1 + t, z1 + t)),  // back wall
             Box(min: SIMD3(x0, y0 - t, 0), max: SIMD3(x1, y0, z1 + t)),  // side walls
             Box(min: SIMD3(x0, y1, 0), max: SIMD3(x1, y1 + t, z1 + t)),
             Box(min: SIMD3(x0, y0, z1), max: SIMD3(x1, y1, z1 + t)),  // roof
@@ -320,7 +324,10 @@ public struct VentedRoomStudy: Sendable {
             gas: gas)
     }
 
-    public func run(device: MTLDevice, progress: ((Double, Double) -> Void)? = nil) throws -> Result {
+    public func run(
+        device: MTLDevice, progress: ((Double, Double) -> Void)? = nil,
+        inspect: ((BlastSolver) -> Void)? = nil
+    ) throws -> Result {
         let scenario = scenario()
         var configuration = SolverConfiguration()
         configuration.airModel = airModel
@@ -337,6 +344,7 @@ public struct VentedRoomStudy: Sendable {
             gone.append(burnt)
             if burnt > 0.5, gone.count > 4, burnt - gone[gone.count - 5] < 0.005 { break }
         }
+        inspect?(solver)
         let state = try require(solver.deflagrationState())
         let history = solver.gaugeHistories[0]
         let ambient = Double(scenario.atmosphere.pressure)
