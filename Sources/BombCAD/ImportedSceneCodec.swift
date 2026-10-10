@@ -291,11 +291,13 @@ extension Scenario {
         }
     }
 
-    /// Whether any support's joint lies at an angle of its own (`Anchorage.jointNormal`), which
-    /// readers before scene version 7 would take for a joint under the body.
+    /// Whether any support's joint lies at an angle of its own (`Anchorage.jointNormal`), or ties
+    /// two parts of the body (`Anchorage.betweenParts`), which readers before scene version 7
+    /// would take for a joint to the ground under the body.
     var hasLaterConnections: Bool {
         structuralObjects.contains { object in
-            object.structure?.supportAnchorages.contains { $0?.jointNormal != nil } ?? false
+            object.structure?.supportAnchorages.contains { $0?.jointNormal != nil || $0?.betweenParts != nil }
+                ?? false
         }
     }
 }

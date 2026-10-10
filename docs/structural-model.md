@@ -140,8 +140,8 @@ the region's joint. The law
 uses each point’s reference position as a stationary bearing plane, horizontal unless the
 region's joint faces another way (below). Regions select initial attachment points; they do
 not bound the bearing plane after sliding or separation. A footing ([below](#footings)) is a
-connection to a moving component with a finite plan; other connections between moving
-components are not represented.
+connection to a moving component with a finite plan, and a joint between parts (below) ties two
+parts of the body that both move.
 
 **Joints facing other ways** (`Anchorage.side`, `JointSide`). A support region's joint can be
 over the body (a soffit it hangs from) or against one of its faces across x or y (a vertical
@@ -173,6 +173,47 @@ at 1.2 of the push that tips it, upright and turned 30° and 45° against the la
 joint and gravity (`StructureSolver.gravityDirection`). Turned 45° it sways within 3% of the
 upright wall; turned 30° on 125 mm elements the staircase's corners stand out at its toe and it
 takes 30% more push to tip than b / H.
+
+**Joints between parts** (`Anchorage.betweenParts`, `PartPairs`; solid elements only). A
+support region's joint can tie the body to another of its own parts across a gap, both moving,
+instead of to fixed ground: a precast beam seated on a corbel through a bearing pad, a panel
+against its frame. The parts are meshed apart, a gap of at least one element between them (the
+pad), and the region spans the gap. Each node on faces that face the joint is paired with the
+node of the other part straight across it, and the law acts on their relative motion: a pass
+before the node pass works out each pair's force, which the node pass gives the first node and,
+negated, the second, so the pairs keep the body's momentum exactly. The seat runs out half an
+element past the other part's last node in the region along each axis of the joint; a node that
+slides further is off its seat for good and carries nothing, and the part falls unless something
+else holds it (contact, if switched on, catches it on what is below). The joint's frame does not
+turn with the parts. Checks (`PartConnectionTests`): a block seated across a gap on another
+bears its weight within 3%; floating blocks tied by a joint keep their momentum within 10⁻⁵,
+moving on together when the tie holds and the lower one left behind when it shears through;
+struck together they rebound with their momentum and never more kinetic energy than they began
+with; a block thrown along its seat with friction 0.5 slides v² / (2 μ g), 0.25 m, within 10%,
+its kinetic energy all spent on friction, the pairs within a quarter metre less half an element
+of the edge off their seat; thrown to slide 1.5 m it goes off the end and falls.
+
+`blastbench seat` (`DroppedSpanStudy`) seats a precast beam 0.5 m deep on corbels at the tops of
+two reinforced concrete columns 6 m apart, resting with friction 0.5 on a 100 mm pad, and gives
+the right column a velocity away from the span rising from nothing at its base to a speed at its
+top, as a blast's impulse on its far face might (0.1 m elements, 1.5 s, about 12 s a run):
+
+| Seat | Column struck at | Column sways | Beam slides on the seat | Bearing off the seat | Beam end falls |
+|---|---|---|---|---|---|
+| 100 mm | 4 m/s | 54 mm | 51 mm | 67% | 0 |
+| | 8 m/s | 156 mm | 148 mm | 67% | 0 |
+| | 12 m/s | 316 mm | off | 100% | 3.6 m: the span drops |
+| 200 mm | 8 m/s | 154 mm | 146 mm | 40% | 0 |
+| | 12 m/s | 292 mm | 277 mm | 100% | 0.1 m, onto the corbel as the column swings back |
+| | 16 m/s | 497 mm | off | 100% | 3.6 m: the span drops |
+
+The beam rides on the column by friction until its column outruns it, and slides; a seat that
+the column's sway passes drops the span. Off its seat for good, a beam whose column swings back
+under it falls by the pad's thickness onto the corbel and rests there by contact. The share off
+the seat moves in steps: the row of the beam's nodes over the corbel's edge carries half a span's
+element of tributary area and goes first. With starter bars through the pad (`--dowels`, 0.4%),
+the beam at 12 m/s on a 100 mm seat drops too: the bars pull it after the column until they
+break. This shows the mechanism; it is not a validation.
 
 `blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
 ground between two columns that do not move, its vertical edges tied to them by each connection
@@ -659,8 +700,9 @@ shock, and the drag and pressure-gradient push on loose debris.
 1. **Each body is bonded throughout unless joints are asked for.** A layout can have up to
    sixteen independent bodies, each of up to eight materials (joints take some of those). Joints
    between materials are an element thick and open at the bond's strength, and masonry's own
-   mortar joints are meshed on fine enough elements, but there are no bearings that can
-   separate and no joints between other pieces of the same material. Rigid blocks never
+   mortar joints are meshed on fine enough elements; pieces of one body meshed apart can be
+   tied by a support region's joint between parts, which can separate, slide and fail, but
+   pieces that touch are bonded. Rigid blocks never
    respond. Independent bodies have no mutual contact or moving connections; conservative
    interaction checks stop the run when their envelopes or resolved cells overlap.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
@@ -729,9 +771,10 @@ shock, and the drag and pressure-gradient push on loose debris.
   conservation fix, but measurement showed the gas is already conserved within 0.3% (see
   limitation 3), so it is now a matter of geometric accuracy, and a large change to the air
   solver for it.
-- **Joints within a material**: bearings that separate, and pieces of the same material that
-  are not bonded. (Masonry's mortar joints are done, on solid elements fine enough to show
-  them.)
+- **Joints within a material**: pieces of the same material that touch without being bonded.
+  (Masonry's mortar joints are done, on solid elements fine enough to show them; pieces meshed
+  apart can be tied by a joint between parts, on solid elements; on shells, and with a joint
+  frame that turns with the parts, they are not.)
 - **Glass that fragments realistically**: its strength depends on the duration of the load and
   on surface flaws, and its pieces are sharp and small.
 - **Proper contact surfaces**: node-to-face contact with a consistent gap, which removes the

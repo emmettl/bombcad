@@ -118,6 +118,7 @@ struct StructureUniforms {
     float gravityX;  // the way gravity pulls (unit length); down unless turned
     float gravityY;
     float gravityZ;
+    uint pairs;  // connections between two parts of the body (`structurePairs`)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -2628,6 +2629,68 @@ float3 anchorForce(device float4 *anchors, uint index, StructureNode node, const
     return force;
 }
 
+// The axes along a joint whose normal is `normal` (zero for one under the body: x and y), as
+// `jointTraction` takes them. Matches `Anchorage.jointAxes`.
+static inline void jointAxes(float3 normal, thread float3 &along, thread float3 &other) {
+    if (all(normal == 0.0f)) {
+        along = float3(1.0f, 0.0f, 0.0f);
+        other = float3(0.0f, 1.0f, 0.0f);
+        return;
+    }
+    along = normalize(cross(abs(normal.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f), normal));
+    other = cross(normal, along);
+}
+
+// Connections between two parts of the body (`Anchorage.betweenParts`): each pair ties a node of
+// one part to the node of the other straight across the gap between them, by the law acting on
+// their relative motion. Per pair, three float4 as an anchor's (area, slip x, slip y, wear),
+// (force on the first node, largest opening) and (settlement, off its seat, reduced mass, 0),
+// and how far the seat reaches from the second node along each axis of the joint (+along,
+// -along, +other, -other). Run before the node pass, which gives the first node the force and the
+// second its opposite, so that the pair's momentum is exactly kept. Once the first node has slid
+// past the seat it is off it for good, and the pair carries nothing.
+kernel void structurePairs(device const StructureNode *nodes [[buffer(0)]],
+                           const device uint2 *pairNodes [[buffer(1)]],
+                           device float4 *pairState [[buffer(2)]],
+                           const device float4 *pairSeat [[buffer(3)]],
+                           const device AnchorLaw *pairLaws [[buffer(4)]],
+                           constant StructureUniforms &u [[buffer(5)]],
+                           const device StepControl &control [[buffer(6)]],
+                           uint p [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active || p >= u.pairs) {
+        return;
+    }
+    uint2 ends = pairNodes[p];
+    StructureNode a = nodes[ends.x];
+    StructureNode b = nodes[ends.y];
+    AnchorLaw law = pairLaws[p];
+    float4 stored = pairState[3 * p];
+    float area = stored.x;
+    float4 state = float4(stored.yzw, pairState[3 * p + 1].w);
+    float4 extra = pairState[3 * p + 2];
+    float settlement = extra.x;
+    float3 displacement = float3(a.displacement) - float3(b.displacement);
+    float3 velocity = float3(a.velocity) - float3(b.velocity);
+    float3 along;
+    float3 other;
+    jointAxes(float3(law.normal[0], law.normal[1], law.normal[2]), along, other);
+    float2 slide = float2(dot(displacement, along), dot(displacement, other));
+    float4 seat = pairSeat[p];
+    if (slide.x > seat.x || -slide.x > seat.y || slide.y > seat.z || -slide.y > seat.w) {
+        extra.y = 1.0f;
+    }
+    float3 force = float3(0.0f);
+    if (extra.y == 0.0f) {
+        float damper = 2.0f * u.contactDamping * sqrt(law.kn * extra.z / area);
+        force = -area * jointTraction(state, settlement, displacement, velocity, damper, law);
+    }
+    pairState[3 * p] = float4(area, state.xyz);
+    pairState[3 * p + 1] = float4(force, state.w);
+    pairState[3 * p + 2] = float4(settlement, extra.yzw);
+}
+
 // A rigid footing under a connected base (`Footing`, `FootingSystem` in Swift, `footingStep` in
 // Footing.metal). Constants, laid out as `FootingSystem.Constants`.
 struct FootingConstants {
@@ -2732,6 +2795,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device FootingConstants *footingConstants [[buffer(24)]],
                            const device FootingState *footingStates [[buffer(25)]],
                            device float4 *footingLinks [[buffer(26)]],
+                           const device float4 *pairState [[buffer(27)]],
+                           const device uint *nodePairStart [[buffer(28)]],
+                           const device int *nodePairs [[buffer(29)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2817,6 +2883,16 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
             float3 rest = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
             force += footingAnchorForce(anchors, threadIndex, node, rest, u, anchorLaws[threadIndex],
                                         footingConstants[footing - 1], footingStates[footing - 1], footingLinks);
+        }
+    }
+
+    // Its connections to another part of the body: the force each pair computed, on the pair's
+    // first node, or its opposite on the second.
+    if (finiteConnections && u.pairs != 0) {
+        for (uint e = nodePairStart[threadIndex]; e < nodePairStart[threadIndex + 1]; ++e) {
+            int entry = nodePairs[e];
+            float3 pairForce = pairState[3 * uint(abs(entry) - 1) + 1].xyz;
+            force += entry > 0 ? pairForce : -pairForce;
         }
     }
 

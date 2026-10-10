@@ -60,6 +60,22 @@ struct AnchorageEditor: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
+            Toggle(
+                "Ties two parts across a gap",
+                isOn: Binding(
+                    get: { law?.betweenParts == true },
+                    set: { on in
+                        guard var candidate = law else { return }
+                        candidate.betweenParts = on ? true : nil
+                        if on { candidate.footing = nil }
+                        law = candidate
+                    }))
+            if law?.betweenParts == true {
+                Text(
+                    "The joint ties the body to another of its parts, both moving, instead of to fixed ground: each node on faces facing the joint to the node straight across the gap, as a beam seated on a corbel or a panel against its frame. Leave a gap of at least one element between the parts, and span it with the region; the seat ends where the other part's faces in the region end, and a node that slides past it is off its seat for good. Solid elements only."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
         }
         if law != nil {
             DisclosureGroup("Connection properties") {
@@ -77,7 +93,7 @@ struct AnchorageEditor: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
-            footing()
+            if law?.betweenParts != true { footing() }
         }
     }
 

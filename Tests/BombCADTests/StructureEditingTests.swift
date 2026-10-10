@@ -313,6 +313,33 @@ struct StructuralEditorWorkflowTests {
         #expect(model.settings.scenario == inclined)
     }
 
+    @Test(
+        "A support tying two parts across a gap saves as scene version 7, reopens and undoes; on a footing it is refused"
+    )
+    func betweenPartsEditing() throws {
+        let model = try model()
+        model.addSupport()
+        model.recordEdit()
+        let before = model.settings.scenario
+        var law = Anchorage.resting(friction: 0.5)
+        law.betweenParts = true
+        model.setSupportAnchorage(law, at: 0)
+        let tied = model.settings.scenario
+        #expect(tied.structure?.anchorage(ofSupport: 0)?.betweenParts == true)
+        let archive = try ProjectDocument(model: model).makeArchive()
+        let payload = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self, from: #require(archive.files["scene.json"]))
+        #expect(payload.encodingVersion == 7)
+        #expect(try ProjectDocument(archive: archive).scenario == tied)
+        model.undo()
+        #expect(model.settings.scenario == before)
+        model.redo()
+        #expect(model.settings.scenario == tied)
+        law.footing = Footing()
+        model.setSupportAnchorage(law, at: 0)
+        #expect(model.settings.scenario == tied)
+    }
+
     @Test("Ground restraint can stay source-managed; custom support and part reinforcement detach")
     func supportAndReinforcement() throws {
         let model = try model()

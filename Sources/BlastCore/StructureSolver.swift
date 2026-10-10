@@ -179,6 +179,9 @@ public final class StructureSolver {
     private var anchorFrequencySquared: Float = 0
     /// Rigid footings under connections that have them (`Footing`).
     private(set) var footings: FootingSystem?
+    /// Connections between two parts of the body (`Anchorage.betweenParts`), when it has any.
+    private var pairs: PartPairs?
+    private let pairPipeline: MTLComputePipelineState
     private var stamp: UInt32 = 0
 
     public init(
@@ -234,6 +237,7 @@ public final class StructureSolver {
         turnedNodePipeline = { [library] in
             try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         }
+        pairPipeline = try pipeline("structurePairs")
         contactClearPipeline = try pipeline("contactClear")
         contactHashPipeline = try pipeline("contactHash")
         contactForcePipeline = try pipeline("contactForces")
@@ -494,7 +498,118 @@ public final class StructureSolver {
                 }
             }
             try setUpFootings(library: library)
+            try setUpPairs()
         }
+    }
+
+    /// The share of a quarter face that `corner` of the element at `element` carries for a joint
+    /// whose normal is `across`: of each face it lies on that faces the support with no element
+    /// beyond it, the cosine between them. A joint at an angle to the lattice is tied over the
+    /// staircase of faces that stands for it, whose shares add up to the joint's own area.
+    private func tributary(_ across: SIMD3<Float>, corner: Int, element: (Int, Int, Int)) -> Float {
+        var share: Float = 0
+        for axis in 0..<3 {
+            let positive = (corner >> axis) & 1 == 1
+            let weight = positive ? -across[axis] : across[axis]
+            guard weight > 1e-4 else { continue }
+            var beyond = [element.0, element.1, element.2]
+            beyond[axis] += positive ? 1 : -1
+            if compactIndex(beyond[0], beyond[1], beyond[2]) == nil { share += weight }
+        }
+        return share
+    }
+
+    /// Makes the connections between two parts of the body: each node on faces that face such a
+    /// joint, tied to the nearest node of the other part straight across the gap (on faces that
+    /// face back across it), with how far that part's faces in the region reach from it along
+    /// the joint, its seat.
+    private func setUpPairs() throws {
+        let slots = Set(
+            model.supports.indices.filter { model.anchorage(ofSupport: $0)?.betweenParts == true }.map {
+                $0 + 1
+            })
+        guard !slots.isEmpty else { return }
+        let h = model.elementSize
+        let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
+        var owners: [Int: (area: Float, slot: Int, position: SIMD3<Float>)] = [:]
+        var partners: [Int: [Int: SIMD3<Float>]] = [:]
+        for n in 0..<elementCount {
+            let (i, j, k) = elementCoordinates(Int(instances[n]))
+            for corner in 0..<8 {
+                let (ci, cj, ck) = (i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
+                let point = referencePosition(ci, cj, ck)
+                guard !model.isClampedBySupport(at: point), let slot = model.connectionSlot(at: point),
+                    slots.contains(slot), let law = model.connection(inSlot: slot)
+                else { continue }
+                let index = nodeIndex(ci, cj, ck)
+                let share = tributary(law.across, corner: corner, element: (i, j, k))
+                if share > 0 { owners[index, default: (0, slot, point)].area += h * h / 4 * share }
+                if tributary(-law.across, corner: corner, element: (i, j, k)) > 0 {
+                    partners[slot, default: [:]][index] = point
+                }
+            }
+        }
+        var masses = [Float](repeating: 0, count: nodeCount)
+        mutateNodes { nodes in for n in nodes.indices { masses[n] = nodes[n].mass } }
+        var found: [PartPairs.Pair] = []
+        for (owner, entry) in owners.sorted(by: { $0.key < $1.key }) {
+            guard let law = model.connection(inSlot: entry.slot), let side = partners[entry.slot] else {
+                continue
+            }
+            let normal = law.across
+            // The nearest node across the gap, straight across it within half an element.
+            var best: (node: Int, gap: Float, offset: Float)?
+            for (node, position) in side where node != owner {
+                let apart = entry.position - position
+                let gap = simd_dot(apart, normal)
+                let offset = simd_length(apart - gap * normal)
+                guard gap > 1e-3 * h, offset < 0.5 * h else { continue }
+                if best.map({
+                    gap < $0.gap - 1e-4 * h || (abs(gap - $0.gap) <= 1e-4 * h && offset < $0.offset)
+                })
+                    ?? true
+                {
+                    best = (node, gap, offset)
+                }
+            }
+            guard let best, let base = side[best.node] else { continue }
+            // How far the other part's faces reach from the partner along each axis of the joint,
+            // and half an element more (the last node's own share), less how far the node sits
+            // from it already.
+            let axes = Anchorage.jointAxes(law.isUnder ? .zero : normal)
+            let start = entry.position - base
+            var seat = SIMD4<Float>(repeating: 0)
+            for (slot, direction) in [axes.along, -axes.along, axes.other, -axes.other].enumerated() {
+                var reach: Float = 0
+                for position in side.values {
+                    let apart = position - base
+                    let along = simd_dot(apart, direction)
+                    guard abs(simd_dot(apart, normal)) < 0.5 * h,
+                        simd_length(apart - along * direction - simd_dot(apart, normal) * normal) < 0.5 * h
+                    else { continue }
+                    reach = max(reach, along)
+                }
+                seat[slot] = reach + h / 2 - simd_dot(start, direction)
+            }
+            let reduced = masses[owner] * masses[best.node] / max(masses[owner] + masses[best.node], 1e-30)
+            found.append(
+                PartPairs.Pair(
+                    owner: owner, partner: best.node, area: entry.area, slot: entry.slot, seat: seat,
+                    reducedMass: reduced,
+                    law: AnchorageParameters(law, material: model.material, elementSize: h)))
+        }
+        guard !found.isEmpty else { return }
+        pairs = try PartPairs(device: device, pairs: found, nodeCount: nodeCount)
+        let stiffest = max(anchorStiffness?.normal ?? 0, anchorStiffness?.shear ?? 0)
+        for pair in found where pair.reducedMass > 0 {
+            anchorFrequencySquared = max(anchorFrequencySquared, stiffest * pair.area / pair.reducedMass)
+        }
+    }
+
+    /// The connections between parts of the body after the last step, those of support region
+    /// `support` alone if given, or nil without any.
+    public func pairSummary(support: Int? = nil) -> PartPairs.Summary? {
+        pairs?.summary(slot: support.map { $0 + 1 }, nodes: { body in mutateNodes(body) })
     }
 
     /// Makes the footings of connections that have one, under the nodes they tie.
@@ -604,6 +719,7 @@ public final class StructureSolver {
         }
 
         footings?.reset()
+        pairs?.reset()
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -615,22 +731,6 @@ public final class StructureSolver {
         let laws = anchorLawBuffer.contents().bindMemory(
             to: AnchorageParameters.self, capacity: max(nodeCount, 1))
         let turned = model.hasTurnedJoints
-        // The share of a quarter face that `corner` of the element at `element` carries for a joint
-        // whose normal is `across`: of each face it lies on that faces the support with no element
-        // beyond it, the cosine between them. A joint at an angle to the lattice is tied over the
-        // staircase of faces that stands for it, whose shares add up to the joint's own area.
-        func tributary(_ across: SIMD3<Float>, corner: Int, element: (Int, Int, Int)) -> Float {
-            var share: Float = 0
-            for axis in 0..<3 {
-                let positive = (corner >> axis) & 1 == 1
-                let weight = positive ? -across[axis] : across[axis]
-                guard weight > 1e-4 else { continue }
-                var beyond = [element.0, element.1, element.2]
-                beyond[axis] += positive ? 1 : -1
-                if compactIndex(beyond[0], beyond[1], beyond[2]) == nil { share += weight }
-            }
-            return share
-        }
         mutateNodes { nodes in
             nodes.update(repeating: StructureNode())
             for n in 0..<elementCount {
@@ -645,7 +745,7 @@ public final class StructureSolver {
                     // Tributary area on exposed faces on the joint's side (lower faces, unless a
                     // support's joint faces another way); finite supports never pin interior nodes.
                     if anchored && (turned || corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil)),
-                        let law = model.connection(at: point),
+                        let law = model.connection(at: point), law.betweenParts != true,
                         case let share = tributary(law.across, corner: corner, element: (i, j, k)), share > 0
                     {
                         anchors[3 * index].x += h * h / 4 * share
@@ -1021,7 +1121,7 @@ public final class StructureSolver {
                 if model.finiteSupportIndex(at: point) == support { area += anchors[3 * n].x }
             }
         }
-        return area
+        return area + (pairs?.area(inSlot: 1 + support) ?? 0)
     }
 
     /// Concrete's cracks in the slice of elements at lattice row `j`, top row first, one character an
@@ -1326,6 +1426,19 @@ public final class StructureSolver {
             }
 
             beforeNodes?(substep, uniforms)
+            if let pairs {
+                uniforms.pairs = UInt32(pairs.count)
+                encoder.setComputePipelineState(pairPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(pairs.nodes, offset: 0, index: 1)
+                encoder.setBuffer(pairs.state, offset: 0, index: 2)
+                encoder.setBuffer(pairs.seats, offset: 0, index: 3)
+                encoder.setBuffer(pairs.laws, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: pairs.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             let down = gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
             encoder.setComputePipelineState(down ? nodePipeline : turnedNodes ?? nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
@@ -1355,6 +1468,9 @@ public final class StructureSolver {
             encoder.setBuffer(footings?.constantBuffer ?? placeholderBuffer, offset: 0, index: 24)
             encoder.setBuffer(footings?.stateBuffer ?? placeholderBuffer, offset: 0, index: 25)
             encoder.setBuffer(footings?.linkBuffer ?? placeholderBuffer, offset: 0, index: 26)
+            encoder.setBuffer(pairs?.state ?? placeholderBuffer, offset: 0, index: 27)
+            encoder.setBuffer(pairs?.nodeStart ?? placeholderBuffer, offset: 0, index: 28)
+            encoder.setBuffer(pairs?.nodeEntries ?? placeholderBuffer, offset: 0, index: 29)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             footings?.encode(
